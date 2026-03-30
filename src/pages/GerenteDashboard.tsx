@@ -49,14 +49,12 @@ export default function GerenteDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
-            <span className="text-lg font-extrabold text-secondary-foreground">C</span>
-          </div>
-          <div>
-            <h1 className="text-lg font-bold leading-tight">Consubov</h1>
-            <p className="text-xs opacity-80">Painel do Gerente</p>
-          </div>
+          <div className="flex items-center gap-3">
+            <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
+            <div>
+              <h1 className="text-lg font-bold leading-tight">Consubov</h1>
+              <p className="text-xs opacity-80">Painel do Gerente</p>
+            </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
           <LogOut className="w-5 h-5" />
