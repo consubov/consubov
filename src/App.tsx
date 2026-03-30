@@ -13,6 +13,8 @@ import RetiroDetailPage from "./pages/RetiroDetailPage";
 import PastoDetailPage from "./pages/PastoDetailPage";
 import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
+import GerentesPage from "./pages/GerentesPage";
+import CapatazesPage from "./pages/CapatazesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +77,8 @@ const App = () => (
               <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
               <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
               <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
+              <Route path="gerentes" element={<GerentesPage />} />
+              <Route path="capatazes" element={<CapatazesPage />} />
             </Route>
 
             {/* Gerente */}

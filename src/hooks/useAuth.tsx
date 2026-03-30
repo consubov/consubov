@@ -48,6 +48,18 @@ async function detectRole(userId: string): Promise<RoleData> {
     return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
   }
 
+  // Check capataz
+  const { data: capataz } = await supabase
+    .from("capatazes")
+    .select("id, retiro_id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (capataz) {
+    return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
+  }
+
   return { role: null, roleId: null, fazendaId: null, retiroId: null };
 }
 

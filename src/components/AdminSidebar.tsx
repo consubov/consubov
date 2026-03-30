@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -16,6 +16,8 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Fazendas", url: "/admin/fazendas", icon: Landmark },
+  { title: "Gerentes", url: "/admin/gerentes", icon: UserCog },
+  { title: "Capatazes", url: "/admin/capatazes", icon: HardHat },
 ];
 
 export function AdminSidebar() {
