@@ -16,6 +16,8 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Fazendas", url: "/admin/fazendas", icon: Landmark },
+  { title: "Gerentes", url: "/admin/gerentes", icon: UserCog },
+  { title: "Capatazes", url: "/admin/capatazes", icon: HardHat },
 ];
 
 export function AdminSidebar() {
