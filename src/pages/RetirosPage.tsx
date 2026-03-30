@@ -46,6 +46,8 @@ interface RetiroForm {
 const emptyForm: RetiroForm = { nome: "", fazenda_id: "", capataz: "", ativo: true };
 
 export default function RetirosPage() {
+  const [searchParams] = useSearchParams();
+  const filterFazendaId = searchParams.get("fazenda");
   const [retiros, setRetiros] = useState<(Retiro & { fazenda_nome?: string })[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
