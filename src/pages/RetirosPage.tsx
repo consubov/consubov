@@ -64,7 +64,7 @@ export default function RetirosPage() {
       return;
     }
 
-    const fazendasMap = new Map((fazendasRes.data ?? []).map((f) => [f.id, f.nome]));
+    const fazendasMap = new Map<string, string>((fazendasRes.data ?? []).map((f) => [f.id, f.nome]));
     const enriched = (retirosRes.data ?? []).map((r) => ({
       ...r,
       fazenda_nome: fazendasMap.get(r.fazenda_id) ?? "—",
