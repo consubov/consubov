@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Map, TreePine, ClipboardList, LogOut } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import logoConsubov from "@/assets/logo-consubov.jpeg";
 
 export default function GerenteDashboard() {
   const { signOut, roleData } = useAuth();
