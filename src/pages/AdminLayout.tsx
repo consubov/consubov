@@ -4,6 +4,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import logoConsubov from "@/assets/logo-consubov.jpeg";
 
 export default function AdminLayout() {
   const { signOut } = useAuth();

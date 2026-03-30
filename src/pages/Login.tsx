@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import logoConsubov from "@/assets/logo-consubov.jpeg";
 
 export default function Login() {
   const [email, setEmail] = useState("");
