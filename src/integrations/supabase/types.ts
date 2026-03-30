@@ -41,6 +41,47 @@ export type Database = {
         }
         Relationships: []
       }
+      capatazes: {
+        Row: {
+          ativo: boolean | null
+          criado_em: string | null
+          email: string
+          id: string
+          nome: string
+          retiro_id: string | null
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          email: string
+          id?: string
+          nome: string
+          retiro_id?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          retiro_id?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capatazes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ciclos: {
         Row: {
           ano: number
@@ -128,6 +169,8 @@ export type Database = {
           fazenda_id: string | null
           id: string
           nome: string
+          retiro_id: string | null
+          telefone: string | null
           user_id: string | null
         }
         Insert: {
@@ -137,6 +180,8 @@ export type Database = {
           fazenda_id?: string | null
           id?: string
           nome: string
+          retiro_id?: string | null
+          telefone?: string | null
           user_id?: string | null
         }
         Update: {
@@ -146,6 +191,8 @@ export type Database = {
           fazenda_id?: string | null
           id?: string
           nome?: string
+          retiro_id?: string | null
+          telefone?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -154,6 +201,13 @@ export type Database = {
             columns: ["fazenda_id"]
             isOneToOne: false
             referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gerentes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
             referencedColumns: ["id"]
           },
         ]
