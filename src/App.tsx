@@ -100,7 +100,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
 
             {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
               <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
@@ -111,10 +111,10 @@ const App = () => (
             </Route>
 
             {/* Gerente */}
-            <Route path="/gerente" element={<ProtectedRoute><GerenteDashboard /></ProtectedRoute>} />
+            <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
 
             {/* Capataz */}
-            <Route path="/capataz" element={<ProtectedRoute><CapatazDashboard /></ProtectedRoute>} />
+            <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
