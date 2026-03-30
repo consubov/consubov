@@ -172,7 +172,11 @@ export default function FazendasPage() {
               <TableBody>
                 {fazendas.map((f) => (
                   <TableRow key={f.id}>
-                    <TableCell className="font-medium">{f.nome}</TableCell>
+                    <TableCell>
+                      <Link to={`/admin/fazendas/${f.id}`} className="font-medium text-primary hover:underline">
+                        {f.nome}
+                      </Link>
+                    </TableCell>
                     <TableCell>{f.cidade} — {f.estado}</TableCell>
                     <TableCell>
                       <Badge variant={f.ativo ? "default" : "secondary"}>
