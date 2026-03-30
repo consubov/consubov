@@ -85,7 +85,7 @@ export default function RetirosPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [filterFazendaId]);
 
   function openNew() {
     setEditingId(null);
