@@ -18,8 +18,8 @@ export default function AdminLayout() {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary/80" />
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                  <span className="text-base font-extrabold text-secondary-foreground">C</span>
+                <div className="w-8 h-8 rounded-lg overflow-hidden">
+                  <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
                 </div>
                 <span className="text-base font-bold hidden sm:inline">Consubov</span>
               </div>
