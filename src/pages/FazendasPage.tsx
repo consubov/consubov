@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, Landmark, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fazenda = Tables<"fazendas">;
