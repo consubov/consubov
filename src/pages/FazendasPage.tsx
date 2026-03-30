@@ -22,8 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Loader2, Landmark } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Landmark, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fazenda = Tables<"fazendas">;
@@ -39,6 +40,7 @@ const emptyForm: FazendaForm = { nome: "", cidade: "", estado: "TO", ativo: true
 
 export default function FazendasPage() {
   const { roleData } = useAuth();
+  const navigate = useNavigate();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -179,6 +181,9 @@ export default function FazendasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/retiros?fazenda=${f.id}`)} title="Ver Retiros">
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(f)}>
                           <Pencil className="w-4 h-4" />
                         </Button>

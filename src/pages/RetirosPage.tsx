@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, Map } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Retiro = Tables<"retiros">;
@@ -45,6 +46,8 @@ interface RetiroForm {
 const emptyForm: RetiroForm = { nome: "", fazenda_id: "", capataz: "", ativo: true };
 
 export default function RetirosPage() {
+  const [searchParams] = useSearchParams();
+  const filterFazendaId = searchParams.get("fazenda");
   const [retiros, setRetiros] = useState<(Retiro & { fazenda_nome?: string })[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,19 +70,22 @@ export default function RetirosPage() {
     const fazendasList = fazendasRes.data ?? [];
     const fazendasMap: Record<string, string> = {};
     fazendasList.forEach((f) => { fazendasMap[f.id] = f.nome; });
-    const enriched = (retirosRes.data ?? []).map((r) => ({
+    const allRetiros = (retirosRes.data ?? []).map((r) => ({
       ...r,
       fazenda_nome: fazendasMap[r.fazenda_id] ?? "—",
     }));
+    const filtered = filterFazendaId
+      ? allRetiros.filter((r) => r.fazenda_id === filterFazendaId)
+      : allRetiros;
 
-    setRetiros(enriched);
+    setRetiros(filtered);
     setFazendas(fazendasRes.data ?? []);
     setLoading(false);
   }
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [filterFazendaId]);
 
   function openNew() {
     setEditingId(null);
@@ -167,7 +173,14 @@ export default function RetirosPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Retiros</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Retiros</h1>
+          {filterFazendaId && fazendas.find(f => f.id === filterFazendaId) && (
+            <p className="text-sm text-muted-foreground">
+              Filtrado por: {fazendas.find(f => f.id === filterFazendaId)?.nome}
+            </p>
+          )}
+        </div>
         <Button onClick={openNew} className="gap-1.5">
           <Plus className="w-4 h-4" />
           Novo Retiro
