@@ -5,15 +5,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Login from "./pages/Login";
+import AdminLayout from "./pages/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
+import FazendasPage from "./pages/FazendasPage";
+import RetirosPage from "./pages/RetirosPage";
 import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AuthGate() {
-  const { user, role, loading } = useAuth();
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -26,22 +29,27 @@ function AuthGate() {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function RoleRedirect() {
+  const { role, loading } = useAuth();
+  if (loading) return null;
 
   switch (role) {
     case "administrador":
-      return <AdminDashboard />;
+      return <Navigate to="/admin" replace />;
     case "gerente":
-      return <GerenteDashboard />;
+      return <Navigate to="/gerente" replace />;
     case "capataz":
-      return <CapatazDashboard />;
+      return <Navigate to="/capataz" replace />;
     default:
-      return <AdminDashboard />;
+      return <Navigate to="/admin" replace />;
   }
 }
 
 function LoginRoute() {
-  const { user, role, loading } = useAuth();
-
+  const { user, loading } = useAuth();
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
   return <Login />;
@@ -56,7 +64,21 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
-            <Route path="/" element={<AuthGate />} />
+            <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+
+            {/* Admin routes */}
+            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="fazendas" element={<FazendasPage />} />
+              <Route path="retiros" element={<RetirosPage />} />
+            </Route>
+
+            {/* Gerente */}
+            <Route path="/gerente" element={<ProtectedRoute><GerenteDashboard /></ProtectedRoute>} />
+
+            {/* Capataz */}
+            <Route path="/capataz" element={<ProtectedRoute><CapatazDashboard /></ProtectedRoute>} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
