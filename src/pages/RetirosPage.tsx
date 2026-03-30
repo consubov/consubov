@@ -69,7 +69,7 @@ export default function RetirosPage() {
     fazendasList.forEach((f) => { fazendasMap[f.id] = f.nome; });
     const enriched = (retirosRes.data ?? []).map((r) => ({
       ...r,
-      fazenda_nome: fazendasMap.get(r.fazenda_id) ?? "—",
+      fazenda_nome: fazendasMap[r.fazenda_id] ?? "—",
     }));
 
     setRetiros(enriched);
