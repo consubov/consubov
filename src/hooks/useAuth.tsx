@@ -58,10 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    let initialized = false;
+
+    async function handleSession(session: Session | null) {
       setSession(session);
       setUser(session?.user ?? null);
-
       if (session?.user) {
         const rd = await detectRole(session.user.id);
         setRoleData(rd);
@@ -69,19 +70,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoleData({ role: null, roleId: null, fazendaId: null, retiroId: null });
       }
       setLoading(false);
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      initialized = true;
+      handleSession(session);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const rd = await detectRole(session.user.id);
-        setRoleData(rd);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (initialized) {
+        handleSession(session);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Safety timeout to prevent infinite loading
+    const timeout = setTimeout(() => setLoading(false), 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
