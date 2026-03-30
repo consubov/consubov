@@ -185,9 +185,6 @@ export default function FazendasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/retiros?fazenda=${f.id}`)} title="Ver Retiros">
-                          <Eye className="w-4 h-4" />
-                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(f)}>
                           <Pencil className="w-4 h-4" />
                         </Button>

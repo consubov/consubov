@@ -8,8 +8,9 @@ import Login from "./pages/Login";
 import AdminLayout from "./pages/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import FazendasPage from "./pages/FazendasPage";
-import RetirosPage from "./pages/RetirosPage";
-import PastosPage from "./pages/PastosPage";
+import FazendaDetailPage from "./pages/FazendaDetailPage";
+import RetiroDetailPage from "./pages/RetiroDetailPage";
+import PastoDetailPage from "./pages/PastoDetailPage";
 import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
 import NotFound from "./pages/NotFound";
@@ -71,8 +72,9 @@ const App = () => (
             <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
-              <Route path="retiros" element={<RetirosPage />} />
-              <Route path="pastos" element={<PastosPage />} />
+              <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
+              <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
+              <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
             </Route>
 
             {/* Gerente */}
