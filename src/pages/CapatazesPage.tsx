@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 interface Retiro {
@@ -157,6 +157,33 @@ export default function CapatazesPage() {
     }
   }
 
+  async function handleResetPassword(c: Capataz) {
+    if (!c.user_id) {
+      toast.error("Este capataz não possui usuário vinculado no Auth");
+      return;
+    }
+    if (!confirm(`Redefinir a senha de ${c.nome} para "Consubov@2025"?`)) return;
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("reset-password", {
+        body: { user_id: c.user_id, password: "Consubov@2025" },
+      });
+      if (res.error) {
+        toast.error("Erro ao redefinir senha: " + (res.error.message || JSON.stringify(res.error)));
+        return;
+      }
+      const responseData = res.data;
+      if (responseData?.error) {
+        toast.error("Erro: " + responseData.error);
+        return;
+      }
+      toast.success(`Senha de ${c.nome} redefinida para Consubov@2025`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao redefinir senha");
+    }
+  }
+
   const retiroMap = Object.fromEntries(retiros.map(r => [r.id, r.nome]));
 
   if (loading) {
@@ -209,10 +236,13 @@ export default function CapatazesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)}>
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => handleResetPassword(c)} title="Redefinir Senha">
+                        <KeyRound className="w-4 h-4 text-amber-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)} title="Excluir">
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
