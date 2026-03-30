@@ -173,7 +173,14 @@ export default function RetirosPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Retiros</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Retiros</h1>
+          {filterFazendaId && fazendas.find(f => f.id === filterFazendaId) && (
+            <p className="text-sm text-muted-foreground">
+              Filtrado por: {fazendas.find(f => f.id === filterFazendaId)?.nome}
+            </p>
+          )}
+        </div>
         <Button onClick={openNew} className="gap-1.5">
           <Plus className="w-4 h-4" />
           Novo Retiro
