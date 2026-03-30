@@ -40,6 +40,7 @@ const emptyForm: FazendaForm = { nome: "", cidade: "", estado: "TO", ativo: true
 
 export default function FazendasPage() {
   const { roleData } = useAuth();
+  const navigate = useNavigate();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
