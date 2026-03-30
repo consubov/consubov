@@ -19,20 +19,38 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+      <span className="text-xl font-extrabold text-secondary">C</span>
+    </div>
+  </div>
+);
 
-  if (loading) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (allowedRoles && !role) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-xl font-extrabold text-secondary">C</span>
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-3">
+          <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+          <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+          <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+            Sair
+          </Button>
         </div>
       </div>
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -48,7 +66,17 @@ function RoleRedirect() {
     case "capataz":
       return <Navigate to="/capataz" replace />;
     default:
-      return <Navigate to="/admin" replace />;
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-6">
+          <div className="text-center space-y-3">
+            <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+            <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+            <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+              Sair
+            </Button>
+          </div>
+        </div>
+      );
   }
 }
 

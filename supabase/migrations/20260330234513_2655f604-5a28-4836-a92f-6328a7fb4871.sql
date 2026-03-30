@@ -1,0 +1,8 @@
+
+-- Ensure RLS is enabled on all remaining public tables
+ALTER TABLE public.capatazes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fazendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gerentes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lancamentos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pastos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.retiros ENABLE ROW LEVEL SECURITY;
