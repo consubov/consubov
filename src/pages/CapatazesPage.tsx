@@ -236,10 +236,13 @@ export default function CapatazesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)}>
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => handleResetPassword(c)} title="Redefinir Senha">
+                        <KeyRound className="w-4 h-4 text-amber-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)} title="Excluir">
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
