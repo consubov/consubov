@@ -70,8 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let initialized = false;
-
     async function handleSession(session: Session | null) {
       setSession(session);
       setUser(session?.user ?? null);
@@ -84,15 +82,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      initialized = true;
+    // Listen for auth changes first (including TOKEN_REFRESHED)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (initialized) {
-        handleSession(session);
-      }
+    // Then get the initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
     });
 
     // Safety timeout to prevent infinite loading
