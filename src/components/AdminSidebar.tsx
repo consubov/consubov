@@ -17,6 +17,7 @@ const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Fazendas", url: "/admin/fazendas", icon: Landmark },
   { title: "Retiros", url: "/admin/retiros", icon: Map },
+  { title: "Pastos", url: "/admin/pastos", icon: TreePine },
 ];
 
 export function AdminSidebar() {

@@ -72,6 +72,7 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
               <Route path="retiros" element={<RetirosPage />} />
+              <Route path="pastos" element={<PastosPage />} />
             </Route>
 
             {/* Gerente */}
