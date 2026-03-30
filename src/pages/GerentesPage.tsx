@@ -17,10 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-interface Retiro {
+interface Fazenda {
   id: string;
   nome: string;
-  fazenda_id: string;
 }
 
 interface Gerente {
@@ -28,7 +27,6 @@ interface Gerente {
   nome: string;
   email: string;
   telefone: string | null;
-  retiro_id: string | null;
   fazenda_id: string | null;
   user_id: string | null;
   ativo: boolean | null;
@@ -38,15 +36,15 @@ interface GerenteForm {
   nome: string;
   email: string;
   telefone: string;
-  retiro_id: string;
+  fazenda_id: string;
   ativo: boolean;
 }
 
-const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", retiro_id: "", ativo: true };
+const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", fazenda_id: "", ativo: true };
 
 export default function GerentesPage() {
   const [gerentes, setGerentes] = useState<Gerente[]>([]);
-  const [retiros, setRetiros] = useState<Retiro[]>([]);
+  const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -59,12 +57,12 @@ export default function GerentesPage() {
 
   async function fetchData() {
     setLoading(true);
-    const [gRes, rRes] = await Promise.all([
+    const [gRes, fRes] = await Promise.all([
       supabase.from("gerentes").select("*").order("nome"),
-      supabase.from("retiros").select("id, nome, fazenda_id").eq("ativo", true).order("nome"),
+      supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome"),
     ]);
     if (gRes.data) setGerentes(gRes.data as Gerente[]);
-    if (rRes.data) setRetiros(rRes.data);
+    if (fRes.data) setFazendas(fRes.data);
     setLoading(false);
   }
 
@@ -80,7 +78,7 @@ export default function GerentesPage() {
       nome: g.nome,
       email: g.email,
       telefone: g.telefone || "",
-      retiro_id: g.retiro_id || "",
+      fazenda_id: g.fazenda_id || "",
       ativo: g.ativo ?? true,
     });
     setDialogOpen(true);
@@ -91,10 +89,11 @@ export default function GerentesPage() {
       toast.error("Nome e email são obrigatórios");
       return;
     }
+    if (!form.fazenda_id) {
+      toast.error("Selecione uma fazenda");
+      return;
+    }
     setSaving(true);
-
-    const retiro = retiros.find(r => r.id === form.retiro_id);
-    const fazendaId = retiro?.fazenda_id || null;
 
     try {
       if (editingId) {
@@ -102,8 +101,7 @@ export default function GerentesPage() {
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          retiro_id: form.retiro_id || null,
-          fazenda_id: fazendaId,
+          fazenda_id: form.fazenda_id,
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
@@ -132,8 +130,7 @@ export default function GerentesPage() {
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          retiro_id: form.retiro_id || null,
-          fazenda_id: fazendaId,
+          fazenda_id: form.fazenda_id,
           user_id: userId || null,
           ativo: form.ativo,
         });
@@ -143,7 +140,7 @@ export default function GerentesPage() {
           setSaving(false);
           return;
         }
-        toast.success("Gerente criado! Senha padrão: Consubov@2025");
+        toast.success("Gerente criado! Acessa todos os retiros da fazenda selecionada.");
       }
       setDialogOpen(false);
       fetchData();
@@ -165,7 +162,7 @@ export default function GerentesPage() {
     }
   }
 
-  const retiroMap = Object.fromEntries(retiros.map(r => [r.id, r.nome]));
+  const fazendaMap = Object.fromEntries(fazendas.map(f => [f.id, f.nome]));
 
   if (loading) {
     return (
@@ -191,7 +188,7 @@ export default function GerentesPage() {
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Telefone</TableHead>
-              <TableHead>Retiro</TableHead>
+              <TableHead>Fazenda</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-24">Ações</TableHead>
             </TableRow>
@@ -209,7 +206,7 @@ export default function GerentesPage() {
                   <TableCell className="font-medium">{g.nome}</TableCell>
                   <TableCell>{g.email}</TableCell>
                   <TableCell>{g.telefone || "—"}</TableCell>
-                  <TableCell>{g.retiro_id ? retiroMap[g.retiro_id] || "—" : "—"}</TableCell>
+                  <TableCell>{g.fazenda_id ? fazendaMap[g.fazenda_id] || "—" : "—"}</TableCell>
                   <TableCell>
                     <Badge variant={g.ativo ? "default" : "secondary"}>
                       {g.ativo ? "Ativo" : "Inativo"}
@@ -237,7 +234,7 @@ export default function GerentesPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Gerente" : "Novo Gerente"}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Atualize os dados do gerente." : "Preencha os dados. Senha padrão: Consubov@2025"}
+              {editingId ? "Atualize os dados do gerente." : "Preencha os dados. O gerente terá acesso a todos os retiros da fazenda."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -254,15 +251,16 @@ export default function GerentesPage() {
               <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
             <div>
-              <Label>Retiro</Label>
-              <Select value={form.retiro_id} onValueChange={v => setForm(f => ({ ...f, retiro_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione um retiro" /></SelectTrigger>
+              <Label>Fazenda *</Label>
+              <Select value={form.fazenda_id} onValueChange={v => setForm(f => ({ ...f, fazenda_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione uma fazenda" /></SelectTrigger>
                 <SelectContent>
-                  {retiros.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                  {fazendas.map(f => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">O gerente terá acesso a todos os retiros desta fazenda.</p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />
