@@ -9,6 +9,7 @@ import AdminLayout from "./pages/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import FazendasPage from "./pages/FazendasPage";
 import RetirosPage from "./pages/RetirosPage";
+import PastosPage from "./pages/PastosPage";
 import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
 import NotFound from "./pages/NotFound";
