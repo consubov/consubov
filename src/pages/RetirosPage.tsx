@@ -70,12 +70,15 @@ export default function RetirosPage() {
     const fazendasList = fazendasRes.data ?? [];
     const fazendasMap: Record<string, string> = {};
     fazendasList.forEach((f) => { fazendasMap[f.id] = f.nome; });
-    const enriched = (retirosRes.data ?? []).map((r) => ({
+    const allRetiros = (retirosRes.data ?? []).map((r) => ({
       ...r,
       fazenda_nome: fazendasMap[r.fazenda_id] ?? "—",
     }));
+    const filtered = filterFazendaId
+      ? allRetiros.filter((r) => r.fazenda_id === filterFazendaId)
+      : allRetiros;
 
-    setRetiros(enriched);
+    setRetiros(filtered);
     setFazendas(fazendasRes.data ?? []);
     setLoading(false);
   }
