@@ -157,6 +157,33 @@ export default function CapatazesPage() {
     }
   }
 
+  async function handleResetPassword(c: Capataz) {
+    if (!c.user_id) {
+      toast.error("Este capataz não possui usuário vinculado no Auth");
+      return;
+    }
+    if (!confirm(`Redefinir a senha de ${c.nome} para "Consubov@2025"?`)) return;
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("reset-password", {
+        body: { user_id: c.user_id, password: "Consubov@2025" },
+      });
+      if (res.error) {
+        toast.error("Erro ao redefinir senha: " + (res.error.message || JSON.stringify(res.error)));
+        return;
+      }
+      const responseData = res.data;
+      if (responseData?.error) {
+        toast.error("Erro: " + responseData.error);
+        return;
+      }
+      toast.success(`Senha de ${c.nome} redefinida para Consubov@2025`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao redefinir senha");
+    }
+  }
+
   const retiroMap = Object.fromEntries(retiros.map(r => [r.id, r.nome]));
 
   if (loading) {
