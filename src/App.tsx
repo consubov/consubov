@@ -3,7 +3,8 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { AuthProvider, useAuth, type UserRole } from "@/hooks/useAuth";
 import Login from "./pages/Login";
 import AdminLayout from "./pages/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -19,20 +20,38 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+      <span className="text-xl font-extrabold text-secondary">C</span>
+    </div>
+  </div>
+);
 
-  if (loading) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (allowedRoles && !role) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-xl font-extrabold text-secondary">C</span>
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-3">
+          <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+          <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+          <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+            Sair
+          </Button>
         </div>
       </div>
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -48,7 +67,17 @@ function RoleRedirect() {
     case "capataz":
       return <Navigate to="/capataz" replace />;
     default:
-      return <Navigate to="/admin" replace />;
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-6">
+          <div className="text-center space-y-3">
+            <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+            <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+            <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+              Sair
+            </Button>
+          </div>
+        </div>
+      );
   }
 }
 
@@ -71,7 +100,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
 
             {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
               <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
@@ -82,10 +111,10 @@ const App = () => (
             </Route>
 
             {/* Gerente */}
-            <Route path="/gerente" element={<ProtectedRoute><GerenteDashboard /></ProtectedRoute>} />
+            <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
 
             {/* Capataz */}
-            <Route path="/capataz" element={<ProtectedRoute><CapatazDashboard /></ProtectedRoute>} />
+            <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
