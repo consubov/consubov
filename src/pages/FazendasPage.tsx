@@ -22,9 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Loader2, Landmark, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Landmark } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Fazenda = Tables<"fazendas">;
@@ -172,7 +172,11 @@ export default function FazendasPage() {
               <TableBody>
                 {fazendas.map((f) => (
                   <TableRow key={f.id}>
-                    <TableCell className="font-medium">{f.nome}</TableCell>
+                    <TableCell>
+                      <Link to={`/admin/fazendas/${f.id}`} className="font-medium text-primary hover:underline">
+                        {f.nome}
+                      </Link>
+                    </TableCell>
                     <TableCell>{f.cidade} — {f.estado}</TableCell>
                     <TableCell>
                       <Badge variant={f.ativo ? "default" : "secondary"}>
@@ -181,9 +185,6 @@ export default function FazendasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/retiros?fazenda=${f.id}`)} title="Ver Retiros">
-                          <Eye className="w-4 h-4" />
-                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(f)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
