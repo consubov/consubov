@@ -51,6 +51,7 @@ export default function CapatazDashboard() {
   const [formTipo, setFormTipo] = useState<'salga' | 'falha_qr'>('salga');
   const [formJustificativa, setFormJustificativa] = useState<string | undefined>();
   const [formAuditoriaExigida, setFormAuditoriaExigida] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -284,6 +285,7 @@ export default function CapatazDashboard() {
 
 
   const handleSync = async () => {
+    setSyncError(null);
     const pendentes = await getLancamentosPendentes();
     if (pendentes.length === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
@@ -310,7 +312,9 @@ export default function CapatazDashboard() {
         const { error } = await supabase.from("lancamentos").upsert(insertData);
         if (error) throw error;
         await markSincronizado(l.id);
-      } catch (err) {
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Registro ${i + 1}: ${errorMsg}`);
         toast.error(`Erro ao sincronizar registro ${i + 1}`);
         break;
       }
@@ -562,7 +566,16 @@ export default function CapatazDashboard() {
           </Button>
         </div>
 
-        {/* Período */}
+        {syncError && (
+          <Card className="border-destructive bg-destructive/10">
+            <CardContent className="p-3">
+              <p className="text-sm font-semibold text-destructive">Erro de sincronização:</p>
+              <p className="text-xs text-destructive mt-1 break-all">{syncError}</p>
+              <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground" onClick={() => setSyncError(null)}>Fechar</Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-2">
