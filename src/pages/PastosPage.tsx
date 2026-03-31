@@ -178,7 +178,6 @@ export default function PastosPage() {
     setPastos((prev) => prev.filter((p) => p.id !== id));
     toast.success("Pasto excluído.");
   }
-  }
 
   return (
     <div className="max-w-5xl mx-auto">
