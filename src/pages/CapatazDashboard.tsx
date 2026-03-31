@@ -566,7 +566,16 @@ export default function CapatazDashboard() {
           </Button>
         </div>
 
-        {/* Período */}
+        {syncError && (
+          <Card className="border-destructive bg-destructive/10">
+            <CardContent className="p-3">
+              <p className="text-sm font-semibold text-destructive">Erro de sincronização:</p>
+              <p className="text-xs text-destructive mt-1 break-all">{syncError}</p>
+              <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground" onClick={() => setSyncError(null)}>Fechar</Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-2">
