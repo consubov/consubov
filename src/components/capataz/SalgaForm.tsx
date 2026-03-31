@@ -9,6 +9,8 @@ import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 interface SalgaFormProps {
   pastoId: string;
   pastoNome: string;
+  retiroNome?: string;
+  fazendaNome?: string;
   cicloId: string;
   tipo: 'salga' | 'falha_qr';
   justificativaFalhaQr?: string;
