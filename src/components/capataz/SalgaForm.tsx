@@ -20,7 +20,7 @@ interface SalgaFormProps {
 }
 
 export default function SalgaForm({
-  pastoId, pastoNome, cicloId, tipo, justificativaFalhaQr,
+  pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
   auditoriaExigida, onSave, onBack
 }: SalgaFormProps) {
   const [sacos, setSacos] = useState<string>("");
