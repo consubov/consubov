@@ -296,17 +296,18 @@ export default function CapatazDashboard() {
       const l = pendentes[i];
       setSyncProgress({ current: i + 1, total: pendentes.length });
       try {
-        const { error } = await supabase.from("lancamentos").upsert({
+        const insertData = {
           id: l.id,
           ciclo_id: l.ciclo_id!,
           pasto_id: l.pasto_id,
           num_sacos: l.sacos,
           num_animais: 0,
-          lancado_em: l.data,
-          origem: l.tipo === 'falha_qr' ? 'app_falha_qr' : 'app',
-          foto_url: l.foto_auditoria_url,
+          origem: "salga_offline" as string,
           capataz_nome: userName,
-        });
+          lancado_em: l.data,
+          foto_url: l.foto_auditoria_url || null,
+        };
+        const { error } = await supabase.from("lancamentos").upsert(insertData);
         if (error) throw error;
         await markSincronizado(l.id);
       } catch (err) {
