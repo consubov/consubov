@@ -451,9 +451,9 @@ export default function CapatazDashboard() {
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-auto">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3">
+      <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
