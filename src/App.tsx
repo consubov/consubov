@@ -16,6 +16,7 @@ import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
 import GerentesPage from "./pages/GerentesPage";
 import CapatazesPage from "./pages/CapatazesPage";
+import QrCodesPage from "./pages/QrCodesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -108,6 +109,7 @@ const App = () => (
               <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
               <Route path="gerentes" element={<GerentesPage />} />
               <Route path="capatazes" element={<CapatazesPage />} />
+              <Route path="qrcodes" element={<QrCodesPage />} />
             </Route>
 
             {/* Gerente */}
