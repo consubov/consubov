@@ -492,7 +492,6 @@ export default function CapatazDashboard() {
                       )}
                     </CardContent>
                   </Card>
-                  </Card>
                 ))}
               </div>
             )}
