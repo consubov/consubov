@@ -188,10 +188,20 @@ export default function CapatazDashboard() {
     setPrepStatus('done');
   };
 
+  // Check if pasto already has salga today
+  const pastoJaSalgadoHoje = (pastoId: string): boolean => {
+    return lancamentosHoje.some(l => l.pasto_id === pastoId);
+  };
+
   // QR scanned
   const handleQrScan = async (qrValue: string) => {
     const pasto = await getPastoByQr(qrValue);
     if (pasto) {
+      if (pastoJaSalgadoHoje(pasto.id)) {
+        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        setScreen('salga');
+        return;
+      }
       openForm(pasto.id, pasto.nome, 'salga');
     } else {
       toast.error("QR Code não reconhecido");
