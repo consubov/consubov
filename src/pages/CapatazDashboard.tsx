@@ -6,7 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import PastoCard from "@/components/capataz/PastoCard";
@@ -15,7 +20,7 @@ import SalgaForm from "@/components/capataz/SalgaForm";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos, getLancamentosHoje, getSacosHojePorPasto,
-  saveLancamento, getLancamentosPendentes, markSincronizado,
+  saveLancamento, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
 } from "@/lib/offlineDb";
@@ -264,8 +269,20 @@ export default function CapatazDashboard() {
     setPendingCount(pendentes.length);
     setScreen('salga');
   };
+  const handleDeleteLancamento = async (id: string) => {
+    await deleteLancamento(id);
+    toast.success("Lançamento excluído");
+    const [hoje, sacos, pendentes] = await Promise.all([
+      getLancamentosHoje(),
+      getSacosHojePorPasto(),
+      getLancamentosPendentes(),
+    ]);
+    setLancamentosHoje(hoje);
+    setSacosMap(sacos);
+    setPendingCount(pendentes.length);
+  };
 
-  // Sync
+
   const handleSync = async () => {
     const pendentes = await getLancamentosPendentes();
     if (pendentes.length === 0) {
@@ -442,14 +459,37 @@ export default function CapatazDashboard() {
               <div className="space-y-2">
                 {salgasHoje.map((l) => (
                   <Card key={l.id}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div>
+                    <CardContent className="p-3 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-foreground">{l.pasto_nome}</p>
                         <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
                         {l.status === 'pendente' ? '⏳ Pendente' : '✅ Sincronizado'}
                       </span>
+                      {l.status === 'pendente' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir este lançamento?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Salga de "{l.pasto_nome}" ({l.sacos} sacos) será removida. Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteLancamento(l.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
