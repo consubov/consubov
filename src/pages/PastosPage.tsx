@@ -151,33 +151,32 @@ export default function PastosPage() {
       sexo: form.sexo || null, ativo: form.ativo,
     };
 
-    let result;
-    if (editingId) {
-      result = await supabase.from("pastos").update(payload).eq("id", editingId);
-    } else {
-      result = await supabase.from("pastos").insert(payload);
-    }
-
-    if (result.error) {
-      console.error("Erro Supabase pastos:", result.error);
-      toast.error(`Erro: ${result.error.message}`);
+    try {
+      if (editingId) {
+        const { error } = await supabase.from("pastos").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Pasto atualizado com sucesso!");
+      } else {
+        const { error } = await supabase.from("pastos").insert(payload);
+        if (error) throw error;
+        toast.success("Pasto criado com sucesso!");
+      }
+      setDialogOpen(false);
+      await loadData();
+    } catch (err: any) {
+      console.error("Erro Supabase pastos:", err);
+      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    toast.success(editingId ? "Pasto atualizado com sucesso!" : "Pasto criado com sucesso!");
-    setSaving(false);
-    setDialogOpen(false);
-    setLoading(true);
-    await loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Deseja realmente excluir este pasto?")) return;
     const { error } = await supabase.from("pastos").delete().eq("id", id);
     if (error) { toast.error("Erro ao excluir pasto."); return; }
+    setPastos((prev) => prev.filter((p) => p.id !== id));
     toast.success("Pasto excluído.");
-    loadData();
   }
 
   return (
