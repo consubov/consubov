@@ -54,7 +54,16 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Visão Geral</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
+        <Button
+          onClick={() => navigate("/admin/qrcodes")}
+          className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md"
+        >
+          <QrCode className="w-5 h-5 mr-2" />
+          Gerar QR Codes
+        </Button>
+      </div>
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
