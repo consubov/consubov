@@ -117,6 +117,12 @@ export default function SalgaForm({
           <CardContent className="p-3">
             <label className="text-xs text-muted-foreground">Pasto</label>
             <p className="font-semibold text-foreground">{pastoNome}</p>
+            {retiroNome && (
+              <p className="text-xs text-muted-foreground mt-0.5">Retiro: {retiroNome}</p>
+            )}
+            {fazendaNome && (
+              <p className="text-xs text-muted-foreground">Fazenda: {fazendaNome}</p>
+            )}
             {tipo === 'falha_qr' && (
               <p className="text-xs text-destructive mt-1">⚠ Seleção manual (falha QR)</p>
             )}
