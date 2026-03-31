@@ -186,6 +186,11 @@ export async function getConfig(key: string): Promise<string | undefined> {
   return item?.value;
 }
 
+export async function deleteLancamento(id: string) {
+  const db = await getDb();
+  await db.delete('lancamentos', id);
+}
+
 // Sacos consumidos por pasto hoje
 export async function getSacosHojePorPasto(): Promise<Record<string, number>> {
   const lancamentos = await getLancamentosHoje();
