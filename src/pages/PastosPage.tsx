@@ -168,7 +168,8 @@ export default function PastosPage() {
     toast.success(editingId ? "Pasto atualizado com sucesso!" : "Pasto criado com sucesso!");
     setSaving(false);
     setDialogOpen(false);
-    loadData();
+    setLoading(true);
+    await loadData();
   }
 
   async function handleDelete(id: string) {
