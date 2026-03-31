@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,32 +23,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const emptyRoleData: RoleData = { role: null, roleId: null, fazendaId: null, retiroId: null };
+
 async function detectRole(userId: string): Promise<RoleData> {
-  // Check administrador
-  const { data: admin } = await supabase
-    .from("administradores")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (admin) {
-    return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
-  }
-
-  // Check gerente
-  const { data: gerente } = await supabase
-    .from("gerentes")
-    .select("id, fazenda_id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (gerente) {
-    return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
-  }
-
-  // Check capataz
+  // 1. Check capataz first (as user requested order)
   const { data: capataz } = await supabase
     .from("capatazes")
     .select("id, retiro_id")
@@ -60,42 +38,83 @@ async function detectRole(userId: string): Promise<RoleData> {
     return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
   }
 
-  return { role: null, roleId: null, fazendaId: null, retiroId: null };
+  // 2. Check gerente
+  const { data: gerente } = await supabase
+    .from("gerentes")
+    .select("id, fazenda_id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (gerente) {
+    return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
+  }
+
+  // 3. Check administrador
+  const { data: admin } = await supabase
+    .from("administradores")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (admin) {
+    return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
+  }
+
+  return emptyRoleData;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [roleData, setRoleData] = useState<RoleData>({ role: null, roleId: null, fazendaId: null, retiroId: null });
+  const [roleData, setRoleData] = useState<RoleData>(emptyRoleData);
   const [loading, setLoading] = useState(true);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    async function handleSession(session: Session | null) {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const rd = await detectRole(session.user.id);
-        setRoleData(rd);
+    let cancelled = false;
+
+    async function loadRole(currentSession: Session | null) {
+      if (cancelled) return;
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        try {
+          const rd = await detectRole(currentSession.user.id);
+          if (!cancelled) setRoleData(rd);
+        } catch (e) {
+          console.error("Error detecting role:", e);
+          if (!cancelled) setRoleData(emptyRoleData);
+        }
       } else {
-        setRoleData({ role: null, roleId: null, fazendaId: null, retiroId: null });
+        setRoleData(emptyRoleData);
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
 
-    // Listen for auth changes first (including TOKEN_REFRESHED)
+    // 1. Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
+      // After initial load, handle subsequent auth changes
+      if (initializedRef.current) {
+        loadRole(session);
+      }
     });
 
-    // Then get the initial session
+    // 2. Then get initial session (prevents race condition)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
+      initializedRef.current = true;
+      loadRole(session);
     });
 
-    // Safety timeout to prevent infinite loading
-    const timeout = setTimeout(() => setLoading(false), 5000);
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 5000);
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
       clearTimeout(timeout);
     };
@@ -107,7 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Force clear even if signOut fails (expired token)
+      setSession(null);
+      setUser(null);
+      setRoleData(emptyRoleData);
+    }
   };
 
   return (
