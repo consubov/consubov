@@ -70,7 +70,11 @@ export default function CapatazDashboard() {
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
       setSelectedCicloId(savedCiclo);
     } else if (cachedCiclos.length > 0) {
-      const active = cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+      const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
       setSelectedCicloId(active.id);
     }
   }, []);
@@ -132,7 +136,11 @@ export default function CapatazDashboard() {
         if (ciclosData) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
-          const active = ciclosData.find(c => !c.fechado) || ciclosData[0];
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+          const currentCiclo = ciclosData.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+          const active = currentCiclo || ciclosData.find(c => !c.fechado) || ciclosData[0];
           if (active) {
             setSelectedCicloId(active.id);
             await setConfig('selectedCicloId', active.id);
@@ -317,14 +325,14 @@ export default function CapatazDashboard() {
 
   if (screen === 'manual-select') {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+      <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="icon" onClick={() => setScreen('scanner')} className="text-primary-foreground hover:bg-primary/80">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-lg font-bold">Seleção Manual</h1>
         </header>
-        <main className="flex-1 px-4 py-6 space-y-4">
+        <main className="flex-1 px-4 py-6 space-y-4 overflow-auto">
           <Card>
             <CardContent className="p-4 space-y-3">
               <p className="text-sm text-destructive font-medium">⚠ Falha na leitura do QR Code</p>
@@ -378,8 +386,8 @@ export default function CapatazDashboard() {
   if (screen === 'salga') {
     const salgasHoje = lancamentosHoje;
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
+      <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setScreen('home')} className="text-primary-foreground hover:bg-primary/80">
               <ArrowLeft className="w-5 h-5" />
@@ -388,7 +396,7 @@ export default function CapatazDashboard() {
           </div>
           <span className="text-xs bg-primary-foreground/20 rounded-full px-3 py-1">🟢 Salga liberada</span>
         </header>
-        <main className="flex-1 px-4 py-6 space-y-4">
+        <main className="flex-1 px-4 py-6 space-y-4 overflow-auto">
           <Button onClick={() => setScreen('scanner')} className="w-full gap-2 h-14 text-base" size="lg">
             <ScanLine className="w-6 h-6" />
             ESCANEAR QR CODE
@@ -443,9 +451,9 @@ export default function CapatazDashboard() {
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-auto">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3">
+      <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
@@ -463,7 +471,7 @@ export default function CapatazDashboard() {
         )}
       </header>
 
-      <main className="flex-1 px-4 py-4 space-y-4 pb-6">
+      <main className="flex-1 px-4 py-4 space-y-4 pb-6 overflow-auto">
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={handleIniciarSalga} className="h-14 gap-2 text-sm font-semibold" size="lg">
