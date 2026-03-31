@@ -236,6 +236,10 @@ export default function CapatazDashboard() {
     }
     const pasto = pastos.find(p => p.id === manualPastoId);
     if (pasto) {
+      if (pastoJaSalgadoHoje(pasto.id)) {
+        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        return;
+      }
       openForm(pasto.id, pasto.nome, 'falha_qr', manualJustificativa);
     }
   };
