@@ -160,41 +160,37 @@ export default function RetiroDetailPage() {
       ativo: form.ativo,
     };
 
-    if (editingId) {
-      const { error } = await supabase.from("pastos").update(payload).eq("id", editingId);
+    try {
+      if (editingId) {
+        const { error } = await supabase.from("pastos").update(payload).eq("id", editingId);
+        if (error) throw error;
 
-      if (error) {
-        console.error("Erro Supabase pastos:", error);
-        toast.error(`Erro: ${error.message}`);
-        setSaving(false);
-        return;
+        // Update local state directly
+        setPastos((prev) =>
+          prev.map((p) => (p.id === editingId ? { ...p, ...payload } : p))
+        );
+        toast.success("Pasto atualizado!");
+      } else {
+        const { data, error } = await supabase
+          .from("pastos")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (error || !data) throw error || new Error("Dados não retornados");
+
+        setPastos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+        toast.success("Pasto criado!");
       }
 
-      toast.success("Pasto atualizado!");
-      setSaving(false);
       setDialogOpen(false);
-      loadData();
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("pastos")
-      .insert(payload)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Erro Supabase pastos:", error);
-      toast.error(`Erro: ${error.message}`);
+      setForm(emptyPastoForm);
+    } catch (err: any) {
+      console.error("Erro Supabase pastos:", err);
+      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    setPastos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
-    toast.success("Pasto criado!");
-    setSaving(false);
-    setDialogOpen(false);
-    setForm(emptyPastoForm);
   }
 
   async function handleDelete(id: string) {
