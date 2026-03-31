@@ -285,6 +285,7 @@ export default function CapatazDashboard() {
 
 
   const handleSync = async () => {
+    setSyncError(null);
     const pendentes = await getLancamentosPendentes();
     if (pendentes.length === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
@@ -311,7 +312,9 @@ export default function CapatazDashboard() {
         const { error } = await supabase.from("lancamentos").upsert(insertData);
         if (error) throw error;
         await markSincronizado(l.id);
-      } catch (err) {
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Registro ${i + 1}: ${errorMsg}`);
         toast.error(`Erro ao sincronizar registro ${i + 1}`);
         break;
       }
