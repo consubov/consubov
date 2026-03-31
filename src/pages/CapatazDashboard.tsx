@@ -459,15 +459,39 @@ export default function CapatazDashboard() {
               <div className="space-y-2">
                 {salgasHoje.map((l) => (
                   <Card key={l.id}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div>
+                    <CardContent className="p-3 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-foreground">{l.pasto_nome}</p>
                         <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
                         {l.status === 'pendente' ? '⏳ Pendente' : '✅ Sincronizado'}
                       </span>
+                      {l.status === 'pendente' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir este lançamento?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Salga de "{l.pasto_nome}" ({l.sacos} sacos) será removida. Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteLancamento(l.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </CardContent>
+                  </Card>
                   </Card>
                 ))}
               </div>
