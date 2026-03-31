@@ -72,35 +72,41 @@ export default function PastosPage() {
   const categoriaCalculada = useMemo(() => calcCategoria(form.peso_medio_kg, form.sexo), [form.peso_medio_kg, form.sexo]);
 
   async function loadData() {
-    const [pastosRes, retirosRes, fazendasRes] = await Promise.all([
-      supabase.from("pastos").select("*").order("nome"),
-      supabase.from("retiros").select("*").eq("ativo", true).order("nome"),
-      supabase.from("fazendas").select("*").eq("ativo", true).order("nome"),
-    ]);
+    try {
+      const [pastosRes, retirosRes, fazendasRes] = await Promise.all([
+        supabase.from("pastos").select("*").order("nome"),
+        supabase.from("retiros").select("*").eq("ativo", true).order("nome"),
+        supabase.from("fazendas").select("*").eq("ativo", true).order("nome"),
+      ]);
 
-    if (pastosRes.error) { toast.error("Erro ao carregar pastos."); return; }
+      if (pastosRes.error) { toast.error("Erro ao carregar pastos."); setLoading(false); return; }
 
-    const fazendasMap: Record<string, string> = {};
-    (fazendasRes.data ?? []).forEach((f) => { fazendasMap[f.id] = f.nome; });
+      const fazendasMap: Record<string, string> = {};
+      (fazendasRes.data ?? []).forEach((f) => { fazendasMap[f.id] = f.nome; });
 
-    const retirosMap: Record<string, { nome: string; fazenda_id: string }> = {};
-    const enrichedRetiros = (retirosRes.data ?? []).map((r) => {
-      retirosMap[r.id] = { nome: r.nome, fazenda_id: r.fazenda_id };
-      return { ...r, fazenda_nome: fazendasMap[r.fazenda_id] ?? "—" };
-    });
+      const retirosMap: Record<string, { nome: string; fazenda_id: string }> = {};
+      const enrichedRetiros = (retirosRes.data ?? []).map((r) => {
+        retirosMap[r.id] = { nome: r.nome, fazenda_id: r.fazenda_id };
+        return { ...r, fazenda_nome: fazendasMap[r.fazenda_id] ?? "—" };
+      });
 
-    const enrichedPastos = (pastosRes.data ?? []).map((p) => {
-      const retiro = retirosMap[p.retiro_id];
-      return {
-        ...p,
-        retiro_nome: retiro?.nome ?? "—",
-        fazenda_nome: retiro ? (fazendasMap[retiro.fazenda_id] ?? "—") : "—",
-      };
-    });
+      const enrichedPastos = (pastosRes.data ?? []).map((p) => {
+        const retiro = retirosMap[p.retiro_id];
+        return {
+          ...p,
+          retiro_nome: retiro?.nome ?? "—",
+          fazenda_nome: retiro ? (fazendasMap[retiro.fazenda_id] ?? "—") : "—",
+        };
+      });
 
-    setPastos(enrichedPastos);
-    setRetiros(enrichedRetiros);
-    setLoading(false);
+      setPastos(enrichedPastos);
+      setRetiros(enrichedRetiros);
+    } catch (err) {
+      console.error("Erro ao carregar dados de pastos:", err);
+      toast.error("Erro ao carregar dados.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { loadData(); }, []);
@@ -162,7 +168,8 @@ export default function PastosPage() {
     toast.success(editingId ? "Pasto atualizado com sucesso!" : "Pasto criado com sucesso!");
     setSaving(false);
     setDialogOpen(false);
-    loadData();
+    setLoading(true);
+    await loadData();
   }
 
   async function handleDelete(id: string) {
