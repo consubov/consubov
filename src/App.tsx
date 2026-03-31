@@ -16,6 +16,7 @@ import GerenteDashboard from "./pages/GerenteDashboard";
 import CapatazDashboard from "./pages/CapatazDashboard";
 import GerentesPage from "./pages/GerentesPage";
 import CapatazesPage from "./pages/CapatazesPage";
+import QrCodesPage from "./pages/QrCodesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
