@@ -386,8 +386,8 @@ export default function CapatazDashboard() {
   if (screen === 'salga') {
     const salgasHoje = lancamentosHoje;
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between">
+      <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setScreen('home')} className="text-primary-foreground hover:bg-primary/80">
               <ArrowLeft className="w-5 h-5" />
@@ -396,7 +396,7 @@ export default function CapatazDashboard() {
           </div>
           <span className="text-xs bg-primary-foreground/20 rounded-full px-3 py-1">🟢 Salga liberada</span>
         </header>
-        <main className="flex-1 px-4 py-6 space-y-4">
+        <main className="flex-1 px-4 py-6 space-y-4 overflow-auto">
           <Button onClick={() => setScreen('scanner')} className="w-full gap-2 h-14 text-base" size="lg">
             <ScanLine className="w-6 h-6" />
             ESCANEAR QR CODE
