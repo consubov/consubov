@@ -70,7 +70,11 @@ export default function CapatazDashboard() {
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
       setSelectedCicloId(savedCiclo);
     } else if (cachedCiclos.length > 0) {
-      const active = cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+      const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
       setSelectedCicloId(active.id);
     }
   }, []);
