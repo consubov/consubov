@@ -144,23 +144,41 @@ export default function RetiroDetailPage() {
       ativo: form.ativo,
     };
 
-    let result;
     if (editingId) {
-      result = await supabase.from("pastos").update(payload).eq("id", editingId);
-    } else {
-      result = await supabase.from("pastos").insert(payload);
+      const { error } = await supabase.from("pastos").update(payload).eq("id", editingId);
+
+      if (error) {
+        console.error("Erro Supabase pastos:", error);
+        toast.error(`Erro: ${error.message}`);
+        setSaving(false);
+        return;
+      }
+
+      toast.success("Pasto atualizado!");
+      setSaving(false);
+      setDialogOpen(false);
+      loadData();
+      return;
     }
 
-    if (result.error) {
-      console.error("Erro Supabase pastos:", result.error);
-      toast.error(`Erro: ${result.error.message}`);
+    const { data, error } = await supabase
+      .from("pastos")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Erro Supabase pastos:", error);
+      toast.error(`Erro: ${error.message}`);
       setSaving(false);
       return;
     }
-    toast.success(editingId ? "Pasto atualizado!" : "Pasto criado!");
+
+    setPastos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+    toast.success("Pasto criado!");
     setSaving(false);
     setDialogOpen(false);
-    loadData();
+    setForm(emptyPastoForm);
   }
 
   async function handleDelete(id: string) {
