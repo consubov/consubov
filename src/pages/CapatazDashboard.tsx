@@ -471,7 +471,7 @@ export default function CapatazDashboard() {
         )}
       </header>
 
-      <main className="flex-1 px-4 py-4 space-y-4 pb-6">
+      <main className="flex-1 px-4 py-4 space-y-4 pb-6 overflow-auto">
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={handleIniciarSalga} className="h-14 gap-2 text-sm font-semibold" size="lg">
