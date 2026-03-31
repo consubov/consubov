@@ -77,20 +77,36 @@ export default function RetiroDetailPage() {
 
   async function loadData() {
     if (!retiroId || !fazendaId) return;
-    const [retRes, fazRes, pastosRes] = await Promise.all([
-      supabase.from("retiros").select("*").eq("id", retiroId).single(),
-      supabase.from("fazendas").select("*").eq("id", fazendaId).single(),
-      supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome"),
-    ]);
-    if (retRes.error || fazRes.error) {
-      toast.error("Retiro não encontrado.");
-      navigate(`/admin/fazendas/${fazendaId}`);
-      return;
+    try {
+      const [retRes, fazRes, pastosRes] = await Promise.all([
+        supabase.from("retiros").select("*").eq("id", retiroId).single(),
+        supabase.from("fazendas").select("*").eq("id", fazendaId).single(),
+        supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome"),
+      ]);
+      if (retRes.error || fazRes.error) {
+        toast.error("Retiro não encontrado.");
+        navigate(`/admin/fazendas/${fazendaId}`);
+        return;
+      }
+      setRetiro(retRes.data);
+      setFazenda(fazRes.data);
+      setPastos(pastosRes.data ?? []);
+    } catch (err) {
+      console.error("Erro ao carregar retiro:", err);
+      toast.error("Erro ao carregar dados.");
+    } finally {
+      setLoading(false);
     }
-    setRetiro(retRes.data);
-    setFazenda(fazRes.data);
-    setPastos(pastosRes.data ?? []);
-    setLoading(false);
+  }
+
+  async function reloadPastos() {
+    if (!retiroId) return;
+    try {
+      const { data } = await supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome");
+      setPastos(data ?? []);
+    } catch (err) {
+      console.error("Erro ao recarregar pastos:", err);
+    }
   }
 
   useEffect(() => { loadData(); }, [retiroId, fazendaId]);
