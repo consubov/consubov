@@ -215,11 +215,10 @@ export default function CapatazDashboard() {
     setFormTipo(tipo);
     setFormJustificativa(justificativa);
 
-    // Audit photo logic: random between 3 and 10 salgas
-    const newCount = salgaCount + 1;
-    const auditInterval = 3 + Math.floor(Math.random() * 8); // 3 to 10
-    setFormAuditoriaExigida(newCount % auditInterval === 0);
-    setSalgaCount(newCount);
+    // Audit photo logic: ~30% chance of requiring photo
+    // TODO: remove `true ||` after confirming blocking works
+    setFormAuditoriaExigida(true || Math.random() < 0.3);
+    setSalgaCount(salgaCount + 1);
     setScreen('form');
   };
 

@@ -146,10 +146,12 @@ export default function SalgaForm({
         {/* Foto Auditoria */}
         <div>
           <label className="text-sm font-medium text-foreground mb-1 block">
-            Foto de auditoria {auditoriaExigida ? <span className="text-destructive">* (obrigatória)</span> : '(opcional)'}
+            {auditoriaExigida
+              ? '📸 Foto de auditoria OBRIGATÓRIA'
+              : 'Foto de auditoria (opcional)'}
           </label>
           {auditoriaExigida && !fotoAuditoria && (
-            <p className="text-xs text-destructive mb-2">📸 Foto de auditoria obrigatória nesta salga</p>
+            <p className="text-xs text-destructive mb-2 font-semibold">⚠ Você deve tirar a foto antes de salvar</p>
           )}
           {fotoAuditoria ? (
             <div className="relative w-20 h-20">
@@ -159,9 +161,13 @@ export default function SalgaForm({
               </button>
             </div>
           ) : (
-            <Button variant="outline" className="gap-2" onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}>
+            <Button
+              variant="outline"
+              className={`gap-2 ${auditoriaExigida ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
+              onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}
+            >
               <Camera className="w-4 h-4" />
-              {auditoriaExigida ? '📷 Tirar Foto de Auditoria (obrigatória)' : '+ Foto de auditoria'}
+              {auditoriaExigida ? '📷 Tirar Foto (obrigatória)' : '+ Foto de auditoria'}
             </Button>
           )}
         </div>
