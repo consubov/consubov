@@ -9,6 +9,8 @@ import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 interface SalgaFormProps {
   pastoId: string;
   pastoNome: string;
+  retiroNome?: string;
+  fazendaNome?: string;
   cicloId: string;
   tipo: 'salga' | 'falha_qr';
   justificativaFalhaQr?: string;
@@ -18,7 +20,7 @@ interface SalgaFormProps {
 }
 
 export default function SalgaForm({
-  pastoId, pastoNome, cicloId, tipo, justificativaFalhaQr,
+  pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
   auditoriaExigida, onSave, onBack
 }: SalgaFormProps) {
   const [sacos, setSacos] = useState<string>("");
@@ -115,6 +117,12 @@ export default function SalgaForm({
           <CardContent className="p-3">
             <label className="text-xs text-muted-foreground">Pasto</label>
             <p className="font-semibold text-foreground">{pastoNome}</p>
+            {retiroNome && (
+              <p className="text-xs text-muted-foreground mt-0.5">Retiro: {retiroNome}</p>
+            )}
+            {fazendaNome && (
+              <p className="text-xs text-muted-foreground">Fazenda: {fazendaNome}</p>
+            )}
             {tipo === 'falha_qr' && (
               <p className="text-xs text-destructive mt-1">⚠ Seleção manual (falha QR)</p>
             )}
@@ -138,10 +146,10 @@ export default function SalgaForm({
         {/* Foto Auditoria */}
         <div>
           <label className="text-sm font-medium text-foreground mb-1 block">
-            Foto de auditoria {auditoriaExigida ? <span className="text-destructive">*</span> : '(opcional)'}
+            Foto de auditoria {auditoriaExigida ? <span className="text-destructive">* (obrigatória)</span> : '(opcional)'}
           </label>
           {auditoriaExigida && !fotoAuditoria && (
-            <p className="text-xs text-destructive mb-2">📷 Foto obrigatória nesta salga</p>
+            <p className="text-xs text-destructive mb-2">📸 Foto de auditoria obrigatória nesta salga</p>
           )}
           {fotoAuditoria ? (
             <div className="relative w-20 h-20">
@@ -153,7 +161,7 @@ export default function SalgaForm({
           ) : (
             <Button variant="outline" className="gap-2" onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}>
               <Camera className="w-4 h-4" />
-              {auditoriaExigida ? 'Tirar foto de auditoria' : '+ Foto de auditoria'}
+              {auditoriaExigida ? '📷 Tirar Foto de Auditoria (obrigatória)' : '+ Foto de auditoria'}
             </Button>
           )}
         </div>

@@ -404,6 +404,8 @@ export default function CapatazDashboard() {
       <SalgaForm
         pastoId={formPastoId}
         pastoNome={formPastoNome}
+        retiroNome={retiro?.nome}
+        fazendaNome={retiro?.fazenda_nome}
         cicloId={selectedCicloId}
         tipo={formTipo}
         justificativaFalhaQr={formJustificativa}
