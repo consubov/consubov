@@ -146,10 +146,10 @@ export default function SalgaForm({
         {/* Foto Auditoria */}
         <div>
           <label className="text-sm font-medium text-foreground mb-1 block">
-            Foto de auditoria {auditoriaExigida ? <span className="text-destructive">*</span> : '(opcional)'}
+            Foto de auditoria {auditoriaExigida ? <span className="text-destructive">* (obrigatória)</span> : '(opcional)'}
           </label>
           {auditoriaExigida && !fotoAuditoria && (
-            <p className="text-xs text-destructive mb-2">📷 Foto obrigatória nesta salga</p>
+            <p className="text-xs text-destructive mb-2">📸 Foto de auditoria obrigatória nesta salga</p>
           )}
           {fotoAuditoria ? (
             <div className="relative w-20 h-20">
@@ -161,7 +161,7 @@ export default function SalgaForm({
           ) : (
             <Button variant="outline" className="gap-2" onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}>
               <Camera className="w-4 h-4" />
-              {auditoriaExigida ? 'Tirar foto de auditoria' : '+ Foto de auditoria'}
+              {auditoriaExigida ? '📷 Tirar Foto de Auditoria (obrigatória)' : '+ Foto de auditoria'}
             </Button>
           )}
         </div>
