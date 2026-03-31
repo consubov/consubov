@@ -51,6 +51,7 @@ export default function CapatazDashboard() {
   const [formTipo, setFormTipo] = useState<'salga' | 'falha_qr'>('salga');
   const [formJustificativa, setFormJustificativa] = useState<string | undefined>();
   const [formAuditoriaExigida, setFormAuditoriaExigida] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
