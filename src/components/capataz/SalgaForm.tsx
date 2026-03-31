@@ -169,8 +169,7 @@ export default function SalgaForm({
               <Camera className="w-4 h-4" />
               {auditoriaExigida ? '📷 Tirar Foto (obrigatória)' : '+ Foto de auditoria'}
             </Button>
-          )}
-          )}
+        </div>
         </div>
 
         {/* Observações */}
