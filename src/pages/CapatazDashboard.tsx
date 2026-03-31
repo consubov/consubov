@@ -136,7 +136,11 @@ export default function CapatazDashboard() {
         if (ciclosData) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
-          const active = ciclosData.find(c => !c.fechado) || ciclosData[0];
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+          const currentCiclo = ciclosData.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+          const active = currentCiclo || ciclosData.find(c => !c.fechado) || ciclosData[0];
           if (active) {
             setSelectedCicloId(active.id);
             await setConfig('selectedCicloId', active.id);
