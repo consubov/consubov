@@ -269,8 +269,20 @@ export default function CapatazDashboard() {
     setPendingCount(pendentes.length);
     setScreen('salga');
   };
+  const handleDeleteLancamento = async (id: string) => {
+    await deleteLancamento(id);
+    toast.success("Lançamento excluído");
+    const [hoje, sacos, pendentes] = await Promise.all([
+      getLancamentosHoje(),
+      getSacosHojePorPasto(),
+      getLancamentosPendentes(),
+    ]);
+    setLancamentosHoje(hoje);
+    setSacosMap(sacos);
+    setPendingCount(pendentes.length);
+  };
 
-  // Sync
+
   const handleSync = async () => {
     const pendentes = await getLancamentosPendentes();
     if (pendentes.length === 0) {
