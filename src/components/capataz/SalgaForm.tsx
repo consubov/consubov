@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,8 +66,16 @@ export default function SalgaForm({
     setObservacoes((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // Auto-open camera for mandatory audit
+  useEffect(() => {
+    if (auditoriaExigida && !fotoAuditoria) {
+      const timer = setTimeout(() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [auditoriaExigida]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const canSave = () => {
-    if (!sacos || parseInt(sacos) <= 0) return false;
+    if (sacos === "" || parseInt(sacos) < 0 || isNaN(parseInt(sacos))) return false;
     if (auditoriaExigida && !fotoAuditoria) return false;
     return true;
   };
