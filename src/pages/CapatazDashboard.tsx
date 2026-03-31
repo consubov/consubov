@@ -20,11 +20,9 @@ import SalgaForm from "@/components/capataz/SalgaForm";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos, getLancamentosHoje, getSacosHojePorPasto,
-  saveLancamento, getLancamentosPendentes, markSincronizado,
   saveLancamento, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
-} from "@/lib/offlineDb";
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
