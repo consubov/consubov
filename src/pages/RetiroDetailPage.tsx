@@ -197,8 +197,8 @@ export default function RetiroDetailPage() {
     if (!confirm("Deseja realmente excluir este pasto?")) return;
     const { error } = await supabase.from("pastos").delete().eq("id", id);
     if (error) { toast.error("Erro ao excluir pasto."); return; }
+    setPastos((prev) => prev.filter((p) => p.id !== id));
     toast.success("Pasto excluído.");
-    loadData();
   }
 
   if (loading) {
