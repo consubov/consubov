@@ -562,7 +562,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

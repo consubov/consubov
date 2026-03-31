@@ -126,14 +126,31 @@ export default function CapatazDashboard() {
         }
 
         // Get ciclos
-        const { data: ciclosData } = await supabase
+        let { data: ciclosData } = await supabase
           .from("ciclos")
           .select("id, mes, ano, fechado, num_dias")
           .eq("fazenda_id", retiroData.fazenda_id)
           .order("ano", { ascending: false })
           .order("mes", { ascending: false });
 
-        if (ciclosData) {
+        // If no ciclos exist, auto-create the current month's ciclo
+        if (!ciclosData || ciclosData.length === 0) {
+          const { data: newCicloId } = await supabase.rpc("ensure_ciclo_atual", {
+            p_fazenda_id: retiroData.fazenda_id,
+          });
+          if (newCicloId) {
+            // Re-fetch after creation
+            const { data: refreshed } = await supabase
+              .from("ciclos")
+              .select("id, mes, ano, fechado, num_dias")
+              .eq("fazenda_id", retiroData.fazenda_id)
+              .order("ano", { ascending: false })
+              .order("mes", { ascending: false });
+            ciclosData = refreshed;
+          }
+        }
+
+        if (ciclosData && ciclosData.length > 0) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
           const now = new Date();
