@@ -909,10 +909,50 @@ export default function CapatazDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button variant="outline" size="sm" className="gap-1 mt-4 shrink-0">
-                <Lock className="w-3 h-3" />
-                Fechar Mês
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 mt-4 shrink-0"
+                    disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
+                  >
+                    <Lock className="w-3 h-3" />
+                    {fecharMesPendente ? '⏳ Pendente' : 'Fechar Mês'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Fechar mês?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Deseja fechar o ciclo de {selectedCiclo ? `${getMonthName(selectedCiclo.mes)} ${selectedCiclo.ano}` : ''}?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={async () => {
+                      // Bloquear se houver salgas pendentes
+                      const salgasPend = await getLancamentosPendentes();
+                      if (salgasPend.length > 0) {
+                        toast.error("Sincronize as salgas pendentes antes de fechar o mês");
+                        return;
+                      }
+                      if (!selectedCicloId) return;
+                      const action: FecharMesPendente = {
+                        tipo: 'fechar_mes',
+                        ciclo_id: selectedCicloId,
+                        data: new Date().toISOString(),
+                        status: 'pendente',
+                      };
+                      await saveFecharMes(action);
+                      setFecharMesPendente(action);
+                      toast.success("Mês fechado. Sincronize para confirmar.");
+                    }}>
+                      Confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
