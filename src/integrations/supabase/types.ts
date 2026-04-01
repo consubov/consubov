@@ -294,6 +294,73 @@ export type Database = {
           },
         ]
       }
+      observacoes: {
+        Row: {
+          capataz_nome: string | null
+          criado_em: string | null
+          descricao: string | null
+          fazenda_id: string
+          foto_url: string | null
+          id: string
+          pasto_id: string | null
+          resolvido: boolean
+          resolvido_em: string | null
+          resolvido_por: string | null
+          retiro_id: string | null
+          tipo: string | null
+        }
+        Insert: {
+          capataz_nome?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          fazenda_id: string
+          foto_url?: string | null
+          id?: string
+          pasto_id?: string | null
+          resolvido?: boolean
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          retiro_id?: string | null
+          tipo?: string | null
+        }
+        Update: {
+          capataz_nome?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          fazenda_id?: string
+          foto_url?: string | null
+          id?: string
+          pasto_id?: string | null
+          resolvido?: boolean
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          retiro_id?: string | null
+          tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observacoes_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observacoes_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observacoes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pastos: {
         Row: {
           ativo: boolean | null
