@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ScanLine, X } from "lucide-react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 
 interface QrScannerProps {
   onScan: (qrUuid: string) => void;
@@ -19,6 +19,91 @@ declare global {
   }
 }
 
+const CAMERA_CONSTRAINTS: MediaStreamConstraints[] = [
+  {
+    audio: false,
+    video: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    },
+  },
+  {
+    audio: false,
+    video: {
+      facingMode: { ideal: "environment" },
+    },
+  },
+  {
+    audio: false,
+    video: {
+      facingMode: "environment",
+    },
+  },
+  {
+    audio: false,
+    video: true,
+  },
+];
+
+const VIDEO_METADATA_READY = 1;
+const VIDEO_CURRENT_DATA_READY = 2;
+const VIDEO_READY_TIMEOUT_MS = 2000;
+const BARCODE_SCAN_INTERVAL_MS = 180;
+
+function getCameraErrorMessage(error: unknown) {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError" || error.name === "SecurityError") {
+      return "Não foi possível acessar a câmera. Permita o uso da câmera nas configurações do navegador e tente novamente.";
+    }
+
+    if (error.name === "NotReadableError" || error.name === "AbortError") {
+      return "A câmera está ocupada ou não conseguiu iniciar completamente. Feche outros apps que usem a câmera e tente novamente.";
+    }
+
+    if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
+      return "Não encontramos uma câmera compatível com este dispositivo. Tente novamente ou selecione o pasto manualmente.";
+    }
+  }
+
+  return "Não foi possível abrir a câmera neste dispositivo. Tente novamente ou selecione o pasto manualmente.";
+}
+
+function waitForVideoReadyState(video: HTMLVideoElement, minimumReadyState: number) {
+  return new Promise<void>((resolve) => {
+    if (video.readyState >= minimumReadyState) {
+      resolve();
+      return;
+    }
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener("loadedmetadata", handleReady);
+      video.removeEventListener("loadeddata", handleReady);
+      video.removeEventListener("canplay", handleReady);
+      video.removeEventListener("playing", handleReady);
+    };
+
+    const finish = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleReady = () => {
+      if (video.readyState >= minimumReadyState) {
+        finish();
+      }
+    };
+
+    const timeoutId = window.setTimeout(finish, VIDEO_READY_TIMEOUT_MS);
+
+    video.addEventListener("loadedmetadata", handleReady);
+    video.addEventListener("loadeddata", handleReady);
+    video.addEventListener("canplay", handleReady);
+    video.addEventListener("playing", handleReady);
+  });
+}
+
 export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [failCount, setFailCount] = useState(0);
@@ -26,31 +111,174 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scannerControlsRef = useRef<IScannerControls | null>(null);
+  const detectorTimerRef = useRef<number | null>(null);
   const activeRef = useRef(false);
+
+  const clearDetectorTimer = useCallback(() => {
+    if (detectorTimerRef.current !== null) {
+      window.clearTimeout(detectorTimerRef.current);
+      detectorTimerRef.current = null;
+    }
+  }, []);
+
+  const resetVideoElement = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.pause();
+    video.srcObject = null;
+    video.load();
+  }, []);
 
   const stopScanner = useCallback(() => {
     activeRef.current = false;
+    clearDetectorTimer();
+
+    if (scannerControlsRef.current) {
+      scannerControlsRef.current.stop();
+      scannerControlsRef.current = null;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+
+    resetVideoElement();
     setScanning(false);
+  }, [clearDetectorTimer, resetVideoElement]);
+
+  const waitForVideoElement = useCallback(() => {
+    return new Promise<HTMLVideoElement>((resolve, reject) => {
+      let attempts = 0;
+
+      const checkVideo = () => {
+        if (!activeRef.current) {
+          reject(new Error("Scanner interrompido."));
+          return;
+        }
+
+        if (videoRef.current) {
+          resolve(videoRef.current);
+          return;
+        }
+
+        attempts += 1;
+        if (attempts > 120) {
+          reject(new Error("Elemento de vídeo indisponível."));
+          return;
+        }
+
+        window.requestAnimationFrame(checkVideo);
+      };
+
+      checkVideo();
+    });
   }, []);
 
+  const openCameraStream = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Camera API indisponível.");
+    }
+
+    let lastError: unknown = null;
+
+    for (const constraints of CAMERA_CONSTRAINTS) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        lastError = error;
+
+        if (
+          error instanceof DOMException &&
+          (error.name === "NotAllowedError" || error.name === "SecurityError")
+        ) {
+          break;
+        }
+      }
+    }
+
+    throw lastError ?? new Error("Não foi possível abrir a câmera.");
+  }, []);
+
+  const attachStreamToVideo = useCallback(async (video: HTMLVideoElement, stream: MediaStream) => {
+    video.setAttribute("autoplay", "true");
+    video.setAttribute("muted", "true");
+    video.setAttribute("playsinline", "true");
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+
+    await waitForVideoReadyState(video, VIDEO_METADATA_READY);
+
+    try {
+      await video.play();
+    } catch {
+      await waitForVideoReadyState(video, VIDEO_CURRENT_DATA_READY);
+      await video.play();
+    }
+
+    await waitForVideoReadyState(video, VIDEO_CURRENT_DATA_READY);
+  }, []);
+
+  const startNativeDetector = useCallback((video: HTMLVideoElement) => {
+    const detector = new window.BarcodeDetector!({ formats: ["qr_code"] });
+
+    const scanFrame = async () => {
+      if (!activeRef.current) return;
+
+      try {
+        const codes = await detector.detect(video);
+        const qrValue = codes.find((code) => code.rawValue)?.rawValue;
+
+        if (qrValue) {
+          stopScanner();
+          onScan(qrValue);
+          return;
+        }
+      } catch {
+        // mantém a varredura ativa mesmo se o detector falhar em um frame específico
+      }
+
+      if (activeRef.current) {
+        detectorTimerRef.current = window.setTimeout(() => {
+          void scanFrame();
+        }, BARCODE_SCAN_INTERVAL_MS);
+      }
+    };
+
+    void scanFrame();
+  }, [onScan, stopScanner]);
+
+  const startZxingDetector = useCallback(async (video: HTMLVideoElement) => {
+    const codeReader = new BrowserQRCodeReader();
+
+    const controls = await codeReader.decodeFromVideoElement(video, (result, _decodeError, activeControls) => {
+      scannerControlsRef.current = activeControls;
+
+      if (result?.getText()) {
+        activeControls.stop();
+        scannerControlsRef.current = null;
+        stopScanner();
+        onScan(result.getText());
+      }
+    });
+
+    scannerControlsRef.current = controls;
+  }, [onScan, stopScanner]);
+
   const startScanner = useCallback(async () => {
+    if (activeRef.current) return;
+
     setError(null);
     setScanning(true);
     activeRef.current = true;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      });
+      const video = await waitForVideoElement();
+      const stream = await openCameraStream();
 
       if (!activeRef.current) {
         stream.getTracks().forEach((t) => t.stop());
@@ -59,68 +287,24 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
 
       streamRef.current = stream;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      await attachStreamToVideo(video, stream);
 
       // Try native BarcodeDetector first (works offline)
       if (window.BarcodeDetector) {
-        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-        const scan = async () => {
-          if (!activeRef.current || !videoRef.current?.videoWidth) {
-            if (activeRef.current) requestAnimationFrame(scan);
-            return;
-          }
-          try {
-            const codes = await detector.detect(videoRef.current);
-            if (codes.length > 0 && codes[0].rawValue) {
-              stopScanner();
-              onScan(codes[0].rawValue);
-              return;
-            }
-          } catch {
-            // detection error, retry
-          }
-          if (activeRef.current) requestAnimationFrame(scan);
-        };
-        requestAnimationFrame(scan);
+        startNativeDetector(video);
       } else {
-        // Fallback to zxing (statically bundled, works offline)
-        try {
-          const codeReader = new BrowserMultiFormatReader();
-          const controls = await codeReader.decodeFromStream(stream, videoRef.current!, (result) => {
-            if (result) {
-              controls.stop();
-              stopScanner();
-              onScan(result.getText());
-            }
-          });
-        } catch {
-          stopScanner();
-          setFailCount((c) => c + 1);
-          setError("Leitor QR indisponível neste dispositivo. Selecione o pasto manualmente.");
-        }
+        await startZxingDetector(video);
       }
-    } catch {
-      setScanning(false);
-      activeRef.current = false;
+    } catch (scanError) {
+      stopScanner();
       setFailCount((c) => c + 1);
-      setError(
-        "Não foi possível acessar a câmera. Acesse pelo Safari e permita o uso da câmera nas configurações do site."
-      );
+      setError(getCameraErrorMessage(scanError));
     }
-  }, [onScan, stopScanner]);
+  }, [attachStreamToVideo, openCameraStream, startNativeDetector, startZxingDetector, stopScanner, waitForVideoElement]);
 
   useEffect(() => {
-    return () => {
-      activeRef.current = false;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    };
-  }, []);
+    return () => stopScanner();
+  }, [stopScanner]);
 
   const showManualFallback = failCount >= 3;
 
