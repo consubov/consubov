@@ -103,6 +103,12 @@ export default function RetiroConfigSection({ retiroId }: Props) {
       produto_id: produtoId || null,
       peso_saco_kg: prod?.peso_saco_kg ?? prev.peso_saco_kg,
       preco_por_kg: prod?.preco_por_kg ?? prev.preco_por_kg,
+      consumo_recria1: prod?.consumo_recria1 ?? prev.consumo_recria1,
+      consumo_recria2: prod?.consumo_recria2 ?? prev.consumo_recria2,
+      consumo_engorda: prod?.consumo_engorda ?? prev.consumo_engorda,
+      margem_recria1: prod?.margem_recria1 ?? prev.margem_recria1,
+      margem_recria2: prod?.margem_recria2 ?? prev.margem_recria2,
+      margem_engorda: prod?.margem_engorda ?? prev.margem_engorda,
     }));
   }
 
