@@ -304,6 +304,13 @@ export default function RetiroDetailPage() {
         </Card>
       )}
 
+      {/* Configurações do Retiro */}
+      <div className="mt-8">
+        <RetiroConfigSection retiroId={retiroId!} />
+      </div>
+
+      <BulkPastosModal open={bulkOpen} onOpenChange={setBulkOpen} retiroId={retiroId!} onCreated={reloadPastos} />
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md" aria-describedby="pasto-dialog-desc">
           <DialogHeader>
