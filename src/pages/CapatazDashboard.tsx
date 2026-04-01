@@ -904,11 +904,23 @@ export default function CapatazDashboard() {
 
       <ObservacaoModal
         open={observacaoOpen}
-        onClose={() => setObservacaoOpen(false)}
+        onClose={() => { setObservacaoOpen(false); setEditingObs(null); }}
         pastos={pastos}
         retiroId={roleData.retiroId || ""}
         fazendaId={fazendaId}
         capatazNome={userName}
+        editingObs={editingObs}
+        onSave={async (obsData) => {
+          const obs: ObservacaoOffline = {
+            ...obsData,
+            id: editingObs?.id || crypto.randomUUID(),
+            criado_em: editingObs?.criado_em || new Date().toISOString(),
+            status: 'pendente',
+          };
+          await saveObservacaoOffline(obs);
+          await refreshObservacoes();
+          setEditingObs(null);
+        }}
       />
 
       <MortalidadeModal
