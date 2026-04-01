@@ -469,26 +469,71 @@ export type Database = {
         Row: {
           ativo: boolean | null
           capataz: string
+          consumo_engorda: number | null
+          consumo_recria1: number | null
+          consumo_recria2: number | null
           criado_em: string | null
+          estoque_sacos: number | null
           fazenda_id: string
+          gmd_engorda: number | null
+          gmd_recria1: number | null
+          gmd_recria2: number | null
           id: string
+          margem_engorda: number | null
+          margem_recria1: number | null
+          margem_recria2: number | null
           nome: string
+          peso_abate_kg: number | null
+          peso_saco_kg: number | null
+          preco_por_kg: number | null
+          produto_id: string | null
+          sexo_padrao: string | null
         }
         Insert: {
           ativo?: boolean | null
           capataz: string
+          consumo_engorda?: number | null
+          consumo_recria1?: number | null
+          consumo_recria2?: number | null
           criado_em?: string | null
+          estoque_sacos?: number | null
           fazenda_id: string
+          gmd_engorda?: number | null
+          gmd_recria1?: number | null
+          gmd_recria2?: number | null
           id?: string
+          margem_engorda?: number | null
+          margem_recria1?: number | null
+          margem_recria2?: number | null
           nome: string
+          peso_abate_kg?: number | null
+          peso_saco_kg?: number | null
+          preco_por_kg?: number | null
+          produto_id?: string | null
+          sexo_padrao?: string | null
         }
         Update: {
           ativo?: boolean | null
           capataz?: string
+          consumo_engorda?: number | null
+          consumo_recria1?: number | null
+          consumo_recria2?: number | null
           criado_em?: string | null
+          estoque_sacos?: number | null
           fazenda_id?: string
+          gmd_engorda?: number | null
+          gmd_recria1?: number | null
+          gmd_recria2?: number | null
           id?: string
+          margem_engorda?: number | null
+          margem_recria1?: number | null
+          margem_recria2?: number | null
           nome?: string
+          peso_abate_kg?: number | null
+          peso_saco_kg?: number | null
+          preco_por_kg?: number | null
+          produto_id?: string | null
+          sexo_padrao?: string | null
         }
         Relationships: [
           {
@@ -496,6 +541,13 @@ export type Database = {
             columns: ["fazenda_id"]
             isOneToOne: false
             referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retiros_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]

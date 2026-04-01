@@ -19,7 +19,9 @@ import {
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus } from "lucide-react";
+import BulkPastosModal from "@/components/retiro/BulkPastosModal";
+import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -72,6 +74,7 @@ export default function RetiroDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PastoForm>(emptyPastoForm);
   const [saving, setSaving] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const categoriaCalculada = useMemo(() => calcCategoria(form.peso_medio_kg, form.sexo), [form.peso_medio_kg, form.sexo]);
 
@@ -240,7 +243,10 @@ export default function RetiroDetailPage() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
-        <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> Vários</Button>
+          <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+        </div>
       </div>
 
       {pastos.length === 0 ? (
@@ -297,6 +303,13 @@ export default function RetiroDetailPage() {
           </div>
         </Card>
       )}
+
+      {/* Configurações do Retiro */}
+      <div className="mt-8">
+        <RetiroConfigSection retiroId={retiroId!} />
+      </div>
+
+      <BulkPastosModal open={bulkOpen} onOpenChange={setBulkOpen} retiroId={retiroId!} onCreated={reloadPastos} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md" aria-describedby="pasto-dialog-desc">
