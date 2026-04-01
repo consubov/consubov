@@ -190,6 +190,7 @@ export default function CapatazDashboard() {
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
     setCiclos(cachedCiclos);
+    if (savedFazendaId) setFazendaId(savedFazendaId);
 
     let nextCicloId = "";
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
