@@ -16,6 +16,12 @@ interface Produto {
   tipo: string | null;
   peso_saco_kg: number;
   preco_por_kg: number | null;
+  consumo_recria1: number | null;
+  consumo_recria2: number | null;
+  consumo_engorda: number | null;
+  margem_recria1: number | null;
+  margem_recria2: number | null;
+  margem_engorda: number | null;
 }
 
 interface RetiroConfig {
