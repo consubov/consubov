@@ -617,7 +617,7 @@ export default function CapatazDashboard() {
           status_consumo,
           dias_intervalo,
         };
-        const { error } = await supabase.from("lancamentos").upsert(insertData);
+        const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;
         await markSincronizado(l.id);
       } catch (err: any) {
