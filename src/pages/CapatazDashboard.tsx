@@ -835,6 +835,7 @@ export default function CapatazDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
+      <UpdateBanner />
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
@@ -845,9 +846,12 @@ export default function CapatazDashboard() {
               <p className="text-xs opacity-80">Capataz • {userName}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <RefreshButton />
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
         {retiro && (
           <p className="text-xs opacity-70 mt-1">{retiro.nome} • {retiro.fazenda_nome}</p>
