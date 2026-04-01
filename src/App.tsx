@@ -110,6 +110,7 @@ const App = () => (
               <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
               <Route path="gerentes" element={<GerentesPage />} />
               <Route path="capatazes" element={<CapatazesPage />} />
+              <Route path="produtos" element={<ProdutosPage />} />
               <Route path="qrcodes" element={<QrCodesPage />} />
             </Route>
 
