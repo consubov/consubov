@@ -260,6 +260,34 @@ export default function ProdutosPage() {
               <Label>Custo por kg (R$) *</Label>
               <Input type="number" step="0.01" value={form.preco_por_kg} onChange={(e) => setForm({ ...form, preco_por_kg: e.target.value })} placeholder="0.00" />
             </div>
+
+            {/* Consumo por Categoria */}
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Recria 1 (0–220kg)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_recria1} onChange={(e) => setForm({ ...form, margem_recria1: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Recria 2 (221–360kg ♂ / 221–299kg ♀)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_recria2} onChange={(e) => setForm({ ...form, margem_recria2: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Engorda (&gt;361kg ♂ / &gt;300kg ♀)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_engorda} onChange={(e) => setForm({ ...form, margem_engorda: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
