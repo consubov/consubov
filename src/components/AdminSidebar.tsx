@@ -22,12 +22,17 @@ const menuItems = [
 ];
 
 export function AdminSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile, setOpen } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
 
+  const handleNavClick = () => {
+    setOpenMobile(false);
+    setOpen(false);
+  };
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
+    <Sidebar collapsible="offcanvas" className="border-r border-border">
       <SidebarContent className="bg-sidebar pt-2">
         <SidebarGroup>
           {!collapsed && (
@@ -49,9 +54,10 @@ export function AdminSidebar() {
                         end={item.url === "/admin"}
                         className="flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
+                        onClick={handleNavClick}
                       >
                         <item.icon className="w-5 h-5 shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
+                        <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
