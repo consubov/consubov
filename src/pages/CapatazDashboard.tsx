@@ -770,6 +770,16 @@ export default function CapatazDashboard() {
             )}
           </Button>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => setObservacaoOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold" size="lg">
+            <Eye className="w-5 h-5" />
+            + Observação
+          </Button>
+          <Button onClick={() => setMortalidadeOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold border-destructive/50 text-destructive hover:bg-destructive/10" size="lg">
+            <AlertTriangle className="w-5 h-5" />
+            🐄 Mortalidade
+          </Button>
+        </div>
 
         {syncError && (
           <Card className="border-destructive bg-destructive/10">
