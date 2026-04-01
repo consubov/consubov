@@ -26,7 +26,9 @@ import {
   getPastoByQr, setConfig, getConfig,
   saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
   markObservacaoSincronizada, deleteObservacaoOffline,
+  saveFecharMes, getFecharMesPendente, clearFecharMes,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
+  type FecharMesPendente,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
