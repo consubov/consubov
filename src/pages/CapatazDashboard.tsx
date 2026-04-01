@@ -100,6 +100,7 @@ export default function CapatazDashboard() {
   const [obsPendentes, setObsPendentes] = useState<ObservacaoOffline[]>([]);
   const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
+  const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
