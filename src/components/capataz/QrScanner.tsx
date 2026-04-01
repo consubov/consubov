@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ScanLine, X } from "lucide-react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 interface QrScannerProps {
   onScan: (qrUuid: string) => void;
