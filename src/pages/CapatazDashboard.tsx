@@ -115,6 +115,15 @@ export default function CapatazDashboard() {
     setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
     setSacosMap(buildSacosMap(allLancamentos, cicloId));
     setPendingCount(pendingCountValue);
+    // Build consumo map from latest lancamento per pasto
+    const cMap: Record<string, { status_consumo?: string; indice_consumo?: number }> = {};
+    const sorted = [...allLancamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    for (const l of sorted) {
+      if (!cMap[l.pasto_id] && l.status_consumo) {
+        cMap[l.pasto_id] = { status_consumo: l.status_consumo, indice_consumo: l.indice_consumo };
+      }
+    }
+    setConsumoMap(cMap);
   }, []);
 
   const refreshLancamentosState = useCallback(async (cicloId?: string) => {
