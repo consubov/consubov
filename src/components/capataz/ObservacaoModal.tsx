@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, X, Loader2 } from "lucide-react";
+import { Camera, X, Loader2, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PastoCache } from "@/lib/offlineDb";
@@ -37,7 +37,8 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
   const [texto, setTexto] = useState("");
   const [pastoId, setPastoId] = useState("");
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -46,8 +47,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
       setCategoria("");
       setTexto("");
       setPastoId("");
-      // Auto-open camera
-      setTimeout(() => fileInputRef.current?.click(), 300);
     }
   }, [open]);
 
@@ -57,7 +56,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
     const reader = new FileReader();
     reader.onload = () => {
-      // Compress image
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -77,7 +75,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
-    // Reset input so same file can be selected again
     e.target.value = "";
   };
 
@@ -122,10 +119,17 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         </DialogHeader>
 
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -133,10 +137,14 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         {step === 'camera' && !fotoBase64 && (
           <div className="flex flex-col items-center gap-4 py-8">
             <Camera className="w-16 h-16 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground text-center">Tire uma foto para registrar a observação</p>
-            <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+            <p className="text-sm text-muted-foreground text-center">Tire uma foto ou escolha da galeria</p>
+            <Button onClick={() => cameraInputRef.current?.click()} className="w-full gap-2">
               <Camera className="w-4 h-4" />
-              Abrir Câmera
+              📷 Abrir Câmera
+            </Button>
+            <Button onClick={() => galleryInputRef.current?.click()} variant="outline" className="w-full gap-2">
+              <ImageIcon className="w-4 h-4" />
+              🖼️ Escolher da Galeria
             </Button>
           </div>
         )}
