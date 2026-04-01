@@ -900,6 +900,75 @@ export default function CapatazDashboard() {
             </div>
           )}
         </div>
+
+        {/* Observações pendentes */}
+        {obsPendentes.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Observações pendentes ({obsPendentes.length})</h3>
+            <div className="space-y-2">
+              {obsPendentes.map((obs) => (
+                <Card key={obs.id}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    {obs.foto_url && (
+                      <img src={obs.foto_url} alt="Obs" className="w-12 h-12 rounded object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground truncate">{obs.pasto_nome || 'Sem pasto'} • {new Date(obs.criado_em).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8"
+                        onClick={() => { setEditingObs(obs); setObservacaoOpen(true); }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir observação?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Histórico de observações enviadas */}
+        {obsHistorico.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Histórico de observações enviadas ({obsHistorico.length})</h3>
+            <div className="space-y-2">
+              {obsHistorico.map((obs) => (
+                <Card key={obs.id} className="opacity-70">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground">{obs.pasto_nome || 'Sem pasto'} • {new Date(obs.criado_em).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">✅ Enviada</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <ObservacaoModal
