@@ -19,7 +19,9 @@ import {
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus } from "lucide-react";
+import BulkPastosModal from "@/components/retiro/BulkPastosModal";
+import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
