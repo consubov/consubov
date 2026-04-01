@@ -86,7 +86,7 @@ export function useGerenteData() {
         const pastoIds = pastosList.map(p => p.id);
         let lancList: Lancamento[] = [];
         if (currentCiclo && pastoIds.length > 0) {
-          const lancRes = await supabase.from("lancamentos").select("id, ciclo_id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em")
+          const lancRes = await supabase.from("lancamentos").select("id, ciclo_id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em, status_consumo, indice_consumo")
             .eq("ciclo_id", currentCiclo.id).in("pasto_id", pastoIds);
           lancList = (lancRes.data ?? []) as Lancamento[];
         }
