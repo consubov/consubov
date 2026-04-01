@@ -19,7 +19,8 @@ import {
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus, Settings } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import BulkPastosModal from "@/components/retiro/BulkPastosModal";
 import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
 import { toast } from "sonner";
@@ -75,6 +76,8 @@ export default function RetiroDetailPage() {
   const [form, setForm] = useState<PastoForm>(emptyPastoForm);
   const [saving, setSaving] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configSummary, setConfigSummary] = useState("");
 
   const categoriaCalculada = useMemo(() => calcCategoria(form.peso_medio_kg, form.sexo), [form.peso_medio_kg, form.sexo]);
 
@@ -94,6 +97,19 @@ export default function RetiroDetailPage() {
       setRetiro(retRes.data);
       setFazenda(fazRes.data);
       setPastos(pastosRes.data ?? []);
+
+      // Build config summary
+      const r = retRes.data as any;
+      if (r.produto_id) {
+        const { data: prod } = await supabase.from("produtos").select("nome,peso_saco_kg,preco_por_kg").eq("id", r.produto_id).single();
+        if (prod) {
+          setConfigSummary(`Produto: ${prod.nome} · ${prod.peso_saco_kg}kg · R$${Number(prod.preco_por_kg ?? 0).toFixed(2)}/kg · Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        } else {
+          setConfigSummary(`Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        }
+      } else {
+        setConfigSummary("Nenhum produto configurado");
+      }
     } catch (err) {
       console.error("Erro ao carregar retiro:", err);
       toast.error("Erro ao carregar dados.");
@@ -241,13 +257,30 @@ export default function RetiroDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
-        <div className="flex gap-2">
-          <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> Vários</Button>
-          <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+      <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
+          <div className="flex gap-2">
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Settings className="w-4 h-4" /> Configurações
+              </Button>
+            </CollapsibleTrigger>
+            <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> Vários</Button>
+            <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+          </div>
         </div>
-      </div>
+
+        {!configOpen && configSummary && (
+          <p className="text-xs text-muted-foreground mb-4 px-1">{configSummary}</p>
+        )}
+
+        <CollapsibleContent>
+          <div className="mb-6">
+            <RetiroConfigSection retiroId={retiroId!} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {pastos.length === 0 ? (
         <Card>
@@ -303,11 +336,6 @@ export default function RetiroDetailPage() {
           </div>
         </Card>
       )}
-
-      {/* Configurações do Retiro */}
-      <div className="mt-8">
-        <RetiroConfigSection retiroId={retiroId!} />
-      </div>
 
       <BulkPastosModal open={bulkOpen} onOpenChange={setBulkOpen} retiroId={retiroId!} onCreated={reloadPastos} />
 
