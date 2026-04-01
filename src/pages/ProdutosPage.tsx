@@ -80,12 +80,19 @@ export default function ProdutosPage() {
 
   function openEdit(p: Produto) {
     setEditingId(p.id);
+    const a = p as any;
     setForm({
-      marca: (p as any).marca ?? "",
+      marca: a.marca ?? "",
       nome: p.nome,
-      tipo: (p as any).tipo ?? "",
+      tipo: a.tipo ?? "",
       peso_saco_kg: p.peso_saco_kg,
       preco_por_kg: p.preco_por_kg?.toString() ?? "",
+      consumo_recria1: a.consumo_recria1?.toString() ?? "",
+      consumo_recria2: a.consumo_recria2?.toString() ?? "",
+      consumo_engorda: a.consumo_engorda?.toString() ?? "",
+      margem_recria1: a.margem_recria1?.toString() ?? "",
+      margem_recria2: a.margem_recria2?.toString() ?? "",
+      margem_engorda: a.margem_engorda?.toString() ?? "",
     });
     setDialogOpen(true);
   }
