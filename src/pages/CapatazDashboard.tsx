@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2 } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -17,6 +17,8 @@ import logoConsubov from "@/assets/logo-consubov.jpeg";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
+import ObservacaoModal from "@/components/capataz/ObservacaoModal";
+import MortalidadeModal from "@/components/capataz/MortalidadeModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -88,6 +90,9 @@ export default function CapatazDashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [uiStateReady, setUiStateReady] = useState(false);
   const uiStateRestoredRef = useRef(false);
+  const [observacaoOpen, setObservacaoOpen] = useState(false);
+  const [mortalidadeOpen, setMortalidadeOpen] = useState(false);
+  const [fazendaId, setFazendaId] = useState("");
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -172,7 +177,7 @@ export default function CapatazDashboard() {
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
-    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState] = await Promise.all([
+    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState, savedFazendaId] = await Promise.all([
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
@@ -180,10 +185,12 @@ export default function CapatazDashboard() {
       getLancamentosPendentes(),
       getConfig('selectedCicloId'),
       getConfig('capatazUiState'),
+      getConfig('fazendaId'),
     ]);
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
     setCiclos(cachedCiclos);
+    if (savedFazendaId) setFazendaId(savedFazendaId);
 
     let nextCicloId = "";
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
@@ -281,6 +288,8 @@ export default function CapatazDashboard() {
         };
         await cacheRetiro(retiroCache);
         setRetiro(retiroCache);
+        setFazendaId(retiroData.fazenda_id);
+        await setConfig('fazendaId', retiroData.fazenda_id);
 
         // Get pastos
         const { data: pastosData } = await supabase
@@ -761,6 +770,16 @@ export default function CapatazDashboard() {
             )}
           </Button>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => setObservacaoOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold" size="lg">
+            <Eye className="w-5 h-5" />
+            + Observação
+          </Button>
+          <Button onClick={() => setMortalidadeOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold border-destructive/50 text-destructive hover:bg-destructive/10" size="lg">
+            <AlertTriangle className="w-5 h-5" />
+            🐄 Mortalidade
+          </Button>
+        </div>
 
         {syncError && (
           <Card className="border-destructive bg-destructive/10">
@@ -838,6 +857,25 @@ export default function CapatazDashboard() {
           )}
         </div>
       </main>
+
+      <ObservacaoModal
+        open={observacaoOpen}
+        onClose={() => setObservacaoOpen(false)}
+        pastos={pastos}
+        retiroId={roleData.retiroId || ""}
+        fazendaId={fazendaId}
+        capatazNome={userName}
+      />
+
+      <MortalidadeModal
+        open={mortalidadeOpen}
+        onClose={() => setMortalidadeOpen(false)}
+        pastos={pastos}
+        retiroId={roleData.retiroId || ""}
+        fazendaId={fazendaId}
+        capatazNome={userName}
+        onPastoUpdated={() => { loadFromSupabase(); }}
+      />
     </div>
   );
 }
