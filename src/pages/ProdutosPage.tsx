@@ -104,12 +104,19 @@ export default function ProdutosPage() {
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
 
     setSaving(true);
+    const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
     const payload: any = {
       nome: form.nome.trim(),
       marca: form.marca.trim(),
       tipo: form.tipo,
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
+      consumo_recria1: numOrNull(form.consumo_recria1),
+      consumo_recria2: numOrNull(form.consumo_recria2),
+      consumo_engorda: numOrNull(form.consumo_engorda),
+      margem_recria1: numOrNull(form.margem_recria1),
+      margem_recria2: numOrNull(form.margem_recria2),
+      margem_engorda: numOrNull(form.margem_engorda),
     };
 
     try {
