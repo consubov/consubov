@@ -119,10 +119,17 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         </DialogHeader>
 
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -130,10 +137,14 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         {step === 'camera' && !fotoBase64 && (
           <div className="flex flex-col items-center gap-4 py-8">
             <Camera className="w-16 h-16 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground text-center">Tire uma foto para registrar a observação</p>
-            <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+            <p className="text-sm text-muted-foreground text-center">Tire uma foto ou escolha da galeria</p>
+            <Button onClick={() => cameraInputRef.current?.click()} className="w-full gap-2">
               <Camera className="w-4 h-4" />
-              Abrir Câmera
+              📷 Abrir Câmera
+            </Button>
+            <Button onClick={() => galleryInputRef.current?.click()} variant="outline" className="w-full gap-2">
+              <ImageIcon className="w-4 h-4" />
+              🖼️ Escolher da Galeria
             </Button>
           </div>
         )}
