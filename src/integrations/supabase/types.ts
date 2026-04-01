@@ -217,12 +217,16 @@ export type Database = {
           capataz_nome: string | null
           categoria: string | null
           ciclo_id: string
+          consumo_esperado_kg: number | null
           consumo_g_cab_dia: number | null
+          consumo_real_kg: number | null
           custo_total: number | null
+          dias_intervalo: number | null
           dias_no_pasto: number | null
           foto_url: string | null
           gmd_kg_dia: number | null
           id: string
+          indice_consumo: number | null
           lancado_em: string | null
           num_animais: number
           num_sacos: number
@@ -231,17 +235,22 @@ export type Database = {
           peso_medio_kg: number | null
           produto_id: string | null
           sexo: string | null
+          status_consumo: string | null
         }
         Insert: {
           capataz_nome?: string | null
           categoria?: string | null
           ciclo_id: string
+          consumo_esperado_kg?: number | null
           consumo_g_cab_dia?: number | null
+          consumo_real_kg?: number | null
           custo_total?: number | null
+          dias_intervalo?: number | null
           dias_no_pasto?: number | null
           foto_url?: string | null
           gmd_kg_dia?: number | null
           id?: string
+          indice_consumo?: number | null
           lancado_em?: string | null
           num_animais: number
           num_sacos?: number
@@ -250,17 +259,22 @@ export type Database = {
           peso_medio_kg?: number | null
           produto_id?: string | null
           sexo?: string | null
+          status_consumo?: string | null
         }
         Update: {
           capataz_nome?: string | null
           categoria?: string | null
           ciclo_id?: string
+          consumo_esperado_kg?: number | null
           consumo_g_cab_dia?: number | null
+          consumo_real_kg?: number | null
           custo_total?: number | null
+          dias_intervalo?: number | null
           dias_no_pasto?: number | null
           foto_url?: string | null
           gmd_kg_dia?: number | null
           id?: string
+          indice_consumo?: number | null
           lancado_em?: string | null
           num_animais?: number
           num_sacos?: number
@@ -269,6 +283,7 @@ export type Database = {
           peso_medio_kg?: number | null
           produto_id?: string | null
           sexo?: string | null
+          status_consumo?: string | null
         }
         Relationships: [
           {
