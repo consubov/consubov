@@ -433,27 +433,33 @@ export type Database = {
           ativo: boolean | null
           criado_em: string | null
           id: string
+          marca: string | null
           nome: string
           peso_saco_kg: number
           preco_por_kg: number | null
+          tipo: string | null
         }
         Insert: {
           administrador_id?: string | null
           ativo?: boolean | null
           criado_em?: string | null
           id?: string
+          marca?: string | null
           nome: string
           peso_saco_kg?: number
           preco_por_kg?: number | null
+          tipo?: string | null
         }
         Update: {
           administrador_id?: string | null
           ativo?: boolean | null
           criado_em?: string | null
           id?: string
+          marca?: string | null
           nome?: string
           peso_saco_kg?: number
           preco_por_kg?: number | null
+          tipo?: string | null
         }
         Relationships: [
           {

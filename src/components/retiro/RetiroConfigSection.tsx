@@ -12,6 +12,8 @@ import { toast } from "sonner";
 interface Produto {
   id: string;
   nome: string;
+  marca: string | null;
+  tipo: string | null;
   peso_saco_kg: number;
   preco_por_kg: number | null;
 }
@@ -34,7 +36,7 @@ interface RetiroConfig {
   sexo_padrao: string | null;
 }
 
-const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
+
 
 interface Props {
   retiroId: string;
@@ -88,6 +90,16 @@ export default function RetiroConfigSection({ retiroId }: Props) {
     setConfig((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleProductChange(produtoId: string) {
+    const prod = produtos.find((p) => p.id === produtoId);
+    setConfig((prev) => ({
+      ...prev,
+      produto_id: produtoId || null,
+      peso_saco_kg: prod?.peso_saco_kg ?? prev.peso_saco_kg,
+      preco_por_kg: prod?.preco_por_kg ?? prev.preco_por_kg,
+    }));
+  }
+
   function numOrNull(val: string): number | null {
     if (!val) return null;
     const n = parseFloat(val);
@@ -134,30 +146,6 @@ export default function RetiroConfigSection({ retiroId }: Props) {
         <Settings className="w-5 h-5" /> Configurações do Retiro
       </h2>
 
-      {/* Peso do Saco */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" /> Peso do Saco</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {PESO_SACO_OPTIONS.map((peso) => (
-              <button
-                key={peso}
-                onClick={() => update("peso_saco_kg", peso)}
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                  config.peso_saco_kg === peso
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-foreground border-input hover:bg-accent"
-                }`}
-              >
-                {peso} kg
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Produto e Consumo */}
       <Card>
         <CardHeader className="pb-3">
@@ -167,14 +155,22 @@ export default function RetiroConfigSection({ retiroId }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Produto</Label>
-              <Select value={config.produto_id ?? ""} onValueChange={(v) => update("produto_id", v || null)}>
+              <Select value={config.produto_id ?? ""} onValueChange={handleProductChange}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {produtos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.marca ? `${p.marca} — ${p.nome}` : p.nome}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {config.produto_id && (() => {
+                const prod = produtos.find((p) => p.id === config.produto_id);
+                return prod ? (
+                  <p className="text-xs text-muted-foreground mt-1">Peso do saco: <strong>{prod.peso_saco_kg} kg</strong></p>
+                ) : null;
+              })()}
             </div>
             <div className="space-y-2">
               <Label>Preço do kg (R$)</Label>
