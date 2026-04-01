@@ -155,14 +155,22 @@ export default function RetiroConfigSection({ retiroId }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Produto</Label>
-              <Select value={config.produto_id ?? ""} onValueChange={(v) => update("produto_id", v || null)}>
+              <Select value={config.produto_id ?? ""} onValueChange={handleProductChange}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {produtos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.marca ? `${p.marca} — ${p.nome}` : p.nome}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {config.produto_id && (() => {
+                const prod = produtos.find((p) => p.id === config.produto_id);
+                return prod ? (
+                  <p className="text-xs text-muted-foreground mt-1">Peso do saco: <strong>{prod.peso_saco_kg} kg</strong></p>
+                ) : null;
+              })()}
             </div>
             <div className="space-y-2">
               <Label>Preço do kg (R$)</Label>
