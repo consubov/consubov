@@ -857,6 +857,25 @@ export default function CapatazDashboard() {
           )}
         </div>
       </main>
+
+      <ObservacaoModal
+        open={observacaoOpen}
+        onClose={() => setObservacaoOpen(false)}
+        pastos={pastos}
+        retiroId={roleData.retiroId || ""}
+        fazendaId={fazendaId}
+        capatazNome={userName}
+      />
+
+      <MortalidadeModal
+        open={mortalidadeOpen}
+        onClose={() => setMortalidadeOpen(false)}
+        pastos={pastos}
+        retiroId={roleData.retiroId || ""}
+        fazendaId={fazendaId}
+        capatazNome={userName}
+        onPastoUpdated={() => { loadFromSupabase(); }}
+      />
     </div>
   );
 }
