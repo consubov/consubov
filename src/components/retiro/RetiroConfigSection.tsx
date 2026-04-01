@@ -136,30 +136,6 @@ export default function RetiroConfigSection({ retiroId }: Props) {
         <Settings className="w-5 h-5" /> Configurações do Retiro
       </h2>
 
-      {/* Peso do Saco */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" /> Peso do Saco</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {PESO_SACO_OPTIONS.map((peso) => (
-              <button
-                key={peso}
-                onClick={() => update("peso_saco_kg", peso)}
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                  config.peso_saco_kg === peso
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-foreground border-input hover:bg-accent"
-                }`}
-              >
-                {peso} kg
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Produto e Consumo */}
       <Card>
         <CardHeader className="pb-3">
