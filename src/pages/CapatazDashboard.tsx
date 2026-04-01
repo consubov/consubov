@@ -505,7 +505,8 @@ export default function CapatazDashboard() {
     setSyncError(null);
     const pendentes = await getLancamentosPendentes();
     const obsPend = await getObservacoesPendentes();
-    const totalPending = pendentes.length + obsPend.length;
+    const fecharPend = await getFecharMesPendente();
+    const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
     if (totalPending === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
       return;
@@ -568,6 +569,54 @@ export default function CapatazDashboard() {
       }
     }
 
+    // Sync fechar mês
+    if (fecharPend && !syncError) {
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
+      try {
+        // Fechar ciclo atual
+        const { error: errFechar } = await supabase.from("ciclos").update({
+          fechado: true,
+          fechado_em: new Date().toISOString(),
+        }).eq("id", fecharPend.ciclo_id);
+        if (errFechar) throw errFechar;
+
+        // Buscar ciclo fechado para calcular próximo mês
+        const cicloFechado = ciclos.find(c => c.id === fecharPend.ciclo_id);
+        if (cicloFechado && fazendaId) {
+          let nextMes = cicloFechado.mes + 1;
+          let nextAno = cicloFechado.ano;
+          if (nextMes > 12) { nextMes = 1; nextAno++; }
+
+          // Verificar se já existe
+          const { data: existente } = await supabase.from("ciclos")
+            .select("id")
+            .eq("fazenda_id", fazendaId)
+            .eq("mes", nextMes)
+            .eq("ano", nextAno)
+            .maybeSingle();
+
+          if (!existente) {
+            await supabase.from("ciclos").insert({
+              fazenda_id: fazendaId,
+              mes: nextMes,
+              ano: nextAno,
+              num_dias: 30,
+              fechado: false,
+            });
+          }
+        }
+
+        await clearFecharMes();
+        setFecharMesPendente(null);
+        toast.success("✅ Mês fechado e novo ciclo criado");
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Fechar mês: ${errorMsg}`);
+        toast.error("Erro ao fechar mês");
+      }
+    }
+
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
     if (remaining.length === 0 && !syncError) {
@@ -576,6 +625,8 @@ export default function CapatazDashboard() {
     setScreen('home');
     await refreshLancamentosState();
     await refreshObservacoes();
+    // Reload ciclos from Supabase
+    try { await loadFromSupabase(); } catch {}
   };
 
   const getMonthName = (m: number) => {
