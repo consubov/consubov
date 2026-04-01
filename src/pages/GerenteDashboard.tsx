@@ -14,6 +14,7 @@ import {
   Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
+import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 
 const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
