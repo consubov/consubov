@@ -243,7 +243,10 @@ export default function RetiroDetailPage() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
-        <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> Vários</Button>
+          <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+        </div>
       </div>
 
       {pastos.length === 0 ? (
