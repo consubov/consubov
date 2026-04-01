@@ -1072,17 +1072,26 @@ export default function CapatazDashboard() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {pastos.map((p) => (
-                <PastoCard
-                  key={p.id}
-                  nome={p.nome}
-                  numAnimais={p.num_animais}
-                  pesoMedio={p.peso_medio_kg}
-                  diasNoPasto={p.dias_no_pasto}
-                  sacosHoje={sacosMap[p.id] || 0}
-                  status={getPastoStatus(p.id)}
-                />
-              ))}
+              {pastos.map((p) => {
+                // Find latest lancamento with consumption data for this pasto
+                const allLanc = lancamentosHoje.concat(
+                  // Also check all synced lancamentos from cache
+                );
+                const latestConsumo = lancamentosHoje.find(l => l.pasto_id === p.id && l.status_consumo);
+                return (
+                  <PastoCard
+                    key={p.id}
+                    nome={p.nome}
+                    numAnimais={p.num_animais}
+                    pesoMedio={p.peso_medio_kg}
+                    diasNoPasto={p.dias_no_pasto}
+                    sacosHoje={sacosMap[p.id] || 0}
+                    status={getPastoStatus(p.id)}
+                    statusConsumo={latestConsumo?.status_consumo}
+                    indiceConsumo={latestConsumo?.indice_consumo}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
