@@ -76,6 +76,8 @@ export default function RetiroDetailPage() {
   const [form, setForm] = useState<PastoForm>(emptyPastoForm);
   const [saving, setSaving] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configSummary, setConfigSummary] = useState("");
 
   const categoriaCalculada = useMemo(() => calcCategoria(form.peso_medio_kg, form.sexo), [form.peso_medio_kg, form.sexo]);
 
