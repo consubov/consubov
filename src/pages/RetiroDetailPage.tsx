@@ -97,6 +97,19 @@ export default function RetiroDetailPage() {
       setRetiro(retRes.data);
       setFazenda(fazRes.data);
       setPastos(pastosRes.data ?? []);
+
+      // Build config summary
+      const r = retRes.data as any;
+      if (r.produto_id) {
+        const { data: prod } = await supabase.from("produtos").select("nome,peso_saco_kg,preco_por_kg").eq("id", r.produto_id).single();
+        if (prod) {
+          setConfigSummary(`Produto: ${prod.nome} · ${prod.peso_saco_kg}kg · R$${Number(prod.preco_por_kg ?? 0).toFixed(2)}/kg · Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        } else {
+          setConfigSummary(`Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        }
+      } else {
+        setConfigSummary("Nenhum produto configurado");
+      }
     } catch (err) {
       console.error("Erro ao carregar retiro:", err);
       toast.error("Erro ao carregar dados.");
