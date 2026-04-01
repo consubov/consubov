@@ -20,6 +20,20 @@ export interface LancamentoOffline {
   ciclo_id?: string;
 }
 
+export interface ObservacaoOffline {
+  id: string;
+  pasto_id: string | null;
+  pasto_nome: string;
+  retiro_id: string;
+  fazenda_id: string;
+  capataz_nome: string;
+  tipo: string;
+  descricao: string | null;
+  foto_url: string;
+  criado_em: string;
+  status: 'pendente' | 'sincronizado';
+}
+
 export interface PastoCache {
   id: string;
   nome: string;
@@ -69,25 +83,36 @@ interface ConsubovDB extends DBSchema {
     key: string;
     value: { key: string; value: string };
   };
+  observacoesOffline: {
+    key: string;
+    value: ObservacaoOffline;
+    indexes: { 'by-status': string };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 1, {
-      upgrade(db) {
-        const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
-        lancStore.createIndex('by-status', 'status');
-        lancStore.createIndex('by-pasto', 'pasto_id');
-        lancStore.createIndex('by-data', 'data');
+    dbPromise = openDB<ConsubovDB>('consubov-capataz', 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
+          lancStore.createIndex('by-status', 'status');
+          lancStore.createIndex('by-pasto', 'pasto_id');
+          lancStore.createIndex('by-data', 'data');
 
-        const pastosStore = db.createObjectStore('pastos', { keyPath: 'id' });
-        pastosStore.createIndex('by-qr', 'qr_uuid');
+          const pastosStore = db.createObjectStore('pastos', { keyPath: 'id' });
+          pastosStore.createIndex('by-qr', 'qr_uuid');
 
-        db.createObjectStore('retiro', { keyPath: 'id' });
-        db.createObjectStore('ciclos', { keyPath: 'id' });
-        db.createObjectStore('config', { keyPath: 'key' });
+          db.createObjectStore('retiro', { keyPath: 'id' });
+          db.createObjectStore('ciclos', { keyPath: 'id' });
+          db.createObjectStore('config', { keyPath: 'key' });
+        }
+        if (oldVersion < 2) {
+          const obsStore = db.createObjectStore('observacoesOffline', { keyPath: 'id' });
+          obsStore.createIndex('by-status', 'status');
+        }
       },
     });
   }
@@ -199,4 +224,39 @@ export async function getSacosHojePorPasto(): Promise<Record<string, number>> {
     map[l.pasto_id] = (map[l.pasto_id] || 0) + l.sacos;
   }
   return map;
+}
+
+// Observações Offline
+export async function saveObservacaoOffline(obs: ObservacaoOffline) {
+  const db = await getDb();
+  await db.put('observacoesOffline', obs);
+}
+
+export async function getAllObservacoes(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAll('observacoesOffline');
+}
+
+export async function getObservacoesPendentes(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente');
+}
+
+export async function getObservacoesSincronizadas(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAllFromIndex('observacoesOffline', 'by-status', 'sincronizado');
+}
+
+export async function markObservacaoSincronizada(id: string) {
+  const db = await getDb();
+  const obs = await db.get('observacoesOffline', id);
+  if (obs) {
+    obs.status = 'sincronizado';
+    await db.put('observacoesOffline', obs);
+  }
+}
+
+export async function deleteObservacaoOffline(id: string) {
+  const db = await getDb();
+  await db.delete('observacoesOffline', id);
 }

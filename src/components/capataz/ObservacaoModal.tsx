@@ -4,9 +4,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, X, Loader2, ImageIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { PastoCache } from "@/lib/offlineDb";
+import type { PastoCache, ObservacaoOffline } from "@/lib/offlineDb";
 
 const CATEGORIAS_ESTRUTURA = [
   { value: "porteira", label: "Porteira" },
@@ -14,6 +13,7 @@ const CATEGORIAS_ESTRUTURA = [
   { value: "cocho", label: "Cocho" },
   { value: "estaca", label: "Estaca" },
   { value: "agua", label: "Água" },
+  { value: "colchete", label: "Colchete" },
 ];
 
 const CATEGORIAS_ANIMAL = [
@@ -28,9 +28,11 @@ interface Props {
   retiroId: string;
   fazendaId: string;
   capatazNome: string;
+  editingObs?: ObservacaoOffline | null;
+  onSave: (obs: Omit<ObservacaoOffline, 'id' | 'criado_em' | 'status'>) => void;
 }
 
-export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome }: Props) {
+export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome, editingObs, onSave }: Props) {
   const [step, setStep] = useState<'camera' | 'form'>('camera');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
   const [categoria, setCategoria] = useState("");
@@ -42,13 +44,21 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
   useEffect(() => {
     if (open) {
-      setStep('camera');
-      setFotoBase64(null);
-      setCategoria("");
-      setTexto("");
-      setPastoId("");
+      if (editingObs) {
+        setFotoBase64(editingObs.foto_url);
+        setCategoria(editingObs.tipo);
+        setTexto(editingObs.descricao || "");
+        setPastoId(editingObs.pasto_id || "");
+        setStep('form');
+      } else {
+        setStep('camera');
+        setFotoBase64(null);
+        setCategoria("");
+        setTexto("");
+        setPastoId("");
+      }
     }
-  }, [open]);
+  }, [open, editingObs]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,22 +100,18 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("observacoes").insert({
+      onSave({
         pasto_id: pastoId || null,
+        pasto_nome: pastos.find(p => p.id === pastoId)?.nome || "",
         retiro_id: retiroId,
         fazenda_id: fazendaId,
         capataz_nome: capatazNome,
         tipo: categoria,
         descricao: texto || null,
         foto_url: fotoBase64,
-        resolvido: false,
       });
-
-      if (error) throw error;
-      toast.success("✅ Observação registrada");
+      toast.success("✅ Observação salva offline");
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao salvar observação");
     } finally {
       setSaving(false);
     }

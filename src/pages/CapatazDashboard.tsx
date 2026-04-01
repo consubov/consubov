@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -24,7 +24,9 @@ import {
   getCachedCiclos,
   saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
-  type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
+  saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
+  markObservacaoSincronizada, deleteObservacaoOffline,
+  type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
@@ -93,8 +95,17 @@ export default function CapatazDashboard() {
   const [observacaoOpen, setObservacaoOpen] = useState(false);
   const [mortalidadeOpen, setMortalidadeOpen] = useState(false);
   const [fazendaId, setFazendaId] = useState("");
+  const [obsPendentes, setObsPendentes] = useState<ObservacaoOffline[]>([]);
+  const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
+  const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
+
+  const refreshObservacoes = useCallback(async () => {
+    const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
+    setObsPendentes(pend);
+    setObsHistorico(hist);
+  }, []);
 
   const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[], pendingCountValue: number, cicloId?: string) => {
     setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
@@ -213,6 +224,7 @@ export default function CapatazDashboard() {
     }
 
     setUiStateReady(true);
+    await refreshObservacoes();
   }, [applyLancamentosState, restoreUiState]);
 
   useEffect(() => {
@@ -487,16 +499,20 @@ export default function CapatazDashboard() {
   const handleSync = async () => {
     setSyncError(null);
     const pendentes = await getLancamentosPendentes();
-    if (pendentes.length === 0) {
+    const obsPend = await getObservacoesPendentes();
+    const totalPending = pendentes.length + obsPend.length;
+    if (totalPending === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
       return;
     }
     setScreen('syncing');
-    setSyncProgress({ current: 0, total: pendentes.length });
+    setSyncProgress({ current: 0, total: totalPending });
+    let idx = 0;
 
     for (let i = 0; i < pendentes.length; i++) {
       const l = pendentes[i];
-      setSyncProgress({ current: i + 1, total: pendentes.length });
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
       try {
         const insertData = {
           id: l.id,
@@ -514,19 +530,47 @@ export default function CapatazDashboard() {
         await markSincronizado(l.id);
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
-        setSyncError(`Registro ${i + 1}: ${errorMsg}`);
-        toast.error(`Erro ao sincronizar registro ${i + 1}`);
+        setSyncError(`Registro ${idx}: ${errorMsg}`);
+        toast.error(`Erro ao sincronizar registro ${idx}`);
+        break;
+      }
+    }
+
+    // Sync observações
+    for (let i = 0; i < obsPend.length; i++) {
+      const obs = obsPend[i];
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
+      try {
+        const { error } = await supabase.from("observacoes").insert({
+          id: obs.id,
+          pasto_id: obs.pasto_id || null,
+          retiro_id: obs.retiro_id,
+          fazenda_id: obs.fazenda_id,
+          capataz_nome: obs.capataz_nome,
+          tipo: obs.tipo,
+          descricao: obs.descricao,
+          foto_url: obs.foto_url,
+          resolvido: false,
+        });
+        if (error) throw error;
+        await markObservacaoSincronizada(obs.id);
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Observação ${i + 1}: ${errorMsg}`);
+        toast.error(`Erro ao sincronizar observação ${i + 1}`);
         break;
       }
     }
 
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
-    if (remaining.length === 0) {
+    if (remaining.length === 0 && !syncError) {
       toast.success("✅ Todos os dados sincronizados");
     }
     setScreen('home');
     await refreshLancamentosState();
+    await refreshObservacoes();
   };
 
   const getMonthName = (m: number) => {
@@ -763,9 +807,9 @@ export default function CapatazDashboard() {
           <Button onClick={handleSync} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
             Sincronizar
-            {pendingCount > 0 && (
+            {(pendingCount + obsPendentes.length) > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold">
-                {pendingCount}
+                {pendingCount + obsPendentes.length}
               </span>
             )}
           </Button>
@@ -856,15 +900,96 @@ export default function CapatazDashboard() {
             </div>
           )}
         </div>
+
+        {/* Observações pendentes */}
+        {obsPendentes.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Observações pendentes ({obsPendentes.length})</h3>
+            <div className="space-y-2">
+              {obsPendentes.map((obs) => (
+                <Card key={obs.id}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    {obs.foto_url && (
+                      <img src={obs.foto_url} alt="Obs" className="w-12 h-12 rounded object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground truncate">{obs.pasto_nome || 'Sem pasto'} • {new Date(obs.criado_em).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8"
+                        onClick={() => { setEditingObs(obs); setObservacaoOpen(true); }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir observação?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Histórico de observações enviadas */}
+        {obsHistorico.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Histórico de observações enviadas ({obsHistorico.length})</h3>
+            <div className="space-y-2">
+              {obsHistorico.map((obs) => (
+                <Card key={obs.id} className="opacity-70">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground">{obs.pasto_nome || 'Sem pasto'} • {new Date(obs.criado_em).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">✅ Enviada</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <ObservacaoModal
         open={observacaoOpen}
-        onClose={() => setObservacaoOpen(false)}
+        onClose={() => { setObservacaoOpen(false); setEditingObs(null); }}
         pastos={pastos}
         retiroId={roleData.retiroId || ""}
         fazendaId={fazendaId}
         capatazNome={userName}
+        editingObs={editingObs}
+        onSave={async (obsData) => {
+          const obs: ObservacaoOffline = {
+            ...obsData,
+            id: editingObs?.id || crypto.randomUUID(),
+            criado_em: editingObs?.criado_em || new Date().toISOString(),
+            status: 'pendente',
+          };
+          await saveObservacaoOffline(obs);
+          await refreshObservacoes();
+          setEditingObs(null);
+        }}
       />
 
       <MortalidadeModal
