@@ -37,7 +37,8 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
   const [texto, setTexto] = useState("");
   const [pastoId, setPastoId] = useState("");
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
