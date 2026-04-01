@@ -26,7 +26,9 @@ import {
   getPastoByQr, setConfig, getConfig,
   saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
   markObservacaoSincronizada, deleteObservacaoOffline,
+  saveFecharMes, getFecharMesPendente, clearFecharMes,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
+  type FecharMesPendente,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
@@ -98,6 +100,7 @@ export default function CapatazDashboard() {
   const [obsPendentes, setObsPendentes] = useState<ObservacaoOffline[]>([]);
   const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
+  const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -225,6 +228,8 @@ export default function CapatazDashboard() {
 
     setUiStateReady(true);
     await refreshObservacoes();
+    const fecharPend = await getFecharMesPendente();
+    setFecharMesPendente(fecharPend);
   }, [applyLancamentosState, restoreUiState]);
 
   useEffect(() => {
@@ -500,7 +505,8 @@ export default function CapatazDashboard() {
     setSyncError(null);
     const pendentes = await getLancamentosPendentes();
     const obsPend = await getObservacoesPendentes();
-    const totalPending = pendentes.length + obsPend.length;
+    const fecharPend = await getFecharMesPendente();
+    const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
     if (totalPending === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
       return;
@@ -563,6 +569,54 @@ export default function CapatazDashboard() {
       }
     }
 
+    // Sync fechar mês
+    if (fecharPend && !syncError) {
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
+      try {
+        // Fechar ciclo atual
+        const { error: errFechar } = await supabase.from("ciclos").update({
+          fechado: true,
+          fechado_em: new Date().toISOString(),
+        }).eq("id", fecharPend.ciclo_id);
+        if (errFechar) throw errFechar;
+
+        // Buscar ciclo fechado para calcular próximo mês
+        const cicloFechado = ciclos.find(c => c.id === fecharPend.ciclo_id);
+        if (cicloFechado && fazendaId) {
+          let nextMes = cicloFechado.mes + 1;
+          let nextAno = cicloFechado.ano;
+          if (nextMes > 12) { nextMes = 1; nextAno++; }
+
+          // Verificar se já existe
+          const { data: existente } = await supabase.from("ciclos")
+            .select("id")
+            .eq("fazenda_id", fazendaId)
+            .eq("mes", nextMes)
+            .eq("ano", nextAno)
+            .maybeSingle();
+
+          if (!existente) {
+            await supabase.from("ciclos").insert({
+              fazenda_id: fazendaId,
+              mes: nextMes,
+              ano: nextAno,
+              num_dias: 30,
+              fechado: false,
+            });
+          }
+        }
+
+        await clearFecharMes();
+        setFecharMesPendente(null);
+        toast.success("✅ Mês fechado e novo ciclo criado");
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Fechar mês: ${errorMsg}`);
+        toast.error("Erro ao fechar mês");
+      }
+    }
+
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
     if (remaining.length === 0 && !syncError) {
@@ -571,6 +625,8 @@ export default function CapatazDashboard() {
     setScreen('home');
     await refreshLancamentosState();
     await refreshObservacoes();
+    // Reload ciclos from Supabase
+    try { await loadFromSupabase(); } catch {}
   };
 
   const getMonthName = (m: number) => {
@@ -807,9 +863,9 @@ export default function CapatazDashboard() {
           <Button onClick={handleSync} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
             Sincronizar
-            {(pendingCount + obsPendentes.length) > 0 && (
+            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)) > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold">
-                {pendingCount + obsPendentes.length}
+                {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)}
               </span>
             )}
           </Button>
@@ -853,10 +909,50 @@ export default function CapatazDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button variant="outline" size="sm" className="gap-1 mt-4 shrink-0">
-                <Lock className="w-3 h-3" />
-                Fechar Mês
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 mt-4 shrink-0"
+                    disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
+                  >
+                    <Lock className="w-3 h-3" />
+                    {fecharMesPendente ? '⏳ Pendente' : 'Fechar Mês'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Fechar mês?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Deseja fechar o ciclo de {selectedCiclo ? `${getMonthName(selectedCiclo.mes)} ${selectedCiclo.ano}` : ''}?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={async () => {
+                      // Bloquear se houver salgas pendentes
+                      const salgasPend = await getLancamentosPendentes();
+                      if (salgasPend.length > 0) {
+                        toast.error("Sincronize as salgas pendentes antes de fechar o mês");
+                        return;
+                      }
+                      if (!selectedCicloId) return;
+                      const action: FecharMesPendente = {
+                        tipo: 'fechar_mes',
+                        ciclo_id: selectedCicloId,
+                        data: new Date().toISOString(),
+                        status: 'pendente',
+                      };
+                      await saveFecharMes(action);
+                      setFecharMesPendente(action);
+                      toast.success("Mês fechado. Sincronize para confirmar.");
+                    }}>
+                      Confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

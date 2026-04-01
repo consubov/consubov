@@ -260,3 +260,32 @@ export async function deleteObservacaoOffline(id: string) {
   const db = await getDb();
   await db.delete('observacoesOffline', id);
 }
+
+// Fechar Mês (stored in config store)
+export interface FecharMesPendente {
+  tipo: 'fechar_mes';
+  ciclo_id: string;
+  data: string;
+  status: 'pendente';
+}
+
+export async function saveFecharMes(action: FecharMesPendente) {
+  const db = await getDb();
+  await db.put('config', { key: 'fechar_mes_pendente', value: JSON.stringify(action) });
+}
+
+export async function getFecharMesPendente(): Promise<FecharMesPendente | null> {
+  const db = await getDb();
+  const item = await db.get('config', 'fechar_mes_pendente');
+  if (!item?.value) return null;
+  try {
+    return JSON.parse(item.value) as FecharMesPendente;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearFecharMes() {
+  const db = await getDb();
+  await db.delete('config', 'fechar_mes_pendente');
+}
