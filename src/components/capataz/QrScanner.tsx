@@ -86,9 +86,8 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
         };
         requestAnimationFrame(scan);
       } else {
-        // Fallback to zxing (requires network for first load)
+        // Fallback to zxing (statically bundled, works offline)
         try {
-          const { BrowserMultiFormatReader } = await import("@zxing/browser");
           const codeReader = new BrowserMultiFormatReader();
           const controls = await codeReader.decodeFromStream(stream, videoRef.current!, (result) => {
             if (result) {
@@ -97,13 +96,10 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
               onScan(result.getText());
             }
           });
-          // Store stop for cleanup
-          const origStop = stopScanner;
-          streamRef.current = stream;
         } catch {
           stopScanner();
           setFailCount((c) => c + 1);
-          setError("Leitor QR indisponível offline neste dispositivo. Selecione o pasto manualmente.");
+          setError("Leitor QR indisponível neste dispositivo. Selecione o pasto manualmente.");
         }
       }
     } catch {
