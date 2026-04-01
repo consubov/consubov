@@ -23,6 +23,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Simulation context for admin "view as" mode
+interface SimulationOverride {
+  roleData: RoleData;
+  signOut: () => Promise<void>;
+}
+const SimulationContext = createContext<SimulationOverride | null>(null);
+export { SimulationContext };
+
 const emptyRoleData: RoleData = { role: null, roleId: null, fazendaId: null, retiroId: null };
 const CACHED_CAPATAZ_ROLE_KEY = "consubov:cached-capataz-role";
 
@@ -217,6 +225,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
+  const sim = useContext(SimulationContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (sim) {
+    return {
+      ...ctx,
+      role: sim.roleData.role,
+      roleData: sim.roleData,
+      signOut: sim.signOut,
+    };
+  }
   return ctx;
 }
