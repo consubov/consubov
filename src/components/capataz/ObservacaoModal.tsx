@@ -32,7 +32,7 @@ interface Props {
   onSave: (obs: Omit<ObservacaoOffline, 'id' | 'criado_em' | 'status'>) => void;
 }
 
-export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome }: Props) {
+export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome, editingObs, onSave }: Props) {
   const [step, setStep] = useState<'camera' | 'form'>('camera');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
   const [categoria, setCategoria] = useState("");
@@ -44,13 +44,21 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
   useEffect(() => {
     if (open) {
-      setStep('camera');
-      setFotoBase64(null);
-      setCategoria("");
-      setTexto("");
-      setPastoId("");
+      if (editingObs) {
+        setFotoBase64(editingObs.foto_url);
+        setCategoria(editingObs.tipo);
+        setTexto(editingObs.descricao || "");
+        setPastoId(editingObs.pasto_id || "");
+        setStep('form');
+      } else {
+        setStep('camera');
+        setFotoBase64(null);
+        setCategoria("");
+        setTexto("");
+        setPastoId("");
+      }
     }
-  }, [open]);
+  }, [open, editingObs]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
