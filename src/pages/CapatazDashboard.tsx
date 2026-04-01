@@ -521,16 +521,99 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        const insertData = {
+        // --- Consumption calculation ---
+        let consumo_esperado_kg: number | null = null;
+        let consumo_real_kg: number | null = null;
+        let indice_consumo: number | null = null;
+        let status_consumo: string | null = null;
+        let dias_intervalo: number | null = null;
+        let produto_id_final: string | null = null;
+
+        const pasto = pastos.find(p => p.id === l.pasto_id);
+        if (pasto) {
+          // Get retiro produto_id as fallback
+          let retiroProdutoId: string | null = null;
+          if (roleData.retiroId) {
+            const { data: retiroRow } = await supabase.from("retiros").select("produto_id").eq("id", roleData.retiroId).maybeSingle();
+            retiroProdutoId = retiroRow?.produto_id ?? null;
+          }
+          produto_id_final = pasto.produto_id || retiroProdutoId;
+
+          if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
+            const { data: produto } = await supabase.from("produtos")
+              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+              .eq("id", produto_id_final).maybeSingle();
+
+            if (produto) {
+              // Get consumo_por_100kg based on category
+              const cat = pasto.categoria?.toLowerCase() || 'engorda';
+              const consumo_por_100kg = cat.includes('recria1') || cat.includes('recria 1')
+                ? Number(produto.consumo_recria1 || 0)
+                : cat.includes('recria2') || cat.includes('recria 2')
+                  ? Number(produto.consumo_recria2 || 0)
+                  : Number(produto.consumo_engorda || 0);
+
+              if (consumo_por_100kg > 0) {
+                // Get previous lancamento date
+                const { data: prevLanc } = await supabase.from("lancamentos")
+                  .select("lancado_em")
+                  .eq("pasto_id", l.pasto_id)
+                  .lt("lancado_em", l.data)
+                  .order("lancado_em", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                let dataAnterior: Date | null = null;
+                if (prevLanc?.lancado_em) {
+                  dataAnterior = new Date(prevLanc.lancado_em);
+                } else if (l.ciclo_id) {
+                  // Use ciclo start date
+                  const ciclo = ciclos.find(c => c.id === l.ciclo_id);
+                  if (ciclo) {
+                    dataAnterior = new Date(ciclo.ano, ciclo.mes - 1, 1);
+                  }
+                }
+
+                if (dataAnterior) {
+                  const dataAtual = new Date(l.data);
+                  dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
+
+                  if (dias_intervalo > 0) {
+                    consumo_esperado_kg = (consumo_por_100kg * Number(pasto.peso_medio_kg) / 100) * pasto.num_animais * dias_intervalo / 1000;
+                    consumo_real_kg = l.sacos * Number(produto.peso_saco_kg);
+                    indice_consumo = consumo_esperado_kg > 0
+                      ? Number((consumo_real_kg / consumo_esperado_kg).toFixed(2))
+                      : null;
+                    if (indice_consumo != null) {
+                      status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const insertData: Record<string, any> = {
           id: l.id,
           ciclo_id: l.ciclo_id!,
           pasto_id: l.pasto_id,
           num_sacos: l.sacos,
-          num_animais: 0,
-          origem: "salga_offline" as string,
+          num_animais: pasto?.num_animais ?? 0,
+          origem: "salga_offline",
           capataz_nome: userName,
           lancado_em: l.data,
           foto_url: l.foto_auditoria_url || null,
+          produto_id: produto_id_final,
+          peso_medio_kg: pasto?.peso_medio_kg ?? null,
+          dias_no_pasto: pasto?.dias_no_pasto ?? null,
+          categoria: pasto?.categoria ?? null,
+          sexo: pasto?.sexo ?? null,
+          consumo_esperado_kg,
+          consumo_real_kg,
+          indice_consumo,
+          status_consumo,
+          dias_intervalo,
         };
         const { error } = await supabase.from("lancamentos").upsert(insertData);
         if (error) throw error;
