@@ -101,6 +101,12 @@ export default function CapatazDashboard() {
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
+  const refreshObservacoes = useCallback(async () => {
+    const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
+    setObsPendentes(pend);
+    setObsHistorico(hist);
+  }, []);
+
   const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[], pendingCountValue: number, cicloId?: string) => {
     setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
     setSacosMap(buildSacosMap(allLancamentos, cicloId));
