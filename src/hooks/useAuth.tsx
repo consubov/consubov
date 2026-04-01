@@ -24,39 +24,93 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const emptyRoleData: RoleData = { role: null, roleId: null, fazendaId: null, retiroId: null };
+const CACHED_CAPATAZ_ROLE_KEY = "consubov:cached-capataz-role";
+
+function clearCachedCapatazRole() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(CACHED_CAPATAZ_ROLE_KEY);
+  } catch {
+    // ignore cache errors
+  }
+}
+
+function getCachedCapatazRole(userId: string): RoleData | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(CACHED_CAPATAZ_ROLE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as RoleData & { userId: string };
+    if (parsed.userId !== userId || parsed.role !== "capataz" || !parsed.retiroId) {
+      return null;
+    }
+
+    return {
+      role: parsed.role,
+      roleId: parsed.roleId ?? null,
+      fazendaId: parsed.fazendaId ?? null,
+      retiroId: parsed.retiroId ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function cacheCapatazRole(userId: string, roleData: RoleData) {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (roleData.role === "capataz" && roleData.retiroId) {
+      window.localStorage.setItem(CACHED_CAPATAZ_ROLE_KEY, JSON.stringify({ userId, ...roleData }));
+      return;
+    }
+
+    clearCachedCapatazRole();
+  } catch {
+    // ignore cache errors
+  }
+}
 
 async function detectRole(userId: string): Promise<RoleData> {
   // 1. Check capataz first (as user requested order)
-  const { data: capataz } = await supabase
+  const { data: capataz, error: capatazError } = await supabase
     .from("capatazes")
     .select("id, retiro_id")
     .eq("user_id", userId)
     .eq("ativo", true)
     .maybeSingle();
 
+  if (capatazError) throw capatazError;
+
   if (capataz) {
     return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
   }
 
   // 2. Check gerente
-  const { data: gerente } = await supabase
+  const { data: gerente, error: gerenteError } = await supabase
     .from("gerentes")
     .select("id, fazenda_id")
     .eq("user_id", userId)
     .eq("ativo", true)
     .maybeSingle();
 
+  if (gerenteError) throw gerenteError;
+
   if (gerente) {
     return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
   }
 
   // 3. Check administrador
-  const { data: admin } = await supabase
+  const { data: admin, error: adminError } = await supabase
     .from("administradores")
     .select("id")
     .eq("user_id", userId)
     .eq("ativo", true)
     .maybeSingle();
+
+  if (adminError) throw adminError;
 
   if (admin) {
     return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
@@ -81,15 +135,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentSession?.user ?? null);
 
       if (currentSession?.user) {
+        const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
+
         try {
-          const rd = await detectRole(currentSession.user.id);
-          if (!cancelled) setRoleData(rd);
+          const detectedRole = await detectRole(currentSession.user.id);
+          const effectiveRole = detectedRole.role
+            ? detectedRole
+            : cachedCapatazRole && typeof navigator !== "undefined" && !navigator.onLine
+              ? cachedCapatazRole
+              : detectedRole;
+
+          cacheCapatazRole(currentSession.user.id, effectiveRole);
+          if (!cancelled) setRoleData(effectiveRole);
         } catch (e) {
           console.error("Error detecting role:", e);
-          if (!cancelled) setRoleData(emptyRoleData);
+          if (!cancelled) setRoleData(cachedCapatazRole ?? emptyRoleData);
         }
       } else {
         setRoleData(emptyRoleData);
+        clearCachedCapatazRole();
       }
       if (!cancelled) setLoading(false);
     }
@@ -133,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setUser(null);
       setRoleData(emptyRoleData);
+      clearCachedCapatazRole();
     }
   };
 

@@ -6,6 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Camera, Plus, Save, X } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 
+export interface SalgaFormDraft {
+  sacos: string;
+  observacoes: Observacao[];
+  fotoAuditoria: string | null;
+  addingObs: boolean;
+  obsTexto: string;
+  obsFoto: string | null;
+}
+
 interface SalgaFormProps {
   pastoId: string;
   pastoNome: string;
@@ -15,20 +24,22 @@ interface SalgaFormProps {
   tipo: 'salga' | 'falha_qr';
   justificativaFalhaQr?: string;
   auditoriaExigida: boolean;
+  initialDraft?: SalgaFormDraft | null;
+  onDraftChange?: (draft: SalgaFormDraft) => void;
   onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => void;
   onBack: () => void;
 }
 
 export default function SalgaForm({
   pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
-  auditoriaExigida, onSave, onBack
+  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack
 }: SalgaFormProps) {
-  const [sacos, setSacos] = useState<string>("");
-  const [observacoes, setObservacoes] = useState<Observacao[]>([]);
-  const [fotoAuditoria, setFotoAuditoria] = useState<string | null>(null);
-  const [addingObs, setAddingObs] = useState(false);
-  const [obsTexto, setObsTexto] = useState("");
-  const [obsFoto, setObsFoto] = useState<string | null>(null);
+  const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? "");
+  const [observacoes, setObservacoes] = useState<Observacao[]>(initialDraft?.observacoes ?? []);
+  const [fotoAuditoria, setFotoAuditoria] = useState<string | null>(initialDraft?.fotoAuditoria ?? null);
+  const [addingObs, setAddingObs] = useState(initialDraft?.addingObs ?? false);
+  const [obsTexto, setObsTexto] = useState(initialDraft?.obsTexto ?? "");
+  const [obsFoto, setObsFoto] = useState<string | null>(initialDraft?.obsFoto ?? null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +86,10 @@ export default function SalgaForm({
       return () => clearTimeout(timer);
     }
   }, [auditoriaExigida]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    onDraftChange?.({ sacos, observacoes, fotoAuditoria, addingObs, obsTexto, obsFoto });
+  }, [addingObs, fotoAuditoria, obsFoto, obsTexto, observacoes, onDraftChange, sacos]);
 
   const canSave = () => {
     if (sacos === "" || parseInt(sacos) < 0 || isNaN(parseInt(sacos))) return false;

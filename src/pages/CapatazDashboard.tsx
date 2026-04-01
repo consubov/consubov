@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,30 @@ import { toast } from "sonner";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
-import SalgaForm from "@/components/capataz/SalgaForm";
+import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos, getLancamentosHoje, getSacosHojePorPasto,
-  saveLancamento, getLancamentosPendentes, markSincronizado, deleteLancamento,
+  saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
+type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
+
+interface PersistedCapatazState {
+  screen: RestorableScreen;
+  salgaCount: number;
+  manualJustificativa: string;
+  manualPastoId: string;
+  formPastoId: string;
+  formPastoNome: string;
+  formTipo: 'salga' | 'falha_qr';
+  formJustificativa?: string;
+  formAuditoriaExigida: boolean;
+  formDraft: SalgaFormDraft | null;
+}
 
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
@@ -51,19 +65,100 @@ export default function CapatazDashboard() {
   const [formTipo, setFormTipo] = useState<'salga' | 'falha_qr'>('salga');
   const [formJustificativa, setFormJustificativa] = useState<string | undefined>();
   const [formAuditoriaExigida, setFormAuditoriaExigida] = useState(false);
+  const [formDraft, setFormDraft] = useState<SalgaFormDraft | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [uiStateReady, setUiStateReady] = useState(false);
+  const uiStateRestoredRef = useRef(false);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
+  const refreshLancamentosState = useCallback(async () => {
+    const [hoje, sacos, pendentes] = await Promise.all([
+      getLancamentosHoje(),
+      getSacosHojePorPasto(),
+      getLancamentosPendentes(),
+    ]);
+
+    setLancamentosHoje(hoje);
+    setSacosMap(sacos);
+    setPendingCount(pendentes.length);
+  }, []);
+
+  const restoreUiState = useCallback((savedState: string | undefined, cachedPastos: PastoCache[]) => {
+    if (!savedState) return;
+
+    try {
+      const parsed = JSON.parse(savedState) as Partial<PersistedCapatazState>;
+      const nextScreen: RestorableScreen = parsed.screen === 'salga' || parsed.screen === 'scanner' || parsed.screen === 'form' || parsed.screen === 'manual-select'
+        ? parsed.screen
+        : 'home';
+
+      setSalgaCount(parsed.salgaCount ?? 0);
+      setManualJustificativa(parsed.manualJustificativa ?? "");
+      setManualPastoId(
+        parsed.manualPastoId && cachedPastos.some((p) => p.id === parsed.manualPastoId)
+          ? parsed.manualPastoId
+          : ""
+      );
+
+      if (nextScreen === 'form' && parsed.formPastoId) {
+        const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
+        if (savedPasto) {
+          setFormPastoId(savedPasto.id);
+          setFormPastoNome(parsed.formPastoNome || savedPasto.nome);
+          setFormTipo(parsed.formTipo === 'falha_qr' ? 'falha_qr' : 'salga');
+          setFormJustificativa(parsed.formJustificativa);
+          setFormAuditoriaExigida(Boolean(parsed.formAuditoriaExigida));
+          setFormDraft(parsed.formDraft ?? null);
+          setScreen('form');
+          return;
+        }
+      }
+
+      setFormPastoId("");
+      setFormPastoNome("");
+      setFormTipo('salga');
+      setFormJustificativa(undefined);
+      setFormAuditoriaExigida(false);
+      setFormDraft(null);
+      setScreen(nextScreen);
+    } catch {
+      setScreen('home');
+    }
+  }, []);
+
+  const persistUiState = useCallback(async () => {
+    const persistedScreen: RestorableScreen = screen === 'salga' || screen === 'scanner' || screen === 'form' || screen === 'manual-select'
+      ? screen
+      : 'home';
+
+    const uiState: PersistedCapatazState = {
+      screen: persistedScreen,
+      salgaCount,
+      manualJustificativa,
+      manualPastoId,
+      formPastoId,
+      formPastoNome,
+      formTipo,
+      formJustificativa,
+      formAuditoriaExigida,
+      formDraft,
+    };
+
+    await setConfig('capatazUiState', JSON.stringify(uiState));
+  }, [formAuditoriaExigida, formDraft, formJustificativa, formPastoId, formPastoNome, formTipo, manualJustificativa, manualPastoId, salgaCount, screen]);
+
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
-    const [cachedPastos, cachedRetiro, cachedCiclos, hoje, sacos, pendentes] = await Promise.all([
+    const [cachedPastos, cachedRetiro, cachedCiclos, hoje, sacos, pendentes, savedCiclo, savedUiState] = await Promise.all([
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
       getLancamentosHoje(),
       getSacosHojePorPasto(),
       getLancamentosPendentes(),
+      getConfig('selectedCicloId'),
+      getConfig('capatazUiState'),
     ]);
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
@@ -72,30 +167,80 @@ export default function CapatazDashboard() {
     setSacosMap(sacos);
     setPendingCount(pendentes.length);
 
-    const savedCiclo = await getConfig('selectedCicloId');
+    let nextCicloId = "";
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
-      setSelectedCicloId(savedCiclo);
+      nextCicloId = savedCiclo;
     } else if (cachedCiclos.length > 0) {
       const now = new Date();
       const currentMonth = now.getMonth() + 1;
       const currentYear = now.getFullYear();
       const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
       const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
-      setSelectedCicloId(active.id);
+      nextCicloId = active.id;
     }
-  }, []);
+
+    setSelectedCicloId(nextCicloId);
+
+    if (!uiStateRestoredRef.current) {
+      restoreUiState(savedUiState, cachedPastos);
+      uiStateRestoredRef.current = true;
+    }
+
+    setUiStateReady(true);
+  }, [restoreUiState]);
 
   useEffect(() => {
     loadLocalData();
   }, [loadLocalData]);
 
+  useEffect(() => {
+    if (!uiStateReady) return;
+
+    const timer = window.setTimeout(() => {
+      void persistUiState();
+    }, 150);
+
+    return () => window.clearTimeout(timer);
+  }, [persistUiState, uiStateReady]);
+
+  useEffect(() => {
+    if (!uiStateReady) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        void persistUiState();
+        return;
+      }
+
+      void loadLocalData();
+    };
+
+    const handlePageHide = () => {
+      void persistUiState();
+    };
+
+    const handlePageShow = () => {
+      void loadLocalData();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [loadLocalData, persistUiState, uiStateReady]);
+
   // Try to load from Supabase on mount (if online)
   useEffect(() => {
     if (!roleData.retiroId) return;
     loadFromSupabase();
-  }, [roleData.retiroId]);
+  }, [loadFromSupabase, roleData.retiroId]);
 
-  const loadFromSupabase = async () => {
+  const loadFromSupabase = useCallback(async () => {
     try {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
@@ -129,6 +274,43 @@ export default function CapatazDashboard() {
         if (pastosData) {
           await cachePastos(pastosData);
           setPastos(pastosData);
+
+          if (pastosData.length > 0) {
+            const hojeUtc = new Date().toISOString().slice(0, 10);
+            const inicioDiaUtc = `${hojeUtc}T00:00:00.000Z`;
+            const fimDiaUtc = new Date(`${hojeUtc}T00:00:00.000Z`);
+            fimDiaUtc.setUTCDate(fimDiaUtc.getUTCDate() + 1);
+
+            const { data: lancamentosData } = await supabase
+              .from("lancamentos")
+              .select("id, pasto_id, num_sacos, foto_url, lancado_em, ciclo_id")
+              .in("pasto_id", pastosData.map((p) => p.id))
+              .gte("lancado_em", inicioDiaUtc)
+              .lt("lancado_em", fimDiaUtc.toISOString());
+
+            if (lancamentosData && lancamentosData.length > 0) {
+              const pastosById = new Map(pastosData.map((p) => [p.id, p.nome]));
+              const existingIds = new Set((await getAllLancamentos()).map((l) => l.id));
+
+              await Promise.all(
+                lancamentosData
+                  .filter((lancamento) => !existingIds.has(lancamento.id))
+                  .map((lancamento) => saveLancamento({
+                    id: lancamento.id,
+                    tipo: 'salga',
+                    pasto_id: lancamento.pasto_id,
+                    pasto_nome: pastosById.get(lancamento.pasto_id) || 'Pasto',
+                    sacos: lancamento.num_sacos,
+                    foto_auditoria_url: lancamento.foto_url,
+                    foto_auditoria_exigida: Boolean(lancamento.foto_url),
+                    observacoes: [],
+                    data: lancamento.lancado_em || new Date().toISOString(),
+                    status: 'sincronizado',
+                    ciclo_id: lancamento.ciclo_id,
+                  }))
+              );
+            }
+          }
         }
 
         // Get ciclos
@@ -169,11 +351,13 @@ export default function CapatazDashboard() {
             await setConfig('selectedCicloId', active.id);
           }
         }
+
+        await refreshLancamentosState();
       }
     } catch {
       // Offline — use cached data
     }
-  };
+  }, [refreshLancamentosState, roleData.retiroId]);
 
   // Prepare offline mode
   const handleIniciarSalga = async () => {
@@ -220,11 +404,12 @@ export default function CapatazDashboard() {
     setFormPastoNome(pastoNome);
     setFormTipo(tipo);
     setFormJustificativa(justificativa);
+    setFormDraft(null);
 
     // Audit photo logic: ~30% chance of requiring photo
     // TODO: remove `true ||` after confirming blocking works
     setFormAuditoriaExigida(true || Math.random() < 0.3);
-    setSalgaCount(salgaCount + 1);
+    setSalgaCount((current) => current + 1);
     setScreen('form');
   };
 
@@ -258,29 +443,16 @@ export default function CapatazDashboard() {
     };
     await saveLancamento(lancamento);
     toast.success("✅ Salvo offline");
+    setFormDraft(null);
 
     // Refresh local data
-    const [hoje, sacos, pendentes] = await Promise.all([
-      getLancamentosHoje(),
-      getSacosHojePorPasto(),
-      getLancamentosPendentes(),
-    ]);
-    setLancamentosHoje(hoje);
-    setSacosMap(sacos);
-    setPendingCount(pendentes.length);
+    await refreshLancamentosState();
     setScreen('salga');
   };
   const handleDeleteLancamento = async (id: string) => {
     await deleteLancamento(id);
     toast.success("Lançamento excluído");
-    const [hoje, sacos, pendentes] = await Promise.all([
-      getLancamentosHoje(),
-      getSacosHojePorPasto(),
-      getLancamentosPendentes(),
-    ]);
-    setLancamentosHoje(hoje);
-    setSacosMap(sacos);
-    setPendingCount(pendentes.length);
+    await refreshLancamentosState();
   };
 
 
@@ -326,7 +498,7 @@ export default function CapatazDashboard() {
       toast.success("✅ Todos os dados sincronizados");
     }
     setScreen('home');
-    await loadLocalData();
+    await refreshLancamentosState();
   };
 
   const getMonthName = (m: number) => {
@@ -431,8 +603,13 @@ export default function CapatazDashboard() {
         tipo={formTipo}
         justificativaFalhaQr={formJustificativa}
         auditoriaExigida={formAuditoriaExigida}
+        initialDraft={formDraft}
+        onDraftChange={setFormDraft}
         onSave={handleSaveSalga}
-        onBack={() => setScreen('salga')}
+        onBack={() => {
+          setFormDraft(null);
+          setScreen('salga');
+        }}
       />
     );
   }
