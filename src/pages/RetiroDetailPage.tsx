@@ -282,6 +282,61 @@ export default function RetiroDetailPage() {
         </CollapsibleContent>
       </Collapsible>
 
+      {pastos.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <TreePine className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground text-sm">Nenhum pasto cadastrado neste retiro.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Animais</TableHead>
+                  <TableHead>Peso Médio</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-24 text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastos.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <Link to={`/admin/fazendas/${fazendaId}/retiros/${retiroId}/pastos/${p.id}`} className="font-medium text-primary hover:underline">
+                        {p.nome}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{p.num_animais}</TableCell>
+                    <TableCell>{p.peso_medio_kg ? `${p.peso_medio_kg} kg` : "—"}</TableCell>
+                    <TableCell>
+                      {p.categoria ? (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoriaBadgeClass(p.categoria)}`}>
+                          {p.categoria}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
       <BulkPastosModal open={bulkOpen} onOpenChange={setBulkOpen} retiroId={retiroId!} onCreated={reloadPastos} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
