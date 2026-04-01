@@ -137,6 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentSession?.user) {
         const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
 
+        if (cachedCapatazRole && !cancelled) {
+          setRoleData(cachedCapatazRole);
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            setLoading(false);
+          }
+        }
+
         try {
           const detectedRole = await detectRole(currentSession.user.id);
           const effectiveRole = detectedRole.role

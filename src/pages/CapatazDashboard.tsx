@@ -234,12 +234,6 @@ export default function CapatazDashboard() {
     };
   }, [loadLocalData, persistUiState, uiStateReady]);
 
-  // Try to load from Supabase on mount (if online)
-  useEffect(() => {
-    if (!roleData.retiroId) return;
-    loadFromSupabase();
-  }, [loadFromSupabase, roleData.retiroId]);
-
   const loadFromSupabase = useCallback(async () => {
     try {
       // Get retiro + fazenda
@@ -358,6 +352,12 @@ export default function CapatazDashboard() {
       // Offline — use cached data
     }
   }, [refreshLancamentosState, roleData.retiroId]);
+
+  // Try to load from Supabase on mount (if online)
+  useEffect(() => {
+    if (!roleData.retiroId) return;
+    loadFromSupabase();
+  }, [loadFromSupabase, roleData.retiroId]);
 
   // Prepare offline mode
   const handleIniciarSalga = async () => {
