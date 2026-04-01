@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LogOut, ArrowLeft, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
+import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import GerenteDashboard from "./GerenteDashboard";
 import CapatazDashboard from "./CapatazDashboard";
 
