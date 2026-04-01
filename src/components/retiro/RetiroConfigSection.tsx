@@ -90,6 +90,16 @@ export default function RetiroConfigSection({ retiroId }: Props) {
     setConfig((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleProductChange(produtoId: string) {
+    const prod = produtos.find((p) => p.id === produtoId);
+    setConfig((prev) => ({
+      ...prev,
+      produto_id: produtoId || null,
+      peso_saco_kg: prod?.peso_saco_kg ?? prev.peso_saco_kg,
+      preco_por_kg: prod?.preco_por_kg ?? prev.preco_por_kg,
+    }));
+  }
+
   function numOrNull(val: string): number | null {
     if (!val) return null;
     const n = parseFloat(val);
