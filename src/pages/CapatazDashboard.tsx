@@ -499,16 +499,20 @@ export default function CapatazDashboard() {
   const handleSync = async () => {
     setSyncError(null);
     const pendentes = await getLancamentosPendentes();
-    if (pendentes.length === 0) {
+    const obsPend = await getObservacoesPendentes();
+    const totalPending = pendentes.length + obsPend.length;
+    if (totalPending === 0) {
       toast.info("Nenhum dado pendente para sincronizar");
       return;
     }
     setScreen('syncing');
-    setSyncProgress({ current: 0, total: pendentes.length });
+    setSyncProgress({ current: 0, total: totalPending });
+    let idx = 0;
 
     for (let i = 0; i < pendentes.length; i++) {
       const l = pendentes[i];
-      setSyncProgress({ current: i + 1, total: pendentes.length });
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
       try {
         const insertData = {
           id: l.id,
@@ -526,19 +530,47 @@ export default function CapatazDashboard() {
         await markSincronizado(l.id);
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
-        setSyncError(`Registro ${i + 1}: ${errorMsg}`);
-        toast.error(`Erro ao sincronizar registro ${i + 1}`);
+        setSyncError(`Registro ${idx}: ${errorMsg}`);
+        toast.error(`Erro ao sincronizar registro ${idx}`);
+        break;
+      }
+    }
+
+    // Sync observações
+    for (let i = 0; i < obsPend.length; i++) {
+      const obs = obsPend[i];
+      idx++;
+      setSyncProgress({ current: idx, total: totalPending });
+      try {
+        const { error } = await supabase.from("observacoes").insert({
+          id: obs.id,
+          pasto_id: obs.pasto_id || null,
+          retiro_id: obs.retiro_id,
+          fazenda_id: obs.fazenda_id,
+          capataz_nome: obs.capataz_nome,
+          tipo: obs.tipo,
+          descricao: obs.descricao,
+          foto_url: obs.foto_url,
+          resolvido: false,
+        });
+        if (error) throw error;
+        await markObservacaoSincronizada(obs.id);
+      } catch (err: any) {
+        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        setSyncError(`Observação ${i + 1}: ${errorMsg}`);
+        toast.error(`Erro ao sincronizar observação ${i + 1}`);
         break;
       }
     }
 
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
-    if (remaining.length === 0) {
+    if (remaining.length === 0 && !syncError) {
       toast.success("✅ Todos os dados sincronizados");
     }
     setScreen('home');
     await refreshLancamentosState();
+    await refreshObservacoes();
   };
 
   const getMonthName = (m: number) => {
