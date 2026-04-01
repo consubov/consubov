@@ -28,6 +28,8 @@ interface Props {
   retiroId: string;
   fazendaId: string;
   capatazNome: string;
+  editingObs?: ObservacaoOffline | null;
+  onSave: (obs: Omit<ObservacaoOffline, 'id' | 'criado_em' | 'status'>) => void;
 }
 
 export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome }: Props) {
