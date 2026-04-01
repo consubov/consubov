@@ -288,7 +288,7 @@ export default function PastosPage() {
                     <SelectItem value="Recria 1">Recria 1</SelectItem>
                     <SelectItem value="Recria 2">Recria 2</SelectItem>
                     <SelectItem value="Engorda">Engorda</SelectItem>
-                    <SelectItem value="Cria">Cria</SelectItem>
+                    
                   </SelectContent>
                 </Select>
                 {categoriaCalculada && (
