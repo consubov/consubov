@@ -224,6 +224,7 @@ export default function CapatazDashboard() {
     }
 
     setUiStateReady(true);
+    await refreshObservacoes();
   }, [applyLancamentosState, restoreUiState]);
 
   useEffect(() => {
