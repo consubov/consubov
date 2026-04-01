@@ -100,22 +100,18 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("observacoes").insert({
+      onSave({
         pasto_id: pastoId || null,
+        pasto_nome: pastos.find(p => p.id === pastoId)?.nome || "",
         retiro_id: retiroId,
         fazenda_id: fazendaId,
         capataz_nome: capatazNome,
         tipo: categoria,
         descricao: texto || null,
         foto_url: fotoBase64,
-        resolvido: false,
       });
-
-      if (error) throw error;
-      toast.success("✅ Observação registrada");
+      toast.success("✅ Observação salva offline");
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao salvar observação");
     } finally {
       setSaving(false);
     }
