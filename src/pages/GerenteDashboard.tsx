@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
@@ -364,49 +365,65 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
   );
 }
 
-// ---- Observacao Card ----
+// ---- Observacao Row ----
 function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
   obs: Observacao; retiros: RetiroComDados[];
   onResolve?: () => void; resolved?: boolean;
 }) {
+  const [fotoOpen, setFotoOpen] = useState(false);
   const retiro = retiros.find(r => r.id === obs.retiro_id);
   const pasto = retiro?.pastos.find(p => p.id === obs.pasto_id);
+  const dataStr = obs.criado_em
+    ? new Date(obs.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "";
 
   return (
-    <Card className={resolved ? "opacity-70" : ""}>
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              {obs.tipo && <Badge variant="outline" className="text-[10px]">{obs.tipo}</Badge>}
-              <p className="text-[10px] text-muted-foreground">
-                {obs.criado_em ? new Date(obs.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {obs.capataz_nome && <span className="font-medium text-foreground">{obs.capataz_nome}</span>}
-              {retiro && <span> · {retiro.nome}</span>}
-              {pasto && <span> · {pasto.nome}</span>}
-            </p>
-            {obs.descricao && <p className="text-sm mt-1">{obs.descricao}</p>}
-            {obs.foto_url && (
-              <img src={obs.foto_url} alt="Observação" className="mt-2 rounded-lg w-full max-w-[200px] h-auto" />
-            )}
-            {resolved && obs.resolvido_por && (
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-primary" />
-                Resolvido por {obs.resolvido_por}
-                {obs.resolvido_em && ` em ${new Date(obs.resolvido_em).toLocaleDateString("pt-BR")}`}
-              </p>
-            )}
+    <>
+      <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border bg-card ${resolved ? "opacity-60" : ""}`}>
+        {/* Thumbnail */}
+        {obs.foto_url ? (
+          <img
+            src={obs.foto_url}
+            alt=""
+            className="w-10 h-10 rounded object-cover flex-shrink-0 cursor-pointer"
+            onClick={() => setFotoOpen(true)}
+          />
+        ) : (
+          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
+            <Eye className="w-4 h-4 text-muted-foreground" />
           </div>
-          {!resolved && onResolve && (
-            <Button size="sm" variant="outline" onClick={onResolve} className="flex-shrink-0 text-xs gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Resolver
-            </Button>
+        )}
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          {obs.tipo && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{obs.tipo}</Badge>}
+          <span className="text-xs text-muted-foreground truncate">
+            {obs.capataz_nome && <span className="font-medium text-foreground">{obs.capataz_nome}</span>}
+            {retiro && <span> · {retiro.nome}</span>}
+            {pasto && <span> · {pasto.nome}</span>}
+          </span>
+          <span className="text-[10px] text-muted-foreground">{dataStr}</span>
+          {resolved && obs.resolvido_por && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <CheckCircle2 className="w-3 h-3 text-primary" /> {obs.resolvido_por}
+            </span>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Action */}
+        {!resolved && onResolve && (
+          <Button size="sm" variant="outline" onClick={onResolve} className="flex-shrink-0 text-[10px] h-7 px-2 gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Resolvido
+          </Button>
+        )}
+      </div>
+
+      {/* Full photo modal */}
+      <Dialog open={fotoOpen} onOpenChange={setFotoOpen}>
+        <DialogContent className="max-w-sm p-2">
+          {obs.foto_url && <img src={obs.foto_url} alt="Observação" className="w-full rounded-lg" />}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
