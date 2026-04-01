@@ -210,8 +210,13 @@ export default function ProdutosPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md" aria-describedby="produto-dialog-desc">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="produto-dialog-desc">
           <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="gap-1 px-2">
+                ← Voltar
+              </Button>
+            </div>
             <DialogTitle>{editingId ? "Editar Produto" : "Cadastrar Produto"}</DialogTitle>
             <DialogDescription id="produto-dialog-desc">
               Preencha os dados do produto.
