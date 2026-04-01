@@ -14,6 +14,7 @@ interface Lancamento {
   num_animais: number; consumo_g_cab_dia: number | null;
   custo_total: number | null; gmd_kg_dia: number | null;
   capataz_nome: string | null; lancado_em: string | null;
+  status_consumo: string | null; indice_consumo: number | null;
 }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 
