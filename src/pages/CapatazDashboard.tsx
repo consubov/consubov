@@ -24,7 +24,9 @@ import {
   getCachedCiclos,
   saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
-  type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
+  saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
+  markObservacaoSincronizada, deleteObservacaoOffline,
+  type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
