@@ -18,6 +18,12 @@ export interface LancamentoOffline {
   status: 'pendente' | 'sincronizado';
   justificativa_falha_qr?: string;
   ciclo_id?: string;
+  // Consumption calculation fields
+  consumo_esperado_kg?: number;
+  consumo_real_kg?: number;
+  indice_consumo?: number;
+  status_consumo?: string;
+  dias_intervalo?: number;
 }
 
 export interface ObservacaoOffline {

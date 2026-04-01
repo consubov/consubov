@@ -325,14 +325,30 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
         {retiro.pastos.map(p => {
           const pLanc = lancamentos.filter((l: any) => l.pasto_id === p.id);
           const totalSacos = pLanc.reduce((s: number, l: any) => s + (l.num_sacos || 0), 0);
-          const lastLanc = pLanc.sort((a: any, b: any) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime())[0];
+          const sortedLanc = [...pLanc].sort((a: any, b: any) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
+          const lastLanc = sortedLanc[0];
+          const latestConsumo = sortedLanc.find((l: any) => l.status_consumo);
+
+          const consumoBadgeConfig: Record<string, { emoji: string; className: string }> = {
+            ABAIXO: { emoji: '🔴', className: 'bg-destructive text-destructive-foreground' },
+            IDEAL: { emoji: '🟢', className: 'bg-primary text-primary-foreground' },
+            ACIMA: { emoji: '🔵', className: 'bg-blue-600 text-white' },
+          };
+          const cb = latestConsumo?.status_consumo ? consumoBadgeConfig[latestConsumo.status_consumo] : null;
 
           return (
             <Card key={p.id}>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-sm">{p.nome}</p>
-                  <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
+                  <div className="flex items-center gap-1.5">
+                    {cb && (
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${cb.className}`}>
+                        {cb.emoji} {latestConsumo.status_consumo} {latestConsumo.indice_consumo != null ? `(${Number(latestConsumo.indice_consumo).toFixed(2)})` : ''}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div>

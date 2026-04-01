@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,7 @@ export default function CapatazDashboard() {
   const [selectedCicloId, setSelectedCicloId] = useState<string>("");
   const [lancamentosHoje, setLancamentosHoje] = useState<LancamentoOffline[]>([]);
   const [sacosMap, setSacosMap] = useState<Record<string, number>>({});
+  const [consumoMap, setConsumoMap] = useState<Record<string, { status_consumo?: string; indice_consumo?: number }>>({});
   const [prepStatus, setPrepStatus] = useState<'loading' | 'done'>('loading');
   const [salgaCount, setSalgaCount] = useState(0); // for audit photo logic
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
@@ -115,6 +116,15 @@ export default function CapatazDashboard() {
     setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
     setSacosMap(buildSacosMap(allLancamentos, cicloId));
     setPendingCount(pendingCountValue);
+    // Build consumo map from latest lancamento per pasto
+    const cMap: Record<string, { status_consumo?: string; indice_consumo?: number }> = {};
+    const sorted = [...allLancamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    for (const l of sorted) {
+      if (!cMap[l.pasto_id] && l.status_consumo) {
+        cMap[l.pasto_id] = { status_consumo: l.status_consumo, indice_consumo: l.indice_consumo };
+      }
+    }
+    setConsumoMap(cMap);
   }, []);
 
   const refreshLancamentosState = useCallback(async (cicloId?: string) => {
@@ -323,7 +333,7 @@ export default function CapatazDashboard() {
           if (pastosData.length > 0) {
             const { data: lancamentosData } = await supabase
               .from("lancamentos")
-              .select("id, pasto_id, num_sacos, foto_url, lancado_em, ciclo_id")
+              .select("id, pasto_id, num_sacos, foto_url, lancado_em, ciclo_id, status_consumo, indice_consumo")
               .in("pasto_id", pastosData.map((p) => p.id))
               .order("lancado_em", { ascending: false });
 
@@ -346,6 +356,8 @@ export default function CapatazDashboard() {
                     data: lancamento.lancado_em || new Date().toISOString(),
                     status: 'sincronizado',
                     ciclo_id: lancamento.ciclo_id,
+                    status_consumo: (lancamento as any).status_consumo ?? undefined,
+                    indice_consumo: (lancamento as any).indice_consumo != null ? Number((lancamento as any).indice_consumo) : undefined,
                   }))
               );
             }
@@ -521,18 +533,101 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        const insertData = {
+        // --- Consumption calculation ---
+        let consumo_esperado_kg: number | null = null;
+        let consumo_real_kg: number | null = null;
+        let indice_consumo: number | null = null;
+        let status_consumo: string | null = null;
+        let dias_intervalo: number | null = null;
+        let produto_id_final: string | null = null;
+
+        const pasto = pastos.find(p => p.id === l.pasto_id);
+        if (pasto) {
+          // Get retiro produto_id as fallback
+          let retiroProdutoId: string | null = null;
+          if (roleData.retiroId) {
+            const { data: retiroRow } = await supabase.from("retiros").select("produto_id").eq("id", roleData.retiroId).maybeSingle();
+            retiroProdutoId = retiroRow?.produto_id ?? null;
+          }
+          produto_id_final = pasto.produto_id || retiroProdutoId;
+
+          if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
+            const { data: produto } = await supabase.from("produtos")
+              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+              .eq("id", produto_id_final).maybeSingle();
+
+            if (produto) {
+              // Get consumo_por_100kg based on category
+              const cat = pasto.categoria?.toLowerCase() || 'engorda';
+              const consumo_por_100kg = cat.includes('recria1') || cat.includes('recria 1')
+                ? Number(produto.consumo_recria1 || 0)
+                : cat.includes('recria2') || cat.includes('recria 2')
+                  ? Number(produto.consumo_recria2 || 0)
+                  : Number(produto.consumo_engorda || 0);
+
+              if (consumo_por_100kg > 0) {
+                // Get previous lancamento date
+                const { data: prevLanc } = await supabase.from("lancamentos")
+                  .select("lancado_em")
+                  .eq("pasto_id", l.pasto_id)
+                  .lt("lancado_em", l.data)
+                  .order("lancado_em", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                let dataAnterior: Date | null = null;
+                if (prevLanc?.lancado_em) {
+                  dataAnterior = new Date(prevLanc.lancado_em);
+                } else if (l.ciclo_id) {
+                  // Use ciclo start date
+                  const ciclo = ciclos.find(c => c.id === l.ciclo_id);
+                  if (ciclo) {
+                    dataAnterior = new Date(ciclo.ano, ciclo.mes - 1, 1);
+                  }
+                }
+
+                if (dataAnterior) {
+                  const dataAtual = new Date(l.data);
+                  dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
+
+                  if (dias_intervalo > 0) {
+                    consumo_esperado_kg = (consumo_por_100kg * Number(pasto.peso_medio_kg) / 100) * pasto.num_animais * dias_intervalo / 1000;
+                    consumo_real_kg = l.sacos * Number(produto.peso_saco_kg);
+                    indice_consumo = consumo_esperado_kg > 0
+                      ? Number((consumo_real_kg / consumo_esperado_kg).toFixed(2))
+                      : null;
+                    if (indice_consumo != null) {
+                      status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const insertData: Record<string, any> = {
           id: l.id,
           ciclo_id: l.ciclo_id!,
           pasto_id: l.pasto_id,
           num_sacos: l.sacos,
-          num_animais: 0,
-          origem: "salga_offline" as string,
+          num_animais: pasto?.num_animais ?? 0,
+          origem: "salga_offline",
           capataz_nome: userName,
           lancado_em: l.data,
           foto_url: l.foto_auditoria_url || null,
+          produto_id: produto_id_final,
+          peso_medio_kg: pasto?.peso_medio_kg ?? null,
+          dias_no_pasto: pasto?.dias_no_pasto ?? null,
+          categoria: pasto?.categoria ?? null,
+          sexo: pasto?.sexo ?? null,
+          consumo_esperado_kg,
+          consumo_real_kg,
+          indice_consumo,
+          status_consumo,
+          dias_intervalo,
         };
-        const { error } = await supabase.from("lancamentos").upsert(insertData);
+        const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;
         await markSincronizado(l.id);
       } catch (err: any) {
@@ -987,17 +1082,22 @@ export default function CapatazDashboard() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {pastos.map((p) => (
-                <PastoCard
-                  key={p.id}
-                  nome={p.nome}
-                  numAnimais={p.num_animais}
-                  pesoMedio={p.peso_medio_kg}
-                  diasNoPasto={p.dias_no_pasto}
-                  sacosHoje={sacosMap[p.id] || 0}
-                  status={getPastoStatus(p.id)}
-                />
-              ))}
+              {pastos.map((p) => {
+                const cm = consumoMap[p.id];
+                return (
+                  <PastoCard
+                    key={p.id}
+                    nome={p.nome}
+                    numAnimais={p.num_animais}
+                    pesoMedio={p.peso_medio_kg}
+                    diasNoPasto={p.dias_no_pasto}
+                    sacosHoje={sacosMap[p.id] || 0}
+                    status={getPastoStatus(p.id)}
+                    statusConsumo={cm?.status_consumo}
+                    indiceConsumo={cm?.indice_consumo}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
