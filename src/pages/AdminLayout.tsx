@@ -87,6 +87,7 @@ export default function AdminLayout() {
                     Voltar ao Admin
                   </Button>
                 )}
+                <RefreshButton />
                 <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
                   <LogOut className="w-5 h-5" />
                 </Button>
