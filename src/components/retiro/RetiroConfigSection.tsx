@@ -12,6 +12,8 @@ import { toast } from "sonner";
 interface Produto {
   id: string;
   nome: string;
+  marca: string | null;
+  tipo: string | null;
   peso_saco_kg: number;
   preco_por_kg: number | null;
 }
