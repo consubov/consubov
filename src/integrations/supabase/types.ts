@@ -431,9 +431,15 @@ export type Database = {
         Row: {
           administrador_id: string | null
           ativo: boolean | null
+          consumo_engorda: number | null
+          consumo_recria1: number | null
+          consumo_recria2: number | null
           criado_em: string | null
           id: string
           marca: string | null
+          margem_engorda: number | null
+          margem_recria1: number | null
+          margem_recria2: number | null
           nome: string
           peso_saco_kg: number
           preco_por_kg: number | null
@@ -442,9 +448,15 @@ export type Database = {
         Insert: {
           administrador_id?: string | null
           ativo?: boolean | null
+          consumo_engorda?: number | null
+          consumo_recria1?: number | null
+          consumo_recria2?: number | null
           criado_em?: string | null
           id?: string
           marca?: string | null
+          margem_engorda?: number | null
+          margem_recria1?: number | null
+          margem_recria2?: number | null
           nome: string
           peso_saco_kg?: number
           preco_por_kg?: number | null
@@ -453,9 +465,15 @@ export type Database = {
         Update: {
           administrador_id?: string | null
           ativo?: boolean | null
+          consumo_engorda?: number | null
+          consumo_recria1?: number | null
+          consumo_recria2?: number | null
           criado_em?: string | null
           id?: string
           marca?: string | null
+          margem_engorda?: number | null
+          margem_recria1?: number | null
+          margem_recria2?: number | null
           nome?: string
           peso_saco_kg?: number
           preco_por_kg?: number | null

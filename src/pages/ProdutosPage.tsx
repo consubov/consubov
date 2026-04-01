@@ -38,9 +38,19 @@ interface ProdutoForm {
   tipo: string;
   peso_saco_kg: number;
   preco_por_kg: string;
+  consumo_recria1: string;
+  consumo_recria2: string;
+  consumo_engorda: string;
+  margem_recria1: string;
+  margem_recria2: string;
+  margem_engorda: string;
 }
 
-const emptyForm: ProdutoForm = { marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "" };
+const emptyForm: ProdutoForm = {
+  marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "",
+  consumo_recria1: "", consumo_recria2: "", consumo_engorda: "",
+  margem_recria1: "", margem_recria2: "", margem_engorda: "",
+};
 
 export default function ProdutosPage() {
   const { roleData } = useAuth();
@@ -70,12 +80,19 @@ export default function ProdutosPage() {
 
   function openEdit(p: Produto) {
     setEditingId(p.id);
+    const a = p as any;
     setForm({
-      marca: (p as any).marca ?? "",
+      marca: a.marca ?? "",
       nome: p.nome,
-      tipo: (p as any).tipo ?? "",
+      tipo: a.tipo ?? "",
       peso_saco_kg: p.peso_saco_kg,
       preco_por_kg: p.preco_por_kg?.toString() ?? "",
+      consumo_recria1: a.consumo_recria1?.toString() ?? "",
+      consumo_recria2: a.consumo_recria2?.toString() ?? "",
+      consumo_engorda: a.consumo_engorda?.toString() ?? "",
+      margem_recria1: a.margem_recria1?.toString() ?? "",
+      margem_recria2: a.margem_recria2?.toString() ?? "",
+      margem_engorda: a.margem_engorda?.toString() ?? "",
     });
     setDialogOpen(true);
   }
@@ -87,12 +104,19 @@ export default function ProdutosPage() {
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
 
     setSaving(true);
+    const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
     const payload: any = {
       nome: form.nome.trim(),
       marca: form.marca.trim(),
       tipo: form.tipo,
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
+      consumo_recria1: numOrNull(form.consumo_recria1),
+      consumo_recria2: numOrNull(form.consumo_recria2),
+      consumo_engorda: numOrNull(form.consumo_engorda),
+      margem_recria1: numOrNull(form.margem_recria1),
+      margem_recria2: numOrNull(form.margem_recria2),
+      margem_engorda: numOrNull(form.margem_engorda),
     };
 
     try {
@@ -235,6 +259,34 @@ export default function ProdutosPage() {
             <div className="space-y-2">
               <Label>Custo por kg (R$) *</Label>
               <Input type="number" step="0.01" value={form.preco_por_kg} onChange={(e) => setForm({ ...form, preco_por_kg: e.target.value })} placeholder="0.00" />
+            </div>
+
+            {/* Consumo por Categoria */}
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Recria 1 (0–220kg)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_recria1} onChange={(e) => setForm({ ...form, margem_recria1: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Recria 2 (221–360kg ♂ / 221–299kg ♀)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_recria2} onChange={(e) => setForm({ ...form, margem_recria2: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Engorda (&gt;361kg ♂ / &gt;300kg ♀)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem ±" value={form.margem_engorda} onChange={(e) => setForm({ ...form, margem_engorda: e.target.value })} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
