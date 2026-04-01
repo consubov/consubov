@@ -36,7 +36,7 @@ interface RetiroConfig {
   sexo_padrao: string | null;
 }
 
-const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
+
 
 interface Props {
   retiroId: string;
