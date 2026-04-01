@@ -225,3 +225,38 @@ export async function getSacosHojePorPasto(): Promise<Record<string, number>> {
   }
   return map;
 }
+
+// Observações Offline
+export async function saveObservacaoOffline(obs: ObservacaoOffline) {
+  const db = await getDb();
+  await db.put('observacoesOffline', obs);
+}
+
+export async function getAllObservacoes(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAll('observacoesOffline');
+}
+
+export async function getObservacoesPendentes(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente');
+}
+
+export async function getObservacoesSincronizadas(): Promise<ObservacaoOffline[]> {
+  const db = await getDb();
+  return db.getAllFromIndex('observacoesOffline', 'by-status', 'sincronizado');
+}
+
+export async function markObservacaoSincronizada(id: string) {
+  const db = await getDb();
+  const obs = await db.get('observacoesOffline', id);
+  if (obs) {
+    obs.status = 'sincronizado';
+    await db.put('observacoesOffline', obs);
+  }
+}
+
+export async function deleteObservacaoOffline(id: string) {
+  const db = await getDb();
+  await db.delete('observacoesOffline', id);
+}
