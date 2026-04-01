@@ -90,6 +90,9 @@ export default function CapatazDashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [uiStateReady, setUiStateReady] = useState(false);
   const uiStateRestoredRef = useRef(false);
+  const [observacaoOpen, setObservacaoOpen] = useState(false);
+  const [mortalidadeOpen, setMortalidadeOpen] = useState(false);
+  const [fazendaId, setFazendaId] = useState("");
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
