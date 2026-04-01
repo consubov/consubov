@@ -17,6 +17,8 @@ import logoConsubov from "@/assets/logo-consubov.jpeg";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
+import ObservacaoModal from "@/components/capataz/ObservacaoModal";
+import MortalidadeModal from "@/components/capataz/MortalidadeModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
