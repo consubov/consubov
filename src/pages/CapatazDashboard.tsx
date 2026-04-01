@@ -228,6 +228,8 @@ export default function CapatazDashboard() {
 
     setUiStateReady(true);
     await refreshObservacoes();
+    const fecharPend = await getFecharMesPendente();
+    setFecharMesPendente(fecharPend);
   }, [applyLancamentosState, restoreUiState]);
 
   useEffect(() => {
