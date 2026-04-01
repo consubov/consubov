@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2 } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
