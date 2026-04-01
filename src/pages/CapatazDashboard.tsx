@@ -177,7 +177,7 @@ export default function CapatazDashboard() {
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
-    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState] = await Promise.all([
+    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState, savedFazendaId] = await Promise.all([
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
@@ -185,6 +185,7 @@ export default function CapatazDashboard() {
       getLancamentosPendentes(),
       getConfig('selectedCicloId'),
       getConfig('capatazUiState'),
+      getConfig('fazendaId'),
     ]);
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
