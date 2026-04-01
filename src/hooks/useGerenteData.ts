@@ -126,19 +126,17 @@ export function useGerenteData() {
     const consumoVals = lancamentos.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
     const consumoMedio = consumoVals.length > 0 ? consumoVals.reduce((a, b) => a + b, 0) / consumoVals.length : 0;
 
-    // Pastos "na meta": consumo within 70-130% of target
-    const lancByPasto = new Map<string, number[]>();
-    lancamentos.forEach(l => {
-      if (l.consumo_g_cab_dia != null) {
-        const arr = lancByPasto.get(l.pasto_id) || [];
-        arr.push(Number(l.consumo_g_cab_dia));
-        lancByPasto.set(l.pasto_id, arr);
+    // Pastos "na meta": use status_consumo = IDEAL from latest lancamento per pasto
+    const latestLancByPasto = new Map<string, Lancamento>();
+    const sortedLancs = [...lancamentos].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
+    for (const l of sortedLancs) {
+      if (!latestLancByPasto.has(l.pasto_id) && l.status_consumo) {
+        latestLancByPasto.set(l.pasto_id, l);
       }
-    });
+    }
     let pastosNaMeta = 0;
-    lancByPasto.forEach(vals => {
-      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-      if (avg >= CONSUMO_META * 0.7 && avg <= CONSUMO_META * 1.3) pastosNaMeta++;
+    latestLancByPasto.forEach(l => {
+      if (l.status_consumo === 'IDEAL') pastosNaMeta++;
     });
 
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
