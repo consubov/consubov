@@ -56,7 +56,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
     const reader = new FileReader();
     reader.onload = () => {
-      // Compress image
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -76,7 +75,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
-    // Reset input so same file can be selected again
     e.target.value = "";
   };
 
