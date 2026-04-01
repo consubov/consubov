@@ -286,6 +286,8 @@ export default function CapatazDashboard() {
         };
         await cacheRetiro(retiroCache);
         setRetiro(retiroCache);
+        setFazendaId(retiroData.fazenda_id);
+        await setConfig('fazendaId', retiroData.fazenda_id);
 
         // Get pastos
         const { data: pastosData } = await supabase
