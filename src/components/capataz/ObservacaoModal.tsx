@@ -14,6 +14,7 @@ const CATEGORIAS_ESTRUTURA = [
   { value: "cocho", label: "Cocho" },
   { value: "estaca", label: "Estaca" },
   { value: "agua", label: "Água" },
+  { value: "colchete", label: "Colchete" },
 ];
 
 const CATEGORIAS_ANIMAL = [
