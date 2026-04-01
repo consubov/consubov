@@ -47,8 +47,6 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
       setCategoria("");
       setTexto("");
       setPastoId("");
-      // Auto-open camera
-      setTimeout(() => fileInputRef.current?.click(), 300);
     }
   }, [open]);
 
