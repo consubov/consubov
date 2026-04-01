@@ -76,6 +76,7 @@ export default function CapatazDashboard() {
   const [selectedCicloId, setSelectedCicloId] = useState<string>("");
   const [lancamentosHoje, setLancamentosHoje] = useState<LancamentoOffline[]>([]);
   const [sacosMap, setSacosMap] = useState<Record<string, number>>({});
+  const [consumoMap, setConsumoMap] = useState<Record<string, { status_consumo?: string; indice_consumo?: number }>>({});
   const [prepStatus, setPrepStatus] = useState<'loading' | 'done'>('loading');
   const [salgaCount, setSalgaCount] = useState(0); // for audit photo logic
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
