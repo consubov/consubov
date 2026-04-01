@@ -19,7 +19,7 @@ import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
-  getCachedCiclos, getLancamentosHoje, getSacosHojePorPasto,
+  getCachedCiclos,
   saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline,
@@ -39,6 +39,25 @@ interface PersistedCapatazState {
   formJustificativa?: string;
   formAuditoriaExigida: boolean;
   formDraft: SalgaFormDraft | null;
+}
+
+function isSameLocalDay(dateIso: string, reference = new Date()) {
+  const date = new Date(dateIso);
+
+  return (
+    date.getFullYear() === reference.getFullYear() &&
+    date.getMonth() === reference.getMonth() &&
+    date.getDate() === reference.getDate()
+  );
+}
+
+function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
+  return lancamentos.reduce<Record<string, number>>((acc, lancamento) => {
+    if (cicloId && lancamento.ciclo_id !== cicloId) return acc;
+
+    acc[lancamento.pasto_id] = (acc[lancamento.pasto_id] || 0) + lancamento.sacos;
+    return acc;
+  }, {});
 }
 
 export default function CapatazDashboard() {
@@ -72,17 +91,20 @@ export default function CapatazDashboard() {
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
-  const refreshLancamentosState = useCallback(async () => {
-    const [hoje, sacos, pendentes] = await Promise.all([
-      getLancamentosHoje(),
-      getSacosHojePorPasto(),
+  const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[], pendingCountValue: number, cicloId?: string) => {
+    setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
+    setSacosMap(buildSacosMap(allLancamentos, cicloId));
+    setPendingCount(pendingCountValue);
+  }, []);
+
+  const refreshLancamentosState = useCallback(async (cicloId?: string) => {
+    const [allLancamentos, pendentes] = await Promise.all([
+      getAllLancamentos(),
       getLancamentosPendentes(),
     ]);
 
-    setLancamentosHoje(hoje);
-    setSacosMap(sacos);
-    setPendingCount(pendentes.length);
-  }, []);
+    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloId);
+  }, [applyLancamentosState, selectedCicloId]);
 
   const restoreUiState = useCallback((savedState: string | undefined, cachedPastos: PastoCache[]) => {
     if (!savedState) return;
@@ -150,12 +172,11 @@ export default function CapatazDashboard() {
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
-    const [cachedPastos, cachedRetiro, cachedCiclos, hoje, sacos, pendentes, savedCiclo, savedUiState] = await Promise.all([
+    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState] = await Promise.all([
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
-      getLancamentosHoje(),
-      getSacosHojePorPasto(),
+      getAllLancamentos(),
       getLancamentosPendentes(),
       getConfig('selectedCicloId'),
       getConfig('capatazUiState'),
@@ -163,9 +184,6 @@ export default function CapatazDashboard() {
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
     setCiclos(cachedCiclos);
-    setLancamentosHoje(hoje);
-    setSacosMap(sacos);
-    setPendingCount(pendentes.length);
 
     let nextCicloId = "";
     if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
@@ -180,6 +198,7 @@ export default function CapatazDashboard() {
     }
 
     setSelectedCicloId(nextCicloId);
+    applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
       restoreUiState(savedUiState, cachedPastos);
@@ -187,7 +206,7 @@ export default function CapatazDashboard() {
     }
 
     setUiStateReady(true);
-  }, [restoreUiState]);
+  }, [applyLancamentosState, restoreUiState]);
 
   useEffect(() => {
     loadLocalData();
@@ -234,6 +253,11 @@ export default function CapatazDashboard() {
     };
   }, [loadLocalData, persistUiState, uiStateReady]);
 
+  useEffect(() => {
+    if (!uiStateReady) return;
+    void refreshLancamentosState(selectedCicloId);
+  }, [refreshLancamentosState, selectedCicloId, uiStateReady]);
+
   const loadFromSupabase = useCallback(async () => {
     try {
       // Get retiro + fazenda
@@ -270,17 +294,11 @@ export default function CapatazDashboard() {
           setPastos(pastosData);
 
           if (pastosData.length > 0) {
-            const hojeUtc = new Date().toISOString().slice(0, 10);
-            const inicioDiaUtc = `${hojeUtc}T00:00:00.000Z`;
-            const fimDiaUtc = new Date(`${hojeUtc}T00:00:00.000Z`);
-            fimDiaUtc.setUTCDate(fimDiaUtc.getUTCDate() + 1);
-
             const { data: lancamentosData } = await supabase
               .from("lancamentos")
               .select("id, pasto_id, num_sacos, foto_url, lancado_em, ciclo_id")
               .in("pasto_id", pastosData.map((p) => p.id))
-              .gte("lancado_em", inicioDiaUtc)
-              .lt("lancado_em", fimDiaUtc.toISOString());
+              .order("lancado_em", { ascending: false });
 
             if (lancamentosData && lancamentosData.length > 0) {
               const pastosById = new Map(pastosData.map((p) => [p.id, p.nome]));
@@ -343,10 +361,11 @@ export default function CapatazDashboard() {
           if (active) {
             setSelectedCicloId(active.id);
             await setConfig('selectedCicloId', active.id);
+            await refreshLancamentosState(active.id);
           }
+        } else {
+          await refreshLancamentosState(selectedCicloId);
         }
-
-        await refreshLancamentosState();
       }
     } catch {
       // Offline — use cached data
@@ -758,7 +777,7 @@ export default function CapatazDashboard() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground">Período</label>
-                <Select value={selectedCicloId} onValueChange={async (v) => { setSelectedCicloId(v); await setConfig('selectedCicloId', v); }}>
+                <Select value={selectedCicloId} onValueChange={async (v) => { setSelectedCicloId(v); await setConfig('selectedCicloId', v); await refreshLancamentosState(v); }}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Selecione o período" />
                   </SelectTrigger>
