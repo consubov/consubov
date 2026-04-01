@@ -346,6 +346,8 @@ export default function CapatazDashboard() {
                     data: lancamento.lancado_em || new Date().toISOString(),
                     status: 'sincronizado',
                     ciclo_id: lancamento.ciclo_id,
+                    status_consumo: (lancamento as any).status_consumo ?? undefined,
+                    indice_consumo: (lancamento as any).indice_consumo != null ? Number((lancamento as any).indice_consumo) : undefined,
                   }))
               );
             }
