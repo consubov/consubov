@@ -123,8 +123,32 @@ export default function ConfiguracoesGeraisPage() {
   const [showNewFormula, setShowNewFormula] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { result: number | null; error?: string }>>({});
 
+  const seedDefaults = useCallback(async () => {
+    const seedData = [
+      { tipo: "parametro", chave: "consumo_por_100kg", titulo: "Consumo por 100kg", descricao: "Consumo base por 100kg de peso vivo", valor: 100 },
+      { tipo: "parametro", chave: "peso_saco_kg", titulo: "Peso do Saco (kg)", descricao: "Peso padrão do saco de sal mineral", valor: 25 },
+      { tipo: "parametro", chave: "intervalo_padrao_dias", titulo: "Intervalo Padrão (dias)", descricao: "Intervalo padrão entre salgas", valor: 3 },
+      { tipo: "parametro", chave: "limite_abaixo", titulo: "Limite Abaixo", descricao: "Índice abaixo do ideal", valor: 0.9 },
+      { tipo: "parametro", chave: "limite_ideal_min", titulo: "Limite Ideal Mín", descricao: "Início da faixa ideal de consumo", valor: 0.9 },
+      { tipo: "parametro", chave: "limite_ideal_max", titulo: "Limite Ideal Máx", descricao: "Fim da faixa ideal de consumo", valor: 1.1 },
+      { tipo: "parametro", chave: "hora_inicio_alerta", titulo: "Hora Início Alerta", descricao: "Hora de início dos alertas", valor: 6 },
+      { tipo: "parametro", chave: "limite_leve", titulo: "Limite Leve", descricao: "Atraso leve em dias", valor: 1 },
+      { tipo: "parametro", chave: "limite_moderado", titulo: "Limite Moderado", descricao: "Atraso moderado em dias", valor: 2 },
+      { tipo: "parametro", chave: "limite_critico", titulo: "Limite Crítico", descricao: "Atraso crítico em dias", valor: 3 },
+      { tipo: "formula", chave: "consumo_esperado", titulo: "Consumo Esperado", descricao: "Consumo esperado baseado no peso e quantidade de animais", formula: "(num_animais * peso_medio_kg * consumo_por_100kg) / 100" },
+      { tipo: "formula", chave: "consumo_real", titulo: "Consumo Real", descricao: "Consumo real em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "indice_consumo", titulo: "Índice de Consumo", descricao: "Razão entre consumo real e esperado", formula: "consumo_real / consumo_esperado" },
+      { tipo: "formula", chave: "consumo_ciclo", titulo: "Consumo por Ciclo", descricao: "Consumo em g/cab/dia no ciclo", formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_intervalo)" },
+      { tipo: "formula", chave: "consumo_mensal", titulo: "Consumo Mensal", descricao: "Consumo total mensal em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "consumo_produto", titulo: "Consumo por Produto", descricao: "Consumo agrupado por tipo de produto", formula: "SUM(num_sacos * peso_saco_kg) GROUP BY produto_id" },
+    ];
+    for (const item of seedData) {
+      await supabase.from("configuracoes_gerais").upsert(item as any, { onConflict: "chave" });
+    }
+  }, []);
+
   const fetchConfigs = useCallback(async () => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("configuracoes_gerais")
       .select("*")
       .eq("ativo", true)
@@ -132,6 +156,11 @@ export default function ConfiguracoesGeraisPage() {
     if (error) {
       toast.error("Erro ao carregar configurações");
       return;
+    }
+    if (!data || data.length === 0) {
+      await seedDefaults();
+      const res = await supabase.from("configuracoes_gerais").select("*").eq("ativo", true).order("criado_em");
+      data = res.data;
     }
     setConfigs((data as any[]) || []);
     setLoading(false);
