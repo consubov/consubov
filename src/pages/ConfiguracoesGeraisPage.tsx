@@ -61,6 +61,8 @@ const SECTIONS = [
 
 function validateFormula(formula: string): { valid: boolean; error?: string } {
   if (!formula.trim()) return { valid: false, error: "Fórmula vazia" };
+  // Classification formulas (rule-based) are always valid if non-empty
+  if (/→|ABAIXO|ACIMA|IDEAL|SENÃO|SE\s/i.test(formula)) return { valid: true };
   // Check balanced parentheses
   let depth = 0;
   for (const ch of formula) {
@@ -69,7 +71,6 @@ function validateFormula(formula: string): { valid: boolean; error?: string } {
     if (depth < 0) return { valid: false, error: "Parênteses desbalanceados" };
   }
   if (depth !== 0) return { valid: false, error: "Parênteses desbalanceados" };
-  // Check for obvious division by zero pattern
   if (/\/\s*0(?!\d)/.test(formula)) return { valid: false, error: "Possível divisão por zero" };
   return { valid: true };
 }
