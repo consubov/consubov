@@ -272,6 +272,9 @@ export default function LancamentoManualPage() {
                           <SelectItem value="Engorda">Engorda</SelectItem>
                         </SelectContent>
                       </Select>
+                      {r.peso_medio_kg > 0 && (
+                        <span className="text-[10px] text-muted-foreground">auto</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
