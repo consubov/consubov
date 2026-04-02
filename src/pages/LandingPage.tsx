@@ -171,7 +171,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Carousel */}
+      {/* Hero Carousel - sem texto sobreposto */}
       <section className="relative w-full h-[70vh] min-h-[400px] mt-14 overflow-hidden">
         {heroImages.map((img, i) => (
           <div
@@ -189,15 +189,7 @@ export default function LandingPage() {
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/60 via-primary/30 to-background" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-          <h1 className="text-3xl md:text-5xl font-extrabold text-primary-foreground drop-shadow-lg mb-4">
-            Gestão Pecuária Inteligente
-          </h1>
-          <p className="text-primary-foreground/90 text-lg md:text-xl max-w-2xl drop-shadow">
-            Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto.
-          </p>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-transparent to-background/80" />
         {heroImages.length > 1 && (
           <>
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
@@ -219,48 +211,69 @@ export default function LandingPage() {
         )}
       </section>
 
-      {/* Quem Somos */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">Quem somos nós</h2>
-          <div className="flex flex-col md:flex-row gap-8 items-center">
-            <div className="w-full md:w-1/2 rounded-xl overflow-hidden shadow-lg">
-              <img src={quemSomosImg} alt="Quem somos" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
-            </div>
-            <div className="w-full md:w-1/2">
-              <p className="text-muted-foreground text-base md:text-lg leading-relaxed whitespace-pre-line">
-                {quemSomosText}
-              </p>
-            </div>
-          </div>
+      {/* Texto institucional abaixo do carrossel */}
+      <section className="py-12 md:py-16 px-4 bg-primary/5">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-foreground uppercase mb-4">
+            GESTÃO PECUÁRIA INTELIGENTE
+          </h1>
+          <p className="text-muted-foreground text-base md:text-lg leading-relaxed text-justify">
+            Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto.
+          </p>
         </div>
       </section>
 
-      {/* Diferenciais */}
-      <section className="py-16 md:py-24 px-4 bg-muted/50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4 text-center">Nossos diferenciais</h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">{diferenciaisText}</p>
-
-          {diferenciaisImg && (
-            <div className="mb-12 rounded-xl overflow-hidden shadow-lg max-w-3xl mx-auto">
-              <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {diferenciais.map((d) => (
-              <Card key={d.title} className="hover:shadow-lg transition-shadow border-border/50">
-                <CardContent className="pt-6 flex flex-col items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <d.icon className="w-5 h-5 text-primary" />
+      {/* Quem Somos & Diferenciais - Accordions */}
+      <section className="py-12 md:py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <Accordion type="multiple" className="space-y-4">
+            <AccordionItem value="quem-somos" className="border border-border/50 rounded-xl overflow-hidden px-4">
+              <AccordionTrigger className="text-xl md:text-2xl font-bold text-foreground uppercase hover:no-underline py-5">
+                QUEM SOMOS NÓS
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col md:flex-row gap-8 items-center pb-4">
+                  <div className="w-full md:w-1/2 rounded-xl overflow-hidden shadow-lg">
+                    <img src={quemSomosImg} alt="Quem somos" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
                   </div>
-                  <h3 className="font-semibold text-foreground">{d.title}</h3>
-                  <p className="text-sm text-muted-foreground">{d.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <div className="w-full md:w-1/2">
+                    <p className="text-muted-foreground text-base md:text-lg leading-relaxed whitespace-pre-line text-justify">
+                      {quemSomosText}
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="diferenciais" className="border border-border/50 rounded-xl overflow-hidden px-4">
+              <AccordionTrigger className="text-xl md:text-2xl font-bold text-foreground uppercase hover:no-underline py-5">
+                NOSSOS DIFERENCIAIS
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-muted-foreground mb-8 max-w-2xl text-justify">{diferenciaisText}</p>
+
+                {diferenciaisImg && (
+                  <div className="mb-8 rounded-xl overflow-hidden shadow-lg max-w-3xl mx-auto">
+                    <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {diferenciais.map((d) => (
+                    <Card key={d.title} className="hover:shadow-lg transition-shadow border-border/50">
+                      <CardContent className="pt-6 flex flex-col items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <d.icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <h3 className="font-semibold text-foreground">{d.title}</h3>
+                        <p className="text-sm text-muted-foreground text-justify">{d.desc}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
 
