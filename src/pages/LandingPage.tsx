@@ -53,14 +53,20 @@ export default function LandingPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from("landing_page_content").select("chave, valor").then(({ data }) => {
+    supabase.from("landing_page_content").select("chave, valor").then(({ data, error }) => {
+      if (error) {
+        console.error("Erro ao carregar conteúdo da landing page:", error);
+      }
       if (data) {
         const map: LandingContent = {};
         data.forEach((r) => { if (r.valor) map[r.chave] = r.valor; });
+        console.log("Landing page content loaded:", Object.keys(map));
         setContent(map);
       }
+      setLoading(false);
     });
   }, []);
 
