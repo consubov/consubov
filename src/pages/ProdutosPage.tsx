@@ -38,6 +38,7 @@ interface ProdutoForm {
   tipo: string;
   peso_saco_kg: number;
   preco_por_kg: string;
+  consumo_por_100kg: string;
   consumo_recria1: string;
   consumo_recria2: string;
   consumo_engorda: string;
@@ -48,6 +49,7 @@ interface ProdutoForm {
 
 const emptyForm: ProdutoForm = {
   marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "",
+  consumo_por_100kg: "",
   consumo_recria1: "", consumo_recria2: "", consumo_engorda: "",
   margem_recria1: "", margem_recria2: "", margem_engorda: "",
 };
