@@ -34,10 +34,6 @@ interface HistoricoItem {
 }
 
 const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
-  intervalo_padrao_dias: { valor: 3 },
-  limite_abaixo: { valor: 0.9 },
-  limite_ideal_min: { valor: 0.9 },
-  limite_ideal_max: { valor: 1.1 },
   hora_inicio_alerta: { valor: 6 },
   limite_leve: { valor: 1 },
   limite_moderado: { valor: 2 },
@@ -53,8 +49,6 @@ const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
 const SYSTEM_VARS = ["num_animais", "peso_medio_kg", "num_sacos", "dias_intervalo", "peso_saco_kg", "consumo_por_100kg"];
 
 const SECTIONS = [
-  { title: "Parâmetros", keys: ["intervalo_padrao_dias"] },
-  { title: "Classificação", keys: ["limite_abaixo", "limite_ideal_min", "limite_ideal_max"] },
   { title: "Alertas", keys: ["hora_inicio_alerta", "limite_leve", "limite_moderado", "limite_critico"] },
   { title: "Fórmulas do Sistema", keys: ["consumo_esperado", "consumo_real", "indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
 ];
@@ -123,10 +117,6 @@ export default function ConfiguracoesGeraisPage() {
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
-      { tipo: "parametro", chave: "intervalo_padrao_dias", titulo: "Intervalo Padrão (dias)", descricao: "Intervalo padrão entre salgas", valor: 3 },
-      { tipo: "parametro", chave: "limite_abaixo", titulo: "Limite Abaixo", descricao: "Índice abaixo do ideal", valor: 0.9 },
-      { tipo: "parametro", chave: "limite_ideal_min", titulo: "Limite Ideal Mín", descricao: "Início da faixa ideal de consumo", valor: 0.9 },
-      { tipo: "parametro", chave: "limite_ideal_max", titulo: "Limite Ideal Máx", descricao: "Fim da faixa ideal de consumo", valor: 1.1 },
       { tipo: "parametro", chave: "hora_inicio_alerta", titulo: "Hora Início Alerta", descricao: "Hora de início dos alertas", valor: 6 },
       { tipo: "parametro", chave: "limite_leve", titulo: "Limite Leve", descricao: "Atraso leve em dias", valor: 1 },
       { tipo: "parametro", chave: "limite_moderado", titulo: "Limite Moderado", descricao: "Atraso moderado em dias", valor: 2 },
@@ -283,7 +273,7 @@ export default function ConfiguracoesGeraisPage() {
   };
 
   const configsByKey = Object.fromEntries(configs.map(c => [c.chave, c]));
-  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[3].keys.includes(c.chave));
+  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[1].keys.includes(c.chave));
 
   if (loading) {
     return (
@@ -308,41 +298,42 @@ export default function ConfiguracoesGeraisPage() {
         </div>
       </div>
 
-      {/* Sections 1-3: Parameters */}
-      {SECTIONS.slice(0, 3).map(section => (
-        <Card key={section.title}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">{section.title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {section.keys.map(key => {
-                const c = configsByKey[key];
-                if (!c) return null;
-                const edit = getEdit(c);
-                return (
-                  <div key={key} className="space-y-1.5">
-                    <Label className="text-sm font-medium">{c.titulo}</Label>
-                    {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        step="any"
-                        value={edit.valor ?? ""}
-                        onChange={e => setEdit(c.id, { valor: parseFloat(e.target.value) || 0 })}
-                        className="flex-1"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                    </div>
+      {/* Alertas (parameters section) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{SECTIONS[0].title}</CardTitle>
+          <CardDescription className="text-xs">
+            Parâmetros de alerta. Intervalo de salga é definido na fazenda. Limites de consumo são definidos por produto (margem por categoria).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SECTIONS[0].keys.map(key => {
+              const c = configsByKey[key];
+              if (!c) return null;
+              const edit = getEdit(c);
+              return (
+                <div key={key} className="space-y-1.5">
+                  <Label className="text-sm font-medium">{c.titulo}</Label>
+                  {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="any"
+                      value={edit.valor ?? ""}
+                      onChange={e => setEdit(c.id, { valor: parseFloat(e.target.value) || 0 })}
+                      className="flex-1"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Section 4: System Formulas */}
       <Card>
@@ -353,7 +344,7 @@ export default function ConfiguracoesGeraisPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {[...SECTIONS[3].keys, ...customFormulas.map(c => c.chave)].map(key => {
+          {[...SECTIONS[1].keys, ...customFormulas.map(c => c.chave)].map(key => {
             const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
             if (!c) return null;
             const edit = getEdit(c);
