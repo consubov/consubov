@@ -34,8 +34,6 @@ interface HistoricoItem {
 }
 
 const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
-  consumo_por_100kg: { valor: 100 },
-  peso_saco_kg: { valor: 25 },
   intervalo_padrao_dias: { valor: 3 },
   limite_abaixo: { valor: 0.9 },
   limite_ideal_min: { valor: 0.9 },
@@ -55,7 +53,7 @@ const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
 const SYSTEM_VARS = ["num_animais", "peso_medio_kg", "num_sacos", "dias_intervalo", "peso_saco_kg", "consumo_por_100kg"];
 
 const SECTIONS = [
-  { title: "Parâmetros", keys: ["consumo_por_100kg", "peso_saco_kg", "intervalo_padrao_dias"] },
+  { title: "Parâmetros", keys: ["intervalo_padrao_dias"] },
   { title: "Classificação", keys: ["limite_abaixo", "limite_ideal_min", "limite_ideal_max"] },
   { title: "Alertas", keys: ["hora_inicio_alerta", "limite_leve", "limite_moderado", "limite_critico"] },
   { title: "Fórmulas do Sistema", keys: ["consumo_esperado", "consumo_real", "indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
