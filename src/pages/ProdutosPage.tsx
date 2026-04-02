@@ -269,6 +269,11 @@ export default function ProdutosPage() {
               <Label>Custo por kg (R$) *</Label>
               <Input type="number" step="0.01" value={form.preco_por_kg} onChange={(e) => setForm({ ...form, preco_por_kg: e.target.value })} placeholder="0.00" />
             </div>
+            <div className="space-y-2">
+              <Label>Consumo por 100kg PV (g/cab/dia) *</Label>
+              <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder="Ex: 100" />
+              <p className="text-xs text-muted-foreground">Parâmetro nutricional obrigatório para cálculos do sistema</p>
+            </div>
 
             {/* Consumo por Categoria */}
             <div className="space-y-3 border-t pt-3">

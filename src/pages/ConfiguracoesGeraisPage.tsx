@@ -123,8 +123,6 @@ export default function ConfiguracoesGeraisPage() {
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
-      { tipo: "parametro", chave: "consumo_por_100kg", titulo: "Consumo por 100kg", descricao: "Consumo base por 100kg de peso vivo", valor: 100 },
-      { tipo: "parametro", chave: "peso_saco_kg", titulo: "Peso do Saco (kg)", descricao: "Peso padrão do saco de sal mineral", valor: 25 },
       { tipo: "parametro", chave: "intervalo_padrao_dias", titulo: "Intervalo Padrão (dias)", descricao: "Intervalo padrão entre salgas", valor: 3 },
       { tipo: "parametro", chave: "limite_abaixo", titulo: "Limite Abaixo", descricao: "Índice abaixo do ideal", valor: 0.9 },
       { tipo: "parametro", chave: "limite_ideal_min", titulo: "Limite Ideal Mín", descricao: "Início da faixa ideal de consumo", valor: 0.9 },

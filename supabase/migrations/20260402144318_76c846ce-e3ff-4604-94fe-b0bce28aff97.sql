@@ -1,0 +1,1 @@
+ALTER TABLE public.produtos ADD COLUMN IF NOT EXISTS consumo_por_100kg numeric DEFAULT NULL;
