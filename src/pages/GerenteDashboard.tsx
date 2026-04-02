@@ -61,6 +61,7 @@ export default function GerenteDashboard() {
     loading, gerenteNome, fazendaNome, ciclo, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
+    alertasAtraso, intervaloDefinido,
   } = useGerenteData();
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
