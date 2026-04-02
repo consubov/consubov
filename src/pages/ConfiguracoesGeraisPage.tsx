@@ -285,7 +285,8 @@ export default function ConfiguracoesGeraisPage() {
   };
 
   const configsByKey = Object.fromEntries(configs.map(c => [c.chave, c]));
-  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[1].keys.includes(c.chave));
+  const allSectionKeys = SECTIONS.flatMap(s => s.keys);
+  const customFormulas = configs.filter(c => c.tipo === "formula" && !allSectionKeys.includes(c.chave));
 
   if (loading) {
     return (
