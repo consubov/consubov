@@ -38,6 +38,7 @@ interface ProdutoForm {
   tipo: string;
   peso_saco_kg: number;
   preco_por_kg: string;
+  consumo_por_100kg: string;
   consumo_recria1: string;
   consumo_recria2: string;
   consumo_engorda: string;
@@ -48,6 +49,7 @@ interface ProdutoForm {
 
 const emptyForm: ProdutoForm = {
   marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "",
+  consumo_por_100kg: "",
   consumo_recria1: "", consumo_recria2: "", consumo_engorda: "",
   margem_recria1: "", margem_recria2: "", margem_engorda: "",
 };
@@ -87,6 +89,7 @@ export default function ProdutosPage() {
       tipo: a.tipo ?? "",
       peso_saco_kg: p.peso_saco_kg,
       preco_por_kg: p.preco_por_kg?.toString() ?? "",
+      consumo_por_100kg: a.consumo_por_100kg?.toString() ?? "",
       consumo_recria1: a.consumo_recria1?.toString() ?? "",
       consumo_recria2: a.consumo_recria2?.toString() ?? "",
       consumo_engorda: a.consumo_engorda?.toString() ?? "",
@@ -102,6 +105,7 @@ export default function ProdutosPage() {
     if (!form.marca.trim()) { toast.error("Marca é obrigatória."); return; }
     if (!form.tipo) { toast.error("Tipo é obrigatório."); return; }
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
+    if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
     setSaving(true);
     const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
@@ -111,6 +115,7 @@ export default function ProdutosPage() {
       tipo: form.tipo,
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
+      consumo_por_100kg: numOrNull(form.consumo_por_100kg),
       consumo_recria1: numOrNull(form.consumo_recria1),
       consumo_recria2: numOrNull(form.consumo_recria2),
       consumo_engorda: numOrNull(form.consumo_engorda),
@@ -264,6 +269,11 @@ export default function ProdutosPage() {
             <div className="space-y-2">
               <Label>Custo por kg (R$) *</Label>
               <Input type="number" step="0.01" value={form.preco_por_kg} onChange={(e) => setForm({ ...form, preco_por_kg: e.target.value })} placeholder="0.00" />
+            </div>
+            <div className="space-y-2">
+              <Label>Consumo por 100kg PV (g/cab/dia) *</Label>
+              <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder="Ex: 100" />
+              <p className="text-xs text-muted-foreground">Parâmetro nutricional obrigatório para cálculos do sistema</p>
             </div>
 
             {/* Consumo por Categoria */}

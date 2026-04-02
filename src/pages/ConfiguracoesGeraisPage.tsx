@@ -34,8 +34,6 @@ interface HistoricoItem {
 }
 
 const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
-  consumo_por_100kg: { valor: 100 },
-  peso_saco_kg: { valor: 25 },
   intervalo_padrao_dias: { valor: 3 },
   limite_abaixo: { valor: 0.9 },
   limite_ideal_min: { valor: 0.9 },
@@ -55,7 +53,7 @@ const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
 const SYSTEM_VARS = ["num_animais", "peso_medio_kg", "num_sacos", "dias_intervalo", "peso_saco_kg", "consumo_por_100kg"];
 
 const SECTIONS = [
-  { title: "Parâmetros", keys: ["consumo_por_100kg", "peso_saco_kg", "intervalo_padrao_dias"] },
+  { title: "Parâmetros", keys: ["intervalo_padrao_dias"] },
   { title: "Classificação", keys: ["limite_abaixo", "limite_ideal_min", "limite_ideal_max"] },
   { title: "Alertas", keys: ["hora_inicio_alerta", "limite_leve", "limite_moderado", "limite_critico"] },
   { title: "Fórmulas do Sistema", keys: ["consumo_esperado", "consumo_real", "indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
@@ -125,8 +123,6 @@ export default function ConfiguracoesGeraisPage() {
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
-      { tipo: "parametro", chave: "consumo_por_100kg", titulo: "Consumo por 100kg", descricao: "Consumo base por 100kg de peso vivo", valor: 100 },
-      { tipo: "parametro", chave: "peso_saco_kg", titulo: "Peso do Saco (kg)", descricao: "Peso padrão do saco de sal mineral", valor: 25 },
       { tipo: "parametro", chave: "intervalo_padrao_dias", titulo: "Intervalo Padrão (dias)", descricao: "Intervalo padrão entre salgas", valor: 3 },
       { tipo: "parametro", chave: "limite_abaixo", titulo: "Limite Abaixo", descricao: "Índice abaixo do ideal", valor: 0.9 },
       { tipo: "parametro", chave: "limite_ideal_min", titulo: "Limite Ideal Mín", descricao: "Início da faixa ideal de consumo", valor: 0.9 },

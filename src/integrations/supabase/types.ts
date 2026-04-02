@@ -597,6 +597,7 @@ export type Database = {
           administrador_id: string | null
           ativo: boolean | null
           consumo_engorda: number | null
+          consumo_por_100kg: number | null
           consumo_recria1: number | null
           consumo_recria2: number | null
           criado_em: string | null
@@ -614,6 +615,7 @@ export type Database = {
           administrador_id?: string | null
           ativo?: boolean | null
           consumo_engorda?: number | null
+          consumo_por_100kg?: number | null
           consumo_recria1?: number | null
           consumo_recria2?: number | null
           criado_em?: string | null
@@ -631,6 +633,7 @@ export type Database = {
           administrador_id?: string | null
           ativo?: boolean | null
           consumo_engorda?: number | null
+          consumo_por_100kg?: number | null
           consumo_recria1?: number | null
           consumo_recria2?: number | null
           criado_em?: string | null
