@@ -120,6 +120,8 @@ const App = () => (
               <Route path="qrcodes" element={<QrCodesPage />} />
               <Route path="lancamento-manual" element={<LancamentoManualPage />} />
               <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
+              <Route path="notificacoes" element={<NotificacoesPage />} />
+              <Route path="landing-page" element={<LandingPageConfigPage />} />
             </Route>
 
             {/* Gerente */}
