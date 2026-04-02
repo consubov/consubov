@@ -20,6 +20,9 @@ import QrCodesPage from "./pages/QrCodesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import LancamentoManualPage from "./pages/LancamentoManualPage";
 import ConfiguracoesGeraisPage from "./pages/ConfiguracoesGeraisPage";
+import NotificacoesPage from "./pages/NotificacoesPage";
+import LandingPageConfigPage from "./pages/LandingPageConfigPage";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
