@@ -298,41 +298,42 @@ export default function ConfiguracoesGeraisPage() {
         </div>
       </div>
 
-      {/* Sections 1-3: Parameters */}
-      {SECTIONS.slice(0, 3).map(section => (
-        <Card key={section.title}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">{section.title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {section.keys.map(key => {
-                const c = configsByKey[key];
-                if (!c) return null;
-                const edit = getEdit(c);
-                return (
-                  <div key={key} className="space-y-1.5">
-                    <Label className="text-sm font-medium">{c.titulo}</Label>
-                    {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        step="any"
-                        value={edit.valor ?? ""}
-                        onChange={e => setEdit(c.id, { valor: parseFloat(e.target.value) || 0 })}
-                        className="flex-1"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                    </div>
+      {/* Alertas (parameters section) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{SECTIONS[0].title}</CardTitle>
+          <CardDescription className="text-xs">
+            Parâmetros de alerta. Intervalo de salga é definido na fazenda. Limites de consumo são definidos por produto (margem por categoria).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SECTIONS[0].keys.map(key => {
+              const c = configsByKey[key];
+              if (!c) return null;
+              const edit = getEdit(c);
+              return (
+                <div key={key} className="space-y-1.5">
+                  <Label className="text-sm font-medium">{c.titulo}</Label>
+                  {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="any"
+                      value={edit.valor ?? ""}
+                      onChange={e => setEdit(c.id, { valor: parseFloat(e.target.value) || 0 })}
+                      className="flex-1"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Section 4: System Formulas */}
       <Card>
