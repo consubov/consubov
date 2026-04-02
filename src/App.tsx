@@ -36,7 +36,7 @@ const LoadingScreen = () => (
 );
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
@@ -51,7 +51,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
         <div className="text-center space-y-3">
           <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
           <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
-          <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+          <Button variant="outline" onClick={() => void signOut()}>
             Sair
           </Button>
         </div>
@@ -63,8 +63,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function RoleRedirect() {
-  const { role, loading } = useAuth();
-  if (loading) return null;
+  const { role, loading, signOut } = useAuth();
+  if (loading) return <LoadingScreen />;
 
   switch (role) {
     case "administrador":
@@ -79,7 +79,7 @@ function RoleRedirect() {
           <div className="text-center space-y-3">
             <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
             <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
-            <Button variant="outline" onClick={() => { import("@/integrations/supabase/client").then(m => m.supabase.auth.signOut()); }}>
+            <Button variant="outline" onClick={() => void signOut()}>
               Sair
             </Button>
           </div>
@@ -90,8 +90,8 @@ function RoleRedirect() {
 
 function LoginRoute() {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (loading) return <LoadingScreen />;
+  if (user) return <Navigate to="/app" replace />;
   return <Login />;
 }
 
@@ -103,11 +103,12 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/landing" element={<Navigate to="/" replace />} />
+            <Route path="/index" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<LoginRoute />} />
-            <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+            <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
 
-            {/* Admin routes */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
@@ -124,10 +125,7 @@ const App = () => (
               <Route path="landing-page" element={<LandingPageConfigPage />} />
             </Route>
 
-            {/* Gerente */}
             <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
-
-            {/* Capataz */}
             <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />

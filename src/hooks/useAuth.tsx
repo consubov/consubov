@@ -207,12 +207,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-    } catch {
-      // Force clear even if signOut fails (expired token)
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
       setSession(null);
       setUser(null);
       setRoleData(emptyRoleData);
       clearCachedCapatazRole();
+      if (typeof window !== "undefined") {
+        window.location.replace("/");
+      }
     }
   };
 
