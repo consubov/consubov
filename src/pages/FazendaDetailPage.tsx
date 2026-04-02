@@ -56,6 +56,7 @@ export default function FazendaDetailPage() {
     ]);
     if (fazRes.error) { toast.error("Fazenda não encontrada."); navigate("/admin/fazendas"); return; }
     setFazenda(fazRes.data);
+    setFazendaEdit({ intervalo_padrao_dias: (fazRes.data as any).intervalo_padrao_dias ?? 3 });
     setRetiros(retRes.data ?? []);
     setLoading(false);
   }
