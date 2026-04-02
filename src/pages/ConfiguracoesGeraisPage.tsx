@@ -117,10 +117,6 @@ export default function ConfiguracoesGeraisPage() {
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
-      { tipo: "parametro", chave: "intervalo_padrao_dias", titulo: "Intervalo Padrão (dias)", descricao: "Intervalo padrão entre salgas", valor: 3 },
-      { tipo: "parametro", chave: "limite_abaixo", titulo: "Limite Abaixo", descricao: "Índice abaixo do ideal", valor: 0.9 },
-      { tipo: "parametro", chave: "limite_ideal_min", titulo: "Limite Ideal Mín", descricao: "Início da faixa ideal de consumo", valor: 0.9 },
-      { tipo: "parametro", chave: "limite_ideal_max", titulo: "Limite Ideal Máx", descricao: "Fim da faixa ideal de consumo", valor: 1.1 },
       { tipo: "parametro", chave: "hora_inicio_alerta", titulo: "Hora Início Alerta", descricao: "Hora de início dos alertas", valor: 6 },
       { tipo: "parametro", chave: "limite_leve", titulo: "Limite Leve", descricao: "Atraso leve em dias", valor: 1 },
       { tipo: "parametro", chave: "limite_moderado", titulo: "Limite Moderado", descricao: "Atraso moderado em dias", valor: 2 },
