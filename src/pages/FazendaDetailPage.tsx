@@ -45,6 +45,8 @@ export default function FazendaDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<RetiroForm>(emptyRetiroForm);
   const [saving, setSaving] = useState(false);
+  const [fazendaEdit, setFazendaEdit] = useState<FazendaEditForm>({ intervalo_padrao_dias: 3 });
+  const [savingFazenda, setSavingFazenda] = useState(false);
 
   async function loadData() {
     if (!fazendaId) return;
