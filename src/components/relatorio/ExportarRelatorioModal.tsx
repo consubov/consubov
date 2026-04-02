@@ -106,6 +106,27 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         lancamentos = lancData ?? [];
       }
 
+      // Fetch lancamentos manuais for the period (only mensal/anual)
+      let lancManuais: any[] = [];
+      if (pastoIds.length > 0) {
+        let mQuery = supabase.from("lancamentos_manuais")
+          .select("*")
+          .in("pasto_id", pastoIds) as any;
+        if (periodoTipo === "mensal") {
+          mQuery = mQuery.eq("mes_referencia", mes).eq("ano_referencia", ano);
+        } else if (periodoTipo === "anual") {
+          mQuery = mQuery.eq("ano_referencia", ano);
+        } else {
+          // ultimos15 - get current month
+          mQuery = mQuery.eq("mes_referencia", now.getMonth() + 1).eq("ano_referencia", now.getFullYear());
+        }
+        const { data: mData } = await mQuery;
+        lancManuais = mData ?? [];
+      }
+
+      // Set of pasto_ids that have automatic lancamentos
+      const pastosComLancAuto = new Set(lancamentos.map(l => l.pasto_id));
+
       // Fetch produtos
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
@@ -170,18 +191,58 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         const score = Math.min(10, consumoScore + regScore + intScore);
 
         // Build pasto data
+        const rManual = lancManuais.filter(m => rPastoIds.has(m.pasto_id));
         const pastoReport: PastoReportData[] = rPastos.map(p => {
-          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
-          const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-          const pcVals = pLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-          const pConsumo = pcVals.length > 0 ? pcVals.reduce((a, b) => a + b, 0) / pcVals.length : 0;
-          const pStatus = pConsumo < 70 ? "Baixo" : pConsumo <= 80 ? "Atenção" : pConsumo <= 120 ? "Ideal" : "Alto";
+          const hasAuto = pastosComLancAuto.has(p.id);
+
+          if (hasAuto) {
+            // Use automatic data (priority)
+            const pLanc = rLanc.filter(l => l.pasto_id === p.id);
+            const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
+            const pcVals = pLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
+            const pConsumo = pcVals.length > 0 ? pcVals.reduce((a, b) => a + b, 0) / pcVals.length : 0;
+            const pStatus = pConsumo < 70 ? "Baixo" : pConsumo <= 80 ? "Atenção" : pConsumo <= 120 ? "Ideal" : "Alto";
+            return {
+              nome: p.nome,
+              numAnimais: p.num_animais || 0,
+              numSacos: pSacos,
+              consumoGCabDia: pConsumo,
+              status: pStatus,
+              pesoMedioKg: Number(p.peso_medio_kg ?? 0),
+              gmdKgDia: Number(p.gmd_kg_dia ?? 0),
+              pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
+            };
+          }
+
+          // Fallback to manual data
+          const manual = rManual.find(m => m.pasto_id === p.id);
+          if (manual) {
+            const mAnimais = manual.num_animais ?? 0;
+            const mSacos = manual.num_sacos ?? 0;
+            const mDias = manual.dias_no_pasto ?? 1;
+            // consumo = (num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) → kg/cab/dia, convert to g
+            const consumoKg = mAnimais > 0 ? (mSacos * pesoSacoKg) / (mAnimais * mDias) : 0;
+            const consumoG = consumoKg * 1000;
+            const pStatus = consumoG < 70 ? "Baixo" : consumoG <= 80 ? "Atenção" : consumoG <= 120 ? "Ideal" : "Alto";
+            return {
+              nome: `📍 ${p.nome}`,
+              numAnimais: mAnimais,
+              numSacos: mSacos,
+              consumoGCabDia: consumoG,
+              status: pStatus,
+              pesoMedioKg: Number(manual.peso_medio_kg ?? p.peso_medio_kg ?? 0),
+              gmdKgDia: Number(p.gmd_kg_dia ?? 0),
+              pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
+            };
+          }
+
+          // No data at all
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
-            numSacos: pSacos,
-            consumoGCabDia: pConsumo,
-            status: pStatus,
+            numSacos: 0,
+            consumoGCabDia: 0,
+            status: "—",
             pesoMedioKg: Number(p.peso_medio_kg ?? 0),
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),

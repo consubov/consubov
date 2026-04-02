@@ -18,6 +18,7 @@ import GerentesPage from "./pages/GerentesPage";
 import CapatazesPage from "./pages/CapatazesPage";
 import QrCodesPage from "./pages/QrCodesPage";
 import ProdutosPage from "./pages/ProdutosPage";
+import LancamentoManualPage from "./pages/LancamentoManualPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
               <Route path="capatazes" element={<CapatazesPage />} />
               <Route path="produtos" element={<ProdutosPage />} />
               <Route path="qrcodes" element={<QrCodesPage />} />
+              <Route path="lancamento-manual" element={<LancamentoManualPage />} />
             </Route>
 
             {/* Gerente */}

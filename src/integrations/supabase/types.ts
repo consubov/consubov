@@ -312,6 +312,79 @@ export type Database = {
           },
         ]
       }
+      lancamentos_manuais: {
+        Row: {
+          ano_referencia: number
+          categoria: string | null
+          created_at: string
+          dias_no_pasto: number
+          fazenda_id: string
+          id: string
+          mes_referencia: number
+          num_animais: number
+          num_sacos: number
+          origem: string
+          pasto_id: string
+          peso_medio_kg: number | null
+          retiro_id: string
+          sexo: string | null
+        }
+        Insert: {
+          ano_referencia: number
+          categoria?: string | null
+          created_at?: string
+          dias_no_pasto?: number
+          fazenda_id: string
+          id?: string
+          mes_referencia: number
+          num_animais?: number
+          num_sacos?: number
+          origem?: string
+          pasto_id: string
+          peso_medio_kg?: number | null
+          retiro_id: string
+          sexo?: string | null
+        }
+        Update: {
+          ano_referencia?: number
+          categoria?: string | null
+          created_at?: string
+          dias_no_pasto?: number
+          fazenda_id?: string
+          id?: string
+          mes_referencia?: number
+          num_animais?: number
+          num_sacos?: number
+          origem?: string
+          pasto_id?: string
+          peso_medio_kg?: number | null
+          retiro_id?: string
+          sexo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_manuais_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       observacoes: {
         Row: {
           capataz_nome: string | null
