@@ -280,7 +280,7 @@ export default function LandingPage() {
       {/* Parceiros */}
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8">Parceiros que usam</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 uppercase">PARCEIROS QUE USAM</h2>
           <p className="text-muted-foreground mb-8">Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
           <div className="flex flex-wrap items-center justify-center gap-8">
             {parceirosLogos.length > 0 ? (
