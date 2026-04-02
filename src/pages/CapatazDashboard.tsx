@@ -557,7 +557,7 @@ export default function CapatazDashboard() {
               .eq("id", produto_id_final).maybeSingle();
 
             if (produto) {
-              // Get consumo_por_100kg based on category
+              // Get consumo_por_100kg based on category (g/cab/dia per 100kg PV)
               const cat = pasto.categoria?.toLowerCase() || 'engorda';
               const consumo_por_100kg = cat.includes('recria1') || cat.includes('recria 1')
                 ? Number(produto.consumo_recria1 || 0)
@@ -565,45 +565,66 @@ export default function CapatazDashboard() {
                   ? Number(produto.consumo_recria2 || 0)
                   : Number(produto.consumo_engorda || 0);
 
-              if (consumo_por_100kg > 0) {
-                // Get previous lancamento date
-                const { data: prevLanc } = await supabase.from("lancamentos")
-                  .select("lancado_em")
-                  .eq("pasto_id", l.pasto_id)
-                  .lt("lancado_em", l.data)
-                  .order("lancado_em", { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
+              // Get previous lancamento date for this retiro (not just pasto)
+              const { data: prevLanc } = await supabase.from("lancamentos")
+                .select("lancado_em")
+                .eq("pasto_id", l.pasto_id)
+                .lt("lancado_em", l.data)
+                .order("lancado_em", { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-                let dataAnterior: Date | null = null;
-                if (prevLanc?.lancado_em) {
-                  dataAnterior = new Date(prevLanc.lancado_em);
-                } else if (l.ciclo_id) {
-                  // Use ciclo start date
-                  const ciclo = ciclos.find(c => c.id === l.ciclo_id);
-                  if (ciclo) {
-                    dataAnterior = new Date(ciclo.ano, ciclo.mes - 1, 1);
-                  }
+              let dataAnterior: Date | null = null;
+              if (prevLanc?.lancado_em) {
+                dataAnterior = new Date(prevLanc.lancado_em);
+              } else if (l.ciclo_id) {
+                // Use ciclo start date
+                const ciclo = ciclos.find(c => c.id === l.ciclo_id);
+                if (ciclo) {
+                  dataAnterior = new Date(ciclo.ano, ciclo.mes - 1, 1);
                 }
+              }
 
-                if (dataAnterior) {
-                  const dataAtual = new Date(l.data);
-                  dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
+              if (dataAnterior) {
+                const dataAtual = new Date(l.data);
+                dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
 
-                  if (dias_intervalo > 0) {
-                    consumo_esperado_kg = (consumo_por_100kg * Number(pasto.peso_medio_kg) / 100) * pasto.num_animais * dias_intervalo / 1000;
-                    consumo_real_kg = l.sacos * Number(produto.peso_saco_kg);
-                    indice_consumo = consumo_esperado_kg > 0
-                      ? Number((consumo_real_kg / consumo_esperado_kg).toFixed(2))
-                      : null;
-                    if (indice_consumo != null) {
-                      status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
-                    }
+                if (dias_intervalo <= 0) {
+                  // Invalid interval
+                  status_consumo = 'ERRO';
+                  indice_consumo = 0;
+                } else if (consumo_por_100kg <= 0) {
+                  // No consumption config
+                  status_consumo = 'ERRO';
+                  indice_consumo = 0;
+                } else {
+                  // consumo_esperado = ((consumo_por_100kg / 1000) * peso_medio_kg / 100) * num_animais * dias_intervalo
+                  consumo_esperado_kg = ((consumo_por_100kg / 1000) * Number(pasto.peso_medio_kg) / 100) * pasto.num_animais * dias_intervalo;
+                  consumo_real_kg = l.sacos * Number(produto.peso_saco_kg);
+
+                  if (consumo_esperado_kg <= 0) {
+                    indice_consumo = 0;
+                    status_consumo = 'ERRO';
+                  } else {
+                    indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
+                    status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
+                  }
+
+                  if (dias_intervalo > 7) {
+                    console.warn(`⚠ Intervalo de ${dias_intervalo} dias para pasto ${l.pasto_nome} — verificar`);
                   }
                 }
               }
             }
           }
+        }
+
+        // Update ultima_salga_em on the retiro after sync
+        if (roleData.retiroId) {
+          await supabase.from("retiros").update({
+            ultima_salga_em: l.data,
+            alerta_atraso_enviado: false,
+          } as any).eq("id", roleData.retiroId);
         }
 
         const insertData: Record<string, any> = {
