@@ -38,23 +38,31 @@ const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
   limite_leve: { valor: 1 },
   limite_moderado: { valor: 2 },
   limite_critico: { valor: 3 },
-  consumo_esperado: { formula: "(num_animais * peso_medio_kg * consumo_por_100kg) / 100" },
-  consumo_real: { formula: "num_sacos * peso_saco_kg" },
+  consumo_real: { formula: "(num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) * 1000" },
+  consumo_esperado: { formula: "(consumo_por_100kg_categoria * peso_medio_kg) / 100" },
+  classificacao_consumo: { formula: "SE consumo_real < (consumo_esperado - margem) → ABAIXO | SE consumo_real > (consumo_esperado + margem) → ACIMA | SENÃO → IDEAL" },
   indice_consumo: { formula: "consumo_real / consumo_esperado" },
-  consumo_ciclo: { formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_intervalo)" },
+  consumo_ciclo: { formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_no_pasto)" },
   consumo_mensal: { formula: "num_sacos * peso_saco_kg" },
   consumo_produto: { formula: "SUM(num_sacos * peso_saco_kg) GROUP BY produto_id" },
 };
 
-const SYSTEM_VARS = ["num_animais", "peso_medio_kg", "num_sacos", "dias_intervalo", "peso_saco_kg", "consumo_por_100kg"];
+const SYSTEM_VARS = [
+  "num_animais", "peso_medio_kg", "num_sacos", "dias_no_pasto",
+  "peso_saco_kg", "consumo_por_100kg_categoria", "margem",
+  "consumo_real", "consumo_esperado",
+];
 
 const SECTIONS = [
   { title: "Alertas", keys: ["hora_inicio_alerta", "limite_leve", "limite_moderado", "limite_critico"] },
-  { title: "Fórmulas do Sistema", keys: ["consumo_esperado", "consumo_real", "indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
+  { title: "📊 Fórmulas de Cálculo", keys: ["consumo_real", "consumo_esperado", "classificacao_consumo"] },
+  { title: "Fórmulas Auxiliares", keys: ["indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
 ];
 
 function validateFormula(formula: string): { valid: boolean; error?: string } {
   if (!formula.trim()) return { valid: false, error: "Fórmula vazia" };
+  // Classification formulas (rule-based) are always valid if non-empty
+  if (/→|ABAIXO|ACIMA|IDEAL|SENÃO|SE\s/i.test(formula)) return { valid: true };
   // Check balanced parentheses
   let depth = 0;
   for (const ch of formula) {
@@ -63,31 +71,34 @@ function validateFormula(formula: string): { valid: boolean; error?: string } {
     if (depth < 0) return { valid: false, error: "Parênteses desbalanceados" };
   }
   if (depth !== 0) return { valid: false, error: "Parênteses desbalanceados" };
-  // Check for obvious division by zero pattern
   if (/\/\s*0(?!\d)/.test(formula)) return { valid: false, error: "Possível divisão por zero" };
   return { valid: true };
 }
 
 function testFormula(formula: string): { result: number | null; error?: string } {
   try {
+    // classificacao_consumo is a rule-based formula, not math
+    if (/→|ABAIXO|ACIMA|IDEAL|SENÃO|SE\s/i.test(formula)) {
+      return { result: null, error: undefined };
+    }
     const sampleVars: Record<string, number> = {
       num_animais: 200,
       peso_medio_kg: 350,
       num_sacos: 10,
+      dias_no_pasto: 30,
       dias_intervalo: 3,
       peso_saco_kg: 25,
       consumo_por_100kg: 100,
+      consumo_por_100kg_categoria: 100,
+      margem: 10,
       consumo_real: 250,
       consumo_esperado: 700,
     };
-    // Replace known variables
     let expr = formula;
-    // Remove SQL-style aggregates for testing
     expr = expr.replace(/SUM\(/gi, "(").replace(/GROUP BY\s+\w+/gi, "");
     for (const [k, v] of Object.entries(sampleVars)) {
       expr = expr.replace(new RegExp(`\\b${k}\\b`, "g"), String(v));
     }
-    // Check for remaining alphabetic tokens (unknown vars)
     const remaining = expr.replace(/[0-9+\-*/().,%\s]/g, "");
     if (remaining.length > 0) {
       return { result: null, error: `Variável desconhecida: ${remaining}` };
@@ -121,11 +132,12 @@ export default function ConfiguracoesGeraisPage() {
       { tipo: "parametro", chave: "limite_leve", titulo: "Limite Leve", descricao: "Atraso leve em dias", valor: 1 },
       { tipo: "parametro", chave: "limite_moderado", titulo: "Limite Moderado", descricao: "Atraso moderado em dias", valor: 2 },
       { tipo: "parametro", chave: "limite_critico", titulo: "Limite Crítico", descricao: "Atraso crítico em dias", valor: 3 },
-      { tipo: "formula", chave: "consumo_esperado", titulo: "Consumo Esperado", descricao: "Consumo esperado baseado no peso e quantidade de animais", formula: "(num_animais * peso_medio_kg * consumo_por_100kg) / 100" },
-      { tipo: "formula", chave: "consumo_real", titulo: "Consumo Real", descricao: "Consumo real em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "consumo_real", titulo: "Consumo Real (g/cab/dia)", descricao: "Consumo real em g/cab/dia. Usa peso_saco_kg do produto.", formula: "(num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) * 1000" },
+      { tipo: "formula", chave: "consumo_esperado", titulo: "Consumo Esperado (g/cab/dia)", descricao: "Consumo esperado baseado no consumo por categoria do produto e peso médio.", formula: "(consumo_por_100kg_categoria * peso_medio_kg) / 100" },
+      { tipo: "formula", chave: "classificacao_consumo", titulo: "Classificação de Consumo", descricao: "Regra para classificar o consumo com base na margem do produto.", formula: "SE consumo_real < (consumo_esperado - margem) → ABAIXO | SE consumo_real > (consumo_esperado + margem) → ACIMA | SENÃO → IDEAL" },
       { tipo: "formula", chave: "indice_consumo", titulo: "Índice de Consumo", descricao: "Razão entre consumo real e esperado", formula: "consumo_real / consumo_esperado" },
-      { tipo: "formula", chave: "consumo_ciclo", titulo: "Consumo por Ciclo", descricao: "Consumo em g/cab/dia no ciclo", formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_intervalo)" },
-      { tipo: "formula", chave: "consumo_mensal", titulo: "Consumo Mensal", descricao: "Consumo total mensal em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "consumo_ciclo", titulo: "Consumo por Ciclo (g/cab/dia)", descricao: "Consumo em g/cab/dia no ciclo", formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_no_pasto)" },
+      { tipo: "formula", chave: "consumo_mensal", titulo: "Consumo Mensal (kg)", descricao: "Consumo total mensal em kg", formula: "num_sacos * peso_saco_kg" },
       { tipo: "formula", chave: "consumo_produto", titulo: "Consumo por Produto", descricao: "Consumo agrupado por tipo de produto", formula: "SUM(num_sacos * peso_saco_kg) GROUP BY produto_id" },
     ];
     for (const item of seedData) {
@@ -273,7 +285,8 @@ export default function ConfiguracoesGeraisPage() {
   };
 
   const configsByKey = Object.fromEntries(configs.map(c => [c.chave, c]));
-  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[1].keys.includes(c.chave));
+  const allSectionKeys = SECTIONS.flatMap(s => s.keys);
+  const customFormulas = configs.filter(c => c.tipo === "formula" && !allSectionKeys.includes(c.chave));
 
   if (loading) {
     return (
@@ -335,53 +348,59 @@ export default function ConfiguracoesGeraisPage() {
         </CardContent>
       </Card>
 
-      {/* Section 4: System Formulas */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Fórmulas do Sistema</CardTitle>
-          <CardDescription className="text-xs">
-            Variáveis disponíveis: {SYSTEM_VARS.join(", ")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...SECTIONS[1].keys, ...customFormulas.map(c => c.chave)].map(key => {
-            const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
-            if (!c) return null;
-            const edit = getEdit(c);
-            const tr = testResults[c.id];
-            return (
-              <div key={c.id} className="border rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-sm">{c.titulo}</span>
-                    {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+      {/* Formula sections */}
+      {SECTIONS.slice(1).map((section, si) => (
+        <Card key={si}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">{section.title}</CardTitle>
+            <CardDescription className="text-xs">
+              Variáveis disponíveis: {SYSTEM_VARS.join(", ")}
+              {si === 0 && <><br />Valores de <strong>peso_saco_kg</strong>, <strong>consumo_por_100kg_categoria</strong> e <strong>margem</strong> vêm do produto vinculado ao lançamento. Resultado sempre em <strong>g/cab/dia</strong>.</>}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[...section.keys, ...(si === SECTIONS.length - 2 ? customFormulas.map(c => c.chave) : [])].map(key => {
+              const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
+              if (!c) return null;
+              const edit = getEdit(c);
+              const tr = testResults[c.id];
+              const isClassificacao = c.chave === "classificacao_consumo";
+              return (
+                <div key={c.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-sm">{c.titulo}</span>
+                      {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      {!isClassificacao && (
+                        <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title="Testar fórmula">
+                          <FlaskConical className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title="Testar fórmula">
-                      <FlaskConical className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <Textarea
+                    value={edit.formula ?? c.formula ?? ""}
+                    onChange={e => setEdit(c.id, { formula: e.target.value })}
+                    className="font-mono text-xs min-h-[60px]"
+                    placeholder="Ex: (num_animais * peso_medio_kg) / 100"
+                  />
+                  {tr && !isClassificacao && (
+                    <div className={`flex items-center gap-2 text-xs ${tr.error ? "text-destructive" : "text-green-600"}`}>
+                      {tr.error ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                      {tr.error ? tr.error : `Resultado teste: ${tr.result} g/cab/dia`}
+                    </div>
+                  )}
                 </div>
-                <Textarea
-                  value={edit.formula ?? c.formula ?? ""}
-                  onChange={e => setEdit(c.id, { formula: e.target.value })}
-                  className="font-mono text-xs min-h-[60px]"
-                  placeholder="Ex: (num_animais * peso_medio_kg) / 100"
-                />
-                {tr && (
-                  <div className={`flex items-center gap-2 text-xs ${tr.error ? "text-destructive" : "text-green-600"}`}>
-                    {tr.error ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                    {tr.error ? tr.error : `Resultado teste: ${tr.result}`}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ))}
 
       {/* Add new formula */}
       <Card>
