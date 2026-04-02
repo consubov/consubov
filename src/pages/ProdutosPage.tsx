@@ -114,6 +114,7 @@ export default function ProdutosPage() {
       tipo: form.tipo,
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
+      consumo_por_100kg: numOrNull(form.consumo_por_100kg),
       consumo_recria1: numOrNull(form.consumo_recria1),
       consumo_recria2: numOrNull(form.consumo_recria2),
       consumo_engorda: numOrNull(form.consumo_engorda),
