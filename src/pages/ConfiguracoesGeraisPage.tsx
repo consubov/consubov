@@ -76,24 +76,28 @@ function validateFormula(formula: string): { valid: boolean; error?: string } {
 
 function testFormula(formula: string): { result: number | null; error?: string } {
   try {
+    // classificacao_consumo is a rule-based formula, not math
+    if (/→|ABAIXO|ACIMA|IDEAL|SENÃO|SE\s/i.test(formula)) {
+      return { result: null, error: undefined };
+    }
     const sampleVars: Record<string, number> = {
       num_animais: 200,
       peso_medio_kg: 350,
       num_sacos: 10,
+      dias_no_pasto: 30,
       dias_intervalo: 3,
       peso_saco_kg: 25,
       consumo_por_100kg: 100,
+      consumo_por_100kg_categoria: 100,
+      margem: 10,
       consumo_real: 250,
       consumo_esperado: 700,
     };
-    // Replace known variables
     let expr = formula;
-    // Remove SQL-style aggregates for testing
     expr = expr.replace(/SUM\(/gi, "(").replace(/GROUP BY\s+\w+/gi, "");
     for (const [k, v] of Object.entries(sampleVars)) {
       expr = expr.replace(new RegExp(`\\b${k}\\b`, "g"), String(v));
     }
-    // Check for remaining alphabetic tokens (unknown vars)
     const remaining = expr.replace(/[0-9+\-*/().,%\s]/g, "");
     if (remaining.length > 0) {
       return { result: null, error: `Variável desconhecida: ${remaining}` };
