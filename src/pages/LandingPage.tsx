@@ -140,6 +140,16 @@ export default function LandingPage() {
   const formDesc = content.form_descricao || "Preencha o formulário abaixo e nossa equipe entrará em contato.";
   const rodapeText = content.rodape || "Consubov — Tecnologia para Pecuária\nTelefone: (63) 99999-0000\nCNPJ: 00.000.000/0001-00\nPalmas - TO, Brasil";
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+          <span className="text-xl font-extrabold text-secondary">C</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Fixed Header */}
