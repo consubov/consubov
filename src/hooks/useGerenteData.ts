@@ -33,6 +33,11 @@ export interface RetiroComDados {
   totalAnimais: number; sacosUtilizados: number;
   consumoMedio: number; gmd: number; pastos: Pasto[];
   lancamentos: Lancamento[];
+  intervaloDefinido: number;
+  intervaloRealMedio: number | null;
+  diasSemSalga: number | null;
+  alertaAtraso: boolean;
+  ultimaSalga: string | null;
 }
 
 export interface PainelData {
