@@ -118,18 +118,13 @@ export default function LandingPage() {
     });
 
     if (error) {
+      console.error("Erro ao salvar lead:", error);
       toast.error("Erro ao enviar. Tente novamente.");
       setSubmitting(false);
       return;
     }
 
-    await supabase.from("notificacoes").insert({
-      tipo: "lead",
-      titulo: `Novo lead: ${form.nome.trim()}`,
-      mensagem: form.mensagem?.trim() || "Sem mensagem",
-      dados: { nome: form.nome, email: form.email, telefone: form.telefone, whatsapp: form.whatsapp, mensagem: form.mensagem },
-    });
-
+    console.log("Lead salvo com sucesso. Notificação gerada automaticamente via trigger.");
     setSubmitted(true);
     setSubmitting(false);
     toast.success("Mensagem enviada com sucesso!");
