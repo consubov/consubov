@@ -273,7 +273,7 @@ export default function ConfiguracoesGeraisPage() {
   };
 
   const configsByKey = Object.fromEntries(configs.map(c => [c.chave, c]));
-  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[3].keys.includes(c.chave));
+  const customFormulas = configs.filter(c => c.tipo === "formula" && !SECTIONS[1].keys.includes(c.chave));
 
   if (loading) {
     return (
