@@ -261,6 +261,41 @@ export default function GerenteDashboard() {
 
         {/* ===== ALERTAS ===== */}
         <TabsContent value="alertas" className="flex-1 overflow-auto p-4 space-y-6 mt-0">
+          {/* Alertas de salga atrasada */}
+          {alertasAtraso.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Salga Atrasada
+                <Badge variant="destructive" className="text-[10px] h-5">{alertasAtraso.length}</Badge>
+              </h2>
+              <div className="space-y-2">
+                {alertasAtraso.map(a => {
+                  const gravCfg = {
+                    leve: { border: 'border-yellow-500/50', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+                    moderado: { border: 'border-orange-500/50', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+                    critico: { border: 'border-destructive', bg: 'bg-destructive/5' },
+                  };
+                  const cfg = gravCfg[a.gravidade];
+                  return (
+                    <Card key={a.retiroNome} className={`${cfg.border} ${cfg.bg}`}>
+                      <CardContent className="p-3 space-y-1">
+                        <p className="text-sm font-bold text-destructive">⚠️ ALERTA DE SALGA ATRASADA</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Retiro:</span> {a.retiroNome}</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Última salga:</span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Intervalo definido:</span> {a.intervaloDefinido} dias</p>
+                        <p className="text-xs font-semibold text-destructive">Dias sem salga: {a.diasSemSalga}</p>
+                        <p className="text-xs text-muted-foreground">👉 Verificar responsável pela salga</p>
+                        <Badge variant="destructive" className="text-[10px] mt-1">
+                          {a.gravidade === 'critico' ? '🔴 Crítico' : a.gravidade === 'moderado' ? '🟠 Moderado' : '🟡 Leve'}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Pendentes */}
           <div>
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
