@@ -351,6 +351,16 @@ export default function GerenteDashboard() {
           )}
         </SheetContent>
       </Sheet>
+
+      {roleData.fazendaId && (
+        <ExportarRelatorioModal
+          open={relatorioOpen}
+          onOpenChange={setRelatorioOpen}
+          fazendaId={roleData.fazendaId}
+          fazendaNome={fazendaNome}
+          geradoPor={user?.user_metadata?.nome || user?.email || gerenteNome}
+        />
+      )}
     </div>
   );
 }
