@@ -115,6 +115,7 @@ const App = () => (
               <Route path="produtos" element={<ProdutosPage />} />
               <Route path="qrcodes" element={<QrCodesPage />} />
               <Route path="lancamento-manual" element={<LancamentoManualPage />} />
+              <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
             </Route>
 
             {/* Gerente */}
