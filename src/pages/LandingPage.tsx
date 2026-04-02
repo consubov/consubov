@@ -249,7 +249,7 @@ export default function LandingPage() {
 
                 {diferenciaisImg && (
                   <div className="mb-8 rounded-xl overflow-hidden shadow-lg max-w-3xl mx-auto">
-                    <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
+                    <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-auto object-contain" loading="lazy" />
                   </div>
                 )}
 
