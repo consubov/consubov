@@ -131,11 +131,12 @@ export default function ConfiguracoesGeraisPage() {
       { tipo: "parametro", chave: "limite_leve", titulo: "Limite Leve", descricao: "Atraso leve em dias", valor: 1 },
       { tipo: "parametro", chave: "limite_moderado", titulo: "Limite Moderado", descricao: "Atraso moderado em dias", valor: 2 },
       { tipo: "parametro", chave: "limite_critico", titulo: "Limite Crítico", descricao: "Atraso crítico em dias", valor: 3 },
-      { tipo: "formula", chave: "consumo_esperado", titulo: "Consumo Esperado", descricao: "Consumo esperado baseado no peso e quantidade de animais", formula: "(num_animais * peso_medio_kg * consumo_por_100kg) / 100" },
-      { tipo: "formula", chave: "consumo_real", titulo: "Consumo Real", descricao: "Consumo real em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "consumo_real", titulo: "Consumo Real (g/cab/dia)", descricao: "Consumo real em g/cab/dia. Usa peso_saco_kg do produto.", formula: "(num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) * 1000" },
+      { tipo: "formula", chave: "consumo_esperado", titulo: "Consumo Esperado (g/cab/dia)", descricao: "Consumo esperado baseado no consumo por categoria do produto e peso médio.", formula: "(consumo_por_100kg_categoria * peso_medio_kg) / 100" },
+      { tipo: "formula", chave: "classificacao_consumo", titulo: "Classificação de Consumo", descricao: "Regra para classificar o consumo com base na margem do produto.", formula: "SE consumo_real < (consumo_esperado - margem) → ABAIXO | SE consumo_real > (consumo_esperado + margem) → ACIMA | SENÃO → IDEAL" },
       { tipo: "formula", chave: "indice_consumo", titulo: "Índice de Consumo", descricao: "Razão entre consumo real e esperado", formula: "consumo_real / consumo_esperado" },
-      { tipo: "formula", chave: "consumo_ciclo", titulo: "Consumo por Ciclo", descricao: "Consumo em g/cab/dia no ciclo", formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_intervalo)" },
-      { tipo: "formula", chave: "consumo_mensal", titulo: "Consumo Mensal", descricao: "Consumo total mensal em kg", formula: "num_sacos * peso_saco_kg" },
+      { tipo: "formula", chave: "consumo_ciclo", titulo: "Consumo por Ciclo (g/cab/dia)", descricao: "Consumo em g/cab/dia no ciclo", formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_no_pasto)" },
+      { tipo: "formula", chave: "consumo_mensal", titulo: "Consumo Mensal (kg)", descricao: "Consumo total mensal em kg", formula: "num_sacos * peso_saco_kg" },
       { tipo: "formula", chave: "consumo_produto", titulo: "Consumo por Produto", descricao: "Consumo agrupado por tipo de produto", formula: "SUM(num_sacos * peso_saco_kg) GROUP BY produto_id" },
     ];
     for (const item of seedData) {
