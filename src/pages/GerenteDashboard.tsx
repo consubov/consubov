@@ -115,9 +115,9 @@ export default function GerenteDashboard() {
           <TabsTrigger value="ranking" className="text-xs data-[state=active]:text-primary">Ranking</TabsTrigger>
           <TabsTrigger value="alertas" className="text-xs data-[state=active]:text-primary relative">
             Alertas
-            {obsPendentes.length > 0 && (
+            {(obsPendentes.length + alertasAtraso.length) > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
-                {obsPendentes.length}
+                {obsPendentes.length + alertasAtraso.length}
               </Badge>
             )}
           </TabsTrigger>
