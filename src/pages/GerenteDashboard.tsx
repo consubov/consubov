@@ -145,14 +145,17 @@ export default function GerenteDashboard() {
             <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
           ) : (
             retirosComDados.map(r => (
-              <Card key={r.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => setSelectedRetiro(r)}>
+              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => setSelectedRetiro(r)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-semibold text-sm text-foreground">{r.nome}</p>
                       <p className="text-xs text-muted-foreground">{r.capataz}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5">
+                      {r.alertaAtraso && <AlertTriangle className="w-4 h-4 text-destructive" />}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
@@ -171,6 +174,15 @@ export default function GerenteDashboard() {
                       <p className="text-xs text-muted-foreground">GMD</p>
                       <p className="text-sm font-bold text-primary">{fmtNum(r.gmd, 3)}</p>
                     </div>
+                  </div>
+                  {/* Interval info */}
+                  <div className="mt-2 pt-2 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Intervalo: {r.intervaloDefinido}d definido · {r.intervaloRealMedio != null ? `${r.intervaloRealMedio}d real` : '—'}</span>
+                    {r.diasSemSalga != null && (
+                      <span className={r.alertaAtraso ? 'text-destructive font-semibold' : ''}>
+                        {r.diasSemSalga}d sem salga
+                      </span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
