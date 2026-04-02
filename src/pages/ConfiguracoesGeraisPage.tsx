@@ -346,53 +346,59 @@ export default function ConfiguracoesGeraisPage() {
         </CardContent>
       </Card>
 
-      {/* Section 4: System Formulas */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Fórmulas do Sistema</CardTitle>
-          <CardDescription className="text-xs">
-            Variáveis disponíveis: {SYSTEM_VARS.join(", ")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...SECTIONS[1].keys, ...customFormulas.map(c => c.chave)].map(key => {
-            const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
-            if (!c) return null;
-            const edit = getEdit(c);
-            const tr = testResults[c.id];
-            return (
-              <div key={c.id} className="border rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-sm">{c.titulo}</span>
-                    {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+      {/* Formula sections */}
+      {SECTIONS.slice(1).map((section, si) => (
+        <Card key={si}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">{section.title}</CardTitle>
+            <CardDescription className="text-xs">
+              Variáveis disponíveis: {SYSTEM_VARS.join(", ")}
+              {si === 0 && <><br />Valores de <strong>peso_saco_kg</strong>, <strong>consumo_por_100kg_categoria</strong> e <strong>margem</strong> vêm do produto vinculado ao lançamento. Resultado sempre em <strong>g/cab/dia</strong>.</>}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[...section.keys, ...(si === SECTIONS.length - 2 ? customFormulas.map(c => c.chave) : [])].map(key => {
+              const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
+              if (!c) return null;
+              const edit = getEdit(c);
+              const tr = testResults[c.id];
+              const isClassificacao = c.chave === "classificacao_consumo";
+              return (
+                <div key={c.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-sm">{c.titulo}</span>
+                      {c.descricao && <p className="text-xs text-muted-foreground">{c.descricao}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      {!isClassificacao && (
+                        <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title="Testar fórmula">
+                          <FlaskConical className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title="Testar fórmula">
-                      <FlaskConical className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <Textarea
+                    value={edit.formula ?? c.formula ?? ""}
+                    onChange={e => setEdit(c.id, { formula: e.target.value })}
+                    className="font-mono text-xs min-h-[60px]"
+                    placeholder="Ex: (num_animais * peso_medio_kg) / 100"
+                  />
+                  {tr && !isClassificacao && (
+                    <div className={`flex items-center gap-2 text-xs ${tr.error ? "text-destructive" : "text-green-600"}`}>
+                      {tr.error ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                      {tr.error ? tr.error : `Resultado teste: ${tr.result} g/cab/dia`}
+                    </div>
+                  )}
                 </div>
-                <Textarea
-                  value={edit.formula ?? c.formula ?? ""}
-                  onChange={e => setEdit(c.id, { formula: e.target.value })}
-                  className="font-mono text-xs min-h-[60px]"
-                  placeholder="Ex: (num_animais * peso_medio_kg) / 100"
-                />
-                {tr && (
-                  <div className={`flex items-center gap-2 text-xs ${tr.error ? "text-destructive" : "text-green-600"}`}>
-                    {tr.error ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                    {tr.error ? tr.error : `Resultado teste: ${tr.result}`}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ))}
 
       {/* Add new formula */}
       <Card>
