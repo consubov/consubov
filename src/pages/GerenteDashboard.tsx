@@ -67,6 +67,7 @@ export default function GerenteDashboard() {
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   const cicloLabel = ciclo ? `${MES_NOMES[ciclo.mes - 1]}/${ciclo.ano}` : "—";
 
