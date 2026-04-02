@@ -31,6 +31,10 @@ interface RetiroForm {
 
 const emptyRetiroForm: RetiroForm = { nome: "", capataz: "", ativo: true };
 
+interface FazendaEditForm {
+  intervalo_padrao_dias: number;
+}
+
 export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
