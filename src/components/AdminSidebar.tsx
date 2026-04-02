@@ -20,6 +20,7 @@ const menuItems = [
   { title: "Capatazes", url: "/admin/capatazes", icon: HardHat },
   { title: "Produtos", url: "/admin/produtos", icon: Package },
   { title: "QR Codes", url: "/admin/qrcodes", icon: QrCode },
+  { title: "Lançamento Manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },
 ];
 
 export function AdminSidebar() {
