@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -15,7 +15,10 @@ interface Lancamento {
   custo_total: number | null; gmd_kg_dia: number | null;
   capataz_nome: string | null; lancado_em: string | null;
   status_consumo: string | null; indice_consumo: number | null;
+  dias_intervalo: number | null;
 }
+interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
+interface Fazenda { nome: string; intervalo_padrao_dias: number; }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 
 export interface Observacao {
