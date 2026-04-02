@@ -106,6 +106,27 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         lancamentos = lancData ?? [];
       }
 
+      // Fetch lancamentos manuais for the period (only mensal/anual)
+      let lancManuais: any[] = [];
+      if (pastoIds.length > 0) {
+        let mQuery = supabase.from("lancamentos_manuais")
+          .select("*")
+          .in("pasto_id", pastoIds) as any;
+        if (periodoTipo === "mensal") {
+          mQuery = mQuery.eq("mes_referencia", mes).eq("ano_referencia", ano);
+        } else if (periodoTipo === "anual") {
+          mQuery = mQuery.eq("ano_referencia", ano);
+        } else {
+          // ultimos15 - get current month
+          mQuery = mQuery.eq("mes_referencia", now.getMonth() + 1).eq("ano_referencia", now.getFullYear());
+        }
+        const { data: mData } = await mQuery;
+        lancManuais = mData ?? [];
+      }
+
+      // Set of pasto_ids that have automatic lancamentos
+      const pastosComLancAuto = new Set(lancamentos.map(l => l.pasto_id));
+
       // Fetch produtos
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
