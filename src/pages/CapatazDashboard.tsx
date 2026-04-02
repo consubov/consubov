@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil } from "lucide-react";
+import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -553,19 +554,15 @@ export default function CapatazDashboard() {
 
           if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
             const { data: produto } = await supabase.from("produtos")
-              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
               .eq("id", produto_id_final).maybeSingle();
 
             if (produto) {
-              // Get consumo_por_100kg based on category (g/cab/dia per 100kg PV)
-              const cat = pasto.categoria?.toLowerCase() || 'engorda';
-              const consumo_por_100kg = cat.includes('recria1') || cat.includes('recria 1')
-                ? Number(produto.consumo_recria1 || 0)
-                : cat.includes('recria2') || cat.includes('recria 2')
-                  ? Number(produto.consumo_recria2 || 0)
-                  : Number(produto.consumo_engorda || 0);
+              const categoria = pasto.categoria || 'Engorda';
+              const consumo_por_100kg = getConsumoPorCategoria(categoria, produto);
+              const margem = getMargemPorCategoria(categoria, produto);
 
-              // Get previous lancamento date for this retiro (not just pasto)
+              // QR Code: auto-calculate dias_intervalo from dates
               const { data: prevLanc } = await supabase.from("lancamentos")
                 .select("lancado_em")
                 .eq("pasto_id", l.pasto_id)
@@ -578,7 +575,6 @@ export default function CapatazDashboard() {
               if (prevLanc?.lancado_em) {
                 dataAnterior = new Date(prevLanc.lancado_em);
               } else if (l.ciclo_id) {
-                // Use ciclo start date
                 const ciclo = ciclos.find(c => c.id === l.ciclo_id);
                 if (ciclo) {
                   dataAnterior = new Date(ciclo.ano, ciclo.mes - 1, 1);
@@ -590,24 +586,24 @@ export default function CapatazDashboard() {
                 dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
 
                 if (dias_intervalo <= 0) {
-                  // Invalid interval
-                  status_consumo = 'ERRO';
-                  indice_consumo = 0;
-                } else if (consumo_por_100kg <= 0) {
-                  // No consumption config
                   status_consumo = 'ERRO';
                   indice_consumo = 0;
                 } else {
-                  // consumo_esperado = ((consumo_por_100kg / 1000) * peso_medio_kg / 100) * num_animais * dias_intervalo
-                  consumo_esperado_kg = ((consumo_por_100kg / 1000) * Number(pasto.peso_medio_kg) / 100) * pasto.num_animais * dias_intervalo;
-                  consumo_real_kg = l.sacos * Number(produto.peso_saco_kg);
+                  const resultado = calcularConsumo({
+                    num_sacos: l.sacos,
+                    peso_saco_kg: Number(produto.peso_saco_kg),
+                    num_animais: pasto.num_animais,
+                    dias: dias_intervalo,
+                    peso_medio_kg: Number(pasto.peso_medio_kg),
+                    consumo_por_100kg_categoria: consumo_por_100kg,
+                    margem,
+                  });
 
-                  if (consumo_esperado_kg <= 0) {
-                    indice_consumo = 0;
-                    status_consumo = 'ERRO';
-                  } else {
-                    indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
-                    status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
+                  if (resultado) {
+                    consumo_esperado_kg = resultado.consumo_esperado_kg;
+                    consumo_real_kg = resultado.consumo_real_kg;
+                    indice_consumo = resultado.indice_consumo;
+                    status_consumo = resultado.status_consumo;
                   }
 
                   if (dias_intervalo > 7) {

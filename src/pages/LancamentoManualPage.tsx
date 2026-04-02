@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Plus, Minus, Save } from "lucide-react";
+import { classificarCategoria } from "@/lib/consumoCalc";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -109,7 +111,15 @@ export default function LancamentoManualPage() {
   }
 
   function updateRow(idx: number, field: keyof PastoRow, value: any) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+    setRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const updated = { ...r, [field]: value };
+      // Auto-classify category when peso changes
+      if (field === 'peso_medio_kg' && typeof value === 'number' && value > 0) {
+        updated.categoria = classificarCategoria(value);
+      }
+      return updated;
+    }));
   }
 
   async function handleSalvar() {
@@ -262,6 +272,9 @@ export default function LancamentoManualPage() {
                           <SelectItem value="Engorda">Engorda</SelectItem>
                         </SelectContent>
                       </Select>
+                      {r.peso_medio_kg > 0 && (
+                        <span className="text-[10px] text-muted-foreground">auto</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
