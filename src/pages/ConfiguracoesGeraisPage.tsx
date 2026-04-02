@@ -344,7 +344,7 @@ export default function ConfiguracoesGeraisPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {[...SECTIONS[3].keys, ...customFormulas.map(c => c.chave)].map(key => {
+          {[...SECTIONS[1].keys, ...customFormulas.map(c => c.chave)].map(key => {
             const c = configsByKey[key] || customFormulas.find(f => f.chave === key);
             if (!c) return null;
             const edit = getEdit(c);
