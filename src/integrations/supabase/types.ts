@@ -131,6 +131,7 @@ export type Database = {
           criado_em: string | null
           estado: string
           id: string
+          intervalo_padrao_dias: number
           nome: string
         }
         Insert: {
@@ -140,6 +141,7 @@ export type Database = {
           criado_em?: string | null
           estado?: string
           id?: string
+          intervalo_padrao_dias?: number
           nome: string
         }
         Update: {
@@ -149,6 +151,7 @@ export type Database = {
           criado_em?: string | null
           estado?: string
           id?: string
+          intervalo_padrao_dias?: number
           nome?: string
         }
         Relationships: [
@@ -506,6 +509,7 @@ export type Database = {
       }
       retiros: {
         Row: {
+          alerta_atraso_enviado: boolean
           ativo: boolean | null
           capataz: string
           consumo_engorda: number | null
@@ -527,8 +531,10 @@ export type Database = {
           preco_por_kg: number | null
           produto_id: string | null
           sexo_padrao: string | null
+          ultima_salga_em: string | null
         }
         Insert: {
+          alerta_atraso_enviado?: boolean
           ativo?: boolean | null
           capataz: string
           consumo_engorda?: number | null
@@ -550,8 +556,10 @@ export type Database = {
           preco_por_kg?: number | null
           produto_id?: string | null
           sexo_padrao?: string | null
+          ultima_salga_em?: string | null
         }
         Update: {
+          alerta_atraso_enviado?: boolean
           ativo?: boolean | null
           capataz?: string
           consumo_engorda?: number | null
@@ -573,6 +581,7 @@ export type Database = {
           preco_por_kg?: number | null
           produto_id?: string | null
           sexo_padrao?: string | null
+          ultima_salga_em?: string | null
         }
         Relationships: [
           {
