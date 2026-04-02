@@ -363,6 +363,10 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
           <div><p className="text-[10px] text-muted-foreground">Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
           <div><p className="text-[10px] text-muted-foreground">GMD</p><p className="text-lg font-bold text-primary">{fmtNum(retiro.gmd, 3)}</p></div>
         </div>
+        <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
+          <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
+          <span>Intervalo real médio: <strong className="text-foreground">{retiro.intervaloRealMedio != null ? `${retiro.intervaloRealMedio}d` : '—'}</strong></span>
+        </div>
       </SheetHeader>
 
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
