@@ -57,9 +57,7 @@ export function useGerenteData() {
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
-  const [fazendaNome, setFazendaNome] = useState("");
   const [fazendaData, setFazendaData] = useState<Fazenda>({ nome: '', intervalo_padrao_dias: 3 });
-  const [fazendaNome, setFazendaNome] = useState("");
   const [ciclo, setCiclo] = useState<Ciclo | null>(null);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
