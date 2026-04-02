@@ -22,7 +22,7 @@ const leadSchema = z.object({
   mensagem: z.string().trim().max(1000).optional(),
 });
 
-const defaultHeroes = [heroImg1, heroImg2, heroImg3];
+const fallbackHeroes = [heroImg1, heroImg2, heroImg3];
 
 const diferenciais = [
   { icon: CheckCircle2, title: "Controle de salgas", desc: "Registro e monitoramento de salgas por pasto em tempo real." },
@@ -36,6 +36,16 @@ const diferenciais = [
 
 type LandingContent = Record<string, string>;
 
+function parseImageArray(val: string | undefined): string[] {
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return val.startsWith("http") ? [val] : [];
+  }
+}
+
 export default function LandingPage() {
   const [content, setContent] = useState<LandingContent>({});
   const [heroIndex, setHeroIndex] = useState(0);
@@ -44,7 +54,6 @@ export default function LandingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Load dynamic content
   useEffect(() => {
     supabase.from("landing_page_content").select("chave, valor").then(({ data }) => {
       if (data) {
@@ -55,11 +64,32 @@ export default function LandingPage() {
     });
   }, []);
 
+  // Derived dynamic images
+  const heroImages = (() => {
+    const dynamic = parseImageArray(content.img_carrossel);
+    return dynamic.length > 0 ? dynamic : fallbackHeroes;
+  })();
+  const quemSomosImg = (() => {
+    const dynamic = parseImageArray(content.img_quem_somos);
+    return dynamic.length > 0 ? dynamic[0] : heroImg2;
+  })();
+  const diferenciaisImg = (() => {
+    const dynamic = parseImageArray(content.img_diferenciais);
+    return dynamic.length > 0 ? dynamic[0] : null;
+  })();
+  const parceirosLogos = parseImageArray(content.img_parceiros);
+
   // Hero carousel auto-advance
   useEffect(() => {
-    const timer = setInterval(() => setHeroIndex((i) => (i + 1) % 3), 5000);
+    if (heroImages.length <= 1) return;
+    const timer = setInterval(() => setHeroIndex((i) => (i + 1) % heroImages.length), 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroImages.length]);
+
+  // Reset index if images change
+  useEffect(() => {
+    setHeroIndex(0);
+  }, [heroImages.length]);
 
   const handleSubmit = useCallback(async () => {
     const result = leadSchema.safeParse(form);
@@ -86,7 +116,6 @@ export default function LandingPage() {
       return;
     }
 
-    // Create notification for admin
     await supabase.from("notificacoes").insert({
       tipo: "lead",
       titulo: `Novo lead: ${form.nome.trim()}`,
@@ -127,9 +156,9 @@ export default function LandingPage() {
 
       {/* Hero Carousel */}
       <section className="relative w-full h-[70vh] min-h-[400px] mt-14 overflow-hidden">
-        {defaultHeroes.map((img, i) => (
+        {heroImages.map((img, i) => (
           <div
-            key={i}
+            key={`${img}-${i}`}
             className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
             style={{ opacity: heroIndex === i ? 1 : 0 }}
           >
@@ -152,22 +181,25 @@ export default function LandingPage() {
             Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto.
           </p>
         </div>
-        {/* Carousel indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-          {defaultHeroes.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setHeroIndex(i)}
-              className={`w-3 h-3 rounded-full transition-all ${heroIndex === i ? "bg-secondary scale-125" : "bg-primary-foreground/50"}`}
-            />
-          ))}
-        </div>
-        <button onClick={() => setHeroIndex((i) => (i - 1 + 3) % 3)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <button onClick={() => setHeroIndex((i) => (i + 1) % 3)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
-          <ChevronRight className="w-6 h-6" />
-        </button>
+        {heroImages.length > 1 && (
+          <>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+              {heroImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setHeroIndex(i)}
+                  className={`w-3 h-3 rounded-full transition-all ${heroIndex === i ? "bg-secondary scale-125" : "bg-primary-foreground/50"}`}
+                />
+              ))}
+            </div>
+            <button onClick={() => setHeroIndex((i) => (i - 1 + heroImages.length) % heroImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button onClick={() => setHeroIndex((i) => (i + 1) % heroImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </>
+        )}
       </section>
 
       {/* Quem Somos */}
@@ -176,7 +208,7 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">Quem somos nós</h2>
           <div className="flex flex-col md:flex-row gap-8 items-center">
             <div className="w-full md:w-1/2 rounded-xl overflow-hidden shadow-lg">
-              <img src={heroImg2} alt="Quem somos" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
+              <img src={quemSomosImg} alt="Quem somos" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
             </div>
             <div className="w-full md:w-1/2">
               <p className="text-muted-foreground text-base md:text-lg leading-relaxed whitespace-pre-line">
@@ -192,6 +224,13 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4 text-center">Nossos diferenciais</h2>
           <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">{diferenciaisText}</p>
+
+          {diferenciaisImg && (
+            <div className="mb-12 rounded-xl overflow-hidden shadow-lg max-w-3xl mx-auto">
+              <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {diferenciais.map((d) => (
               <Card key={d.title} className="hover:shadow-lg transition-shadow border-border/50">
@@ -214,9 +253,19 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8">Parceiros que usam</h2>
           <p className="text-muted-foreground mb-8">Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
           <div className="flex flex-wrap items-center justify-center gap-8">
-            <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 1</div>
-            <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 2</div>
-            <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 3</div>
+            {parceirosLogos.length > 0 ? (
+              parceirosLogos.map((logo, i) => (
+                <div key={logo} className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-border">
+                  <img src={logo} alt={`Parceiro ${i + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 1</div>
+                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 2</div>
+                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 3</div>
+              </>
+            )}
           </div>
         </div>
       </section>
