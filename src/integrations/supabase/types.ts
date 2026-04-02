@@ -459,6 +459,87 @@ export type Database = {
           },
         ]
       }
+      landing_page_content: {
+        Row: {
+          atualizado_em: string | null
+          chave: string
+          id: string
+          valor: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          chave: string
+          id?: string
+          valor?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          chave?: string
+          id?: string
+          valor?: string | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          criado_em: string
+          email: string
+          id: string
+          mensagem: string | null
+          nome: string
+          telefone: string
+          whatsapp: string
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: string
+          mensagem?: string | null
+          nome: string
+          telefone: string
+          whatsapp: string
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: string
+          mensagem?: string | null
+          nome?: string
+          telefone?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      notificacoes: {
+        Row: {
+          criado_em: string
+          dados: Json | null
+          id: string
+          lida: boolean
+          mensagem: string | null
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          criado_em?: string
+          dados?: Json | null
+          id?: string
+          lida?: boolean
+          mensagem?: string | null
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          criado_em?: string
+          dados?: Json | null
+          id?: string
+          lida?: boolean
+          mensagem?: string | null
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       observacoes: {
         Row: {
           capataz_nome: string | null

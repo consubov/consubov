@@ -20,6 +20,9 @@ import QrCodesPage from "./pages/QrCodesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import LancamentoManualPage from "./pages/LancamentoManualPage";
 import ConfiguracoesGeraisPage from "./pages/ConfiguracoesGeraisPage";
+import NotificacoesPage from "./pages/NotificacoesPage";
+import LandingPageConfigPage from "./pages/LandingPageConfigPage";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,6 +103,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/login" element={<LoginRoute />} />
             <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
 
@@ -116,6 +120,8 @@ const App = () => (
               <Route path="qrcodes" element={<QrCodesPage />} />
               <Route path="lancamento-manual" element={<LancamentoManualPage />} />
               <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
+              <Route path="notificacoes" element={<NotificacoesPage />} />
+              <Route path="landing-page" element={<LandingPageConfigPage />} />
             </Route>
 
             {/* Gerente */}

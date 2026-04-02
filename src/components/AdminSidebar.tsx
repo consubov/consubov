@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -22,6 +22,8 @@ const menuItems = [
   { title: "QR Codes", url: "/admin/qrcodes", icon: QrCode },
   { title: "Lançamento Manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },
   { title: "Configurações Gerais", url: "/admin/configuracoes", icon: Settings },
+  { title: "Notificações", url: "/admin/notificacoes", icon: Bell },
+  { title: "Landing Page", url: "/admin/landing-page", icon: Globe },
 ];
 
 export function AdminSidebar() {
