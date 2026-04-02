@@ -16,9 +16,11 @@ import {
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Landmark, Map } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Landmark, Map, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/hooks/useAuth";
+import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 
 type Fazenda = Tables<"fazendas">;
 type Retiro = Tables<"retiros">;
@@ -38,7 +40,9 @@ interface FazendaEditForm {
 export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [fazenda, setFazenda] = useState<Fazenda | null>(null);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -189,10 +193,23 @@ export default function FazendaDetailPage() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">Retiros desta Fazenda</h2>
-        <Button onClick={openNew} size="sm" className="gap-1.5">
-          <Plus className="w-4 h-4" /> Novo Retiro
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setRelatorioOpen(true)} size="sm" variant="outline" className="gap-1.5">
+            <FileDown className="w-4 h-4" /> Relatório PDF
+          </Button>
+          <Button onClick={openNew} size="sm" className="gap-1.5">
+            <Plus className="w-4 h-4" /> Novo Retiro
+          </Button>
+        </div>
       </div>
+
+      <ExportarRelatorioModal
+        open={relatorioOpen}
+        onOpenChange={setRelatorioOpen}
+        fazendaId={fazendaId!}
+        fazendaNome={fazenda.nome}
+        geradoPor={user?.user_metadata?.nome || user?.email || "Administrador"}
+      />
 
       {retiros.length === 0 ? (
         <Card>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso } from "@/hooks/useGerenteData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -56,7 +57,7 @@ function scoreColor(score: number) {
 }
 
 export default function GerenteDashboard() {
-  const { signOut } = useAuth();
+  const { signOut, user, roleData } = useAuth();
   const {
     loading, gerenteNome, fazendaNome, ciclo, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
@@ -66,6 +67,7 @@ export default function GerenteDashboard() {
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   const cicloLabel = ciclo ? `${MES_NOMES[ciclo.mes - 1]}/${ciclo.ano}` : "—";
 
@@ -91,6 +93,9 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80">
+              <FileDown className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
@@ -346,6 +351,16 @@ export default function GerenteDashboard() {
           )}
         </SheetContent>
       </Sheet>
+
+      {roleData.fazendaId && (
+        <ExportarRelatorioModal
+          open={relatorioOpen}
+          onOpenChange={setRelatorioOpen}
+          fazendaId={roleData.fazendaId}
+          fazendaNome={fazendaNome}
+          geradoPor={user?.user_metadata?.nome || user?.email || gerenteNome}
+        />
+      )}
     </div>
   );
 }
