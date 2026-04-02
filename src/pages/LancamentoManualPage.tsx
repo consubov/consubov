@@ -111,7 +111,15 @@ export default function LancamentoManualPage() {
   }
 
   function updateRow(idx: number, field: keyof PastoRow, value: any) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+    setRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const updated = { ...r, [field]: value };
+      // Auto-classify category when peso changes
+      if (field === 'peso_medio_kg' && typeof value === 'number' && value > 0) {
+        updated.categoria = classificarCategoria(value);
+      }
+      return updated;
+    }));
   }
 
   async function handleSalvar() {
