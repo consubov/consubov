@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useGerenteData, type RetiroComDados, type Observacao } from "@/hooks/useGerenteData";
+import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso } from "@/hooks/useGerenteData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
