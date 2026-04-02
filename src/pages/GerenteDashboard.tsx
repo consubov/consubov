@@ -57,7 +57,7 @@ function scoreColor(score: number) {
 }
 
 export default function GerenteDashboard() {
-  const { signOut } = useAuth();
+  const { signOut, user, roleData } = useAuth();
   const {
     loading, gerenteNome, fazendaNome, ciclo, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
