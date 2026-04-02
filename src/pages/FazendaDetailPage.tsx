@@ -40,7 +40,9 @@ interface FazendaEditForm {
 export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [fazenda, setFazenda] = useState<Fazenda | null>(null);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
