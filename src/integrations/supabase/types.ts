@@ -123,6 +123,80 @@ export type Database = {
           },
         ]
       }
+      configuracoes_gerais: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string | null
+          chave: string
+          criado_em: string | null
+          descricao: string | null
+          formula: string | null
+          id: string
+          tipo: string
+          titulo: string
+          valor: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string | null
+          chave: string
+          criado_em?: string | null
+          descricao?: string | null
+          formula?: string | null
+          id?: string
+          tipo?: string
+          titulo: string
+          valor?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string | null
+          chave?: string
+          criado_em?: string | null
+          descricao?: string | null
+          formula?: string | null
+          id?: string
+          tipo?: string
+          titulo?: string
+          valor?: number | null
+        }
+        Relationships: []
+      }
+      configuracoes_historico: {
+        Row: {
+          alterado_por: string | null
+          configuracao_id: string
+          data: string | null
+          id: string
+          valor_antigo: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          alterado_por?: string | null
+          configuracao_id: string
+          data?: string | null
+          id?: string
+          valor_antigo?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          alterado_por?: string | null
+          configuracao_id?: string
+          data?: string | null
+          id?: string
+          valor_antigo?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_historico_configuracao_id_fkey"
+            columns: ["configuracao_id"]
+            isOneToOne: false
+            referencedRelation: "configuracoes_gerais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fazendas: {
         Row: {
           administrador_id: string | null
