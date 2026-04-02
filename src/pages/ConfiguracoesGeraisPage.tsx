@@ -38,19 +38,25 @@ const DEFAULTS: Record<string, { valor?: number; formula?: string }> = {
   limite_leve: { valor: 1 },
   limite_moderado: { valor: 2 },
   limite_critico: { valor: 3 },
-  consumo_esperado: { formula: "(num_animais * peso_medio_kg * consumo_por_100kg) / 100" },
-  consumo_real: { formula: "num_sacos * peso_saco_kg" },
+  consumo_real: { formula: "(num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) * 1000" },
+  consumo_esperado: { formula: "(consumo_por_100kg_categoria * peso_medio_kg) / 100" },
+  classificacao_consumo: { formula: "SE consumo_real < (consumo_esperado - margem) → ABAIXO | SE consumo_real > (consumo_esperado + margem) → ACIMA | SENÃO → IDEAL" },
   indice_consumo: { formula: "consumo_real / consumo_esperado" },
-  consumo_ciclo: { formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_intervalo)" },
+  consumo_ciclo: { formula: "(num_sacos * peso_saco_kg * 1000) / (num_animais * dias_no_pasto)" },
   consumo_mensal: { formula: "num_sacos * peso_saco_kg" },
   consumo_produto: { formula: "SUM(num_sacos * peso_saco_kg) GROUP BY produto_id" },
 };
 
-const SYSTEM_VARS = ["num_animais", "peso_medio_kg", "num_sacos", "dias_intervalo", "peso_saco_kg", "consumo_por_100kg"];
+const SYSTEM_VARS = [
+  "num_animais", "peso_medio_kg", "num_sacos", "dias_no_pasto",
+  "peso_saco_kg", "consumo_por_100kg_categoria", "margem",
+  "consumo_real", "consumo_esperado",
+];
 
 const SECTIONS = [
   { title: "Alertas", keys: ["hora_inicio_alerta", "limite_leve", "limite_moderado", "limite_critico"] },
-  { title: "Fórmulas do Sistema", keys: ["consumo_esperado", "consumo_real", "indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
+  { title: "📊 Fórmulas de Cálculo", keys: ["consumo_real", "consumo_esperado", "classificacao_consumo"] },
+  { title: "Fórmulas Auxiliares", keys: ["indice_consumo", "consumo_ciclo", "consumo_mensal", "consumo_produto"] },
 ];
 
 function validateFormula(formula: string): { valid: boolean; error?: string } {
