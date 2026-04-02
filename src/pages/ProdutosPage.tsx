@@ -105,6 +105,7 @@ export default function ProdutosPage() {
     if (!form.marca.trim()) { toast.error("Marca é obrigatória."); return; }
     if (!form.tipo) { toast.error("Tipo é obrigatório."); return; }
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
+    if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
     setSaving(true);
     const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
