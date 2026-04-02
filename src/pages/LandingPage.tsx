@@ -229,7 +229,7 @@ export default function LandingPage() {
               <AccordionContent>
                 <div className="flex flex-col md:flex-row gap-8 items-center pb-4">
                   <div className="w-full md:w-1/2 rounded-xl overflow-hidden shadow-lg">
-                    <img src={quemSomosImg} alt="Quem somos" className="w-full h-64 md:h-80 object-cover" loading="lazy" />
+                    <img src={quemSomosImg} alt="Quem somos" className="w-full h-auto object-contain" loading="lazy" />
                   </div>
                   <div className="w-full md:w-1/2">
                     <p className="text-muted-foreground text-base md:text-lg leading-relaxed whitespace-pre-line text-justify">
