@@ -210,10 +210,10 @@ export default function LandingPage() {
       <section className="py-12 md:py-16 px-4 bg-primary/5">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-3xl md:text-5xl font-extrabold text-foreground uppercase mb-4">
-            GESTÃO PECUÁRIA INTELIGENTE
+            {content.hero_titulo || "GESTÃO PECUÁRIA INTELIGENTE"}
           </h1>
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed text-justify">
-            Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto.
+            {content.hero_subtitulo || "Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto."}
           </p>
         </div>
       </section>
