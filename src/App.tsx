@@ -19,6 +19,7 @@ import CapatazesPage from "./pages/CapatazesPage";
 import QrCodesPage from "./pages/QrCodesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import LancamentoManualPage from "./pages/LancamentoManualPage";
+import ConfiguracoesGeraisPage from "./pages/ConfiguracoesGeraisPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
