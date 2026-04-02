@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -15,8 +15,10 @@ interface Lancamento {
   custo_total: number | null; gmd_kg_dia: number | null;
   capataz_nome: string | null; lancado_em: string | null;
   status_consumo: string | null; indice_consumo: number | null;
+  dias_intervalo: number | null;
 }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
+interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
 
 export interface Observacao {
   id: string; fazenda_id: string; retiro_id: string | null; pasto_id: string | null;
@@ -30,6 +32,20 @@ export interface RetiroComDados {
   totalAnimais: number; sacosUtilizados: number;
   consumoMedio: number; gmd: number; pastos: Pasto[];
   lancamentos: Lancamento[];
+  intervaloDefinido: number;
+  intervaloRealMedio: number | null;
+  diasSemSalga: number | null;
+  alertaAtraso: boolean;
+  ultimaSalga: string | null;
+}
+
+export interface AlertaAtraso {
+  retiroNome: string;
+  capataz: string;
+  ultimaSalga: string | null;
+  intervaloDefinido: number;
+  diasSemSalga: number;
+  gravidade: 'leve' | 'moderado' | 'critico';
 }
 
 export interface PainelData {
@@ -49,12 +65,14 @@ export function useGerenteData() {
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
-  const [fazendaNome, setFazendaNome] = useState("");
+  const [fazendaData, setFazendaData] = useState<FazendaRow>({ nome: '', intervalo_padrao_dias: 3 });
   const [ciclo, setCiclo] = useState<Ciclo | null>(null);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [observacoes, setObservacoes] = useState<Observacao[]>([]);
+
+  const fazendaNome = fazendaData.nome;
 
   const loadData = useCallback(async () => {
     if (!fazendaId) { setLoading(false); return; }
@@ -62,18 +80,23 @@ export function useGerenteData() {
     try {
       const [gerenteRes, fazendaRes, cicloRes, retirosRes] = await Promise.all([
         supabase.from("gerentes").select("nome").eq("id", roleData.roleId!).single(),
-        supabase.from("fazendas").select("nome").eq("id", fazendaId).single(),
+        supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .eq("fechado", false).order("ano", { ascending: false })
           .order("mes", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("retiros").select("id, nome, capataz").eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       setGerenteNome(gerenteRes.data?.nome ?? "");
-      setFazendaNome(fazendaRes.data?.nome ?? "");
+      const fData = fazendaRes.data as any;
+      setFazendaData({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
       const currentCiclo = cicloRes.data as Ciclo | null;
       setCiclo(currentCiclo);
-      const retirosList = (retirosRes.data ?? []) as Retiro[];
+      const retirosList = (retirosRes.data ?? []).map((r: any) => ({
+        id: r.id, nome: r.nome, capataz: r.capataz,
+        ultima_salga_em: r.ultima_salga_em ?? null,
+        alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
+      })) as Retiro[];
       setRetiros(retirosList);
 
       const retiroIds = retirosList.map(r => r.id);
@@ -86,7 +109,7 @@ export function useGerenteData() {
         const pastoIds = pastosList.map(p => p.id);
         let lancList: Lancamento[] = [];
         if (currentCiclo && pastoIds.length > 0) {
-          const lancRes = await supabase.from("lancamentos").select("id, ciclo_id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em, status_consumo, indice_consumo")
+          const lancRes = await supabase.from("lancamentos").select("id, ciclo_id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em, status_consumo, indice_consumo, dias_intervalo")
             .eq("ciclo_id", currentCiclo.id).in("pasto_id", pastoIds);
           lancList = (lancRes.data ?? []) as Lancamento[];
         }
@@ -96,7 +119,7 @@ export function useGerenteData() {
         setLancamentos([]);
       }
 
-      // Observacoes - table may not exist yet
+      // Observacoes
       try {
         const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
         setObservacoes((obsRes.data ?? []) as Observacao[]);
@@ -126,7 +149,6 @@ export function useGerenteData() {
     const consumoVals = lancamentos.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
     const consumoMedio = consumoVals.length > 0 ? consumoVals.reduce((a, b) => a + b, 0) / consumoVals.length : 0;
 
-    // Pastos "na meta": use status_consumo = IDEAL from latest lancamento per pasto
     const latestLancByPasto = new Map<string, Lancamento>();
     const sortedLancs = [...lancamentos].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
     for (const l of sortedLancs) {
@@ -152,6 +174,9 @@ export function useGerenteData() {
 
   // Computed: retiros com dados
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
+    const intervaloDefinido = fazendaData.intervalo_padrao_dias;
+    const now = new Date();
+
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rPastoIds = new Set(rPastos.map(p => p.id));
@@ -162,25 +187,50 @@ export function useGerenteData() {
       const consumoMedio = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
       const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
       const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
-      return { ...r, totalAnimais, sacosUtilizados, consumoMedio, gmd, pastos: rPastos, lancamentos: rLanc };
+
+      // Interval real average: last 5 valid lancamentos with dias_intervalo > 0
+      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
+      const validIntervals = sortedRLanc
+        .filter(l => l.dias_intervalo != null && l.dias_intervalo > 0)
+        .slice(0, 5)
+        .map(l => l.dias_intervalo!);
+      const intervaloRealMedio = validIntervals.length > 0
+        ? Number((validIntervals.reduce((a, b) => a + b, 0) / validIntervals.length).toFixed(1))
+        : null;
+
+      // Dias sem salga
+      const ultimaSalga = r.ultima_salga_em;
+      let diasSemSalga: number | null = null;
+      if (ultimaSalga) {
+        diasSemSalga = Math.floor((now.getTime() - new Date(ultimaSalga).getTime()) / 86400000);
+      }
+
+      // Alerta de atraso: dias_sem_salga >= intervalo_padrao + 1 and hora >= 06:00
+      const horaAtual = now.getHours();
+      const alertaAtraso = diasSemSalga != null && diasSemSalga >= intervaloDefinido + 1 && horaAtual >= 6;
+
+      return {
+        ...r, totalAnimais, sacosUtilizados, consumoMedio, gmd,
+        pastos: rPastos, lancamentos: rLanc,
+        intervaloDefinido,
+        intervaloRealMedio,
+        diasSemSalga,
+        alertaAtraso,
+        ultimaSalga,
+      };
     });
-  }, [retiros, pastos, lancamentos]);
+  }, [retiros, pastos, lancamentos, fazendaData]);
 
   // Computed: capataz scores
   const capatazScores = useMemo<CapatazScore[]>(() => {
     const numDias = ciclo?.num_dias ?? 30;
     return retirosComDados.map(r => {
       const rLanc = r.lancamentos;
-      // 50% consumption proximity
       const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
       const avgC = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
       const consumoScore = avgC > 0 ? Math.max(0, 1 - Math.abs(avgC - CONSUMO_META) / CONSUMO_META) * 5 : 0;
-
-      // 25% regularity
       const expected = r.pastos.length * (numDias / 3);
       const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-
-      // 25% interval consistency
       const dates = rLanc.filter(l => l.lancado_em).map(l => new Date(l.lancado_em!).getTime()).sort((a, b) => a - b);
       let intScore = 0;
       if (dates.length >= 2) {
@@ -189,16 +239,32 @@ export function useGerenteData() {
         const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
         intScore = avg <= 4 ? 2.5 : Math.max(0, 2.5 - (avg - 4) * 0.25);
       }
-
       return { retiro: r.nome, capataz: r.capataz, score: Number(Math.min(10, consumoScore + regScore + intScore).toFixed(1)) };
     }).sort((a, b) => b.score - a.score);
   }, [retirosComDados, ciclo]);
 
-  // Computed: GMD ranking
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
       .map(r => ({ retiro: r.nome, capataz: r.capataz, gmd: Number(r.gmd.toFixed(3)) }))
       .sort((a, b) => b.gmd - a.gmd);
+  }, [retirosComDados]);
+
+  // Alertas de atraso
+  const alertasAtraso = useMemo<AlertaAtraso[]>(() => {
+    return retirosComDados
+      .filter(r => r.alertaAtraso && r.diasSemSalga != null)
+      .map(r => {
+        const excesso = r.diasSemSalga! - r.intervaloDefinido;
+        const gravidade: AlertaAtraso['gravidade'] = excesso >= 3 ? 'critico' : excesso >= 2 ? 'moderado' : 'leve';
+        return {
+          retiroNome: r.nome,
+          capataz: r.capataz,
+          ultimaSalga: r.ultimaSalga,
+          intervaloDefinido: r.intervaloDefinido,
+          diasSemSalga: r.diasSemSalga!,
+          gravidade,
+        };
+      });
   }, [retirosComDados]);
 
   // Resolve observacao
@@ -220,5 +286,6 @@ export function useGerenteData() {
     loading, gerenteNome, fazendaNome, ciclo, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh: loadData,
+    alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,
   };
 }

@@ -21,7 +21,8 @@ const statusConfig = {
 const consumoBadge: Record<string, { emoji: string; className: string }> = {
   ABAIXO: { emoji: '🔴', className: 'bg-destructive text-destructive-foreground' },
   IDEAL: { emoji: '🟢', className: 'bg-primary text-primary-foreground' },
-  ACIMA: { emoji: '🔵', className: 'bg-blue-600 text-white' },
+  ACIMA: { emoji: '🟡', className: 'bg-yellow-500 text-yellow-950' },
+  ERRO: { emoji: '⚠️', className: 'bg-muted text-muted-foreground' },
 };
 
 export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sacosHoje, status, statusConsumo, indiceConsumo }: PastoCardProps) {

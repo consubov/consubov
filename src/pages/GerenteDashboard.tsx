@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useGerenteData, type RetiroComDados, type Observacao } from "@/hooks/useGerenteData";
+import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso } from "@/hooks/useGerenteData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -61,6 +61,7 @@ export default function GerenteDashboard() {
     loading, gerenteNome, fazendaNome, ciclo, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
+    alertasAtraso, intervaloDefinido,
   } = useGerenteData();
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
@@ -114,9 +115,9 @@ export default function GerenteDashboard() {
           <TabsTrigger value="ranking" className="text-xs data-[state=active]:text-primary">Ranking</TabsTrigger>
           <TabsTrigger value="alertas" className="text-xs data-[state=active]:text-primary relative">
             Alertas
-            {obsPendentes.length > 0 && (
+            {(obsPendentes.length + alertasAtraso.length) > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
-                {obsPendentes.length}
+                {obsPendentes.length + alertasAtraso.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -144,14 +145,17 @@ export default function GerenteDashboard() {
             <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
           ) : (
             retirosComDados.map(r => (
-              <Card key={r.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => setSelectedRetiro(r)}>
+              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => setSelectedRetiro(r)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-semibold text-sm text-foreground">{r.nome}</p>
                       <p className="text-xs text-muted-foreground">{r.capataz}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5">
+                      {r.alertaAtraso && <AlertTriangle className="w-4 h-4 text-destructive" />}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
@@ -170,6 +174,15 @@ export default function GerenteDashboard() {
                       <p className="text-xs text-muted-foreground">GMD</p>
                       <p className="text-sm font-bold text-primary">{fmtNum(r.gmd, 3)}</p>
                     </div>
+                  </div>
+                  {/* Interval info */}
+                  <div className="mt-2 pt-2 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Intervalo: {r.intervaloDefinido}d definido · {r.intervaloRealMedio != null ? `${r.intervaloRealMedio}d real` : '—'}</span>
+                    {r.diasSemSalga != null && (
+                      <span className={r.alertaAtraso ? 'text-destructive font-semibold' : ''}>
+                        {r.diasSemSalga}d sem salga
+                      </span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -248,6 +261,41 @@ export default function GerenteDashboard() {
 
         {/* ===== ALERTAS ===== */}
         <TabsContent value="alertas" className="flex-1 overflow-auto p-4 space-y-6 mt-0">
+          {/* Alertas de salga atrasada */}
+          {alertasAtraso.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Salga Atrasada
+                <Badge variant="destructive" className="text-[10px] h-5">{alertasAtraso.length}</Badge>
+              </h2>
+              <div className="space-y-2">
+                {alertasAtraso.map(a => {
+                  const gravCfg = {
+                    leve: { border: 'border-yellow-500/50', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+                    moderado: { border: 'border-orange-500/50', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+                    critico: { border: 'border-destructive', bg: 'bg-destructive/5' },
+                  };
+                  const cfg = gravCfg[a.gravidade];
+                  return (
+                    <Card key={a.retiroNome} className={`${cfg.border} ${cfg.bg}`}>
+                      <CardContent className="p-3 space-y-1">
+                        <p className="text-sm font-bold text-destructive">⚠️ ALERTA DE SALGA ATRASADA</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Retiro:</span> {a.retiroNome}</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Última salga:</span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
+                        <p className="text-xs"><span className="text-muted-foreground">Intervalo definido:</span> {a.intervaloDefinido} dias</p>
+                        <p className="text-xs font-semibold text-destructive">Dias sem salga: {a.diasSemSalga}</p>
+                        <p className="text-xs text-muted-foreground">👉 Verificar responsável pela salga</p>
+                        <Badge variant="destructive" className="text-[10px] mt-1">
+                          {a.gravidade === 'critico' ? '🔴 Crítico' : a.gravidade === 'moderado' ? '🟠 Moderado' : '🟡 Leve'}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Pendentes */}
           <div>
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
@@ -315,6 +363,10 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
           <div><p className="text-[10px] text-muted-foreground">Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
           <div><p className="text-[10px] text-muted-foreground">GMD</p><p className="text-lg font-bold text-primary">{fmtNum(retiro.gmd, 3)}</p></div>
         </div>
+        <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
+          <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
+          <span>Intervalo real médio: <strong className="text-foreground">{retiro.intervaloRealMedio != null ? `${retiro.intervaloRealMedio}d` : '—'}</strong></span>
+        </div>
       </SheetHeader>
 
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
@@ -332,7 +384,8 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
           const consumoBadgeConfig: Record<string, { emoji: string; className: string }> = {
             ABAIXO: { emoji: '🔴', className: 'bg-destructive text-destructive-foreground' },
             IDEAL: { emoji: '🟢', className: 'bg-primary text-primary-foreground' },
-            ACIMA: { emoji: '🔵', className: 'bg-blue-600 text-white' },
+            ACIMA: { emoji: '🟡', className: 'bg-yellow-500 text-yellow-950' },
+            ERRO: { emoji: '⚠️', className: 'bg-muted text-muted-foreground' },
           };
           const cb = latestConsumo?.status_consumo ? consumoBadgeConfig[latestConsumo.status_consumo] : null;
 

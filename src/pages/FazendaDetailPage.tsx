@@ -31,6 +31,10 @@ interface RetiroForm {
 
 const emptyRetiroForm: RetiroForm = { nome: "", capataz: "", ativo: true };
 
+interface FazendaEditForm {
+  intervalo_padrao_dias: number;
+}
+
 export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
@@ -41,6 +45,8 @@ export default function FazendaDetailPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<RetiroForm>(emptyRetiroForm);
   const [saving, setSaving] = useState(false);
+  const [fazendaEdit, setFazendaEdit] = useState<FazendaEditForm>({ intervalo_padrao_dias: 3 });
+  const [savingFazenda, setSavingFazenda] = useState(false);
 
   async function loadData() {
     if (!fazendaId) return;
@@ -50,6 +56,7 @@ export default function FazendaDetailPage() {
     ]);
     if (fazRes.error) { toast.error("Fazenda não encontrada."); navigate("/admin/fazendas"); return; }
     setFazenda(fazRes.data);
+    setFazendaEdit({ intervalo_padrao_dias: (fazRes.data as any).intervalo_padrao_dias ?? 3 });
     setRetiros(retRes.data ?? []);
     setLoading(false);
   }
@@ -142,6 +149,40 @@ export default function FazendaDetailPage() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div><span className="text-muted-foreground">Cidade:</span> {fazenda.cidade}</div>
             <div><span className="text-muted-foreground">Estado:</span> {fazenda.estado}</div>
+          </div>
+          <div className="mt-4 pt-4 border-t space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="intervalo" className="text-sm font-medium">Intervalo padrão entre salgas (dias)</Label>
+                <p className="text-xs text-muted-foreground">Define o intervalo ideal de salga para todos os retiros</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="intervalo"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={fazendaEdit.intervalo_padrao_dias}
+                  onChange={(e) => setFazendaEdit({ intervalo_padrao_dias: parseInt(e.target.value) || 3 })}
+                  className="w-20 text-center"
+                />
+                <Button
+                  size="sm"
+                  disabled={savingFazenda}
+                  onClick={async () => {
+                    setSavingFazenda(true);
+                    const { error } = await supabase.from("fazendas").update({
+                      intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias,
+                    } as any).eq("id", fazendaId!);
+                    setSavingFazenda(false);
+                    if (error) { toast.error("Erro ao salvar"); return; }
+                    toast.success("Intervalo atualizado!");
+                  }}
+                >
+                  {savingFazenda ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
