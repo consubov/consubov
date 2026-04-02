@@ -554,7 +554,7 @@ export default function CapatazDashboard() {
 
           if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
             const { data: produto } = await supabase.from("produtos")
-              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+              .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
               .eq("id", produto_id_final).maybeSingle();
 
             if (produto) {
