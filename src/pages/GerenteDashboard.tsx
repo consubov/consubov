@@ -93,6 +93,9 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80">
+              <FileDown className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
