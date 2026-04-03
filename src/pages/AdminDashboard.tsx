@@ -16,7 +16,7 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0 });
+  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0 });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
