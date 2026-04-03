@@ -66,7 +66,8 @@ export default function PainelInteligenciaPage() {
   const [filtroProduto, setFiltroProduto] = useState("all");
   const [filtroCategoria, setFiltroCategoria] = useState("all");
   const [filtroSexo, setFiltroSexo] = useState("all");
-  const [filtroPeriodo, setFiltroPeriodo] = useState("mes");
+  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1); // 1-12
+  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
 
   useEffect(() => {
