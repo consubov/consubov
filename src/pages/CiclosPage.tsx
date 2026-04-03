@@ -84,8 +84,8 @@ export default function CiclosPage() {
 
   async function handleExcluir(ciclo: Ciclo) {
     setActionLoading(true);
-    // Delete linked lancamentos first
-    await supabase.from("lancamentos").delete().eq("ciclo_id", ciclo.id);
+    // Delete linked lancamentos by fazenda + mes/ano
+    await supabase.from("lancamentos").delete().eq("fazenda_id", ciclo.fazenda_id).eq("mes_referencia", ciclo.mes).eq("ano_referencia", ciclo.ano);
     const { error } = await supabase.from("ciclos").delete().eq("id", ciclo.id);
     if (error) {
       toast.error("Erro ao excluir ciclo");

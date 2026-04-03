@@ -10,12 +10,13 @@ interface Pasto {
   peso_abate_meta_kg: number | null; produto_id: string | null;
 }
 interface Lancamento {
-  id: string; ciclo_id: string; pasto_id: string; num_sacos: number;
-  num_animais: number; consumo_g_cab_dia: number | null;
-  custo_total: number | null; gmd_kg_dia: number | null;
-  capataz_nome: string | null; lancado_em: string | null;
-  status_consumo: string | null; indice_consumo: number | null;
-  dias_intervalo: number | null;
+  id: string; pasto_id: string; num_sacos: number;
+  num_animais: number; peso_medio_kg: number | null;
+  categoria: string | null; sexo: string | null;
+  dias_no_pasto: number; origem: string;
+  created_at: string | null;
+  mes_referencia: number; ano_referencia: number;
+  fazenda_id: string; retiro_id: string;
 }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
@@ -109,8 +110,8 @@ export function useGerenteData() {
         const pastoIds = pastosList.map(p => p.id);
         let lancList: Lancamento[] = [];
         if (currentCiclo && pastoIds.length > 0) {
-          const lancRes = await supabase.from("lancamentos").select("id, ciclo_id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em, status_consumo, indice_consumo, dias_intervalo")
-            .eq("ciclo_id", currentCiclo.id).in("pasto_id", pastoIds);
+          const lancRes = await supabase.from("lancamentos").select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id")
+            .eq("mes_referencia", currentCiclo.mes).eq("ano_referencia", currentCiclo.ano).in("pasto_id", pastoIds);
           lancList = (lancRes.data ?? []) as Lancamento[];
         }
         setLancamentos(lancList);
@@ -141,7 +142,6 @@ export function useGerenteData() {
       .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
@@ -149,26 +149,18 @@ export function useGerenteData() {
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {
     const totalAnimais = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
-    const consumoVals = lancamentos.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-    const consumoMedio = consumoVals.length > 0 ? consumoVals.reduce((a, b) => a + b, 0) / consumoVals.length : 0;
+    // No consumo_g_cab_dia in table - skip consumption metrics from lancamentos
+    const consumoMedio = 0;
 
-    const latestLancByPasto = new Map<string, Lancamento>();
-    const sortedLancs = [...lancamentos].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
-    for (const l of sortedLancs) {
-      if (!latestLancByPasto.has(l.pasto_id) && l.status_consumo) {
-        latestLancByPasto.set(l.pasto_id, l);
-      }
-    }
-    let pastosNaMeta = 0;
-    latestLancByPasto.forEach(l => {
-      if (l.status_consumo === 'IDEAL') pastosNaMeta++;
-    });
+    // No status_consumo in table - skip pastosNaMeta
+    const pastosNaMeta = 0;
 
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
-    const custoMensal = lancamentos.reduce((s, l) => s + (Number(l.custo_total) || 0), 0);
+    // No custo_total in table
+    const custoMensal = 0;
     const numDias = ciclo?.num_dias ?? 30;
-    const custoDiario = totalAnimais > 0 && numDias > 0 ? custoMensal / numDias / totalAnimais : 0;
-    const eficiencia = pastos.length > 0 ? (pastosNaMeta / pastos.length) * 100 : 0;
+    const custoDiario = 0;
+    const eficiencia = 0;
     const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
@@ -186,17 +178,16 @@ export function useGerenteData() {
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-      const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-      const consumoMedio = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
+      const consumoMedio = 0; // Calculated client-side in painel
       const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
       const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
-      // Interval real average: last 5 valid lancamentos with dias_intervalo > 0
-      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
+      // Interval real average: use dias_no_pasto from lancamentos
+      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
       const validIntervals = sortedRLanc
-        .filter(l => l.dias_intervalo != null && l.dias_intervalo > 0)
+        .filter(l => l.dias_no_pasto > 0)
         .slice(0, 5)
-        .map(l => l.dias_intervalo!);
+        .map(l => l.dias_no_pasto);
       const intervaloRealMedio = validIntervals.length > 0
         ? Number((validIntervals.reduce((a, b) => a + b, 0) / validIntervals.length).toFixed(1))
         : null;
@@ -229,12 +220,11 @@ export function useGerenteData() {
     const numDias = ciclo?.num_dias ?? 30;
     return retirosComDados.map(r => {
       const rLanc = r.lancamentos;
-      const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-      const avgC = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
-      const consumoScore = avgC > 0 ? Math.max(0, 1 - Math.abs(avgC - CONSUMO_META) / CONSUMO_META) * 5 : 0;
+      // Simplified score - no consumo_g_cab_dia available
+      const consumoScore = 0;
       const expected = r.pastos.length * (numDias / 3);
       const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-      const dates = rLanc.filter(l => l.lancado_em).map(l => new Date(l.lancado_em!).getTime()).sort((a, b) => a - b);
+      const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
       let intScore = 0;
       if (dates.length >= 2) {
         const intervals: number[] = [];

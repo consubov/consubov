@@ -123,7 +123,7 @@ export default function LancamentoManualPage() {
 
       let existingMap: Record<string, any> = {};
       if (pastoIds.length > 0) {
-        const { data: existing } = await supabase.from("lancamentos_manuais")
+        const { data: existing } = await supabase.from("lancamentos")
           .select("*")
           .in("pasto_id", pastoIds)
           .eq("mes_referencia", mes)
@@ -221,8 +221,8 @@ export default function LancamentoManualPage() {
       const cicloId = cicloIdResult as string;
 
       for (const r of rows) {
-        // Save to lancamentos_manuais
-        const { error } = await supabase.from("lancamentos_manuais").upsert({
+        // Save to lancamentos (unified table)
+        const { error } = await supabase.from("lancamentos").upsert({
           fazenda_id: fazendaId,
           retiro_id: retiroId,
           pasto_id: r.pasto_id,
@@ -237,33 +237,6 @@ export default function LancamentoManualPage() {
           origem: "manual",
         } as any, { onConflict: "pasto_id,mes_referencia,ano_referencia" });
         if (error) throw error;
-
-        // Also save to lancamentos for consumption tracking
-        const consumo = calcConsumoForRow(r);
-        const prod = produtosMap[r.produto_id];
-
-        const lancamentoData: any = {
-          ciclo_id: cicloId,
-          pasto_id: r.pasto_id,
-          num_sacos: r.num_sacos,
-          num_animais: r.num_animais,
-          peso_medio_kg: r.peso_medio_kg,
-          sexo: r.sexo || null,
-          categoria: r.categoria || null,
-          dias_no_pasto: r.dias_no_pasto,
-          produto_id: r.produto_id || null,
-          origem: "manual",
-          consumo_g_cab_dia: consumo?.consumo_real_g_cab_dia ?? null,
-          consumo_real_kg: consumo?.consumo_real_kg ?? null,
-          consumo_esperado_kg: consumo?.consumo_esperado_kg ?? null,
-          indice_consumo: consumo?.indice_consumo ?? null,
-          status_consumo: consumo?.status_consumo ?? null,
-          custo_total: prod ? r.num_sacos * prod.peso_saco_kg * (prod as any).preco_por_kg : null,
-        };
-
-        await supabase.from("lancamentos").upsert(lancamentoData, {
-          onConflict: "pasto_id,ciclo_id",
-        } as any);
       }
 
       // Close the ciclo after all lancamentos are saved

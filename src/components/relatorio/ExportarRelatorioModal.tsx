@@ -43,34 +43,10 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
       .then(({ data }) => setRetirosList(data ?? []));
   }, [open, fazendaId]);
 
-  function getDateRange(): { start: Date; end: Date; label: string } {
-    if (periodoTipo === "ultimos15") {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - 15);
-      return { start, end, label: "Últimos 15 dias" };
-    }
-    if (periodoTipo === "anual") {
-      return {
-        start: new Date(ano, 0, 1),
-        end: new Date(ano, 11, 31, 23, 59, 59),
-        label: `Ano ${ano}`,
-      };
-    }
-    // mensal
-    return {
-      start: new Date(ano, mes - 1, 1),
-      end: new Date(ano, mes, 0, 23, 59, 59),
-      label: `${MESES[mes - 1]} ${ano}`,
-    };
-  }
-
   async function handleExportar() {
     setLoading(true);
     try {
       const { start, end, label } = getDateRange();
-      const startIso = start.toISOString();
-      const endIso = end.toISOString();
 
       // Fetch retiros
       let retQuery = supabase.from("retiros")
@@ -95,37 +71,27 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
 
-      // Fetch lancamentos in period
+      // Fetch lancamentos from unified table using mes_referencia/ano_referencia
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
-        const { data: lancData } = await supabase.from("lancamentos")
-          .select("id, pasto_id, num_sacos, num_animais, consumo_g_cab_dia, custo_total, gmd_kg_dia, capataz_nome, lancado_em, status_consumo, indice_consumo, dias_intervalo")
-          .in("pasto_id", pastoIds)
-          .gte("lancado_em", startIso)
-          .lte("lancado_em", endIso);
+        let lQuery = supabase.from("lancamentos")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id")
+          .in("pasto_id", pastoIds);
+
+        if (periodoTipo === "mensal") {
+          lQuery = lQuery.eq("mes_referencia", mes).eq("ano_referencia", ano);
+        } else if (periodoTipo === "anual") {
+          lQuery = lQuery.eq("ano_referencia", ano);
+        } else {
+          // ultimos15 - filter by created_at
+          const startIso = start.toISOString();
+          const endIso = end.toISOString();
+          lQuery = lQuery.gte("created_at", startIso).lte("created_at", endIso);
+        }
+
+        const { data: lancData } = await lQuery;
         lancamentos = lancData ?? [];
       }
-
-      // Fetch lancamentos manuais for the period (only mensal/anual)
-      let lancManuais: any[] = [];
-      if (pastoIds.length > 0) {
-        let mQuery = supabase.from("lancamentos_manuais")
-          .select("*")
-          .in("pasto_id", pastoIds) as any;
-        if (periodoTipo === "mensal") {
-          mQuery = mQuery.eq("mes_referencia", mes).eq("ano_referencia", ano);
-        } else if (periodoTipo === "anual") {
-          mQuery = mQuery.eq("ano_referencia", ano);
-        } else {
-          // ultimos15 - get current month
-          mQuery = mQuery.eq("mes_referencia", now.getMonth() + 1).eq("ano_referencia", now.getFullYear());
-        }
-        const { data: mData } = await mQuery;
-        lancManuais = mData ?? [];
-      }
-
-      // Set of pasto_ids that have automatic lancamentos
-      const pastosComLancAuto = new Set(lancamentos.map(l => l.pasto_id));
 
       // Fetch produtos
       const produtoIds = [...new Set([
@@ -152,35 +118,32 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-        const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-        const consumoMedio = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
-
-        const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
-        const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
-
+        // Calculate consumption client-side
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
 
-        const custoTotal = rLanc.reduce((s, l) => s + (Number(l.custo_total) || 0), 0);
+        // Calculate consumo for each lancamento
+        const consumoValues: number[] = [];
+        rLanc.forEach(l => {
+          if (l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
+            const consumoG = (l.num_sacos * pesoSacoKg * 1000) / (l.num_animais * l.dias_no_pasto);
+            consumoValues.push(consumoG);
+          }
+        });
+        const consumoMedio = consumoValues.length > 0 ? consumoValues.reduce((a, b) => a + b, 0) / consumoValues.length : 0;
+
+        const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
+        const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
+
+        const custoTotal = sacosUtilizados * pesoSacoKg * precoKg;
         const custoDiario = totalAnimais > 0 && numDias > 0 ? custoTotal / numDias / totalAnimais : 0;
 
-        // Eficiência: % de pastos com status IDEAL
-        const latestByPasto = new Map<string, any>();
-        const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
-        for (const l of sortedRLanc) {
-          if (!latestByPasto.has(l.pasto_id) && l.status_consumo) latestByPasto.set(l.pasto_id, l);
-        }
-        let naMeta = 0;
-        latestByPasto.forEach(l => { if (l.status_consumo === 'IDEAL') naMeta++; });
-        const eficiencia = rPastos.length > 0 ? (naMeta / rPastos.length) * 100 : 0;
-
-        // Score calculation (same as useGerenteData)
-        const avgC = consumoMedio;
-        const consumoScore = avgC > 0 ? Math.max(0, 1 - Math.abs(avgC - CONSUMO_META) / CONSUMO_META) * 5 : 0;
+        const eficiencia = 0; // No status_consumo available
+        const consumoScore = 0;
         const expected = rPastos.length * (numDias / 3);
         const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-        const dates = rLanc.filter(l => l.lancado_em).map(l => new Date(l.lancado_em!).getTime()).sort((a, b) => a - b);
+        const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
         let intScore = 0;
         if (dates.length >= 2) {
           const intervals: number[] = [];
@@ -191,66 +154,35 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         const score = Math.min(10, consumoScore + regScore + intScore);
 
         // Build pasto data
-        const rManual = lancManuais.filter(m => rPastoIds.has(m.pasto_id));
         const pastoReport: PastoReportData[] = rPastos.map(p => {
-          const hasAuto = pastosComLancAuto.has(p.id);
+          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
+          const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-          if (hasAuto) {
-            // Use automatic data (priority)
-            const pLanc = rLanc.filter(l => l.pasto_id === p.id);
-            const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-            const pcVals = pLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-            const pConsumo = pcVals.length > 0 ? pcVals.reduce((a, b) => a + b, 0) / pcVals.length : 0;
-            const pStatus = pConsumo < 70 ? "Baixo" : pConsumo <= 80 ? "Atenção" : pConsumo <= 120 ? "Ideal" : "Alto";
-            return {
-              nome: p.nome,
-              numAnimais: p.num_animais || 0,
-              numSacos: pSacos,
-              consumoGCabDia: pConsumo,
-              status: pStatus,
-              pesoMedioKg: Number(p.peso_medio_kg ?? 0),
-              gmdKgDia: Number(p.gmd_kg_dia ?? 0),
-              pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
-            };
-          }
+          let pConsumo = 0;
+          const pConsVals: number[] = [];
+          pLanc.forEach(l => {
+            if (l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
+              pConsVals.push((l.num_sacos * pesoSacoKg * 1000) / (l.num_animais * l.dias_no_pasto));
+            }
+          });
+          pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
 
-          // Fallback to manual data
-          const manual = rManual.find(m => m.pasto_id === p.id);
-          if (manual) {
-            const mAnimais = manual.num_animais ?? 0;
-            const mSacos = manual.num_sacos ?? 0;
-            const mDias = manual.dias_no_pasto ?? 1;
-            // consumo = (num_sacos * peso_saco_kg) / (num_animais * dias_no_pasto) → kg/cab/dia, convert to g
-            const consumoKg = mAnimais > 0 ? (mSacos * pesoSacoKg) / (mAnimais * mDias) : 0;
-            const consumoG = consumoKg * 1000;
-            const pStatus = consumoG < 70 ? "Baixo" : consumoG <= 80 ? "Atenção" : consumoG <= 120 ? "Ideal" : "Alto";
-            return {
-              nome: `📍 ${p.nome}`,
-              numAnimais: mAnimais,
-              numSacos: mSacos,
-              consumoGCabDia: consumoG,
-              status: pStatus,
-              pesoMedioKg: Number(manual.peso_medio_kg ?? p.peso_medio_kg ?? 0),
-              gmdKgDia: Number(p.gmd_kg_dia ?? 0),
-              pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
-            };
-          }
-
-          // No data at all
+          const pStatus = pConsumo === 0 ? "—" : pConsumo < 70 ? "Baixo" : pConsumo <= 80 ? "Atenção" : pConsumo <= 120 ? "Ideal" : "Alto";
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
-            numSacos: 0,
-            consumoGCabDia: 0,
-            status: "—",
+            numSacos: pSacos,
+            consumoGCabDia: pConsumo,
+            status: pStatus,
             pesoMedioKg: Number(p.peso_medio_kg ?? 0),
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
           };
         });
 
+        const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
         const lastLanc = sortedRLanc.length > 0 ? sortedRLanc[0] : null;
-        const dataStr = lastLanc?.lancado_em ? new Date(lastLanc.lancado_em).toLocaleDateString("pt-BR") : "—";
+        const dataStr = lastLanc?.created_at ? new Date(lastLanc.created_at).toLocaleDateString("pt-BR") : "—";
 
         return {
           nome: ret.nome,
@@ -301,6 +233,27 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
     }
   }
 
+  function getDateRange(): { start: Date; end: Date; label: string } {
+    if (periodoTipo === "ultimos15") {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 15);
+      return { start, end, label: "Últimos 15 dias" };
+    }
+    if (periodoTipo === "anual") {
+      return {
+        start: new Date(ano, 0, 1),
+        end: new Date(ano, 11, 31, 23, 59, 59),
+        label: `Ano ${ano}`,
+      };
+    }
+    return {
+      start: new Date(ano, mes - 1, 1),
+      end: new Date(ano, mes, 0, 23, 59, 59),
+      label: `${MESES[mes - 1]} ${ano}`,
+    };
+  }
+
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -314,7 +267,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Tipo de período */}
           <div className="space-y-2">
             <Label>Período</Label>
             <Select value={periodoTipo} onValueChange={(v) => setPeriodoTipo(v as PeriodoTipo)}>
@@ -327,7 +279,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
             </Select>
           </div>
 
-          {/* Mês + Ano (when mensal) */}
           {periodoTipo === "mensal" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -355,7 +306,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
             </div>
           )}
 
-          {/* Ano (when anual) */}
           {periodoTipo === "anual" && (
             <div className="space-y-2">
               <Label>Ano</Label>
@@ -370,7 +320,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
             </div>
           )}
 
-          {/* Escopo */}
           <div className="space-y-2">
             <Label>Escopo</Label>
             <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>

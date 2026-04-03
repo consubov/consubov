@@ -52,7 +52,6 @@ export default function AdminDashboard() {
       .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
