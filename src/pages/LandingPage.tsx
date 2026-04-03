@@ -215,6 +215,13 @@ export default function LandingPage() {
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed text-justify">
             {content.hero_subtitulo || "Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto."}
           </p>
+          <Button
+            size="lg"
+            className="mt-6 text-base font-bold uppercase px-8 py-3"
+            onClick={() => document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            {content.cta_texto || "FAÇA PARTE DA NOSSA HISTÓRIA"}
+          </Button>
         </div>
       </section>
 
@@ -296,7 +303,7 @@ export default function LandingPage() {
       </section>
 
       {/* Formulário */}
-      <section className="py-16 md:py-24 px-4 bg-primary/5">
+      <section id="formulario" className="py-16 md:py-24 px-4 bg-primary/5">
         <div className="max-w-lg mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center uppercase">{formTitle}</h2>
           <p className="text-muted-foreground text-center mb-8">{formDesc}</p>
