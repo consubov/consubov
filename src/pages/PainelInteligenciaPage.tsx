@@ -15,7 +15,6 @@ import {
   classificarCategoria,
   getConsumoPorCategoria,
   getMargemPorCategoria,
-  consumoStatusUnificado,
   calcConsumoGCabDia,
   calcIndiceConsumo,
   calcConsumoEsperadoGCabDia,
