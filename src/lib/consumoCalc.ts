@@ -36,7 +36,7 @@ export interface ConsumoResult {
 /**
  * Calculate consumption metrics.
  * Formula: consumo_real = (num_sacos * peso_saco_kg) / (num_animais * dias) * 1000  → g/cab/dia
- * Formula: consumo_esperado = (consumo_por_100kg_categoria * peso_medio_kg) / 100   → g/cab/dia
+ * Formula: consumo_esperado = (consumo_por_100kg_categoria * peso_medio_kg) / 100 * 1000 → g/cab/dia
  * Classification uses product margin (not fixed 0.9/1.1).
  */
 export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
@@ -49,7 +49,9 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
   const consumo_real_kg = num_sacos * peso_saco_kg;
 
   // consumo_esperado in g/cab/dia
-  const consumo_esperado_g_cab_dia = (consumo_por_100kg_categoria * peso_medio_kg) / 100;
+  // consumo_por_100kg is in kg (e.g. 0.03 kg per 100kg PV)
+  // Formula: (consumo_por_100kg * peso_medio) / 100 = kg/cab/dia → * 1000 = g/cab/dia
+  const consumo_esperado_g_cab_dia = (consumo_por_100kg_categoria * peso_medio_kg) / 100 * 1000;
   const consumo_esperado_kg = (consumo_esperado_g_cab_dia / 1000) * num_animais * dias;
 
   if (consumo_esperado_g_cab_dia <= 0) {
