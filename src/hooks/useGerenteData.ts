@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -17,7 +17,9 @@ interface Lancamento {
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
+  status_consumo: string | null; indice_consumo: number | null;
 }
+interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
 
@@ -49,10 +51,16 @@ export interface AlertaAtraso {
   gravidade: 'leve' | 'moderado' | 'critico';
 }
 
+export interface StatusDistribution {
+  baixo: number; ideal: number; alto: number;
+  baixoPct: number; idealPct: number; altoPct: number;
+}
+
 export interface PainelData {
   totalAnimais: number; consumoMedio: number; pastosNaMeta: number;
   totalPastos: number; sacosUtilizados: number; custoDiario: number;
   custoMensal: number; eficiencia: number; gmdMedio: number;
+  statusDistribution: StatusDistribution;
 }
 
 export interface CapatazScore { retiro: string; capataz: string; score: number; }
@@ -78,6 +86,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [observacoes, setObservacoes] = useState<Observacao[]>([]);
 
   const fazendaNome = fazendaData.nome;
@@ -91,7 +100,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado").eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       setGerenteNome(gerenteRes.data?.nome ?? "");
@@ -124,6 +133,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
+        produto_id: r.produto_id ?? null,
       })) as Retiro[];
       setRetiros(retirosList);
 
@@ -160,6 +170,10 @@ export function useGerenteData(filters?: GerenteFilters) {
         setLancamentos([]);
       }
 
+      // Produtos (for pricing)
+      const produtosRes = await supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      setProdutos((produtosRes.data ?? []) as Produto[]);
+
       // Observacoes
       try {
         const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
@@ -189,23 +203,63 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {
     const totalAnimais = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
-    // No consumo_g_cab_dia in table - skip consumption metrics from lancamentos
-    const consumoMedio = 0;
-
-    // No status_consumo in table - skip pastosNaMeta
-    const pastosNaMeta = 0;
-
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
-    // No custo_total in table
-    const custoMensal = 0;
-    const numDias = ciclo?.num_dias ?? 30;
-    const custoDiario = 0;
-    const eficiencia = 0;
+
+    // Consumo médio por cabeça: (total_sacos * peso_saco) / total_animais (kg/cab no período)
+    // We need average peso_saco from produtos linked to pastos/retiros
+    const produtoMap = new Map(produtos.map(p => [p.id, p]));
+    let totalKgSal = 0;
+    for (const l of lancamentos) {
+      // Find produto via pasto -> retiro
+      const pasto = pastos.find(p => p.id === l.pasto_id);
+      const retiro = retiros.find(r => r.id === (pasto?.retiro_id ?? l.retiro_id));
+      const prodId = pasto?.produto_id ?? (retiro as any)?.produto_id;
+      const prod = prodId ? produtoMap.get(prodId) : null;
+      const pesoSaco = prod?.peso_saco_kg ?? 25;
+      totalKgSal += l.num_sacos * pesoSaco;
+    }
+    const consumoMedio = totalAnimais > 0 ? (totalKgSal * 1000) / (totalAnimais * 30) : 0; // g/cab/dia
+
+    // Pastos na meta: pastos that have at least one lancamento with status_consumo = 'Ideal'
+    const pastosComStatus = new Map<string, string>();
+    for (const l of lancamentos) {
+      if (l.status_consumo) {
+        // Keep last status per pasto
+        pastosComStatus.set(l.pasto_id, l.status_consumo);
+      }
+    }
+    const pastosNaMeta = Array.from(pastosComStatus.values()).filter(s => s === 'Ideal').length;
+
+    // Status distribution
+    const lancComStatus = lancamentos.filter(l => l.status_consumo);
+    const totalComStatus = lancComStatus.length;
+    const baixo = lancComStatus.filter(l => l.status_consumo === 'Baixo').length;
+    const ideal = lancComStatus.filter(l => l.status_consumo === 'Ideal').length;
+    const alto = lancComStatus.filter(l => l.status_consumo === 'Alto').length;
+    const statusDistribution: StatusDistribution = {
+      baixo, ideal, alto,
+      baixoPct: totalComStatus > 0 ? (baixo / totalComStatus) * 100 : 0,
+      idealPct: totalComStatus > 0 ? (ideal / totalComStatus) * 100 : 0,
+      altoPct: totalComStatus > 0 ? (alto / totalComStatus) * 100 : 0,
+    };
+
+    // Custo: average preco_por_kg from produtos
+    const precos = produtos.filter(p => p.preco_por_kg != null && p.preco_por_kg > 0).map(p => p.preco_por_kg!);
+    const precoMedioKg = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
+    const consumoMedioKg = consumoMedio / 1000; // convert g to kg
+    const custoDiario = consumoMedioKg * precoMedioKg; // R$/cab/dia
+    const custoMensal = custoDiario * 30 * totalAnimais;
+
+    // Eficiência: média dos índices dos lançamentos
+    const indices = lancamentos.filter(l => l.indice_consumo != null && l.indice_consumo > 0).map(l => l.indice_consumo!);
+    const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
+
+    // GMD
     const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
-    return { totalAnimais, consumoMedio, pastosNaMeta, totalPastos: pastos.length, sacosUtilizados, custoDiario, custoMensal, eficiencia, gmdMedio };
-  }, [pastos, lancamentos, ciclo]);
+    return { totalAnimais, consumoMedio, pastosNaMeta, totalPastos: pastos.length, sacosUtilizados, custoDiario, custoMensal, eficiencia, gmdMedio, statusDistribution };
+  }, [pastos, lancamentos, ciclo, produtos, retiros]);
 
   // Computed: retiros com dados
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
