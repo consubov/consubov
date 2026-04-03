@@ -102,20 +102,40 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
  * Engorda: >= 350 kg
  */
 /**
- * Unified status classification based on consumo_real in g/cab/dia.
+ * Unified status classification based on índice de consumo (real / esperado).
  * This SINGLE function must be used in ALL modules: painel, relatório, lançamentos.
- * Faixas fixas:
- *   < 70 g  → Baixo
- *   70-80 g → Atenção
- *   80-120 g → Ideal
- *   > 120 g → Alto
+ *
+ * índice < 0.8  → Baixo
+ * 0.8 ≤ índice ≤ 1.2 → Ideal
+ * índice > 1.2  → Alto
+ *
+ * If no expected value is available (indice <= 0), returns "—".
  */
-export function consumoStatusUnificado(consumoGCabDia: number): string {
-  if (consumoGCabDia <= 0) return "—";
-  if (consumoGCabDia < 70) return "Baixo";
-  if (consumoGCabDia <= 80) return "Atenção";
-  if (consumoGCabDia <= 120) return "Ideal";
+export function consumoStatusUnificado(indice: number): string {
+  if (indice <= 0) return "—";
+  if (indice < 0.8) return "Baixo";
+  if (indice <= 1.2) return "Ideal";
   return "Alto";
+}
+
+/**
+ * Calculate the consumption index (real / expected).
+ * consumo_real and consumo_esperado both in g/cab/dia (or any same unit).
+ * Returns 0 if expected is zero.
+ */
+export function calcIndiceConsumo(consumoReal: number, consumoEsperado: number): number {
+  if (consumoEsperado <= 0 || consumoReal <= 0) return 0;
+  return consumoReal / consumoEsperado;
+}
+
+/**
+ * Calculate consumo esperado in g/cab/dia from product recommendation.
+ * consumoPor100kg is in kg per 100kg PV (e.g. 0.03).
+ * Formula: (consumoPor100kg * pesoMedioKg) / 100 * 1000
+ */
+export function calcConsumoEsperadoGCabDia(consumoPor100kg: number, pesoMedioKg: number): number {
+  if (consumoPor100kg <= 0 || pesoMedioKg <= 0) return 0;
+  return (consumoPor100kg * pesoMedioKg) / 100 * 1000;
 }
 
 /**
