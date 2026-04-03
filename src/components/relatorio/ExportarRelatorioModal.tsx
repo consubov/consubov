@@ -25,16 +25,27 @@ interface Props {
   fazendaId: string;
   fazendaNome: string;
   geradoPor: string;
+  initialMes?: number;
+  initialAno?: number;
+  lockedRetiroId?: string | null;
 }
 
-const CONSUMO_META = 50;
-
-export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, fazendaNome, geradoPor }: Props) {
+export default function ExportarRelatorioModal({
+  open,
+  onOpenChange,
+  fazendaId,
+  fazendaNome,
+  geradoPor,
+  initialMes,
+  initialAno,
+  lockedRetiroId,
+}: Props) {
   const now = new Date();
+  const monthlyContextEnabled = initialMes != null && initialAno != null;
   const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>("mensal");
-  const [mes, setMes] = useState(now.getMonth() + 1);
-  const [ano, setAno] = useState(now.getFullYear());
-  const [retiroFiltro, setRetiroFiltro] = useState("todos");
+  const [mes, setMes] = useState(initialMes ?? now.getMonth() + 1);
+  const [ano, setAno] = useState(initialAno ?? now.getFullYear());
+  const [retiroFiltro, setRetiroFiltro] = useState(lockedRetiroId ?? "todos");
   const [retirosList, setRetirosList] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -44,17 +55,27 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
       .then(({ data }) => setRetirosList(data ?? []));
   }, [open, fazendaId]);
 
+  useEffect(() => {
+    if (!open) return;
+    const currentDate = new Date();
+    setPeriodoTipo("mensal");
+    setMes(initialMes ?? currentDate.getMonth() + 1);
+    setAno(initialAno ?? currentDate.getFullYear());
+    setRetiroFiltro(lockedRetiroId ?? "todos");
+  }, [open, initialMes, initialAno, lockedRetiroId]);
+
   async function handleExportar() {
     setLoading(true);
     try {
-      const { start, end, label } = getDateRange();
+      const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
+      const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
+      const { start, end, label } = getDateRange(periodoSelecionado);
 
-      // Fetch retiros
       let retQuery = supabase.from("retiros")
         .select("id, nome, capataz, produto_id, ultima_salga_em")
         .eq("fazenda_id", fazendaId).eq("ativo", true);
-      if (retiroFiltro !== "todos") {
-        retQuery = retQuery.eq("id", retiroFiltro);
+      if (retiroSelecionado) {
+        retQuery = retQuery.eq("id", retiroSelecionado);
       }
       const { data: retirosData } = await retQuery;
       if (!retirosData || retirosData.length === 0) {
@@ -65,26 +86,23 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
 
       const retiroIds = retirosData.map(r => r.id);
 
-      // Fetch pastos
       const { data: pastosData } = await supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
         .in("retiro_id", retiroIds).eq("ativo", true);
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
 
-      // Fetch lancamentos from unified table using mes_referencia/ano_referencia
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("lancamentos")
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo")
           .in("pasto_id", pastoIds);
 
-        if (periodoTipo === "mensal") {
+        if (periodoSelecionado === "mensal") {
           lQuery = lQuery.eq("mes_referencia", mes).eq("ano_referencia", ano);
-        } else if (periodoTipo === "anual") {
+        } else if (periodoSelecionado === "anual") {
           lQuery = lQuery.eq("ano_referencia", ano);
         } else {
-          // ultimos15 - filter by created_at
           const startIso = start.toISOString();
           const endIso = end.toISOString();
           lQuery = lQuery.gte("created_at", startIso).lte("created_at", endIso);
@@ -94,12 +112,11 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         lancamentos = lancData ?? [];
       }
 
-      // Fetch produtos
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
         ...pastos.map(p => p.produto_id).filter(Boolean),
       ])] as string[];
-      let produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
+      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
       if (produtoIds.length > 0) {
         const { data: prodData } = await supabase.from("produtos")
           .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda")
@@ -116,22 +133,20 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         }
       }
 
-      // Build report data
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
         const rPastos = pastos.filter(p => p.retiro_id === ret.id);
         const rPastoIds = new Set(rPastos.map(p => p.id));
         const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
-        const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+        const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
+        const totalAnimais = pastosNoPeriodo.reduce((s, p) => s + (p.num_animais || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-        // Calculate consumption client-side
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
 
-        // Calculate consumo for each lancamento
         const consumoValues: number[] = [];
         rLanc.forEach(l => {
           const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
@@ -139,15 +154,14 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         });
         const consumoMedio = consumoValues.length > 0 ? consumoValues.reduce((a, b) => a + b, 0) / consumoValues.length : 0;
 
-        const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
+        const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
         const custoTotal = sacosUtilizados * pesoSacoKg * precoKg;
         const custoDiario = totalAnimais > 0 && numDias > 0 ? custoTotal / numDias / totalAnimais : 0;
 
-        const eficiencia = 0; // No status_consumo available
         const consumoScore = 0;
-        const expected = rPastos.length * (numDias / 3);
+        const expected = pastosNoPeriodo.length * (numDias / 3);
         const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
         const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
         let intScore = 0;
@@ -159,12 +173,10 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         }
         const score = Math.min(10, consumoScore + regScore + intScore);
 
-        // Build pasto data
-        const pastoReport: PastoReportData[] = rPastos.map(p => {
+        const pastoReport: PastoReportData[] = pastosNoPeriodo.map(p => {
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-          // Read consumo real from lancamentos
           const pConsVals: number[] = [];
           pLanc.forEach(l => {
             const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
@@ -172,7 +184,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
           });
           const pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
 
-          // Read status directly from DB (persisted at insert/update time)
           const statusLancs = pLanc.map(l => l.status_consumo).filter(Boolean);
           const pStatus = statusLancs.length > 0 ? statusLancs[statusLancs.length - 1] : "—";
 
@@ -202,7 +213,7 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia,
+          eficiencia: 0,
           custoDiario,
           score: Number(score.toFixed(1)),
           scoreMeta: Number(consumoScore.toFixed(1)),
@@ -220,7 +231,6 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         retiros: retiroReportData,
       };
 
-      // Generate PDF
       const blob = await pdf(<RelatorioPDF data={reportData} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -241,14 +251,14 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
     }
   }
 
-  function getDateRange(): { start: Date; end: Date; label: string } {
-    if (periodoTipo === "ultimos15") {
+  function getDateRange(periodo: PeriodoTipo): { start: Date; end: Date; label: string } {
+    if (periodo === "ultimos15") {
       const end = new Date();
       const start = new Date();
       start.setDate(start.getDate() - 15);
       return { start, end, label: "Últimos 15 dias" };
     }
-    if (periodoTipo === "anual") {
+    if (periodo === "anual") {
       return {
         start: new Date(ano, 0, 1),
         end: new Date(ano, 11, 31, 23, 59, 59),
@@ -264,6 +274,9 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
 
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const retiroBloqueadoNome = lockedRetiroId
+    ? retirosList.find((retiro) => retiro.id === lockedRetiroId)?.nome ?? "Retiro selecionado"
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -275,71 +288,91 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Período</Label>
-            <Select value={periodoTipo} onValueChange={(v) => setPeriodoTipo(v as PeriodoTipo)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mensal">Mensal</SelectItem>
-                <SelectItem value="ultimos15">Últimos 15 dias</SelectItem>
-                <SelectItem value="anual">Anual</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {periodoTipo === "mensal" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Mês</Label>
-                <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MESES.map((m, i) => (
-                      <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Ano</Label>
-                <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {years.map(y => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {monthlyContextEnabled ? (
+            <div className="space-y-2">
+              <Label>Período do painel</Label>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                {MESES[mes - 1]} {ano}
               </div>
             </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label>Período</Label>
+                <Select value={periodoTipo} onValueChange={(v) => setPeriodoTipo(v as PeriodoTipo)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="ultimos15">Últimos 15 dias</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {periodoTipo === "mensal" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Mês</Label>
+                    <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MESES.map((mesNome, i) => (
+                          <SelectItem key={mesNome} value={String(i + 1)}>{mesNome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ano</Label>
+                    <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {years.map(y => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {periodoTipo === "anual" && (
+                <div className="space-y-2">
+                  <Label>Ano</Label>
+                  <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {years.map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
           )}
 
-          {periodoTipo === "anual" && (
+          {lockedRetiroId ? (
             <div className="space-y-2">
-              <Label>Ano</Label>
-              <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+              <Label>Escopo</Label>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                {retiroBloqueadoNome}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Escopo</Label>
+              <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {years.map(y => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  <SelectItem value="todos">Todos os retiros</SelectItem>
+                  {retirosList.map(r => (
+                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label>Escopo</Label>
-            <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os retiros</SelectItem>
-                {retirosList.map(r => (
-                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <DialogFooter>

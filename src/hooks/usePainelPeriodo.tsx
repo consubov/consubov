@@ -51,7 +51,7 @@ export function readPainelPeriodoFromSearchParams(searchParams: URLSearchParams)
   return normalizePeriodo(Number(searchParams.get("mes")), Number(searchParams.get("ano")));
 }
 
-export function PainelPeriodoProvider({ children }: { children: React.ReactNode }) {
+export function PainelPeriodoProvider({ children }: { children: ReactNode }) {
   const [periodo, setPeriodoState] = useState<PainelPeriodo>(() => readStoredPeriodo());
 
   useEffect(() => {
