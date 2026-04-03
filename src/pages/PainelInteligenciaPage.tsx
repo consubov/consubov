@@ -412,7 +412,7 @@ export default function PainelInteligenciaPage() {
               <Select value={String(filtroAno)} onValueChange={(v) => setFiltroAno(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 25 }, (_, i) => 2026 + i).map((y) => (
+                  {anosDisponiveis.map((y) => (
                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                   ))}
                 </SelectContent>
