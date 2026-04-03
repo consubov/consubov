@@ -211,8 +211,12 @@ export default function LancamentoManualPage() {
 
     setSaving(true);
     try {
-      // Ensure ciclo exists
-      const { data: cicloIdResult, error: cicloErr } = await supabase.rpc("ensure_ciclo_atual", { p_fazenda_id: fazendaId });
+      // Ensure ciclo exists for selected month/year
+      const { data: cicloIdResult, error: cicloErr } = await supabase.rpc("ensure_ciclo", {
+        p_fazenda_id: fazendaId,
+        p_mes: mes,
+        p_ano: ano,
+      });
       if (cicloErr) throw cicloErr;
       const cicloId = cicloIdResult as string;
 
@@ -261,7 +265,16 @@ export default function LancamentoManualPage() {
           onConflict: "pasto_id,ciclo_id",
         } as any);
       }
-      toast.success("Lançamentos salvos com sucesso!");
+
+      // Close the ciclo after all lancamentos are saved
+      const { error: fechErr } = await supabase.from("ciclos").update({
+        fechado: true,
+        fechado_em: new Date().toISOString(),
+      }).eq("id", cicloId);
+      if (fechErr) throw fechErr;
+
+      setCicloFechado(true);
+      toast.success("Lançamentos salvos e ciclo fechado com sucesso!");
     } catch (e: any) {
       console.error(e);
       toast.error("Erro ao salvar: " + (e.message || "tente novamente"));

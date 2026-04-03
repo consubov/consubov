@@ -993,6 +993,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_ciclo: {
+        Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
+        Returns: string
+      }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
     }
     Enums: {
