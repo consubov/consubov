@@ -293,7 +293,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
         </View>
         {sortedPastos.map((p, i) => {
-          const st = consumoStatusUnificado(p.consumoGCabDia);
+          const st = p.status;
           const sc = statusColor(st);
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
