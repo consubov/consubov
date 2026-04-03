@@ -167,7 +167,6 @@ export default function GerenteDashboard() {
           </SelectContent>
         </Select>
       </div>
-      </header>
 
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
