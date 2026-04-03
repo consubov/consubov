@@ -22,6 +22,17 @@ interface Lancamento {
 }
 interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
 
+/** Pre-calculated consumption for a single lancamento (read-only, no recalc). */
+export interface LancamentoConsumo {
+  pasto_id: string;
+  num_animais: number;
+  num_sacos: number;
+  dias_no_pasto: number;
+  consumo_g_cab_dia: number; // derived from stored fields
+  status_consumo: string | null;
+  indice_consumo: number | null;
+}
+
 export interface RetiroResumo {
   id: string; nome: string; capataz: string;
   totalAnimais: number; sacosUtilizados: number;
@@ -29,6 +40,7 @@ export interface RetiroResumo {
   diasSemSalga: number | null;
   lancamentos: Lancamento[];
   pastos: Pasto[];
+  pastosConsumo: Map<string, LancamentoConsumo[]>;
 }
 
 export interface StatusDist {
@@ -39,7 +51,7 @@ export interface StatusDist {
 export interface PainelMetrics {
   totalAnimais: number;
   sacosUtilizados: number;
-  consumoMedio: number; // g/cab/dia
+  consumoMedio: number; // g/cab/dia – aggregated from pre-calculated lancamentos
   pastosNaMeta: number;
   totalPastos: number;
   custoDiario: number;
@@ -64,6 +76,14 @@ const emptyMetrics: PainelMetrics = {
   statusDist: { baixo: 0, ideal: 0, alto: 0, baixoPct: 0, idealPct: 0, altoPct: 0 },
 };
 
+// ---------- Helpers: derive consumption from stored lancamento fields ----------
+
+/** Compute g/cab/dia from stored lancamento fields + product peso_saco. NO recalc of status. */
+function consumoFromLancamento(l: Lancamento, pesoSaco: number): number {
+  if (l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) return 0;
+  return (l.num_sacos * pesoSaco * 1000) / (l.num_animais * l.dias_no_pasto);
+}
+
 export function usePainelData(filters: PainelFilters) {
   const { fazendaId, retiroId, mes, ano } = filters;
   const [loading, setLoading] = useState(true);
@@ -86,7 +106,7 @@ export function usePainelData(filters: PainelFilters) {
 
       setFazendaNome(fazRes.data?.nome ?? "");
       const allRetiros = (retirosRes.data ?? []) as Retiro[];
-      const retList = retiroId ? allRetiros.filter((retiro) => retiro.id === retiroId) : allRetiros;
+      const retList = retiroId ? allRetiros.filter((r) => r.id === retiroId) : allRetiros;
       setRetiros(retList);
       setProdutos((prodRes.data ?? []) as Produto[]);
 
@@ -136,44 +156,72 @@ export function usePainelData(filters: PainelFilters) {
 
   const produtoMap = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos]);
 
+  /** Resolve peso_saco for a lancamento via pasto→retiro→produto hierarchy */
+  const getPesoSaco = useCallback((l: Lancamento): number => {
+    const pasto = pastos.find(p => p.id === l.pasto_id);
+    const retiro = retiros.find(r => r.id === (pasto?.retiro_id ?? l.retiro_id));
+    const prodId = pasto?.produto_id ?? retiro?.produto_id;
+    const prod = prodId ? produtoMap.get(prodId) : null;
+    return prod?.peso_saco_kg ?? 25;
+  }, [pastos, retiros, produtoMap]);
+
+  // ---------- Metrics: aggregate from PRE-CALCULATED lancamento data ----------
   const metrics = useMemo<PainelMetrics>(() => {
-    const pastosNoPeriodo = pastos.filter((pasto) => lancamentos.some((lancamento) => lancamento.pasto_id === pasto.id));
+    if (lancamentos.length === 0) return emptyMetrics;
 
-    if (lancamentos.length === 0 && pastosNoPeriodo.length === 0) return emptyMetrics;
+    // Pastos that have lancamentos in this period
+    const pastoIdsComLanc = new Set(lancamentos.map(l => l.pasto_id));
+    const pastosNoPeriodo = pastos.filter(p => pastoIdsComLanc.has(p.id));
 
-    const totalAnimais = pastosNoPeriodo.reduce((s, p) => s + (p.num_animais || 0), 0);
+    // Use num_animais from lancamentos (cycle data), not from pastos table
+    const totalAnimaisSet = new Map<string, number>();
+    for (const l of lancamentos) {
+      // Keep the latest (or max) num_animais per pasto from lancamentos
+      const current = totalAnimaisSet.get(l.pasto_id) ?? 0;
+      if (l.num_animais > current) totalAnimaisSet.set(l.pasto_id, l.num_animais);
+    }
+    const totalAnimais = Array.from(totalAnimaisSet.values()).reduce((s, n) => s + n, 0);
+
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-    let totalKgSal = 0;
+    // Consumo médio: weighted average of per-lancamento consumption (from stored fields)
+    let totalConsumoWeighted = 0;
+    let totalCabDias = 0;
     for (const l of lancamentos) {
-      const pasto = pastos.find(p => p.id === l.pasto_id);
-      const retiro = retiros.find(r => r.id === (pasto?.retiro_id ?? l.retiro_id));
-      const prodId = pasto?.produto_id ?? retiro?.produto_id;
-      const prod = prodId ? produtoMap.get(prodId) : null;
-      totalKgSal += l.num_sacos * (prod?.peso_saco_kg ?? 25);
+      if (l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) continue;
+      const pesoSaco = getPesoSaco(l);
+      const consumoG = consumoFromLancamento(l, pesoSaco);
+      const cabDias = l.num_animais * l.dias_no_pasto;
+      totalConsumoWeighted += consumoG * cabDias;
+      totalCabDias += cabDias;
     }
-    const consumoMedio = totalAnimais > 0 ? (totalKgSal * 1000) / (totalAnimais * 30) : 0;
+    const consumoMedio = totalCabDias > 0 ? totalConsumoWeighted / totalCabDias : 0;
 
+    // Status distribution – read directly from lancamentos (pre-calculated by trigger)
     const lancComStatus = lancamentos.filter(l => l.status_consumo);
     const total = lancComStatus.length;
     const baixo = lancComStatus.filter(l => l.status_consumo === "Baixo").length;
     const ideal = lancComStatus.filter(l => l.status_consumo === "Ideal").length;
     const alto = lancComStatus.filter(l => l.status_consumo === "Alto").length;
 
+    // Pastos na meta: use latest status per pasto (from pre-calculated data)
     const pastosStatus = new Map<string, string>();
     for (const l of lancamentos) {
       if (l.status_consumo) pastosStatus.set(l.pasto_id, l.status_consumo);
     }
     const pastosNaMeta = Array.from(pastosStatus.values()).filter(s => s === "Ideal").length;
 
+    // Cost – use product price
     const precos = produtos.filter(p => p.preco_por_kg != null && p.preco_por_kg > 0).map(p => p.preco_por_kg!);
     const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
     const custoDiario = (consumoMedio / 1000) * precoMedio;
     const custoMensal = custoDiario * 30 * totalAnimais;
 
+    // Eficiência – read indice_consumo directly (pre-calculated)
     const indices = lancamentos.filter(l => l.indice_consumo != null && l.indice_consumo > 0).map(l => l.indice_consumo!);
     const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
 
+    // GMD – from pastos
     const gmdVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
@@ -189,9 +237,9 @@ export function usePainelData(filters: PainelFilters) {
         altoPct: total > 0 ? (alto / total) * 100 : 0,
       },
     };
-  }, [pastos, lancamentos, retiros, produtos, produtoMap]);
+  }, [pastos, lancamentos, produtos, produtoMap, getPesoSaco]);
 
-  // Retiros resumo
+  // ---------- Retiros resumo ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {
     const now = new Date();
     return retiros.map(r => {
@@ -199,17 +247,30 @@ export function usePainelData(filters: PainelFilters) {
       const rPastoIds = new Set(rPastos.map(p => p.id));
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-      const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+
+      // num_animais from lancamentos (cycle data)
+      const animaisPerPasto = new Map<string, number>();
+      for (const l of rLanc) {
+        const current = animaisPerPasto.get(l.pasto_id) ?? 0;
+        if (l.num_animais > current) animaisPerPasto.set(l.pasto_id, l.num_animais);
+      }
+      const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-      let totalKg = 0;
+      // Consumo médio from pre-calculated fields (weighted by cab*dias)
+      let totalConsumoW = 0;
+      let totalCD = 0;
       for (const l of rLanc) {
-        const pasto = rPastos.find(p => p.id === l.pasto_id);
-        const prodId = pasto?.produto_id ?? r.produto_id;
+        if (l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) continue;
+        const prodId = rPastos.find(p => p.id === l.pasto_id)?.produto_id ?? r.produto_id;
         const prod = prodId ? produtoMap.get(prodId) : null;
-        totalKg += l.num_sacos * (prod?.peso_saco_kg ?? 25);
+        const pesoSaco = prod?.peso_saco_kg ?? 25;
+        const consumoG = consumoFromLancamento(l, pesoSaco);
+        const cd = l.num_animais * l.dias_no_pasto;
+        totalConsumoW += consumoG * cd;
+        totalCD += cd;
       }
-      const consumoMedio = totalAnimais > 0 ? (totalKg * 1000) / (totalAnimais * 30) : 0;
+      const consumoMedio = totalCD > 0 ? totalConsumoW / totalCD : 0;
 
       const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
       const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
@@ -219,7 +280,28 @@ export function usePainelData(filters: PainelFilters) {
         diasSemSalga = Math.floor((now.getTime() - new Date(r.ultima_salga_em).getTime()) / 86400000);
       }
 
-      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: pastosNoPeriodo };
+      // Build per-pasto consumption map from lancamentos
+      const pastosConsumo = new Map<string, LancamentoConsumo[]>();
+      for (const l of rLanc) {
+        const prodId = rPastos.find(p => p.id === l.pasto_id)?.produto_id ?? r.produto_id;
+        const prod = prodId ? produtoMap.get(prodId) : null;
+        const pesoSaco = prod?.peso_saco_kg ?? 25;
+
+        const entry: LancamentoConsumo = {
+          pasto_id: l.pasto_id,
+          num_animais: l.num_animais,
+          num_sacos: l.num_sacos,
+          dias_no_pasto: l.dias_no_pasto,
+          consumo_g_cab_dia: consumoFromLancamento(l, pesoSaco),
+          status_consumo: l.status_consumo,
+          indice_consumo: l.indice_consumo,
+        };
+        const list = pastosConsumo.get(l.pasto_id) ?? [];
+        list.push(entry);
+        pastosConsumo.set(l.pasto_id, list);
+      }
+
+      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: pastosNoPeriodo, pastosConsumo };
     });
   }, [retiros, pastos, lancamentos, produtoMap]);
 
