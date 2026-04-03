@@ -35,6 +35,7 @@ interface Lancamento {
   num_animais: number; num_sacos: number; dias_no_pasto: number;
   origem: string; created_at: string;
   categoria: string | null; sexo: string | null; peso_medio_kg: number | null;
+  status_consumo: string | null; indice_consumo: number | null;
 }
 
 const ESTADOS_BR: Record<string, { x: number; y: number }> = {
