@@ -17,6 +17,8 @@ import {
   getMargemPorCategoria,
   consumoStatusUnificado,
   calcConsumoGCabDia,
+  calcIndiceConsumo,
+  calcConsumoEsperadoGCabDia,
 } from "@/lib/consumoCalc";
 
 interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
