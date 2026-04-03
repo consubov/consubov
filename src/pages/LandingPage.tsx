@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import heroImg1 from "@/assets/landing-hero-1.jpg";
 import heroImg2 from "@/assets/landing-hero-2.jpg";
@@ -127,13 +128,16 @@ export default function LandingPage() {
     console.log("Lead salvo com sucesso. Notificação gerada automaticamente via trigger.");
     setSubmitted(true);
     setSubmitting(false);
-    toast.success("Mensagem enviada com sucesso!");
+    setForm({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
   }, [form]);
 
   const quemSomosText = content.quem_somos || "O Consubov é uma plataforma tecnológica desenvolvida para transformar a gestão pecuária. Com foco no controle de sal mineral, inteligência nutricional e operação de campo, oferecemos ferramentas que permitem ao pecuarista tomar decisões baseadas em dados reais, direto do pasto.";
   const diferenciaisText = content.diferenciais || "Tecnologia pensada para o campo. Cada funcionalidade foi criada a partir da realidade do dia a dia da pecuária brasileira.";
   const formTitle = content.form_titulo || "Ficou interessado?";
   const formDesc = content.form_descricao || "Preencha o formulário abaixo e nossa equipe entrará em contato.";
+  const formPlaceholder = content.form_placeholder || "Conte um pouco da sua história, nos dizendo como é a sua realidade na fazenda";
+  const formMicrofrase = content.form_microfrase || "Cada fazenda é única, e queremos entender a sua.";
+  const formMsgConfirmacao = content.form_msg_confirmacao || "Essas informações nos ajudam a entender melhor sua realidade.\nNossa equipe irá analisar com atenção, e entrar em contato com você.\n\nEquipe Consubov";
   const rodapeText = content.rodape || "Consubov — Tecnologia para Pecuária\nTelefone: (63) 99999-0000\nCNPJ: 00.000.000/0001-00\nPalmas - TO, Brasil";
 
   if (loading) {
@@ -308,42 +312,47 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center uppercase">{formTitle}</h2>
           <p className="text-muted-foreground text-center mb-8">{formDesc}</p>
 
-          {submitted ? (
-            <Card>
-              <CardContent className="pt-8 pb-8 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
-                <h3 className="text-lg font-semibold text-foreground">Mensagem enviada!</h3>
-                <p className="text-muted-foreground text-sm">Nossa equipe analisará sua solicitação e entrará em contato em breve.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div>
-                  <Input placeholder="Nome *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} maxLength={100} />
-                  {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
-                </div>
-                <div>
-                  <Input type="email" placeholder="E-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
-                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <Input placeholder="Telefone *" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} maxLength={20} />
-                  {errors.telefone && <p className="text-xs text-destructive mt-1">{errors.telefone}</p>}
-                </div>
-                <div>
-                  <Input placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} maxLength={20} />
-                  {errors.whatsapp && <p className="text-xs text-destructive mt-1">{errors.whatsapp}</p>}
-                </div>
-                <div>
-                  <Textarea placeholder="Nos conte sua dificuldade" value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} maxLength={1000} rows={4} />
-                </div>
-                <Button className="w-full font-semibold" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? "Enviando..." : "Enviar"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <Dialog open={submitted} onOpenChange={setSubmitted}>
+            <DialogContent className="text-center max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
+                  Mensagem enviada!
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-muted-foreground text-sm whitespace-pre-line leading-relaxed mt-2">
+                {formMsgConfirmacao}
+              </p>
+            </DialogContent>
+          </Dialog>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <Input placeholder="Nome *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} maxLength={100} />
+                {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
+              </div>
+              <div>
+                <Input type="email" placeholder="E-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
+                {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+              </div>
+              <div>
+                <Input placeholder="Telefone *" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} maxLength={20} />
+                {errors.telefone && <p className="text-xs text-destructive mt-1">{errors.telefone}</p>}
+              </div>
+              <div>
+                <Input placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} maxLength={20} />
+                {errors.whatsapp && <p className="text-xs text-destructive mt-1">{errors.whatsapp}</p>}
+              </div>
+              <div>
+                <Textarea placeholder={formPlaceholder} value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} maxLength={1000} rows={4} />
+                <p className="text-xs text-muted-foreground/70 mt-1 italic">{formMicrofrase}</p>
+              </div>
+              <Button className="w-full font-semibold" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? "Enviando..." : "Enviar"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
