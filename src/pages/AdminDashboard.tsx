@@ -47,8 +47,12 @@ export default function AdminDashboard() {
     }
     load();
 
-    const channel = supabase.channel("pastos-animais-realtime")
+    const channel = supabase.channel("admin-dashboard-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
