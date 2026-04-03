@@ -475,9 +475,20 @@ export default function LancamentoManualPage() {
                       </TableCell>
                       <TableCell>
                         {consumo ? (
-                          <span className="font-semibold text-sm">
-                            {consumo.consumo_real_g_cab_dia.toFixed(1)}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-sm">
+                              {consumo.consumo_real_g_cab_dia.toFixed(1)}
+                            </span>
+                            {consumo.status_consumo && consumo.status_consumo !== 'ERRO' && (
+                              <Badge className={`text-[10px] px-1.5 py-0 h-5 ${
+                                consumo.status_consumo === 'ABAIXO' ? 'bg-destructive text-destructive-foreground' :
+                                consumo.status_consumo === 'ACIMA' ? 'bg-yellow-500 text-yellow-950' :
+                                'bg-primary text-primary-foreground'
+                              }`}>
+                                {consumo.status_consumo === 'ABAIXO' ? '🔴' : consumo.status_consumo === 'ACIMA' ? '🟡' : '🟢'} {consumo.status_consumo}
+                              </Badge>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
