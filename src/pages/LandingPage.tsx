@@ -135,6 +135,9 @@ export default function LandingPage() {
   const diferenciaisText = content.diferenciais || "Tecnologia pensada para o campo. Cada funcionalidade foi criada a partir da realidade do dia a dia da pecuária brasileira.";
   const formTitle = content.form_titulo || "Ficou interessado?";
   const formDesc = content.form_descricao || "Preencha o formulário abaixo e nossa equipe entrará em contato.";
+  const formPlaceholder = content.form_placeholder || "Conte um pouco da sua história, nos dizendo como é a sua realidade na fazenda";
+  const formMicrofrase = content.form_microfrase || "Cada fazenda é única, e queremos entender a sua.";
+  const formMsgConfirmacao = content.form_msg_confirmacao || "Essas informações nos ajudam a entender melhor sua realidade.\nNossa equipe irá analisar com atenção, e entrar em contato com você.\n\nEquipe Consubov";
   const rodapeText = content.rodape || "Consubov — Tecnologia para Pecuária\nTelefone: (63) 99999-0000\nCNPJ: 00.000.000/0001-00\nPalmas - TO, Brasil";
 
   if (loading) {
