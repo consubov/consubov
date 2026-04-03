@@ -149,26 +149,18 @@ export function useGerenteData() {
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {
     const totalAnimais = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
-    const consumoVals = lancamentos.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-    const consumoMedio = consumoVals.length > 0 ? consumoVals.reduce((a, b) => a + b, 0) / consumoVals.length : 0;
+    // No consumo_g_cab_dia in table - skip consumption metrics from lancamentos
+    const consumoMedio = 0;
 
-    const latestLancByPasto = new Map<string, Lancamento>();
-    const sortedLancs = [...lancamentos].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
-    for (const l of sortedLancs) {
-      if (!latestLancByPasto.has(l.pasto_id) && l.status_consumo) {
-        latestLancByPasto.set(l.pasto_id, l);
-      }
-    }
-    let pastosNaMeta = 0;
-    latestLancByPasto.forEach(l => {
-      if (l.status_consumo === 'IDEAL') pastosNaMeta++;
-    });
+    // No status_consumo in table - skip pastosNaMeta
+    const pastosNaMeta = 0;
 
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
-    const custoMensal = lancamentos.reduce((s, l) => s + (Number(l.custo_total) || 0), 0);
+    // No custo_total in table
+    const custoMensal = 0;
     const numDias = ciclo?.num_dias ?? 30;
-    const custoDiario = totalAnimais > 0 && numDias > 0 ? custoMensal / numDias / totalAnimais : 0;
-    const eficiencia = pastos.length > 0 ? (pastosNaMeta / pastos.length) * 100 : 0;
+    const custoDiario = 0;
+    const eficiencia = 0;
     const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
