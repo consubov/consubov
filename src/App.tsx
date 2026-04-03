@@ -23,6 +23,7 @@ import ConfiguracoesGeraisPage from "./pages/ConfiguracoesGeraisPage";
 import NotificacoesPage from "./pages/NotificacoesPage";
 import LandingPageConfigPage from "./pages/LandingPageConfigPage";
 import PainelInteligenciaPage from "./pages/PainelInteligenciaPage";
+import CiclosPage from "./pages/CiclosPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
@@ -124,6 +125,7 @@ const App = () => (
               <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
               <Route path="notificacoes" element={<NotificacoesPage />} />
               <Route path="landing-page" element={<LandingPageConfigPage />} />
+              <Route path="ciclos" element={<CiclosPage />} />
               <Route path="inteligencia" element={<PainelInteligenciaPage />} />
             </Route>
 

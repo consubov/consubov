@@ -123,6 +123,39 @@ export type Database = {
           },
         ]
       }
+      ciclos_auditoria: {
+        Row: {
+          acao: string
+          ciclo_id: string
+          criado_em: string
+          detalhes: Json | null
+          fazenda_id: string
+          id: string
+          usuario_email: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          ciclo_id: string
+          criado_em?: string
+          detalhes?: Json | null
+          fazenda_id: string
+          id?: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          ciclo_id?: string
+          criado_em?: string
+          detalhes?: Json | null
+          fazenda_id?: string
+          id?: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       configuracoes_gerais: {
         Row: {
           ativo: boolean
