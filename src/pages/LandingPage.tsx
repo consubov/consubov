@@ -303,7 +303,7 @@ export default function LandingPage() {
       </section>
 
       {/* Formulário */}
-      <section className="py-16 md:py-24 px-4 bg-primary/5">
+      <section id="formulario" className="py-16 md:py-24 px-4 bg-primary/5">
         <div className="max-w-lg mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center uppercase">{formTitle}</h2>
           <p className="text-muted-foreground text-center mb-8">{formDesc}</p>

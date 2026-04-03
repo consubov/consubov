@@ -11,6 +11,7 @@ import ImageUploadField from "@/components/landing/ImageUploadField";
 const TEXT_KEYS = [
   { key: "hero_titulo", label: "Título do hero (abaixo do carrossel)", type: "input" },
   { key: "hero_subtitulo", label: "Subtítulo do hero (abaixo do carrossel)", type: "textarea" },
+  { key: "cta_texto", label: "Texto do botão CTA (abaixo do subtítulo)", type: "input" },
   { key: "quem_somos", label: "Texto — Quem somos nós", type: "textarea" },
   { key: "diferenciais", label: "Texto — Nossos diferenciais (subtítulo)", type: "textarea" },
   { key: "form_titulo", label: "Título do formulário", type: "input" },
