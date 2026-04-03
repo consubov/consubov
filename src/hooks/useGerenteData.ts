@@ -60,7 +60,13 @@ export interface GmdRankItem { retiro: string; capataz: string; gmd: number; }
 
 const CONSUMO_META = 50; // g/cab/dia target
 
-export function useGerenteData() {
+export interface GerenteFilters {
+  ano: number;
+  mes: number | null; // null = todos os meses
+  cicloStatus: 'aberto' | 'fechado' | 'todos';
+}
+
+export function useGerenteData(filters?: GerenteFilters) {
   const { roleData } = useAuth();
   const fazendaId = roleData.fazendaId;
 
@@ -68,6 +74,7 @@ export function useGerenteData() {
   const [gerenteNome, setGerenteNome] = useState("");
   const [fazendaData, setFazendaData] = useState<FazendaRow>({ nome: '', intervalo_padrao_dias: 3 });
   const [ciclo, setCiclo] = useState<Ciclo | null>(null);
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
