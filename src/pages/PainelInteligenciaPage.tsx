@@ -205,7 +205,7 @@ export default function PainelInteligenciaPage() {
     return Object.entries(grouped)
       .map(([periodo, v]) => ({ periodo, consumo: Math.round(v.sum / v.count * 100) / 100 }))
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
-  }, [filteredLancamentos, filtroPeriodo]);
+  }, [filteredLancamentos]);
 
   // 6. Alerts
   const alertas = useMemo(() => {
