@@ -99,13 +99,20 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         ...retirosData.map(r => r.produto_id).filter(Boolean),
         ...pastos.map(p => p.produto_id).filter(Boolean),
       ])] as string[];
-      let produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number }> = {};
+      let produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
       if (produtoIds.length > 0) {
         const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda")
           .in("id", produtoIds);
         for (const p of (prodData ?? [])) {
-          produtosMap[p.id] = { nome: p.nome, peso_saco_kg: Number(p.peso_saco_kg), preco_por_kg: Number(p.preco_por_kg ?? 0) };
+          produtosMap[p.id] = {
+            nome: p.nome,
+            peso_saco_kg: Number(p.peso_saco_kg),
+            preco_por_kg: Number(p.preco_por_kg ?? 0),
+            consumo_recria1: Number(p.consumo_recria1 ?? 0),
+            consumo_recria2: Number(p.consumo_recria2 ?? 0),
+            consumo_engorda: Number(p.consumo_engorda ?? 0),
+          };
         }
       }
 
