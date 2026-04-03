@@ -144,7 +144,7 @@ export function useGerenteData() {
       .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [ciclo?.id, loadData]);
+  }, [loadData]);
 
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {
