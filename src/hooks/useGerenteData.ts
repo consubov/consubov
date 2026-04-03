@@ -133,6 +133,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
+        produto_id: r.produto_id ?? null,
       })) as Retiro[];
       setRetiros(retirosList);
 
