@@ -202,23 +202,63 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {
     const totalAnimais = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
-    // No consumo_g_cab_dia in table - skip consumption metrics from lancamentos
-    const consumoMedio = 0;
-
-    // No status_consumo in table - skip pastosNaMeta
-    const pastosNaMeta = 0;
-
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
-    // No custo_total in table
-    const custoMensal = 0;
-    const numDias = ciclo?.num_dias ?? 30;
-    const custoDiario = 0;
-    const eficiencia = 0;
+
+    // Consumo médio por cabeça: (total_sacos * peso_saco) / total_animais (kg/cab no período)
+    // We need average peso_saco from produtos linked to pastos/retiros
+    const produtoMap = new Map(produtos.map(p => [p.id, p]));
+    let totalKgSal = 0;
+    for (const l of lancamentos) {
+      // Find produto via pasto -> retiro
+      const pasto = pastos.find(p => p.id === l.pasto_id);
+      const retiro = retiros.find(r => r.id === (pasto?.retiro_id ?? l.retiro_id));
+      const prodId = pasto?.produto_id ?? (retiro as any)?.produto_id;
+      const prod = prodId ? produtoMap.get(prodId) : null;
+      const pesoSaco = prod?.peso_saco_kg ?? 25;
+      totalKgSal += l.num_sacos * pesoSaco;
+    }
+    const consumoMedio = totalAnimais > 0 ? (totalKgSal * 1000) / (totalAnimais * 30) : 0; // g/cab/dia
+
+    // Pastos na meta: pastos that have at least one lancamento with status_consumo = 'Ideal'
+    const pastosComStatus = new Map<string, string>();
+    for (const l of lancamentos) {
+      if (l.status_consumo) {
+        // Keep last status per pasto
+        pastosComStatus.set(l.pasto_id, l.status_consumo);
+      }
+    }
+    const pastosNaMeta = Array.from(pastosComStatus.values()).filter(s => s === 'Ideal').length;
+
+    // Status distribution
+    const lancComStatus = lancamentos.filter(l => l.status_consumo);
+    const totalComStatus = lancComStatus.length;
+    const baixo = lancComStatus.filter(l => l.status_consumo === 'Baixo').length;
+    const ideal = lancComStatus.filter(l => l.status_consumo === 'Ideal').length;
+    const alto = lancComStatus.filter(l => l.status_consumo === 'Alto').length;
+    const statusDistribution: StatusDistribution = {
+      baixo, ideal, alto,
+      baixoPct: totalComStatus > 0 ? (baixo / totalComStatus) * 100 : 0,
+      idealPct: totalComStatus > 0 ? (ideal / totalComStatus) * 100 : 0,
+      altoPct: totalComStatus > 0 ? (alto / totalComStatus) * 100 : 0,
+    };
+
+    // Custo: average preco_por_kg from produtos
+    const precos = produtos.filter(p => p.preco_por_kg != null && p.preco_por_kg > 0).map(p => p.preco_por_kg!);
+    const precoMedioKg = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
+    const consumoMedioKg = consumoMedio / 1000; // convert g to kg
+    const custoDiario = consumoMedioKg * precoMedioKg; // R$/cab/dia
+    const custoMensal = custoDiario * 30 * totalAnimais;
+
+    // Eficiência: média dos índices dos lançamentos
+    const indices = lancamentos.filter(l => l.indice_consumo != null && l.indice_consumo > 0).map(l => l.indice_consumo!);
+    const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
+
+    // GMD
     const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
-    return { totalAnimais, consumoMedio, pastosNaMeta, totalPastos: pastos.length, sacosUtilizados, custoDiario, custoMensal, eficiencia, gmdMedio };
-  }, [pastos, lancamentos, ciclo]);
+    return { totalAnimais, consumoMedio, pastosNaMeta, totalPastos: pastos.length, sacosUtilizados, custoDiario, custoMensal, eficiencia, gmdMedio, statusDistribution };
+  }, [pastos, lancamentos, ciclo, produtos, retiros]);
 
   // Computed: retiros com dados
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
