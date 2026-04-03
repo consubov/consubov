@@ -127,10 +127,8 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         // Calculate consumo for each lancamento
         const consumoValues: number[] = [];
         rLanc.forEach(l => {
-          if (l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
-            const consumoG = (l.num_sacos * pesoSacoKg * 1000) / (l.num_animais * l.dias_no_pasto);
-            consumoValues.push(consumoG);
-          }
+          const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
+          if (c > 0) consumoValues.push(c);
         });
         const consumoMedio = consumoValues.length > 0 ? consumoValues.reduce((a, b) => a + b, 0) / consumoValues.length : 0;
 
