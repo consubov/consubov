@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import heroImg1 from "@/assets/landing-hero-1.jpg";
 import heroImg2 from "@/assets/landing-hero-2.jpg";
