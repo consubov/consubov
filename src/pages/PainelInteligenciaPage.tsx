@@ -190,11 +190,29 @@ export default function PainelInteligenciaPage() {
     });
     return [...years].sort((a, b) => b - a);
   }, [ciclos, lancamentos]);
+
+  // ========= METRICS =========
+
+  // 1. Average consumption
+  const consumoMedioReal = useMemo(() => {
+    const vals = filteredLancamentos.filter(l => l.consumo_g_cab_dia && l.consumo_g_cab_dia > 0).map(l => l.consumo_g_cab_dia!);
+    if (!vals.length) return 0;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }, [filteredLancamentos]);
+
+  // 2. Expected consumption (from product + average peso_medio) in g/cab/dia
+  const consumoEsperado = useMemo(() => {
+    if (filtroProduto === "all") return 0;
+    const prod = produtos.find(p => p.id === filtroProduto);
+    if (!prod) return 0;
+    const consumoPor100kg = prod.consumo_engorda ?? prod.consumo_recria1 ?? prod.consumo_recria2 ?? 0;
+    const pesos = filteredLancamentos
+      .map(l => { const p = pastoById[l.pasto_id]; return p?.peso_medio_kg ?? 0; })
+      .filter(w => w > 0);
     const pesoMedio = pesos.length > 0 ? pesos.reduce((a, b) => a + b, 0) / pesos.length : 0;
     if (pesoMedio <= 0 || consumoPor100kg <= 0) return 0;
-    // Formula: (consumo_por_100kg * peso_medio) / 100 * 1000 → g/cab/dia
     return (consumoPor100kg * pesoMedio) / 100 * 1000;
-  }, [filtroProduto, produtos, filteredLancamentos, pastos]);
+  }, [filtroProduto, produtos, filteredLancamentos, pastoById]);
 
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
   const statusConsumo = getStatusColor(desvioPercent);
