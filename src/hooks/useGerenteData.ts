@@ -178,17 +178,16 @@ export function useGerenteData() {
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-      const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-      const consumoMedio = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
+      const consumoMedio = 0; // Calculated client-side in painel
       const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
       const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
-      // Interval real average: last 5 valid lancamentos with dias_intervalo > 0
-      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
+      // Interval real average: use dias_no_pasto from lancamentos
+      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
       const validIntervals = sortedRLanc
-        .filter(l => l.dias_intervalo != null && l.dias_intervalo > 0)
+        .filter(l => l.dias_no_pasto > 0)
         .slice(0, 5)
-        .map(l => l.dias_intervalo!);
+        .map(l => l.dias_no_pasto);
       const intervaloRealMedio = validIntervals.length > 0
         ? Number((validIntervals.reduce((a, b) => a + b, 0) / validIntervals.length).toFixed(1))
         : null;
