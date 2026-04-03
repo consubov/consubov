@@ -12,6 +12,7 @@ interface Stats {
   produtos: number;
   ciclosAbertos: number;
   lancamentos: number;
+  animais: number;
 }
 
 export default function AdminDashboard() {
