@@ -190,13 +190,42 @@ export default function GerenteDashboard() {
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelData.totalAnimais)} />
             <MetricCard icon={Droplets} label="Consumo Médio" value={`${fmtNum(painelData.consumoMedio, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelData.pastosNaMeta}/${painelData.totalPastos}`} iconColor="text-secondary" />
+            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelData.pastosNaMeta}/${painelData.totalPastos}`} sub={painelData.totalPastos > 0 ? `${fmtNum((painelData.pastosNaMeta / painelData.totalPastos) * 100, 0)}%` : ''} iconColor="text-secondary" />
             <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelData.sacosUtilizados)} />
             <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelData.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
             <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelData.custoMensal)} />
-            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelData.eficiencia, 0)}%`} iconColor="text-secondary" />
+            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelData.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
             <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelData.gmdMedio, 3)} sub="kg/dia" />
           </div>
+
+          {/* Status Distribution */}
+          {(painelData.statusDistribution.baixo + painelData.statusDistribution.ideal + painelData.statusDistribution.alto) > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 space-y-2">
+                {/* Bar */}
+                <div className="flex h-3 rounded-full overflow-hidden bg-muted">
+                  {painelData.statusDistribution.baixoPct > 0 && (
+                    <div className="bg-destructive transition-all" style={{ width: `${painelData.statusDistribution.baixoPct}%` }} />
+                  )}
+                  {painelData.statusDistribution.idealPct > 0 && (
+                    <div className="bg-primary transition-all" style={{ width: `${painelData.statusDistribution.idealPct}%` }} />
+                  )}
+                  {painelData.statusDistribution.altoPct > 0 && (
+                    <div className="bg-secondary transition-all" style={{ width: `${painelData.statusDistribution.altoPct}%` }} />
+                  )}
+                </div>
+                {/* Labels */}
+                <div className="flex justify-between text-xs">
+                  <span className="text-destructive font-medium">Baixo {fmtNum(painelData.statusDistribution.baixoPct, 0)}%</span>
+                  <span className="text-primary font-medium">Ideal {fmtNum(painelData.statusDistribution.idealPct, 0)}%</span>
+                  <span className="text-secondary font-medium">Alto {fmtNum(painelData.statusDistribution.altoPct, 0)}%</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ===== RETIROS ===== */}
