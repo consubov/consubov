@@ -101,6 +101,37 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
  * Recria 2: 250-349 kg
  * Engorda: >= 350 kg
  */
+/**
+ * Unified status classification based on consumo_real in g/cab/dia.
+ * This SINGLE function must be used in ALL modules: painel, relatório, lançamentos.
+ * Faixas fixas:
+ *   < 70 g  → Baixo
+ *   70-80 g → Atenção
+ *   80-120 g → Ideal
+ *   > 120 g → Alto
+ */
+export function consumoStatusUnificado(consumoGCabDia: number): string {
+  if (consumoGCabDia <= 0) return "—";
+  if (consumoGCabDia < 70) return "Baixo";
+  if (consumoGCabDia <= 80) return "Atenção";
+  if (consumoGCabDia <= 120) return "Ideal";
+  return "Alto";
+}
+
+/**
+ * Calculate consumo_real in g/cab/dia from raw lancamento data.
+ * Unified formula used across all modules.
+ */
+export function calcConsumoGCabDia(
+  numSacos: number,
+  pesoSacoKg: number,
+  numAnimais: number,
+  dias: number,
+): number {
+  if (numAnimais <= 0 || dias <= 0 || numSacos <= 0 || pesoSacoKg <= 0) return 0;
+  return (numSacos * pesoSacoKg * 1000) / (numAnimais * dias);
+}
+
 export function classificarCategoria(pesoMedioKg: number): string {
   if (pesoMedioKg < 250) return 'Recria 1';
   if (pesoMedioKg < 350) return 'Recria 2';
