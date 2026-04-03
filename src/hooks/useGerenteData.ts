@@ -51,10 +51,16 @@ export interface AlertaAtraso {
   gravidade: 'leve' | 'moderado' | 'critico';
 }
 
+export interface StatusDistribution {
+  baixo: number; ideal: number; alto: number;
+  baixoPct: number; idealPct: number; altoPct: number;
+}
+
 export interface PainelData {
   totalAnimais: number; consumoMedio: number; pastosNaMeta: number;
   totalPastos: number; sacosUtilizados: number; custoDiario: number;
   custoMensal: number; eficiencia: number; gmdMedio: number;
+  statusDistribution: StatusDistribution;
 }
 
 export interface CapatazScore { retiro: string; capataz: string; score: number; }
