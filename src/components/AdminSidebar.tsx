@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
