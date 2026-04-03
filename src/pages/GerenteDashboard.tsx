@@ -62,18 +62,34 @@ function scoreColor(score: number) {
 
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
+  const [filterAno, setFilterAno] = useState(CURRENT_YEAR);
+  const [filterMes, setFilterMes] = useState<number | null>(CURRENT_MONTH);
+  const [filterCiclo, setFilterCiclo] = useState<'aberto' | 'fechado' | 'todos'>('aberto');
+
+  const filters = useMemo<GerenteFilters>(() => ({
+    ano: filterAno,
+    mes: filterMes,
+    cicloStatus: filterCiclo,
+  }), [filterAno, filterMes, filterCiclo]);
+
   const {
-    loading, gerenteNome, fazendaNome, ciclo, painelData,
+    loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
-  } = useGerenteData();
+  } = useGerenteData(filters);
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   const cicloLabel = ciclo ? `${MES_NOMES[ciclo.mes - 1]}/${ciclo.ano}` : "—";
+
+  const anosDisponiveis = useMemo(() => {
+    const years = new Set(ciclosDisponiveis.map(c => c.ano));
+    years.add(CURRENT_YEAR);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [ciclosDisponiveis]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
