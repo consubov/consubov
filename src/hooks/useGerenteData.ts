@@ -169,6 +169,10 @@ export function useGerenteData(filters?: GerenteFilters) {
         setLancamentos([]);
       }
 
+      // Produtos (for pricing)
+      const produtosRes = await supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      setProdutos((produtosRes.data ?? []) as Produto[]);
+
       // Observacoes
       try {
         const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
