@@ -17,7 +17,9 @@ interface Lancamento {
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
+  status_consumo: string | null; indice_consumo: number | null;
 }
+interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
 
