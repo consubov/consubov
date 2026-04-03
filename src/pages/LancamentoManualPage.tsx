@@ -123,7 +123,7 @@ export default function LancamentoManualPage() {
 
       let existingMap: Record<string, any> = {};
       if (pastoIds.length > 0) {
-        const { data: existing } = await supabase.from("lancamentos_manuais")
+        const { data: existing } = await supabase.from("lancamentos")
           .select("*")
           .in("pasto_id", pastoIds)
           .eq("mes_referencia", mes)
