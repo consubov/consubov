@@ -564,16 +564,16 @@ export default function CapatazDashboard() {
 
               // QR Code: auto-calculate dias_intervalo from dates
               const { data: prevLanc } = await supabase.from("lancamentos")
-                .select("lancado_em")
+                .select("created_at")
                 .eq("pasto_id", l.pasto_id)
-                .lt("lancado_em", l.data)
-                .order("lancado_em", { ascending: false })
+                .lt("created_at", l.data)
+                .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
               let dataAnterior: Date | null = null;
-              if (prevLanc?.lancado_em) {
-                dataAnterior = new Date(prevLanc.lancado_em);
+              if (prevLanc?.created_at) {
+                dataAnterior = new Date(prevLanc.created_at);
               } else if (l.ciclo_id) {
                 const ciclo = ciclos.find(c => c.id === l.ciclo_id);
                 if (ciclo) {
@@ -623,26 +623,21 @@ export default function CapatazDashboard() {
           } as any).eq("id", roleData.retiroId);
         }
 
+        const dataLanc = new Date(l.data);
         const insertData: Record<string, any> = {
           id: l.id,
-          ciclo_id: l.ciclo_id!,
+          fazenda_id: retiro?.fazenda_id,
+          retiro_id: roleData.retiroId,
           pasto_id: l.pasto_id,
+          mes_referencia: dataLanc.getMonth() + 1,
+          ano_referencia: dataLanc.getFullYear(),
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
-          origem: "salga_offline",
-          capataz_nome: userName,
-          lancado_em: l.data,
-          foto_url: l.foto_auditoria_url || null,
-          produto_id: produto_id_final,
+          origem: "qr",
           peso_medio_kg: pasto?.peso_medio_kg ?? null,
-          dias_no_pasto: pasto?.dias_no_pasto ?? null,
+          dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
-          consumo_esperado_kg,
-          consumo_real_kg,
-          indice_consumo,
-          status_consumo,
-          dias_intervalo,
         };
         const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;

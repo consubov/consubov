@@ -220,12 +220,11 @@ export function useGerenteData() {
     const numDias = ciclo?.num_dias ?? 30;
     return retirosComDados.map(r => {
       const rLanc = r.lancamentos;
-      const cVals = rLanc.filter(l => l.consumo_g_cab_dia != null).map(l => Number(l.consumo_g_cab_dia));
-      const avgC = cVals.length > 0 ? cVals.reduce((a, b) => a + b, 0) / cVals.length : 0;
-      const consumoScore = avgC > 0 ? Math.max(0, 1 - Math.abs(avgC - CONSUMO_META) / CONSUMO_META) * 5 : 0;
+      // Simplified score - no consumo_g_cab_dia available
+      const consumoScore = 0;
       const expected = r.pastos.length * (numDias / 3);
       const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-      const dates = rLanc.filter(l => l.lancado_em).map(l => new Date(l.lancado_em!).getTime()).sort((a, b) => a - b);
+      const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
       let intScore = 0;
       if (dates.length >= 2) {
         const intervals: number[] = [];
