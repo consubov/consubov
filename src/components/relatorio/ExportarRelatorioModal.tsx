@@ -76,7 +76,7 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("lancamentos")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo")
           .in("pasto_id", pastoIds);
 
         if (periodoTipo === "mensal") {
