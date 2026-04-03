@@ -250,8 +250,9 @@ export default function PainelInteligenciaPage() {
     return (consumoPor100kg * pesoMedio) / 100 * 1000;
   }, [filtroProduto, produtoById, filteredLancamentos, pastoById]);
 
+  const indiceConsumo = consumoEsperado > 0 ? calcIndiceConsumo(consumoMedioReal, consumoEsperado) : 0;
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
-  const statusConsumo = getStatusColor(desvioPercent);
+  const statusConsumo = getStatusColor(indiceConsumo);
 
   // 3. Average interval (dias_no_pasto)
   const intervaloMedio = useMemo(() => {
