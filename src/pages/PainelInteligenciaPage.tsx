@@ -197,9 +197,7 @@ export default function PainelInteligenciaPage() {
     filteredLancamentos.forEach(l => {
       if (!l.lancado_em || !l.consumo_g_cab_dia) return;
       const d = new Date(l.lancado_em);
-      const key = filtroPeriodo === "semana"
-        ? `${d.getFullYear()}-S${Math.ceil((d.getMonth() * 30 + d.getDate()) / 7)}`
-        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!grouped[key]) grouped[key] = { sum: 0, count: 0 };
       grouped[key].sum += l.consumo_g_cab_dia;
       grouped[key].count += 1;
