@@ -36,7 +36,7 @@ export interface ConsumoResult {
 /**
  * Calculate consumption metrics.
  * Formula: consumo_real = (num_sacos * peso_saco_kg) / (num_animais * dias) * 1000  → g/cab/dia
- * Formula: consumo_esperado = (consumo_por_100kg_categoria * peso_medio_kg) / 100   → g/cab/dia
+ * Formula: consumo_esperado = (consumo_por_100kg_categoria * peso_medio_kg) / 100 * 1000 → g/cab/dia
  * Classification uses product margin (not fixed 0.9/1.1).
  */
 export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
