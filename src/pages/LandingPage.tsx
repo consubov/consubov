@@ -312,42 +312,47 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center uppercase">{formTitle}</h2>
           <p className="text-muted-foreground text-center mb-8">{formDesc}</p>
 
-          {submitted ? (
-            <Card>
-              <CardContent className="pt-8 pb-8 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
-                <h3 className="text-lg font-semibold text-foreground">Mensagem enviada!</h3>
-                <p className="text-muted-foreground text-sm">Nossa equipe analisará sua solicitação e entrará em contato em breve.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div>
-                  <Input placeholder="Nome *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} maxLength={100} />
-                  {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
-                </div>
-                <div>
-                  <Input type="email" placeholder="E-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
-                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <Input placeholder="Telefone *" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} maxLength={20} />
-                  {errors.telefone && <p className="text-xs text-destructive mt-1">{errors.telefone}</p>}
-                </div>
-                <div>
-                  <Input placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} maxLength={20} />
-                  {errors.whatsapp && <p className="text-xs text-destructive mt-1">{errors.whatsapp}</p>}
-                </div>
-                <div>
-                  <Textarea placeholder="Nos conte sua dificuldade" value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} maxLength={1000} rows={4} />
-                </div>
-                <Button className="w-full font-semibold" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? "Enviando..." : "Enviar"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <Dialog open={submitted} onOpenChange={setSubmitted}>
+            <DialogContent className="text-center max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
+                  Mensagem enviada!
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-muted-foreground text-sm whitespace-pre-line leading-relaxed mt-2">
+                {formMsgConfirmacao}
+              </p>
+            </DialogContent>
+          </Dialog>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <Input placeholder="Nome *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} maxLength={100} />
+                {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
+              </div>
+              <div>
+                <Input type="email" placeholder="E-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
+                {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+              </div>
+              <div>
+                <Input placeholder="Telefone *" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} maxLength={20} />
+                {errors.telefone && <p className="text-xs text-destructive mt-1">{errors.telefone}</p>}
+              </div>
+              <div>
+                <Input placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} maxLength={20} />
+                {errors.whatsapp && <p className="text-xs text-destructive mt-1">{errors.whatsapp}</p>}
+              </div>
+              <div>
+                <Textarea placeholder={formPlaceholder} value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} maxLength={1000} rows={4} />
+                <p className="text-xs text-muted-foreground/70 mt-1 italic">{formMicrofrase}</p>
+              </div>
+              <Button className="w-full font-semibold" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? "Enviando..." : "Enviar"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

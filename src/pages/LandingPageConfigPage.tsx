@@ -16,6 +16,9 @@ const TEXT_KEYS = [
   { key: "diferenciais", label: "Texto — Nossos diferenciais (subtítulo)", type: "textarea" },
   { key: "form_titulo", label: "Título do formulário", type: "input" },
   { key: "form_descricao", label: "Descrição do formulário", type: "input" },
+  { key: "form_placeholder", label: "Texto do campo de mensagem (placeholder)", type: "input" },
+  { key: "form_microfrase", label: "Microfrase abaixo do campo de mensagem", type: "input" },
+  { key: "form_msg_confirmacao", label: "Mensagem de confirmação pós-envio", type: "textarea" },
   { key: "rodape", label: "Texto do rodapé", type: "textarea" },
 ];
 
