@@ -1,7 +1,7 @@
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
-import { consumoStatusUnificado } from "@/lib/consumoCalc";
+// Status is now read directly from DB — no recalculation needed
 
 // ---------- Types ----------
 export interface RelatorioPDFData {

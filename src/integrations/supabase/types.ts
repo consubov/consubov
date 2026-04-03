@@ -330,6 +330,7 @@ export type Database = {
           dias_no_pasto: number
           fazenda_id: string
           id: string
+          indice_consumo: number | null
           mes_referencia: number
           num_animais: number
           num_sacos: number
@@ -338,6 +339,7 @@ export type Database = {
           peso_medio_kg: number | null
           retiro_id: string
           sexo: string | null
+          status_consumo: string | null
         }
         Insert: {
           ano_referencia: number
@@ -346,6 +348,7 @@ export type Database = {
           dias_no_pasto?: number
           fazenda_id: string
           id?: string
+          indice_consumo?: number | null
           mes_referencia: number
           num_animais?: number
           num_sacos?: number
@@ -354,6 +357,7 @@ export type Database = {
           peso_medio_kg?: number | null
           retiro_id: string
           sexo?: string | null
+          status_consumo?: string | null
         }
         Update: {
           ano_referencia?: number
@@ -362,6 +366,7 @@ export type Database = {
           dias_no_pasto?: number
           fazenda_id?: string
           id?: string
+          indice_consumo?: number | null
           mes_referencia?: number
           num_animais?: number
           num_sacos?: number
@@ -370,6 +375,7 @@ export type Database = {
           peso_medio_kg?: number | null
           retiro_id?: string
           sexo?: string | null
+          status_consumo?: string | null
         }
         Relationships: [
           {
