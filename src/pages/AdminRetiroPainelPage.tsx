@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
+import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,19 +40,36 @@ function MetricCard({ icon: Icon, label, value, sub, iconColor = "text-primary" 
 
 export default function AdminRetiroPainelPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId: string; retiroId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const now = new Date();
-  const [mes, setMes] = useState(Number(searchParams.get("mes")) || now.getMonth() + 1);
-  const [ano, setAno] = useState(Number(searchParams.get("ano")) || now.getFullYear());
+  const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const periodoDaUrl = readPainelPeriodoFromSearchParams(searchParams);
+    if (periodoDaUrl) {
+      setPeriodo(periodoDaUrl.mes, periodoDaUrl.ano);
+    }
+  }, [searchParams, setPeriodo]);
+
+  useEffect(() => {
+    if (searchParams.get("mes") === String(mes) && searchParams.get("ano") === String(ano)) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("mes", String(mes));
+    nextParams.set("ano", String(ano));
+    setSearchParams(nextParams, { replace: true });
+  }, [mes, ano, searchParams, setSearchParams]);
 
   const filters = useMemo(() => ({
     fazendaId: fazendaId!,
     retiroId: retiroId!,
-    mes, ano,
+    mes,
+    ano,
   }), [fazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
@@ -100,12 +118,10 @@ export default function AdminRetiroPainelPage() {
       <h1 className="text-xl font-bold text-foreground">{retiroNome} — Painel</h1>
       {retiroData && <p className="text-sm text-muted-foreground">Capataz: {retiroData.capataz}</p>}
 
-      {/* Month Scroller */}
       <Card className="p-2">
-        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => { setMes(m); setAno(y); }} />
+        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(month, year) => setPeriodo(month, year)} />
       </Card>
 
-      {/* Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metrics.totalAnimais)} />
         <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metrics.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
@@ -118,7 +134,6 @@ export default function AdminRetiroPainelPage() {
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
       </div>
 
-      {/* Status Distribution */}
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
@@ -139,7 +154,6 @@ export default function AdminRetiroPainelPage() {
         </Card>
       )}
 
-      {/* Pastos List */}
       {retiroData && retiroData.pastos.length > 0 && (
         <>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -149,7 +163,7 @@ export default function AdminRetiroPainelPage() {
             {retiroData.pastos.map(p => {
               const pLanc = retiroData.lancamentos.filter(l => l.pasto_id === p.id);
               const totalSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-              const latestStatus = pLanc.find(l => l.status_consumo);
+              const latestStatus = [...pLanc].reverse().find(l => l.status_consumo);
 
               return (
                 <Card key={p.id}>
@@ -197,6 +211,9 @@ export default function AdminRetiroPainelPage() {
         fazendaId={fazendaId!}
         fazendaNome={fazendaNome}
         geradoPor={user?.user_metadata?.nome || user?.email || "Administrador"}
+        initialMes={mes}
+        initialAno={ano}
+        lockedRetiroId={retiroId!}
       />
     </div>
   );

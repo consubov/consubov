@@ -85,7 +85,8 @@ export function usePainelData(filters: PainelFilters) {
       ]);
 
       setFazendaNome(fazRes.data?.nome ?? "");
-      const retList = (retirosRes.data ?? []) as Retiro[];
+      const allRetiros = (retirosRes.data ?? []) as Retiro[];
+      const retList = retiroId ? allRetiros.filter((retiro) => retiro.id === retiroId) : allRetiros;
       setRetiros(retList);
       setProdutos((prodRes.data ?? []) as Produto[]);
 
@@ -136,9 +137,11 @@ export function usePainelData(filters: PainelFilters) {
   const produtoMap = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos]);
 
   const metrics = useMemo<PainelMetrics>(() => {
-    if (lancamentos.length === 0 && pastos.length === 0) return emptyMetrics;
+    const pastosNoPeriodo = pastos.filter((pasto) => lancamentos.some((lancamento) => lancamento.pasto_id === pasto.id));
 
-    const totalAnimais = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+    if (lancamentos.length === 0 && pastosNoPeriodo.length === 0) return emptyMetrics;
+
+    const totalAnimais = pastosNoPeriodo.reduce((s, p) => s + (p.num_animais || 0), 0);
     const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
     let totalKgSal = 0;
@@ -151,37 +154,32 @@ export function usePainelData(filters: PainelFilters) {
     }
     const consumoMedio = totalAnimais > 0 ? (totalKgSal * 1000) / (totalAnimais * 30) : 0;
 
-    // Status distribution
     const lancComStatus = lancamentos.filter(l => l.status_consumo);
     const total = lancComStatus.length;
     const baixo = lancComStatus.filter(l => l.status_consumo === "Baixo").length;
     const ideal = lancComStatus.filter(l => l.status_consumo === "Ideal").length;
     const alto = lancComStatus.filter(l => l.status_consumo === "Alto").length;
 
-    // Pastos na meta
     const pastosStatus = new Map<string, string>();
     for (const l of lancamentos) {
       if (l.status_consumo) pastosStatus.set(l.pasto_id, l.status_consumo);
     }
     const pastosNaMeta = Array.from(pastosStatus.values()).filter(s => s === "Ideal").length;
 
-    // Custos
     const precos = produtos.filter(p => p.preco_por_kg != null && p.preco_por_kg > 0).map(p => p.preco_por_kg!);
     const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
     const custoDiario = (consumoMedio / 1000) * precoMedio;
     const custoMensal = custoDiario * 30 * totalAnimais;
 
-    // Eficiência
     const indices = lancamentos.filter(l => l.indice_consumo != null && l.indice_consumo > 0).map(l => l.indice_consumo!);
     const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
 
-    // GMD
-    const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
+    const gmdVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
     return {
       totalAnimais, sacosUtilizados, consumoMedio,
-      pastosNaMeta, totalPastos: pastos.length,
+      pastosNaMeta, totalPastos: pastosNoPeriodo.length,
       custoDiario, custoMensal, eficiencia, gmdMedio,
       totalSalgas: lancamentos.length,
       statusDist: {
@@ -200,6 +198,7 @@ export function usePainelData(filters: PainelFilters) {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rPastoIds = new Set(rPastos.map(p => p.id));
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+      const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
       const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
@@ -220,7 +219,7 @@ export function usePainelData(filters: PainelFilters) {
         diasSemSalga = Math.floor((now.getTime() - new Date(r.ultima_salga_em).getTime()) / 86400000);
       }
 
-      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: rPastos };
+      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: pastosNoPeriodo };
     });
   }, [retiros, pastos, lancamentos, produtoMap]);
 
