@@ -115,10 +115,26 @@ export default function PainelInteligenciaPage() {
     return map;
   }, [retiros, fazendas]);
 
+  const pastoById = useMemo(() => {
+    const map: Record<string, Pasto> = {};
+    pastos.forEach(p => { map[p.id] = p; });
+    return map;
+  }, [pastos]);
+
   const getFazendaForLancamento = (l: Lancamento): Fazenda | undefined => {
     const retiro = retiroByPasto[l.pasto_id];
     if (!retiro) return undefined;
     return fazendaByRetiro[retiro.id];
+  };
+
+  // Resolve the effective produto_id for a lancamento (fallback to pasto -> retiro)
+  const getEffectiveProdutoId = (l: Lancamento): string | null => {
+    if (l.produto_id) return l.produto_id;
+    const pasto = pastoById[l.pasto_id];
+    if (pasto?.produto_id) return pasto.produto_id;
+    const retiro = retiroByPasto[l.pasto_id];
+    if (retiro?.produto_id) return retiro.produto_id;
+    return null;
   };
 
   // Filtered lancamentos
@@ -129,7 +145,10 @@ export default function PainelInteligenciaPage() {
       if (filtroFazenda !== "all" && fazenda.id !== filtroFazenda) return false;
       if (filtroEstado !== "all" && fazenda.estado !== filtroEstado) return false;
       if (filtroCidade !== "all" && fazenda.cidade !== filtroCidade) return false;
-      if (filtroProduto !== "all" && l.produto_id !== filtroProduto) return false;
+      if (filtroProduto !== "all") {
+        const effectiveProduto = getEffectiveProdutoId(l);
+        if (effectiveProduto !== filtroProduto) return false;
+      }
       if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
       if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
       if (l.lancado_em) {
@@ -138,7 +157,7 @@ export default function PainelInteligenciaPage() {
       }
       return true;
     });
-  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro]);
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro, pastoById]);
 
   // Unique filter options
   const estados = useMemo(() => [...new Set(fazendas.map(f => f.estado))].sort(), [fazendas]);
@@ -148,6 +167,29 @@ export default function PainelInteligenciaPage() {
   }, [fazendas, filtroEstado]);
   const categorias = useMemo(() => [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort(), [lancamentos]);
   const sexos = useMemo(() => [...new Set(lancamentos.map(l => l.sexo).filter(Boolean))].sort(), [lancamentos]);
+
+  // Products actually used in lancamentos (including inherited from pasto/retiro)
+  const produtosUtilizados = useMemo(() => {
+    const usedIds = new Set<string>();
+    lancamentos.forEach(l => {
+      const pid = getEffectiveProdutoId(l);
+      if (pid) usedIds.add(pid);
+    });
+    // Show all active products + any used in lancamentos
+    const allIds = new Set([...produtos.map(p => p.id), ...usedIds]);
+    return produtos.filter(p => allIds.has(p.id));
+  }, [lancamentos, produtos, pastoById, retiroByPasto]);
+
+  // Available years from ciclos and lancamentos
+  const anosDisponiveis = useMemo(() => {
+    const years = new Set<number>();
+    years.add(new Date().getFullYear());
+    ciclos.forEach(c => years.add(c.ano));
+    lancamentos.forEach(l => {
+      if (l.lancado_em) years.add(new Date(l.lancado_em).getFullYear());
+    });
+    return [...years].sort((a, b) => b - a);
+  }, [ciclos, lancamentos]);
 
   // ========= METRICS =========
 
@@ -164,15 +206,13 @@ export default function PainelInteligenciaPage() {
     const prod = produtos.find(p => p.id === filtroProduto);
     if (!prod) return 0;
     const consumoPor100kg = prod.consumo_engorda ?? prod.consumo_recria1 ?? prod.consumo_recria2 ?? 0;
-    // Get average peso_medio from filtered lancamentos
     const pesos = filteredLancamentos
-      .map(l => { const p = pastos.find(pa => pa.id === l.pasto_id); return p?.peso_medio_kg ?? 0; })
+      .map(l => { const p = pastoById[l.pasto_id]; return p?.peso_medio_kg ?? 0; })
       .filter(w => w > 0);
     const pesoMedio = pesos.length > 0 ? pesos.reduce((a, b) => a + b, 0) / pesos.length : 0;
     if (pesoMedio <= 0 || consumoPor100kg <= 0) return 0;
-    // Formula: (consumo_por_100kg * peso_medio) / 100 * 1000 → g/cab/dia
     return (consumoPor100kg * pesoMedio) / 100 * 1000;
-  }, [filtroProduto, produtos, filteredLancamentos, pastos]);
+  }, [filtroProduto, produtos, filteredLancamentos, pastoById]);
 
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
   const statusConsumo = getStatusColor(desvioPercent);
@@ -332,7 +372,7 @@ export default function PainelInteligenciaPage() {
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  {produtosUtilizados.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -372,7 +412,7 @@ export default function PainelInteligenciaPage() {
               <Select value={String(filtroAno)} onValueChange={(v) => setFiltroAno(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 25 }, (_, i) => 2026 + i).map((y) => (
+                  {anosDisponiveis.map((y) => (
                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                   ))}
                 </SelectContent>
