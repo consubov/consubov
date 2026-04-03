@@ -334,9 +334,9 @@ export default function CapatazDashboard() {
           if (pastosData.length > 0) {
             const { data: lancamentosData } = await supabase
               .from("lancamentos")
-              .select("id, pasto_id, num_sacos, foto_url, lancado_em, ciclo_id, status_consumo, indice_consumo")
+              .select("id, pasto_id, num_sacos, created_at, mes_referencia, ano_referencia, origem")
               .in("pasto_id", pastosData.map((p) => p.id))
-              .order("lancado_em", { ascending: false });
+              .order("created_at", { ascending: false });
 
             if (lancamentosData && lancamentosData.length > 0) {
               const pastosById = new Map(pastosData.map((p) => [p.id, p.nome]));
