@@ -284,25 +284,35 @@ export default function LandingPage() {
       </section>
 
       {/* Parceiros */}
-      <section className="py-16 md:py-24 px-4">
+      <section className="py-16 md:py-24 px-4 overflow-hidden">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 uppercase">PARCEIROS QUE USAM</h2>
           <p className="text-muted-foreground mb-8">Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
-          <div className="flex flex-wrap items-center justify-center gap-8">
-            {parceirosLogos.length > 0 ? (
-              parceirosLogos.map((logo, i) => (
-                <div key={logo} className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-border">
-                  <img src={logo} alt={`Parceiro ${i + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
+          {(() => {
+            const logos = parceirosLogos.length > 0
+              ? parceirosLogos
+              : [null, null, null];
+            // Duplicate for seamless loop
+            const items = [...logos, ...logos];
+            return (
+              <div
+                className="group relative w-full"
+                style={{ maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)" }}
+              >
+                <div className="flex items-center gap-10 animate-[marquee_20s_linear_infinite] group-hover:[animation-play-state:paused] w-max">
+                  {items.map((logo, i) => (
+                    <div key={i} className="w-24 h-24 shrink-0 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-border">
+                      {logo ? (
+                        <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Logo {(i % 3) + 1}</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))
-            ) : (
-              <>
-                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 1</div>
-                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 2</div>
-                <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">Logo 3</div>
-              </>
-            )}
-          </div>
+              </div>
+            );
+          })()}
         </div>
       </section>
 
