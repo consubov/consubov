@@ -141,7 +141,6 @@ export function useGerenteData() {
       .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);

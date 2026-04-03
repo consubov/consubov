@@ -5,24 +5,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, Cell,
+  BarChart, Bar, Cell,
 } from "recharts";
+import {
+  calcularConsumo,
+  classificarCategoria,
+  getConsumoPorCategoria,
+  getMargemPorCategoria,
+} from "@/lib/consumoCalc";
 
 interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
 interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: string | null; }
 interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; }
-interface Produto { id: string; nome: string; peso_saco_kg: number; consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null; }
-interface Lancamento {
-  id: string; pasto_id: string; ciclo_id: string; num_sacos: number; num_animais: number;
-  lancado_em: string | null; produto_id: string | null; consumo_g_cab_dia: number | null;
-  consumo_esperado_kg: number | null; consumo_real_kg: number | null; dias_intervalo: number | null;
-  categoria: string | null; sexo: string | null;
+interface Produto {
+  id: string; nome: string; peso_saco_kg: number;
+  consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null;
+  margem_engorda: number | null; margem_recria1: number | null; margem_recria2: number | null;
 }
-interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; }
+interface Lancamento {
+  id: string; fazenda_id: string; retiro_id: string; pasto_id: string;
+  mes_referencia: number; ano_referencia: number;
+  num_animais: number; num_sacos: number; dias_no_pasto: number;
+  origem: string; created_at: string;
+  categoria: string | null; sexo: string | null; peso_medio_kg: number | null;
+}
 
 const ESTADOS_BR: Record<string, { x: number; y: number }> = {
   AC: { x: 100, y: 260 }, AL: { x: 620, y: 310 }, AP: { x: 340, y: 100 },
@@ -56,7 +65,6 @@ export default function PainelInteligenciaPage() {
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -66,54 +74,49 @@ export default function PainelInteligenciaPage() {
   const [filtroProduto, setFiltroProduto] = useState("all");
   const [filtroCategoria, setFiltroCategoria] = useState("all");
   const [filtroSexo, setFiltroSexo] = useState("all");
-  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1); // 1-12
+  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const [fRes, rRes, pRes, prRes, lRes, cRes] = await Promise.all([
+      const [fRes, rRes, pRes, prRes, lRes] = await Promise.all([
         supabase.from("fazendas").select("id, nome, cidade, estado").eq("ativo", true),
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id").eq("ativo", true),
-        supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2").eq("ativo", true),
-        supabase.from("lancamentos").select("id, pasto_id, ciclo_id, num_sacos, num_animais, lancado_em, produto_id, consumo_g_cab_dia, consumo_esperado_kg, consumo_real_kg, dias_intervalo, categoria, sexo").order("lancado_em", { ascending: false }),
-        supabase.from("ciclos").select("id, fazenda_id, mes, ano, num_dias"),
+        supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2").eq("ativo", true),
+        supabase.from("lancamentos").select("id, fazenda_id, retiro_id, pasto_id, mes_referencia, ano_referencia, num_animais, num_sacos, dias_no_pasto, origem, created_at, categoria, sexo, peso_medio_kg").order("created_at", { ascending: false }),
       ]);
       setFazendas(fRes.data ?? []);
       setRetiros(rRes.data ?? []);
       setPastos(pRes.data ?? []);
       setProdutos(prRes.data ?? []);
-      setLancamentos(lRes.data ?? []);
-      setCiclos(cRes.data ?? []);
+      setLancamentos((lRes.data ?? []) as Lancamento[]);
       setLoading(false);
     }
     load();
 
-    // Real-time subscription for all relevant tables
     const channel = supabase.channel("inteligencia-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
   // Lookup helpers
-  const retiroByPasto = useMemo(() => {
+  const retiroById = useMemo(() => {
     const map: Record<string, Retiro> = {};
-    pastos.forEach(p => { const r = retiros.find(r => r.id === p.retiro_id); if (r) map[p.id] = r; });
+    retiros.forEach(r => { map[r.id] = r; });
     return map;
-  }, [pastos, retiros]);
+  }, [retiros]);
 
-  const fazendaByRetiro = useMemo(() => {
+  const fazendaById = useMemo(() => {
     const map: Record<string, Fazenda> = {};
-    retiros.forEach(r => { const f = fazendas.find(f => f.id === r.fazenda_id); if (f) map[r.id] = f; });
+    fazendas.forEach(f => { map[f.id] = f; });
     return map;
-  }, [retiros, fazendas]);
+  }, [fazendas]);
 
   const pastoById = useMemo(() => {
     const map: Record<string, Pasto> = {};
@@ -121,25 +124,53 @@ export default function PainelInteligenciaPage() {
     return map;
   }, [pastos]);
 
+  const produtoById = useMemo(() => {
+    const map: Record<string, Produto> = {};
+    produtos.forEach(p => { map[p.id] = p; });
+    return map;
+  }, [produtos]);
+
   const getFazendaForLancamento = (l: Lancamento): Fazenda | undefined => {
-    const retiro = retiroByPasto[l.pasto_id];
-    if (!retiro) return undefined;
-    return fazendaByRetiro[retiro.id];
+    return fazendaById[l.fazenda_id];
   };
 
-  // Resolve the effective produto_id for a lancamento (fallback to pasto -> retiro)
+  // Resolve effective produto_id: pasto -> retiro
   const getEffectiveProdutoId = (l: Lancamento): string | null => {
-    if (l.produto_id) return l.produto_id;
     const pasto = pastoById[l.pasto_id];
     if (pasto?.produto_id) return pasto.produto_id;
-    const retiro = retiroByPasto[l.pasto_id];
+    const retiro = retiroById[l.retiro_id];
     if (retiro?.produto_id) return retiro.produto_id;
     return null;
   };
 
-  // Filtered lancamentos
+  // Calculate consumption for a lancamento client-side
+  const calcConsumoForLanc = (l: Lancamento): number | null => {
+    const produtoId = getEffectiveProdutoId(l);
+    if (!produtoId) return null;
+    const prod = produtoById[produtoId];
+    if (!prod || l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) return null;
+    const pesoMedio = l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0;
+    const cat = l.categoria || classificarCategoria(pesoMedio);
+    const consumo_por_100kg = getConsumoPorCategoria(cat, prod);
+    const margem = getMargemPorCategoria(cat, prod);
+    const result = calcularConsumo({
+      num_sacos: l.num_sacos,
+      peso_saco_kg: prod.peso_saco_kg,
+      num_animais: l.num_animais,
+      dias: l.dias_no_pasto,
+      peso_medio_kg: pesoMedio,
+      consumo_por_100kg_categoria: consumo_por_100kg,
+      margem,
+    });
+    return result?.consumo_real_g_cab_dia ?? null;
+  };
+
+  // Filter by mes_referencia + ano_referencia (NOT created_at)
   const filteredLancamentos = useMemo(() => {
     return lancamentos.filter(l => {
+      // Filter by mes_referencia and ano_referencia
+      if (l.mes_referencia !== filtroMes || l.ano_referencia !== filtroAno) return false;
+
       const fazenda = getFazendaForLancamento(l);
       if (!fazenda) return false;
       if (filtroFazenda !== "all" && fazenda.id !== filtroFazenda) return false;
@@ -151,13 +182,9 @@ export default function PainelInteligenciaPage() {
       }
       if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
       if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
-      if (l.lancado_em) {
-        const d = new Date(l.lancado_em);
-        if (d.getMonth() + 1 !== filtroMes || d.getFullYear() !== filtroAno) return false;
-      }
       return true;
     });
-  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro, pastoById]);
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, fazendaById, pastoById, retiroById]);
 
   // Unique filter options
   const estados = useMemo(() => [...new Set(fazendas.map(f => f.estado))].sort(), [fazendas]);
@@ -168,58 +195,62 @@ export default function PainelInteligenciaPage() {
   const categorias = useMemo(() => [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort(), [lancamentos]);
   const sexos = useMemo(() => [...new Set(lancamentos.map(l => l.sexo).filter(Boolean))].sort(), [lancamentos]);
 
-  // Products actually used in lancamentos (including inherited from pasto/retiro)
+  // Products used in lancamentos (via pasto/retiro linkage)
   const produtosUtilizados = useMemo(() => {
     const usedIds = new Set<string>();
     lancamentos.forEach(l => {
       const pid = getEffectiveProdutoId(l);
       if (pid) usedIds.add(pid);
     });
-    // Show all active products + any used in lancamentos
     const allIds = new Set([...produtos.map(p => p.id), ...usedIds]);
     return produtos.filter(p => allIds.has(p.id));
-  }, [lancamentos, produtos, pastoById, retiroByPasto]);
+  }, [lancamentos, produtos, pastoById, retiroById]);
 
-  // Available years from ciclos and lancamentos
+  // Available years from lancamentos
   const anosDisponiveis = useMemo(() => {
     const years = new Set<number>();
     years.add(new Date().getFullYear());
-    ciclos.forEach(c => years.add(c.ano));
-    lancamentos.forEach(l => {
-      if (l.lancado_em) years.add(new Date(l.lancado_em).getFullYear());
-    });
+    lancamentos.forEach(l => years.add(l.ano_referencia));
     return [...years].sort((a, b) => b - a);
-  }, [ciclos, lancamentos]);
+  }, [lancamentos]);
 
   // ========= METRICS =========
 
+  // Consumption calculated client-side for each filtered lancamento
+  const consumosPorLanc = useMemo(() => {
+    return filteredLancamentos.map(l => ({
+      lancamento: l,
+      consumo: calcConsumoForLanc(l),
+    }));
+  }, [filteredLancamentos, produtoById, pastoById, retiroById]);
+
   // 1. Average consumption
   const consumoMedioReal = useMemo(() => {
-    const vals = filteredLancamentos.filter(l => l.consumo_g_cab_dia && l.consumo_g_cab_dia > 0).map(l => l.consumo_g_cab_dia!);
+    const vals = consumosPorLanc.filter(c => c.consumo != null && c.consumo > 0).map(c => c.consumo!);
     if (!vals.length) return 0;
     return vals.reduce((a, b) => a + b, 0) / vals.length;
-  }, [filteredLancamentos]);
+  }, [consumosPorLanc]);
 
   // 2. Expected consumption (from product + average peso_medio) in g/cab/dia
   const consumoEsperado = useMemo(() => {
     if (filtroProduto === "all") return 0;
-    const prod = produtos.find(p => p.id === filtroProduto);
+    const prod = produtoById[filtroProduto];
     if (!prod) return 0;
     const consumoPor100kg = prod.consumo_engorda ?? prod.consumo_recria1 ?? prod.consumo_recria2 ?? 0;
     const pesos = filteredLancamentos
-      .map(l => { const p = pastoById[l.pasto_id]; return p?.peso_medio_kg ?? 0; })
+      .map(l => l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0)
       .filter(w => w > 0);
     const pesoMedio = pesos.length > 0 ? pesos.reduce((a, b) => a + b, 0) / pesos.length : 0;
     if (pesoMedio <= 0 || consumoPor100kg <= 0) return 0;
     return (consumoPor100kg * pesoMedio) / 100 * 1000;
-  }, [filtroProduto, produtos, filteredLancamentos, pastoById]);
+  }, [filtroProduto, produtoById, filteredLancamentos, pastoById]);
 
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
   const statusConsumo = getStatusColor(desvioPercent);
 
-  // 3. Average interval between "salgas"
+  // 3. Average interval (dias_no_pasto)
   const intervaloMedio = useMemo(() => {
-    const vals = filteredLancamentos.filter(l => l.dias_intervalo && l.dias_intervalo > 0).map(l => l.dias_intervalo!);
+    const vals = filteredLancamentos.filter(l => l.dias_no_pasto > 0).map(l => l.dias_no_pasto);
     if (!vals.length) return 0;
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   }, [filteredLancamentos]);
@@ -227,12 +258,12 @@ export default function PainelInteligenciaPage() {
   // 4. Ranking by fazenda
   const rankingFazendas = useMemo(() => {
     const fazMap: Record<string, { nome: string; estado: string; consumos: number[]; intervalos: number[] }> = {};
-    filteredLancamentos.forEach(l => {
+    consumosPorLanc.forEach(({ lancamento: l, consumo }) => {
       const faz = getFazendaForLancamento(l);
       if (!faz) return;
       if (!fazMap[faz.id]) fazMap[faz.id] = { nome: faz.nome, estado: faz.estado, consumos: [], intervalos: [] };
-      if (l.consumo_g_cab_dia && l.consumo_g_cab_dia > 0) fazMap[faz.id].consumos.push(l.consumo_g_cab_dia);
-      if (l.dias_intervalo && l.dias_intervalo > 0) fazMap[faz.id].intervalos.push(l.dias_intervalo);
+      if (consumo != null && consumo > 0) fazMap[faz.id].consumos.push(consumo);
+      if (l.dias_no_pasto > 0) fazMap[faz.id].intervalos.push(l.dias_no_pasto);
     });
 
     return Object.entries(fazMap).map(([id, data]) => {
@@ -241,23 +272,22 @@ export default function PainelInteligenciaPage() {
       const desvio = consumoEsperado > 0 ? Math.abs((avg - consumoEsperado) / consumoEsperado * 100) : 0;
       return { id, nome: data.nome, estado: data.estado, consumoMedio: avg, intervaloMedio: avgIntervalo, desvio, lancamentos: data.consumos.length };
     }).sort((a, b) => a.desvio - b.desvio);
-  }, [filteredLancamentos, consumoEsperado]);
+  }, [consumosPorLanc, consumoEsperado, fazendaById]);
 
-  // 5. Consumption trend over time
+  // 5. Consumption trend over time (group by mes_referencia/ano_referencia)
   const tendencia = useMemo(() => {
     const grouped: Record<string, { sum: number; count: number }> = {};
-    filteredLancamentos.forEach(l => {
-      if (!l.lancado_em || !l.consumo_g_cab_dia) return;
-      const d = new Date(l.lancado_em);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    consumosPorLanc.forEach(({ lancamento: l, consumo }) => {
+      if (consumo == null || consumo <= 0) return;
+      const key = `${l.ano_referencia}-${String(l.mes_referencia).padStart(2, "0")}`;
       if (!grouped[key]) grouped[key] = { sum: 0, count: 0 };
-      grouped[key].sum += l.consumo_g_cab_dia;
+      grouped[key].sum += consumo;
       grouped[key].count += 1;
     });
     return Object.entries(grouped)
       .map(([periodo, v]) => ({ periodo, consumo: Math.round(v.sum / v.count * 100) / 100 }))
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
-  }, [filteredLancamentos]);
+  }, [consumosPorLanc]);
 
   // 6. Alerts
   const alertas = useMemo(() => {
@@ -271,28 +301,28 @@ export default function PainelInteligenciaPage() {
       }
     });
     if (filtroProduto !== "all") {
-      const prod = produtos.find(p => p.id === filtroProduto);
+      const prod = produtoById[filtroProduto];
       if (prod && consumoMedioReal > 0 && consumoEsperado > 0 && Math.abs(desvioPercent) > 20) {
         msgs.push({ tipo: "warning", texto: `Produto ${prod.nome} apresenta consumo ${desvioPercent > 0 ? "acima" : "abaixo"} da média regional` });
       }
     }
     return msgs;
-  }, [rankingFazendas, consumoEsperado, consumoMedioReal, desvioPercent, filtroProduto, produtos]);
+  }, [rankingFazendas, consumoEsperado, consumoMedioReal, desvioPercent, filtroProduto, produtoById]);
 
   // 7. Map: consumption by estado
   const consumoPorEstado = useMemo(() => {
     const map: Record<string, { sum: number; count: number }> = {};
-    filteredLancamentos.forEach(l => {
+    consumosPorLanc.forEach(({ lancamento: l, consumo }) => {
       const faz = getFazendaForLancamento(l);
-      if (!faz || !l.consumo_g_cab_dia) return;
+      if (!faz || consumo == null || consumo <= 0) return;
       if (!map[faz.estado]) map[faz.estado] = { sum: 0, count: 0 };
-      map[faz.estado].sum += l.consumo_g_cab_dia;
+      map[faz.estado].sum += consumo;
       map[faz.estado].count += 1;
     });
     const result: Record<string, number> = {};
     Object.entries(map).forEach(([estado, v]) => { result[estado] = v.sum / v.count; });
     return result;
-  }, [filteredLancamentos]);
+  }, [consumosPorLanc, fazendaById]);
 
   const mediaGeral = useMemo(() => {
     const vals = Object.values(consumoPorEstado);
@@ -306,7 +336,7 @@ export default function PainelInteligenciaPage() {
     return rankingFazendas.filter(f => f.estado === selectedEstado);
   }, [selectedEstado, rankingFazendas]);
 
-  // 9. Product analysis - fazendas using selected product
+  // 9. Product analysis
   const analisesProduto = useMemo(() => {
     if (filtroProduto === "all") return [];
     return rankingFazendas;
@@ -559,7 +589,6 @@ export default function PainelInteligenciaPage() {
                   </g>
                 );
               })}
-              {/* Legend */}
               <g transform="translate(10, 580)">
                 <circle cx={10} cy={0} r={6} fill="#ef4444" /><text x={22} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground">Baixo</text>
                 <circle cx={70} cy={0} r={6} fill="#eab308" /><text x={82} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground">Médio</text>
@@ -599,7 +628,7 @@ export default function PainelInteligenciaPage() {
             {filtroProduto !== "all" ? (
               <>
                 <div className="mb-4 p-3 rounded-lg bg-muted/50">
-                  <p className="text-sm font-medium">{produtos.find(p => p.id === filtroProduto)?.nome}</p>
+                  <p className="text-sm font-medium">{produtoById[filtroProduto]?.nome}</p>
                   <p className="text-xs text-muted-foreground mt-1">Consumo médio geral: <strong>{consumoMedioReal.toFixed(1)} g/cab/dia</strong></p>
                 </div>
                 {analisesProduto.length > 0 ? (
