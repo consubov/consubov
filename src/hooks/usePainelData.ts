@@ -201,6 +201,7 @@ export function usePainelData(filters: PainelFilters) {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rPastoIds = new Set(rPastos.map(p => p.id));
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+      const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
       const totalAnimais = rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
@@ -221,7 +222,7 @@ export function usePainelData(filters: PainelFilters) {
         diasSemSalga = Math.floor((now.getTime() - new Date(r.ultima_salga_em).getTime()) / 86400000);
       }
 
-      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: rPastos };
+      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: pastosNoPeriodo };
     });
   }, [retiros, pastos, lancamentos, produtoMap]);
 

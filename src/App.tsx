@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { PainelPeriodoProvider } from "@/hooks/usePainelPeriodo";
 import { AuthProvider, useAuth, type UserRole } from "@/hooks/useAuth";
 import Login from "./pages/Login";
 import AdminLayout from "./pages/AdminLayout";
@@ -105,40 +106,42 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/landing" element={<Navigate to="/" replace />} />
-            <Route path="/index" element={<Navigate to="/" replace />} />
-            <Route path="/login" element={<LoginRoute />} />
-            <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+        <PainelPeriodoProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<Navigate to="/" replace />} />
+              <Route path="/index" element={<Navigate to="/" replace />} />
+              <Route path="/login" element={<LoginRoute />} />
+              <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
 
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="fazendas" element={<FazendasPage />} />
-              <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
-              <Route path="fazendas/:fazendaId/painel" element={<AdminFazendaPainelPage />} />
-              <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
-              <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<AdminRetiroPainelPage />} />
-              <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
-              <Route path="gerentes" element={<GerentesPage />} />
-              <Route path="capatazes" element={<CapatazesPage />} />
-              <Route path="produtos" element={<ProdutosPage />} />
-              <Route path="qrcodes" element={<QrCodesPage />} />
-              <Route path="lancamento-manual" element={<LancamentoManualPage />} />
-              <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
-              <Route path="notificacoes" element={<NotificacoesPage />} />
-              <Route path="landing-page" element={<LandingPageConfigPage />} />
-              <Route path="ciclos" element={<CiclosPage />} />
-              <Route path="inteligencia" element={<PainelInteligenciaPage />} />
-            </Route>
+              <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="fazendas" element={<FazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
+                <Route path="fazendas/:fazendaId/painel" element={<AdminFazendaPainelPage />} />
+                <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
+                <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<AdminRetiroPainelPage />} />
+                <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
+                <Route path="gerentes" element={<GerentesPage />} />
+                <Route path="capatazes" element={<CapatazesPage />} />
+                <Route path="produtos" element={<ProdutosPage />} />
+                <Route path="qrcodes" element={<QrCodesPage />} />
+                <Route path="lancamento-manual" element={<LancamentoManualPage />} />
+                <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
+                <Route path="notificacoes" element={<NotificacoesPage />} />
+                <Route path="landing-page" element={<LandingPageConfigPage />} />
+                <Route path="ciclos" element={<CiclosPage />} />
+                <Route path="inteligencia" element={<PainelInteligenciaPage />} />
+              </Route>
 
-            <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
-            <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
+              <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
+              <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </PainelPeriodoProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
