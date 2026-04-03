@@ -132,6 +132,43 @@ export default function GerenteDashboard() {
         </div>
       </header>
 
+      {/* Filters */}
+      <div className="bg-card border-b px-3 py-2 flex items-center gap-2 flex-wrap flex-shrink-0">
+        <Filter className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+        <Select value={String(filterAno)} onValueChange={v => setFilterAno(Number(v))}>
+          <SelectTrigger className="h-8 w-[90px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {anosDisponiveis.map(a => (
+              <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterMes != null ? String(filterMes) : "todos"} onValueChange={v => setFilterMes(v === "todos" ? null : Number(v))}>
+          <SelectTrigger className="h-8 w-[110px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos meses</SelectItem>
+            {MES_NOMES_FULL.map((m, i) => (
+              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterCiclo} onValueChange={v => setFilterCiclo(v as any)}>
+          <SelectTrigger className="h-8 w-[110px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos ciclos</SelectItem>
+            <SelectItem value="aberto">Abertos</SelectItem>
+            <SelectItem value="fechado">Fechados</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      </header>
+
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-card h-10 flex-shrink-0">
