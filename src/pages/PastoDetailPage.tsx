@@ -142,16 +142,21 @@ export default function PastoDetailPage() {
       if (errDestino) throw errDestino;
 
       // Record lancamento
+      const now = new Date();
       await supabase.from("lancamentos").insert({
-        ciclo_id: cicloId,
+        fazenda_id: fazendaId!,
+        retiro_id: retiroId!,
         pasto_id: pasto.id,
+        mes_referencia: now.getMonth() + 1,
+        ano_referencia: now.getFullYear(),
         num_animais: qtd,
         num_sacos: 0,
+        dias_no_pasto: 1,
         origem: "transferencia",
         categoria: pasto.categoria,
         sexo: pasto.sexo,
         peso_medio_kg: pasto.peso_medio_kg,
-      });
+      } as any);
 
       setPasto({ ...pasto, num_animais: newOrigem });
       setPastosDoRetiro(prev => prev.map(p => {

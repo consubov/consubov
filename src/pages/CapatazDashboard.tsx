@@ -351,14 +351,14 @@ export default function CapatazDashboard() {
                     pasto_id: lancamento.pasto_id,
                     pasto_nome: pastosById.get(lancamento.pasto_id) || 'Pasto',
                     sacos: lancamento.num_sacos,
-                    foto_auditoria_url: lancamento.foto_url,
-                    foto_auditoria_exigida: Boolean(lancamento.foto_url),
+                    foto_auditoria_url: null,
+                    foto_auditoria_exigida: false,
                     observacoes: [],
-                    data: lancamento.lancado_em || new Date().toISOString(),
+                    data: lancamento.created_at || new Date().toISOString(),
                     status: 'sincronizado',
-                    ciclo_id: lancamento.ciclo_id,
-                    status_consumo: (lancamento as any).status_consumo ?? undefined,
-                    indice_consumo: (lancamento as any).indice_consumo != null ? Number((lancamento as any).indice_consumo) : undefined,
+                    ciclo_id: undefined,
+                    status_consumo: undefined,
+                    indice_consumo: undefined,
                   }))
               );
             }
