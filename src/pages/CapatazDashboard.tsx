@@ -626,7 +626,7 @@ export default function CapatazDashboard() {
         const dataLanc = new Date(l.data);
         const insertData: Record<string, any> = {
           id: l.id,
-          fazenda_id: retiro?.fazenda_id,
+          fazenda_id: fazendaId,
           retiro_id: roleData.retiroId,
           pasto_id: l.pasto_id,
           mes_referencia: dataLanc.getMonth() + 1,
