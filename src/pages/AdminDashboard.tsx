@@ -22,14 +22,17 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
-      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos] = await Promise.all([
+      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData] = await Promise.all([
         supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("produtos").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false),
         supabase.from("lancamentos").select("id", { count: "exact", head: true }),
+        supabase.from("pastos").select("num_animais").eq("ativo", true),
       ]);
+
+      const totalAnimais = (animaisData.data ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
 
       setStats({
         fazendas: fazendas.count ?? 0,
@@ -38,10 +41,17 @@ export default function AdminDashboard() {
         produtos: produtos.count ?? 0,
         ciclosAbertos: ciclos.count ?? 0,
         lancamentos: lancamentos.count ?? 0,
+        animais: totalAnimais,
       });
       setLoading(false);
     }
     load();
+
+    const channel = supabase.channel("pastos-animais-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => load())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const cards = [
@@ -49,8 +59,9 @@ export default function AdminDashboard() {
     { label: "Retiros", value: stats.retiros, icon: Map, color: "text-secondary" },
     { label: "Pastos Ativos", value: stats.pastos, icon: TreePine, color: "text-primary" },
     { label: "Produtos", value: stats.produtos, icon: Package, color: "text-secondary" },
-    { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-primary" },
-    { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-secondary" },
+    { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary" },
+    { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary" },
+    { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary" },
   ];
 
   return (
