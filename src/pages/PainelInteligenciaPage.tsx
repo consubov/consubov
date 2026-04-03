@@ -345,12 +345,24 @@ export default function PainelInteligenciaPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
-              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Mês</label>
+              <Select value={String(filtroMes)} onValueChange={(v) => setFiltroMes(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="semana">Semana</SelectItem>
-                  <SelectItem value="mes">Mês</SelectItem>
+                  {["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"].map((m, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Ano</label>
+              <Select value={String(filtroAno)} onValueChange={(v) => setFiltroAno(Number(v))}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 25 }, (_, i) => 2026 + i).map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
