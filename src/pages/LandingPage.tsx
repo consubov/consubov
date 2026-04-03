@@ -128,7 +128,7 @@ export default function LandingPage() {
     console.log("Lead salvo com sucesso. Notificação gerada automaticamente via trigger.");
     setSubmitted(true);
     setSubmitting(false);
-    toast.success("Mensagem enviada com sucesso!");
+    setForm({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
   }, [form]);
 
   const quemSomosText = content.quem_somos || "O Consubov é uma plataforma tecnológica desenvolvida para transformar a gestão pecuária. Com foco no controle de sal mineral, inteligência nutricional e operação de campo, oferecemos ferramentas que permitem ao pecuarista tomar decisões baseadas em dados reais, direto do pasto.";
