@@ -10,12 +10,13 @@ interface Pasto {
   peso_abate_meta_kg: number | null; produto_id: string | null;
 }
 interface Lancamento {
-  id: string; ciclo_id: string; pasto_id: string; num_sacos: number;
-  num_animais: number; consumo_g_cab_dia: number | null;
-  custo_total: number | null; gmd_kg_dia: number | null;
-  capataz_nome: string | null; lancado_em: string | null;
-  status_consumo: string | null; indice_consumo: number | null;
-  dias_intervalo: number | null;
+  id: string; pasto_id: string; num_sacos: number;
+  num_animais: number; peso_medio_kg: number | null;
+  categoria: string | null; sexo: string | null;
+  dias_no_pasto: number; origem: string;
+  created_at: string | null;
+  mes_referencia: number; ano_referencia: number;
+  fazenda_id: string; retiro_id: string;
 }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
 interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
