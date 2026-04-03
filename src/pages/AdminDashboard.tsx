@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode } from "lucide-react";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -56,13 +56,22 @@ export default function AdminDashboard() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
-        <Button
-          onClick={() => navigate("/admin/qrcodes")}
-          className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md"
-        >
-          <QrCode className="w-5 h-5 mr-2" />
-          Gerar QR Codes
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => navigate("/admin/inteligencia")}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
+          >
+            <Brain className="w-5 h-5 mr-2" />
+            Inteligência Nutricional
+          </Button>
+          <Button
+            onClick={() => navigate("/admin/qrcodes")}
+            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md"
+          >
+            <QrCode className="w-5 h-5 mr-2" />
+            Gerar QR Codes
+          </Button>
+        </div>
       </div>
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
