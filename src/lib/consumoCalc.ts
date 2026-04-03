@@ -81,8 +81,8 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
       status_consumo = 'IDEAL';
     }
   } else {
-    // Fallback to index-based if no margin defined
-    status_consumo = indice_consumo < 0.9 ? 'ABAIXO' : indice_consumo > 1.1 ? 'ACIMA' : 'IDEAL';
+    // Fallback to index-based if no margin defined (unified 0.8/1.2 thresholds)
+    status_consumo = indice_consumo < 0.8 ? 'ABAIXO' : indice_consumo > 1.2 ? 'ACIMA' : 'IDEAL';
   }
 
   return {
