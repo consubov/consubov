@@ -85,7 +85,8 @@ export function usePainelData(filters: PainelFilters) {
       ]);
 
       setFazendaNome(fazRes.data?.nome ?? "");
-      const retList = (retirosRes.data ?? []) as Retiro[];
+      const allRetiros = (retirosRes.data ?? []) as Retiro[];
+      const retList = retiroId ? allRetiros.filter((retiro) => retiro.id === retiroId) : allRetiros;
       setRetiros(retList);
       setProdutos((prodRes.data ?? []) as Produto[]);
 
