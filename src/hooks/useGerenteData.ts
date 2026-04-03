@@ -316,7 +316,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const obsResolvidas = useMemo(() => observacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [observacoes]);
 
   return {
-    loading, gerenteNome, fazendaNome, ciclo, painelData,
+    loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh: loadData,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,
