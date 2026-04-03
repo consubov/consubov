@@ -164,23 +164,18 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
+          // Read consumo real from lancamentos
           const pConsVals: number[] = [];
-          const pIndices: number[] = [];
           pLanc.forEach(l => {
             const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
-            if (c > 0) {
-              pConsVals.push(c);
-              const pesoMedio = Number(l.peso_medio_kg ?? p.peso_medio_kg ?? 0);
-              const cat = l.categoria || classificarCategoria(pesoMedio);
-              const consumoPor100kg = getConsumoPorCategoria(cat, prod ?? { consumo_recria1: 0, consumo_recria2: 0, consumo_engorda: 0 });
-              const esperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
-              const idx = calcIndiceConsumo(c, esperado);
-              if (idx > 0) pIndices.push(idx);
-            }
+            if (c > 0) pConsVals.push(c);
           });
           const pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
-          const pIndice = pIndices.length > 0 ? pIndices.reduce((a, b) => a + b, 0) / pIndices.length : 0;
-          const pStatus = consumoStatusUnificado(pIndice);
+
+          // Read status directly from DB (persisted at insert/update time)
+          const statusLancs = pLanc.map(l => l.status_consumo).filter(Boolean);
+          const pStatus = statusLancs.length > 0 ? statusLancs[statusLancs.length - 1] : "—";
+
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
