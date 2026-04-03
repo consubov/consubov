@@ -66,7 +66,8 @@ export default function PainelInteligenciaPage() {
   const [filtroProduto, setFiltroProduto] = useState("all");
   const [filtroCategoria, setFiltroCategoria] = useState("all");
   const [filtroSexo, setFiltroSexo] = useState("all");
-  const [filtroPeriodo, setFiltroPeriodo] = useState("mes");
+  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1); // 1-12
+  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,9 +132,13 @@ export default function PainelInteligenciaPage() {
       if (filtroProduto !== "all" && l.produto_id !== filtroProduto) return false;
       if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
       if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
+      if (l.lancado_em) {
+        const d = new Date(l.lancado_em);
+        if (d.getMonth() + 1 !== filtroMes || d.getFullYear() !== filtroAno) return false;
+      }
       return true;
     });
-  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, retiroByPasto, fazendaByRetiro]);
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro]);
 
   // Unique filter options
   const estados = useMemo(() => [...new Set(fazendas.map(f => f.estado))].sort(), [fazendas]);
@@ -196,9 +201,7 @@ export default function PainelInteligenciaPage() {
     filteredLancamentos.forEach(l => {
       if (!l.lancado_em || !l.consumo_g_cab_dia) return;
       const d = new Date(l.lancado_em);
-      const key = filtroPeriodo === "semana"
-        ? `${d.getFullYear()}-S${Math.ceil((d.getMonth() * 30 + d.getDate()) / 7)}`
-        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!grouped[key]) grouped[key] = { sum: 0, count: 0 };
       grouped[key].sum += l.consumo_g_cab_dia;
       grouped[key].count += 1;
@@ -206,7 +209,7 @@ export default function PainelInteligenciaPage() {
     return Object.entries(grouped)
       .map(([periodo, v]) => ({ periodo, consumo: Math.round(v.sum / v.count * 100) / 100 }))
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
-  }, [filteredLancamentos, filtroPeriodo]);
+  }, [filteredLancamentos]);
 
   // 6. Alerts
   const alertas = useMemo(() => {
@@ -346,12 +349,24 @@ export default function PainelInteligenciaPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
-              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Mês</label>
+              <Select value={String(filtroMes)} onValueChange={(v) => setFiltroMes(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="semana">Semana</SelectItem>
-                  <SelectItem value="mes">Mês</SelectItem>
+                  {["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"].map((m, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Ano</label>
+              <Select value={String(filtroAno)} onValueChange={(v) => setFiltroAno(Number(v))}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 25 }, (_, i) => 2026 + i).map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
