@@ -684,8 +684,9 @@ export default function PainelInteligenciaPage() {
                 </TableHeader>
                 <TableBody>
                   {rankingFazendas.map((f, i) => {
+                    const idx = consumoEsperado > 0 ? f.consumoMedio / consumoEsperado : 0;
                     const st = consumoEsperado > 0
-                      ? getStatusColor(((f.consumoMedio - consumoEsperado) / consumoEsperado) * 100)
+                      ? getStatusColor(idx)
                       : { emoji: "", color: "", label: "" };
                     return (
                       <TableRow key={f.id}>
