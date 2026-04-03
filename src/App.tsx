@@ -125,6 +125,7 @@ const App = () => (
               <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
               <Route path="notificacoes" element={<NotificacoesPage />} />
               <Route path="landing-page" element={<LandingPageConfigPage />} />
+              <Route path="ciclos" element={<CiclosPage />} />
               <Route path="inteligencia" element={<PainelInteligenciaPage />} />
             </Route>
 

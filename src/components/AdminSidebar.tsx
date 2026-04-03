@@ -24,6 +24,7 @@ const menuItems = [
   { title: "Configurações Gerais", url: "/admin/configuracoes", icon: Settings },
   { title: "Notificações", url: "/admin/notificacoes", icon: Bell },
   { title: "Landing Page", url: "/admin/landing-page", icon: Globe },
+  { title: "Ciclos", url: "/admin/ciclos", icon: CalendarDays },
   { title: "Inteligência Nutricional", url: "/admin/inteligencia", icon: Brain },
 ];
 
