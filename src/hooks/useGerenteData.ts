@@ -86,20 +86,40 @@ export function useGerenteData(filters?: GerenteFilters) {
     if (!fazendaId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [gerenteRes, fazendaRes, cicloRes, retirosRes] = await Promise.all([
+      const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
         supabase.from("gerentes").select("nome").eq("id", roleData.roleId!).single(),
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
-          .eq("fechado", false).order("ano", { ascending: false })
-          .order("mes", { ascending: false }).limit(1).maybeSingle(),
+          .order("ano", { ascending: false }).order("mes", { ascending: false }),
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       setGerenteNome(gerenteRes.data?.nome ?? "");
       const fData = fazendaRes.data as any;
       setFazendaData({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
-      const currentCiclo = cicloRes.data as Ciclo | null;
-      setCiclo(currentCiclo);
+
+      const allCiclos = (allCiclosRes.data ?? []) as Ciclo[];
+      setCiclosDisponiveis(allCiclos);
+
+      // Determine active ciclo based on filters
+      let activeCiclo: Ciclo | null = null;
+      if (filters) {
+        let filtered = allCiclos;
+        filtered = filtered.filter(c => c.ano === filters.ano);
+        if (filters.mes != null) {
+          filtered = filtered.filter(c => c.mes === filters.mes);
+        }
+        if (filters.cicloStatus === 'aberto') {
+          filtered = filtered.filter(c => !c.fechado);
+        } else if (filters.cicloStatus === 'fechado') {
+          filtered = filtered.filter(c => c.fechado);
+        }
+        activeCiclo = filtered[0] ?? null;
+      } else {
+        activeCiclo = allCiclos.find(c => !c.fechado) ?? null;
+      }
+      setCiclo(activeCiclo);
+
       const retirosList = (retirosRes.data ?? []).map((r: any) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
@@ -116,9 +136,22 @@ export function useGerenteData(filters?: GerenteFilters) {
 
         const pastoIds = pastosList.map(p => p.id);
         let lancList: Lancamento[] = [];
-        if (currentCiclo && pastoIds.length > 0) {
-          const lancRes = await supabase.from("lancamentos").select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id")
-            .eq("mes_referencia", currentCiclo.mes).eq("ano_referencia", currentCiclo.ano).in("pasto_id", pastoIds);
+        if (pastoIds.length > 0) {
+          // Build lancamentos query based on filters
+          let lancQuery = supabase.from("lancamentos")
+            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo")
+            .in("pasto_id", pastoIds);
+
+          if (filters) {
+            lancQuery = lancQuery.eq("ano_referencia", filters.ano);
+            if (filters.mes != null) {
+              lancQuery = lancQuery.eq("mes_referencia", filters.mes);
+            }
+          } else if (activeCiclo) {
+            lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
+          }
+
+          const lancRes = await lancQuery;
           lancList = (lancRes.data ?? []) as Lancamento[];
         }
         setLancamentos(lancList);
@@ -137,7 +170,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, roleData.roleId]);
+  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
