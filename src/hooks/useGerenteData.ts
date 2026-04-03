@@ -135,13 +135,16 @@ export function useGerenteData() {
 
   // Realtime
   useEffect(() => {
-    if (!ciclo) return;
     const channel = supabase.channel("gerente-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos", filter: `ciclo_id=eq.${ciclo.id}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "observacoes" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [ciclo?.id, loadData]);
+  }, [loadData]);
 
   // Computed: painel
   const painelData = useMemo<PainelData>(() => {

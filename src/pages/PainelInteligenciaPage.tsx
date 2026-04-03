@@ -90,13 +90,13 @@ export default function PainelInteligenciaPage() {
     }
     load();
 
-    // Real-time subscription
+    // Real-time subscription for all relevant tables
     const channel = supabase.channel("inteligencia-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => {
-        supabase.from("lancamentos").select("id, pasto_id, ciclo_id, num_sacos, num_animais, lancado_em, produto_id, consumo_g_cab_dia, consumo_esperado_kg, consumo_real_kg, dias_intervalo, categoria, sexo").order("lancado_em", { ascending: false }).then(({ data }) => {
-          if (data) setLancamentos(data);
-        });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_manuais" }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
