@@ -165,12 +165,22 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
           const pConsVals: number[] = [];
+          const pIndices: number[] = [];
           pLanc.forEach(l => {
             const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
-            if (c > 0) pConsVals.push(c);
+            if (c > 0) {
+              pConsVals.push(c);
+              const pesoMedio = Number(l.peso_medio_kg ?? p.peso_medio_kg ?? 0);
+              const cat = l.categoria || classificarCategoria(pesoMedio);
+              const consumoPor100kg = getConsumoPorCategoria(cat, prod ?? { consumo_recria1: 0, consumo_recria2: 0, consumo_engorda: 0 });
+              const esperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
+              const idx = calcIndiceConsumo(c, esperado);
+              if (idx > 0) pIndices.push(idx);
+            }
           });
           const pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
-          const pStatus = consumoStatusUnificado(pConsumo);
+          const pIndice = pIndices.length > 0 ? pIndices.reduce((a, b) => a + b, 0) / pIndices.length : 0;
+          const pStatus = consumoStatusUnificado(pIndice);
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
