@@ -115,10 +115,26 @@ export default function PainelInteligenciaPage() {
     return map;
   }, [retiros, fazendas]);
 
+  const pastoById = useMemo(() => {
+    const map: Record<string, Pasto> = {};
+    pastos.forEach(p => { map[p.id] = p; });
+    return map;
+  }, [pastos]);
+
   const getFazendaForLancamento = (l: Lancamento): Fazenda | undefined => {
     const retiro = retiroByPasto[l.pasto_id];
     if (!retiro) return undefined;
     return fazendaByRetiro[retiro.id];
+  };
+
+  // Resolve the effective produto_id for a lancamento (fallback to pasto -> retiro)
+  const getEffectiveProdutoId = (l: Lancamento): string | null => {
+    if (l.produto_id) return l.produto_id;
+    const pasto = pastoById[l.pasto_id];
+    if (pasto?.produto_id) return pasto.produto_id;
+    const retiro = retiroByPasto[l.pasto_id];
+    if (retiro?.produto_id) return retiro.produto_id;
+    return null;
   };
 
   // Filtered lancamentos
@@ -129,7 +145,10 @@ export default function PainelInteligenciaPage() {
       if (filtroFazenda !== "all" && fazenda.id !== filtroFazenda) return false;
       if (filtroEstado !== "all" && fazenda.estado !== filtroEstado) return false;
       if (filtroCidade !== "all" && fazenda.cidade !== filtroCidade) return false;
-      if (filtroProduto !== "all" && l.produto_id !== filtroProduto) return false;
+      if (filtroProduto !== "all") {
+        const effectiveProduto = getEffectiveProdutoId(l);
+        if (effectiveProduto !== filtroProduto) return false;
+      }
       if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
       if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
       if (l.lancado_em) {
@@ -138,7 +157,7 @@ export default function PainelInteligenciaPage() {
       }
       return true;
     });
-  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro]);
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro, pastoById]);
 
   // Unique filter options
   const estados = useMemo(() => [...new Set(fazendas.map(f => f.estado))].sort(), [fazendas]);
