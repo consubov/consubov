@@ -19,7 +19,7 @@ import {
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus, Settings } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus, Settings, BarChart3 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import BulkPastosModal from "@/components/retiro/BulkPastosModal";
 import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
