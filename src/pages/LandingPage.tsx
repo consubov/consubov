@@ -215,6 +215,13 @@ export default function LandingPage() {
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed text-justify">
             {content.hero_subtitulo || "Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto."}
           </p>
+          <Button
+            size="lg"
+            className="mt-6 text-base font-bold uppercase px-8 py-3"
+            onClick={() => document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            {content.cta_texto || "FAÇA PARTE DA NOSSA HISTÓRIA"}
+          </Button>
         </div>
       </section>
 
