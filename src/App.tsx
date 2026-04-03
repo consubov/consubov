@@ -24,6 +24,8 @@ import NotificacoesPage from "./pages/NotificacoesPage";
 import LandingPageConfigPage from "./pages/LandingPageConfigPage";
 import PainelInteligenciaPage from "./pages/PainelInteligenciaPage";
 import CiclosPage from "./pages/CiclosPage";
+import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
+import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
@@ -115,7 +117,9 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="fazendas" element={<FazendasPage />} />
               <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
+              <Route path="fazendas/:fazendaId/painel" element={<AdminFazendaPainelPage />} />
               <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
+              <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<AdminRetiroPainelPage />} />
               <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
               <Route path="gerentes" element={<GerentesPage />} />
               <Route path="capatazes" element={<CapatazesPage />} />
