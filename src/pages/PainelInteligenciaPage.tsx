@@ -168,25 +168,28 @@ export default function PainelInteligenciaPage() {
   const categorias = useMemo(() => [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort(), [lancamentos]);
   const sexos = useMemo(() => [...new Set(lancamentos.map(l => l.sexo).filter(Boolean))].sort(), [lancamentos]);
 
-  // ========= METRICS =========
+  // Products actually used in lancamentos (including inherited from pasto/retiro)
+  const produtosUtilizados = useMemo(() => {
+    const usedIds = new Set<string>();
+    lancamentos.forEach(l => {
+      const pid = getEffectiveProdutoId(l);
+      if (pid) usedIds.add(pid);
+    });
+    // Show all active products + any used in lancamentos
+    const allIds = new Set([...produtos.map(p => p.id), ...usedIds]);
+    return produtos.filter(p => allIds.has(p.id));
+  }, [lancamentos, produtos, pastoById, retiroByPasto]);
 
-  // 1. Average consumption
-  const consumoMedioReal = useMemo(() => {
-    const vals = filteredLancamentos.filter(l => l.consumo_g_cab_dia && l.consumo_g_cab_dia > 0).map(l => l.consumo_g_cab_dia!);
-    if (!vals.length) return 0;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  }, [filteredLancamentos]);
-
-  // 2. Expected consumption (from product + average peso_medio) in g/cab/dia
-  const consumoEsperado = useMemo(() => {
-    if (filtroProduto === "all") return 0;
-    const prod = produtos.find(p => p.id === filtroProduto);
-    if (!prod) return 0;
-    const consumoPor100kg = prod.consumo_engorda ?? prod.consumo_recria1 ?? prod.consumo_recria2 ?? 0;
-    // Get average peso_medio from filtered lancamentos
-    const pesos = filteredLancamentos
-      .map(l => { const p = pastos.find(pa => pa.id === l.pasto_id); return p?.peso_medio_kg ?? 0; })
-      .filter(w => w > 0);
+  // Available years from ciclos and lancamentos
+  const anosDisponiveis = useMemo(() => {
+    const years = new Set<number>();
+    years.add(new Date().getFullYear());
+    ciclos.forEach(c => years.add(c.ano));
+    lancamentos.forEach(l => {
+      if (l.lancado_em) years.add(new Date(l.lancado_em).getFullYear());
+    });
+    return [...years].sort((a, b) => b - a);
+  }, [ciclos, lancamentos]);
     const pesoMedio = pesos.length > 0 ? pesos.reduce((a, b) => a + b, 0) / pesos.length : 0;
     if (pesoMedio <= 0 || consumoPor100kg <= 0) return 0;
     // Formula: (consumo_por_100kg * peso_medio) / 100 * 1000 → g/cab/dia
