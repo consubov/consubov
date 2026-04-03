@@ -132,9 +132,13 @@ export default function PainelInteligenciaPage() {
       if (filtroProduto !== "all" && l.produto_id !== filtroProduto) return false;
       if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
       if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
+      if (l.lancado_em) {
+        const d = new Date(l.lancado_em);
+        if (d.getMonth() + 1 !== filtroMes || d.getFullYear() !== filtroAno) return false;
+      }
       return true;
     });
-  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, retiroByPasto, fazendaByRetiro]);
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, filtroMes, filtroAno, retiroByPasto, fazendaByRetiro]);
 
   // Unique filter options
   const estados = useMemo(() => [...new Set(fazendas.map(f => f.estado))].sort(), [fazendas]);
