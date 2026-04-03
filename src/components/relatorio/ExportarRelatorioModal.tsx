@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, consumoStatusUnificado } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, consumoStatusUnificado, calcIndiceConsumo, calcConsumoEsperadoGCabDia, classificarCategoria, getConsumoPorCategoria } from "@/lib/consumoCalc";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -99,13 +99,20 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
         ...retirosData.map(r => r.produto_id).filter(Boolean),
         ...pastos.map(p => p.produto_id).filter(Boolean),
       ])] as string[];
-      let produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number }> = {};
+      let produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
       if (produtoIds.length > 0) {
         const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda")
           .in("id", produtoIds);
         for (const p of (prodData ?? [])) {
-          produtosMap[p.id] = { nome: p.nome, peso_saco_kg: Number(p.peso_saco_kg), preco_por_kg: Number(p.preco_por_kg ?? 0) };
+          produtosMap[p.id] = {
+            nome: p.nome,
+            peso_saco_kg: Number(p.peso_saco_kg),
+            preco_por_kg: Number(p.preco_por_kg ?? 0),
+            consumo_recria1: Number(p.consumo_recria1 ?? 0),
+            consumo_recria2: Number(p.consumo_recria2 ?? 0),
+            consumo_engorda: Number(p.consumo_engorda ?? 0),
+          };
         }
       }
 
@@ -158,12 +165,22 @@ export default function ExportarRelatorioModal({ open, onOpenChange, fazendaId, 
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
           const pConsVals: number[] = [];
+          const pIndices: number[] = [];
           pLanc.forEach(l => {
             const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
-            if (c > 0) pConsVals.push(c);
+            if (c > 0) {
+              pConsVals.push(c);
+              const pesoMedio = Number(l.peso_medio_kg ?? p.peso_medio_kg ?? 0);
+              const cat = l.categoria || classificarCategoria(pesoMedio);
+              const consumoPor100kg = getConsumoPorCategoria(cat, prod ?? { consumo_recria1: 0, consumo_recria2: 0, consumo_engorda: 0 });
+              const esperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
+              const idx = calcIndiceConsumo(c, esperado);
+              if (idx > 0) pIndices.push(idx);
+            }
           });
           const pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
-          const pStatus = consumoStatusUnificado(pConsumo);
+          const pIndice = pIndices.length > 0 ? pIndices.reduce((a, b) => a + b, 0) / pIndices.length : 0;
+          const pStatus = consumoStatusUnificado(pIndice);
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,

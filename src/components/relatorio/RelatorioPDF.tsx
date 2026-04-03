@@ -1,7 +1,7 @@
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
-import { consumoStatusUnificado, calcConsumoGCabDia } from "@/lib/consumoCalc";
+import { consumoStatusUnificado } from "@/lib/consumoCalc";
 
 // ---------- Types ----------
 export interface RelatorioPDFData {
@@ -250,9 +250,8 @@ function PrevisaoAbate({ retiros }: { retiros: RetiroReportData[] }) {
 
 function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const sortedPastos = [...r.pastos].sort((a, b) => b.consumoGCabDia - a.consumoGCabDia);
-  const baixo = r.pastos.filter(p => consumoStatusUnificado(p.consumoGCabDia) === "Baixo");
-  const atencao = r.pastos.filter(p => consumoStatusUnificado(p.consumoGCabDia) === "Atenção");
-  const alto = r.pastos.filter(p => consumoStatusUnificado(p.consumoGCabDia) === "Alto");
+  const baixo = r.pastos.filter(p => p.status === "Baixo");
+  const alto = r.pastos.filter(p => p.status === "Alto");
 
   const cols = [
     { label: "Pasto", width: "22%" },
@@ -280,17 +279,12 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
 
       {baixo.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#C62828" }]}>[!] Baixo (&lt;70g): {baixo.map(p => p.nome).join(", ")}</Text>
-        </View>
-      )}
-      {atencao.length > 0 && (
-        <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#F9A825" }]}>[!] Atenção (70–80g): {atencao.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#C62828" }]}>[!] Baixo (índice &lt;0.8): {baixo.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
       {alto.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#1565C0" }]}>[!] Alto (&gt;120g): {alto.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#1565C0" }]}>[!] Alto (índice &gt;1.2): {alto.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
 
@@ -299,7 +293,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
         </View>
         {sortedPastos.map((p, i) => {
-          const st = consumoStatusUnificado(p.consumoGCabDia);
+          const st = p.status;
           const sc = statusColor(st);
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>

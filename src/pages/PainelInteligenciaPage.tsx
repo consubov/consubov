@@ -17,6 +17,8 @@ import {
   getMargemPorCategoria,
   consumoStatusUnificado,
   calcConsumoGCabDia,
+  calcIndiceConsumo,
+  calcConsumoEsperadoGCabDia,
 } from "@/lib/consumoCalc";
 
 interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
@@ -47,10 +49,11 @@ const ESTADOS_BR: Record<string, { x: number; y: number }> = {
   SP: { x: 460, y: 440 }, SE: { x: 610, y: 300 }, TO: { x: 440, y: 290 },
 };
 
-function getStatusColor(desvio: number): { color: string; label: string; emoji: string } {
-  if (desvio < -15) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
-  if (desvio > 15) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
-  return { color: "text-yellow-500", label: "Dentro do padrão", emoji: "🟡" };
+function getStatusColor(indice: number): { color: string; label: string; emoji: string } {
+  if (indice <= 0) return { color: "text-muted-foreground", label: "Sem dados", emoji: "⚪" };
+  if (indice < 0.8) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
+  if (indice > 1.2) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
+  return { color: "text-yellow-500", label: "Ideal", emoji: "🟡" };
 }
 
 function getMapColor(consumo: number, media: number): string {
@@ -247,8 +250,9 @@ export default function PainelInteligenciaPage() {
     return (consumoPor100kg * pesoMedio) / 100 * 1000;
   }, [filtroProduto, produtoById, filteredLancamentos, pastoById]);
 
+  const indiceConsumo = consumoEsperado > 0 ? calcIndiceConsumo(consumoMedioReal, consumoEsperado) : 0;
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
-  const statusConsumo = getStatusColor(desvioPercent);
+  const statusConsumo = getStatusColor(indiceConsumo);
 
   // 3. Average interval (dias_no_pasto)
   const intervaloMedio = useMemo(() => {
