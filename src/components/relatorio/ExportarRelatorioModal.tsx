@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { calcConsumoGCabDia, consumoStatusUnificado } from "@/lib/consumoCalc";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
