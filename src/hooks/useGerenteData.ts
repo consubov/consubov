@@ -86,6 +86,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [observacoes, setObservacoes] = useState<Observacao[]>([]);
 
   const fazendaNome = fazendaData.nome;
