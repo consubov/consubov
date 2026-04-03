@@ -124,6 +124,7 @@ const App = () => (
               <Route path="configuracoes" element={<ConfiguracoesGeraisPage />} />
               <Route path="notificacoes" element={<NotificacoesPage />} />
               <Route path="landing-page" element={<LandingPageConfigPage />} />
+              <Route path="inteligencia" element={<PainelInteligenciaPage />} />
             </Route>
 
             <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
