@@ -68,12 +68,14 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
   const indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
 
   // Classification based on product margin
+  // margem is in kg/cab/dia → convert to g/cab/dia for comparison
+  const margem_g = margem * 1000;
   let status_consumo: string;
-  if (margem > 0) {
-    // Margin-based: compare g/cab/dia against expected ± margin
-    if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem)) {
+  if (margem_g > 0) {
+    // Margin-based: compare g/cab/dia against expected ± margin (in g)
+    if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem_g)) {
       status_consumo = 'ABAIXO';
-    } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem)) {
+    } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem_g)) {
       status_consumo = 'ACIMA';
     } else {
       status_consumo = 'IDEAL';

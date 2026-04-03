@@ -475,15 +475,9 @@ export default function LancamentoManualPage() {
                       </TableCell>
                       <TableCell>
                         {consumo ? (
-                          <div className="space-y-1">
-                            <span className="font-semibold text-sm">
-                              {consumo.consumo_real_g_cab_dia.toFixed(1)}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground ml-1">
-                              (esp: {consumo.consumo_esperado_g_cab_dia.toFixed(1)})
-                            </span>
-                            <div>{statusBadge(consumo.status_consumo)}</div>
-                          </div>
+                          <span className="font-semibold text-sm">
+                            {consumo.consumo_real_g_cab_dia.toFixed(1)}
+                          </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
