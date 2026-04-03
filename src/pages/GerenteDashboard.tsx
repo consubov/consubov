@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Filter,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 
-const MES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const MES_NOMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 const CURRENT_YEAR = new Date().getFullYear();
@@ -62,15 +60,14 @@ function scoreColor(score: number) {
 
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
-  const [filterAno, setFilterAno] = useState(CURRENT_YEAR);
-  const [filterMes, setFilterMes] = useState<number | null>(CURRENT_MONTH);
-  const [filterCiclo, setFilterCiclo] = useState<'aberto' | 'fechado' | 'todos'>('aberto');
+  const [mes, setMes] = useState(CURRENT_MONTH);
+  const [ano, setAno] = useState(CURRENT_YEAR);
 
   const filters = useMemo<GerenteFilters>(() => ({
-    ano: filterAno,
-    mes: filterMes,
-    cicloStatus: filterCiclo,
-  }), [filterAno, filterMes, filterCiclo]);
+    ano,
+    mes,
+    cicloStatus: 'todos',
+  }), [ano, mes]);
 
   const {
     loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
@@ -82,14 +79,6 @@ export default function GerenteDashboard() {
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
-
-  const cicloLabel = ciclo ? `${MES_NOMES[ciclo.mes - 1]}/${ciclo.ano}` : "—";
-
-  const anosDisponiveis = useMemo(() => {
-    const years = new Set(ciclosDisponiveis.map(c => c.ano));
-    years.add(CURRENT_YEAR);
-    return Array.from(years).sort((a, b) => b - a);
-  }, [ciclosDisponiveis]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -127,45 +116,12 @@ export default function GerenteDashboard() {
         <div className="flex items-center gap-2 mt-1.5 text-xs opacity-90">
           <MapPin className="w-3 h-3" />
           <span className="truncate">{fazendaNome}</span>
-          <span className="opacity-60">·</span>
-          <span>Ciclo {cicloLabel}</span>
         </div>
       </header>
 
-      {/* Filters */}
-      <div className="bg-card border-b px-3 py-2 flex items-center gap-2 flex-wrap flex-shrink-0">
-        <Filter className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-        <Select value={String(filterAno)} onValueChange={v => setFilterAno(Number(v))}>
-          <SelectTrigger className="h-8 w-[90px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {anosDisponiveis.map(a => (
-              <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterMes != null ? String(filterMes) : "todos"} onValueChange={v => setFilterMes(v === "todos" ? null : Number(v))}>
-          <SelectTrigger className="h-8 w-[110px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos meses</SelectItem>
-            {MES_NOMES_FULL.map((m, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterCiclo} onValueChange={v => setFilterCiclo(v as any)}>
-          <SelectTrigger className="h-8 w-[110px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos ciclos</SelectItem>
-            <SelectItem value="aberto">Abertos</SelectItem>
-            <SelectItem value="fechado">Fechados</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Month Scroller */}
+      <div className="bg-card border-b px-2 py-2 flex-shrink-0">
+        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => { setMes(m); setAno(y); }} />
       </div>
 
       {/* Tabs */}
