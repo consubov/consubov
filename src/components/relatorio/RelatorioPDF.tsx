@@ -1,7 +1,7 @@
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
-import { consumoStatusUnificado, calcConsumoGCabDia } from "@/lib/consumoCalc";
+import { consumoStatusUnificado } from "@/lib/consumoCalc";
 
 // ---------- Types ----------
 export interface RelatorioPDFData {
