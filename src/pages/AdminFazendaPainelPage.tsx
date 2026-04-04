@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull,
+  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle,
 } from "lucide-react";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
