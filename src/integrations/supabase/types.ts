@@ -326,6 +326,7 @@ export type Database = {
         Row: {
           ano_referencia: number
           categoria: string | null
+          consumo_g_cab_dia: number | null
           created_at: string
           dias_no_pasto: number
           fazenda_id: string
@@ -344,6 +345,7 @@ export type Database = {
         Insert: {
           ano_referencia: number
           categoria?: string | null
+          consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
           fazenda_id: string
@@ -362,6 +364,7 @@ export type Database = {
         Update: {
           ano_referencia?: number
           categoria?: string | null
+          consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
           fazenda_id?: string
