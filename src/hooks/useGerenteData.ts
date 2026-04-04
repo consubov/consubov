@@ -229,9 +229,20 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
+    const totalAnimaisFallback = pastos.reduce((sum, p) => sum + (p.num_animais || 0), 0);
     const pastoIdsComLancamento = new Set(lancamentos.map(item => item.pasto_id));
     const pastosNoPeriodo = pastos.filter(pasto => pastoIdsComLancamento.has(pasto.id));
-    const totalAnimais = getTotalAnimaisFromLancamentos(lancamentos);
+
+    // Animais: lancamentos quando disponível, senão cadastro do pasto
+    const animaisPorPasto = new Map<string, number>();
+    for (const l of lancamentos) {
+      const atual = animaisPorPasto.get(l.pasto_id) ?? 0;
+      if (l.num_animais > atual) animaisPorPasto.set(l.pasto_id, l.num_animais);
+    }
+    for (const p of pastos) {
+      if (!animaisPorPasto.has(p.id)) animaisPorPasto.set(p.id, p.num_animais || 0);
+    }
+    const totalAnimais = Array.from(animaisPorPasto.values()).reduce((s, n) => s + n, 0);
     const sacosUtilizados = lancamentos.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
     const consumoMedio = getConsumoMedioPonderado(lancamentos);
 
