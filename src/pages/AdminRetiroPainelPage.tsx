@@ -74,6 +74,7 @@ export default function AdminRetiroPainelPage() {
   }), [fazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
+  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
