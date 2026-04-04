@@ -79,6 +79,7 @@ export default function GerenteDashboard() {
   } = useGerenteData(filters);
 
   const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
+  const { mortalidadesAno } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
