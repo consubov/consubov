@@ -183,3 +183,27 @@ export function getMargemPorCategoria(
   if (cat.includes('recria 2') || cat.includes('recria2')) return Number(produto.margem_recria2 || 0);
   return Number(produto.margem_engorda || 0);
 }
+
+/**
+ * Calculate weighted average consumption using animal-dia (animal-days).
+ * Each period between events has a different animal count.
+ * 
+ * @param periodos Array of { numAnimais, dias } for each sub-period
+ * @param totalKgConsumido Total kg consumed in the full period
+ * @returns consumo in g/cab/dia using weighted average, or 0 if invalid
+ * 
+ * Example:
+ *   200 animals × 15 days = 3000 animal-dias
+ *   100 animals × 15 days = 1500 animal-dias
+ *   total_animal_dia = 4500
+ *   consumo = totalKgConsumido * 1000 / 4500
+ */
+export function calcConsumoAnimalDia(
+  periodos: { numAnimais: number; dias: number }[],
+  totalKgConsumido: number,
+): number {
+  if (totalKgConsumido <= 0) return 0;
+  const totalAnimalDia = periodos.reduce((sum, p) => sum + (p.numAnimais * p.dias), 0);
+  if (totalAnimalDia <= 0) return 0;
+  return (totalKgConsumido * 1000) / totalAnimalDia; // g/cab/dia
+}
