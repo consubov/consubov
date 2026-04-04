@@ -1224,6 +1224,19 @@ export default function CapatazDashboard() {
         capatazNome={userName}
         onPastoUpdated={() => { loadFromSupabase(); }}
       />
+
+      <AbateModal
+        open={abateOpen}
+        onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
+        pasto={abatePasto}
+        fazendaId={fazendaId}
+        retiroId={roleData.retiroId || ""}
+        mesOperacional={mesOperacional}
+        anoOperacional={anoOperacional}
+        onAbateConfirmed={(pastoId, qtd) => {
+          setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
+        }}
+      />
     </div>
   );
 }
