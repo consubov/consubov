@@ -218,7 +218,7 @@ export function usePainelData(filters: PainelFilters) {
 
     return {
       totalAnimais, sacosUtilizados, consumoMedio,
-      pastosNaMeta, totalPastos: pastosNoPeriodo.length,
+      pastosNaMeta, totalPastos: pastos.length,
       custoDiario, custoMensal, eficiencia, gmdMedio,
       totalSalgas: lancamentos.length,
       statusDist: {
