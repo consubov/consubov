@@ -1231,6 +1231,14 @@ export default function CapatazDashboard() {
         onPastoUpdated={() => { loadFromSupabase(); }}
       />
 
+      <PastoActionSheet
+        open={actionSheetOpen}
+        onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
+        pastoNome={actionSheetPasto?.nome || ""}
+        onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
+        onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
+      />
+
       <AbateModal
         open={abateOpen}
         onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
@@ -1241,6 +1249,24 @@ export default function CapatazDashboard() {
         anoOperacional={anoOperacional}
         onAbateConfirmed={(pastoId, qtd) => {
           setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
+        }}
+      />
+
+      <TransferenciaModal
+        open={transferOpen}
+        onClose={() => { setTransferOpen(false); setTransferPasto(null); }}
+        pasto={transferPasto}
+        pastos={pastos}
+        fazendaId={fazendaId}
+        retiroId={roleData.retiroId || ""}
+        mesOperacional={mesOperacional}
+        anoOperacional={anoOperacional}
+        onTransferConfirmed={(origemId, destinoId, qtd) => {
+          setPastos(prev => prev.map(p => {
+            if (p.id === origemId) return { ...p, num_animais: p.num_animais - qtd };
+            if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
+            return p;
+          }));
         }}
       />
     </div>
