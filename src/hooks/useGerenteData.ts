@@ -341,7 +341,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         sacosUtilizados,
         consumoMedio,
         gmd,
-        pastos: pastosNoPeriodo,
+        pastos: rPastos,
         lancamentos: rLanc,
         intervaloDefinido,
         intervaloRealMedio,

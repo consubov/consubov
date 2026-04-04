@@ -288,7 +288,7 @@ export function usePainelData(filters: PainelFilters) {
         pastosConsumo.set(l.pasto_id, list);
       }
 
-      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: pastosNoPeriodo, pastosConsumo };
+      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: rPastos, pastosConsumo };
     });
   }, [retiros, pastos, lancamentos]);
 
