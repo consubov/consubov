@@ -1112,7 +1112,7 @@ export default function CapatazDashboard() {
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
                 return (
-                  <div key={p.id} onClick={() => { setAbatePasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setAbateOpen(true); }} className="cursor-pointer">
+                  <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
                     <PastoCard
                       nome={p.nome}
                       numAnimais={p.num_animais}
