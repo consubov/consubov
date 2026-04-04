@@ -74,6 +74,7 @@ export default function AdminFazendaPainelPage() {
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
   const { abatidosMes, abatidosAno } = useAbatesData(fazendaId, mes, ano);
+  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
