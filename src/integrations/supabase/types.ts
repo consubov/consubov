@@ -516,6 +516,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mortalidades: {
+        Row: {
+          ano: number
+          created_at: string
+          data: string
+          fazenda_id: string
+          foto_url: string
+          id: string
+          mes: number
+          observacao: string | null
+          pasto_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id: string | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          data?: string
+          fazenda_id: string
+          foto_url: string
+          id?: string
+          mes: number
+          observacao?: string | null
+          pasto_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id?: string | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          data?: string
+          fazenda_id?: string
+          foto_url?: string
+          id?: string
+          mes?: number
+          observacao?: string | null
+          pasto_id?: string
+          quantidade?: number
+          retiro_id?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       movimentacoes_animais: {
         Row: {
           ano: number

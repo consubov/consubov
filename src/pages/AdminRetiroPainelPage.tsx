@@ -5,6 +5,7 @@ import { usePainelData } from "@/hooks/usePainelData";
 import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ArrowLeft, TreePine,
+  BarChart3, FileDown, RefreshCw, Loader2, ArrowLeft, TreePine, AlertTriangle,
 } from "lucide-react";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -73,6 +74,7 @@ export default function AdminRetiroPainelPage() {
   }), [fazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
+  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
@@ -132,6 +134,7 @@ export default function AdminRetiroPainelPage() {
         <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
         <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metrics.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
+        <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
 
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (

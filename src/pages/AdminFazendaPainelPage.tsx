@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
 import { useAbatesData } from "@/hooks/useAbatesData";
+import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull,
+  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle,
 } from "lucide-react";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -73,6 +74,7 @@ export default function AdminFazendaPainelPage() {
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
   const { abatidosMes, abatidosAno } = useAbatesData(fazendaId, mes, ano);
+  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -128,6 +130,7 @@ export default function AdminFazendaPainelPage() {
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
         <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
         <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
+        <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
 
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (

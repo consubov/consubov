@@ -24,6 +24,7 @@ import MortalidadeModal from "@/components/capataz/MortalidadeModal";
 import AbateModal from "@/components/capataz/AbateModal";
 import TransferenciaModal from "@/components/capataz/TransferenciaModal";
 import PastoActionSheet from "@/components/capataz/PastoActionSheet";
+import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -115,6 +116,8 @@ export default function CapatazDashboard() {
   const [transferPasto, setTransferPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  const [entradaOpen, setEntradaOpen] = useState(false);
+  const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -1235,8 +1238,16 @@ export default function CapatazDashboard() {
         open={actionSheetOpen}
         onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
         pastoNome={actionSheetPasto?.nome || ""}
+        numAnimais={actionSheetPasto?.num_animais ?? 0}
         onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
         onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
+        onMortalidade={() => { setMortalidadeOpen(true); }}
+        onEntrada={() => {
+          if (actionSheetPasto) {
+            setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
+            setEntradaOpen(true);
+          }
+        }}
       />
 
       <AbateModal
@@ -1269,6 +1280,17 @@ export default function CapatazDashboard() {
           }));
         }}
       />
+
+      {entradaPasto && (
+        <EntradaAnimaisModal
+          open={entradaOpen}
+          onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
+          pastoId={entradaPasto.id}
+          pastoNome={entradaPasto.nome}
+          retiroId={roleData.retiroId || ""}
+          onPastoUpdated={() => { loadFromSupabase(); }}
+        />
+      )}
     </div>
   );
 }

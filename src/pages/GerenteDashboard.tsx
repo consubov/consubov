@@ -4,6 +4,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useAbatesData } from "@/hooks/useAbatesData";
+import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ export default function GerenteDashboard() {
   } = useGerenteData(filters);
 
   const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
+  const { mortalidadesAno } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,6 +159,7 @@ export default function GerenteDashboard() {
             <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelData.gmdMedio, 3)} sub="kg/dia" />
             <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
             <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
+            <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
           </div>
 
           {/* Status Distribution */}
