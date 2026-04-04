@@ -516,6 +516,48 @@ export type Database = {
         }
         Relationships: []
       }
+      movimentacoes_animais: {
+        Row: {
+          ano: number
+          created_at: string
+          data: string
+          fazenda_id: string
+          id: string
+          mes: number
+          pasto_destino_id: string
+          pasto_origem_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id: string | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          data?: string
+          fazenda_id: string
+          id?: string
+          mes: number
+          pasto_destino_id: string
+          pasto_origem_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id?: string | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          data?: string
+          fazenda_id?: string
+          id?: string
+          mes?: number
+          pasto_destino_id?: string
+          pasto_origem_id?: string
+          quantidade?: number
+          retiro_id?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       notificacoes: {
         Row: {
           criado_em: string
