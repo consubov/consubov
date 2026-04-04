@@ -21,6 +21,7 @@ import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
 import ObservacaoModal from "@/components/capataz/ObservacaoModal";
 import MortalidadeModal from "@/components/capataz/MortalidadeModal";
+import AbateModal from "@/components/capataz/AbateModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -104,6 +105,10 @@ export default function CapatazDashboard() {
   const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
+
+  // Abate
+  const [abateOpen, setAbateOpen] = useState(false);
+  const [abatePasto, setAbatePasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -940,6 +945,21 @@ export default function CapatazDashboard() {
   // ============ HOME SCREEN ============
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
+  // Operational month: last closed + 1
+  const closedCiclos = ciclos.filter(c => c.fechado).sort((a, b) => a.ano !== b.ano ? b.ano - a.ano : b.mes - a.mes);
+  let mesOperacional: number;
+  let anoOperacional: number;
+  if (closedCiclos.length > 0) {
+    const last = closedCiclos[0];
+    mesOperacional = last.mes === 12 ? 1 : last.mes + 1;
+    anoOperacional = last.mes === 12 ? last.ano + 1 : last.ano;
+  } else {
+    const now = new Date();
+    mesOperacional = now.getMonth() + 1;
+    anoOperacional = now.getFullYear();
+  }
+  const mesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesOperacional - 1];
+
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <UpdateBanner />
@@ -1003,30 +1023,20 @@ export default function CapatazDashboard() {
           </Card>
         )}
 
-        <Card>
+        {/* Mês operacional (fixo, sem seleção manual) */}
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground">Período</label>
-                <Select value={selectedCicloId} onValueChange={async (v) => { setSelectedCicloId(v); await setConfig('selectedCicloId', v); await refreshLancamentosState(v); }}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione o período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ciclos.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {getMonthName(c.mes)} {c.ano} {!c.fechado ? '(ativo)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div>
+                <p className="text-xs text-muted-foreground">Mês atual de operação</p>
+                <p className="text-lg font-bold text-primary">{mesNome} {anoOperacional}</p>
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 mt-4 shrink-0"
+                    className="gap-1 shrink-0"
                     disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
                   >
                     <Lock className="w-3 h-3" />
@@ -1043,7 +1053,6 @@ export default function CapatazDashboard() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={async () => {
-                      // Bloquear se houver salgas pendentes
                       const salgasPend = await getLancamentosPendentes();
                       if (salgasPend.length > 0) {
                         toast.error("Sincronize as salgas pendentes antes de fechar o mês");
@@ -1097,17 +1106,18 @@ export default function CapatazDashboard() {
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
                 return (
-                  <PastoCard
-                    key={p.id}
-                    nome={p.nome}
-                    numAnimais={p.num_animais}
-                    pesoMedio={p.peso_medio_kg}
-                    diasNoPasto={p.dias_no_pasto}
-                    sacosHoje={sacosMap[p.id] || 0}
-                    status={getPastoStatus(p.id)}
-                    statusConsumo={cm?.status_consumo}
-                    indiceConsumo={cm?.indice_consumo}
-                  />
+                  <div key={p.id} onClick={() => { setAbatePasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setAbateOpen(true); }} className="cursor-pointer">
+                    <PastoCard
+                      nome={p.nome}
+                      numAnimais={p.num_animais}
+                      pesoMedio={p.peso_medio_kg}
+                      diasNoPasto={p.dias_no_pasto}
+                      sacosHoje={sacosMap[p.id] || 0}
+                      status={getPastoStatus(p.id)}
+                      statusConsumo={cm?.status_consumo}
+                      indiceConsumo={cm?.indice_consumo}
+                    />
+                  </div>
                 );
               })}
             </div>
@@ -1213,6 +1223,19 @@ export default function CapatazDashboard() {
         fazendaId={fazendaId}
         capatazNome={userName}
         onPastoUpdated={() => { loadFromSupabase(); }}
+      />
+
+      <AbateModal
+        open={abateOpen}
+        onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
+        pasto={abatePasto}
+        fazendaId={fazendaId}
+        retiroId={roleData.retiroId || ""}
+        mesOperacional={mesOperacional}
+        anoOperacional={anoOperacional}
+        onAbateConfirmed={(pastoId, qtd) => {
+          setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
+        }}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
+import { useAbatesData } from "@/hooks/useAbatesData";
 import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft,
+  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull,
 } from "lucide-react";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -71,6 +72,7 @@ export default function AdminFazendaPainelPage() {
   }), [fazendaId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
+  const { abatidosMes, abatidosAno } = useAbatesData(fazendaId, mes, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -124,6 +126,8 @@ export default function AdminFazendaPainelPage() {
         <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
         <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metrics.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
+        <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
+        <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
       </div>
 
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
