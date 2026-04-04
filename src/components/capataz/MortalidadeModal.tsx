@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, X, Loader2, AlertTriangle } from "lucide-react";
+import { Upload, X, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PastoCache } from "@/lib/offlineDb";
@@ -71,20 +71,21 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
     if (!fotoBase64) { toast.error("Foto obrigatória"); return; }
     if (quantidade < 1 || quantidade > animaisAtuais) { toast.error("Quantidade inválida"); return; }
 
+    const now = new Date();
     setSaving(true);
     try {
-      // 1. Insert observação
-      const { error: obsError } = await supabase.from("observacoes").insert({
+      // 1. Insert into mortalidades table
+      const { error: mortError } = await supabase.from("mortalidades" as any).insert({
         pasto_id: pastoId,
         retiro_id: retiroId,
         fazenda_id: fazendaId,
-        capataz_nome: capatazNome,
-        tipo: "mortalidade",
-        descricao: observacao ? `Mortalidade: ${quantidade} animal(is). ${observacao}` : `Mortalidade: ${quantidade} animal(is).`,
+        quantidade,
         foto_url: fotoBase64,
-        resolvido: false,
+        observacao: observacao || null,
+        mes: now.getMonth() + 1,
+        ano: now.getFullYear(),
       });
-      if (obsError) throw obsError;
+      if (mortError) throw mortError;
 
       // 2. Update num_animais
       const { error: updateError } = await supabase
@@ -118,7 +119,6 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -132,7 +132,7 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
                 <SelectValue placeholder="Selecione o pasto" />
               </SelectTrigger>
               <SelectContent>
-                {pastos.map((p) => (
+                {pastos.filter(p => p.num_animais > 0).map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} animais)</SelectItem>
                 ))}
               </SelectContent>
@@ -173,9 +173,9 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
             </div>
           )}
 
-          {/* Photo */}
+          {/* Photo - Upload from gallery */}
           <div>
-            <label className="text-sm font-medium mb-1 block">Foto *</label>
+            <label className="text-sm font-medium mb-1 block">Foto * (upload da galeria)</label>
             {fotoBase64 ? (
               <div className="relative">
                 <img src={fotoBase64} alt="Foto" className="w-full h-40 object-cover rounded-md" />
@@ -190,8 +190,8 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
               </div>
             ) : (
               <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full gap-2">
-                <Camera className="w-4 h-4" />
-                Tirar Foto
+                <Upload className="w-4 h-4" />
+                Fazer upload da foto
               </Button>
             )}
           </div>
