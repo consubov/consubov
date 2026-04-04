@@ -387,9 +387,7 @@ export default function GerenteDashboard() {
       {/* Retiro Detail Sheet */}
       <Sheet open={!!selectedRetiro} onOpenChange={(open) => !open && setSelectedRetiro(null)}>
         <SheetContent side="bottom" className="h-[85vh] overflow-auto">
-          {selectedRetiro && (
-            <RetiroDetail retiro={selectedRetiro} lancamentos={lancamentos} />
-          )}
+          {selectedRetiro && <RetiroDetail retiro={selectedRetiro} />}
         </SheetContent>
       </Sheet>
 
