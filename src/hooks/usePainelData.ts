@@ -17,6 +17,7 @@ interface Lancamento {
   peso_medio_kg: number | null; dias_no_pasto: number;
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
+  consumo_g_cab_dia: number | null;
   status_consumo: string | null; indice_consumo: number | null;
   categoria: string | null; sexo: string | null;
 }
