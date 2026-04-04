@@ -407,7 +407,7 @@ export default function GerenteDashboard() {
 }
 
 // ---- Retiro Detail ----
-function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancamentos: any[] }) {
+function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   return (
     <>
       <SheetHeader className="mb-4">
@@ -430,20 +430,38 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
       </h3>
 
       <div className="space-y-2">
-        {retiro.pastos.map(p => {
-          const pLanc = lancamentos.filter((l: any) => l.pasto_id === p.id);
-          const totalSacos = pLanc.reduce((s: number, l: any) => s + (l.num_sacos || 0), 0);
-          const sortedLanc = [...pLanc].sort((a: any, b: any) => new Date(b.lancado_em ?? 0).getTime() - new Date(a.lancado_em ?? 0).getTime());
-          const lastLanc = sortedLanc[0];
-          const latestConsumo = sortedLanc.find((l: any) => l.status_consumo);
+        {retiro.pastos.map((p) => {
+          const pLanc = retiro.lancamentos.filter((l) => l.pasto_id === p.id);
+          const totalSacos = pLanc.reduce((sum, l) => sum + (l.num_sacos || 0), 0);
+          const numAnimais = pLanc.length > 0
+            ? Math.max(...pLanc.map((l) => l.num_animais))
+            : p.num_animais;
 
-          const consumoBadgeConfig: Record<string, { emoji: string; className: string }> = {
-            ABAIXO: { emoji: '🔴', className: 'bg-destructive text-destructive-foreground' },
-            IDEAL: { emoji: '🟢', className: 'bg-primary text-primary-foreground' },
-            ACIMA: { emoji: '🟡', className: 'bg-yellow-500 text-yellow-950' },
-            ERRO: { emoji: '⚠️', className: 'bg-muted text-muted-foreground' },
-          };
-          const cb = latestConsumo?.status_consumo ? consumoBadgeConfig[latestConsumo.status_consumo] : null;
+          let consumoPonderado = 0;
+          let totalCabDias = 0;
+          for (const lanc of pLanc) {
+            const consumo = Number(lanc.consumo_g_cab_dia) || 0;
+            if (consumo <= 0 || lanc.num_animais <= 0 || lanc.dias_no_pasto <= 0) continue;
+            const cabDias = lanc.num_animais * lanc.dias_no_pasto;
+            consumoPonderado += consumo * cabDias;
+            totalCabDias += cabDias;
+          }
+          const consumoMedio = totalCabDias > 0 ? consumoPonderado / totalCabDias : 0;
+
+          const sortedLanc = [...pLanc].sort(
+            (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
+          );
+          const latestLanc = sortedLanc[sortedLanc.length - 1];
+          const statusConsumo = latestLanc?.status_consumo;
+          const indiceConsumo = latestLanc?.indice_consumo;
+
+          const statusClassName = statusConsumo === 'Baixo'
+            ? 'bg-destructive text-destructive-foreground'
+            : statusConsumo === 'Ideal'
+              ? 'bg-primary text-primary-foreground'
+              : statusConsumo === 'Alto'
+                ? 'bg-secondary text-secondary-foreground'
+                : '';
 
           return (
             <Card key={p.id}>
@@ -451,12 +469,13 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-sm">{p.nome}</p>
                   <div className="flex items-center gap-1.5">
-                    {cb && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${cb.className}`}>
-                        {cb.emoji} {latestConsumo.status_consumo} {latestConsumo.indice_consumo != null ? `(${Number(latestConsumo.indice_consumo).toFixed(2)})` : ''}
+                    {statusConsumo && (
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${statusClassName}`}>
+                        {statusConsumo}
+                        {indiceConsumo != null ? ` (${Number(indiceConsumo).toFixed(2)})` : ''}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
+                    <Badge variant="outline" className="text-[10px]">{numAnimais} cab</Badge>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -466,21 +485,18 @@ function RetiroDetail({ retiro, lancamentos }: { retiro: RetiroComDados; lancame
                   </div>
                   <div>
                     <p className="text-muted-foreground">Consumo</p>
-                    <p className="font-bold text-secondary">
-                      {lastLanc?.consumo_g_cab_dia != null ? fmtNum(Number(lastLanc.consumo_g_cab_dia), 1) : "—"}
-                    </p>
+                    <p className="font-bold text-secondary">{consumoMedio > 0 ? fmtNum(consumoMedio, 1) : '—'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">GMD</p>
                     <p className="font-bold text-primary">
-                      {p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0 ? fmtNum(Number(p.gmd_kg_dia), 3) : "—"}
+                      {p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0 ? fmtNum(Number(p.gmd_kg_dia), 3) : '—'}
                     </p>
                   </div>
                 </div>
-                {lastLanc && (
+                {latestLanc && (
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Último: {lastLanc.lancado_em ? new Date(lastLanc.lancado_em).toLocaleDateString("pt-BR") : "—"}
-                    {lastLanc.capataz_nome ? ` · ${lastLanc.capataz_nome}` : ""}
+                    Último: {latestLanc.created_at ? new Date(latestLanc.created_at).toLocaleDateString('pt-BR') : '—'}
                   </p>
                 )}
               </CardContent>
