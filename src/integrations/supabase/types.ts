@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      abates: {
+        Row: {
+          ano: number
+          created_at: string
+          data: string
+          fazenda_id: string
+          id: string
+          mes: number
+          pasto_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id: string | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          data?: string
+          fazenda_id: string
+          id?: string
+          mes: number
+          pasto_id: string
+          quantidade: number
+          retiro_id: string
+          usuario_id?: string | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          data?: string
+          fazenda_id?: string
+          id?: string
+          mes?: number
+          pasto_id?: string
+          quantidade?: number
+          retiro_id?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abates_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abates_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abates_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       administradores: {
         Row: {
           ativo: boolean | null
