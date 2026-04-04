@@ -283,7 +283,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       totalAnimais,
       consumoMedio,
       pastosNaMeta,
-      totalPastos: pastosNoPeriodo.length,
+      totalPastos: pastos.length,
       sacosUtilizados,
       custoDiario,
       custoMensal,
