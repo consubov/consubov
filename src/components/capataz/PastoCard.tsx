@@ -30,7 +30,7 @@ export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sa
   const cb = statusConsumo ? consumoBadge[statusConsumo] : null;
 
   return (
-    <Card className="border-border">
+    <Card className="border-border hover:shadow-md transition-shadow active:scale-[0.98]">
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-1.5">
           <span className="font-semibold text-sm text-foreground">{nome}</span>
