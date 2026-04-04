@@ -314,7 +314,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
       const sacosUtilizados = rLanc.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
       const consumoMedio = getConsumoMedioPonderado(rLanc);
-      const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
+      const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
       const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
       const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
