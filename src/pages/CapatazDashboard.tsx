@@ -24,6 +24,7 @@ import MortalidadeModal from "@/components/capataz/MortalidadeModal";
 import AbateModal from "@/components/capataz/AbateModal";
 import TransferenciaModal from "@/components/capataz/TransferenciaModal";
 import PastoActionSheet from "@/components/capataz/PastoActionSheet";
+import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
