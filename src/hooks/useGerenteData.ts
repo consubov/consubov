@@ -276,7 +276,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     const indices = lancamentos.filter(item => item.indice_consumo != null && item.indice_consumo > 0).map(item => item.indice_consumo!);
     const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
 
-    const gmdVals = pastosNoPeriodo.filter(pasto => pasto.gmd_kg_dia != null && Number(pasto.gmd_kg_dia) > 0).map(pasto => Number(pasto.gmd_kg_dia!));
+    const gmdVals = pastos.filter(pasto => pasto.gmd_kg_dia != null && Number(pasto.gmd_kg_dia) > 0).map(pasto => Number(pasto.gmd_kg_dia!));
     const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
     return {
