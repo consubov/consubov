@@ -77,6 +77,8 @@ export default function GerenteDashboard() {
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
+  const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
+
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
