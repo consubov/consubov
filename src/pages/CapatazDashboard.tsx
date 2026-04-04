@@ -1238,8 +1238,16 @@ export default function CapatazDashboard() {
         open={actionSheetOpen}
         onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
         pastoNome={actionSheetPasto?.nome || ""}
+        numAnimais={actionSheetPasto?.num_animais ?? 0}
         onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
         onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
+        onMortalidade={() => { setMortalidadeOpen(true); }}
+        onEntrada={() => {
+          if (actionSheetPasto) {
+            setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
+            setEntradaOpen(true);
+          }
+        }}
       />
 
       <AbateModal
