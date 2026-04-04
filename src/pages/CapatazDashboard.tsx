@@ -106,6 +106,10 @@ export default function CapatazDashboard() {
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
 
+  // Abate
+  const [abateOpen, setAbateOpen] = useState(false);
+  const [abatePasto, setAbatePasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
   const refreshObservacoes = useCallback(async () => {
