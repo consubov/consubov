@@ -239,11 +239,14 @@ export function usePainelData(filters: PainelFilters) {
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
 
-      // num_animais from lancamentos (cycle data)
+      // num_animais: lancamentos when available, fallback to pasto cadastro
       const animaisPerPasto = new Map<string, number>();
       for (const l of rLanc) {
         const current = animaisPerPasto.get(l.pasto_id) ?? 0;
         if (l.num_animais > current) animaisPerPasto.set(l.pasto_id, l.num_animais);
+      }
+      for (const p of rPastos) {
+        if (!animaisPerPasto.has(p.id)) animaisPerPasto.set(p.id, p.num_animais || 0);
       }
       const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
