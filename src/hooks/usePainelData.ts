@@ -149,17 +149,28 @@ export function usePainelData(filters: PainelFilters) {
 
   // ---------- Metrics: read PRE-CALCULATED data from DB ----------
   const metrics = useMemo<PainelMetrics>(() => {
-    if (lancamentos.length === 0) return emptyMetrics;
+    // Fallback: total de animais dos pastos cadastrados (último estado conhecido)
+    const totalAnimaisFallback = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+
+    if (lancamentos.length === 0) {
+      return { ...emptyMetrics, totalAnimais: totalAnimaisFallback, totalPastos: pastos.length };
+    }
 
     // Pastos that have lancamentos in this period
     const pastoIdsComLanc = new Set(lancamentos.map(l => l.pasto_id));
     const pastosNoPeriodo = pastos.filter(p => pastoIdsComLanc.has(p.id));
 
-    // num_animais from lancamentos (cycle data)
+    // num_animais: use lancamentos when available, fallback to pasto for pastos without lancamentos
     const totalAnimaisSet = new Map<string, number>();
     for (const l of lancamentos) {
       const current = totalAnimaisSet.get(l.pasto_id) ?? 0;
       if (l.num_animais > current) totalAnimaisSet.set(l.pasto_id, l.num_animais);
+    }
+    // Add pastos without lancamentos using their registered num_animais
+    for (const p of pastos) {
+      if (!totalAnimaisSet.has(p.id)) {
+        totalAnimaisSet.set(p.id, p.num_animais || 0);
+      }
     }
     const totalAnimais = Array.from(totalAnimaisSet.values()).reduce((s, n) => s + n, 0);
 
@@ -228,11 +239,14 @@ export function usePainelData(filters: PainelFilters) {
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
 
-      // num_animais from lancamentos (cycle data)
+      // num_animais: lancamentos when available, fallback to pasto cadastro
       const animaisPerPasto = new Map<string, number>();
       for (const l of rLanc) {
         const current = animaisPerPasto.get(l.pasto_id) ?? 0;
         if (l.num_animais > current) animaisPerPasto.set(l.pasto_id, l.num_animais);
+      }
+      for (const p of rPastos) {
+        if (!animaisPerPasto.has(p.id)) animaisPerPasto.set(p.id, p.num_animais || 0);
       }
       const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
       const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);

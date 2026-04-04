@@ -229,9 +229,20 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
+    const totalAnimaisFallback = pastos.reduce((sum, p) => sum + (p.num_animais || 0), 0);
     const pastoIdsComLancamento = new Set(lancamentos.map(item => item.pasto_id));
     const pastosNoPeriodo = pastos.filter(pasto => pastoIdsComLancamento.has(pasto.id));
-    const totalAnimais = getTotalAnimaisFromLancamentos(lancamentos);
+
+    // Animais: lancamentos quando disponível, senão cadastro do pasto
+    const animaisPorPasto = new Map<string, number>();
+    for (const l of lancamentos) {
+      const atual = animaisPorPasto.get(l.pasto_id) ?? 0;
+      if (l.num_animais > atual) animaisPorPasto.set(l.pasto_id, l.num_animais);
+    }
+    for (const p of pastos) {
+      if (!animaisPorPasto.has(p.id)) animaisPorPasto.set(p.id, p.num_animais || 0);
+    }
+    const totalAnimais = Array.from(animaisPorPasto.values()).reduce((s, n) => s + n, 0);
     const sacosUtilizados = lancamentos.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
     const consumoMedio = getConsumoMedioPonderado(lancamentos);
 
@@ -291,7 +302,16 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rPastoIds = new Set(rPastos.map(p => p.id));
       const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-      const totalAnimais = getTotalAnimaisFromLancamentos(rLanc);
+      // Animais: lancamentos se disponível, senão cadastro do pasto
+      const animaisPerPasto = new Map<string, number>();
+      for (const l of rLanc) {
+        const atual = animaisPerPasto.get(l.pasto_id) ?? 0;
+        if (l.num_animais > atual) animaisPerPasto.set(l.pasto_id, l.num_animais);
+      }
+      for (const p of rPastos) {
+        if (!animaisPerPasto.has(p.id)) animaisPerPasto.set(p.id, p.num_animais || 0);
+      }
+      const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
       const sacosUtilizados = rLanc.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
       const consumoMedio = getConsumoMedioPonderado(rLanc);
       const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
