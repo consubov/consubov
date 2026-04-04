@@ -1106,17 +1106,18 @@ export default function CapatazDashboard() {
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
                 return (
-                  <PastoCard
-                    key={p.id}
-                    nome={p.nome}
-                    numAnimais={p.num_animais}
-                    pesoMedio={p.peso_medio_kg}
-                    diasNoPasto={p.dias_no_pasto}
-                    sacosHoje={sacosMap[p.id] || 0}
-                    status={getPastoStatus(p.id)}
-                    statusConsumo={cm?.status_consumo}
-                    indiceConsumo={cm?.indice_consumo}
-                  />
+                  <div key={p.id} onClick={() => { setAbatePasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setAbateOpen(true); }} className="cursor-pointer">
+                    <PastoCard
+                      nome={p.nome}
+                      numAnimais={p.num_animais}
+                      pesoMedio={p.peso_medio_kg}
+                      diasNoPasto={p.dias_no_pasto}
+                      sacosHoje={sacosMap[p.id] || 0}
+                      status={getPastoStatus(p.id)}
+                      statusConsumo={cm?.status_consumo}
+                      indiceConsumo={cm?.indice_consumo}
+                    />
+                  </div>
                 );
               })}
             </div>
