@@ -22,6 +22,8 @@ import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
 import ObservacaoModal from "@/components/capataz/ObservacaoModal";
 import MortalidadeModal from "@/components/capataz/MortalidadeModal";
 import AbateModal from "@/components/capataz/AbateModal";
+import TransferenciaModal from "@/components/capataz/TransferenciaModal";
+import PastoActionSheet from "@/components/capataz/PastoActionSheet";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -106,9 +108,13 @@ export default function CapatazDashboard() {
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
 
-  // Abate
+  // Abate & Transfer
   const [abateOpen, setAbateOpen] = useState(false);
   const [abatePasto, setAbatePasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferPasto, setTransferPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -1106,7 +1112,7 @@ export default function CapatazDashboard() {
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
                 return (
-                  <div key={p.id} onClick={() => { setAbatePasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setAbateOpen(true); }} className="cursor-pointer">
+                  <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
                     <PastoCard
                       nome={p.nome}
                       numAnimais={p.num_animais}
@@ -1225,6 +1231,14 @@ export default function CapatazDashboard() {
         onPastoUpdated={() => { loadFromSupabase(); }}
       />
 
+      <PastoActionSheet
+        open={actionSheetOpen}
+        onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
+        pastoNome={actionSheetPasto?.nome || ""}
+        onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
+        onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
+      />
+
       <AbateModal
         open={abateOpen}
         onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
@@ -1235,6 +1249,24 @@ export default function CapatazDashboard() {
         anoOperacional={anoOperacional}
         onAbateConfirmed={(pastoId, qtd) => {
           setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
+        }}
+      />
+
+      <TransferenciaModal
+        open={transferOpen}
+        onClose={() => { setTransferOpen(false); setTransferPasto(null); }}
+        pasto={transferPasto}
+        pastos={pastos}
+        fazendaId={fazendaId}
+        retiroId={roleData.retiroId || ""}
+        mesOperacional={mesOperacional}
+        anoOperacional={anoOperacional}
+        onTransferConfirmed={(origemId, destinoId, qtd) => {
+          setPastos(prev => prev.map(p => {
+            if (p.id === origemId) return { ...p, num_animais: p.num_animais - qtd };
+            if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
+            return p;
+          }));
         }}
       />
     </div>
