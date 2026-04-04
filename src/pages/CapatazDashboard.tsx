@@ -1023,30 +1023,20 @@ export default function CapatazDashboard() {
           </Card>
         )}
 
-        <Card>
+        {/* Mês operacional (fixo, sem seleção manual) */}
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground">Período</label>
-                <Select value={selectedCicloId} onValueChange={async (v) => { setSelectedCicloId(v); await setConfig('selectedCicloId', v); await refreshLancamentosState(v); }}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione o período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ciclos.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {getMonthName(c.mes)} {c.ano} {!c.fechado ? '(ativo)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div>
+                <p className="text-xs text-muted-foreground">Mês atual de operação</p>
+                <p className="text-lg font-bold text-primary">{mesNome} {anoOperacional}</p>
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 mt-4 shrink-0"
+                    className="gap-1 shrink-0"
                     disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
                   >
                     <Lock className="w-3 h-3" />
@@ -1063,7 +1053,6 @@ export default function CapatazDashboard() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={async () => {
-                      // Bloquear se houver salgas pendentes
                       const salgasPend = await getLancamentosPendentes();
                       if (salgasPend.length > 0) {
                         toast.error("Sincronize as salgas pendentes antes de fechar o mês");
