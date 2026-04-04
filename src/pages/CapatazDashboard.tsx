@@ -1280,6 +1280,17 @@ export default function CapatazDashboard() {
           }));
         }}
       />
+
+      {entradaPasto && (
+        <EntradaAnimaisModal
+          open={entradaOpen}
+          onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
+          pastoId={entradaPasto.id}
+          pastoNome={entradaPasto.nome}
+          retiroId={roleData.retiroId || ""}
+          onPastoUpdated={() => { loadFromSupabase(); }}
+        />
+      )}
     </div>
   );
 }
