@@ -25,7 +25,7 @@ interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: str
 interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; gmd_kg_dia: number | null; }
 interface Produto {
   id: string; nome: string; peso_saco_kg: number;
-  consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null;
+  consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null; preco_por_kg: number | null;
   margem_engorda: number | null; margem_recria1: number | null; margem_recria2: number | null;
 }
 interface Lancamento {
