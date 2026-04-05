@@ -662,6 +662,17 @@ export default function PainelInteligenciaPage() {
         </Card>
       </div>
 
+      {/* MÉTRICAS POR CATEGORIA ANIMAL */}
+      <MetricasPorCategoria
+        filteredLancamentos={filteredLancamentos}
+        consumosPorLanc={consumosPorLanc}
+        pastoById={pastoById}
+        retiroById={retiroById}
+        produtoById={produtoById}
+        filtroCategoria={filtroCategoria}
+        getEffectiveProdutoId={getEffectiveProdutoId}
+      />
+
       {/* RANKING TABLE */}
       <Card>
         <CardHeader>
