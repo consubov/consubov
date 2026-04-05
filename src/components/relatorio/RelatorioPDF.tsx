@@ -1,15 +1,26 @@
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
-// Status is now read directly from DB — no recalculation needed
 
 // ---------- Types ----------
+export interface CatMetricsPDF {
+  categoria: string;
+  consumoMedio: number;
+  totalAnimais: number;
+  totalSacos: number;
+  custoMedio: number;
+  custoPorKgGanho: number;
+  gmd: number;
+  custoTotal: number;
+}
+
 export interface RelatorioPDFData {
   fazendaNome: string;
   periodo: string;
   dataGeracao: string;
   geradoPor: string;
   retiros: RetiroReportData[];
+  categoriaMetrics?: CatMetricsPDF[];
 }
 
 export interface PastoReportData {
@@ -21,6 +32,7 @@ export interface PastoReportData {
   pesoMedioKg: number;
   gmdKgDia: number;
   pesoAbateMetaKg: number;
+  categoria?: string;
 }
 
 export interface RetiroReportData {
@@ -40,6 +52,8 @@ export interface RetiroReportData {
   scoreCocho: number;
   scoreSalga: number;
   pastos: PastoReportData[];
+  consumoIdeal?: number;
+  consumoMaximo?: number;
 }
 
 // ---------- Styles ----------
@@ -85,8 +99,20 @@ function statusColor(status: string) {
   return { bg: "#f5f5f5", color: "#333" };
 }
 
+function barColor(status: string) {
+  if (status === "Baixo") return "#E53935";
+  if (status === "Atenção" || status === "Atencao") return "#FBC02D";
+  if (status === "Ideal") return "#43A047";
+  if (status === "Alto") return "#1E88E5";
+  return "#9E9E9E";
+}
+
 function fmtNum(n: number, d = 0) {
   return n.toFixed(d).replace(".", ",");
+}
+
+function fmtBRL(n: number) {
+  return `R$ ${n.toFixed(2).replace(".", ",")}`;
 }
 
 // ---------- Components ----------
@@ -248,6 +274,221 @@ function PrevisaoAbate({ retiros }: { retiros: RetiroReportData[] }) {
   );
 }
 
+// ---------- NEW: Métricas por Categoria Animal ----------
+function MetricasCategoria({ metrics }: { metrics: CatMetricsPDF[] }) {
+  if (!metrics || metrics.length === 0) return null;
+  const cols = [
+    { label: "Categoria", width: "16%" },
+    { label: "Animais", width: "12%" },
+    { label: "Sacos", width: "10%" },
+    { label: "Consumo (g/cab/dia)", width: "18%" },
+    { label: "Custo Total", width: "14%" },
+    { label: "R$/cab/mês", width: "12%" },
+    { label: "R$/kg ganho", width: "10%" },
+    { label: "GMD", width: "8%" },
+  ];
+  return (
+    <View>
+      <Text style={s.sectionTitle}>SEÇÃO 5 — MÉTRICAS POR CATEGORIA ANIMAL</Text>
+
+      {/* Summary cards row */}
+      <View style={[s.cardsRow, { marginBottom: 6 }]}>
+        {metrics.map(m => (
+          <View key={m.categoria} style={{ backgroundColor: "#f5f5f5", padding: 5, borderRadius: 3, width: "31%", marginRight: "2%" }}>
+            <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}>{m.categoria}</Text>
+            <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#333" }}>{fmtNum(m.consumoMedio, 1)} <Text style={{ fontSize: 6, color: "#888" }}>g/cab/dia</Text></Text>
+            <View style={{ marginTop: 2 }}>
+              <Text style={{ fontSize: 6, color: "#666" }}>Animais: {fmtNum(m.totalAnimais)} · Sacos: {fmtNum(m.totalSacos)}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}>R$/cab/mês: {fmtBRL(m.custoMedio)}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}>R$/kg ganho: {m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}>GMD: {m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Table */}
+      <View style={s.table}>
+        <View style={s.tableHeader}>
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+        </View>
+        {metrics.map((m, i) => (
+          <View key={m.categoria} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+            <Text style={[s.tableCell, { width: cols[0].width, fontFamily: "Helvetica-Bold" }]}>{m.categoria}</Text>
+            <Text style={[s.tableCell, { width: cols[1].width }]}>{fmtNum(m.totalAnimais)}</Text>
+            <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(m.totalSacos)}</Text>
+            <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(m.consumoMedio, 1)}</Text>
+            <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtBRL(m.custoTotal)}</Text>
+            <Text style={[s.tableCell, { width: cols[5].width }]}>{fmtBRL(m.custoMedio)}</Text>
+            <Text style={[s.tableCell, { width: cols[6].width }]}>{m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
+            <Text style={[s.tableCell, { width: cols[7].width }]}>{m.gmd > 0 ? fmtNum(m.gmd, 3) : "—"}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ---------- NEW: Gráfico de Consumo por Pasto (react-pdf drawn) ----------
+function ConsumoPorPastoChart({ r }: { r: RetiroReportData }) {
+  const pastos = [...r.pastos].filter(p => p.consumoGCabDia > 0).sort((a, b) => b.consumoGCabDia - a.consumoGCabDia);
+  if (pastos.length === 0) return null;
+
+  const chartWidth = 530;
+  const chartHeight = 140;
+  const leftMargin = 40;
+  const bottomMargin = 30;
+  const plotWidth = chartWidth - leftMargin - 10;
+  const plotHeight = chartHeight - bottomMargin - 10;
+
+  const maxVal = Math.max(...pastos.map(p => p.consumoGCabDia), r.consumoMaximo ?? 0, r.consumoIdeal ?? 0) * 1.15;
+  const barWidth = Math.min(28, (plotWidth / pastos.length) * 0.7);
+  const barGap = plotWidth / pastos.length;
+
+  const idealY = r.consumoIdeal && r.consumoIdeal > 0 ? plotHeight - (r.consumoIdeal / maxVal) * plotHeight : null;
+  const maxY = r.consumoMaximo && r.consumoMaximo > 0 ? plotHeight - (r.consumoMaximo / maxVal) * plotHeight : null;
+
+  return (
+    <View style={{ marginTop: 6, marginBottom: 6 }} wrap={false}>
+      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 4 }}>
+        Consumo por Pasto — {r.nome}
+      </Text>
+      <View style={{ width: chartWidth, height: chartHeight, position: "relative" }}>
+        {/* Y axis */}
+        <View style={{ position: "absolute", left: 0, top: 0, width: leftMargin, height: plotHeight }}>
+          {[0, 0.25, 0.5, 0.75, 1].map(frac => (
+            <Text key={frac} style={{
+              position: "absolute",
+              right: 2,
+              top: plotHeight - frac * plotHeight - 4,
+              fontSize: 5,
+              color: "#999",
+            }}>
+              {fmtNum(frac * maxVal, 0)}
+            </Text>
+          ))}
+        </View>
+
+        {/* Plot area */}
+        <View style={{
+          position: "absolute",
+          left: leftMargin,
+          top: 0,
+          width: plotWidth,
+          height: plotHeight,
+          borderBottom: "0.5 solid #ccc",
+          borderLeft: "0.5 solid #ccc",
+        }}>
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75].map(frac => (
+            <View key={frac} style={{
+              position: "absolute",
+              left: 0,
+              top: plotHeight - frac * plotHeight,
+              width: plotWidth,
+              height: 0,
+              borderBottom: "0.3 solid #eee",
+            }} />
+          ))}
+
+          {/* Ideal line */}
+          {idealY != null && (
+            <>
+              <View style={{
+                position: "absolute", left: 0, top: idealY,
+                width: plotWidth, height: 0,
+                borderBottom: "0.8 dashed #43A047",
+              }} />
+              <Text style={{ position: "absolute", right: 0, top: idealY - 7, fontSize: 5, color: "#43A047" }}>
+                Ideal ({fmtNum(r.consumoIdeal!, 0)})
+              </Text>
+            </>
+          )}
+
+          {/* Max line */}
+          {maxY != null && (
+            <>
+              <View style={{
+                position: "absolute", left: 0, top: maxY,
+                width: plotWidth, height: 0,
+                borderBottom: "0.8 dashed #E53935",
+              }} />
+              <Text style={{ position: "absolute", right: 0, top: maxY - 7, fontSize: 5, color: "#E53935" }}>
+                Máximo ({fmtNum(r.consumoMaximo!, 0)})
+              </Text>
+            </>
+          )}
+
+          {/* Bars */}
+          {pastos.map((p, i) => {
+            const barH = (p.consumoGCabDia / maxVal) * plotHeight;
+            const x = i * barGap + (barGap - barWidth) / 2;
+            const color = barColor(p.status);
+            return (
+              <View key={p.nome}>
+                {/* Bar */}
+                <View style={{
+                  position: "absolute",
+                  left: x,
+                  top: plotHeight - barH,
+                  width: barWidth,
+                  height: barH,
+                  backgroundColor: color,
+                  borderRadius: 1,
+                }} />
+                {/* Value label */}
+                <Text style={{
+                  position: "absolute",
+                  left: x,
+                  top: plotHeight - barH - 8,
+                  width: barWidth,
+                  textAlign: "center",
+                  fontSize: 5,
+                  fontFamily: "Helvetica-Bold",
+                  color: "#333",
+                }}>
+                  {fmtNum(p.consumoGCabDia, 1)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* X labels */}
+        <View style={{ position: "absolute", left: leftMargin, top: plotHeight + 2, width: plotWidth, flexDirection: "row" }}>
+          {pastos.map((p, i) => (
+            <Text key={p.nome} style={{
+              position: "absolute",
+              left: i * barGap,
+              width: barGap,
+              textAlign: "center",
+              fontSize: 5,
+              color: "#666",
+            }}>
+              {p.nome.length > 10 ? p.nome.slice(0, 9) + "…" : p.nome}
+            </Text>
+          ))}
+        </View>
+
+        {/* Legend */}
+        <View style={{ position: "absolute", left: leftMargin, top: plotHeight + 14, flexDirection: "row", gap: 8 }}>
+          {[
+            { label: "Ideal", color: "#43A047" },
+            { label: "Atenção", color: "#FBC02D" },
+            { label: "Baixo", color: "#E53935" },
+            { label: "Alto", color: "#1E88E5" },
+          ].map(l => (
+            <View key={l.label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+              <View style={{ width: 6, height: 6, backgroundColor: l.color, borderRadius: 1 }} />
+              <Text style={{ fontSize: 5, color: "#666" }}>{l.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const sortedPastos = [...r.pastos].sort((a, b) => b.consumoGCabDia - a.consumoGCabDia);
   const baixo = r.pastos.filter(p => p.status === "Baixo");
@@ -288,6 +529,9 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
         </View>
       )}
 
+      {/* Bar chart */}
+      <ConsumoPorPastoChart r={r} />
+
       <View style={[s.table, { marginTop: 2 }]}>
         <View style={s.tableHeader}>
           {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
@@ -310,7 +554,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   );
 }
 
-// ---------- Main Document (continuous layout) ----------
+// ---------- Main Document ----------
 export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
   return (
     <Document>
@@ -321,7 +565,11 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
         <RankingGMD retiros={data.retiros} />
         <PrevisaoAbate retiros={data.retiros} />
 
-        <Text style={s.sectionTitle}>SEÇÃO 5 — DETALHE POR RETIRO</Text>
+        {data.categoriaMetrics && data.categoriaMetrics.length > 0 && (
+          <MetricasCategoria metrics={data.categoriaMetrics} />
+        )}
+
+        <Text style={s.sectionTitle}>SEÇÃO 6 — DETALHE POR RETIRO</Text>
         {data.retiros.map(r => (
           <DetalheRetiro key={r.nome} r={r} />
         ))}
