@@ -291,10 +291,10 @@ function MetricasCategoria({ metrics }: { metrics: CatMetricsPDF[] }) {
     <View>
       <Text style={s.sectionTitle}>SEÇÃO 5 — MÉTRICAS POR CATEGORIA ANIMAL</Text>
 
-      {/* Summary cards row */}
-      <View style={[s.cardsRow, { marginBottom: 6 }]}>
-        {metrics.map(m => (
-          <View key={m.categoria} style={{ backgroundColor: "#f5f5f5", padding: 5, borderRadius: 3, width: "31%", marginRight: "2%" }}>
+      {/* Summary cards row — always same line */}
+      <View style={{ flexDirection: "row", marginBottom: 6 }}>
+        {metrics.map((m, i) => (
+          <View key={m.categoria} style={{ backgroundColor: "#f5f5f5", padding: 5, borderRadius: 3, width: "32%", marginRight: i < metrics.length - 1 ? "2%" : 0 }}>
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}>{m.categoria}</Text>
             <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#333" }}>{fmtNum(m.consumoMedio, 1)} <Text style={{ fontSize: 6, color: "#888" }}>g/cab/dia</Text></Text>
             <View style={{ marginTop: 2 }}>
