@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users, Beef, DollarSign, Droplets } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
