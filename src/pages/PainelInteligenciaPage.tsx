@@ -1,11 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import MetricasPorCategoria from "@/components/painel/MetricasPorCategoria";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users, Beef, DollarSign, Droplets } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
@@ -22,10 +23,10 @@ import {
 
 interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
 interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: string | null; }
-interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; }
+interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; gmd_kg_dia: number | null; }
 interface Produto {
   id: string; nome: string; peso_saco_kg: number;
-  consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null;
+  consumo_engorda: number | null; consumo_recria1: number | null; consumo_recria2: number | null; preco_por_kg: number | null;
   margem_engorda: number | null; margem_recria1: number | null; margem_recria2: number | null;
 }
 interface Lancamento {
@@ -88,8 +89,8 @@ export default function PainelInteligenciaPage() {
       const [fRes, rRes, pRes, prRes, lRes] = await Promise.all([
         supabase.from("fazendas").select("id, nome, cidade, estado").eq("ativo", true),
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
-        supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id").eq("ativo", true),
-        supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2").eq("ativo", true),
+        supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
+        supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
         supabase.from("lancamentos").select("id, fazenda_id, retiro_id, pasto_id, mes_referencia, ano_referencia, num_animais, num_sacos, dias_no_pasto, origem, created_at, categoria, sexo, peso_medio_kg, status_consumo, indice_consumo").order("created_at", { ascending: false }),
       ]);
       setFazendas(fRes.data ?? []);
@@ -140,13 +141,13 @@ export default function PainelInteligenciaPage() {
   };
 
   // Resolve effective produto_id: pasto -> retiro
-  const getEffectiveProdutoId = (l: Lancamento): string | null => {
+  const getEffectiveProdutoId = useCallback((l: Lancamento): string | null => {
     const pasto = pastoById[l.pasto_id];
     if (pasto?.produto_id) return pasto.produto_id;
     const retiro = retiroById[l.retiro_id];
     if (retiro?.produto_id) return retiro.produto_id;
     return null;
-  };
+  }, [pastoById, retiroById]);
 
   // Calculate consumption for a lancamento client-side
   const calcConsumoForLanc = (l: Lancamento): number | null => {
@@ -661,6 +662,17 @@ export default function PainelInteligenciaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* MÉTRICAS POR CATEGORIA ANIMAL */}
+      <MetricasPorCategoria
+        filteredLancamentos={filteredLancamentos}
+        consumosPorLanc={consumosPorLanc}
+        pastoById={pastoById}
+        retiroById={retiroById}
+        produtoById={produtoById}
+        filtroCategoria={filtroCategoria}
+        getEffectiveProdutoId={getEffectiveProdutoId}
+      />
 
       {/* RANKING TABLE */}
       <Card>
