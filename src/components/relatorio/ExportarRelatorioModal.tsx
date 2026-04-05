@@ -11,7 +11,6 @@ import {
 import { Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import RelatorioPDF, { type RelatorioPDFData, type RetiroReportData, type PastoReportData, type CatMetricsPDF } from "./RelatorioPDF";
-import { classificarCategoria, calcConsumoGCabDia } from "@/lib/consumoCalc";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
