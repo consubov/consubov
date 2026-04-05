@@ -443,6 +443,7 @@ export default function PainelInteligenciaPage() {
     }
   }
 
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold text-foreground">Painel de Inteligência Nutricional</h1>
