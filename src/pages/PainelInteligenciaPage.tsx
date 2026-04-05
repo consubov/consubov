@@ -87,6 +87,7 @@ export default function PainelInteligenciaPage() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
     async function load() {
