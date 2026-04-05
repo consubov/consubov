@@ -458,9 +458,15 @@ export default function PainelInteligenciaPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Inteligência Nutricional – CONSUBOV</h1>
-        <p className="text-sm text-muted-foreground mt-1">Análise comparativa e insights automáticos</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Inteligência Nutricional – CONSUBOV</h1>
+          <p className="text-sm text-muted-foreground mt-1">Análise comparativa e insights automáticos</p>
+        </div>
+        <Button onClick={handleExportPDF} disabled={exportingPDF} className="gap-1.5">
+          {exportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          Exportar em PDF
+        </Button>
       </div>
 
       {/* FILTERS */}
