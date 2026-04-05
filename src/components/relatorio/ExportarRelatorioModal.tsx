@@ -187,15 +187,18 @@ export default function ExportarRelatorioModal({
           const statusLancs = pLanc.map(l => l.status_consumo).filter(Boolean);
           const pStatus = statusLancs.length > 0 ? statusLancs[statusLancs.length - 1] : "—";
 
+          const pesoMedio = Number(p.peso_medio_kg ?? 0);
+          const cat = (p as any).categoria || classificarCategoria(pesoMedio);
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
             numSacos: pSacos,
             consumoGCabDia: pConsumo,
             status: pStatus,
-            pesoMedioKg: Number(p.peso_medio_kg ?? 0),
+            pesoMedioKg: pesoMedio,
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
+            categoria: cat,
           };
         });
 
