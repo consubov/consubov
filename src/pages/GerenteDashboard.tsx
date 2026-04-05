@@ -200,7 +200,7 @@ export default function GerenteDashboard() {
             <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
           ) : (
             retirosComDados.map(r => (
-              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => setSelectedRetiro(r)}>
+              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => navigate(`/gerente/fazendas/${roleData.fazendaId}/retiros/${r.id}/painel`)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
