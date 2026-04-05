@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users, Beef, DollarSign, Droplets } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users, Beef, DollarSign, Droplets, FileDown, Loader2 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
@@ -20,6 +21,9 @@ import {
   calcIndiceConsumo,
   calcConsumoEsperadoGCabDia,
 } from "@/lib/consumoCalc";
+import { pdf } from "@react-pdf/renderer";
+import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
+import { toast } from "sonner";
 
 interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
 interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: string | null; }
@@ -83,6 +87,7 @@ export default function PainelInteligenciaPage() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -349,6 +354,95 @@ export default function PainelInteligenciaPage() {
     return rankingFazendas;
   }, [filtroProduto, rankingFazendas]);
 
+  // 10. Category metrics for PDF export
+  const CATEGORIAS_PDF = ["Recria 1", "Recria 2", "Engorda"] as const;
+  const metricasCategoria = useMemo((): CatMetricsPDF[] => {
+    const catMap: Record<string, { consumos: number[]; animais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
+    CATEGORIAS_PDF.forEach(c => { catMap[c] = { consumos: [], animais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
+
+    filteredLancamentos.forEach(l => {
+      const pesoMedio = l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0;
+      const cat = l.categoria || classificarCategoria(pesoMedio);
+      if (!catMap[cat]) return;
+      const entry = catMap[cat];
+      entry.animais += l.num_animais;
+      entry.sacos += l.num_sacos;
+      entry.diasTotal += l.dias_no_pasto;
+      const produtoId = getEffectiveProdutoId(l);
+      if (produtoId) {
+        const prod = produtoById[produtoId];
+        if (prod && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
+          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
+          entry.consumos.push(consumoReal);
+          const preco = prod.preco_por_kg ?? 0;
+          entry.custoTotal += l.num_sacos * prod.peso_saco_kg * preco;
+        }
+      }
+      const pasto = pastoById[l.pasto_id];
+      if (pasto?.gmd_kg_dia && pasto.gmd_kg_dia > 0) entry.gmds.push(pasto.gmd_kg_dia);
+    });
+
+    return CATEGORIAS_PDF.map(cat => {
+      const e = catMap[cat];
+      const consumoMedio = e.consumos.length > 0 ? e.consumos.reduce((a, b) => a + b, 0) / e.consumos.length : 0;
+      const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
+      const custoMedio = e.animais > 0 ? e.custoTotal / e.animais : 0;
+      const avgDias = e.consumos.length > 0 ? e.diasTotal / e.consumos.length : 30;
+      const kgGanho = e.animais > 0 && gmd > 0 ? e.animais * gmd * avgDias : 0;
+      const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
+      return { categoria: cat, consumoMedio, totalAnimais: e.animais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
+    });
+  }, [filteredLancamentos, pastoById, produtoById, getEffectiveProdutoId]);
+
+  const MESES_NOMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  async function handleExportPDF() {
+    setExportingPDF(true);
+    try {
+      const filtros: { label: string; valor: string }[] = [];
+      if (filtroFazenda !== "all") filtros.push({ label: "Fazenda", valor: fazendaById[filtroFazenda]?.nome ?? filtroFazenda });
+      if (filtroEstado !== "all") filtros.push({ label: "Estado", valor: filtroEstado });
+      if (filtroCidade !== "all") filtros.push({ label: "Cidade", valor: filtroCidade });
+      if (filtroProduto !== "all") filtros.push({ label: "Produto", valor: produtoById[filtroProduto]?.nome ?? filtroProduto });
+      if (filtroCategoria !== "all") filtros.push({ label: "Categoria", valor: filtroCategoria });
+      if (filtroSexo !== "all") filtros.push({ label: "Sexo", valor: filtroSexo });
+
+      const categoriasExibidas = filtroCategoria === "all" ? metricasCategoria : metricasCategoria.filter(m => m.categoria === filtroCategoria);
+
+      const pdfData: PainelPDFData = {
+        fazendaNome: filtroFazenda !== "all" ? (fazendaById[filtroFazenda]?.nome ?? "Fazenda") : "Todas as Fazendas",
+        periodo: `${MESES_NOMES[filtroMes - 1]} ${filtroAno}`,
+        dataGeracao: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        filtros,
+        consumoMedioReal,
+        consumoEsperado,
+        desvioPercent,
+        intervaloMedio,
+        alertas,
+        metricas: categoriasExibidas,
+        tendencia,
+        ranking: rankingFazendas.map(f => ({
+          nome: f.nome, estado: f.estado, consumoMedio: f.consumoMedio,
+          desvio: f.desvio, intervaloMedio: f.intervaloMedio, lancamentos: f.lancamentos,
+        })),
+      };
+
+      const blob = await pdf(<PainelInteligenciaPDF data={pdfData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `painel_inteligencia_${MESES_NOMES[filtroMes - 1].toLowerCase()}_${filtroAno}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF exportado com sucesso!");
+    } catch (e) {
+      console.error("Erro ao gerar PDF:", e);
+      toast.error("Erro ao gerar o PDF. Tente novamente.");
+    } finally {
+      setExportingPDF(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto space-y-4">
@@ -364,9 +458,15 @@ export default function PainelInteligenciaPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Inteligência Nutricional – CONSUBOV</h1>
-        <p className="text-sm text-muted-foreground mt-1">Análise comparativa e insights automáticos</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Inteligência Nutricional – CONSUBOV</h1>
+          <p className="text-sm text-muted-foreground mt-1">Análise comparativa e insights automáticos</p>
+        </div>
+        <Button onClick={handleExportPDF} disabled={exportingPDF} className="gap-1.5">
+          {exportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          Exportar em PDF
+        </Button>
       </div>
 
       {/* FILTERS */}
