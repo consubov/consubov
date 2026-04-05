@@ -141,13 +141,13 @@ export default function PainelInteligenciaPage() {
   };
 
   // Resolve effective produto_id: pasto -> retiro
-  const getEffectiveProdutoId = (l: Lancamento): string | null => {
+  const getEffectiveProdutoId = useCallback((l: Lancamento): string | null => {
     const pasto = pastoById[l.pasto_id];
     if (pasto?.produto_id) return pasto.produto_id;
     const retiro = retiroById[l.retiro_id];
     if (retiro?.produto_id) return retiro.produto_id;
     return null;
-  };
+  }, [pastoById, retiroById]);
 
   // Calculate consumption for a lancamento client-side
   const calcConsumoForLanc = (l: Lancamento): number | null => {
