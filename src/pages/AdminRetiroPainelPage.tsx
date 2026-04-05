@@ -90,23 +90,33 @@ export default function AdminRetiroPainelPage() {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
+  const basePrefix = isGerente ? "/gerente" : "/admin";
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`}>Painel</Link></BreadcrumbLink></BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>{retiroNome}</BreadcrumbPage></BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {!isGerente && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`}>Painel</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage>{retiroNome}</BreadcrumbPage></BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate(`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`)}>
-          <ArrowLeft className="w-4 h-4" /> Voltar ao Painel
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => {
+          if (isGerente) {
+            navigate("/gerente");
+          } else {
+            navigate(`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`);
+          }
+        }}>
+          <ArrowLeft className="w-4 h-4" /> {isGerente ? "Voltar" : "Voltar ao Painel"}
         </Button>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRelatorioOpen(true)}>
