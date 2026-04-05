@@ -43,7 +43,8 @@ export default function AdminRetiroPainelPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId: string; retiroId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isGerente = role === "gerente";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
