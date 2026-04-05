@@ -206,6 +206,19 @@ export default function ExportarRelatorioModal({
         const lastLanc = sortedRLanc.length > 0 ? sortedRLanc[0] : null;
         const dataStr = lastLanc?.created_at ? new Date(lastLanc.created_at).toLocaleDateString("pt-BR") : "—";
 
+        // Compute ideal/max reference lines from product
+        let consumoIdeal = 80; // default
+        let consumoMaximo = 120; // default
+        if (prod) {
+          const avgPeso = pastosNoPeriodo.length > 0
+            ? pastosNoPeriodo.reduce((s, p) => s + Number(p.peso_medio_kg ?? 0), 0) / pastosNoPeriodo.length : 300;
+          const avgConsumo100 = (prod.consumo_recria1 + prod.consumo_recria2 + prod.consumo_engorda) / 3;
+          if (avgConsumo100 > 0 && avgPeso > 0) {
+            consumoIdeal = (avgConsumo100 * avgPeso) / 100 * 1000;
+            consumoMaximo = consumoIdeal * 1.2;
+          }
+        }
+
         return {
           nome: ret.nome,
           capataz: ret.capataz,
@@ -223,7 +236,50 @@ export default function ExportarRelatorioModal({
           scoreCocho: Number(regScore.toFixed(1)),
           scoreSalga: Number(intScore.toFixed(1)),
           pastos: pastoReport,
+          consumoIdeal: Math.round(consumoIdeal),
+          consumoMaximo: Math.round(consumoMaximo),
         };
+      });
+
+      // Compute category metrics
+      const CATS = ["Recria 1", "Recria 2", "Engorda"];
+      const catMap: Record<string, { consumos: number[]; animais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
+      CATS.forEach(c => { catMap[c] = { consumos: [], animais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
+
+      lancamentos.forEach(l => {
+        const pesoMedio = l.peso_medio_kg ?? 0;
+        const cat = l.categoria || classificarCategoria(pesoMedio);
+        if (!catMap[cat]) return;
+        const entry = catMap[cat];
+        entry.animais += l.num_animais;
+        entry.sacos += l.num_sacos;
+        entry.diasTotal += l.dias_no_pasto;
+
+        // Find product for this lancamento
+        const pasto = pastos.find(p => p.id === l.pasto_id);
+        const retiro = retirosData.find(r => r.id === l.retiro_id);
+        const prodId = pasto?.produto_id || retiro?.produto_id;
+        if (prodId && produtosMap[prodId] && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
+          const prod = produtosMap[prodId];
+          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
+          entry.consumos.push(consumoReal);
+          entry.custoTotal += l.num_sacos * prod.peso_saco_kg * prod.preco_por_kg;
+        }
+
+        if (pasto?.gmd_kg_dia && Number(pasto.gmd_kg_dia) > 0) {
+          entry.gmds.push(Number(pasto.gmd_kg_dia));
+        }
+      });
+
+      const categoriaMetrics: CatMetricsPDF[] = CATS.map(cat => {
+        const e = catMap[cat];
+        const consumoMedio = e.consumos.length > 0 ? e.consumos.reduce((a, b) => a + b, 0) / e.consumos.length : 0;
+        const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
+        const custoMedio = e.animais > 0 ? e.custoTotal / e.animais : 0;
+        const avgDias = e.consumos.length > 0 ? e.diasTotal / e.consumos.length : 30;
+        const kgGanho = e.animais > 0 && gmd > 0 ? e.animais * gmd * avgDias : 0;
+        const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
+        return { categoria: cat, consumoMedio, totalAnimais: e.animais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
       });
 
       const reportData: RelatorioPDFData = {
@@ -232,6 +288,7 @@ export default function ExportarRelatorioModal({
         dataGeracao: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
         geradoPor,
         retiros: retiroReportData,
+        categoriaMetrics,
       };
 
       const blob = await pdf(<RelatorioPDF data={reportData} />).toBlob();
