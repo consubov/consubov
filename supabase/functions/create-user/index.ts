@@ -16,6 +16,8 @@ const jsonResponse = (body: Record<string, unknown>, status: number) =>
   new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -55,31 +57,53 @@ Deno.serve(async (req) => {
   console.log("[create-user] Função invocada");
 
   try {
-    const body = await req.json().catch(() => null);
+    const rawBody = await req.json().catch(() => null);
 
-    if (!body || typeof body !== "object") {
+    if (!isRecord(rawBody)) {
       console.error("[create-user] Body inválido");
       return jsonResponse({ error: "Corpo da requisição inválido" }, 400);
     }
 
+    const body = rawBody;
+
+    console.log("[create-user] Body recebido:", {
+      keys: Object.keys(body),
+      nome: body.nome ?? null,
+      email: body.email ?? null,
+      telefone: body.telefone ?? null,
+      role: body.role ?? null,
+      hasSenha: typeof body.senha === "string" && body.senha.length > 0,
+      hasPassword: typeof body.password === "string" && body.password.length > 0,
+    });
+
     const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
-    const password = typeof body.password === "string" ? body.password : "";
     const nome = typeof body.nome === "string" ? body.nome.trim() : "";
     const telefone = typeof body.telefone === "string" && body.telefone.trim() ? body.telefone.trim() : null;
-    const role = body.role === "administrador" ? "administrador" : "usuario";
-    const shouldCreateAdminRecord = role === "administrador";
+    const senha = typeof body.senha === "string"
+      ? body.senha
+      : typeof body.password === "string"
+        ? body.password
+        : "";
+    const requestedRole = body.role === "administrador" || body.role === "usuario"
+      ? body.role
+      : null;
+    const shouldCreateAdminRecord = requestedRole === "administrador" || (requestedRole === null && !!nome);
+    const role = shouldCreateAdminRecord ? "administrador" : "usuario";
 
-    console.log("[create-user] Dados recebidos:", {
+    console.log("[create-user] Dados normalizados:", {
       email,
       nome,
       telefone,
       role,
-      hasPassword: !!password,
+      hasSenha: !!senha,
     });
 
-    if (!email || !password) {
+    if (!email || !senha || (shouldCreateAdminRecord && !nome)) {
       console.error("[create-user] Campos obrigatórios faltando");
-      return jsonResponse({ error: "Email e senha são obrigatórios" }, 400);
+      return jsonResponse(
+        { error: shouldCreateAdminRecord ? "Nome, email e senha são obrigatórios" : "Email e senha são obrigatórios" },
+        400
+      );
     }
 
     if (!isValidEmail(email)) {
@@ -87,12 +111,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Informe um e-mail válido" }, 400);
     }
 
-    if (shouldCreateAdminRecord && !nome) {
-      console.error("[create-user] Nome obrigatório para administrador");
-      return jsonResponse({ error: "Nome, e-mail e senha são obrigatórios" }, 400);
-    }
-
-    if (password.length < 6) {
+    if (senha.length < 6) {
       console.error("[create-user] Senha inválida");
       return jsonResponse({ error: "A senha deve ter no mínimo 6 caracteres" }, 400);
     }
@@ -133,7 +152,7 @@ Deno.serve(async (req) => {
 
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email,
-      password,
+      password: senha,
       email_confirm: true,
     });
 
@@ -175,7 +194,7 @@ Deno.serve(async (req) => {
 
         userId = existingAuthUser.id;
         console.log("[create-user] Usuário existente no Auth reaproveitado:", userId);
-      } else if (/password/i.test(authError.message)) {
+      } else if (/password|senha/i.test(authError.message)) {
         return jsonResponse({ error: authError.message }, 400);
       } else {
         return jsonResponse({ error: `Falha ao criar usuário: ${authError.message}` }, 500);
@@ -205,6 +224,8 @@ Deno.serve(async (req) => {
 
     try {
       console.log("[create-user] Inserindo na tabela administradores...");
+      console.log("[create-user] Dados para insert:", { nome, email, telefone, userId });
+
       const { error: dbError } = await adminClient
         .from("administradores")
         .insert({
@@ -224,6 +245,7 @@ Deno.serve(async (req) => {
           success: true,
           message: "Administrador criado com sucesso",
           user: { id: userId, email },
+          admin: { nome, email, telefone, user_id: userId },
         },
         201
       );
@@ -240,7 +262,7 @@ Deno.serve(async (req) => {
         console.log("[create-user] Rollback concluído, usuário removido do Auth");
       }
 
-      return jsonResponse({ error: "Falha ao salvar dados do administrador" }, 500);
+      return jsonResponse({ error: `Falha ao salvar dados do administrador: ${dbErr.message}` }, 500);
     }
   } catch (err: any) {
     console.error("[create-user] Erro inesperado:", err.message);
