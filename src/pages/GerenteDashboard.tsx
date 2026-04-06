@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { toast } from "sonner";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -91,6 +92,20 @@ export default function GerenteDashboard() {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
+  };
+
+  const handleOpenRetiro = (retiroId?: string) => {
+    if (!user) {
+      toast.error("Sua sessão expirou. Faça login novamente.");
+      return;
+    }
+
+    if (!retiroId) {
+      toast.error("Retiro inválido.");
+      return;
+    }
+
+    navigate(`/dashboard/retiro/${retiroId}?mes=${mes}&ano=${ano}`);
   };
 
   if (loading) return <LoadingScreen />;
@@ -201,7 +216,7 @@ export default function GerenteDashboard() {
             <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
           ) : (
             retirosComDados.map(r => (
-              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => navigate(`/gerente/fazendas/${roleData.fazendaId}/retiros/${r.id}/painel`)}>
+              <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => handleOpenRetiro(r.id)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>

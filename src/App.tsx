@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,8 +41,20 @@ const LoadingScreen = () => (
   </div>
 );
 
+function LegacyRetiroPainelRedirect() {
+  const { retiroId } = useParams<{ retiroId: string }>();
+  const location = useLocation();
+
+  if (!retiroId) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return <Navigate to={`/dashboard/retiro/${retiroId}${location.search}`} replace />;
+}
+
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
   const { user, role, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [roleTimeout, setRoleTimeout] = useState(false);
 
   useEffect(() => {
@@ -62,7 +74,17 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-3">
+          <p className="text-destructive font-semibold text-lg">Acesso não autorizado</p>
+          <p className="text-muted-foreground text-sm">Seu perfil não possui permissão para acessar esta área.</p>
+          <Button variant="outline" onClick={() => navigate("/app", { replace: true })}>
+            Voltar ao painel
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Role never resolved — user has no profile
@@ -130,6 +152,7 @@ const App = () => (
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+              <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
 
               <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
                 <Route index element={<AdminDashboard />} />
@@ -137,7 +160,7 @@ const App = () => (
                 <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
                 <Route path="fazendas/:fazendaId/painel" element={<AdminFazendaPainelPage />} />
                 <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
-                <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<AdminRetiroPainelPage />} />
+                <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<LegacyRetiroPainelRedirect />} />
                 <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
                 <Route path="gerentes" element={<GerentesPage />} />
                 <Route path="capatazes" element={<CapatazesPage />} />
@@ -152,7 +175,7 @@ const App = () => (
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
-              <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
+              <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
