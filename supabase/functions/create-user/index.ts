@@ -89,7 +89,6 @@ Deno.serve(async (req) => {
       : null;
     const shouldCreateAdminRecord = requestedRole === "administrador" || (requestedRole === null && !!nome);
     const role = shouldCreateAdminRecord ? "administrador" : "usuario";
-    const shouldCreateAdminRecord = role === "administrador";
 
     console.log("[create-user] Dados normalizados:", {
       email,
