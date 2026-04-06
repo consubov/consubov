@@ -174,9 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // 1. Set up listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // After initial load, handle subsequent auth changes
       if (initializedRef.current) {
+        // For token refresh events, only update session/user without re-detecting role
+        // This prevents brief state resets that cause unwanted redirects
+        if (event === "TOKEN_REFRESHED" && session?.user) {
+          setSession(session);
+          setUser(session.user);
+          return;
+        }
         loadRole(session);
       }
     });
