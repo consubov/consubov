@@ -43,17 +43,41 @@ const LoadingScreen = () => (
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
   const { user, role, loading, signOut } = useAuth();
+  const [roleTimeout, setRoleTimeout] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user && allowedRoles && !role) {
+      const timer = setTimeout(() => setRoleTimeout(true), 3000);
+      return () => clearTimeout(timer);
+    }
+    setRoleTimeout(false);
+  }, [loading, user, role, allowedRoles]);
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
-  // While role is still being resolved, show loading instead of redirecting
-  if (allowedRoles && !role) {
+  // While role is still being resolved, show loading briefly
+  if (allowedRoles && !role && !roleTimeout) {
     return <LoadingScreen />;
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Role never resolved — user has no profile
+  if (allowedRoles && !role && roleTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-3">
+          <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+          <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+          <Button variant="outline" onClick={() => void signOut()}>
+            Sair
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
