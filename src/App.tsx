@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -42,15 +43,30 @@ const LoadingScreen = () => (
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
   const { user, role, loading, signOut } = useAuth();
+  const [roleTimeout, setRoleTimeout] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user && allowedRoles && !role) {
+      const timer = setTimeout(() => setRoleTimeout(true), 3000);
+      return () => clearTimeout(timer);
+    }
+    setRoleTimeout(false);
+  }, [loading, user, role, allowedRoles]);
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
+
+  // While role is still being resolved, show loading briefly
+  if (allowedRoles && !role && !roleTimeout) {
+    return <LoadingScreen />;
+  }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && !role) {
+  // Role never resolved — user has no profile
+  if (allowedRoles && !role && roleTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center space-y-3">
