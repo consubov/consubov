@@ -168,32 +168,31 @@ export function useGerenteData(filters?: GerenteFilters) {
 
       const retiroIds = retirosList.map(r => r.id);
       if (retiroIds.length > 0) {
+        // Fetch ALL pastos (including inactive) so historical data is preserved
         const pastosRes = await supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
-          .in("retiro_id", retiroIds).eq("ativo", true);
+          .in("retiro_id", retiroIds);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        const pastoIds = pastosList.map(p => p.id);
-        let lancList: Lancamento[] = [];
-        if (pastoIds.length > 0) {
-          let lancQuery = supabase.from("lancamentos")
-            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
-            .eq("fazenda_id", fazendaId)
-            .in("pasto_id", pastoIds);
+        // Query lancamentos by fazenda_id + period directly (not filtered by pasto IDs)
+        let lancQuery = supabase.from("lancamentos")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+          .eq("fazenda_id", fazendaId);
 
-          if (filters) {
-            lancQuery = lancQuery.eq("ano_referencia", filters.ano);
-            if (filters.mes != null) {
-              lancQuery = lancQuery.eq("mes_referencia", filters.mes);
-            }
-          } else if (activeCiclo) {
-            lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
+        if (filters) {
+          lancQuery = lancQuery.eq("ano_referencia", filters.ano);
+          if (filters.mes != null) {
+            lancQuery = lancQuery.eq("mes_referencia", filters.mes);
           }
-
-          const lancRes = await lancQuery;
-          lancList = (lancRes.data ?? []) as Lancamento[];
+        } else if (activeCiclo) {
+          lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
         }
+
+        const lancRes = await lancQuery;
+        const lancList = (lancRes.data ?? []) as Lancamento[];
         setLancamentos(lancList);
+
+        console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
         setPastos([]);
         setLancamentos([]);
