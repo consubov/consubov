@@ -22,6 +22,31 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const getFunctionErrorMessage = async (invokeError: unknown) => {
+    const fallback = invokeError instanceof Error ? invokeError.message : "Erro ao criar administrador";
+
+    if (!invokeError || typeof invokeError !== "object" || !("context" in invokeError)) {
+      return fallback;
+    }
+
+    const context = (invokeError as { context?: Response }).context;
+    if (!context) {
+      return fallback;
+    }
+
+    const contentType = context.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const payload = await context.clone().json().catch(() => null);
+      if (payload?.error || payload?.message) {
+        return payload.error || payload.message;
+      }
+    }
+
+    const text = await context.clone().text().catch(() => "");
+    return text || fallback;
+  };
+
   const resetForm = () => {
     setNome("");
     setEmail("");
@@ -76,11 +101,19 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
           password: senha,
           nome: nome.trim(),
           telefone: telefone.trim() || null,
+          role: "administrador",
         },
       });
 
-      if (invokeError || result?.error) {
-        toast.error(result?.error || invokeError?.message || "Erro ao criar administrador");
+      if (invokeError) {
+        toast.error(await getFunctionErrorMessage(invokeError));
+        setShowConfirm(false);
+        setLoading(false);
+        return;
+      }
+
+      if (result?.error || result?.success === false) {
+        toast.error(result?.error || result?.message || "Erro ao criar administrador");
         setShowConfirm(false);
         setLoading(false);
         return;

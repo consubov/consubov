@@ -3,56 +3,134 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const jsonHeaders = {
+  ...corsHeaders,
+  "Content-Type": "application/json",
+};
+
+const jsonResponse = (body: Record<string, unknown>, status: number) =>
+  new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const isDuplicateAuthError = (message: string) =>
+  /already been registered|already registered|email_exists/i.test(message);
+
+async function findAuthUserByEmail(adminClient: ReturnType<typeof createClient>, email: string) {
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+
+    if (error) {
+      return { user: null, error };
+    }
+
+    const user = data.users.find((entry) => normalizeEmail(entry.email ?? "") === email) ?? null;
+
+    if (user) {
+      return { user, error: null };
+    }
+
+    if (data.users.length < perPage) {
+      return { user: null, error: null };
+    }
+
+    page += 1;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   console.log("[create-user] Função invocada");
 
   try {
-    const body = await req.json();
-    const { email, password, nome, telefone } = body;
+    const body = await req.json().catch(() => null);
 
-    console.log("[create-user] Dados recebidos:", { email, nome, telefone, hasPassword: !!password });
+    if (!body || typeof body !== "object") {
+      console.error("[create-user] Body inválido");
+      return jsonResponse({ error: "Corpo da requisição inválido" }, 400);
+    }
 
-    // 1. Validar entrada
+    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const nome = typeof body.nome === "string" ? body.nome.trim() : "";
+    const telefone = typeof body.telefone === "string" && body.telefone.trim() ? body.telefone.trim() : null;
+    const role = body.role === "administrador" ? "administrador" : "usuario";
+    const shouldCreateAdminRecord = role === "administrador";
+
+    console.log("[create-user] Dados recebidos:", {
+      email,
+      nome,
+      telefone,
+      role,
+      hasPassword: !!password,
+    });
+
     if (!email || !password) {
       console.error("[create-user] Campos obrigatórios faltando");
-      return new Response(
-        JSON.stringify({ error: "Email e senha são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Email e senha são obrigatórios" }, 400);
+    }
+
+    if (!isValidEmail(email)) {
+      console.error("[create-user] E-mail inválido");
+      return jsonResponse({ error: "Informe um e-mail válido" }, 400);
+    }
+
+    if (shouldCreateAdminRecord && !nome) {
+      console.error("[create-user] Nome obrigatório para administrador");
+      return jsonResponse({ error: "Nome, e-mail e senha são obrigatórios" }, 400);
     }
 
     if (password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "A senha deve ter no mínimo 6 caracteres" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("[create-user] Senha inválida");
+      return jsonResponse({ error: "A senha deve ter no mínimo 6 caracteres" }, 400);
     }
 
-    // 2. Criar cliente com SERVICE_ROLE_KEY
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error("[create-user] Variáveis de ambiente não configuradas");
-      return new Response(
-        JSON.stringify({ error: "Configuração do servidor incompleta" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Configuração do servidor incompleta" }, 500);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 3. Criar usuário no Auth
+    if (shouldCreateAdminRecord) {
+      const { data: existingAdmin, error: adminLookupError } = await adminClient
+        .from("administradores")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (adminLookupError) {
+        console.error("[create-user] Erro ao verificar administrador existente:", adminLookupError.message);
+        return jsonResponse({ error: "Erro ao validar administrador existente" }, 500);
+      }
+
+      if (existingAdmin) {
+        console.error("[create-user] Administrador já existe para o e-mail informado");
+        return jsonResponse({ error: "Já existe um administrador com este e-mail" }, 400);
+      }
+    }
+
     console.log("[create-user] Criando usuário no Auth...");
+    let userId: string | null = null;
+    let createdAuthUser = false;
+
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -61,32 +139,78 @@ Deno.serve(async (req) => {
 
     if (authError) {
       console.error("[create-user] Erro ao criar usuário no Auth:", authError.message);
-      return new Response(
-        JSON.stringify({ error: authError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (isDuplicateAuthError(authError.message)) {
+        if (!shouldCreateAdminRecord) {
+          return jsonResponse({ error: "Este e-mail já está cadastrado" }, 400);
+        }
+
+        console.log("[create-user] Usuário já existe no Auth, verificando reaproveitamento seguro...");
+
+        const { user: existingAuthUser, error: findUserError } = await findAuthUserByEmail(adminClient, email);
+
+        if (findUserError) {
+          console.error("[create-user] Erro ao localizar usuário existente no Auth:", findUserError.message);
+          return jsonResponse({ error: "Falha ao localizar usuário já existente" }, 500);
+        }
+
+        if (!existingAuthUser?.id) {
+          console.error("[create-user] Usuário duplicado no Auth não foi encontrado para reaproveitamento");
+          return jsonResponse({ error: "Este e-mail já está cadastrado no acesso do sistema" }, 400);
+        }
+
+        const [gerenteCheck, capatazCheck] = await Promise.all([
+          adminClient.from("gerentes").select("id").eq("email", email).maybeSingle(),
+          adminClient.from("capatazes").select("id").eq("email", email).maybeSingle(),
+        ]);
+
+        if (gerenteCheck.error || capatazCheck.error) {
+          console.error("[create-user] Erro ao verificar conflitos de perfil:", gerenteCheck.error?.message ?? capatazCheck.error?.message);
+          return jsonResponse({ error: "Falha ao validar vínculos existentes do usuário" }, 500);
+        }
+
+        if (gerenteCheck.data || capatazCheck.data) {
+          console.error("[create-user] E-mail já vinculado a outro perfil do sistema");
+          return jsonResponse({ error: "Este e-mail já está vinculado a outro perfil do sistema" }, 400);
+        }
+
+        userId = existingAuthUser.id;
+        console.log("[create-user] Usuário existente no Auth reaproveitado:", userId);
+      } else if (/password/i.test(authError.message)) {
+        return jsonResponse({ error: authError.message }, 400);
+      } else {
+        return jsonResponse({ error: `Falha ao criar usuário: ${authError.message}` }, 500);
+      }
+    } else {
+      userId = authData.user?.id ?? null;
+      createdAuthUser = true;
     }
 
-    const userId = authData.user?.id;
     if (!userId) {
       console.error("[create-user] ID do usuário não retornado");
-      return new Response(
-        JSON.stringify({ error: "Erro interno: ID do usuário não retornado" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Erro interno: ID do usuário não retornado" }, 500);
     }
 
     console.log("[create-user] Usuário criado no Auth:", userId);
 
-    // 4. Inserir na tabela administradores (com rollback se falhar)
+    if (!shouldCreateAdminRecord) {
+      return jsonResponse(
+        {
+          success: true,
+          message: "Usuário criado com sucesso",
+          user: { id: userId, email },
+        },
+        201
+      );
+    }
+
     try {
       console.log("[create-user] Inserindo na tabela administradores...");
       const { error: dbError } = await adminClient
         .from("administradores")
         .insert({
-          nome: nome || email,
+          nome,
           email,
-          telefone: telefone || null,
+          telefone,
           user_id: userId,
           ativo: true,
         });
@@ -95,30 +219,31 @@ Deno.serve(async (req) => {
 
       console.log("[create-user] Administrador inserido com sucesso");
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
           message: "Administrador criado com sucesso",
           user: { id: userId, email },
-        }),
-        { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        },
+        201
       );
     } catch (dbErr: any) {
-      // 5. Rollback: deletar usuário do Auth
       console.error("[create-user] Erro no insert, fazendo rollback:", dbErr.message);
-      await adminClient.auth.admin.deleteUser(userId);
-      console.log("[create-user] Rollback concluído, usuário removido do Auth");
+      if (createdAuthUser) {
+        const { error: rollbackError } = await adminClient.auth.admin.deleteUser(userId);
 
-      return new Response(
-        JSON.stringify({ error: "Falha ao salvar dados. Usuário removido. Tente novamente." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        if (rollbackError) {
+          console.error("[create-user] Falha no rollback do usuário Auth:", rollbackError.message);
+          return jsonResponse({ error: "Falha ao salvar dados do administrador e o rollback não pôde ser concluído" }, 500);
+        }
+
+        console.log("[create-user] Rollback concluído, usuário removido do Auth");
+      }
+
+      return jsonResponse({ error: "Falha ao salvar dados do administrador" }, 500);
     }
   } catch (err: any) {
     console.error("[create-user] Erro inesperado:", err.message);
-    return new Response(
-      JSON.stringify({ error: "Erro interno do servidor: " + err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "Erro interno do servidor: " + err.message }, 500);
   }
 });
