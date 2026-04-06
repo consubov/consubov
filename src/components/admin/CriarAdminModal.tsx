@@ -108,7 +108,6 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
         body: {
           ...payload,
           telefone: payload.telefone || null,
-          role: "administrador",
         },
       });
 

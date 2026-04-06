@@ -84,7 +84,11 @@ Deno.serve(async (req) => {
       : typeof body.password === "string"
         ? body.password
         : "";
-    const role = body.role === "administrador" ? "administrador" : "usuario";
+    const requestedRole = body.role === "administrador" || body.role === "usuario"
+      ? body.role
+      : null;
+    const shouldCreateAdminRecord = requestedRole === "administrador" || (requestedRole === null && !!nome);
+    const role = shouldCreateAdminRecord ? "administrador" : "usuario";
     const shouldCreateAdminRecord = role === "administrador";
 
     console.log("[create-user] Dados normalizados:", {
