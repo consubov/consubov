@@ -80,11 +80,20 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
   const handleConfirm = async () => {
     setLoading(true);
     try {
+      const payload = {
+        nome: nome.trim(),
+        email: email.trim().toLowerCase(),
+        telefone: telefone.trim(),
+        senha,
+      };
+
+      console.log("[CriarAdminModal] Payload enviado:", payload);
+
       // Check duplicate email
       const { data: existing } = await supabase
         .from("administradores")
         .select("id")
-        .eq("email", email.trim().toLowerCase())
+        .eq("email", payload.email)
         .maybeSingle();
 
       if (existing) {
@@ -97,10 +106,8 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
       // Create admin via edge function (handles auth + DB insert + rollback)
       const { data: result, error: invokeError } = await supabase.functions.invoke("create-user", {
         body: {
-          email: email.trim().toLowerCase(),
-          password: senha,
-          nome: nome.trim(),
-          telefone: telefone.trim() || null,
+          ...payload,
+          telefone: payload.telefone || null,
           role: "administrador",
         },
       });
