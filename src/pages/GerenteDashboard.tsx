@@ -143,7 +143,7 @@ export default function GerenteDashboard() {
 
       {/* Month Scroller */}
       <div className="bg-card border-b px-2 py-2 flex-shrink-0">
-        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => { setMes(m); setAno(y); }} />
+        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
       </div>
 
       {/* Tabs */}
