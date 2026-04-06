@@ -6,6 +6,8 @@ Supabase connected (external). Tables: administradores, gerentes, capatazes, faz
 Roles: administrador, gerente, capataz — detected via profile tables with user_id + ativo.
 NEVER drop or recreate existing tables. Only add columns or new tables.
 No new tables unless user approves.
+All admins see ALL fazendas/data (RLS uses is_admin() function, not administrador_id).
 
 ## Memories
 - [Brand colors](mem://design/brand) — Green #1B4332, gold #D4A017, HSL tokens in index.css
+- [Admin access](mem://features/admin-access) — All admins global access via is_admin() RLS function

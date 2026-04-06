@@ -1,0 +1,8 @@
+---
+name: Admin global access
+description: All administrators can see all fazendas and all data, regardless of administrador_id linkage
+type: feature
+---
+RLS policies for admin role use `public.is_admin(auth.uid())` which checks `EXISTS (SELECT 1 FROM administradores WHERE user_id = _user_id AND ativo = true)`.
+This replaced per-fazenda filtering via `fazendas.administrador_id`.
+Applied to: fazendas, retiros, pastos, lancamentos, ciclos, ciclos_auditoria, abates, mortalidades, movimentacoes_animais, observacoes, snapshots, visitas, capatazes, gerentes, produtos.
