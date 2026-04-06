@@ -69,37 +69,18 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
         return;
       }
 
-      // Create auth user via edge function
-      const { data: authData, error: authError } = await supabase.functions.invoke("create-user", {
-        body: { email: email.trim().toLowerCase(), password: senha },
+      // Create admin via edge function (handles auth + DB insert + rollback)
+      const { data: result, error: invokeError } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: email.trim().toLowerCase(),
+          password: senha,
+          nome: nome.trim(),
+          telefone: telefone.trim() || null,
+        },
       });
 
-      if (authError || authData?.error) {
-        toast.error(authData?.error || authError?.message || "Erro ao criar usuário");
-        setShowConfirm(false);
-        setLoading(false);
-        return;
-      }
-
-      const userId = authData?.user?.id;
-      if (!userId) {
-        toast.error("Erro: ID do usuário não retornado");
-        setShowConfirm(false);
-        setLoading(false);
-        return;
-      }
-
-      // Insert into administradores
-      const { error: insertError } = await supabase.from("administradores").insert({
-        nome: nome.trim(),
-        email: email.trim().toLowerCase(),
-        telefone: telefone.trim() || null,
-        user_id: userId,
-        ativo: true,
-      });
-
-      if (insertError) {
-        toast.error("Erro ao salvar administrador: " + insertError.message);
+      if (invokeError || result?.error) {
+        toast.error(result?.error || invokeError?.message || "Erro ao criar administrador");
         setShowConfirm(false);
         setLoading(false);
         return;
