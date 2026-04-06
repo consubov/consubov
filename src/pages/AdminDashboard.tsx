@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef } from "lucide-react";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import CriarAdminModal from "@/components/admin/CriarAdminModal";
+import AdminListSection from "@/components/admin/AdminListSection";
 
 interface Stats {
   fazendas: number;
@@ -18,6 +20,8 @@ interface Stats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0 });
   const [loading, setLoading] = useState(true);
+  const [showCriarAdmin, setShowCriarAdmin] = useState(false);
+  const [adminRefreshKey, setAdminRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,10 +72,18 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button
+            onClick={() => setShowCriarAdmin(true)}
+            variant="outline"
+            className="font-semibold"
+          >
+            <UserPlus className="w-5 h-5 mr-2" />
+            Criar Administrador
+          </Button>
           <Button
             onClick={() => navigate("/admin/inteligencia")}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
@@ -88,6 +100,7 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </div>
+
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -111,6 +124,14 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
+
+      <AdminListSection refreshKey={adminRefreshKey} />
+
+      <CriarAdminModal
+        open={showCriarAdmin}
+        onOpenChange={setShowCriarAdmin}
+        onCreated={() => setAdminRefreshKey((k) => k + 1)}
+      />
     </div>
   );
 }
