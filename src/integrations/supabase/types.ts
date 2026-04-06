@@ -1061,6 +1061,7 @@ export type Database = {
         Returns: string
       }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
