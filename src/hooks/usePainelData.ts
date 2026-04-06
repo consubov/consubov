@@ -115,23 +115,30 @@ export function usePainelData(filters: PainelFilters) {
       if (retiroId) retiroIds = [retiroId];
 
       if (retiroIds.length > 0) {
+        // Fetch ALL pastos (including inactive) so historical lancamentos aren't lost
         const pastosRes = await supabase.from("pastos")
           .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, produto_id")
-          .in("retiro_id", retiroIds).eq("ativo", true);
+          .in("retiro_id", retiroIds);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        const pastoIds = pastosList.map(p => p.id);
-        if (pastoIds.length > 0) {
-          const lancRes = await supabase.from("lancamentos")
-            .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
-            .in("pasto_id", pastoIds)
-            .eq("ano_referencia", ano)
-            .eq("mes_referencia", mes);
-          setLancamentos((lancRes.data ?? []) as Lancamento[]);
-        } else {
-          setLancamentos([]);
+        // Query lancamentos by fazenda_id + period directly (not by pasto IDs)
+        // This ensures we never miss historical data even if pastos were moved/deactivated
+        let lancQuery = supabase.from("lancamentos")
+          .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
+          .eq("fazenda_id", fazendaId)
+          .eq("ano_referencia", ano)
+          .eq("mes_referencia", mes);
+
+        if (retiroId) {
+          lancQuery = lancQuery.eq("retiro_id", retiroId);
         }
+
+        const lancRes = await lancQuery;
+        const lancList = (lancRes.data ?? []) as Lancamento[];
+        setLancamentos(lancList);
+
+        console.log(`[usePainelData] mes=${mes} ano=${ano} fazenda=${fazendaId} retiro=${retiroId ?? "all"} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
         setPastos([]);
         setLancamentos([]);
