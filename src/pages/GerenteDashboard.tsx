@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import MonthScroller from "@/components/MonthScroller";
@@ -65,8 +66,7 @@ function scoreColor(score: number) {
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
   const navigate = useNavigate();
-  const [mes, setMes] = useState(CURRENT_MONTH);
-  const [ano, setAno] = useState(CURRENT_YEAR);
+  const { mes, ano, setPeriodo } = usePainelPeriodo();
 
   const filters = useMemo<GerenteFilters>(() => ({
     ano,
@@ -143,7 +143,7 @@ export default function GerenteDashboard() {
 
       {/* Month Scroller */}
       <div className="bg-card border-b px-2 py-2 flex-shrink-0">
-        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => { setMes(m); setAno(y); }} />
+        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
       </div>
 
       {/* Tabs */}
