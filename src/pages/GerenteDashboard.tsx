@@ -65,8 +65,7 @@ function scoreColor(score: number) {
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
   const navigate = useNavigate();
-  const [mes, setMes] = useState(CURRENT_MONTH);
-  const [ano, setAno] = useState(CURRENT_YEAR);
+  const { mes, ano, setPeriodo } = usePainelPeriodo();
 
   const filters = useMemo<GerenteFilters>(() => ({
     ano,
