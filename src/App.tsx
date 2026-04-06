@@ -46,22 +46,13 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+  // While role is still being resolved, show loading instead of redirecting
+  if (allowedRoles && !role) {
+    return <LoadingScreen />;
   }
 
-  if (allowedRoles && !role) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6">
-        <div className="text-center space-y-3">
-          <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
-          <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
-          <Button variant="outline" onClick={() => void signOut()}>
-            Sair
-          </Button>
-        </div>
-      </div>
-    );
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
