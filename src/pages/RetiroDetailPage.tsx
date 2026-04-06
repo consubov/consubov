@@ -261,7 +261,14 @@ export default function RetiroDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
           <div className="flex gap-2">
-            <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}/painel`)} size="sm" variant="default" className="gap-1.5">
+            <Button onClick={() => {
+              if (!retiroId) {
+                toast.error("Retiro inválido.");
+                return;
+              }
+
+              navigate(`/dashboard/retiro/${retiroId}`);
+            }} size="sm" variant="default" className="gap-1.5">
               <BarChart3 className="w-4 h-4" /> Ver Painel
             </Button>
             <CollapsibleTrigger asChild>

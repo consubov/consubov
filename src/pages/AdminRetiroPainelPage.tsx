@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
 import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
@@ -40,14 +41,77 @@ function MetricCard({ icon: Icon, label, value, sub, iconColor = "text-primary" 
 }
 
 export default function AdminRetiroPainelPage() {
-  const { fazendaId, retiroId } = useParams<{ fazendaId: string; retiroId: string }>();
+  const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, roleData } = useAuth();
   const isGerente = role === "gerente";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
+  const [resolvingRoute, setResolvingRoute] = useState(!fazendaId);
+  const [routeError, setRouteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveRoute() {
+      if (!retiroId) {
+        if (!cancelled) {
+          setResolvedFazendaId(null);
+          setRouteError("Retiro inválido ou não informado.");
+          setResolvingRoute(false);
+        }
+        return;
+      }
+
+      if (fazendaId) {
+        if (!cancelled) {
+          setResolvedFazendaId(fazendaId);
+          setRouteError(null);
+          setResolvingRoute(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setResolvingRoute(true);
+      }
+
+      const { data, error } = await supabase
+        .from("retiros")
+        .select("fazenda_id")
+        .eq("id", retiroId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error || !data?.fazenda_id) {
+        setResolvedFazendaId(null);
+        setRouteError("Retiro não encontrado ou indisponível.");
+        setResolvingRoute(false);
+        return;
+      }
+
+      if (isGerente && roleData.fazendaId && data.fazenda_id !== roleData.fazendaId) {
+        setResolvedFazendaId(null);
+        setRouteError("Você não tem permissão para visualizar este retiro.");
+        setResolvingRoute(false);
+        return;
+      }
+
+      setResolvedFazendaId(data.fazenda_id);
+      setRouteError(null);
+      setResolvingRoute(false);
+    }
+
+    void resolveRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fazendaId, retiroId, isGerente, roleData.fazendaId]);
 
   useEffect(() => {
     const periodoDaUrl = readPainelPeriodoFromSearchParams(searchParams);
@@ -67,18 +131,46 @@ export default function AdminRetiroPainelPage() {
     setSearchParams(nextParams, { replace: true });
   }, [mes, ano, searchParams, setSearchParams]);
 
+  const activeFazendaId = fazendaId ?? resolvedFazendaId ?? "";
+
   const filters = useMemo(() => ({
-    fazendaId: fazendaId!,
-    retiroId: retiroId!,
+    fazendaId: activeFazendaId,
+    retiroId: retiroId ?? null,
     mes,
     ano,
-  }), [fazendaId, retiroId, mes, ano]);
+  }), [activeFazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
-  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano, retiroId);
+  const { mortalidadesAno } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
+
+  const handleBack = () => {
+    if (isGerente) {
+      navigate("/gerente");
+      return;
+    }
+
+    if (activeFazendaId) {
+      navigate(`/admin/fazendas/${activeFazendaId}/painel?mes=${mes}&ano=${ano}`);
+      return;
+    }
+
+    navigate("/app");
+  };
+
+  const renderErrorState = (title: string, description: string) => (
+    <div className="flex min-h-[60vh] items-center justify-center px-6">
+      <div className="max-w-md text-center space-y-3">
+        <p className="text-destructive font-semibold text-lg">{title}</p>
+        <p className="text-muted-foreground text-sm">{description}</p>
+        <Button variant="outline" onClick={handleBack}>
+          Voltar
+        </Button>
+      </div>
+    </div>
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -86,11 +178,24 @@ export default function AdminRetiroPainelPage() {
     setRefreshing(false);
   };
 
+  if (resolvingRoute) {
+    return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (routeError) {
+    return renderErrorState("Não foi possível abrir o painel", routeError);
+  }
+
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const basePrefix = isGerente ? "/gerente" : "/admin";
+  if (!activeFazendaId || !retiroId || !retiroData) {
+    return renderErrorState(
+      "Retiro não encontrado",
+      "Verifique se o retiro existe e se você possui permissão para visualizar seus dados.",
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -99,9 +204,9 @@ export default function AdminRetiroPainelPage() {
           <BreadcrumbList>
             <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${activeFazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`}>Painel</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${activeFazendaId}/painel?mes=${mes}&ano=${ano}`}>Painel</Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>{retiroNome}</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
@@ -109,13 +214,7 @@ export default function AdminRetiroPainelPage() {
       )}
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => {
-          if (isGerente) {
-            navigate("/gerente");
-          } else {
-            navigate(`/admin/fazendas/${fazendaId}/painel?mes=${mes}&ano=${ano}`);
-          }
-        }}>
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={handleBack}>
           <ArrowLeft className="w-4 h-4" /> {isGerente ? "Voltar" : "Voltar ao Painel"}
         </Button>
         <div className="flex gap-2">
@@ -242,12 +341,12 @@ export default function AdminRetiroPainelPage() {
       <ExportarRelatorioModal
         open={relatorioOpen}
         onOpenChange={setRelatorioOpen}
-        fazendaId={fazendaId!}
+        fazendaId={activeFazendaId}
         fazendaNome={fazendaNome}
         geradoPor={user?.user_metadata?.nome || user?.email || (isGerente ? "Gerente" : "Administrador")}
         initialMes={mes}
         initialAno={ano}
-        lockedRetiroId={retiroId!}
+        lockedRetiroId={retiroId}
       />
     </div>
   );

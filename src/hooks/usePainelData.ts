@@ -87,7 +87,15 @@ export function usePainelData(filters: PainelFilters) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
 
   const loadData = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fazendaId) {
+      setFazendaNome("");
+      setRetiros([]);
+      setPastos([]);
+      setLancamentos([]);
+      setProdutos([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [fazRes, retirosRes, prodRes] = await Promise.all([

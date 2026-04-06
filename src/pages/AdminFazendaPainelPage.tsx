@@ -16,6 +16,7 @@ import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
   BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -80,6 +81,20 @@ export default function AdminFazendaPainelPage() {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
+  };
+
+  const handleOpenRetiroPainel = (retiroId?: string) => {
+    if (!user) {
+      toast.error("Sua sessão expirou. Faça login novamente.");
+      return;
+    }
+
+    if (!retiroId) {
+      toast.error("Retiro inválido.");
+      return;
+    }
+
+    navigate(`/dashboard/retiro/${retiroId}?mes=${mes}&ano=${ano}`);
   };
 
   if (loading) {
@@ -162,7 +177,7 @@ export default function AdminFazendaPainelPage() {
             <Card
               key={r.id}
               className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]"
-              onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${r.id}/painel?mes=${mes}&ano=${ano}`)}
+              onClick={() => handleOpenRetiroPainel(r.id)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
