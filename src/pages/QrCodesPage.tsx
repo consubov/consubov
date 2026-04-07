@@ -220,10 +220,10 @@ export default function QrCodesPage() {
       const pdfItems: QrCodePdfItem[] = [];
 
       for (const pasto of generatedPastos) {
-        const qrImageSrc = await createQrCodePngDataUrl(pasto.qr_uuid);
+        const qrDataUri = createQrCodeDataUri(pasto.qr_uuid);
         pdfItems.push({
           id: pasto.id,
-          qrImageSrc,
+          qrDataUri,
           nome: pasto.nome,
           retiro_nome: pasto.retiro_nome,
         });
