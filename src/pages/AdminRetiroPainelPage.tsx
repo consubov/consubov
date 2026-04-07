@@ -218,6 +218,15 @@ export default function AdminRetiroPainelPage() {
           <ArrowLeft className="w-4 h-4" /> {isGerente ? "Voltar" : "Voltar ao Painel"}
         </Button>
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+            if (activeFazendaId && retiroId) {
+              navigate(`/admin/fazendas/${activeFazendaId}/retiros/${retiroId}/mapa`);
+            } else if (retiroId) {
+              navigate(`/mapa/retiro/${retiroId}`);
+            }
+          }}>
+            <Map className="w-4 h-4" /> 🗺️ Ver Mapa
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRelatorioOpen(true)}>
             <FileDown className="w-4 h-4" /> Relatório
           </Button>
