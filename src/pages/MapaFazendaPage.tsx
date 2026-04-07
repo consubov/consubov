@@ -9,12 +9,18 @@ import MonthScroller from "@/components/MonthScroller";
 import MapaViewer from "@/components/mapa/MapaViewer";
 import MapaEditor from "@/components/mapa/MapaEditor";
 import PastoInfoModal from "@/components/mapa/PastoInfoModal";
+import MapaActionSheet from "@/components/mapa/MapaActionSheet";
+import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
+import MapaAbateModal from "@/components/mapa/MapaAbateModal";
+import EditarPesoModal from "@/components/mapa/EditarPesoModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
+
+type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino";
 
 export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
@@ -51,7 +57,6 @@ export default function MapaFazendaPage() {
     resolve();
   }, [retiroId]);
 
-  // If fazendaId is in URL (admin route), also load retiro name
   useEffect(() => {
     if (!fazendaId || !retiroId) return;
     setResolvedFazendaId(fazendaId);
@@ -67,10 +72,15 @@ export default function MapaFazendaPage() {
   }, [fazendaId, retiroId]);
 
   const activeFazendaId = fazendaId ?? resolvedFazendaId;
+  const activeRetiroId = retiroId ?? "";
   const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId);
   const [editing, setEditing] = useState(false);
-  const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Action state
+  const [currentAction, setCurrentAction] = useState<MapAction>(null);
+  const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
+  const [destinoPasto, setDestinoPasto] = useState<PastoMapaData | null>(null);
 
   const isAdmin = role === "administrador";
   const canEditMapa = isAdmin && Boolean(fazendaId);
@@ -79,6 +89,31 @@ export default function MapaFazendaPage() {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
+  };
+
+  const handlePastoClick = (pasto: PastoMapaData) => {
+    // If selecting destination for transfer
+    if (currentAction === "selectDestino" && selectedPasto && pasto.pasto_id !== selectedPasto.pasto_id) {
+      setDestinoPasto(pasto);
+      setCurrentAction("transferir");
+      return;
+    }
+
+    // Normal click → show action sheet
+    setSelectedPasto(pasto);
+    setDestinoPasto(null);
+    setCurrentAction("action");
+  };
+
+  const resetAction = () => {
+    setCurrentAction(null);
+    setSelectedPasto(null);
+    setDestinoPasto(null);
+  };
+
+  const handleActionDone = async () => {
+    resetAction();
+    await refresh();
   };
 
   if (resolving || loading) {
@@ -116,6 +151,9 @@ export default function MapaFazendaPage() {
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
         <div className="flex gap-2">
+          {currentAction === "selectDestino" && (
+            <Button size="sm" variant="outline" onClick={resetAction}>Cancelar seleção</Button>
+          )}
           {canEditMapa && mapa && !editing && (
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}>
               <Pencil className="w-4 h-4" /> Editar Mapa
@@ -135,8 +173,6 @@ export default function MapaFazendaPage() {
         <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
       </Card>
 
-      {/* Clean technical map — no color legend needed */}
-
       {editing && canEditMapa ? (
         <MapaEditor
           fazendaId={activeFazendaId!}
@@ -153,7 +189,13 @@ export default function MapaFazendaPage() {
           }}
         />
       ) : mapa ? (
-        <MapaViewer mapa={mapa} onPastoClick={(p) => setSelectedPasto(p)} />
+        <MapaViewer
+          mapa={mapa}
+          onPastoClick={handlePastoClick}
+          selectedPastoId={selectedPasto?.pasto_id}
+          selectingDestino={currentAction === "selectDestino"}
+          highlightDestinos={currentAction === "selectDestino"}
+        />
       ) : canEditMapa ? (
         <div className="text-center py-12 space-y-3">
           <Map className="w-12 h-12 text-muted-foreground mx-auto" />
@@ -169,10 +211,57 @@ export default function MapaFazendaPage() {
         </div>
       )}
 
-      <PastoInfoModal
-        open={!!selectedPasto}
-        onOpenChange={(open) => !open && setSelectedPasto(null)}
+      {/* Action Sheet */}
+      <MapaActionSheet
+        open={currentAction === "action"}
+        onClose={resetAction}
         pasto={selectedPasto}
+        onVerDetalhes={() => setCurrentAction("info")}
+        onTransferir={() => setCurrentAction("transferir")}
+        onAbater={() => setCurrentAction("abater")}
+        onEditarPeso={() => setCurrentAction("editarPeso")}
+      />
+
+      {/* Info Modal */}
+      <PastoInfoModal
+        open={currentAction === "info"}
+        onOpenChange={(open) => !open && resetAction()}
+        pasto={selectedPasto}
+      />
+
+      {/* Transferência Modal */}
+      <MapaTransferenciaModal
+        open={currentAction === "transferir"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        allPastos={mapa?.pastos ?? []}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
+        onDone={handleActionDone}
+        selectedDestino={destinoPasto}
+        onSelectDestino={() => setCurrentAction("selectDestino")}
+      />
+
+      {/* Abate Modal */}
+      <MapaAbateModal
+        open={currentAction === "abater"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
+        onDone={handleActionDone}
+      />
+
+      {/* Editar Peso Modal */}
+      <EditarPesoModal
+        open={currentAction === "editarPeso"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        onDone={handleActionDone}
       />
     </div>
   );
