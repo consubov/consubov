@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import type { CSSProperties } from "react";
+import { useMemo, useRef } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
 
 interface Props {
@@ -6,32 +7,291 @@ interface Props {
   onPastoClick: (pasto: PastoMapaData) => void;
 }
 
-/** Compute the inscribed rect center & safe dimensions inside a polygon */
-function safeRect(coords: number[][]) {
+type LabelLine = {
+  text: string;
+  fontSize: number;
+  fontWeight: CSSProperties["fontWeight"];
+  width: number;
+};
+
+type LabelLayout = {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+  lines: LabelLine[];
+  lineHeight: number;
+  padding: number;
+};
+
+const MAP_COLORS = {
+  background: "hsl(0 0% 100%)",
+  line: "hsl(120 100% 25%)",
+  text: "hsl(0 0% 0%)",
+} as const;
+
+function estimateTextWidth(text: string, fontSize: number, isBold = false) {
+  const factor = isBold ? 0.64 : 0.58;
+  return Array.from(text).reduce((total, char) => {
+    if (char === " ") return total + fontSize * 0.32;
+    if (/[0-9]/.test(char)) return total + fontSize * 0.56;
+    if (/[A-Z]/.test(char)) return total + fontSize * 0.62;
+    if (/[a-z]/.test(char)) return total + fontSize * 0.52;
+    return total + fontSize * factor;
+  }, 0);
+}
+
+function splitWordToFit(word: string, maxWidth: number, fontSize: number, isBold = false) {
+  const chars = Array.from(word);
+  const parts: string[] = [];
+  let current = "";
+
+  chars.forEach((char) => {
+    const next = `${current}${char}`;
+    if (!current || estimateTextWidth(next, fontSize, isBold) <= maxWidth) {
+      current = next;
+      return;
+    }
+
+    parts.push(current);
+    current = char;
+  });
+
+  if (current) parts.push(current);
+  return parts;
+}
+
+function wrapText(text: string, maxWidth: number, fontSize: number, isBold = false) {
+  const normalized = text.trim();
+  if (!normalized) return [""];
+
+  const words = normalized.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  const pushWord = (word: string) => {
+    if (estimateTextWidth(word, fontSize, isBold) <= maxWidth) {
+      if (!currentLine) {
+        currentLine = word;
+        return;
+      }
+
+      const candidate = `${currentLine} ${word}`;
+      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) {
+        currentLine = candidate;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+      return;
+    }
+
+    const chunks = splitWordToFit(word, maxWidth, fontSize, isBold);
+    chunks.forEach((chunk) => {
+      if (!currentLine) {
+        currentLine = chunk;
+        return;
+      }
+
+      const candidate = `${currentLine} ${chunk}`;
+      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) {
+        currentLine = candidate;
+      } else {
+        lines.push(currentLine);
+        currentLine = chunk;
+      }
+    });
+  };
+
+  words.forEach(pushWord);
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function pointInPolygon(x: number, y: number, coords: number[][]) {
+  let inside = false;
+
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    const [xi, yi] = coords[i];
+    const [xj, yj] = coords[j];
+
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / (yj - yi || Number.EPSILON) + xi;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function getBounds(coords: number[][]) {
   const xs = coords.map(([x]) => x);
   const ys = coords.map(([, y]) => y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const w = maxX - minX;
-  const h = maxY - minY;
-  // Use centroid for center position
-  const cx = coords.reduce((s, [x]) => s + x, 0) / coords.length;
-  const cy = coords.reduce((s, [, y]) => s + y, 0) / coords.length;
-  // Inset 20% from bounding box edges as safe padding
-  const safeW = w * 0.6;
-  const safeH = h * 0.6;
-  return { cx, cy, safeW, safeH };
+
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  };
+}
+
+function getCentroid(coords: number[][]) {
+  if (!coords.length) return { x: 0, y: 0 };
+
+  const x = coords.reduce((sum, [cx]) => sum + cx, 0) / coords.length;
+  const y = coords.reduce((sum, [, cy]) => sum + cy, 0) / coords.length;
+  return { x, y };
+}
+
+function buildLabelLines(pasto: PastoMapaData, fontSize: number, maxTextWidth: number) {
+  const dataText = `${pasto.num_animais} cab`;
+  const nameLines = wrapText(pasto.pasto_nome, maxTextWidth, fontSize, true);
+  const dataFontSize = Math.max(fontSize * 0.78, 6);
+  const dataLines = wrapText(dataText, maxTextWidth, dataFontSize, false);
+
+  const lines: LabelLine[] = [
+    ...nameLines.map((text) => ({
+      text,
+      fontSize,
+      fontWeight: 700,
+      width: estimateTextWidth(text, fontSize, true),
+    })),
+    ...dataLines.map((text) => ({
+      text,
+      fontSize: dataFontSize,
+      fontWeight: 400,
+      width: estimateTextWidth(text, dataFontSize, false),
+    })),
+  ];
+
+  return lines;
+}
+
+function rectFitsPolygon(
+  centerX: number,
+  centerY: number,
+  width: number,
+  height: number,
+  coords: number[][],
+) {
+  const halfW = width / 2;
+  const halfH = height / 2;
+
+  const points: Array<[number, number]> = [
+    [centerX, centerY],
+    [centerX - halfW, centerY - halfH],
+    [centerX + halfW, centerY - halfH],
+    [centerX - halfW, centerY + halfH],
+    [centerX + halfW, centerY + halfH],
+    [centerX, centerY - halfH],
+    [centerX, centerY + halfH],
+    [centerX - halfW, centerY],
+    [centerX + halfW, centerY],
+    [centerX - halfW * 0.6, centerY - halfH],
+    [centerX + halfW * 0.6, centerY - halfH],
+    [centerX - halfW * 0.6, centerY + halfH],
+    [centerX + halfW * 0.6, centerY + halfH],
+    [centerX - halfW, centerY - halfH * 0.6],
+    [centerX - halfW, centerY + halfH * 0.6],
+    [centerX + halfW, centerY - halfH * 0.6],
+    [centerX + halfW, centerY + halfH * 0.6],
+  ];
+
+  return points.every(([x, y]) => pointInPolygon(x, y, coords));
+}
+
+function createCenterCandidates(coords: number[][]) {
+  const { minX, maxX, minY, maxY, width, height } = getBounds(coords);
+  const centroid = getCentroid(coords);
+  const bboxCenter = { x: minX + width / 2, y: minY + height / 2 };
+  const offsetX = width * 0.08;
+  const offsetY = height * 0.08;
+
+  return [
+    centroid,
+    bboxCenter,
+    { x: centroid.x, y: centroid.y - offsetY },
+    { x: centroid.x, y: centroid.y + offsetY },
+    { x: centroid.x - offsetX, y: centroid.y },
+    { x: centroid.x + offsetX, y: centroid.y },
+    { x: centroid.x - offsetX, y: centroid.y - offsetY },
+    { x: centroid.x + offsetX, y: centroid.y - offsetY },
+    { x: centroid.x - offsetX, y: centroid.y + offsetY },
+    { x: centroid.x + offsetX, y: centroid.y + offsetY },
+  ];
+}
+
+function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
+  if (pasto.coordenadas.length < 3) return null;
+
+  const bounds = getBounds(pasto.coordenadas);
+  const maxWidth = Math.max(bounds.width * 0.74, 18);
+  const minFont = 4;
+  const maxFont = Math.min(22, bounds.height * 0.26, bounds.width * 0.28);
+  const centers = createCenterCandidates(pasto.coordenadas);
+
+  for (let fontSize = maxFont; fontSize >= minFont; fontSize -= 0.5) {
+    const padding = Math.max(fontSize * 0.5, 4);
+    const lineHeight = fontSize * 1.14;
+    const lines = buildLabelLines(pasto, fontSize, Math.max(maxWidth - padding * 2, 12));
+    const textWidth = Math.max(...lines.map((line) => line.width), 0);
+    const totalLineHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
+    const boxWidth = textWidth + padding * 2;
+    const boxHeight = totalLineHeight + padding * 2;
+
+    if (boxWidth > bounds.width * 0.92 || boxHeight > bounds.height * 0.92) {
+      continue;
+    }
+
+    const fittingCenter = centers.find((candidate) =>
+      rectFitsPolygon(candidate.x, candidate.y, boxWidth, boxHeight, pasto.coordenadas),
+    );
+
+    if (!fittingCenter) continue;
+
+    return {
+      centerX: fittingCenter.x,
+      centerY: fittingCenter.y,
+      width: boxWidth,
+      height: boxHeight,
+      lines,
+      lineHeight,
+      padding,
+    };
+  }
+
+  const fallbackFont = Math.max(minFont, Math.min(6, bounds.height * 0.18, bounds.width * 0.18));
+  const fallbackLines = buildLabelLines(pasto, fallbackFont, Math.max(bounds.width * 0.62, 12));
+  const fallbackHeight = fallbackLines.reduce((sum, line) => sum + line.fontSize * 1.05, 0);
+  const centroid = getCentroid(pasto.coordenadas);
+
+  return {
+    centerX: centroid.x,
+    centerY: centroid.y,
+    width: Math.max(...fallbackLines.map((line) => line.width), 0),
+    height: fallbackHeight,
+    lines: fallbackLines,
+    lineHeight: fallbackFont * 1.1,
+    padding: 2,
+  };
 }
 
 export default function MapaViewer({ mapa, onPastoClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const allCoords = mapa.pastos.flatMap((p) => p.coordenadas);
+  const layouts = useMemo(
+    () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto) })),
+    [mapa.pastos],
+  );
+
   if (allCoords.length === 0) {
     return (
-      <div className="text-center py-12 text-sm text-muted-foreground">
+      <div className="py-12 text-center text-sm text-muted-foreground">
         Nenhum pasto desenhado no mapa.
       </div>
     );
@@ -41,75 +301,60 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
   const minY = Math.min(...allCoords.map(([, y]) => y));
   const maxX = Math.max(...allCoords.map(([x]) => x));
   const maxY = Math.max(...allCoords.map(([, y]) => y));
-  const padding = 30;
-  const vbX = minX - padding;
-  const vbY = minY - padding;
-  const vbW = maxX - minX + padding * 2;
-  const vbH = maxY - minY + padding * 2;
+  const outerPadding = 30;
+  const viewBoxX = minX - outerPadding;
+  const viewBoxY = minY - outerPadding;
+  const viewBoxWidth = maxX - minX + outerPadding * 2;
+  const viewBoxHeight = maxY - minY + outerPadding * 2;
 
-  const toPoints = (coords: number[][]) =>
-    coords.map(([x, y]) => `${x},${y}`).join(" ");
+  const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
 
   return (
-    <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border" style={{ background: "#FFFFFF" }}>
+    <div
+      ref={containerRef}
+      className="relative w-full overflow-hidden rounded-lg border"
+      style={{ background: MAP_COLORS.background }}
+    >
       <svg
-        className="w-full h-auto block"
-        viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
+        className="block h-auto w-full"
+        viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ background: "#FFFFFF" }}
+        style={{ background: MAP_COLORS.background }}
       >
-        {mapa.pastos.map((p) => {
-          if (p.coordenadas.length < 3) return null;
-          const { cx, cy, safeW, safeH } = safeRect(p.coordenadas);
+        {layouts.map(({ pasto, layout }) => {
+          if (!layout || pasto.coordenadas.length < 3) return null;
 
-          // Two lines: name + "N cab" — each needs half the safe height
-          const maxFontByHeight = safeH / 3; // 3 = 2 lines + gap
-          // Estimate chars width: name is usually longest
-          const nameLen = Math.max(p.pasto_nome.length, 5);
-          const maxFontByWidth = safeW / (nameLen * 0.6);
-          const fontSize = Math.max(5, Math.min(maxFontByHeight, maxFontByWidth, 16));
-          const fontSizeSm = fontSize * 0.82;
-          const gap = fontSize * 0.4;
+          const totalTextHeight = layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
+          let currentY = layout.centerY - totalTextHeight / 2;
 
           return (
-            <g
-              key={p.id}
-              className="cursor-pointer"
-              onClick={() => onPastoClick(p)}
-            >
+            <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
               <polygon
-                points={toPoints(p.coordenadas)}
-                fill="#FFFFFF"
-                stroke="#008000"
+                points={toPoints(pasto.coordenadas)}
+                fill={MAP_COLORS.background}
+                stroke={MAP_COLORS.line}
                 strokeWidth={2}
               />
-              {/* Clip text to polygon bounds */}
-              <clipPath id={`clip-${p.id}`}>
-                <polygon points={toPoints(p.coordenadas)} />
-              </clipPath>
-              <g clipPath={`url(#clip-${p.id})`}>
-                <text
-                  x={cx}
-                  y={cy - gap}
-                  textAnchor="middle"
-                  dominantBaseline="auto"
-                  fill="#000000"
-                  fontSize={fontSize}
-                  fontWeight="bold"
-                >
-                  {p.pasto_nome}
-                </text>
-                <text
-                  x={cx}
-                  y={cy + gap + fontSizeSm}
-                  textAnchor="middle"
-                  dominantBaseline="auto"
-                  fill="#000000"
-                  fontSize={fontSizeSm}
-                >
-                  {p.num_animais} cab
-                </text>
-              </g>
+
+              {layout.lines.map((line, index) => {
+                const y = currentY + line.fontSize;
+                currentY += line.fontSize * 1.08;
+
+                return (
+                  <text
+                    key={`${pasto.id}-${index}-${line.text}`}
+                    x={layout.centerX}
+                    y={y}
+                    textAnchor="middle"
+                    fill={MAP_COLORS.text}
+                    fontSize={line.fontSize}
+                    fontWeight={line.fontWeight}
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {line.text}
+                  </text>
+                );
+              })}
             </g>
           );
         })}
