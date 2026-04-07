@@ -1037,7 +1037,7 @@ export default function CapatazDashboard() {
                     variant="outline"
                     size="sm"
                     className="gap-1 shrink-0"
-                    disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
+                    disabled={!selectedCiclo}
                   >
                     <Lock className="w-3 h-3" />
                     {fecharMesPendente ? '⏳ Pendente' : 'Fechar Mês'}
