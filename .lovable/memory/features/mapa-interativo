@@ -1,0 +1,11 @@
+---
+name: Mapa interativo por fazenda
+description: Interactive polygon map overlay on farm images, clickable pastos with dynamic data, monthly filter integration
+type: feature
+---
+Tables: mapas (fazenda_id, imagem_url), pastos_mapa (mapa_id, pasto_id, coordenadas JSONB).
+Storage bucket: mapas (public).
+Admin creates/edits map, gerente/capataz view only. No actions inside map (read-only visual).
+Colors: green=ideal, yellow=alto, red=baixo, gray=no data.
+Routes: /admin/fazendas/:fazendaId/mapa (admin), /mapa/:fazendaId (all roles).
+Components: MapaEditor, MapaViewer, PastoInfoModal, useMapaData hook.
