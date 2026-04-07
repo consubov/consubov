@@ -182,7 +182,7 @@ export default function MapaFazendaPage() {
       ) : (
         <div className="text-center py-12">
           <Map className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">Nenhum mapa disponível.</p>
+          <p className="text-muted-foreground text-sm">Este retiro ainda não possui mapa cadastrado.</p>
         </div>
       )}
 
