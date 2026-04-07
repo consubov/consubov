@@ -73,6 +73,7 @@ export default function MapaFazendaPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const isAdmin = role === "administrador";
+  const canEditMapa = isAdmin && Boolean(fazendaId);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -90,7 +91,7 @@ export default function MapaFazendaPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      {isAdmin && fazendaId && (
+      {canEditMapa && (
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -115,7 +116,7 @@ export default function MapaFazendaPage() {
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
         <div className="flex gap-2">
-          {isAdmin && mapa && !editing && (
+          {canEditMapa && mapa && !editing && (
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}>
               <Pencil className="w-4 h-4" /> Editar Mapa
             </Button>
@@ -154,7 +155,7 @@ export default function MapaFazendaPage() {
         </div>
       </div>
 
-      {editing && isAdmin ? (
+      {editing && canEditMapa ? (
         <MapaEditor
           fazendaId={activeFazendaId!}
           mapaId={mapa?.id}
@@ -171,7 +172,7 @@ export default function MapaFazendaPage() {
         />
       ) : mapa ? (
         <MapaViewer mapa={mapa} onPastoClick={(p) => setSelectedPasto(p)} />
-      ) : isAdmin ? (
+      ) : canEditMapa ? (
         <div className="text-center py-12 space-y-3">
           <Map className="w-12 h-12 text-muted-foreground mx-auto" />
           <p className="text-muted-foreground text-sm">Nenhum mapa cadastrado para esta fazenda.</p>
