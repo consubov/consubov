@@ -1,18 +1,16 @@
 import {
   Document,
+  Image,
   Page,
   StyleSheet,
-  Svg,
   Text,
   View,
 } from "@react-pdf/renderer";
-import { QRCodeSVG } from "qrcode.react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
 
 export interface QrCodePdfItem {
   id: string;
-  qr_uuid: string;
+  qrImageSrc: string;
   nome: string;
   retiro_nome?: string;
 }
@@ -27,28 +25,34 @@ const styles = StyleSheet.create({
   page: {
     paddingTop: 28,
     paddingRight: 28,
-    paddingBottom: 28,
+    paddingBottom: 40,
     paddingLeft: 28,
     backgroundColor: "#FFFFFF",
     fontFamily: "Helvetica",
   },
   grid: {
-    height: "100%",
     flexDirection: "column",
-    justifyContent: "space-between",
-    gap: 12,
+    height: "100%",
   },
   row: {
     flexDirection: "row",
-    gap: 12,
     flex: 1,
+  },
+  rowSpacing: {
+    marginTop: 12,
   },
   slot: {
     flex: 1,
   },
+  slotLeft: {
+    marginRight: 6,
+  },
+  slotRight: {
+    marginLeft: 6,
+  },
   card: {
     height: "100%",
-    border: "1 solid #D9D9D9",
+    border: "1 solid #D1D5DB",
     borderRadius: 10,
     paddingTop: 18,
     paddingRight: 16,
@@ -61,11 +65,9 @@ const styles = StyleSheet.create({
   emptySlot: {
     height: "100%",
   },
-  qrWrap: {
+  qrImage: {
     width: 150,
     height: 150,
-    alignItems: "center",
-    justifyContent: "center",
     marginBottom: 14,
   },
   title: {
@@ -92,23 +94,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function renderQrSvg(value: string) {
-  return renderToStaticMarkup(
-    <QRCodeSVG
-      value={value}
-      size={220}
-      level="H"
-      includeMargin
-      bgColor="#FFFFFF"
-      fgColor="#000000"
-    />,
-  );
-}
-
-function QrSvg({ value }: { value: string }) {
-  return <Svg src={renderQrSvg(value)} />;
-}
-
 export default function QrCodePrintPDF({ items }: QrCodePrintPDFProps) {
   const pages = buildFixedPages(items, PAGE_SIZE);
 
@@ -121,14 +106,18 @@ export default function QrCodePrintPDF({ items }: QrCodePrintPDFProps) {
               const rowItems = pageItems.slice(rowIndex * 2, rowIndex * 2 + 2);
 
               return (
-                <View key={`row-${pageIndex}-${rowIndex}`} style={styles.row}>
+                <View
+                  key={`row-${pageIndex}-${rowIndex}`}
+                  style={rowIndex === 1 ? [styles.row, styles.rowSpacing] : styles.row}
+                >
                   {rowItems.map((item, columnIndex) => (
-                    <View key={`slot-${pageIndex}-${rowIndex}-${columnIndex}`} style={styles.slot}>
+                    <View
+                      key={`slot-${pageIndex}-${rowIndex}-${columnIndex}`}
+                      style={columnIndex === 0 ? [styles.slot, styles.slotLeft] : [styles.slot, styles.slotRight]}
+                    >
                       {item ? (
                         <View style={styles.card}>
-                          <View style={styles.qrWrap}>
-                            <QrSvg value={item.qr_uuid} />
-                          </View>
+                          <Image src={item.qrImageSrc} style={styles.qrImage} />
                           <Text style={styles.title}>{item.nome}</Text>
                           <Text style={styles.subtitle}>{item.retiro_nome || "—"}</Text>
                         </View>
