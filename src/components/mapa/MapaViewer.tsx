@@ -5,6 +5,9 @@ import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
 interface Props {
   mapa: MapaData;
   onPastoClick: (pasto: PastoMapaData) => void;
+  selectedPastoId?: string | null;
+  selectingDestino?: boolean;
+  highlightDestinos?: boolean;
 }
 
 type LabelLine = {
@@ -280,7 +283,7 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   };
 }
 
-export default function MapaViewer({ mapa, onPastoClick }: Props) {
+export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const allCoords = mapa.pastos.flatMap((p) => p.coordenadas);
@@ -309,12 +312,28 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
 
   const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
 
+  function getFillColor(pastoId: string) {
+    if (selectedPastoId === pastoId) return "hsl(120 60% 90%)";
+    if (selectingDestino && highlightDestinos && pastoId !== selectedPastoId) return "hsl(200 60% 95%)";
+    return MAP_COLORS.background;
+  }
+
+  function getStrokeWidth(pastoId: string) {
+    if (selectedPastoId === pastoId) return 3.5;
+    return 2;
+  }
+
   return (
     <div
       ref={containerRef}
       className="relative w-full overflow-hidden rounded-lg border"
       style={{ background: MAP_COLORS.background }}
     >
+      {selectingDestino && (
+        <div className="bg-primary/10 border-b border-primary/30 px-3 py-2 text-sm text-primary font-medium text-center">
+          🎯 Clique no pasto de destino
+        </div>
+      )}
       <svg
         className="block h-auto w-full"
         viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
@@ -331,9 +350,9 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
             <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
               <polygon
                 points={toPoints(pasto.coordenadas)}
-                fill={MAP_COLORS.background}
-                stroke={MAP_COLORS.line}
-                strokeWidth={2}
+                fill={getFillColor(pasto.pasto_id)}
+                stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : MAP_COLORS.line}
+                strokeWidth={getStrokeWidth(pasto.pasto_id)}
               />
 
               {layout.lines.map((line, index) => {
