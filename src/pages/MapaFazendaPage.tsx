@@ -135,25 +135,7 @@ export default function MapaFazendaPage() {
         <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
       </Card>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#16a34a]" />
-          <span>Na meta</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#ca8a04]" />
-          <span>Atenção</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#dc2626]" />
-          <span>Fora da meta</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#64748b]" />
-          <span>Sem dados</span>
-        </div>
-      </div>
+      {/* Clean technical map — no color legend needed */}
 
       {editing && canEditMapa ? (
         <MapaEditor
