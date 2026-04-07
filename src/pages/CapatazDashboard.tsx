@@ -233,13 +233,11 @@ export default function CapatazDashboard() {
     if (savedFazendaId) setFazendaId(savedFazendaId);
 
     let nextCicloId = "";
-    if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
-      nextCicloId = savedCiclo;
-    } else if (cachedCiclos.length > 0) {
+    if (cachedCiclos.length > 0) {
       const now = new Date();
       const currentMonth = now.getMonth() + 1;
       const currentYear = now.getFullYear();
-      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear);
       const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
       nextCicloId = active.id;
     }
@@ -954,19 +952,10 @@ export default function CapatazDashboard() {
   // ============ HOME SCREEN ============
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
-  // Operational month: last closed + 1
-  const closedCiclos = ciclos.filter(c => c.fechado).sort((a, b) => a.ano !== b.ano ? b.ano - a.ano : b.mes - a.mes);
-  let mesOperacional: number;
-  let anoOperacional: number;
-  if (closedCiclos.length > 0) {
-    const last = closedCiclos[0];
-    mesOperacional = last.mes === 12 ? 1 : last.mes + 1;
-    anoOperacional = last.mes === 12 ? last.ano + 1 : last.ano;
-  } else {
-    const now = new Date();
-    mesOperacional = now.getMonth() + 1;
-    anoOperacional = now.getFullYear();
-  }
+  // Always use the current real date as the operational month
+  const now = new Date();
+  const mesOperacional = now.getMonth() + 1;
+  const anoOperacional = now.getFullYear();
   const mesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesOperacional - 1];
 
   return (
@@ -1046,7 +1035,7 @@ export default function CapatazDashboard() {
                     variant="outline"
                     size="sm"
                     className="gap-1 shrink-0"
-                    disabled={!selectedCiclo || selectedCiclo.fechado || !!fecharMesPendente}
+                    disabled={!selectedCiclo}
                   >
                     <Lock className="w-3 h-3" />
                     {fecharMesPendente ? '⏳ Pendente' : 'Fechar Mês'}
