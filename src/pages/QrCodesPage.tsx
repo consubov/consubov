@@ -335,6 +335,10 @@ export default function QrCodesPage() {
       {/* Print styles */}
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
           body * {
             visibility: hidden;
           }
@@ -345,26 +349,38 @@ export default function QrCodesPage() {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 190mm;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8mm;
-            padding: 5mm;
+            grid-template-rows: repeat(2, 1fr);
+            gap: 6mm;
+            padding: 0;
           }
           .qr-card {
-            width: 120mm;
-            height: 120mm;
+            width: 92mm;
+            height: 130mm;
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-sizing: border-box;
+            padding: 8mm;
+          }
+          .qr-card:nth-child(4n+1) {
+            page-break-before: auto;
+          }
+          .qr-card:nth-child(n+5) {
+            break-before: auto;
+          }
+          .qr-card:nth-child(4n+1):not(:first-child) {
+            break-before: page;
           }
           .qr-card svg {
-            width: 90mm !important;
-            height: 90mm !important;
+            width: 70mm !important;
+            height: 70mm !important;
           }
         }
       `}</style>
