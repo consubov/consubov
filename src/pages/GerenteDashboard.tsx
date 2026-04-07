@@ -432,6 +432,7 @@ export default function GerenteDashboard() {
 
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
+  const navRetiro = useNav();
   return (
     <>
       <SheetHeader className="mb-4">
@@ -447,6 +448,9 @@ function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
           <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
           <span>Intervalo real médio: <strong className="text-foreground">{retiro.intervaloRealMedio != null ? `${retiro.intervaloRealMedio}d` : '—'}</strong></span>
         </div>
+        <Button onClick={() => navRetiro(`/mapa/retiro/${retiro.id}`)} variant="outline" size="sm" className="mt-3 w-full gap-1.5">
+          <Map className="w-4 h-4" /> Ver Mapa
+        </Button>
       </SheetHeader>
 
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
