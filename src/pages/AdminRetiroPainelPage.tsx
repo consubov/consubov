@@ -219,7 +219,7 @@ export default function AdminRetiroPainelPage() {
         </Button>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-            if (activeFazendaId && retiroId) {
+            if (!isGerente && activeFazendaId && retiroId) {
               navigate(`/admin/fazendas/${activeFazendaId}/retiros/${retiroId}/mapa`);
             } else if (retiroId) {
               navigate(`/mapa/retiro/${retiroId}`);
