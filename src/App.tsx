@@ -154,14 +154,14 @@ const App = () => (
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
               <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
-              <Route path="/mapa/:fazendaId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
+              <Route path="/mapa/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
 
               <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="fazendas" element={<FazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<FazendaDetailPage />} />
                 <Route path="fazendas/:fazendaId/painel" element={<AdminFazendaPainelPage />} />
-                <Route path="fazendas/:fazendaId/mapa" element={<MapaFazendaPage />} />
+                <Route path="fazendas/:fazendaId/retiros/:retiroId/mapa" element={<MapaFazendaPage />} />
                 <Route path="fazendas/:fazendaId/retiros/:retiroId" element={<RetiroDetailPage />} />
                 <Route path="fazendas/:fazendaId/retiros/:retiroId/painel" element={<LegacyRetiroPainelRedirect />} />
                 <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />

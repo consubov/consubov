@@ -1,11 +1,14 @@
 ---
-name: Mapa interativo por fazenda
-description: Interactive polygon map overlay on farm images, clickable pastos with dynamic data, monthly filter integration
+name: Mapa interativo por retiro
+description: Interactive polygon map overlay on farm images, accessed from retiro level, clickable pastos with dynamic data, monthly filter integration
 type: feature
 ---
 Tables: mapas (fazenda_id, imagem_url), pastos_mapa (mapa_id, pasto_id, coordenadas JSONB).
 Storage bucket: mapas (public).
 Admin creates/edits map, gerente/capataz view only. No actions inside map (read-only visual).
 Colors: green=ideal, yellow=alto, red=baixo, gray=no data.
-Routes: /admin/fazendas/:fazendaId/mapa (admin), /mapa/:fazendaId (all roles).
+ACCESS: Map is accessed from RETIRO level only, never from fazenda level.
+Routes: /admin/fazendas/:fazendaId/retiros/:retiroId/mapa (admin), /mapa/retiro/:retiroId (all roles).
+Map data is filtered to show only pastos belonging to the selected retiro.
+Button "Ver Mapa" appears in RetiroDetailPage and AdminRetiroPainelPage.
 Components: MapaEditor, MapaViewer, PastoInfoModal, useMapaData hook.
