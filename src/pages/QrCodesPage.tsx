@@ -10,7 +10,7 @@ import { FileDown, QrCode, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
-import { createQrCodePngDataUrl } from "@/lib/qrCodePdf";
+import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 
 interface Pasto {
   id: string;
