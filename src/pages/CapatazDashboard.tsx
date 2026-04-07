@@ -233,13 +233,11 @@ export default function CapatazDashboard() {
     if (savedFazendaId) setFazendaId(savedFazendaId);
 
     let nextCicloId = "";
-    if (savedCiclo && cachedCiclos.some(c => c.id === savedCiclo)) {
-      nextCicloId = savedCiclo;
-    } else if (cachedCiclos.length > 0) {
+    if (cachedCiclos.length > 0) {
       const now = new Date();
       const currentMonth = now.getMonth() + 1;
       const currentYear = now.getFullYear();
-      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
+      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear);
       const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
       nextCicloId = active.id;
     }
