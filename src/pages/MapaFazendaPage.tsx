@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useMapaData } from "@/hooks/useMapaData";
@@ -14,14 +15,59 @@ import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export default function MapaFazendaPage() {
-  const { fazendaId } = useParams<{ fazendaId: string }>();
+  const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
   const navigate = useNavigate();
   const { role } = useAuth();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
-  const { loading, mapa, refresh } = useMapaData(fazendaId, mes, ano);
+
+  const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
+  const [retiroNome, setRetiroNome] = useState("Retiro");
+  const [fazendaNome, setFazendaNome] = useState("Fazenda");
+  const [resolving, setResolving] = useState(!fazendaId);
+
+  useEffect(() => {
+    if (!retiroId) return;
+    async function resolve() {
+      setResolving(true);
+      const { data: retiro } = await supabase
+        .from("retiros")
+        .select("fazenda_id, nome")
+        .eq("id", retiroId!)
+        .maybeSingle();
+      if (retiro) {
+        setResolvedFazendaId(retiro.fazenda_id);
+        setRetiroNome(retiro.nome);
+        const { data: faz } = await supabase
+          .from("fazendas")
+          .select("nome")
+          .eq("id", retiro.fazenda_id)
+          .maybeSingle();
+        if (faz) setFazendaNome(faz.nome);
+      }
+      setResolving(false);
+    }
+    resolve();
+  }, [retiroId]);
+
+  // If fazendaId is in URL (admin route), also load retiro name
+  useEffect(() => {
+    if (!fazendaId || !retiroId) return;
+    setResolvedFazendaId(fazendaId);
+    async function loadNames() {
+      const [retRes, fazRes] = await Promise.all([
+        supabase.from("retiros").select("nome").eq("id", retiroId!).maybeSingle(),
+        supabase.from("fazendas").select("nome").eq("id", fazendaId!).maybeSingle(),
+      ]);
+      if (retRes.data) setRetiroNome(retRes.data.nome);
+      if (fazRes.data) setFazendaNome(fazRes.data.nome);
+    }
+    loadNames();
+  }, [fazendaId, retiroId]);
+
+  const activeFazendaId = fazendaId ?? resolvedFazendaId;
+  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId);
   const [editing, setEditing] = useState(false);
   const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,7 +80,7 @@ export default function MapaFazendaPage() {
     setRefreshing(false);
   };
 
-  if (loading) {
+  if (resolving || loading) {
     return (
       <div className="flex justify-center p-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -44,19 +90,25 @@ export default function MapaFazendaPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>Fazenda</Link></BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>Mapa</BreadcrumbPage></BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {isAdmin && fazendaId && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/retiros/${retiroId}`}>{retiroNome}</Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage>Mapa</BreadcrumbPage></BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
 
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate(-1)}>
@@ -75,7 +127,7 @@ export default function MapaFazendaPage() {
       </div>
 
       <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-        <Map className="w-5 h-5" /> Mapa da Fazenda
+        <Map className="w-5 h-5" /> Mapa — {retiroNome}
       </h1>
 
       <Card className="p-2">
@@ -104,7 +156,7 @@ export default function MapaFazendaPage() {
 
       {editing && isAdmin ? (
         <MapaEditor
-          fazendaId={fazendaId!}
+          fazendaId={activeFazendaId!}
           mapaId={mapa?.id}
           imagemUrl={mapa?.imagem_url}
           existingPolygons={mapa?.pastos.map((p) => ({

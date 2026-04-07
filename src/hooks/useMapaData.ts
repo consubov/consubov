@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface PastoMapaData {
@@ -23,7 +23,7 @@ export interface MapaData {
   pastos: PastoMapaData[];
 }
 
-export function useMapaData(fazendaId: string | undefined, mes: number, ano: number) {
+export function useMapaData(fazendaId: string | undefined, mes: number, ano: number, retiroId?: string) {
   const [loading, setLoading] = useState(true);
   const [mapa, setMapa] = useState<MapaData | null>(null);
 
@@ -31,7 +31,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
     if (!fazendaId) return;
     setLoading(true);
 
-    // Get mapa
     const { data: mapaRow } = await supabase
       .from("mapas")
       .select("*")
@@ -46,7 +45,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       return;
     }
 
-    // Get pastos_mapa with linked pasto data
     const { data: pastosMapa } = await supabase
       .from("pastos_mapa")
       .select("id, pasto_id, coordenadas")
@@ -63,15 +61,36 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       return;
     }
 
-    const pastoIds = pastosMapa.map((pm) => pm.pasto_id);
+    let pastoIds = pastosMapa.map((pm) => pm.pasto_id);
 
-    // Get pasto details
+    // If retiroId is provided, filter to only pastos belonging to that retiro
+    if (retiroId) {
+      const { data: retiroPastos } = await supabase
+        .from("pastos")
+        .select("id")
+        .eq("retiro_id", retiroId);
+      const retiroPastoIds = new Set((retiroPastos ?? []).map((p) => p.id));
+      pastoIds = pastoIds.filter((id) => retiroPastoIds.has(id));
+    }
+
+    if (pastoIds.length === 0) {
+      setMapa({
+        id: mapaRow.id,
+        fazenda_id: mapaRow.fazenda_id,
+        imagem_url: mapaRow.imagem_url,
+        pastos: [],
+      });
+      setLoading(false);
+      return;
+    }
+
+    const filteredPastosMapa = pastosMapa.filter((pm) => pastoIds.includes(pm.pasto_id));
+
     const { data: pastos } = await supabase
       .from("pastos")
       .select("id, nome, num_animais, peso_medio_kg, categoria, sexo")
       .in("id", pastoIds);
 
-    // Get lancamentos for consumption
     const { data: lancamentos } = await supabase
       .from("lancamentos")
       .select("pasto_id, consumo_g_cab_dia, status_consumo, created_at")
@@ -80,7 +99,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       .eq("ano_referencia", ano)
       .order("created_at", { ascending: false });
 
-    // Get latest movimentacao per pasto
     const { data: movimentacoes } = await supabase
       .from("movimentacoes_animais")
       .select("pasto_origem_id, pasto_destino_id, data")
@@ -88,10 +106,8 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       .order("data", { ascending: false })
       .limit(100);
 
-    // Build lookup maps
     const pastosMap = new Map((pastos ?? []).map((p) => [p.id, p]));
 
-    // Latest lancamento per pasto
     const consumoMap = new Map<string, { consumo: number | null; status: string | null; data: string | null }>();
     for (const l of lancamentos ?? []) {
       if (!consumoMap.has(l.pasto_id)) {
@@ -103,7 +119,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       }
     }
 
-    // Latest movimentacao per pasto
     const movMap = new Map<string, string>();
     for (const m of movimentacoes ?? []) {
       for (const pid of [m.pasto_origem_id, m.pasto_destino_id]) {
@@ -113,7 +128,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       }
     }
 
-    const pastosData: PastoMapaData[] = pastosMapa.map((pm) => {
+    const pastosData: PastoMapaData[] = filteredPastosMapa.map((pm) => {
       const pasto = pastosMap.get(pm.pasto_id);
       const consumo = consumoMap.get(pm.pasto_id);
       return {
@@ -139,7 +154,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       pastos: pastosData,
     });
     setLoading(false);
-  }, [fazendaId, mes, ano]);
+  }, [fazendaId, mes, ano, retiroId]);
 
   useEffect(() => {
     load();
