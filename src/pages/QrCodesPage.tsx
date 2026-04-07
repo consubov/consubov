@@ -1,11 +1,16 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { pdf } from "@react-pdf/renderer";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, QrCode, Search, Loader2 } from "lucide-react";
+import { FileDown, QrCode, Search, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF";
+import { buildFixedPages } from "@/lib/qrCodeLayout";
+import { createQrCodePngDataUrl } from "@/lib/qrCodePdf";
 
 interface Pasto {
   id: string;
@@ -31,22 +36,6 @@ const PAGE_SIZE = 20;
 const QR_CODES_PER_PAGE = 4;
 const QR_CODES_PER_ROW = 2;
 
-function buildFixedQrPages(pastos: Pasto[]): (Pasto | null)[][] {
-  const pages: (Pasto | null)[][] = [];
-
-  for (let index = 0; index < pastos.length; index += QR_CODES_PER_PAGE) {
-    const page = [...pastos.slice(index, index + QR_CODES_PER_PAGE)] as (Pasto | null)[];
-
-    while (page.length < QR_CODES_PER_PAGE) {
-      page.push(null);
-    }
-
-    pages.push(page);
-  }
-
-  return pages;
-}
-
 export default function QrCodesPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
@@ -54,6 +43,7 @@ export default function QrCodesPage() {
   const [selectedRetiro, setSelectedRetiro] = useState<string>("");
   const [generatedPastos, setGeneratedPastos] = useState<Pasto[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Pasto[]>([]);
@@ -63,7 +53,7 @@ export default function QrCodesPage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const qrPages = buildFixedQrPages(generatedPastos);
+  const qrPages = buildFixedPages(generatedPastos, QR_CODES_PER_PAGE);
 
   useEffect(() => {
     supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
@@ -72,12 +62,19 @@ export default function QrCodesPage() {
   }, []);
 
   const loadRetiros = useCallback(async (fazendaId: string) => {
-    const { data } = await supabase.from("retiros").select("id, nome, fazenda_id").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
+    const { data } = await supabase
+      .from("retiros")
+      .select("id, nome, fazenda_id")
+      .eq("fazenda_id", fazendaId)
+      .eq("ativo", true)
+      .order("nome");
+
     setRetiros(data || []);
   }, []);
 
   const searchPastos = useCallback(async (term: string, page: number, append: boolean) => {
     setSearching(true);
+
     let query = supabase
       .from("pastos")
       .select("id, qr_uuid, nome, retiro_id")
@@ -109,7 +106,9 @@ export default function QrCodesPage() {
   }, [searchTerm, searchPastos]);
 
   useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
     observerRef.current = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && hasMore && !searching) {
@@ -127,7 +126,9 @@ export default function QrCodesPage() {
   }, [hasMore, searching, searchPage, searchTerm, searchPastos]);
 
   async function enrichPastos(pastos: Pasto[]): Promise<Pasto[]> {
-    if (pastos.length === 0) return [];
+    if (pastos.length === 0) {
+      return [];
+    }
 
     const retiroIds = [...new Set(pastos.map((p) => p.retiro_id))];
     const { data: retirosData } = await supabase
@@ -158,67 +159,107 @@ export default function QrCodesPage() {
 
   async function generateByRetiro(retiroId: string) {
     setGenerating(true);
-    const { data } = await supabase
-      .from("pastos")
-      .select("id, qr_uuid, nome, retiro_id")
-      .eq("retiro_id", retiroId)
-      .eq("ativo", true)
-      .order("nome");
 
-    const enriched = await enrichPastos(data || []);
-    setGeneratedPastos(enriched);
-    setGenerating(false);
+    try {
+      const { data } = await supabase
+        .from("pastos")
+        .select("id, qr_uuid, nome, retiro_id")
+        .eq("retiro_id", retiroId)
+        .eq("ativo", true)
+        .order("nome");
+
+      const enriched = await enrichPastos(data || []);
+      setGeneratedPastos(enriched);
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function generateByFazenda(fazendaId: string) {
     setGenerating(true);
-    const { data: retirosData } = await supabase
-      .from("retiros")
-      .select("id")
-      .eq("fazenda_id", fazendaId)
-      .eq("ativo", true);
 
-    const retiroIds = (retirosData || []).map((r) => r.id);
-    if (retiroIds.length === 0) {
-      setGeneratedPastos([]);
+    try {
+      const { data: retirosData } = await supabase
+        .from("retiros")
+        .select("id")
+        .eq("fazenda_id", fazendaId)
+        .eq("ativo", true);
+
+      const retiroIds = (retirosData || []).map((r) => r.id);
+      if (retiroIds.length === 0) {
+        setGeneratedPastos([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("pastos")
+        .select("id, qr_uuid, nome, retiro_id")
+        .in("retiro_id", retiroIds)
+        .eq("ativo", true)
+        .order("nome");
+
+      const enriched = await enrichPastos(data || []);
+      setGeneratedPastos(enriched);
+    } finally {
       setGenerating(false);
-      return;
     }
-
-    const { data } = await supabase
-      .from("pastos")
-      .select("id, qr_uuid, nome, retiro_id")
-      .in("retiro_id", retiroIds)
-      .eq("ativo", true)
-      .order("nome");
-
-    const enriched = await enrichPastos(data || []);
-    setGeneratedPastos(enriched);
-    setGenerating(false);
   }
 
   function selectIndividualPasto(pasto: Pasto) {
     setGeneratedPastos([pasto]);
   }
 
-  function handlePrint() {
-    window.print();
+  async function handleExportPdf() {
+    if (generatedPastos.length === 0) {
+      return;
+    }
+
+    setExportingPdf(true);
+
+    try {
+      const pdfItems: QrCodePdfItem[] = [];
+
+      for (const pasto of generatedPastos) {
+        const qrImageSrc = await createQrCodePngDataUrl(pasto.qr_uuid);
+        pdfItems.push({
+          id: pasto.id,
+          qrImageSrc,
+          nome: pasto.nome,
+          retiro_nome: pasto.retiro_nome,
+        });
+      }
+
+      const blob = await pdf(<QrCodePrintPDF items={pdfItems} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao gerar o PDF dos QR Codes.");
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6 print:hidden">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-foreground">Gerar QR Codes</h1>
         {generatedPastos.length > 0 && (
-          <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Printer className="w-4 h-4 mr-2" />
-            Imprimir ({generatedPastos.length})
+          <Button onClick={handleExportPdf} disabled={exportingPdf} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            {exportingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+            Baixar PDF ({generatedPastos.length})
           </Button>
         )}
       </div>
 
-      <Tabs defaultValue="individual" className="print:hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
+      <Tabs defaultValue="individual">
+        <TabsList className="mb-4 grid w-full grid-cols-3">
           <TabsTrigger value="individual">Pasto Individual</TabsTrigger>
           <TabsTrigger value="retiro">Por Retiro</TabsTrigger>
           <TabsTrigger value="fazenda">Por Fazenda</TabsTrigger>
@@ -226,7 +267,7 @@ export default function QrCodesPage() {
 
         <TabsContent value="individual" className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar pasto por nome..."
               value={searchTerm}
@@ -235,30 +276,30 @@ export default function QrCodesPage() {
             />
           </div>
 
-          <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
+          <div className="max-h-64 overflow-y-auto divide-y rounded-md border">
             {searchResults.map((p) => (
               <button
                 key={p.id}
                 onClick={() => selectIndividualPasto(p)}
-                className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors flex justify-between items-center"
+                className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-accent/50"
               >
                 <div>
                   <p className="font-medium text-foreground">{p.nome}</p>
                   <p className="text-xs text-muted-foreground">{p.retiro_nome} • {p.fazenda_nome}</p>
                 </div>
-                <QrCode className="w-4 h-4 text-muted-foreground" />
+                <QrCode className="h-4 w-4 text-muted-foreground" />
               </button>
             ))}
 
             {searchResults.length === 0 && !searching && (
-              <p className="text-center text-muted-foreground py-6 text-sm">Nenhum pasto encontrado</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pasto encontrado</p>
             )}
 
             <div ref={loadMoreRef} className="h-1" />
 
             {searching && (
               <div className="flex justify-center py-3">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             )}
           </div>
@@ -295,7 +336,7 @@ export default function QrCodesPage() {
             disabled={!selectedRetiro || generating}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
-            {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <QrCode className="w-4 h-4 mr-2" />}
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
             Gerar QR Codes do Retiro
           </Button>
         </TabsContent>
@@ -315,46 +356,40 @@ export default function QrCodesPage() {
             disabled={!selectedFazenda || generating}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
-            {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <QrCode className="w-4 h-4 mr-2" />}
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
             Gerar QR Codes da Fazenda
           </Button>
         </TabsContent>
       </Tabs>
 
       {generatedPastos.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4 print:hidden">
+        <div className="mt-6 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">
             {generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""} gerado{generatedPastos.length > 1 ? "s" : ""}
           </h2>
 
-          <div className="qr-print-wrapper">
+          <div className="space-y-6">
             {qrPages.map((page, pageIndex) => (
-              <section key={`page-${pageIndex}`} className="qr-print-page" aria-label={`Página ${pageIndex + 1} de QR Codes`}>
-                {Array.from({ length: QR_CODES_PER_PAGE / QR_CODES_PER_ROW }).map((_, rowIndex) => {
+              <section
+                key={`preview-page-${pageIndex}`}
+                aria-label={`Pré-visualização da página ${pageIndex + 1}`}
+                className="mx-auto flex aspect-[210/297] w-full max-w-[820px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+              >
+                {[0, 1].map((rowIndex) => {
                   const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
 
                   return (
-                    <div key={`row-${pageIndex}-${rowIndex}`} className="qr-print-row">
+                    <div key={`preview-row-${pageIndex}-${rowIndex}`} className="flex min-h-0 flex-1 gap-4">
                       {rowItems.map((pasto, columnIndex) => (
-                        <div key={`slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="qr-print-slot">
+                        <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="qr-card border border-border bg-card shadow-sm" data-pdf-section>
-                              <div className="qr-card-content">
-                                <QRCodeSVG
-                                  value={pasto.qr_uuid}
-                                  size={220}
-                                  level="H"
-                                  includeMargin
-                                  className="qr-code-svg"
-                                />
-                                <div className="text-center space-y-1">
-                                  <p className="qr-card-title font-bold text-foreground text-base leading-tight">{pasto.nome}</p>
-                                  <p className="qr-card-subtitle text-sm text-muted-foreground leading-tight">{pasto.retiro_nome}</p>
-                                </div>
-                              </div>
+                            <div className="flex h-full flex-col items-center justify-center rounded-xl border bg-card px-4 py-5 text-center shadow-sm">
+                              <QRCodeSVG value={pasto.qr_uuid} size={140} level="H" includeMargin className="mb-4" />
+                              <p className="break-words text-base font-bold leading-tight text-foreground">{pasto.nome}</p>
+                              <p className="mt-1 break-words text-sm leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
                             </div>
                           ) : (
-                            <div className="qr-empty-slot" aria-hidden="true" />
+                            <div className="h-full rounded-xl border border-dashed border-border bg-muted/30" aria-hidden="true" />
                           )}
                         </div>
                       ))}
@@ -366,170 +401,6 @@ export default function QrCodesPage() {
           </div>
         </div>
       )}
-
-      <style>{`
-        .qr-print-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .qr-print-page {
-          width: 100%;
-          max-width: 780px;
-          margin: 0 auto;
-          padding: 1rem;
-          border: 1px solid hsl(var(--border));
-          border-radius: 1rem;
-          background: hsl(var(--card));
-          box-sizing: border-box;
-        }
-
-        .qr-print-row {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .qr-print-row + .qr-print-row {
-          margin-top: 1rem;
-        }
-
-        .qr-print-slot {
-          flex: 1 1 0;
-          min-width: 0;
-        }
-
-        .qr-card,
-        .qr-empty-slot {
-          width: 100%;
-          min-height: 260px;
-          border-radius: 0.75rem;
-          box-sizing: border-box;
-        }
-
-        .qr-card-content {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          padding: 1.5rem;
-          box-sizing: border-box;
-        }
-
-        .qr-code-svg {
-          width: 180px;
-          height: 180px;
-          flex-shrink: 0;
-        }
-
-        .qr-empty-slot {
-          border: 1px dashed hsl(var(--border));
-          background: hsl(var(--muted) / 0.35);
-        }
-
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-
-          html,
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-
-          body * {
-            visibility: hidden;
-          }
-
-          .qr-print-wrapper,
-          .qr-print-wrapper * {
-            visibility: visible;
-          }
-
-          .qr-print-wrapper {
-            display: block;
-            width: 190mm;
-            margin: 0 auto;
-          }
-
-          .qr-print-page {
-            width: 190mm;
-            height: 277mm;
-            margin: 0;
-            padding: 0;
-            border: none;
-            border-radius: 0;
-            background: transparent;
-            box-shadow: none;
-            page-break-after: always;
-            break-after: page;
-          }
-
-          .qr-print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-
-          .qr-print-row {
-            display: flex;
-            gap: 6mm;
-            height: calc((277mm - 6mm) / 2);
-            margin: 0;
-          }
-
-          .qr-print-row + .qr-print-row {
-            margin-top: 6mm;
-          }
-
-          .qr-print-slot {
-            flex: 0 0 calc((190mm - 6mm) / 2);
-            width: calc((190mm - 6mm) / 2);
-            height: calc((277mm - 6mm) / 2);
-          }
-
-          .qr-card,
-          .qr-empty-slot {
-            min-height: 0;
-            height: 100%;
-            border-radius: 3mm;
-            box-shadow: none;
-          }
-
-          .qr-card {
-            border: 0.3mm solid hsl(var(--border));
-            background: hsl(0 0% 100%);
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-
-          .qr-card-content {
-            gap: 4mm;
-            padding: 8mm 6mm;
-          }
-
-          .qr-code-svg {
-            width: 62mm !important;
-            height: 62mm !important;
-          }
-
-          .qr-card-title {
-            font-size: 11pt;
-          }
-
-          .qr-card-subtitle {
-            font-size: 9pt;
-          }
-
-          .qr-empty-slot {
-            border: none;
-            background: transparent;
-          }
-        }
-      `}</style>
     </div>
   );
 }
