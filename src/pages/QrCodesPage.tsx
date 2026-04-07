@@ -393,6 +393,3 @@ export default function QrCodesPage() {
     </div>
   );
 }
-    </div>
-  );
-}
