@@ -27,6 +27,7 @@ import LandingPageConfigPage from "./pages/LandingPageConfigPage";
 import PainelInteligenciaPage from "./pages/PainelInteligenciaPage";
 import CiclosPage from "./pages/CiclosPage";
 import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
+import MapaFazendaPage from "./pages/MapaFazendaPage";
 import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
