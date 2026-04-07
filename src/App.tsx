@@ -154,7 +154,7 @@ const App = () => (
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
               <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
-              <Route path="/mapa/:fazendaId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
+              <Route path="/mapa/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
 
               <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
                 <Route index element={<AdminDashboard />} />
