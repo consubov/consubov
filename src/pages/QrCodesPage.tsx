@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +28,24 @@ interface Retiro {
 }
 
 const PAGE_SIZE = 20;
+const QR_CODES_PER_PAGE = 4;
+const QR_CODES_PER_ROW = 2;
+
+function buildFixedQrPages(pastos: Pasto[]): (Pasto | null)[][] {
+  const pages: (Pasto | null)[][] = [];
+
+  for (let index = 0; index < pastos.length; index += QR_CODES_PER_PAGE) {
+    const page = [...pastos.slice(index, index + QR_CODES_PER_PAGE)] as (Pasto | null)[];
+
+    while (page.length < QR_CODES_PER_PAGE) {
+      page.push(null);
+    }
+
+    pages.push(page);
+  }
+
+  return pages;
+}
 
 export default function QrCodesPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -38,7 +55,6 @@ export default function QrCodesPage() {
   const [generatedPastos, setGeneratedPastos] = useState<Pasto[]>([]);
   const [generating, setGenerating] = useState(false);
 
-  // Individual search state
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Pasto[]>([]);
   const [searchPage, setSearchPage] = useState(0);
@@ -47,20 +63,19 @@ export default function QrCodesPage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Load fazendas on mount
+  const qrPages = buildFixedQrPages(generatedPastos);
+
   useEffect(() => {
     supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
       setFazendas(data || []);
     });
   }, []);
 
-  // Load retiros when fazenda changes (for retiro tab)
   const loadRetiros = useCallback(async (fazendaId: string) => {
     const { data } = await supabase.from("retiros").select("id, nome, fazenda_id").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
     setRetiros(data || []);
   }, []);
 
-  // Search pastos with infinite scroll
   const searchPastos = useCallback(async (term: string, page: number, append: boolean) => {
     setSearching(true);
     let query = supabase
@@ -76,8 +91,6 @@ export default function QrCodesPage() {
 
     const { data } = await query;
     const pastos = data || [];
-
-    // Enrich with retiro/fazenda names
     const enriched = await enrichPastos(pastos);
 
     if (append) {
@@ -85,17 +98,16 @@ export default function QrCodesPage() {
     } else {
       setSearchResults(enriched);
     }
+
     setHasMore(pastos.length === PAGE_SIZE);
     setSearching(false);
   }, []);
 
-  // Initial search load
   useEffect(() => {
     setSearchPage(0);
     searchPastos(searchTerm, 0, false);
   }, [searchTerm, searchPastos]);
 
-  // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
 
@@ -135,6 +147,7 @@ export default function QrCodesPage() {
     return pastos.map((p) => {
       const retiro = retiroMap.get(p.retiro_id);
       const fazenda = retiro ? fazendaMap.get(retiro.fazenda_id) : undefined;
+
       return {
         ...p,
         retiro_nome: retiro?.nome || "—",
@@ -151,6 +164,7 @@ export default function QrCodesPage() {
       .eq("retiro_id", retiroId)
       .eq("ativo", true)
       .order("nome");
+
     const enriched = await enrichPastos(data || []);
     setGeneratedPastos(enriched);
     setGenerating(false);
@@ -177,6 +191,7 @@ export default function QrCodesPage() {
       .in("retiro_id", retiroIds)
       .eq("ativo", true)
       .order("nome");
+
     const enriched = await enrichPastos(data || []);
     setGeneratedPastos(enriched);
     setGenerating(false);
@@ -219,6 +234,7 @@ export default function QrCodesPage() {
               className="pl-10"
             />
           </div>
+
           <div className="max-h-64 overflow-y-auto border rounded-md divide-y">
             {searchResults.map((p) => (
               <button
@@ -233,10 +249,13 @@ export default function QrCodesPage() {
                 <QrCode className="w-4 h-4 text-muted-foreground" />
               </button>
             ))}
+
             {searchResults.length === 0 && !searching && (
               <p className="text-center text-muted-foreground py-6 text-sm">Nenhum pasto encontrado</p>
             )}
+
             <div ref={loadMoreRef} className="h-1" />
+
             {searching && (
               <div className="flex justify-center py-3">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -248,10 +267,10 @@ export default function QrCodesPage() {
         <TabsContent value="retiro" className="space-y-3">
           <Select
             value={selectedFazenda}
-            onValueChange={(v) => {
-              setSelectedFazenda(v);
+            onValueChange={(value) => {
+              setSelectedFazenda(value);
               setSelectedRetiro("");
-              loadRetiros(v);
+              loadRetiros(value);
             }}
           >
             <SelectTrigger><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
@@ -261,11 +280,8 @@ export default function QrCodesPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select
-            value={selectedRetiro}
-            onValueChange={setSelectedRetiro}
-            disabled={!selectedFazenda}
-          >
+
+          <Select value={selectedRetiro} onValueChange={setSelectedRetiro} disabled={!selectedFazenda}>
             <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
             <SelectContent>
               {retiros.map((r) => (
@@ -273,6 +289,7 @@ export default function QrCodesPage() {
               ))}
             </SelectContent>
           </Select>
+
           <Button
             onClick={() => selectedRetiro && generateByRetiro(selectedRetiro)}
             disabled={!selectedRetiro || generating}
@@ -284,10 +301,7 @@ export default function QrCodesPage() {
         </TabsContent>
 
         <TabsContent value="fazenda" className="space-y-3">
-          <Select
-            value={selectedFazenda}
-            onValueChange={setSelectedFazenda}
-          >
+          <Select value={selectedFazenda} onValueChange={setSelectedFazenda}>
             <SelectTrigger><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
             <SelectContent>
               {fazendas.map((f) => (
@@ -295,6 +309,7 @@ export default function QrCodesPage() {
               ))}
             </SelectContent>
           </Select>
+
           <Button
             onClick={() => selectedFazenda && generateByFazenda(selectedFazenda)}
             disabled={!selectedFazenda || generating}
@@ -306,87 +321,212 @@ export default function QrCodesPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Generated QR Codes Grid */}
       {generatedPastos.length > 0 && (
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-foreground mb-4 print:hidden">
             {generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""} gerado{generatedPastos.length > 1 ? "s" : ""}
           </h2>
+
           <div className="qr-print-wrapper">
-            {Array.from({ length: Math.ceil(generatedPastos.length / 4) }).map((_, pageIdx) => (
-              <div key={pageIdx} className="qr-print-page grid grid-cols-2 gap-4">
-                {generatedPastos.slice(pageIdx * 4, pageIdx * 4 + 4).map((p) => (
-                  <Card key={p.id} className="qr-card bg-card border border-border overflow-hidden">
-                    <CardContent className="flex flex-col items-center justify-center p-6">
-                      <QRCodeSVG
-                        value={p.qr_uuid}
-                        size={180}
-                        level="H"
-                        includeMargin
-                        className="mb-3"
-                      />
-                      <p className="font-bold text-foreground text-center text-base">{p.nome}</p>
-                      <p className="text-sm text-muted-foreground text-center">{p.retiro_nome}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            {qrPages.map((page, pageIndex) => (
+              <section key={`page-${pageIndex}`} className="qr-print-page" aria-label={`Página ${pageIndex + 1} de QR Codes`}>
+                {Array.from({ length: QR_CODES_PER_PAGE / QR_CODES_PER_ROW }).map((_, rowIndex) => {
+                  const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
+
+                  return (
+                    <div key={`row-${pageIndex}-${rowIndex}`} className="qr-print-row">
+                      {rowItems.map((pasto, columnIndex) => (
+                        <div key={`slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="qr-print-slot">
+                          {pasto ? (
+                            <div className="qr-card border border-border bg-card shadow-sm" data-pdf-section>
+                              <div className="qr-card-content">
+                                <QRCodeSVG
+                                  value={pasto.qr_uuid}
+                                  size={220}
+                                  level="H"
+                                  includeMargin
+                                  className="qr-code-svg"
+                                />
+                                <div className="text-center space-y-1">
+                                  <p className="qr-card-title font-bold text-foreground text-base leading-tight">{pasto.nome}</p>
+                                  <p className="qr-card-subtitle text-sm text-muted-foreground leading-tight">{pasto.retiro_nome}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="qr-empty-slot" aria-hidden="true" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </section>
             ))}
           </div>
         </div>
       )}
 
-      {/* Print styles */}
       <style>{`
+        .qr-print-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .qr-print-page {
+          width: 100%;
+          max-width: 780px;
+          margin: 0 auto;
+          padding: 1rem;
+          border: 1px solid hsl(var(--border));
+          border-radius: 1rem;
+          background: hsl(var(--card));
+          box-sizing: border-box;
+        }
+
+        .qr-print-row {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .qr-print-row + .qr-print-row {
+          margin-top: 1rem;
+        }
+
+        .qr-print-slot {
+          flex: 1 1 0;
+          min-width: 0;
+        }
+
+        .qr-card,
+        .qr-empty-slot {
+          width: 100%;
+          min-height: 260px;
+          border-radius: 0.75rem;
+          box-sizing: border-box;
+        }
+
+        .qr-card-content {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          padding: 1.5rem;
+          box-sizing: border-box;
+        }
+
+        .qr-code-svg {
+          width: 180px;
+          height: 180px;
+          flex-shrink: 0;
+        }
+
+        .qr-empty-slot {
+          border: 1px dashed hsl(var(--border));
+          background: hsl(var(--muted) / 0.35);
+        }
+
         @media print {
           @page {
             size: A4 portrait;
             margin: 10mm;
           }
+
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           body * {
             visibility: hidden;
           }
+
           .qr-print-wrapper,
           .qr-print-wrapper * {
             visibility: visible;
           }
+
           .qr-print-wrapper {
-            position: absolute;
-            left: 0;
-            top: 0;
+            display: block;
             width: 190mm;
+            margin: 0 auto;
           }
+
           .qr-print-page {
             width: 190mm;
             height: 277mm;
-            display: grid !important;
-            grid-template-columns: 92mm 92mm;
-            grid-template-rows: 135mm 135mm;
-            gap: 3mm;
+            margin: 0;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
             page-break-after: always;
             break-after: page;
-            box-sizing: border-box;
           }
+
           .qr-print-page:last-child {
             page-break-after: auto;
             break-after: auto;
           }
+
+          .qr-print-row {
+            display: flex;
+            gap: 6mm;
+            height: calc((277mm - 6mm) / 2);
+            margin: 0;
+          }
+
+          .qr-print-row + .qr-print-row {
+            margin-top: 6mm;
+          }
+
+          .qr-print-slot {
+            flex: 0 0 calc((190mm - 6mm) / 2);
+            width: calc((190mm - 6mm) / 2);
+            height: calc((277mm - 6mm) / 2);
+          }
+
+          .qr-card,
+          .qr-empty-slot {
+            min-height: 0;
+            height: 100%;
+            border-radius: 3mm;
+            box-shadow: none;
+          }
+
           .qr-card {
-            width: 92mm;
-            height: 135mm;
+            border: 0.3mm solid hsl(var(--border));
+            background: hsl(0 0% 100%);
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-            padding: 8mm;
           }
-          .qr-card svg {
-            width: 65mm !important;
-            height: 65mm !important;
+
+          .qr-card-content {
+            gap: 4mm;
+            padding: 8mm 6mm;
+          }
+
+          .qr-code-svg {
+            width: 62mm !important;
+            height: 62mm !important;
+          }
+
+          .qr-card-title {
+            font-size: 11pt;
+          }
+
+          .qr-card-subtitle {
+            font-size: 9pt;
+          }
+
+          .qr-empty-slot {
+            border: none;
+            background: transparent;
           }
         }
       `}</style>
