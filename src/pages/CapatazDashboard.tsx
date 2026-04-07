@@ -1010,6 +1010,12 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
+        {roleData.retiroId && (
+          <Button onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+            <Map className="w-5 h-5" />
+            Ver Mapa
+          </Button>
+        )}
 
         {syncError && (
           <Card className="border-destructive bg-destructive/10">
