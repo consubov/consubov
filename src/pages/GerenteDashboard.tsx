@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
