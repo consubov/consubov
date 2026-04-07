@@ -519,6 +519,35 @@ export type Database = {
         }
         Relationships: []
       }
+      mapas: {
+        Row: {
+          criado_em: string | null
+          fazenda_id: string
+          id: string
+          imagem_url: string
+        }
+        Insert: {
+          criado_em?: string | null
+          fazenda_id: string
+          id?: string
+          imagem_url: string
+        }
+        Update: {
+          criado_em?: string | null
+          fazenda_id?: string
+          id?: string
+          imagem_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mapas_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mortalidades: {
         Row: {
           ano: number
@@ -765,6 +794,45 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pastos_mapa: {
+        Row: {
+          coordenadas: Json
+          criado_em: string | null
+          id: string
+          mapa_id: string
+          pasto_id: string
+        }
+        Insert: {
+          coordenadas?: Json
+          criado_em?: string | null
+          id?: string
+          mapa_id: string
+          pasto_id: string
+        }
+        Update: {
+          coordenadas?: Json
+          criado_em?: string | null
+          id?: string
+          mapa_id?: string
+          pasto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pastos_mapa_mapa_id_fkey"
+            columns: ["mapa_id"]
+            isOneToOne: false
+            referencedRelation: "mapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pastos_mapa_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
             referencedColumns: ["id"]
           },
         ]
