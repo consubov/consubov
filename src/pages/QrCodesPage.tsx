@@ -10,7 +10,7 @@ import { FileDown, QrCode, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
-import { createQrCodePngDataUrl } from "@/lib/qrCodePdf";
+import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 
 interface Pasto {
   id: string;
@@ -220,10 +220,10 @@ export default function QrCodesPage() {
       const pdfItems: QrCodePdfItem[] = [];
 
       for (const pasto of generatedPastos) {
-        const qrImageSrc = await createQrCodePngDataUrl(pasto.qr_uuid);
+        const qrDataUri = createQrCodeDataUri(pasto.qr_uuid);
         pdfItems.push({
           id: pasto.id,
-          qrImageSrc,
+          qrDataUri,
           nome: pasto.nome,
           retiro_nome: pasto.retiro_nome,
         });
