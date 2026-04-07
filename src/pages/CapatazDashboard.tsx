@@ -75,6 +75,7 @@ function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
 
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
+  const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>('home');
   const [pastos, setPastos] = useState<PastoCache[]>([]);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
