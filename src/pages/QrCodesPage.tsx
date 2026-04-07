@@ -312,21 +312,25 @@ export default function QrCodesPage() {
           <h2 className="text-lg font-semibold text-foreground mb-4 print:hidden">
             {generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""} gerado{generatedPastos.length > 1 ? "s" : ""}
           </h2>
-          <div className="grid grid-cols-2 gap-4 qr-print-grid">
-            {generatedPastos.map((p) => (
-              <Card key={p.id} className="qr-card bg-card border border-border overflow-hidden">
-                <CardContent className="flex flex-col items-center justify-center p-6">
-                  <QRCodeSVG
-                    value={p.qr_uuid}
-                    size={180}
-                    level="H"
-                    includeMargin
-                    className="mb-3"
-                  />
-                  <p className="font-bold text-foreground text-center text-base">{p.nome}</p>
-                  <p className="text-sm text-muted-foreground text-center">{p.retiro_nome}</p>
-                </CardContent>
-              </Card>
+          <div className="qr-print-wrapper">
+            {Array.from({ length: Math.ceil(generatedPastos.length / 4) }).map((_, pageIdx) => (
+              <div key={pageIdx} className="qr-print-page grid grid-cols-2 gap-4">
+                {generatedPastos.slice(pageIdx * 4, pageIdx * 4 + 4).map((p) => (
+                  <Card key={p.id} className="qr-card bg-card border border-border overflow-hidden">
+                    <CardContent className="flex flex-col items-center justify-center p-6">
+                      <QRCodeSVG
+                        value={p.qr_uuid}
+                        size={180}
+                        level="H"
+                        includeMargin
+                        className="mb-3"
+                      />
+                      <p className="font-bold text-foreground text-center text-base">{p.nome}</p>
+                      <p className="text-sm text-muted-foreground text-center">{p.retiro_nome}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             ))}
           </div>
         </div>
@@ -335,36 +339,54 @@ export default function QrCodesPage() {
       {/* Print styles */}
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
           body * {
             visibility: hidden;
           }
-          .qr-print-grid, .qr-print-grid * {
+          .qr-print-wrapper,
+          .qr-print-wrapper * {
             visibility: visible;
           }
-          .qr-print-grid {
+          .qr-print-wrapper {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8mm;
-            padding: 5mm;
+            width: 190mm;
+          }
+          .qr-print-page {
+            width: 190mm;
+            height: 277mm;
+            display: grid !important;
+            grid-template-columns: 92mm 92mm;
+            grid-template-rows: 135mm 135mm;
+            gap: 3mm;
+            page-break-after: always;
+            break-after: page;
+            box-sizing: border-box;
+          }
+          .qr-print-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
           }
           .qr-card {
-            width: 120mm;
-            height: 120mm;
+            width: 92mm;
+            height: 135mm;
             page-break-inside: avoid;
             break-inside: avoid;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: center;
+            box-sizing: border-box;
+            padding: 8mm;
           }
           .qr-card svg {
-            width: 90mm !important;
-            height: 90mm !important;
+            width: 65mm !important;
+            height: 65mm !important;
           }
         }
       `}</style>
