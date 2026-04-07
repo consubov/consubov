@@ -6,25 +6,42 @@ interface Props {
   onPastoClick: (pasto: PastoMapaData) => void;
 }
 
-/** Bounding box width/height of a polygon */
-function polyBounds(coords: number[][]) {
+/** Compute the inscribed rect center & safe dimensions inside a polygon */
+function safeRect(coords: number[][]) {
   const xs = coords.map(([x]) => x);
   const ys = coords.map(([, y]) => y);
-  return {
-    w: Math.max(...xs) - Math.min(...xs),
-    h: Math.max(...ys) - Math.min(...ys),
-  };
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const w = maxX - minX;
+  const h = maxY - minY;
+  // Use centroid for center position
+  const cx = coords.reduce((s, [x]) => s + x, 0) / coords.length;
+  const cy = coords.reduce((s, [, y]) => s + y, 0) / coords.length;
+  // Inset 20% from bounding box edges as safe padding
+  const safeW = w * 0.6;
+  const safeH = h * 0.6;
+  return { cx, cy, safeW, safeH };
 }
 
 export default function MapaViewer({ mapa, onPastoClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const allCoords = mapa.pastos.flatMap((p) => p.coordenadas);
-  const minX = allCoords.length ? Math.min(...allCoords.map(([x]) => x)) : 0;
-  const minY = allCoords.length ? Math.min(...allCoords.map(([, y]) => y)) : 0;
-  const maxX = allCoords.length ? Math.max(...allCoords.map(([x]) => x)) : 1000;
-  const maxY = allCoords.length ? Math.max(...allCoords.map(([, y]) => y)) : 1000;
-  const padding = 40;
+  if (allCoords.length === 0) {
+    return (
+      <div className="text-center py-12 text-sm text-muted-foreground">
+        Nenhum pasto desenhado no mapa.
+      </div>
+    );
+  }
+
+  const minX = Math.min(...allCoords.map(([x]) => x));
+  const minY = Math.min(...allCoords.map(([, y]) => y));
+  const maxX = Math.max(...allCoords.map(([x]) => x));
+  const maxY = Math.max(...allCoords.map(([, y]) => y));
+  const padding = 30;
   const vbX = minX - padding;
   const vbY = minY - padding;
   const vbW = maxX - minX + padding * 2;
@@ -32,13 +49,6 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
 
   const toPoints = (coords: number[][]) =>
     coords.map(([x, y]) => `${x},${y}`).join(" ");
-
-  const centroid = (coords: number[][]) => {
-    if (coords.length === 0) return { x: 0, y: 0 };
-    const cx = coords.reduce((s, [x]) => s + x, 0) / coords.length;
-    const cy = coords.reduce((s, [, y]) => s + y, 0) / coords.length;
-    return { x: cx, y: cy };
-  };
 
   return (
     <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border" style={{ background: "#FFFFFF" }}>
@@ -50,13 +60,16 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
       >
         {mapa.pastos.map((p) => {
           if (p.coordenadas.length < 3) return null;
-          const center = centroid(p.coordenadas);
-          const bounds = polyBounds(p.coordenadas);
-          // Scale font to fit inside polygon — cap at 40% of smallest dimension
-          const maxFont = Math.min(bounds.w * 0.22, bounds.h * 0.25, 18);
-          const fontSize = Math.max(8, maxFont);
-          const fontSizeSm = fontSize * 0.78;
-          const lineGap = fontSize * 1.3;
+          const { cx, cy, safeW, safeH } = safeRect(p.coordenadas);
+
+          // Two lines: name + "N cab" — each needs half the safe height
+          const maxFontByHeight = safeH / 3; // 3 = 2 lines + gap
+          // Estimate chars width: name is usually longest
+          const nameLen = Math.max(p.pasto_nome.length, 5);
+          const maxFontByWidth = safeW / (nameLen * 0.6);
+          const fontSize = Math.max(5, Math.min(maxFontByHeight, maxFontByWidth, 16));
+          const fontSizeSm = fontSize * 0.82;
+          const gap = fontSize * 0.4;
 
           return (
             <g
@@ -70,27 +83,33 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
                 stroke="#008000"
                 strokeWidth={2}
               />
-              <text
-                x={center.x}
-                y={center.y - lineGap * 0.3}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#000000"
-                fontSize={fontSize}
-                fontWeight="bold"
-              >
-                {p.pasto_nome}
-              </text>
-              <text
-                x={center.x}
-                y={center.y + lineGap * 0.7}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#000000"
-                fontSize={fontSizeSm}
-              >
-                {p.num_animais} cab
-              </text>
+              {/* Clip text to polygon bounds */}
+              <clipPath id={`clip-${p.id}`}>
+                <polygon points={toPoints(p.coordenadas)} />
+              </clipPath>
+              <g clipPath={`url(#clip-${p.id})`}>
+                <text
+                  x={cx}
+                  y={cy - gap}
+                  textAnchor="middle"
+                  dominantBaseline="auto"
+                  fill="#000000"
+                  fontSize={fontSize}
+                  fontWeight="bold"
+                >
+                  {p.pasto_nome}
+                </text>
+                <text
+                  x={cx}
+                  y={cy + gap + fontSizeSm}
+                  textAnchor="middle"
+                  dominantBaseline="auto"
+                  fill="#000000"
+                  fontSize={fontSizeSm}
+                >
+                  {p.num_animais} cab
+                </text>
+              </g>
             </g>
           );
         })}
