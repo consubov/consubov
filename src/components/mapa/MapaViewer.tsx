@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
 
 interface Props {
@@ -6,10 +6,19 @@ interface Props {
   onPastoClick: (pasto: PastoMapaData) => void;
 }
 
+/** Bounding box width/height of a polygon */
+function polyBounds(coords: number[][]) {
+  const xs = coords.map(([x]) => x);
+  const ys = coords.map(([, y]) => y);
+  return {
+    w: Math.max(...xs) - Math.min(...xs),
+    h: Math.max(...ys) - Math.min(...ys),
+  };
+}
+
 export default function MapaViewer({ mapa, onPastoClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Compute bounding box from all coordinates to define the viewBox
   const allCoords = mapa.pastos.flatMap((p) => p.coordenadas);
   const minX = allCoords.length ? Math.min(...allCoords.map(([x]) => x)) : 0;
   const minY = allCoords.length ? Math.min(...allCoords.map(([, y]) => y)) : 0;
@@ -31,10 +40,6 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
     return { x: cx, y: cy };
   };
 
-  // Dynamic font size based on viewBox
-  const fontSize = Math.max(10, vbW * 0.018);
-  const fontSizeSm = Math.max(9, vbW * 0.014);
-
   return (
     <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border" style={{ background: "#FFFFFF" }}>
       <svg
@@ -46,6 +51,13 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
         {mapa.pastos.map((p) => {
           if (p.coordenadas.length < 3) return null;
           const center = centroid(p.coordenadas);
+          const bounds = polyBounds(p.coordenadas);
+          // Scale font to fit inside polygon — cap at 40% of smallest dimension
+          const maxFont = Math.min(bounds.w * 0.22, bounds.h * 0.25, 18);
+          const fontSize = Math.max(8, maxFont);
+          const fontSizeSm = fontSize * 0.78;
+          const lineGap = fontSize * 1.3;
+
           return (
             <g
               key={p.id}
@@ -55,14 +67,14 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
               <polygon
                 points={toPoints(p.coordenadas)}
                 fill="#FFFFFF"
-                stroke="#000000"
+                stroke="#008000"
                 strokeWidth={2}
-                className="transition-all hover:fill-gray-100"
               />
               <text
                 x={center.x}
-                y={center.y - fontSize * 0.4}
+                y={center.y - lineGap * 0.3}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fill="#000000"
                 fontSize={fontSize}
                 fontWeight="bold"
@@ -71,8 +83,9 @@ export default function MapaViewer({ mapa, onPastoClick }: Props) {
               </text>
               <text
                 x={center.x}
-                y={center.y + fontSizeSm * 0.8}
+                y={center.y + lineGap * 0.7}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fill="#000000"
                 fontSize={fontSizeSm}
               >
