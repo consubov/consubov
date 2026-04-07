@@ -197,9 +197,6 @@ export default function FazendaDetailPage() {
           <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/painel`)} size="sm" variant="default" className="gap-1.5">
             <BarChart3 className="w-4 h-4" /> Ver Painel
           </Button>
-          <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/mapa`)} size="sm" variant="outline" className="gap-1.5">
-            <Map className="w-4 h-4" /> Ver Mapa
-          </Button>
           <Button onClick={() => setRelatorioOpen(true)} size="sm" variant="outline" className="gap-1.5">
             <FileDown className="w-4 h-4" /> Relatório PDF
           </Button>
