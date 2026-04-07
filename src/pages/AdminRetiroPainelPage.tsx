@@ -225,7 +225,7 @@ export default function AdminRetiroPainelPage() {
               navigate(`/mapa/retiro/${retiroId}`);
             }
           }}>
-            <Map className="w-4 h-4" /> 🗺️ Ver Mapa
+            <Map className="w-4 h-4" /> Ver Mapa
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRelatorioOpen(true)}>
             <FileDown className="w-4 h-4" /> Relatório

@@ -272,7 +272,7 @@ export default function RetiroDetailPage() {
               <BarChart3 className="w-4 h-4" /> Ver Painel
             </Button>
             <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}/mapa`)} size="sm" variant="outline" className="gap-1.5">
-              <Map className="w-4 h-4" /> 🗺️ Ver Mapa
+              <Map className="w-4 h-4" /> Ver Mapa
             </Button>
             <CollapsibleTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5">
