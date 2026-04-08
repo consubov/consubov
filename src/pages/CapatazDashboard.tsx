@@ -448,6 +448,14 @@ export default function CapatazDashboard() {
       setScreen('home');
       return;
     }
+    // Check for open ciclo
+    const cachedCiclosNow = await getCachedCiclos();
+    const cicloAberto = cachedCiclosNow.find(c => !c.fechado);
+    if (!cicloAberto) {
+      toast.error("⚠ Nenhum ciclo aberto. Inicie o mês antes de registrar salgas.");
+      setScreen('home');
+      return;
+    }
     setSalgaCount(0);
     setPrepStatus('done');
   };
