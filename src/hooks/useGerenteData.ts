@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
 interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
@@ -187,6 +188,9 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Realtime: auto-refresh when key tables change
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], loadData);
 
   useEffect(() => {
     const handleFocus = () => { void loadData(); };

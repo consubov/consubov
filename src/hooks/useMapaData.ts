@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export interface PastoMapaData {
   id: string;
@@ -159,6 +160,9 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime: auto-refresh map when pastos, lancamentos or movimentacoes change
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades"], load);
 
   return { loading, mapa, refresh: load };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
 interface Retiro {
@@ -152,6 +153,9 @@ export function usePainelData(filters: PainelFilters) {
   }, [fazendaId, retiroId, mes, ano]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Realtime: auto-refresh when pastos, lancamentos, movimentacoes, abates or ciclos change
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], loadData);
 
   // Refetch when the tab/window regains focus (ensures fresh data on screen access)
   useEffect(() => {
