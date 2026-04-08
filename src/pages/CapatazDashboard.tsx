@@ -509,11 +509,19 @@ export default function CapatazDashboard() {
   };
 
   const handleSaveSalga = async (data: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => {
+    // Block if no open ciclo
+    const cicloAtivo = ciclos.find(c => c.id === selectedCicloId && !c.fechado);
+    if (!cicloAtivo) {
+      toast.error("⚠ Inicie o mês antes de registrar a salga");
+      return;
+    }
+
     const lancamento: LancamentoOffline = {
       ...data,
       id: crypto.randomUUID(),
       data: new Date().toISOString(),
       status: 'pendente',
+      ciclo_id: cicloAtivo.id,
     };
     await saveLancamento(lancamento);
     toast.success("✅ Salvo offline");
@@ -638,14 +646,19 @@ export default function CapatazDashboard() {
           } as any).eq("id", roleData.retiroId);
         }
 
-        const dataLanc = new Date(l.data);
+        // Derive mes/ano from the ciclo, NOT from JS Date
+        const cicloDoLanc = l.ciclo_id ? ciclos.find(c => c.id === l.ciclo_id) : null;
+        const mesRef = cicloDoLanc ? cicloDoLanc.mes : new Date(l.data).getMonth() + 1;
+        const anoRef = cicloDoLanc ? cicloDoLanc.ano : new Date(l.data).getFullYear();
+
         const insertData: Record<string, any> = {
           id: l.id,
           fazenda_id: fazendaId,
           retiro_id: roleData.retiroId,
           pasto_id: l.pasto_id,
-          mes_referencia: dataLanc.getMonth() + 1,
-          ano_referencia: dataLanc.getFullYear(),
+          mes_referencia: mesRef,
+          ano_referencia: anoRef,
+          ciclo_id: l.ciclo_id || null,
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
           origem: "qr",
