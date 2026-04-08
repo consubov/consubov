@@ -9,9 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   LogOut, QrCode, FileDown, Loader2, Search, Skull, MapPin, Check, Eye,
-  Package, BarChart3,
+  Package, BarChart3, RefreshCw,
 } from "lucide-react";
-import { RefreshCw } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { supabase } from "@/integrations/supabase/client";
