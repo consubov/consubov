@@ -80,8 +80,7 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
   if (loading) return null;
 
   const pendentes = transferencias.filter(t => t.status === 'pendente');
-  const recusadas = transferencias.filter(t => t.status === 'recusado');
-  const aprovadas = transferencias.filter(t => t.status === 'aprovado');
+  const historico = transferencias.filter(t => t.status === 'aprovado' || t.status === 'recusado');
 
   return (
     <div className="space-y-3">
