@@ -54,40 +54,7 @@ export default function EstoqueDashboard({
         <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
       ) : (
         <>
-          {/* Estoque por retiro */}
-          <div className="grid grid-cols-1 gap-3">
-            {estoques.map(e => {
-              const badge = diasBadge(e.dias_restantes);
-              return (
-                <Card key={e.retiro_id}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-sm text-foreground">{e.retiro_nome}</p>
-                      <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Estoque</p>
-                        <p className="font-bold text-foreground">{e.quantidade_atual} sacos</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Consumo/dia</p>
-                        <p className="font-bold text-secondary">{e.consumo_medio_diario.toFixed(1)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Dias rest.</p>
-                        <p className={`font-bold ${diasColor(e.dias_restantes)}`}>
-                          {e.dias_restantes !== null ? e.dias_restantes : '—'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {/* Transferências pendentes */}
+          {/* Transferências pendentes — sempre no topo */}
           {pendentes.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
@@ -129,6 +96,39 @@ export default function EstoqueDashboard({
               </div>
             </div>
           )}
+
+          {/* Estoque por retiro */}
+          <div className="grid grid-cols-1 gap-3">
+            {estoques.map(e => {
+              const badge = diasBadge(e.dias_restantes);
+              return (
+                <Card key={e.retiro_id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-sm text-foreground">{e.retiro_nome}</p>
+                      <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Estoque</p>
+                        <p className="font-bold text-foreground">{e.quantidade_atual} sacos</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Consumo/dia</p>
+                        <p className="font-bold text-secondary">{e.consumo_medio_diario.toFixed(1)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Dias rest.</p>
+                        <p className={`font-bold ${diasColor(e.dias_restantes)}`}>
+                          {e.dias_restantes !== null ? e.dias_restantes : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
           {/* Histórico */}
           {historico.length > 0 && (
