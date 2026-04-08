@@ -67,7 +67,21 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
     refresh();
   }, [refresh]);
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("transferencias_estoque").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir transferência");
+    } else {
+      toast.success("Transferência excluída");
+      refresh();
+    }
+  };
+
   if (loading) return null;
+
+  const pendentes = transferencias.filter(t => t.status === 'pendente');
+  const recusadas = transferencias.filter(t => t.status === 'recusado');
+  const aprovadas = transferencias.filter(t => t.status === 'aprovado');
 
   return (
     <div className="space-y-3">
@@ -90,19 +104,51 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
         </CardContent>
       </Card>
 
-      {/* Transferências recentes */}
-      {transferencias.length > 0 && (
+      {/* Pendentes */}
+      {pendentes.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Transferências</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Pendentes</p>
           <div className="space-y-1">
-            {transferencias.slice(0, 5).map(t => (
+            {pendentes.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
-                <Badge
-                  variant={t.status === 'aprovado' ? 'default' : t.status === 'recusado' ? 'destructive' : 'secondary'}
-                  className="text-[10px] shrink-0"
-                >
-                  {t.status === 'pendente' ? '⏳' : t.status === 'aprovado' ? '✅' : '❌'} {t.status}
-                </Badge>
+                <Badge variant="secondary" className="text-[10px] shrink-0">⏳ pendente</Badge>
+                <span className="text-muted-foreground truncate flex-1">
+                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recusadas — com X para excluir */}
+      {recusadas.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Recusadas</p>
+          <div className="space-y-1">
+            {recusadas.map(t => (
+              <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
+                <Badge variant="destructive" className="text-[10px] shrink-0">❌ recusado</Badge>
+                <span className="text-muted-foreground truncate flex-1">
+                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
+                </span>
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Histórico (aprovadas) */}
+      {aprovadas.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Histórico de Transferências</p>
+          <div className="space-y-1">
+            {aprovadas.map(t => (
+              <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
+                <Badge variant="default" className="text-[10px] shrink-0">✅ aprovado</Badge>
                 <span className="text-muted-foreground truncate">
                   {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
                 </span>
