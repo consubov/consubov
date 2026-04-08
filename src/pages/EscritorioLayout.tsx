@@ -447,114 +447,31 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   ESTOQUE SECTION (COM LANÇAMENTO)
+   ESTOQUE SECTION (COM LANÇAMENTO + DIAS RESTANTES)
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
   const now = new Date();
   const mes = now.getMonth() + 1;
   const ano = now.getFullYear();
-  const queryClient = useQueryClient();
-  const [addOpen, setAddOpen] = useState(false);
 
-  const { data: retiros = [] } = useQuery({
-    queryKey: ["escritorio-retiros-estoque", fazendaId],
-    queryFn: async () => {
-      const { data } = await supabase.from("retiros").select("id, nome").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
-      return (data || []) as { id: string; nome: string }[];
-    },
-    enabled: !!fazendaId,
-  });
+  const { estoques, transferencias, loading, adicionarEstoque } = useEstoqueData(fazendaId, mes, ano);
 
-  const { data: estoques = [], isLoading } = useQuery({
-    queryKey: ["escritorio-estoque", fazendaId, mes, ano],
-    queryFn: async () => {
-      if (retiros.length === 0) return [];
-      const retiroIds = retiros.map((r) => r.id);
-      const retiroMap = new Map(retiros.map((r) => [r.id, r.nome]));
+  const retiros = useMemo(() => estoques.map(e => ({ id: e.retiro_id, nome: e.retiro_nome })), [estoques]);
 
-      const { data: estoqueData } = await supabase
-        .from("estoque_retiro").select("retiro_id, quantidade_atual")
-        .in("retiro_id", retiroIds).eq("mes", mes).eq("ano", ano);
-
-      return retiros.map((r): EstoqueItem => {
-        const est = estoqueData?.find((e) => e.retiro_id === r.id);
-        return {
-          retiro_id: r.id,
-          retiro_nome: retiroMap.get(r.id) ?? r.nome,
-          quantidade_atual: est?.quantidade_atual ?? 0,
-        };
-      });
-    },
-    enabled: !!fazendaId && retiros.length > 0,
-  });
-
-  const adicionarEstoque = async (retiroId: string, quantidade: number) => {
-    const { data: existing } = await supabase
-      .from("estoque_retiro")
-      .select("id, quantidade_atual")
-      .eq("retiro_id", retiroId)
-      .eq("mes", mes)
-      .eq("ano", ano)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from("estoque_retiro")
-        .update({ quantidade_atual: existing.quantidade_atual + quantidade, updated_at: new Date().toISOString() })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("estoque_retiro")
-        .insert({ retiro_id: retiroId, mes, ano, quantidade_atual: quantidade });
-    }
-
-    await supabase.from("movimentacoes_estoque")
-      .insert({ retiro_id: retiroId, mes, ano, tipo: "entrada", quantidade, origem: "compra" });
-
-    toast.success(`${quantidade} sacos adicionados ao estoque`);
-    queryClient.invalidateQueries({ queryKey: ["escritorio-estoque"] });
-  };
-
-  if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
-  }
+  // Escritório não aprova/recusa transferências — funções vazias
+  const noop = async () => {};
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-          <Package className="w-4 h-4" /> Estoque de Sal por Retiro
-        </h2>
-        <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
-          <Plus className="w-3 h-3" /> Adicionar
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">Período: {MESES[mes - 1]} {ano}</p>
-
-      {estoques.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Nenhum retiro encontrado</p>
-      ) : (
-        <div className="space-y-2">
-          {estoques.map((e) => (
-            <Card key={e.retiro_id}>
-              <CardContent className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{e.retiro_nome}</p>
-                </div>
-                <Badge variant={e.quantidade_atual > 0 ? "secondary" : "destructive"} className="text-sm">
-                  {e.quantidade_atual} saco{e.quantidade_atual !== 1 ? "s" : ""}
-                </Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      <AdicionarEstoqueModal
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        retiros={retiros}
-        onConfirm={adicionarEstoque}
-      />
-    </div>
+    <EstoqueDashboard
+      estoques={estoques}
+      transferencias={transferencias}
+      retiros={retiros}
+      onAdicionarEstoque={adicionarEstoque}
+      onAprovar={noop}
+      onRecusar={noop}
+      loading={loading}
+      hideTransferActions
+    />
   );
 }
 
