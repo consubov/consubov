@@ -80,8 +80,7 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
   if (loading) return null;
 
   const pendentes = transferencias.filter(t => t.status === 'pendente');
-  const recusadas = transferencias.filter(t => t.status === 'recusado');
-  const aprovadas = transferencias.filter(t => t.status === 'aprovado');
+  const historico = transferencias.filter(t => t.status === 'aprovado' || t.status === 'recusado');
 
   return (
     <div className="space-y-3">
@@ -121,37 +120,27 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
         </div>
       )}
 
-      {/* Recusadas — com X para excluir */}
-      {recusadas.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Recusadas</p>
-          <div className="space-y-1">
-            {recusadas.map(t => (
-              <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
-                <Badge variant="destructive" className="text-[10px] shrink-0">❌ recusado</Badge>
-                <span className="text-muted-foreground truncate flex-1">
-                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
-                </span>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)}>
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Histórico (aprovadas) */}
-      {aprovadas.length > 0 && (
+      {/* Histórico (aprovadas + recusadas) */}
+      {historico.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Histórico de Transferências</p>
           <div className="space-y-1">
-            {aprovadas.map(t => (
+            {historico.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
-                <Badge variant="default" className="text-[10px] shrink-0">✅ aprovado</Badge>
-                <span className="text-muted-foreground truncate">
+                <Badge
+                  variant={t.status === 'aprovado' ? 'default' : 'destructive'}
+                  className="text-[10px] shrink-0"
+                >
+                  {t.status === 'aprovado' ? '✅ aprovado' : '❌ recusado'}
+                </Badge>
+                <span className="text-muted-foreground truncate flex-1">
                   {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
                 </span>
+                {t.status === 'recusado' && (
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
