@@ -134,7 +134,7 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
                   {t.status === 'aprovado' ? '✅ aprovado' : '❌ recusado'}
                 </Badge>
                 <span className="text-muted-foreground truncate flex-1">
-                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
+                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'} · {new Date(t.created_at).toLocaleDateString('pt-BR')}
                 </span>
                 {t.status === 'recusado' && (
                   <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)}>
