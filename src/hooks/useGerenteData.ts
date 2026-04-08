@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
 
 // ---------- Types ----------
 interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
@@ -74,35 +75,6 @@ export interface GerenteFilters {
   mes: number | null; // null = todos os meses
   cicloStatus: 'aberto' | 'fechado' | 'todos';
 }
-
-const getTotalAnimaisFromLancamentos = (items: Lancamento[]) => {
-  const animaisPorPasto = new Map<string, number>();
-
-  for (const item of items) {
-    const atual = animaisPorPasto.get(item.pasto_id) ?? 0;
-    if (item.num_animais > atual) {
-      animaisPorPasto.set(item.pasto_id, item.num_animais);
-    }
-  }
-
-  return Array.from(animaisPorPasto.values()).reduce((sum, value) => sum + value, 0);
-};
-
-const getConsumoMedioPonderado = (items: Lancamento[]) => {
-  let totalConsumoPonderado = 0;
-  let totalCabDias = 0;
-
-  for (const item of items) {
-    const consumo = Number(item.consumo_g_cab_dia) || 0;
-    if (consumo <= 0 || item.num_animais <= 0 || item.dias_no_pasto <= 0) continue;
-
-    const cabDias = item.num_animais * item.dias_no_pasto;
-    totalConsumoPonderado += consumo * cabDias;
-    totalCabDias += cabDias;
-  }
-
-  return totalCabDias > 0 ? totalConsumoPonderado / totalCabDias : 0;
-};
 
 export function useGerenteData(filters?: GerenteFilters) {
   const { roleData } = useAuth();
@@ -243,68 +215,22 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
-    const totalAnimaisFallback = pastos.reduce((sum, p) => sum + (p.num_animais || 0), 0);
-    const pastoIdsComLancamento = new Set(lancamentos.map(item => item.pasto_id));
-    const pastosNoPeriodo = pastos.filter(pasto => pastoIdsComLancamento.has(pasto.id));
-
-    const animaisPorPasto = new Map<string, number>();
-    for (const l of lancamentos) {
-      const atual = animaisPorPasto.get(l.pasto_id) ?? 0;
-      if (l.num_animais > atual) animaisPorPasto.set(l.pasto_id, l.num_animais);
-    }
-    for (const p of pastos) {
-      if (!animaisPorPasto.has(p.id)) animaisPorPasto.set(p.id, p.num_animais || 0);
-    }
-    const totalAnimais = Array.from(animaisPorPasto.values()).reduce((s, n) => s + n, 0);
-    const sacosUtilizados = lancamentos.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
-    const consumoMedio = getConsumoMedioPonderado(lancamentos);
-
-    const pastosStatus = new Map<string, string>();
-    for (const item of lancamentos) {
-      if (item.status_consumo) {
-        pastosStatus.set(item.pasto_id, item.status_consumo);
-      }
-    }
-    const pastosNaMeta = Array.from(pastosStatus.values()).filter(status => status === 'Ideal').length;
-
-    const lancComStatus = lancamentos.filter(item => item.status_consumo);
-    const totalComStatus = lancComStatus.length;
-    const baixo = lancComStatus.filter(item => item.status_consumo === 'Baixo').length;
-    const ideal = lancComStatus.filter(item => item.status_consumo === 'Ideal').length;
-    const alto = lancComStatus.filter(item => item.status_consumo === 'Alto').length;
-    const statusDistribution: StatusDistribution = {
-      baixo,
-      ideal,
-      alto,
-      baixoPct: totalComStatus > 0 ? (baixo / totalComStatus) * 100 : 0,
-      idealPct: totalComStatus > 0 ? (ideal / totalComStatus) * 100 : 0,
-      altoPct: totalComStatus > 0 ? (alto / totalComStatus) * 100 : 0,
-    };
-
-    const precos = produtos.filter(produto => produto.preco_por_kg != null && produto.preco_por_kg > 0).map(produto => produto.preco_por_kg!);
-    const precoMedioKg = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
-    const custoDiario = (consumoMedio / 1000) * precoMedioKg;
-    const custoMensal = custoDiario * 30 * totalAnimais;
-
-    const indices = lancamentos.filter(item => item.indice_consumo != null && item.indice_consumo > 0).map(item => item.indice_consumo!);
-    const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
-
-    const gmdVals = pastos.filter(pasto => pasto.gmd_kg_dia != null && Number(pasto.gmd_kg_dia) > 0).map(pasto => Number(pasto.gmd_kg_dia!));
-    const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
+    const calculated = calculatePainelMetrics({ pastos, lancamentos, produtos, retiros });
+    const statusDistribution: StatusDistribution = calculated.statusDist;
 
     return {
-      totalAnimais,
-      consumoMedio,
-      pastosNaMeta,
-      totalPastos: pastos.length,
-      sacosUtilizados,
-      custoDiario,
-      custoMensal,
-      eficiencia,
-      gmdMedio,
+      totalAnimais: calculated.totalAnimais,
+      consumoMedio: calculated.consumoMedio,
+      pastosNaMeta: calculated.pastosNaMeta,
+      totalPastos: calculated.totalPastos,
+      sacosUtilizados: calculated.sacosUtilizados,
+      custoDiario: calculated.custoDiario,
+      custoMensal: calculated.custoMensal,
+      eficiencia: calculated.eficiencia,
+      gmdMedio: calculated.gmdMedio,
       statusDistribution,
     };
-  }, [pastos, lancamentos, produtos]);
+  }, [pastos, lancamentos, produtos, retiros]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
@@ -313,21 +239,13 @@ export function useGerenteData(filters?: GerenteFilters) {
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
-      const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-      // Animais: lancamentos se disponível, senão cadastro do pasto
-      const animaisPerPasto = new Map<string, number>();
-      for (const l of rLanc) {
-        const atual = animaisPerPasto.get(l.pasto_id) ?? 0;
-        if (l.num_animais > atual) animaisPerPasto.set(l.pasto_id, l.num_animais);
-      }
-      for (const p of rPastos) {
-        if (!animaisPerPasto.has(p.id)) animaisPerPasto.set(p.id, p.num_animais || 0);
-      }
-      const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
-      const sacosUtilizados = rLanc.reduce((sum, item) => sum + (item.num_sacos || 0), 0);
-      const consumoMedio = getConsumoMedioPonderado(rLanc);
-      const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
-      const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
+      const resumo = calculateRetiroMetrics({
+        retiroId: r.id,
+        pastos,
+        lancamentos,
+        produtos,
+        retiros,
+      });
 
       const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
       const validIntervals = sortedRLanc
@@ -349,10 +267,10 @@ export function useGerenteData(filters?: GerenteFilters) {
 
       return {
         ...r,
-        totalAnimais,
-        sacosUtilizados,
-        consumoMedio,
-        gmd,
+        totalAnimais: resumo.totalAnimais,
+        sacosUtilizados: resumo.sacosUtilizados,
+        consumoMedio: resumo.consumoMedio,
+        gmd: resumo.gmd,
         pastos: rPastos,
         lancamentos: rLanc,
         intervaloDefinido,
@@ -362,7 +280,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         ultimaSalga,
       };
     });
-  }, [retiros, pastos, lancamentos, fazendaData]);
+  }, [retiros, pastos, lancamentos, produtos, fazendaData]);
 
   // Computed: capataz scores
   const capatazScores = useMemo<CapatazScore[]>(() => {

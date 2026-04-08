@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
 
 // ---------- Types ----------
 interface Retiro {
@@ -180,86 +181,22 @@ export function usePainelData(filters: PainelFilters) {
 
   // ---------- Metrics: read PRE-CALCULATED data from DB ----------
   const metrics = useMemo<PainelMetrics>(() => {
-    // Fallback: total de animais dos pastos cadastrados (último estado conhecido)
-    const totalAnimaisFallback = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
-
-    if (lancamentos.length === 0) {
-      return { ...emptyMetrics, totalAnimais: totalAnimaisFallback, totalPastos: pastos.length };
-    }
-
-    // Pastos that have lancamentos in this period
-    const pastoIdsComLanc = new Set(lancamentos.map(l => l.pasto_id));
-    const pastosNoPeriodo = pastos.filter(p => pastoIdsComLanc.has(p.id));
-
-    // num_animais: use lancamentos when available, fallback to pasto for pastos without lancamentos
-    const totalAnimaisSet = new Map<string, number>();
-    for (const l of lancamentos) {
-      const current = totalAnimaisSet.get(l.pasto_id) ?? 0;
-      if (l.num_animais > current) totalAnimaisSet.set(l.pasto_id, l.num_animais);
-    }
-    // Add pastos without lancamentos using their registered num_animais
-    for (const p of pastos) {
-      if (!totalAnimaisSet.has(p.id)) {
-        totalAnimaisSet.set(p.id, p.num_animais || 0);
-      }
-    }
-    const totalAnimais = Array.from(totalAnimaisSet.values()).reduce((s, n) => s + n, 0);
-
-    const sacosUtilizados = lancamentos.reduce((s, l) => s + (l.num_sacos || 0), 0);
-
-    // Consumo médio: weighted average using DB-stored consumo_g_cab_dia
-    let totalConsumoWeighted = 0;
-    let totalCabDias = 0;
-    for (const l of lancamentos) {
-      const consumoG = Number(l.consumo_g_cab_dia) || 0;
-      if (consumoG <= 0 || l.num_animais <= 0 || l.dias_no_pasto <= 0) continue;
-      const cabDias = l.num_animais * l.dias_no_pasto;
-      totalConsumoWeighted += consumoG * cabDias;
-      totalCabDias += cabDias;
-    }
-    const consumoMedio = totalCabDias > 0 ? totalConsumoWeighted / totalCabDias : 0;
-
-    // Status distribution – read directly from lancamentos (pre-calculated by trigger)
-    const lancComStatus = lancamentos.filter(l => l.status_consumo);
-    const total = lancComStatus.length;
-    const baixo = lancComStatus.filter(l => l.status_consumo === "Baixo").length;
-    const ideal = lancComStatus.filter(l => l.status_consumo === "Ideal").length;
-    const alto = lancComStatus.filter(l => l.status_consumo === "Alto").length;
-
-    // Pastos na meta
-    const pastosStatus = new Map<string, string>();
-    for (const l of lancamentos) {
-      if (l.status_consumo) pastosStatus.set(l.pasto_id, l.status_consumo);
-    }
-    const pastosNaMeta = Array.from(pastosStatus.values()).filter(s => s === "Ideal").length;
-
-    // Cost
-    const precos = produtos.filter(p => p.preco_por_kg != null && p.preco_por_kg > 0).map(p => p.preco_por_kg!);
-    const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
-    const custoDiario = (consumoMedio / 1000) * precoMedio;
-    const custoMensal = custoDiario * 30 * totalAnimais;
-
-    // Eficiência – read indice_consumo directly (pre-calculated)
-    const indices = lancamentos.filter(l => l.indice_consumo != null && l.indice_consumo > 0).map(l => l.indice_consumo!);
-    const eficiencia = indices.length > 0 ? (indices.reduce((a, b) => a + b, 0) / indices.length) * 100 : 0;
-
-    // GMD
-    const gmdVals = pastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
-    const gmdMedio = gmdVals.length > 0 ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
+    const calculated = calculatePainelMetrics({ pastos, lancamentos, produtos, retiros });
 
     return {
-      totalAnimais, sacosUtilizados, consumoMedio,
-      pastosNaMeta, totalPastos: pastos.length,
-      custoDiario, custoMensal, eficiencia, gmdMedio,
-      totalSalgas: lancamentos.length,
-      statusDist: {
-        baixo, ideal, alto,
-        baixoPct: total > 0 ? (baixo / total) * 100 : 0,
-        idealPct: total > 0 ? (ideal / total) * 100 : 0,
-        altoPct: total > 0 ? (alto / total) * 100 : 0,
-      },
+      totalAnimais: calculated.totalAnimais,
+      sacosUtilizados: calculated.sacosUtilizados,
+      consumoMedio: calculated.consumoMedio,
+      pastosNaMeta: calculated.pastosNaMeta,
+      totalPastos: calculated.totalPastos,
+      custoDiario: calculated.custoDiario,
+      custoMensal: calculated.custoMensal,
+      eficiencia: calculated.eficiencia,
+      gmdMedio: calculated.gmdMedio,
+      totalSalgas: calculated.totalSalgas,
+      statusDist: calculated.statusDist,
     };
-  }, [pastos, lancamentos, produtos]);
+  }, [pastos, lancamentos, produtos, retiros]);
 
   // ---------- Retiros resumo ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {
@@ -269,34 +206,13 @@ export function usePainelData(filters: PainelFilters) {
       // Filter lancamentos by retiro_id (not pasto_id) to correctly attribute data
       // even when pastos are transferred between retiros
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
-      const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-
-      // num_animais: lancamentos when available, fallback to pasto cadastro
-      const animaisPerPasto = new Map<string, number>();
-      for (const l of rLanc) {
-        const current = animaisPerPasto.get(l.pasto_id) ?? 0;
-        if (l.num_animais > current) animaisPerPasto.set(l.pasto_id, l.num_animais);
-      }
-      for (const p of rPastos) {
-        if (!animaisPerPasto.has(p.id)) animaisPerPasto.set(p.id, p.num_animais || 0);
-      }
-      const totalAnimais = Array.from(animaisPerPasto.values()).reduce((s, n) => s + n, 0);
-      const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-
-      // Consumo médio from DB-stored consumo_g_cab_dia (weighted by cab*dias)
-      let totalConsumoW = 0;
-      let totalCD = 0;
-      for (const l of rLanc) {
-        const consumoG = Number(l.consumo_g_cab_dia) || 0;
-        if (consumoG <= 0 || l.num_animais <= 0 || l.dias_no_pasto <= 0) continue;
-        const cd = l.num_animais * l.dias_no_pasto;
-        totalConsumoW += consumoG * cd;
-        totalCD += cd;
-      }
-      const consumoMedio = totalCD > 0 ? totalConsumoW / totalCD : 0;
-
-      const gVals = rPastos.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
-      const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
+      const resumo = calculateRetiroMetrics({
+        retiroId: r.id,
+        pastos,
+        lancamentos,
+        produtos,
+        retiros,
+      });
 
       let diasSemSalga: number | null = null;
       if (r.ultima_salga_em) {
@@ -320,9 +236,21 @@ export function usePainelData(filters: PainelFilters) {
         pastosConsumo.set(l.pasto_id, list);
       }
 
-      return { id: r.id, nome: r.nome, capataz: r.capataz, totalAnimais, sacosUtilizados, consumoMedio, gmd, diasSemSalga, lancamentos: rLanc, pastos: rPastos, pastosConsumo };
+      return {
+        id: r.id,
+        nome: r.nome,
+        capataz: r.capataz,
+        totalAnimais: resumo.totalAnimais,
+        sacosUtilizados: resumo.sacosUtilizados,
+        consumoMedio: resumo.consumoMedio,
+        gmd: resumo.gmd,
+        diasSemSalga,
+        lancamentos: rLanc,
+        pastos: rPastos,
+        pastosConsumo,
+      };
     });
-  }, [retiros, pastos, lancamentos]);
+  }, [retiros, pastos, lancamentos, produtos]);
 
   return {
     loading, fazendaNome, metrics, retirosResumo, lancamentos, refresh: loadData,
