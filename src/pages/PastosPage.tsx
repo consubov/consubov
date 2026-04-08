@@ -112,6 +112,9 @@ export default function PastosPage() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Realtime: auto-refresh when pastos or movimentacoes change
+  useRealtimeSync(["pastos", "movimentacoes_animais", "abates", "mortalidades"], loadData);
+
   function openNew() { setEditingId(null); setForm(emptyForm); setDialogOpen(true); }
 
   function openEdit(p: Pasto) {
