@@ -29,6 +29,23 @@ export function useAbatesData(fazendaId: string | undefined, mes: number, ano: n
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!fazendaId) return;
+
+    const handleFocus = () => { void load(); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fazendaId, load]);
+
   // Realtime
   useEffect(() => {
     if (!fazendaId) return;

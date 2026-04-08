@@ -34,6 +34,23 @@ export function useMortalidadesData(
 
   useEffect(() => {
     if (!fazendaId) return;
+
+    const handleFocus = () => { void load(); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fazendaId, load]);
+
+  useEffect(() => {
+    if (!fazendaId) return;
     const ch = supabase.channel(`mortalidades-${fazendaId}-${retiroId || "all"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mortalidades" }, () => load())
       .subscribe();

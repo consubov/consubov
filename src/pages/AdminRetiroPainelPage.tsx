@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
-import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
+import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
@@ -114,10 +114,8 @@ export default function AdminRetiroPainelPage() {
   }, [fazendaId, retiroId, isGerente, roleData.fazendaId]);
 
   useEffect(() => {
-    const periodoDaUrl = readPainelPeriodoFromSearchParams(searchParams);
-    if (periodoDaUrl) {
-      setPeriodo(periodoDaUrl.mes, periodoDaUrl.ano);
-    }
+    const periodoInicial = resolvePainelPeriodo(searchParams);
+    setPeriodo(periodoInicial.mes, periodoInicial.ano);
   }, [searchParams, setPeriodo]);
 
   useEffect(() => {
@@ -141,7 +139,7 @@ export default function AdminRetiroPainelPage() {
   }), [activeFazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
-  const { mortalidadesAno } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
+  const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
@@ -174,7 +172,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshMortalidades()]);
     setRefreshing(false);
   };
 

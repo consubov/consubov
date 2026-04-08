@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
+import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import MonthScroller from "@/components/MonthScroller";
@@ -70,6 +70,11 @@ export default function GerenteDashboard() {
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 
+  useEffect(() => {
+    const periodoAtual = getCurrentPainelPeriodo();
+    setPeriodo(periodoAtual.mes, periodoAtual.ano);
+  }, [setPeriodo]);
+
   const filters = useMemo<GerenteFilters>(() => ({
     ano,
     mes,
@@ -83,8 +88,8 @@ export default function GerenteDashboard() {
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
-  const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
-  const { mortalidadesAno } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
+  const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
+  const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
   const {
     estoques, transferencias, loading: estoqueLoading,
     adicionarEstoque, aprovarTransferencia, recusarTransferencia,
@@ -98,7 +103,7 @@ export default function GerenteDashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshAbates(), refreshMortalidades()]);
     setRefreshing(false);
   };
 

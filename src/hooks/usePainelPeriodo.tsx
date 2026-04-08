@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export interface PainelPeriodo {
   mes: number;
@@ -9,10 +9,9 @@ interface PainelPeriodoContextValue extends PainelPeriodo {
   setPeriodo: (mes: number, ano: number) => void;
 }
 
-const STORAGE_KEY = "consubov:painel-periodo";
 const PainelPeriodoContext = createContext<PainelPeriodoContextValue | undefined>(undefined);
 
-function getDefaultPeriodo(): PainelPeriodo {
+export function getCurrentPainelPeriodo(): PainelPeriodo {
   const now = new Date();
   return {
     mes: now.getMonth() + 1,
@@ -33,31 +32,16 @@ function normalizePeriodo(mes: number, ano: number): PainelPeriodo | null {
   return { mes, ano };
 }
 
-function readStoredPeriodo(): PainelPeriodo {
-  if (typeof window === "undefined") return getDefaultPeriodo();
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return getDefaultPeriodo();
-
-    const parsed = JSON.parse(raw) as { mes?: number; ano?: number };
-    return normalizePeriodo(Number(parsed.mes), Number(parsed.ano)) ?? getDefaultPeriodo();
-  } catch {
-    return getDefaultPeriodo();
-  }
-}
-
 export function readPainelPeriodoFromSearchParams(searchParams: URLSearchParams): PainelPeriodo | null {
   return normalizePeriodo(Number(searchParams.get("mes")), Number(searchParams.get("ano")));
 }
 
-export function PainelPeriodoProvider({ children }: { children: ReactNode }) {
-  const [periodo, setPeriodoState] = useState<PainelPeriodo>(() => readStoredPeriodo());
+export function resolvePainelPeriodo(searchParams: URLSearchParams): PainelPeriodo {
+  return readPainelPeriodoFromSearchParams(searchParams) ?? getCurrentPainelPeriodo();
+}
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(periodo));
-  }, [periodo]);
+export function PainelPeriodoProvider({ children }: { children: ReactNode }) {
+  const [periodo, setPeriodoState] = useState<PainelPeriodo>(() => getCurrentPainelPeriodo());
 
   const setPeriodo = useCallback((mes: number, ano: number) => {
     const nextPeriodo = normalizePeriodo(mes, ano);
