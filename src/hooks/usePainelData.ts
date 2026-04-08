@@ -152,6 +152,19 @@ export function usePainelData(filters: PainelFilters) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Refetch when the tab/window regains focus (ensures fresh data on screen access)
+  useEffect(() => {
+    const handleFocus = () => { loadData(); };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") loadData();
+    });
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [loadData]);
+
   // Realtime
   useEffect(() => {
     const ch = supabase.channel(`painel-${fazendaId}-${retiroId ?? "all"}`)
