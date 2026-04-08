@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | null;
 
 interface RoleData {
   role: UserRole;
@@ -110,7 +110,21 @@ async function detectRole(userId: string): Promise<RoleData> {
     return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
   }
 
-  // 3. Check administrador
+  // 3. Check escritorio
+  const { data: escritorio, error: escritorioError } = await supabase
+    .from("escritorios")
+    .select("id, fazenda_id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (escritorioError) throw escritorioError;
+
+  if (escritorio) {
+    return { role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null };
+  }
+
+  // 4. Check administrador
   const { data: admin, error: adminError } = await supabase
     .from("administradores")
     .select("id")

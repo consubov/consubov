@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -18,6 +18,7 @@ const menuItems = [
   { title: "Fazendas", url: "/admin/fazendas", icon: Landmark },
   { title: "Gerentes", url: "/admin/gerentes", icon: UserCog },
   { title: "Capatazes", url: "/admin/capatazes", icon: HardHat },
+  { title: "Escritórios", url: "/admin/escritorios", icon: Building2 },
   { title: "Produtos", url: "/admin/produtos", icon: Package },
   { title: "QR Codes", url: "/admin/qrcodes", icon: QrCode },
   { title: "Lançamento Manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },

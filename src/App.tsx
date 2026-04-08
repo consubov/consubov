@@ -29,7 +29,9 @@ import CiclosPage from "./pages/CiclosPage";
 import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
 import MapaFazendaPage from "./pages/MapaFazendaPage";
 import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
+import EscritoriosPage from "./pages/EscritoriosPage";
 import LandingPage from "./pages/LandingPage";
+import EscritorioLayout from "./pages/EscritorioLayout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +119,8 @@ function RoleRedirect() {
       return <Navigate to="/gerente" replace />;
     case "capataz":
       return <Navigate to="/capataz" replace />;
+    case "escritorio":
+      return <Navigate to="/escritorio" replace />;
     default:
       return (
         <div className="min-h-screen flex items-center justify-center bg-background px-6">
@@ -153,8 +157,8 @@ const App = () => (
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
-              <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
-              <Route path="/mapa/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
+              <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "escritorio"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
+              <Route path="/mapa/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz", "escritorio"]}><MapaFazendaPage /></ProtectedRoute>} />
 
               <Route path="/admin" element={<ProtectedRoute allowedRoles={["administrador"]}><AdminLayout /></ProtectedRoute>}>
                 <Route index element={<AdminDashboard />} />
@@ -167,6 +171,7 @@ const App = () => (
                 <Route path="fazendas/:fazendaId/retiros/:retiroId/pastos/:pastoId" element={<PastoDetailPage />} />
                 <Route path="gerentes" element={<GerentesPage />} />
                 <Route path="capatazes" element={<CapatazesPage />} />
+                <Route path="escritorios" element={<EscritoriosPage />} />
                 <Route path="produtos" element={<ProdutosPage />} />
                 <Route path="qrcodes" element={<QrCodesPage />} />
                 <Route path="lancamento-manual" element={<LancamentoManualPage />} />
@@ -180,6 +185,7 @@ const App = () => (
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
+              <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
