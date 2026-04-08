@@ -28,10 +28,11 @@ interface EstoqueDashboardProps {
   onAprovar: (id: string) => Promise<void>;
   onRecusar: (id: string) => Promise<void>;
   loading: boolean;
+  hideTransferActions?: boolean;
 }
 
 export default function EstoqueDashboard({
-  estoques, transferencias, retiros, onAdicionarEstoque, onAprovar, onRecusar, loading,
+  estoques, transferencias, retiros, onAdicionarEstoque, onAprovar, onRecusar, loading, hideTransferActions,
 }: EstoqueDashboardProps) {
   const [addOpen, setAddOpen] = useState(false);
 
