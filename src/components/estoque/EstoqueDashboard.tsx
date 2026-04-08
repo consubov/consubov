@@ -111,12 +111,16 @@ export default function EstoqueDashboard({
                           </p>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-primary" onClick={() => onAprovar(t.id)}>
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive" onClick={() => onRecusar(t.id)}>
-                            <X className="w-4 h-4" />
-                          </Button>
+                          {!hideTransferActions && (
+                            <>
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-primary" onClick={() => onAprovar(t.id)}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive" onClick={() => onRecusar(t.id)}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>
