@@ -11,50 +11,143 @@ import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import GerenteDashboard from "./GerenteDashboard";
 import CapatazDashboard from "./CapatazDashboard";
+import EscritorioLayout from "./EscritorioLayout";
 
-type ViewMode = "administrador" | "gerente" | "capataz";
+type ViewMode = "administrador" | "gerente" | "capataz" | "escritorio";
 
 interface GerenteOption { id: string; nome: string; fazenda_id: string | null; }
 interface CapatazOption { id: string; nome: string; retiro_id: string | null; }
+interface EscritorioOption { id: string; nome: string; fazenda_id: string; }
+
+const VIEW_MODE_KEY = "consubov:admin-view-mode";
+
+function loadPersistedViewMode(): ViewMode {
+  try {
+    const raw = localStorage.getItem(VIEW_MODE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.mode) return parsed.mode;
+    }
+  } catch { /* ignore */ }
+  return "administrador";
+}
+
+function persistViewMode(mode: ViewMode, selectedId: string) {
+  try {
+    localStorage.setItem(VIEW_MODE_KEY, JSON.stringify({ mode, selectedId }));
+  } catch { /* ignore */ }
+}
+
+function loadPersistedSelectedId(): string {
+  try {
+    const raw = localStorage.getItem(VIEW_MODE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.selectedId ?? "";
+    }
+  } catch { /* ignore */ }
+  return "";
+}
+
+function clearPersistedViewMode() {
+  try { localStorage.removeItem(VIEW_MODE_KEY); } catch { /* ignore */ }
+}
 
 export default function AdminLayout() {
   const { signOut } = useAuth();
-  const [viewMode, setViewMode] = useState<ViewMode>("administrador");
+  const [viewMode, setViewMode] = useState<ViewMode>(loadPersistedViewMode);
   const [gerentes, setGerentes] = useState<GerenteOption[]>([]);
   const [capatazes, setCapatazes] = useState<CapatazOption[]>([]);
+  const [escritorios, setEscritorios] = useState<EscritorioOption[]>([]);
   const [selectedGerenteId, setSelectedGerenteId] = useState("");
   const [selectedCapatazId, setSelectedCapatazId] = useState("");
+  const [selectedEscritorioId, setSelectedEscritorioId] = useState("");
 
   useEffect(() => {
-    supabase.from("gerentes").select("id, nome, fazenda_id").eq("ativo", true).then(({ data }) => setGerentes(data ?? []));
-    supabase.from("capatazes").select("id, nome, retiro_id").eq("ativo", true).then(({ data }) => setCapatazes(data ?? []));
+    Promise.all([
+      supabase.from("gerentes").select("id, nome, fazenda_id").eq("ativo", true),
+      supabase.from("capatazes").select("id, nome, retiro_id").eq("ativo", true),
+      supabase.from("escritorios").select("id, nome, fazenda_id").eq("ativo", true),
+    ]).then(([gRes, cRes, eRes]) => {
+      setGerentes(gRes.data ?? []);
+      setCapatazes(cRes.data ?? []);
+      setEscritorios((eRes.data ?? []) as EscritorioOption[]);
+
+      // Restore persisted selection
+      const persistedId = loadPersistedSelectedId();
+      const persistedMode = loadPersistedViewMode();
+      if (persistedId && persistedMode !== "administrador") {
+        if (persistedMode === "gerente" && gRes.data?.find(g => g.id === persistedId)) {
+          setSelectedGerenteId(persistedId);
+        } else if (persistedMode === "capataz" && cRes.data?.find(c => c.id === persistedId)) {
+          setSelectedCapatazId(persistedId);
+        } else if (persistedMode === "escritorio" && (eRes.data ?? []).find((e: any) => e.id === persistedId)) {
+          setSelectedEscritorioId(persistedId);
+        } else {
+          // Persisted selection no longer valid
+          clearPersistedViewMode();
+          setViewMode("administrador");
+        }
+      }
+    });
   }, []);
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     setSelectedGerenteId("");
     setSelectedCapatazId("");
+    setSelectedEscritorioId("");
+    if (mode === "administrador") clearPersistedViewMode();
+  };
+
+  const handleSelectGerente = (id: string) => {
+    setSelectedGerenteId(id);
+    persistViewMode("gerente", id);
+  };
+
+  const handleSelectCapataz = (id: string) => {
+    setSelectedCapatazId(id);
+    persistViewMode("capataz", id);
+  };
+
+  const handleSelectEscritorio = (id: string) => {
+    setSelectedEscritorioId(id);
+    persistViewMode("escritorio", id);
   };
 
   const backToAdmin = useCallback(async () => {
     setViewMode("administrador");
     setSelectedGerenteId("");
     setSelectedCapatazId("");
+    setSelectedEscritorioId("");
+    clearPersistedViewMode();
   }, []);
 
   const selectedGerente = gerentes.find(g => g.id === selectedGerenteId);
   const selectedCapataz = capatazes.find(c => c.id === selectedCapatazId);
+  const selectedEscritorio = escritorios.find(e => e.id === selectedEscritorioId);
 
   const isSimulating =
     (viewMode === "gerente" && !!selectedGerenteId) ||
-    (viewMode === "capataz" && !!selectedCapatazId);
+    (viewMode === "capataz" && !!selectedCapatazId) ||
+    (viewMode === "escritorio" && !!selectedEscritorioId);
 
-  const simulatedName = viewMode === "gerente" ? selectedGerente?.nome : selectedCapataz?.nome;
+  const simulatedName =
+    viewMode === "gerente" ? selectedGerente?.nome :
+    viewMode === "capataz" ? selectedCapataz?.nome :
+    viewMode === "escritorio" ? selectedEscritorio?.nome : "";
+
+  const viewModeLabel =
+    viewMode === "gerente" ? "Gerente" :
+    viewMode === "capataz" ? "Capataz" :
+    viewMode === "escritorio" ? "Escritório" : "Admin";
 
   const simulationOverride = isSimulating ? {
     roleData: viewMode === "gerente"
       ? { role: "gerente" as const, roleId: selectedGerenteId, fazendaId: selectedGerente?.fazenda_id ?? null, retiroId: null }
-      : { role: "capataz" as const, roleId: selectedCapatazId, fazendaId: null, retiroId: selectedCapataz?.retiro_id ?? null },
+      : viewMode === "capataz"
+      ? { role: "capataz" as const, roleId: selectedCapatazId, fazendaId: null, retiroId: selectedCapataz?.retiro_id ?? null }
+      : { role: "escritorio" as const, roleId: selectedEscritorioId, fazendaId: selectedEscritorio?.fazenda_id ?? null, retiroId: null },
     signOut: backToAdmin,
   } : null;
 
@@ -99,7 +192,7 @@ export default function AdminLayout() {
             {isSimulating && (
               <div className="bg-secondary/20 text-secondary-foreground rounded-md px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" />
-                👁 Visualizando como: <strong>{simulatedName}</strong>
+                👁 Visualizando como {viewModeLabel}: <strong>{simulatedName}</strong>
               </div>
             )}
 
@@ -115,11 +208,12 @@ export default function AdminLayout() {
                     <SelectItem value="administrador">Administrador</SelectItem>
                     <SelectItem value="gerente">Gerente</SelectItem>
                     <SelectItem value="capataz">Capataz</SelectItem>
+                    <SelectItem value="escritorio">Escritório</SelectItem>
                   </SelectContent>
                 </Select>
 
                 {viewMode === "gerente" && (
-                  <Select value={selectedGerenteId} onValueChange={setSelectedGerenteId}>
+                  <Select value={selectedGerenteId} onValueChange={handleSelectGerente}>
                     <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                       <SelectValue placeholder="Selecione o gerente" />
                     </SelectTrigger>
@@ -132,13 +226,26 @@ export default function AdminLayout() {
                 )}
 
                 {viewMode === "capataz" && (
-                  <Select value={selectedCapatazId} onValueChange={setSelectedCapatazId}>
+                  <Select value={selectedCapatazId} onValueChange={handleSelectCapataz}>
                     <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                       <SelectValue placeholder="Selecione o capataz" />
                     </SelectTrigger>
                     <SelectContent>
                       {capatazes.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {viewMode === "escritorio" && (
+                  <Select value={selectedEscritorioId} onValueChange={handleSelectEscritorio}>
+                    <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
+                      <SelectValue placeholder="Selecione o escritório" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {escritorios.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -150,7 +257,9 @@ export default function AdminLayout() {
           {/* Content */}
           {isSimulating && simulationOverride ? (
             <SimulationContext.Provider value={simulationOverride}>
-              {viewMode === "gerente" ? <GerenteDashboard /> : <CapatazDashboard />}
+              {viewMode === "gerente" ? <GerenteDashboard /> :
+               viewMode === "capataz" ? <CapatazDashboard /> :
+               <EscritorioLayout />}
             </SimulationContext.Provider>
           ) : (
             <main className="flex-1 overflow-auto p-4 md:p-6">
