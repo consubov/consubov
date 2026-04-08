@@ -1,0 +1,1 @@
+UPDATE public.ciclos SET num_dias = 23 WHERE id = '27abce2f-b186-4a7e-8390-0f0f09f4f670';
