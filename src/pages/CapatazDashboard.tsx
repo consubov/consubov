@@ -679,16 +679,16 @@ export default function CapatazDashboard() {
             .from("estoque_retiro")
             .select("id, quantidade_atual")
             .eq("retiro_id", roleData.retiroId)
-            .eq("mes", mesRef)
-            .eq("ano", anoRef)
+            .eq("mes", mesEstoque)
+            .eq("ano", anoEstoque)
             .maybeSingle();
           if (estoque) {
             const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
             await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
             await supabase.from("movimentacoes_estoque").insert({
               retiro_id: roleData.retiroId,
-              mes: mesRef,
-              ano: anoRef,
+              mes: mesEstoque,
+              ano: anoEstoque,
               tipo: 'saida',
               quantidade: l.sacos,
               origem: 'salga',
