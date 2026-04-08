@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
 interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
