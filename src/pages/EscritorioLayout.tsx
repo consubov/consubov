@@ -267,7 +267,7 @@ export default function EscritorioLayout() {
       {relatorioOpen && (
         <ExportarRelatorioModal
           open={relatorioOpen}
-          onClose={() => setRelatorioOpen(false)}
+          onOpenChange={setRelatorioOpen}
           fazendaId={roleData.fazendaId ?? ""}
           lancamentos={lancamentos}
           retirosComDados={retirosComDados}
