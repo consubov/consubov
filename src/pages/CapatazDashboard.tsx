@@ -657,6 +657,32 @@ export default function CapatazDashboard() {
         const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;
         await markSincronizado(l.id);
+
+        // Subtrair estoque automaticamente após salga sincronizada
+        if (roleData.retiroId && l.sacos > 0) {
+          const mesRef = dataLanc.getMonth() + 1;
+          const anoRef = dataLanc.getFullYear();
+          const { data: estoque } = await supabase
+            .from("estoque_retiro")
+            .select("id, quantidade_atual")
+            .eq("retiro_id", roleData.retiroId)
+            .eq("mes", mesRef)
+            .eq("ano", anoRef)
+            .maybeSingle();
+          if (estoque) {
+            const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
+            await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
+            await supabase.from("movimentacoes_estoque").insert({
+              retiro_id: roleData.retiroId,
+              mes: mesRef,
+              ano: anoRef,
+              tipo: 'saida',
+              quantidade: l.sacos,
+              origem: 'salga',
+              referencia_id: l.id,
+            });
+          }
+        }
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         setSyncError(`Registro ${idx}: ${errorMsg}`);
