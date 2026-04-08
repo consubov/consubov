@@ -765,6 +765,7 @@ export type Database = {
         Row: {
           criado_em: string
           dados: Json | null
+          fazenda_id: string | null
           id: string
           lida: boolean
           mensagem: string | null
@@ -774,6 +775,7 @@ export type Database = {
         Insert: {
           criado_em?: string
           dados?: Json | null
+          fazenda_id?: string | null
           id?: string
           lida?: boolean
           mensagem?: string | null
@@ -783,6 +785,7 @@ export type Database = {
         Update: {
           criado_em?: string
           dados?: Json | null
+          fazenda_id?: string | null
           id?: string
           lida?: boolean
           mensagem?: string | null
