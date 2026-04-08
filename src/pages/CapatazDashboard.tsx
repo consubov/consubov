@@ -448,6 +448,14 @@ export default function CapatazDashboard() {
       setScreen('home');
       return;
     }
+    // Check for open ciclo
+    const cachedCiclosNow = await getCachedCiclos();
+    const cicloAberto = cachedCiclosNow.find(c => !c.fechado);
+    if (!cicloAberto) {
+      toast.error("⚠ Nenhum ciclo aberto. Inicie o mês antes de registrar salgas.");
+      setScreen('home');
+      return;
+    }
     setSalgaCount(0);
     setPrepStatus('done');
   };
@@ -509,11 +517,19 @@ export default function CapatazDashboard() {
   };
 
   const handleSaveSalga = async (data: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => {
+    // Block if no open ciclo
+    const cicloAtivo = ciclos.find(c => c.id === selectedCicloId && !c.fechado);
+    if (!cicloAtivo) {
+      toast.error("⚠ Inicie o mês antes de registrar a salga");
+      return;
+    }
+
     const lancamento: LancamentoOffline = {
       ...data,
       id: crypto.randomUUID(),
       data: new Date().toISOString(),
       status: 'pendente',
+      ciclo_id: cicloAtivo.id,
     };
     await saveLancamento(lancamento);
     toast.success("✅ Salvo offline");
@@ -638,14 +654,19 @@ export default function CapatazDashboard() {
           } as any).eq("id", roleData.retiroId);
         }
 
-        const dataLanc = new Date(l.data);
+        // Derive mes/ano from the ciclo, NOT from JS Date
+        const cicloDoLanc = l.ciclo_id ? ciclos.find(c => c.id === l.ciclo_id) : null;
+        const mesRef = cicloDoLanc ? cicloDoLanc.mes : new Date(l.data).getMonth() + 1;
+        const anoRef = cicloDoLanc ? cicloDoLanc.ano : new Date(l.data).getFullYear();
+
         const insertData: Record<string, any> = {
           id: l.id,
           fazenda_id: fazendaId,
           retiro_id: roleData.retiroId,
           pasto_id: l.pasto_id,
-          mes_referencia: dataLanc.getMonth() + 1,
-          ano_referencia: dataLanc.getFullYear(),
+          mes_referencia: mesRef,
+          ano_referencia: anoRef,
+          ciclo_id: l.ciclo_id || null,
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
           origem: "qr",
@@ -660,22 +681,22 @@ export default function CapatazDashboard() {
 
         // Subtrair estoque automaticamente após salga sincronizada
         if (roleData.retiroId && l.sacos > 0) {
-          const mesRef = dataLanc.getMonth() + 1;
-          const anoRef = dataLanc.getFullYear();
+          const mesEstoque = mesRef;
+          const anoEstoque = anoRef;
           const { data: estoque } = await supabase
             .from("estoque_retiro")
             .select("id, quantidade_atual")
             .eq("retiro_id", roleData.retiroId)
-            .eq("mes", mesRef)
-            .eq("ano", anoRef)
+            .eq("mes", mesEstoque)
+            .eq("ano", anoEstoque)
             .maybeSingle();
           if (estoque) {
             const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
             await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
             await supabase.from("movimentacoes_estoque").insert({
               retiro_id: roleData.retiroId,
-              mes: mesRef,
-              ano: anoRef,
+              mes: mesEstoque,
+              ano: anoEstoque,
               tipo: 'saida',
               quantidade: l.sacos,
               origem: 'salga',
