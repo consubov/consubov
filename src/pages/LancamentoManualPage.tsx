@@ -228,6 +228,7 @@ export default function LancamentoManualPage() {
           pasto_id: r.pasto_id,
           mes_referencia: mes,
           ano_referencia: ano,
+          ciclo_id: cicloId,
           num_animais: r.num_animais,
           peso_medio_kg: r.peso_medio_kg,
           sexo: r.sexo || null,
