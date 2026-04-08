@@ -7,6 +7,8 @@ import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
+import { useEstoqueData } from "@/hooks/useEstoqueData";
+import EstoqueDashboard from "@/components/estoque/EstoqueDashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +85,12 @@ export default function GerenteDashboard() {
 
   const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
   const { mortalidadesAno } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
+  const {
+    estoques, transferencias, loading: estoqueLoading,
+    adicionarEstoque, aprovarTransferencia, recusarTransferencia,
+  } = useEstoqueData(roleData.fazendaId, mes, ano);
+
+  const retirosList = useMemo(() => retirosComDados.map(r => ({ id: r.id!, nome: r.nome })).filter(r => r.id), [retirosComDados]);
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,9 +156,17 @@ export default function GerenteDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-card h-10 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-5 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="painel" className="text-xs data-[state=active]:text-primary">Painel</TabsTrigger>
           <TabsTrigger value="retiros" className="text-xs data-[state=active]:text-primary">Retiros</TabsTrigger>
+          <TabsTrigger value="estoque" className="text-xs data-[state=active]:text-primary relative">
+            Estoque
+            {transferencias.filter(t => t.status === 'pendente').length > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
+                {transferencias.filter(t => t.status === 'pendente').length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="ranking" className="text-xs data-[state=active]:text-primary">Ranking</TabsTrigger>
           <TabsTrigger value="alertas" className="text-xs data-[state=active]:text-primary relative">
             Alertas
@@ -259,6 +275,19 @@ export default function GerenteDashboard() {
               </Card>
             ))
           )}
+        </TabsContent>
+
+        {/* ===== ESTOQUE ===== */}
+        <TabsContent value="estoque" className="flex-1 overflow-auto p-4 mt-0">
+          <EstoqueDashboard
+            estoques={estoques}
+            transferencias={transferencias}
+            retiros={retirosList}
+            onAdicionarEstoque={adicionarEstoque}
+            onAprovar={aprovarTransferencia}
+            onRecusar={recusarTransferencia}
+            loading={estoqueLoading}
+          />
         </TabsContent>
 
         {/* ===== RANKING ===== */}

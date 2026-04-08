@@ -294,6 +294,47 @@ export type Database = {
           },
         ]
       }
+      estoque_retiro: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          mes: number
+          quantidade_atual: number
+          retiro_id: string
+          ultimo_alerta_estoque: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          mes: number
+          quantidade_atual?: number
+          retiro_id: string
+          ultimo_alerta_estoque?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          quantidade_atual?: number
+          retiro_id?: string
+          ultimo_alerta_estoque?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_retiro_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fazendas: {
         Row: {
           administrador_id: string | null
@@ -634,6 +675,50 @@ export type Database = {
           usuario_id?: string | null
         }
         Relationships: []
+      }
+      movimentacoes_estoque: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          mes: number
+          origem: string
+          quantidade: number
+          referencia_id: string | null
+          retiro_id: string
+          tipo: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          mes: number
+          origem: string
+          quantidade: number
+          referencia_id?: string | null
+          retiro_id: string
+          tipo: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          origem?: string
+          quantidade?: number
+          referencia_id?: string | null
+          retiro_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_estoque_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notificacoes: {
         Row: {
@@ -1057,6 +1142,60 @@ export type Database = {
           nome?: string | null
         }
         Relationships: []
+      }
+      transferencias_estoque: {
+        Row: {
+          aprovado_por: string | null
+          created_at: string
+          id: string
+          quantidade: number
+          retiro_destino_id: string
+          retiro_origem_id: string
+          solicitado_por: string | null
+          status: string
+          tipo_acao: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          quantidade: number
+          retiro_destino_id: string
+          retiro_origem_id: string
+          solicitado_por?: string | null
+          status?: string
+          tipo_acao: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_por?: string | null
+          created_at?: string
+          id?: string
+          quantidade?: number
+          retiro_destino_id?: string
+          retiro_origem_id?: string
+          solicitado_por?: string | null
+          status?: string
+          tipo_acao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_estoque_retiro_destino_id_fkey"
+            columns: ["retiro_destino_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_estoque_retiro_origem_id_fkey"
+            columns: ["retiro_origem_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visitas: {
         Row: {
