@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   LogOut, QrCode, FileDown, Loader2, Search, Skull, MapPin, Check, Eye,
-  Package, BarChart3, RefreshCw,
+  Package, BarChart3, RefreshCw, Plus,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
@@ -23,6 +23,7 @@ import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import AdicionarEstoqueModal from "@/components/estoque/AdicionarEstoqueModal";
 
 /* ─── types ─── */
 interface Pasto {
@@ -446,21 +447,28 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   ESTOQUE SECTION (READ-ONLY)
+   ESTOQUE SECTION (COM LANÇAMENTO)
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
   const now = new Date();
   const mes = now.getMonth() + 1;
   const ano = now.getFullYear();
+  const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+
+  const { data: retiros = [] } = useQuery({
+    queryKey: ["escritorio-retiros-estoque", fazendaId],
+    queryFn: async () => {
+      const { data } = await supabase.from("retiros").select("id, nome").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
+      return (data || []) as { id: string; nome: string }[];
+    },
+    enabled: !!fazendaId,
+  });
 
   const { data: estoques = [], isLoading } = useQuery({
     queryKey: ["escritorio-estoque", fazendaId, mes, ano],
     queryFn: async () => {
-      const { data: retiros } = await supabase
-        .from("retiros").select("id, nome")
-        .eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
-      if (!retiros || retiros.length === 0) return [];
-
+      if (retiros.length === 0) return [];
       const retiroIds = retiros.map((r) => r.id);
       const retiroMap = new Map(retiros.map((r) => [r.id, r.nome]));
 
@@ -477,8 +485,33 @@ function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
         };
       });
     },
-    enabled: !!fazendaId,
+    enabled: !!fazendaId && retiros.length > 0,
   });
+
+  const adicionarEstoque = async (retiroId: string, quantidade: number) => {
+    const { data: existing } = await supabase
+      .from("estoque_retiro")
+      .select("id, quantidade_atual")
+      .eq("retiro_id", retiroId)
+      .eq("mes", mes)
+      .eq("ano", ano)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from("estoque_retiro")
+        .update({ quantidade_atual: existing.quantidade_atual + quantidade, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      await supabase.from("estoque_retiro")
+        .insert({ retiro_id: retiroId, mes, ano, quantidade_atual: quantidade });
+    }
+
+    await supabase.from("movimentacoes_estoque")
+      .insert({ retiro_id: retiroId, mes, ano, tipo: "entrada", quantidade, origem: "compra" });
+
+    toast.success(`${quantidade} sacos adicionados ao estoque`);
+    queryClient.invalidateQueries({ queryKey: ["escritorio-estoque"] });
+  };
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -486,10 +519,15 @@ function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-        <Package className="w-4 h-4" /> Estoque de Sal por Retiro
-      </h2>
-      <p className="text-xs text-muted-foreground">Período: {MESES[mes - 1]} {ano} — somente visualização</p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+          <Package className="w-4 h-4" /> Estoque de Sal por Retiro
+        </h2>
+        <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
+          <Plus className="w-3 h-3" /> Adicionar
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Período: {MESES[mes - 1]} {ano}</p>
 
       {estoques.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">Nenhum retiro encontrado</p>
@@ -509,6 +547,13 @@ function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
           ))}
         </div>
       )}
+
+      <AdicionarEstoqueModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        retiros={retiros}
+        onConfirm={adicionarEstoque}
+      />
     </div>
   );
 }

@@ -1,0 +1,2 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE estoque_retiro;
+ALTER PUBLICATION supabase_realtime ADD TABLE movimentacoes_estoque;
