@@ -294,6 +294,47 @@ export type Database = {
           },
         ]
       }
+      escritorios: {
+        Row: {
+          ativo: boolean
+          criado_em: string | null
+          email: string
+          fazenda_id: string
+          id: string
+          nome: string
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string | null
+          email: string
+          fazenda_id: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string | null
+          email?: string
+          fazenda_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escritorios_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque_retiro: {
         Row: {
           ano: number
@@ -1268,7 +1309,9 @@ export type Database = {
         Returns: string
       }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
+      get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_escritorio: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
