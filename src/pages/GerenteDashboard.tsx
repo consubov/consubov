@@ -277,6 +277,19 @@ export default function GerenteDashboard() {
           )}
         </TabsContent>
 
+        {/* ===== ESTOQUE ===== */}
+        <TabsContent value="estoque" className="flex-1 overflow-auto p-4 mt-0">
+          <EstoqueDashboard
+            estoques={estoques}
+            transferencias={transferencias}
+            retiros={retirosList}
+            onAdicionarEstoque={adicionarEstoque}
+            onAprovar={aprovarTransferencia}
+            onRecusar={recusarTransferencia}
+            loading={estoqueLoading}
+          />
+        </TabsContent>
+
         {/* ===== RANKING ===== */}
         <TabsContent value="ranking" className="flex-1 overflow-auto p-4 space-y-6 mt-0">
           {/* Score de Eficiência */}
