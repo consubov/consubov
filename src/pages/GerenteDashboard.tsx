@@ -156,9 +156,17 @@ export default function GerenteDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-card h-10 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-5 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="painel" className="text-xs data-[state=active]:text-primary">Painel</TabsTrigger>
           <TabsTrigger value="retiros" className="text-xs data-[state=active]:text-primary">Retiros</TabsTrigger>
+          <TabsTrigger value="estoque" className="text-xs data-[state=active]:text-primary relative">
+            Estoque
+            {transferencias.filter(t => t.status === 'pendente').length > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
+                {transferencias.filter(t => t.status === 'pendente').length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="ranking" className="text-xs data-[state=active]:text-primary">Ranking</TabsTrigger>
           <TabsTrigger value="alertas" className="text-xs data-[state=active]:text-primary relative">
             Alertas
