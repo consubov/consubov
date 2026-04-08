@@ -115,15 +115,15 @@ export function usePainelData(filters: PainelFilters) {
       if (retiroId) retiroIds = [retiroId];
 
       if (retiroIds.length > 0) {
-        // Fetch ALL pastos (including inactive) so historical lancamentos aren't lost
+        // Fetch only ACTIVE pastos — consistent with PainelInteligencia and PDF reports
         const pastosRes = await supabase.from("pastos")
           .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, produto_id")
-          .in("retiro_id", retiroIds);
+          .in("retiro_id", retiroIds)
+          .eq("ativo", true);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        // Query lancamentos by fazenda_id + period directly (not by pasto IDs)
-        // This ensures we never miss historical data even if pastos were moved/deactivated
+        // Query lancamentos by fazenda_id + period directly
         let lancQuery = supabase.from("lancamentos")
           .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
           .eq("fazenda_id", fazendaId)
