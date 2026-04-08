@@ -723,10 +723,25 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        // Fechar ciclo atual
+        // Calcular num_dias real a partir dos lancamentos do período
+        const cicloParaFechar = ciclos.find(c => c.id === fecharPend.ciclo_id);
+        let numDiasReal = 30;
+        if (cicloParaFechar && fazendaId) {
+          const { data: lancDoCiclo } = await supabase.from("lancamentos")
+            .select("dias_no_pasto")
+            .eq("fazenda_id", fazendaId)
+            .eq("mes_referencia", cicloParaFechar.mes)
+            .eq("ano_referencia", cicloParaFechar.ano);
+          if (lancDoCiclo && lancDoCiclo.length > 0) {
+            numDiasReal = Math.max(...lancDoCiclo.map(l => l.dias_no_pasto));
+          }
+        }
+
+        // Fechar ciclo atual com num_dias real
         const { error: errFechar } = await supabase.from("ciclos").update({
           fechado: true,
           fechado_em: new Date().toISOString(),
+          num_dias: numDiasReal,
         }).eq("id", fecharPend.ciclo_id);
         if (errFechar) throw errFechar;
 
