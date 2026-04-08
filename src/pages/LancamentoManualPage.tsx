@@ -239,10 +239,12 @@ export default function LancamentoManualPage() {
         if (error) throw error;
       }
 
-      // Close the ciclo after all lancamentos are saved
+      // Close the ciclo after all lancamentos are saved — save actual num_dias
+      const numDiasReal = Math.max(...rows.map(r => r.dias_no_pasto), 1);
       const { error: fechErr } = await supabase.from("ciclos").update({
         fechado: true,
         fechado_em: new Date().toISOString(),
+        num_dias: numDiasReal,
       }).eq("id", cicloId);
       if (fechErr) throw fechErr;
 
