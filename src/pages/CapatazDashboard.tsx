@@ -1020,6 +1020,11 @@ export default function CapatazDashboard() {
           </Button>
         )}
 
+        {/* Estoque de Sal */}
+        {roleData.retiroId && fazendaId && (
+          <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
+        )}
+
         {syncError && (
           <Card className="border-destructive bg-destructive/10">
             <CardContent className="p-3">
