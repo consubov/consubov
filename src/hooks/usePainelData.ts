@@ -263,8 +263,9 @@ export function usePainelData(filters: PainelFilters) {
     const now = new Date();
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rPastoIds = new Set(rPastos.map(p => p.id));
-      const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+      // Filter lancamentos by retiro_id (not pasto_id) to correctly attribute data
+      // even when pastos are transferred between retiros
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
 
       // num_animais: lancamentos when available, fallback to pasto cadastro
