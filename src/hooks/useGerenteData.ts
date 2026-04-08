@@ -189,6 +189,9 @@ export function useGerenteData(filters?: GerenteFilters) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Realtime: auto-refresh when key tables change
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], loadData);
+
   useEffect(() => {
     const handleFocus = () => { void loadData(); };
     const handleVisibilityChange = () => {
