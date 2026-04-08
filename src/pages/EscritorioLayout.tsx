@@ -214,20 +214,7 @@ export default function EscritorioLayout() {
    RELATÓRIOS SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { fazendaId: string; fazendaNome: string; escritorioNome: string }) {
-  const now = new Date();
-  const [mes, setMes] = useState(now.getMonth() + 1);
-  const [ano, setAno] = useState(now.getFullYear());
-  const [retiroFiltro, setRetiroFiltro] = useState("todos");
   const [modalOpen, setModalOpen] = useState(false);
-
-  const { data: retiros = [] } = useQuery({
-    queryKey: ["escritorio-retiros-relatorio", fazendaId],
-    queryFn: async () => {
-      const { data } = await supabase.from("retiros").select("id, nome").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
-      return data || [];
-    },
-    enabled: !!fazendaId,
-  });
 
   return (
     <div className="space-y-4">
@@ -235,34 +222,9 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
         <BarChart3 className="w-4 h-4" /> Relatórios da Fazenda
       </h2>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {MESES.map((m, i) => (
-              <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((a) => (
-              <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>
-        <SelectTrigger><SelectValue placeholder="Filtrar por retiro" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="todos">Todos os retiros</SelectItem>
-          {retiros.map((r) => (
-            <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <p className="text-sm text-muted-foreground">
+        Gere relatórios de consumo por pasto, lote e animal com os mesmos filtros disponíveis para administradores e gerentes.
+      </p>
 
       <Button className="w-full gap-2" onClick={() => setModalOpen(true)}>
         <FileDown className="w-4 h-4" /> Gerar Relatório / Baixar PDF
@@ -274,9 +236,6 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
         fazendaId={fazendaId}
         fazendaNome={fazendaNome}
         geradoPor={escritorioNome}
-        initialMes={mes}
-        initialAno={ano}
-        lockedRetiroId={retiroFiltro === "todos" ? null : retiroFiltro}
       />
     </div>
   );
