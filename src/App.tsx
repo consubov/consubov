@@ -30,6 +30,7 @@ import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
 import MapaFazendaPage from "./pages/MapaFazendaPage";
 import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import LandingPage from "./pages/LandingPage";
+import EscritorioLayout from "./pages/EscritorioLayout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +118,8 @@ function RoleRedirect() {
       return <Navigate to="/gerente" replace />;
     case "capataz":
       return <Navigate to="/capataz" replace />;
+    case "escritorio":
+      return <Navigate to="/escritorio" replace />;
     default:
       return (
         <div className="min-h-screen flex items-center justify-center bg-background px-6">
