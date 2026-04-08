@@ -472,6 +472,7 @@ export type Database = {
         Row: {
           ano_referencia: number
           categoria: string | null
+          ciclo_id: string | null
           consumo_g_cab_dia: number | null
           created_at: string
           dias_no_pasto: number
@@ -491,6 +492,7 @@ export type Database = {
         Insert: {
           ano_referencia: number
           categoria?: string | null
+          ciclo_id?: string | null
           consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
@@ -510,6 +512,7 @@ export type Database = {
         Update: {
           ano_referencia?: number
           categoria?: string | null
+          ciclo_id?: string | null
           consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
@@ -527,6 +530,13 @@ export type Database = {
           status_consumo?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lancamentos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lancamentos_manuais_fazenda_id_fkey"
             columns: ["fazenda_id"]
