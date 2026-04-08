@@ -85,6 +85,12 @@ export default function GerenteDashboard() {
 
   const { abatidosMes, abatidosAno } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
   const { mortalidadesAno } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
+  const {
+    estoques, transferencias, loading: estoqueLoading,
+    adicionarEstoque, aprovarTransferencia, recusarTransferencia,
+  } = useEstoqueData(roleData.fazendaId, mes, ano);
+
+  const retirosList = useMemo(() => retirosComDados.map(r => ({ id: r.id!, nome: r.nome })).filter(r => r.id), [retirosComDados]);
 
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
