@@ -144,6 +144,42 @@ export function useEstoqueData(fazendaId: string | null | undefined, mes: number
     refresh();
   }, [refresh]);
 
+  // Realtime subscription for new transfers
+  useEffect(() => {
+    if (!fazendaId) return;
+
+    const channel = supabase
+      .channel(`estoque-transfers-${fazendaId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'transferencias_estoque',
+        },
+        (payload) => {
+          console.log('[Estoque Realtime] Nova transferência:', payload.new);
+          refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transferencias_estoque',
+        },
+        () => {
+          refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fazendaId, refresh]);
+
   const adicionarEstoque = async (retiroId: string, quantidade: number) => {
     if (!fazendaId) return;
 
