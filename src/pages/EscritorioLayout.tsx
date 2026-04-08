@@ -269,11 +269,10 @@ export default function EscritorioLayout() {
           open={relatorioOpen}
           onOpenChange={setRelatorioOpen}
           fazendaId={roleData.fazendaId ?? ""}
-          lancamentos={lancamentos}
-          retirosComDados={retirosComDados}
           fazendaNome={fazendaNome}
-          mes={mes}
-          ano={ano}
+          geradoPor={escritorioData?.nome ?? "Escritório"}
+          initialMes={mes}
+          initialAno={ano}
         />
       )}
     </div>
