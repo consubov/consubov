@@ -162,9 +162,17 @@ export default function EscritorioLayout() {
               <p className="text-xs opacity-80 truncate max-w-[180px]">{escritorioData?.nome ?? ""}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => {
+              queryClient.invalidateQueries();
+              window.location.reload();
+            }} className="text-primary-foreground hover:bg-primary/80" title="Atualizar dados">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-2 mt-1.5 text-xs opacity-90">
           <MapPin className="w-3 h-3" />
