@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   LogOut, QrCode, FileDown, Loader2, Search, Skull, MapPin, Check, Eye,
+  Package, BarChart3,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
@@ -21,6 +22,7 @@ import { buildFixedPages } from "@/lib/qrCodeLayout";
 import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
+import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 
 /* ─── types ─── */
 interface Pasto {
@@ -46,10 +48,20 @@ interface Mortalidade {
   pasto_nome?: string;
 }
 
+interface EstoqueItem {
+  retiro_id: string;
+  retiro_nome: string;
+  quantidade_atual: number;
+}
+
 /* ─── helpers ─── */
 const QR_PER_PAGE = 4;
 const QR_PER_ROW = 2;
 const PAGE_SIZE = 20;
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 function LoadingScreen() {
   return (
@@ -88,22 +100,51 @@ export default function EscritorioLayout() {
     enabled: !!fazendaId,
   });
 
-  /* mortality unread count – only mortalidade type, only for this fazenda */
+  /* mortality unread count */
+  const queryClient = useQueryClient();
   const { data: mortalidadeCount = 0 } = useQuery({
     queryKey: ["escritorio-mortalidade-count", fazendaId],
     queryFn: async () => {
       if (!fazendaId) return 0;
-      const { count } = await supabase
+      const { data } = await supabase
         .from("notificacoes")
-        .select("id", { count: "exact", head: true })
+        .select("id, dados")
         .eq("tipo", "mortalidade")
         .eq("lida", false);
-      return count ?? 0;
+      return (data || []).filter((n: any) => (n.dados as any)?.fazenda_id === fazendaId).length;
     },
     enabled: !!fazendaId,
   });
 
-  const [activeTab, setActiveTab] = useState("qrcodes");
+  /* realtime: mortalidades + notificacoes */
+  useEffect(() => {
+    if (!fazendaId) return;
+    const ch = supabase
+      .channel(`esc-realtime-${fazendaId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "mortalidades" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["escritorio-mortalidades"] });
+        queryClient.invalidateQueries({ queryKey: ["escritorio-mortalidade-count"] });
+        queryClient.invalidateQueries({ queryKey: ["escritorio-notif-mortalidade"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "notificacoes" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["escritorio-mortalidade-count"] });
+        queryClient.invalidateQueries({ queryKey: ["escritorio-notif-mortalidade"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["escritorio-retiros"] });
+        queryClient.invalidateQueries({ queryKey: ["escritorio-pastos-search"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "estoque_retiro" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["escritorio-estoque"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "movimentacoes_estoque" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["escritorio-estoque"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fazendaId, queryClient]);
+
+  const [activeTab, setActiveTab] = useState("relatorios");
 
   if (!fazendaId) return <LoadingScreen />;
 
@@ -130,14 +171,20 @@ export default function EscritorioLayout() {
         </div>
       </header>
 
-      {/* Tabs – only QR Codes and Mortalidade */}
+      {/* Tabs – 4 modules */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-2 rounded-none border-b bg-card h-10 flex-shrink-0">
-          <TabsTrigger value="qrcodes" className="text-xs data-[state=active]:text-primary gap-1">
+        <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-card h-10 flex-shrink-0">
+          <TabsTrigger value="relatorios" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
+            <BarChart3 className="w-3.5 h-3.5" /> Relatórios
+          </TabsTrigger>
+          <TabsTrigger value="qrcodes" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
             <QrCode className="w-3.5 h-3.5" /> QR Codes
           </TabsTrigger>
-          <TabsTrigger value="mortalidade" className="text-xs data-[state=active]:text-primary gap-1 relative">
-            <Skull className="w-3.5 h-3.5" /> Mortalidade
+          <TabsTrigger value="estoque" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
+            <Package className="w-3.5 h-3.5" /> Estoque
+          </TabsTrigger>
+          <TabsTrigger value="mortalidade" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1 relative">
+            <Skull className="w-3.5 h-3.5" /> Alertas
             {mortalidadeCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
                 {mortalidadeCount}
@@ -146,10 +193,15 @@ export default function EscritorioLayout() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="relatorios" className="flex-1 overflow-auto p-4 mt-0">
+          <EscritorioRelatorios fazendaId={fazendaId} fazendaNome={fazendaNome} escritorioNome={escritorioData?.nome ?? "Escritório"} />
+        </TabsContent>
         <TabsContent value="qrcodes" className="flex-1 overflow-auto p-4 mt-0">
           <EscritorioQrCodes fazendaId={fazendaId} />
         </TabsContent>
-
+        <TabsContent value="estoque" className="flex-1 overflow-auto p-4 mt-0">
+          <EscritorioEstoque fazendaId={fazendaId} />
+        </TabsContent>
         <TabsContent value="mortalidade" className="flex-1 overflow-auto p-4 mt-0">
           <EscritorioMortalidade fazendaId={fazendaId} />
         </TabsContent>
@@ -159,16 +211,86 @@ export default function EscritorioLayout() {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   RELATÓRIOS SECTION
+   ════════════════════════════════════════════════════════════════════ */
+function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { fazendaId: string; fazendaNome: string; escritorioNome: string }) {
+  const now = new Date();
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [ano, setAno] = useState(now.getFullYear());
+  const [retiroFiltro, setRetiroFiltro] = useState("todos");
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const { data: retiros = [] } = useQuery({
+    queryKey: ["escritorio-retiros-relatorio", fazendaId],
+    queryFn: async () => {
+      const { data } = await supabase.from("retiros").select("id, nome").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
+      return data || [];
+    },
+    enabled: !!fazendaId,
+  });
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+        <BarChart3 className="w-4 h-4" /> Relatórios da Fazenda
+      </h2>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {MESES.map((m, i) => (
+              <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((a) => (
+              <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>
+        <SelectTrigger><SelectValue placeholder="Filtrar por retiro" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="todos">Todos os retiros</SelectItem>
+          {retiros.map((r) => (
+            <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Button className="w-full gap-2" onClick={() => setModalOpen(true)}>
+        <FileDown className="w-4 h-4" /> Gerar Relatório / Baixar PDF
+      </Button>
+
+      <ExportarRelatorioModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        fazendaId={fazendaId}
+        fazendaNome={fazendaNome}
+        geradoPor={escritorioNome}
+        initialMes={mes}
+        initialAno={ano}
+        lockedRetiroId={retiroFiltro === "todos" ? null : retiroFiltro}
+      />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
    QR CODES SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
-  const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [selectedRetiro, setSelectedRetiro] = useState("");
   const [generatedPastos, setGeneratedPastos] = useState<Pasto[]>([]);
   const [generating, setGenerating] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
-  // search
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Pasto[]>([]);
   const [searchPage, setSearchPage] = useState(0);
@@ -179,16 +301,14 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
 
   const qrPages = buildFixedPages(generatedPastos, QR_PER_PAGE);
 
-  // load retiros of this fazenda only
-  useEffect(() => {
-    supabase
-      .from("retiros")
-      .select("id, nome")
-      .eq("fazenda_id", fazendaId)
-      .eq("ativo", true)
-      .order("nome")
-      .then(({ data }) => setRetiros(data || []));
-  }, [fazendaId]);
+  const { data: retiros = [] } = useQuery({
+    queryKey: ["escritorio-retiros", fazendaId],
+    queryFn: async () => {
+      const { data } = await supabase.from("retiros").select("id, nome").eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
+      return (data || []) as Retiro[];
+    },
+    enabled: !!fazendaId,
+  });
 
   const retiroIds = useMemo(() => retiros.map((r) => r.id), [retiros]);
   const retiroMap = useMemo(() => new Map(retiros.map((r) => [r.id, r.nome])), [retiros]);
@@ -199,24 +319,15 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
     [retiroMap],
   );
 
-  // search pastos (fazenda-scoped via retiroIds)
   const searchPastos = useCallback(
     async (term: string, page: number, append: boolean) => {
-      if (retiroIds.length === 0) {
-        setSearchResults([]);
-        return;
-      }
+      if (retiroIds.length === 0) { setSearchResults([]); return; }
       setSearching(true);
       let query = supabase
-        .from("pastos")
-        .select("id, qr_uuid, nome, retiro_id")
-        .in("retiro_id", retiroIds)
-        .eq("ativo", true)
-        .order("nome")
+        .from("pastos").select("id, qr_uuid, nome, retiro_id")
+        .in("retiro_id", retiroIds).eq("ativo", true).order("nome")
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
       if (term.trim()) query = query.ilike("nome", `%${term.trim()}%`);
-
       const { data } = await query;
       const enriched = enrichPastos(data || []);
       if (append) setSearchResults((prev) => [...prev, ...enriched]);
@@ -228,10 +339,7 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
   );
 
   useEffect(() => {
-    if (retiroIds.length > 0) {
-      setSearchPage(0);
-      searchPastos(searchTerm, 0, false);
-    }
+    if (retiroIds.length > 0) { setSearchPage(0); searchPastos(searchTerm, 0, false); }
   }, [searchTerm, searchPastos, retiroIds]);
 
   useEffect(() => {
@@ -250,32 +358,18 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
   async function generateByRetiro(retiroId: string) {
     setGenerating(true);
     try {
-      const { data } = await supabase
-        .from("pastos")
-        .select("id, qr_uuid, nome, retiro_id")
-        .eq("retiro_id", retiroId)
-        .eq("ativo", true)
-        .order("nome");
+      const { data } = await supabase.from("pastos").select("id, qr_uuid, nome, retiro_id").eq("retiro_id", retiroId).eq("ativo", true).order("nome");
       setGeneratedPastos(enrichPastos(data || []));
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
   }
 
   async function generateAll() {
     if (retiroIds.length === 0) return;
     setGenerating(true);
     try {
-      const { data } = await supabase
-        .from("pastos")
-        .select("id, qr_uuid, nome, retiro_id")
-        .in("retiro_id", retiroIds)
-        .eq("ativo", true)
-        .order("nome");
+      const { data } = await supabase.from("pastos").select("id, qr_uuid, nome, retiro_id").in("retiro_id", retiroIds).eq("ativo", true).order("nome");
       setGeneratedPastos(enrichPastos(data || []));
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
   }
 
   async function handleExportPdf() {
@@ -299,9 +393,7 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
     } catch (e) {
       console.error(e);
       toast.error("Erro ao gerar o PDF.");
-    } finally {
-      setExportingPdf(false);
-    }
+    } finally { setExportingPdf(false); }
   }
 
   return (
@@ -316,7 +408,6 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
         )}
       </div>
 
-      {/* Filters */}
       <div className="space-y-2">
         <Select value={selectedRetiro} onValueChange={setSelectedRetiro}>
           <SelectTrigger><SelectValue placeholder="Filtrar por retiro" /></SelectTrigger>
@@ -327,18 +418,12 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
             ))}
           </SelectContent>
         </Select>
-
-        <Button
-          className="w-full"
-          onClick={() => (selectedRetiro && selectedRetiro !== "__all__") ? generateByRetiro(selectedRetiro) : generateAll()}
-          disabled={generating}
-        >
+        <Button className="w-full" onClick={() => (selectedRetiro && selectedRetiro !== "__all__") ? generateByRetiro(selectedRetiro) : generateAll()} disabled={generating}>
           {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
           Gerar QR Codes
         </Button>
       </div>
 
-      {/* Individual search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input placeholder="Buscar pasto por nome..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
@@ -357,12 +442,9 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
           <p className="py-4 text-center text-sm text-muted-foreground">Nenhum pasto encontrado</p>
         )}
         <div ref={loadMoreRef} className="h-1" />
-        {searching && (
-          <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-        )}
+        {searching && <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
       </div>
 
-      {/* Preview */}
       {generatedPastos.length > 0 && (
         <div className="space-y-4">
           <p className="text-sm font-semibold text-foreground">{generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""}</p>
@@ -397,13 +479,80 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   ESTOQUE SECTION (READ-ONLY)
+   ════════════════════════════════════════════════════════════════════ */
+function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
+  const now = new Date();
+  const mes = now.getMonth() + 1;
+  const ano = now.getFullYear();
+
+  const { data: estoques = [], isLoading } = useQuery({
+    queryKey: ["escritorio-estoque", fazendaId, mes, ano],
+    queryFn: async () => {
+      const { data: retiros } = await supabase
+        .from("retiros").select("id, nome")
+        .eq("fazenda_id", fazendaId).eq("ativo", true).order("nome");
+      if (!retiros || retiros.length === 0) return [];
+
+      const retiroIds = retiros.map((r) => r.id);
+      const retiroMap = new Map(retiros.map((r) => [r.id, r.nome]));
+
+      const { data: estoqueData } = await supabase
+        .from("estoque_retiro").select("retiro_id, quantidade_atual")
+        .in("retiro_id", retiroIds).eq("mes", mes).eq("ano", ano);
+
+      return retiros.map((r): EstoqueItem => {
+        const est = estoqueData?.find((e) => e.retiro_id === r.id);
+        return {
+          retiro_id: r.id,
+          retiro_nome: retiroMap.get(r.id) ?? r.nome,
+          quantidade_atual: est?.quantidade_atual ?? 0,
+        };
+      });
+    },
+    enabled: !!fazendaId,
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+        <Package className="w-4 h-4" /> Estoque de Sal por Retiro
+      </h2>
+      <p className="text-xs text-muted-foreground">Período: {MESES[mes - 1]} {ano} — somente visualização</p>
+
+      {estoques.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">Nenhum retiro encontrado</p>
+      ) : (
+        <div className="space-y-2">
+          {estoques.map((e) => (
+            <Card key={e.retiro_id}>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{e.retiro_nome}</p>
+                </div>
+                <Badge variant={e.quantidade_atual > 0 ? "secondary" : "destructive"} className="text-sm">
+                  {e.quantidade_atual} saco{e.quantidade_atual !== 1 ? "s" : ""}
+                </Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
    MORTALIDADE SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Mortalidade | null>(null);
 
-  // Fetch mortalidades directly – only those with foto_url
   const { data: mortalidades = [], isLoading } = useQuery({
     queryKey: ["escritorio-mortalidades", fazendaId],
     queryFn: async () => {
@@ -417,18 +566,14 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         .limit(100);
 
       if (!data || data.length === 0) return [];
-
-      // enrich with pasto name
       const pastoIds = [...new Set(data.map((m) => m.pasto_id))];
       const { data: pastos } = await supabase.from("pastos").select("id, nome").in("id", pastoIds);
       const pastoMap = new Map((pastos || []).map((p) => [p.id, p.nome]));
-
       return data.map((m) => ({ ...m, pasto_nome: pastoMap.get(m.pasto_id) ?? "—" })) as Mortalidade[];
     },
     enabled: !!fazendaId,
   });
 
-  // Fetch unread notificacoes of tipo mortalidade
   const { data: notificacoes = [] } = useQuery({
     queryKey: ["escritorio-notif-mortalidade", fazendaId],
     queryFn: async () => {
@@ -438,7 +583,6 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         .eq("tipo", "mortalidade")
         .eq("lida", false)
         .order("criado_em", { ascending: false });
-      // filter by fazenda_id in dados
       return (data || []).filter((n: any) => {
         const d = n.dados as Record<string, any> | null;
         return d?.fazenda_id === fazendaId;
@@ -462,22 +606,17 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
     toast.success("Todas marcadas como lidas");
   };
 
-  // If no mortalidades at all, show nothing (clean screen)
+  // Clean screen if no data
   if (!isLoading && mortalidades.length === 0 && notificacoes.length === 0) {
     return null;
   }
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="space-y-3">
-      {/* Unread notifications header */}
       {notificacoes.length > 0 && (
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -489,15 +628,12 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         </div>
       )}
 
-      {/* Mortality records */}
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Registros de Mortalidade</h2>
       {mortalidades.map((m) => {
-        // check if there's an unread notif for this pasto
         const relatedNotif = notificacoes.find((n: any) => {
           const d = n.dados as Record<string, any> | null;
           return d?.pasto_id === m.pasto_id;
         });
-
         return (
           <Card key={m.id} className={`cursor-pointer hover:shadow-md transition-shadow ${relatedNotif ? "border-destructive/50 bg-destructive/5" : ""}`} onClick={() => setSelected(m)}>
             <CardContent className="p-3 flex items-center gap-3">
@@ -523,7 +659,6 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         );
       })}
 
-      {/* Detail dialog */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
