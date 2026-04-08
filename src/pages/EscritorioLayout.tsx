@@ -24,6 +24,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import AdicionarEstoqueModal from "@/components/estoque/AdicionarEstoqueModal";
+import EstoqueDashboard from "@/components/estoque/EstoqueDashboard";
+import { useEstoqueData } from "@/hooks/useEstoqueData";
 
 /* ─── types ─── */
 interface Pasto {
