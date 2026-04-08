@@ -11,6 +11,7 @@ import {
   LogOut, QrCode, FileDown, Loader2, Search, Skull, MapPin, Check, Eye,
   Package, BarChart3,
 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { supabase } from "@/integrations/supabase/client";
