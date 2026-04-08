@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   LogOut, QrCode, FileDown, Loader2, Search, Skull, MapPin, Check, Eye,
-  Package, BarChart3, RefreshCw,
+  Package, BarChart3, RefreshCw, Plus,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
@@ -23,6 +23,7 @@ import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import AdicionarEstoqueModal from "@/components/estoque/AdicionarEstoqueModal";
 
 /* ─── types ─── */
 interface Pasto {
