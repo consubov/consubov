@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
-import { readPainelPeriodoFromSearchParams, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
+import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,10 +50,8 @@ export default function AdminFazendaPainelPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const periodoDaUrl = readPainelPeriodoFromSearchParams(searchParams);
-    if (periodoDaUrl) {
-      setPeriodo(periodoDaUrl.mes, periodoDaUrl.ano);
-    }
+    const periodoInicial = resolvePainelPeriodo(searchParams);
+    setPeriodo(periodoInicial.mes, periodoInicial.ano);
   }, [searchParams, setPeriodo]);
 
   useEffect(() => {
@@ -74,12 +72,12 @@ export default function AdminFazendaPainelPage() {
   }), [fazendaId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
-  const { abatidosMes, abatidosAno } = useAbatesData(fazendaId, mes, ano);
-  const { mortalidadesAno } = useMortalidadesData(fazendaId, ano);
+  const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(fazendaId, mes, ano);
+  const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(fazendaId, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refreshAbates(), refreshMortalidades()]);
     setRefreshing(false);
   };
 

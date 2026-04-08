@@ -154,14 +154,17 @@ export function usePainelData(filters: PainelFilters) {
 
   // Refetch when the tab/window regains focus (ensures fresh data on screen access)
   useEffect(() => {
-    const handleFocus = () => { loadData(); };
+    const handleFocus = () => { void loadData(); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void loadData();
+    };
+
     window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") loadData();
-    });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [loadData]);
 

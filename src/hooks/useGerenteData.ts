@@ -168,13 +168,13 @@ export function useGerenteData(filters?: GerenteFilters) {
 
       const retiroIds = retirosList.map(r => r.id);
       if (retiroIds.length > 0) {
-        // Fetch ALL pastos (including inactive) so historical data is preserved
-        const pastosRes = await supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
-          .in("retiro_id", retiroIds);
+        const pastosRes = await supabase.from("pastos")
+          .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
+          .in("retiro_id", retiroIds)
+          .eq("ativo", true);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        // Query lancamentos by fazenda_id + period directly (not filtered by pasto IDs)
         let lancQuery = supabase.from("lancamentos")
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
@@ -217,6 +217,21 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
+    const handleFocus = () => { void loadData(); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void loadData();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadData]);
+
+  useEffect(() => {
     const channel = supabase.channel("gerente-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "observacoes" }, () => loadData())
@@ -232,7 +247,6 @@ export function useGerenteData(filters?: GerenteFilters) {
     const pastoIdsComLancamento = new Set(lancamentos.map(item => item.pasto_id));
     const pastosNoPeriodo = pastos.filter(pasto => pastoIdsComLancamento.has(pasto.id));
 
-    // Animais: lancamentos quando disponível, senão cadastro do pasto
     const animaisPorPasto = new Map<string, number>();
     for (const l of lancamentos) {
       const atual = animaisPorPasto.get(l.pasto_id) ?? 0;
@@ -298,8 +312,7 @@ export function useGerenteData(filters?: GerenteFilters) {
 
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rPastoIds = new Set(rPastos.map(p => p.id));
-      const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
       // Animais: lancamentos se disponível, senão cadastro do pasto
       const animaisPerPasto = new Map<string, number>();
