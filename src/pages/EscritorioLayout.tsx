@@ -618,9 +618,14 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
     toast.success("Todas marcadas como lidas");
   };
 
-  // Clean screen if no data
+  // Show empty message if no data
   if (!isLoading && mortalidades.length === 0 && notificacoes.length === 0) {
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Skull className="w-10 h-10 text-muted-foreground/40 mb-3" />
+        <p className="text-sm text-muted-foreground">Nenhum alerta de mortalidade para a fazenda</p>
+      </div>
+    );
   }
 
   if (isLoading) {
