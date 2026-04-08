@@ -29,6 +29,7 @@ import CiclosPage from "./pages/CiclosPage";
 import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
 import MapaFazendaPage from "./pages/MapaFazendaPage";
 import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
+import EscritoriosPage from "./pages/EscritoriosPage";
 import LandingPage from "./pages/LandingPage";
 import EscritorioLayout from "./pages/EscritorioLayout";
 import NotFound from "./pages/NotFound";
