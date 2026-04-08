@@ -115,15 +115,15 @@ export function usePainelData(filters: PainelFilters) {
       if (retiroId) retiroIds = [retiroId];
 
       if (retiroIds.length > 0) {
-        // Fetch ALL pastos (including inactive) so historical lancamentos aren't lost
+        // Fetch only ACTIVE pastos — consistent with PainelInteligencia and PDF reports
         const pastosRes = await supabase.from("pastos")
           .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, produto_id")
-          .in("retiro_id", retiroIds);
+          .in("retiro_id", retiroIds)
+          .eq("ativo", true);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        // Query lancamentos by fazenda_id + period directly (not by pasto IDs)
-        // This ensures we never miss historical data even if pastos were moved/deactivated
+        // Query lancamentos by fazenda_id + period directly
         let lancQuery = supabase.from("lancamentos")
           .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
           .eq("fazenda_id", fazendaId)
@@ -151,6 +151,19 @@ export function usePainelData(filters: PainelFilters) {
   }, [fazendaId, retiroId, mes, ano]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Refetch when the tab/window regains focus (ensures fresh data on screen access)
+  useEffect(() => {
+    const handleFocus = () => { loadData(); };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") loadData();
+    });
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [loadData]);
 
   // Realtime
   useEffect(() => {
@@ -250,8 +263,9 @@ export function usePainelData(filters: PainelFilters) {
     const now = new Date();
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rPastoIds = new Set(rPastos.map(p => p.id));
-      const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+      // Filter lancamentos by retiro_id (not pasto_id) to correctly attribute data
+      // even when pastos are transferred between retiros
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
 
       // num_animais: lancamentos when available, fallback to pasto cadastro
