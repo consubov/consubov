@@ -673,8 +673,8 @@ export default function CapatazDashboard() {
 
         // Subtrair estoque automaticamente após salga sincronizada
         if (roleData.retiroId && l.sacos > 0) {
-          const mesRef = dataLanc.getMonth() + 1;
-          const anoRef = dataLanc.getFullYear();
+          const mesEstoque = mesRef;
+          const anoEstoque = anoRef;
           const { data: estoque } = await supabase
             .from("estoque_retiro")
             .select("id, quantidade_atual")
