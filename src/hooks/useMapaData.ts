@@ -6,6 +6,7 @@ export interface PastoMapaData {
   id: string;
   pasto_id: string;
   coordenadas: number[][];
+  cor: string;
   pasto_nome: string;
   num_animais: number;
   peso_medio_kg: number | null;
