@@ -183,6 +183,7 @@ export default function MapaFazendaPage() {
             id: p.id,
             pasto_id: p.pasto_id,
             coordenadas: p.coordenadas,
+            cor: p.cor || "#16a34a",
           }))}
           onSaved={() => {
             setEditing(false);
