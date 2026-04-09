@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, Scissors, Scale, Info } from "lucide-react";
+import { ArrowRightLeft, Scissors, Scale, Info, Plus } from "lucide-react";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
 interface Props {
