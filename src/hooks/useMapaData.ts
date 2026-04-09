@@ -49,7 +49,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
 
     const { data: pastosMapa } = await supabase
       .from("pastos_mapa")
-      .select("id, pasto_id, coordenadas")
+      .select("id, pasto_id, coordenadas, cor")
       .eq("mapa_id", mapaRow.id);
 
     if (!pastosMapa || pastosMapa.length === 0) {
@@ -137,6 +137,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
         id: pm.id,
         pasto_id: pm.pasto_id,
         coordenadas: (pm.coordenadas as any) || [],
+        cor: (pm as any).cor || "#16a34a",
         pasto_nome: pasto?.nome || "Pasto",
         num_animais: pasto?.num_animais || 0,
         peso_medio_kg: pasto?.peso_medio_kg ?? null,
