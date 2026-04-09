@@ -39,7 +39,7 @@ import {
   type FecharMesPendente,
 } from "@/lib/offlineDb";
 
-type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
+type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
 
 interface PersistedCapatazState {
