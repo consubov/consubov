@@ -1333,6 +1333,76 @@ export type Database = {
           },
         ]
       }
+      transferencias_retiros: {
+        Row: {
+          created_at: string
+          criado_por: string | null
+          data_aceite: string | null
+          data_solicitacao: string
+          fazenda_id: string
+          id: string
+          observacao: string | null
+          peso_medio: number | null
+          quantidade: number
+          retiro_destino_id: string
+          retiro_origem_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criado_por?: string | null
+          data_aceite?: string | null
+          data_solicitacao?: string
+          fazenda_id: string
+          id?: string
+          observacao?: string | null
+          peso_medio?: number | null
+          quantidade: number
+          retiro_destino_id: string
+          retiro_origem_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string | null
+          data_aceite?: string | null
+          data_solicitacao?: string
+          fazenda_id?: string
+          id?: string
+          observacao?: string | null
+          peso_medio?: number | null
+          quantidade?: number
+          retiro_destino_id?: string
+          retiro_origem_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_retiros_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_retiros_retiro_destino_id_fkey"
+            columns: ["retiro_destino_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_retiros_retiro_origem_id_fkey"
+            columns: ["retiro_origem_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitas: {
         Row: {
           ciclo_id: string | null
