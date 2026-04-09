@@ -47,6 +47,11 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
             </>
           )}
 
+          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={onEntrada}>
+            <Plus className="w-5 h-5" />
+            Adicionar animais
+          </Button>
+
           <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={onEditarPeso}>
             <Scale className="w-5 h-5 text-primary" />
             Editar peso médio

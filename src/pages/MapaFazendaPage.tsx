@@ -13,6 +13,7 @@ import MapaActionSheet from "@/components/mapa/MapaActionSheet";
 import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
 import MapaAbateModal from "@/components/mapa/MapaAbateModal";
 import EditarPesoModal from "@/components/mapa/EditarPesoModal";
+import MapaEntradaAnimaisModal from "@/components/mapa/MapaEntradaAnimaisModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
