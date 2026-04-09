@@ -18,11 +18,30 @@ export interface PastoMapaData {
   ultima_salga: string | null;
 }
 
+export interface LinhaMapaData {
+  id: string;
+  coordenadas: number[][];
+  cor: string;
+  tipo: string;
+  rotulo: string | null;
+}
+
+export interface ElementoMapaData {
+  id: string;
+  tipo: string;
+  emoji: string;
+  posicao_x: number;
+  posicao_y: number;
+  rotulo: string | null;
+}
+
 export interface MapaData {
   id: string;
   fazenda_id: string;
   imagem_url: string;
   pastos: PastoMapaData[];
+  linhas: LinhaMapaData[];
+  elementos: ElementoMapaData[];
 }
 
 export function useMapaData(fazendaId: string | undefined, mes: number, ano: number, retiroId?: string) {
@@ -47,17 +66,38 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       return;
     }
 
-    const { data: pastosMapa } = await supabase
-      .from("pastos_mapa")
-      .select("id, pasto_id, coordenadas, cor")
-      .eq("mapa_id", mapaRow.id);
+    // Load pastos_mapa, linhas_mapa, elementos_mapa in parallel
+    const [pastosMapaRes, linhasRes, elementosRes] = await Promise.all([
+      supabase.from("pastos_mapa").select("id, pasto_id, coordenadas, cor").eq("mapa_id", mapaRow.id),
+      supabase.from("linhas_mapa").select("id, coordenadas, cor, tipo, rotulo").eq("mapa_id", mapaRow.id),
+      supabase.from("elementos_mapa").select("id, tipo, emoji, posicao_x, posicao_y, rotulo").eq("mapa_id", mapaRow.id),
+    ]);
 
-    if (!pastosMapa || pastosMapa.length === 0) {
+    const pastosMapa = pastosMapaRes.data ?? [];
+    const linhas: LinhaMapaData[] = (linhasRes.data ?? []).map((l) => ({
+      id: l.id,
+      coordenadas: (l.coordenadas as any) || [],
+      cor: l.cor,
+      tipo: l.tipo,
+      rotulo: l.rotulo,
+    }));
+    const elementos: ElementoMapaData[] = (elementosRes.data ?? []).map((e) => ({
+      id: e.id,
+      tipo: e.tipo,
+      emoji: e.emoji,
+      posicao_x: Number(e.posicao_x),
+      posicao_y: Number(e.posicao_y),
+      rotulo: e.rotulo,
+    }));
+
+    if (pastosMapa.length === 0) {
       setMapa({
         id: mapaRow.id,
         fazenda_id: mapaRow.fazenda_id,
         imagem_url: mapaRow.imagem_url,
         pastos: [],
+        linhas,
+        elementos,
       });
       setLoading(false);
       return;
@@ -65,7 +105,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
 
     let pastoIds = pastosMapa.map((pm) => pm.pasto_id);
 
-    // If retiroId is provided, filter to only pastos belonging to that retiro
     if (retiroId) {
       const { data: retiroPastos } = await supabase
         .from("pastos")
@@ -81,6 +120,8 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
         fazenda_id: mapaRow.fazenda_id,
         imagem_url: mapaRow.imagem_url,
         pastos: [],
+        linhas,
+        elementos,
       });
       setLoading(false);
       return;
@@ -88,41 +129,23 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
 
     const filteredPastosMapa = pastosMapa.filter((pm) => pastoIds.includes(pm.pasto_id));
 
-    const { data: pastos } = await supabase
-      .from("pastos")
-      .select("id, nome, num_animais, peso_medio_kg, categoria, sexo")
-      .in("id", pastoIds);
+    const [pastosRes, lancamentosRes, movimentacoesRes] = await Promise.all([
+      supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo").in("id", pastoIds),
+      supabase.from("lancamentos").select("pasto_id, consumo_g_cab_dia, status_consumo, created_at").in("pasto_id", pastoIds).eq("mes_referencia", mes).eq("ano_referencia", ano).order("created_at", { ascending: false }),
+      supabase.from("movimentacoes_animais").select("pasto_origem_id, pasto_destino_id, data").or(pastoIds.map((id) => `pasto_origem_id.eq.${id},pasto_destino_id.eq.${id}`).join(",")).order("data", { ascending: false }).limit(100),
+    ]);
 
-    const { data: lancamentos } = await supabase
-      .from("lancamentos")
-      .select("pasto_id, consumo_g_cab_dia, status_consumo, created_at")
-      .in("pasto_id", pastoIds)
-      .eq("mes_referencia", mes)
-      .eq("ano_referencia", ano)
-      .order("created_at", { ascending: false });
-
-    const { data: movimentacoes } = await supabase
-      .from("movimentacoes_animais")
-      .select("pasto_origem_id, pasto_destino_id, data")
-      .or(pastoIds.map((id) => `pasto_origem_id.eq.${id},pasto_destino_id.eq.${id}`).join(","))
-      .order("data", { ascending: false })
-      .limit(100);
-
-    const pastosMap = new Map((pastos ?? []).map((p) => [p.id, p]));
+    const pastosMap = new Map((pastosRes.data ?? []).map((p) => [p.id, p]));
 
     const consumoMap = new Map<string, { consumo: number | null; status: string | null; data: string | null }>();
-    for (const l of lancamentos ?? []) {
+    for (const l of lancamentosRes.data ?? []) {
       if (!consumoMap.has(l.pasto_id)) {
-        consumoMap.set(l.pasto_id, {
-          consumo: l.consumo_g_cab_dia,
-          status: l.status_consumo,
-          data: l.created_at,
-        });
+        consumoMap.set(l.pasto_id, { consumo: l.consumo_g_cab_dia, status: l.status_consumo, data: l.created_at });
       }
     }
 
     const movMap = new Map<string, string>();
-    for (const m of movimentacoes ?? []) {
+    for (const m of movimentacoesRes.data ?? []) {
       for (const pid of [m.pasto_origem_id, m.pasto_destino_id]) {
         if (pastoIds.includes(pid) && !movMap.has(pid)) {
           movMap.set(pid, m.data);
@@ -155,6 +178,8 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
       fazenda_id: mapaRow.fazenda_id,
       imagem_url: mapaRow.imagem_url,
       pastos: pastosData,
+      linhas,
+      elementos,
     });
     setLoading(false);
   }, [fazendaId, mes, ano, retiroId]);
@@ -163,7 +188,6 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
     load();
   }, [load]);
 
-  // Realtime: auto-refresh map when pastos, lancamentos or movimentacoes change
   useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades"], load);
 
   return { loading, mapa, refresh: load };

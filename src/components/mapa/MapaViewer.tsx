@@ -48,18 +48,12 @@ function splitWordToFit(word: string, maxWidth: number, fontSize: number, isBold
   const chars = Array.from(word);
   const parts: string[] = [];
   let current = "";
-
   chars.forEach((char) => {
     const next = `${current}${char}`;
-    if (!current || estimateTextWidth(next, fontSize, isBold) <= maxWidth) {
-      current = next;
-      return;
-    }
-
+    if (!current || estimateTextWidth(next, fontSize, isBold) <= maxWidth) { current = next; return; }
     parts.push(current);
     current = char;
   });
-
   if (current) parts.push(current);
   return parts;
 }
@@ -67,45 +61,23 @@ function splitWordToFit(word: string, maxWidth: number, fontSize: number, isBold
 function wrapText(text: string, maxWidth: number, fontSize: number, isBold = false) {
   const normalized = text.trim();
   if (!normalized) return [""];
-
   const words = normalized.split(/\s+/);
   const lines: string[] = [];
   let currentLine = "";
-
   const pushWord = (word: string) => {
     if (estimateTextWidth(word, fontSize, isBold) <= maxWidth) {
-      if (!currentLine) {
-        currentLine = word;
-        return;
-      }
-
+      if (!currentLine) { currentLine = word; return; }
       const candidate = `${currentLine} ${word}`;
-      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) {
-        currentLine = candidate;
-      } else {
-        lines.push(currentLine);
-        currentLine = word;
-      }
+      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) { currentLine = candidate; } else { lines.push(currentLine); currentLine = word; }
       return;
     }
-
     const chunks = splitWordToFit(word, maxWidth, fontSize, isBold);
     chunks.forEach((chunk) => {
-      if (!currentLine) {
-        currentLine = chunk;
-        return;
-      }
-
+      if (!currentLine) { currentLine = chunk; return; }
       const candidate = `${currentLine} ${chunk}`;
-      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) {
-        currentLine = candidate;
-      } else {
-        lines.push(currentLine);
-        currentLine = chunk;
-      }
+      if (estimateTextWidth(candidate, fontSize, isBold) <= maxWidth) { currentLine = candidate; } else { lines.push(currentLine); currentLine = chunk; }
     });
   };
-
   words.forEach(pushWord);
   if (currentLine) lines.push(currentLine);
   return lines;
@@ -113,38 +85,23 @@ function wrapText(text: string, maxWidth: number, fontSize: number, isBold = fal
 
 function pointInPolygon(x: number, y: number, coords: number[][]) {
   let inside = false;
-
   for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
     const [xi, yi] = coords[i];
     const [xj, yj] = coords[j];
-
-    const intersects =
-      yi > y !== yj > y &&
-      x < ((xj - xi) * (y - yi)) / (yj - yi || Number.EPSILON) + xi;
-
+    const intersects = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi || Number.EPSILON) + xi;
     if (intersects) inside = !inside;
   }
-
   return inside;
 }
 
 function getBounds(coords: number[][]) {
   const xs = coords.map(([x]) => x);
   const ys = coords.map(([, y]) => y);
-
-  return {
-    minX: Math.min(...xs),
-    maxX: Math.max(...xs),
-    minY: Math.min(...ys),
-    maxY: Math.max(...ys),
-    width: Math.max(...xs) - Math.min(...xs),
-    height: Math.max(...ys) - Math.min(...ys),
-  };
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
 }
 
 function getCentroid(coords: number[][]) {
   if (!coords.length) return { x: 0, y: 0 };
-
   const x = coords.reduce((sum, [cx]) => sum + cx, 0) / coords.length;
   const y = coords.reduce((sum, [, cy]) => sum + cy, 0) / coords.length;
   return { x, y };
@@ -155,88 +112,50 @@ function buildLabelLines(pasto: PastoMapaData, fontSize: number, maxTextWidth: n
   const nameLines = wrapText(pasto.pasto_nome, maxTextWidth, fontSize, true);
   const dataFontSize = Math.max(fontSize * 0.78, 6);
   const dataLines = wrapText(dataText, maxTextWidth, dataFontSize, false);
-
   const lines: LabelLine[] = [
-    ...nameLines.map((text) => ({
-      text,
-      fontSize,
-      fontWeight: 700,
-      width: estimateTextWidth(text, fontSize, true),
-    })),
-    ...dataLines.map((text) => ({
-      text,
-      fontSize: dataFontSize,
-      fontWeight: 400,
-      width: estimateTextWidth(text, dataFontSize, false),
-    })),
+    ...nameLines.map((text) => ({ text, fontSize, fontWeight: 700 as const, width: estimateTextWidth(text, fontSize, true) })),
+    ...dataLines.map((text) => ({ text, fontSize: dataFontSize, fontWeight: 400 as const, width: estimateTextWidth(text, dataFontSize, false) })),
   ];
-
   return lines;
 }
 
-function rectFitsPolygon(
-  centerX: number,
-  centerY: number,
-  width: number,
-  height: number,
-  coords: number[][],
-) {
+function rectFitsPolygon(centerX: number, centerY: number, width: number, height: number, coords: number[][]) {
   const halfW = width / 2;
   const halfH = height / 2;
-
   const points: Array<[number, number]> = [
-    [centerX, centerY],
-    [centerX - halfW, centerY - halfH],
-    [centerX + halfW, centerY - halfH],
-    [centerX - halfW, centerY + halfH],
-    [centerX + halfW, centerY + halfH],
-    [centerX, centerY - halfH],
-    [centerX, centerY + halfH],
-    [centerX - halfW, centerY],
-    [centerX + halfW, centerY],
-    [centerX - halfW * 0.6, centerY - halfH],
-    [centerX + halfW * 0.6, centerY - halfH],
-    [centerX - halfW * 0.6, centerY + halfH],
-    [centerX + halfW * 0.6, centerY + halfH],
-    [centerX - halfW, centerY - halfH * 0.6],
-    [centerX - halfW, centerY + halfH * 0.6],
-    [centerX + halfW, centerY - halfH * 0.6],
-    [centerX + halfW, centerY + halfH * 0.6],
+    [centerX, centerY], [centerX - halfW, centerY - halfH], [centerX + halfW, centerY - halfH],
+    [centerX - halfW, centerY + halfH], [centerX + halfW, centerY + halfH],
+    [centerX, centerY - halfH], [centerX, centerY + halfH],
+    [centerX - halfW, centerY], [centerX + halfW, centerY],
+    [centerX - halfW * 0.6, centerY - halfH], [centerX + halfW * 0.6, centerY - halfH],
+    [centerX - halfW * 0.6, centerY + halfH], [centerX + halfW * 0.6, centerY + halfH],
+    [centerX - halfW, centerY - halfH * 0.6], [centerX - halfW, centerY + halfH * 0.6],
+    [centerX + halfW, centerY - halfH * 0.6], [centerX + halfW, centerY + halfH * 0.6],
   ];
-
   return points.every(([x, y]) => pointInPolygon(x, y, coords));
 }
 
 function createCenterCandidates(coords: number[][]) {
-  const { minX, maxX, minY, maxY, width, height } = getBounds(coords);
+  const { minX, width, height } = getBounds(coords);
   const centroid = getCentroid(coords);
-  const bboxCenter = { x: minX + width / 2, y: minY + height / 2 };
+  const bboxCenter = { x: minX + width / 2, y: getBounds(coords).minY + height / 2 };
   const offsetX = width * 0.08;
   const offsetY = height * 0.08;
-
-  return [
-    centroid,
-    bboxCenter,
-    { x: centroid.x, y: centroid.y - offsetY },
-    { x: centroid.x, y: centroid.y + offsetY },
-    { x: centroid.x - offsetX, y: centroid.y },
-    { x: centroid.x + offsetX, y: centroid.y },
-    { x: centroid.x - offsetX, y: centroid.y - offsetY },
-    { x: centroid.x + offsetX, y: centroid.y - offsetY },
-    { x: centroid.x - offsetX, y: centroid.y + offsetY },
-    { x: centroid.x + offsetX, y: centroid.y + offsetY },
+  return [centroid, bboxCenter,
+    { x: centroid.x, y: centroid.y - offsetY }, { x: centroid.x, y: centroid.y + offsetY },
+    { x: centroid.x - offsetX, y: centroid.y }, { x: centroid.x + offsetX, y: centroid.y },
+    { x: centroid.x - offsetX, y: centroid.y - offsetY }, { x: centroid.x + offsetX, y: centroid.y - offsetY },
+    { x: centroid.x - offsetX, y: centroid.y + offsetY }, { x: centroid.x + offsetX, y: centroid.y + offsetY },
   ];
 }
 
 function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   if (pasto.coordenadas.length < 3) return null;
-
   const bounds = getBounds(pasto.coordenadas);
   const maxWidth = Math.max(bounds.width * 0.74, 18);
   const minFont = 4;
   const maxFont = Math.min(22, bounds.height * 0.26, bounds.width * 0.28);
   const centers = createCenterCandidates(pasto.coordenadas);
-
   for (let fontSize = maxFont; fontSize >= minFont; fontSize -= 0.5) {
     const padding = Math.max(fontSize * 0.5, 4);
     const lineHeight = fontSize * 1.14;
@@ -245,59 +164,34 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
     const totalLineHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
     const boxWidth = textWidth + padding * 2;
     const boxHeight = totalLineHeight + padding * 2;
-
-    if (boxWidth > bounds.width * 0.92 || boxHeight > bounds.height * 0.92) {
-      continue;
-    }
-
-    const fittingCenter = centers.find((candidate) =>
-      rectFitsPolygon(candidate.x, candidate.y, boxWidth, boxHeight, pasto.coordenadas),
-    );
-
+    if (boxWidth > bounds.width * 0.92 || boxHeight > bounds.height * 0.92) continue;
+    const fittingCenter = centers.find((candidate) => rectFitsPolygon(candidate.x, candidate.y, boxWidth, boxHeight, pasto.coordenadas));
     if (!fittingCenter) continue;
-
-    return {
-      centerX: fittingCenter.x,
-      centerY: fittingCenter.y,
-      width: boxWidth,
-      height: boxHeight,
-      lines,
-      lineHeight,
-      padding,
-    };
+    return { centerX: fittingCenter.x, centerY: fittingCenter.y, width: boxWidth, height: boxHeight, lines, lineHeight, padding };
   }
-
   const fallbackFont = Math.max(minFont, Math.min(6, bounds.height * 0.18, bounds.width * 0.18));
   const fallbackLines = buildLabelLines(pasto, fallbackFont, Math.max(bounds.width * 0.62, 12));
   const fallbackHeight = fallbackLines.reduce((sum, line) => sum + line.fontSize * 1.05, 0);
   const centroid = getCentroid(pasto.coordenadas);
-
-  return {
-    centerX: centroid.x,
-    centerY: centroid.y,
-    width: Math.max(...fallbackLines.map((line) => line.width), 0),
-    height: fallbackHeight,
-    lines: fallbackLines,
-    lineHeight: fallbackFont * 1.1,
-    padding: 2,
-  };
+  return { centerX: centroid.x, centerY: centroid.y, width: Math.max(...fallbackLines.map((line) => line.width), 0), height: fallbackHeight, lines: fallbackLines, lineHeight: fallbackFont * 1.1, padding: 2 };
 }
 
 export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const allCoords = mapa.pastos.flatMap((p) => p.coordenadas);
+  const allCoords = [
+    ...mapa.pastos.flatMap((p) => p.coordenadas),
+    ...(mapa.linhas ?? []).flatMap((l) => l.coordenadas),
+    ...(mapa.elementos ?? []).map((e) => [e.posicao_x, e.posicao_y]),
+  ];
+
   const layouts = useMemo(
     () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto) })),
     [mapa.pastos],
   );
 
   if (allCoords.length === 0) {
-    return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        Nenhum pasto desenhado no mapa.
-      </div>
-    );
+    return <div className="py-12 text-center text-sm text-muted-foreground">Nenhum pasto desenhado no mapa.</div>;
   }
 
   const minX = Math.min(...allCoords.map(([x]) => x));
@@ -324,52 +218,38 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full overflow-hidden rounded-lg border"
-      style={{ background: MAP_COLORS.background }}
-    >
+    <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border" style={{ background: MAP_COLORS.background }}>
       {selectingDestino && (
         <div className="bg-primary/10 border-b border-primary/30 px-3 py-2 text-sm text-primary font-medium text-center">
           🎯 Clique no pasto de destino
         </div>
       )}
-      <svg
-        className="block h-auto w-full"
-        viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
-        preserveAspectRatio="xMidYMid meet"
-        style={{ background: MAP_COLORS.background }}
-      >
+      <svg className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
+        preserveAspectRatio="xMidYMid meet" style={{ background: MAP_COLORS.background }}>
+
+        {/* Independent lines (rendered behind polygons) */}
+        {(mapa.linhas ?? []).map((linha) => (
+          <polyline key={linha.id} points={toPoints(linha.coordenadas)} fill="none"
+            stroke={linha.cor} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+
+        {/* Polygons with labels */}
         {layouts.map(({ pasto, layout }) => {
           if (!layout || pasto.coordenadas.length < 3) return null;
-
           const totalTextHeight = layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
           let currentY = layout.centerY - totalTextHeight / 2;
-
           return (
             <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
-              <polygon
-                points={toPoints(pasto.coordenadas)}
-                fill={getFillColor(pasto.pasto_id)}
+              <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto.pasto_id)}
                 stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : (pasto.cor || MAP_COLORS.line)}
-                strokeWidth={getStrokeWidth(pasto.pasto_id)}
-              />
-
+                strokeWidth={getStrokeWidth(pasto.pasto_id)} />
               {layout.lines.map((line, index) => {
                 const y = currentY + line.fontSize;
                 currentY += line.fontSize * 1.08;
-
                 return (
-                  <text
-                    key={`${pasto.id}-${index}-${line.text}`}
-                    x={layout.centerX}
-                    y={y}
-                    textAnchor="middle"
-                    fill={MAP_COLORS.text}
-                    fontSize={line.fontSize}
-                    fontWeight={line.fontWeight}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
+                  <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
+                    textAnchor="middle" fill={MAP_COLORS.text} fontSize={line.fontSize} fontWeight={line.fontWeight}
+                    style={{ pointerEvents: "none", userSelect: "none" }}>
                     {line.text}
                   </text>
                 );
@@ -377,6 +257,22 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
             </g>
           );
         })}
+
+        {/* Elements/icons (rendered on top) */}
+        {(mapa.elementos ?? []).map((el) => (
+          <g key={el.id}>
+            <text x={el.posicao_x} y={el.posicao_y} fontSize={18} textAnchor="middle" dominantBaseline="central"
+              style={{ pointerEvents: "none", userSelect: "none" }}>
+              {el.emoji}
+            </text>
+            {el.rotulo && (
+              <text x={el.posicao_x} y={el.posicao_y + 12} fontSize={7} textAnchor="middle" fill="hsl(0 0% 25%)"
+                fontWeight={600} style={{ pointerEvents: "none", userSelect: "none" }}>
+                {el.rotulo}
+              </text>
+            )}
+          </g>
+        ))}
       </svg>
     </div>
   );
