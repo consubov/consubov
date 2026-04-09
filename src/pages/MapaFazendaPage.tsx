@@ -185,6 +185,21 @@ export default function MapaFazendaPage() {
             coordenadas: p.coordenadas,
             cor: p.cor || "#16a34a",
           }))}
+          existingLines={(mapa?.linhas ?? []).map((l) => ({
+            id: l.id,
+            coordenadas: l.coordenadas,
+            cor: l.cor,
+            tipo: l.tipo,
+            rotulo: l.rotulo || "",
+          }))}
+          existingElements={(mapa?.elementos ?? []).map((e) => ({
+            id: e.id,
+            tipo: e.tipo,
+            emoji: e.emoji,
+            posicao_x: e.posicao_x,
+            posicao_y: e.posicao_y,
+            rotulo: e.rotulo || "",
+          }))}
           onSaved={() => {
             setEditing(false);
             refresh();
