@@ -27,6 +27,7 @@ import TransferenciaModal from "@/components/capataz/TransferenciaModal";
 import PastoActionSheet from "@/components/capataz/PastoActionSheet";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
 import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
+import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -39,7 +40,7 @@ import {
   type FecharMesPendente,
 } from "@/lib/offlineDb";
 
-type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing';
+type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
 
 interface PersistedCapatazState {
@@ -1014,6 +1015,10 @@ export default function CapatazDashboard() {
     );
   }
 
+  if (screen === 'transferencia-retiro') {
+    return <TransferenciaRetiroPage onBack={() => setScreen('home')} />;
+  }
+
   // ============ HOME SCREEN ============
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
@@ -1081,7 +1086,7 @@ export default function CapatazDashboard() {
             Ver Mapa
           </Button>
         )}
-        <Button onClick={() => navigate("/capataz/transferencia-retiro")} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+        <Button onClick={() => setScreen('transferencia-retiro')} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
           <ArrowRightLeft className="w-5 h-5" />
           Transferência entre Retiros
         </Button>

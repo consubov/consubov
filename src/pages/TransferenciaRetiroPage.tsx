@@ -39,7 +39,11 @@ interface TransferenciaRetiro {
   updated_at: string;
 }
 
-export default function TransferenciaRetiroPage() {
+interface TransferenciaRetiroPageProps {
+  onBack?: () => void;
+}
+
+export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroPageProps) {
   const { roleData, user } = useAuth();
   const navigate = useNavigate();
 
@@ -336,7 +340,7 @@ export default function TransferenciaRetiroPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/capataz")} className="text-primary-foreground hover:bg-primary/80">
+        <Button variant="ghost" size="icon" onClick={() => onBack ? onBack() : navigate("/capataz")} className="text-primary-foreground hover:bg-primary/80">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex items-center gap-2">
