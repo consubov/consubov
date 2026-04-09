@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
 
-type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino";
+type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino" | "entrada";
 
 export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
