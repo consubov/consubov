@@ -221,6 +221,7 @@ export default function MapaFazendaPage() {
         onTransferir={() => setCurrentAction("transferir")}
         onAbater={() => setCurrentAction("abater")}
         onEditarPeso={() => setCurrentAction("editarPeso")}
+        onEntrada={() => setCurrentAction("entrada")}
       />
 
       {/* Info Modal */}
@@ -262,6 +263,18 @@ export default function MapaFazendaPage() {
         open={currentAction === "editarPeso"}
         onClose={resetAction}
         pasto={selectedPasto}
+        onDone={handleActionDone}
+      />
+
+      {/* Entrada Animais Modal */}
+      <MapaEntradaAnimaisModal
+        open={currentAction === "entrada"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
         onDone={handleActionDone}
       />
     </div>
