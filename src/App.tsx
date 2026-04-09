@@ -32,6 +32,7 @@ import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import EscritoriosPage from "./pages/EscritoriosPage";
 import LandingPage from "./pages/LandingPage";
 import EscritorioLayout from "./pages/EscritorioLayout";
+import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -185,6 +186,7 @@ const App = () => (
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazDashboard /></ProtectedRoute>} />
+              <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz"]}><TransferenciaRetiroPage /></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />

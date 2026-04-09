@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft } from "lucide-react";
 import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -1081,6 +1081,10 @@ export default function CapatazDashboard() {
             Ver Mapa
           </Button>
         )}
+        <Button onClick={() => navigate("/capataz/transferencia-retiro")} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+          <ArrowRightLeft className="w-5 h-5" />
+          Transferência entre Retiros
+        </Button>
 
         {/* Estoque de Sal */}
         {roleData.retiroId && fazendaId && (
