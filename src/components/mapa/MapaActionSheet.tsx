@@ -11,9 +11,10 @@ interface Props {
   onAbater: () => void;
   onEditarPeso: () => void;
   onVerDetalhes: () => void;
+  onEntrada: () => void;
 }
 
-export default function MapaActionSheet({ open, onClose, pasto, onTransferir, onAbater, onEditarPeso, onVerDetalhes }: Props) {
+export default function MapaActionSheet({ open, onClose, pasto, onTransferir, onAbater, onEditarPeso, onVerDetalhes, onEntrada }: Props) {
   if (!pasto) return null;
 
   const fmtPeso = pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg.toFixed(1).replace(".", ",")} kg` : "—";
