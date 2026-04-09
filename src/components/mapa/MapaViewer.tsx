@@ -351,7 +351,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
               <polygon
                 points={toPoints(pasto.coordenadas)}
                 fill={getFillColor(pasto.pasto_id)}
-                stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : MAP_COLORS.line}
+                stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : (pasto.cor || MAP_COLORS.line)}
                 strokeWidth={getStrokeWidth(pasto.pasto_id)}
               />
 
