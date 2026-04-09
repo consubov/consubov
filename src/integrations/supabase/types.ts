@@ -940,6 +940,7 @@ export type Database = {
       pastos_mapa: {
         Row: {
           coordenadas: Json
+          cor: string
           criado_em: string | null
           id: string
           mapa_id: string
@@ -947,6 +948,7 @@ export type Database = {
         }
         Insert: {
           coordenadas?: Json
+          cor?: string
           criado_em?: string | null
           id?: string
           mapa_id: string
@@ -954,6 +956,7 @@ export type Database = {
         }
         Update: {
           coordenadas?: Json
+          cor?: string
           criado_em?: string | null
           id?: string
           mapa_id?: string

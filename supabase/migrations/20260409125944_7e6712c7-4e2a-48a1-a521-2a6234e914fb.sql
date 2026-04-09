@@ -1,0 +1,1 @@
+ALTER TABLE public.pastos_mapa ADD COLUMN cor text NOT NULL DEFAULT '#16a34a';
