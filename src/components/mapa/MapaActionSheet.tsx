@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, Scissors, Scale, Info } from "lucide-react";
+import { ArrowRightLeft, Scissors, Scale, Info, Plus } from "lucide-react";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
 interface Props {
@@ -11,9 +11,10 @@ interface Props {
   onAbater: () => void;
   onEditarPeso: () => void;
   onVerDetalhes: () => void;
+  onEntrada: () => void;
 }
 
-export default function MapaActionSheet({ open, onClose, pasto, onTransferir, onAbater, onEditarPeso, onVerDetalhes }: Props) {
+export default function MapaActionSheet({ open, onClose, pasto, onTransferir, onAbater, onEditarPeso, onVerDetalhes, onEntrada }: Props) {
   if (!pasto) return null;
 
   const fmtPeso = pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg.toFixed(1).replace(".", ",")} kg` : "—";
@@ -45,6 +46,11 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
               </Button>
             </>
           )}
+
+          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={onEntrada}>
+            <Plus className="w-5 h-5" />
+            Adicionar animais
+          </Button>
 
           <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={onEditarPeso}>
             <Scale className="w-5 h-5 text-primary" />

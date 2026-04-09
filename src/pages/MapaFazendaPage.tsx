@@ -13,6 +13,7 @@ import MapaActionSheet from "@/components/mapa/MapaActionSheet";
 import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
 import MapaAbateModal from "@/components/mapa/MapaAbateModal";
 import EditarPesoModal from "@/components/mapa/EditarPesoModal";
+import MapaEntradaAnimaisModal from "@/components/mapa/MapaEntradaAnimaisModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
 
-type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino";
+type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino" | "entrada";
 
 export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
@@ -220,6 +221,7 @@ export default function MapaFazendaPage() {
         onTransferir={() => setCurrentAction("transferir")}
         onAbater={() => setCurrentAction("abater")}
         onEditarPeso={() => setCurrentAction("editarPeso")}
+        onEntrada={() => setCurrentAction("entrada")}
       />
 
       {/* Info Modal */}
@@ -261,6 +263,18 @@ export default function MapaFazendaPage() {
         open={currentAction === "editarPeso"}
         onClose={resetAction}
         pasto={selectedPasto}
+        onDone={handleActionDone}
+      />
+
+      {/* Entrada Animais Modal */}
+      <MapaEntradaAnimaisModal
+        open={currentAction === "entrada"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
         onDone={handleActionDone}
       />
     </div>
