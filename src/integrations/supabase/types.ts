@@ -294,6 +294,47 @@ export type Database = {
           },
         ]
       }
+      elementos_mapa: {
+        Row: {
+          criado_em: string | null
+          emoji: string
+          id: string
+          mapa_id: string
+          posicao_x: number
+          posicao_y: number
+          rotulo: string | null
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string | null
+          emoji?: string
+          id?: string
+          mapa_id: string
+          posicao_x: number
+          posicao_y: number
+          rotulo?: string | null
+          tipo?: string
+        }
+        Update: {
+          criado_em?: string | null
+          emoji?: string
+          id?: string
+          mapa_id?: string
+          posicao_x?: number
+          posicao_y?: number
+          rotulo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elementos_mapa_mapa_id_fkey"
+            columns: ["mapa_id"]
+            isOneToOne: false
+            referencedRelation: "mapas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escritorios: {
         Row: {
           ativo: boolean
@@ -610,6 +651,44 @@ export type Database = {
           whatsapp?: string
         }
         Relationships: []
+      }
+      linhas_mapa: {
+        Row: {
+          coordenadas: Json
+          cor: string
+          criado_em: string | null
+          id: string
+          mapa_id: string
+          rotulo: string | null
+          tipo: string
+        }
+        Insert: {
+          coordenadas?: Json
+          cor?: string
+          criado_em?: string | null
+          id?: string
+          mapa_id: string
+          rotulo?: string | null
+          tipo?: string
+        }
+        Update: {
+          coordenadas?: Json
+          cor?: string
+          criado_em?: string | null
+          id?: string
+          mapa_id?: string
+          rotulo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linhas_mapa_mapa_id_fkey"
+            columns: ["mapa_id"]
+            isOneToOne: false
+            referencedRelation: "mapas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mapas: {
         Row: {
