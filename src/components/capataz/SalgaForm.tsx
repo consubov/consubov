@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Camera, Plus, Save, X } from "lucide-react";
+import { ArrowLeft, Camera, Plus, Save, X, PackageOpen } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 
 export interface SalgaFormDraft {
@@ -14,6 +14,8 @@ export interface SalgaFormDraft {
   addingObs: boolean;
   obsTexto: string;
   obsFoto: string | null;
+  cochoChecked?: boolean;
+  fotoCocho?: string | null;
 }
 
 export interface SalgaSugestao {
@@ -53,10 +55,13 @@ export default function SalgaForm({
   const [obsFoto, setObsFoto] = useState<string | null>(initialDraft?.obsFoto ?? null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [cochoChecked, setCochoChecked] = useState(initialDraft?.cochoChecked ?? false);
+  const [fotoCocho, setFotoCocho] = useState<string | null>(initialDraft?.fotoCocho ?? null);
   const produtoNaoConfigurado = !sugestao && numAnimais > 0;
 
   const obsFileRef = useRef<HTMLInputElement>(null);
   const auditFileRef = useRef<HTMLInputElement>(null);
+  const cochoFileRef = useRef<HTMLInputElement>(null);
 
   const capturePhoto = useCallback((callback: (dataUrl: string) => void, inputRef: React.RefObject<HTMLInputElement>) => {
     if (inputRef.current) {
@@ -91,19 +96,34 @@ export default function SalgaForm({
     setObservacoes((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const toggleCochoChecked = () => {
+    const next = !cochoChecked;
+    setCochoChecked(next);
+    if (next) {
+      setSacos("0");
+      setFotoCocho(null);
+    } else {
+      setSacos(sugestao ? String(sugestao.sacosSugeridos) : "");
+      setFotoCocho(null);
+    }
+  };
+
   // Auto-open camera for mandatory audit
   useEffect(() => {
-    if (auditoriaExigida && !fotoAuditoria) {
+    if (auditoriaExigida && !fotoAuditoria && !cochoChecked) {
       const timer = setTimeout(() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef), 300);
       return () => clearTimeout(timer);
     }
   }, [auditoriaExigida]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    onDraftChange?.({ sacos, observacoes, fotoAuditoria, addingObs, obsTexto, obsFoto });
-  }, [addingObs, fotoAuditoria, obsFoto, obsTexto, observacoes, onDraftChange, sacos]);
+    onDraftChange?.({ sacos, observacoes, fotoAuditoria, addingObs, obsTexto, obsFoto, cochoChecked, fotoCocho });
+  }, [addingObs, fotoAuditoria, obsFoto, obsTexto, observacoes, onDraftChange, sacos, cochoChecked, fotoCocho]);
 
   const canSave = () => {
+    if (cochoChecked) {
+      return !!fotoCocho;
+    }
     if (sacos === "" || parseInt(sacos) < 0 || isNaN(parseInt(sacos))) return false;
     if (auditoriaExigida && !fotoAuditoria) return false;
     return true;
@@ -116,12 +136,14 @@ export default function SalgaForm({
       tipo,
       pasto_id: pastoId,
       pasto_nome: pastoNome,
-      sacos: parseInt(sacos),
-      foto_auditoria_url: fotoAuditoria,
-      foto_auditoria_exigida: auditoriaExigida,
+      sacos: cochoChecked ? 0 : parseInt(sacos),
+      foto_auditoria_url: cochoChecked ? null : fotoAuditoria,
+      foto_auditoria_exigida: cochoChecked ? false : auditoriaExigida,
       observacoes,
       ciclo_id: cicloId,
       justificativa_falha_qr: justificativaFalhaQr,
+      cocho_cheio: cochoChecked,
+      foto_cocho_url: cochoChecked ? fotoCocho : null,
     });
   };
 
@@ -137,6 +159,7 @@ export default function SalgaForm({
       {/* Hidden file inputs for camera */}
       <input ref={obsFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
       <input ref={auditFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
+      <input ref={cochoFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
 
       <main className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-24">
         {/* Pasto name */}
@@ -157,70 +180,117 @@ export default function SalgaForm({
           </CardContent>
         </Card>
 
-        {/* Sugestão de sacos */}
-        {sugestao ? (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-primary text-primary-foreground">Sugestão: {sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
-              </p>
+        {/* Cocho Cheio Toggle */}
+        <Button
+          variant={cochoChecked ? "default" : "outline"}
+          className={`w-full gap-2 text-base ${cochoChecked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'border-blue-400 text-blue-700 hover:bg-blue-50'}`}
+          onClick={toggleCochoChecked}
+        >
+          <PackageOpen className="w-5 h-5" />
+          {cochoChecked ? '✓ Cocho Cheio selecionado' : 'Cocho Cheio (sem salga)'}
+        </Button>
+
+        {/* Cocho Cheio photo */}
+        {cochoChecked && (
+          <Card className="border-blue-300 bg-blue-50">
+            <CardContent className="p-3 space-y-2">
+              <label className="text-sm font-medium text-blue-800 block">📸 Foto do cocho (obrigatória)</label>
+              {!fotoCocho && (
+                <p className="text-xs text-blue-600 font-semibold">⚠ Tire a foto do cocho cheio antes de salvar</p>
+              )}
+              {fotoCocho ? (
+                <div className="relative w-20 h-20">
+                  <img src={fotoCocho} className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoCocho)} />
+                  <button onClick={() => setFotoCocho(null)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="gap-2 border-blue-500 text-blue-700 hover:bg-blue-100"
+                  onClick={() => capturePhoto((url) => setFotoCocho(url), cochoFileRef)}
+                >
+                  <Camera className="w-4 h-4" />
+                  📷 Tirar Foto do Cocho
+                </Button>
+              )}
             </CardContent>
           </Card>
-        ) : (
-          !produtoNaoConfigurado ? null : (
-            <Card className="border-destructive/30 bg-destructive/5">
-              <CardContent className="p-3">
-                <p className="text-xs text-destructive font-medium">Produto não configurado</p>
-              </CardContent>
-            </Card>
-          )
+        )}
+
+        {/* Sugestão de sacos */}
+        {!cochoChecked && (
+          <>
+            {sugestao ? (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge className="bg-primary text-primary-foreground">Sugestão: {sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              !produtoNaoConfigurado ? null : (
+                <Card className="border-destructive/30 bg-destructive/5">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-destructive font-medium">Produto não configurado</p>
+                  </CardContent>
+                </Card>
+              )
+            )}
+          </>
         )}
 
         {/* Sacos */}
-        <div>
-          <label className="text-sm font-medium text-foreground mb-1 block">Quantidade de sacos *</label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min="1"
-            value={sacos}
-            onChange={(e) => setSacos(e.target.value)}
-            placeholder="0"
-            className="text-lg"
-          />
-        </div>
+        {!cochoChecked && (
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">Quantidade de sacos *</label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              value={sacos}
+              onChange={(e) => setSacos(e.target.value)}
+              placeholder="0"
+              className="text-lg"
+            />
+          </div>
+        )}
 
-        {/* Foto Auditoria */}
-        <div>
-          <label className="text-sm font-medium text-foreground mb-1 block">
-            {auditoriaExigida
-              ? '📸 Foto de auditoria OBRIGATÓRIA'
-              : 'Foto de auditoria (opcional)'}
-          </label>
-          {auditoriaExigida && !fotoAuditoria && (
-            <p className="text-xs text-destructive mb-2 font-semibold">⚠ Você deve tirar a foto antes de salvar</p>
-          )}
-          {fotoAuditoria ? (
-            <div className="relative w-20 h-20">
-              <img src={fotoAuditoria} className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoAuditoria)} />
-              <button onClick={() => setFotoAuditoria(null)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              className={`gap-2 ${auditoriaExigida ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
-              onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}
-            >
-              <Camera className="w-4 h-4" />
-              {auditoriaExigida ? '📷 Tirar Foto (obrigatória)' : '+ Foto de auditoria'}
-            </Button>
-          )}
-        </div>
+        {/* Foto Auditoria — only for normal salga */}
+        {!cochoChecked && (
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">
+              {auditoriaExigida
+                ? '📸 Foto de auditoria OBRIGATÓRIA'
+                : 'Foto de auditoria (opcional)'}
+            </label>
+            {auditoriaExigida && !fotoAuditoria && (
+              <p className="text-xs text-destructive mb-2 font-semibold">⚠ Você deve tirar a foto antes de salvar</p>
+            )}
+            {fotoAuditoria ? (
+              <div className="relative w-20 h-20">
+                <img src={fotoAuditoria} className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoAuditoria)} />
+                <button onClick={() => setFotoAuditoria(null)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className={`gap-2 ${auditoriaExigida ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
+                onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}
+              >
+                <Camera className="w-4 h-4" />
+                {auditoriaExigida ? '📷 Tirar Foto (obrigatória)' : '+ Foto de auditoria'}
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Observações */}
         <div>
@@ -285,7 +355,7 @@ export default function SalgaForm({
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
         <Button onClick={handleSave} disabled={!canSave() || saving} className="w-full gap-2" size="lg">
           <Save className="w-5 h-5" />
-          {saving ? 'Salvando...' : 'Salvar Salga'}
+          {saving ? 'Salvando...' : cochoChecked ? 'Salvar Cocho Cheio' : 'Salvar Salga'}
         </Button>
       </div>
 
