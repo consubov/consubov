@@ -149,11 +149,34 @@ export default function SalgaForm({
             {fazendaNome && (
               <p className="text-xs text-muted-foreground">Fazenda: {fazendaNome}</p>
             )}
+            <p className="text-sm text-foreground mt-1 font-medium">Animais: {numAnimais} cab</p>
             {tipo === 'falha_qr' && (
               <p className="text-xs text-destructive mt-1">⚠ Seleção manual (falha QR)</p>
             )}
           </CardContent>
         </Card>
+
+        {/* Sugestão de sacos */}
+        {sugestao ? (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className="bg-primary text-primary-foreground">Sugestão: {sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          !produtoNaoConfigurado ? null : (
+            <Card className="border-destructive/30 bg-destructive/5">
+              <CardContent className="p-3">
+                <p className="text-xs text-destructive font-medium">Produto não configurado</p>
+              </CardContent>
+            </Card>
+          )
+        )}
 
         {/* Sacos */}
         <div>
