@@ -71,6 +71,7 @@ function isSameLocalDay(dateIso: string, reference = new Date()) {
 function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
   return lancamentos.reduce<Record<string, number>>((acc, lancamento) => {
     if (cicloId && lancamento.ciclo_id !== cicloId) return acc;
+    if (lancamento.cocho_cheio) return acc; // Don't count cocho cheio as saco consumption
 
     acc[lancamento.pasto_id] = (acc[lancamento.pasto_id] || 0) + lancamento.sacos;
     return acc;
