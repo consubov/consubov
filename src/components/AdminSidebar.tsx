@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2 } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -27,6 +27,7 @@ const menuItems = [
   { title: "Landing Page", url: "/admin/landing-page", icon: Globe },
   { title: "Ciclos", url: "/admin/ciclos", icon: CalendarDays },
   { title: "Inteligência Nutricional", url: "/admin/inteligencia", icon: Brain },
+  { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
 ];
 
 export function AdminSidebar() {
