@@ -5,7 +5,7 @@ import { Beef, DollarSign, Droplets, Package, TrendingUp } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
-import { classificarCategoria, getConsumoPorCategoria, getMargemPorCategoria, calcularConsumo } from "@/lib/consumoCalc";
+import { classificarCategoria } from "@/lib/consumoCalc";
 
 const CATEGORIAS = ["Recria 1", "Recria 2", "Engorda"] as const;
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -16,6 +16,7 @@ interface Lancamento {
   mes_referencia: number; ano_referencia: number;
   num_animais: number; num_sacos: number; dias_no_pasto: number;
   categoria: string | null; peso_medio_kg: number | null;
+  consumo_g_cab_dia?: number | null;
 }
 
 interface Pasto {
@@ -76,15 +77,17 @@ export default function MetricasPorCategoria({
       entry.sacos += l.num_sacos;
       entry.diasTotal += l.dias_no_pasto;
 
-      // Consumo
+      // Use pre-calculated consumo from DB
+      const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
+      if (consumoReal > 0) {
+        entry.consumos.push(consumoReal);
+      }
+
+      // Cost: product peso_saco_kg * preco_por_kg (read-only lookup)
       const produtoId = getEffectiveProdutoId(l);
       if (produtoId) {
         const prod = produtoById[produtoId];
-        if (prod && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
-          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
-          entry.consumos.push(consumoReal);
-
-          // Custo: sacos * peso_saco * preco_por_kg
+        if (prod && l.num_sacos > 0) {
           const preco = prod.preco_por_kg ?? 0;
           entry.custoTotal += l.num_sacos * prod.peso_saco_kg * preco;
         }
