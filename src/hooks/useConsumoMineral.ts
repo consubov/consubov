@@ -46,9 +46,11 @@ export function aggregateConsumoMineral(rows: ConsumoMineralRetiro[]): ConsumoMi
   let statusBaixo = 0, statusIdeal = 0, statusAlto = 0;
   let eficienciaSum = 0, eficienciaCount = 0;
   let gmdSum = 0, gmdCount = 0;
+  let consumoWeightedSum = 0; // Σ(consumo_medio_g * total_animais)
 
   for (const r of rows) {
-    totalAnimais += Number(r.total_animais) || 0;
+    const animais = Number(r.total_animais) || 0;
+    totalAnimais += animais;
     sacosUtilizados += Number(r.total_sacos) || 0;
     totalKg += Number(r.total_kg_consumido) || 0;
     totalCabDias += Number(r.total_cab_dias) || 0;
@@ -63,9 +65,14 @@ export function aggregateConsumoMineral(rows: ConsumoMineralRetiro[]): ConsumoMi
     if (ef > 0) { eficienciaSum += ef; eficienciaCount++; }
     const gmd = Number(r.gmd_medio) || 0;
     if (gmd > 0) { gmdSum += gmd; gmdCount++; }
+    const consumoMedioG = Number(r.consumo_medio_g) || 0;
+    if (consumoMedioG > 0 && animais > 0) {
+      consumoWeightedSum += consumoMedioG * animais;
+    }
   }
 
-  const consumoMedio = totalCabDias > 0 ? (totalKg * 1000) / totalCabDias : 0;
+  // Weighted average by num_animais — never simple average
+  const consumoMedio = totalAnimais > 0 ? consumoWeightedSum / totalAnimais : 0;
   const custoDiario = totalCabDias > 0 ? totalCusto / totalCabDias : 0;
   const eficiencia = eficienciaCount > 0 ? eficienciaSum / eficienciaCount : 0;
   const gmdMedio = gmdCount > 0 ? gmdSum / gmdCount : 0;
