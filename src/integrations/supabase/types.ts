@@ -568,10 +568,12 @@ export type Database = {
           ano_referencia: number
           categoria: string | null
           ciclo_id: string | null
+          cocho_cheio: boolean
           consumo_g_cab_dia: number | null
           created_at: string
           dias_no_pasto: number
           fazenda_id: string
+          foto_cocho_url: string | null
           id: string
           indice_consumo: number | null
           mes_referencia: number
@@ -588,10 +590,12 @@ export type Database = {
           ano_referencia: number
           categoria?: string | null
           ciclo_id?: string | null
+          cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
           fazenda_id: string
+          foto_cocho_url?: string | null
           id?: string
           indice_consumo?: number | null
           mes_referencia: number
@@ -608,10 +612,12 @@ export type Database = {
           ano_referencia?: number
           categoria?: string | null
           ciclo_id?: string | null
+          cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
           dias_no_pasto?: number
           fazenda_id?: string
+          foto_cocho_url?: string | null
           id?: string
           indice_consumo?: number | null
           mes_referencia?: number
