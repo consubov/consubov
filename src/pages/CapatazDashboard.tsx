@@ -75,6 +75,34 @@ function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
   }, {});
 }
 
+/** Calculate dynamic dias and peso_atual from data_entrada and GMD */
+function calcDinamicoPasto(
+  pasto: PastoCache,
+  retiro: RetiroCache | null,
+): { dias: number | null; pesoAtual: number | null } {
+  if (!pasto.data_entrada) {
+    return { dias: pasto.dias_no_pasto, pesoAtual: pasto.peso_medio_kg };
+  }
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(pasto.data_entrada).getTime()) / 86400000));
+
+  const pesoEntrada = pasto.peso_entrada ?? pasto.peso_medio_kg;
+  if (pesoEntrada == null) {
+    return { dias, pesoAtual: null };
+  }
+
+  // GMD priority: pasto-level > retiro-level by category
+  let gmd = pasto.gmd_kg_dia;
+  if (gmd == null && retiro) {
+    const cat = (pasto.categoria || '').toLowerCase();
+    if (cat.includes('recria 1') || cat.includes('recria1')) gmd = retiro.gmd_recria1;
+    else if (cat.includes('recria 2') || cat.includes('recria2')) gmd = retiro.gmd_recria2;
+    else gmd = retiro.gmd_engorda;
+  }
+
+  const pesoAtual = gmd != null && gmd > 0 ? pesoEntrada + gmd * dias : pesoEntrada;
+  return { dias, pesoAtual: Math.round(pesoAtual * 10) / 10 };
+}
+
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
