@@ -705,7 +705,7 @@ export default function CapatazDashboard() {
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
           origem: "qr",
-          peso_medio_kg: pasto?.peso_medio_kg ?? null,
+          peso_medio_kg: pesoParaConsumo || pasto?.peso_medio_kg ?? null,
           dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
