@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
@@ -23,7 +23,6 @@ interface Lancamento {
   status_consumo: string | null; indice_consumo: number | null;
   categoria: string | null; sexo: string | null;
 }
-interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
 
 /** Pre-calculated consumption for a single lancamento (read-only from DB). */
 export interface LancamentoConsumo {
@@ -54,7 +53,7 @@ export interface StatusDist {
 export interface PainelMetrics {
   totalAnimais: number;
   sacosUtilizados: number;
-  consumoMedio: number; // g/cab/dia – read from pre-calculated DB field
+  consumoMedio: number;
   pastosNaMeta: number;
   totalPastos: number;
   custoDiario: number;
@@ -81,66 +80,64 @@ const emptyMetrics: PainelMetrics = {
 
 export function usePainelData(filters: PainelFilters) {
   const { fazendaId, retiroId, mes, ano } = filters;
-  const [loading, setLoading] = useState(true);
   const [fazendaNome, setFazendaNome] = useState("");
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [extraLoading, setExtraLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
+  // ---------- Centralized RPC for consumption metrics ----------
+  const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
+    fazendaId,
+    mes,
+    ano,
+    retiroId,
+  });
+
+  // ---------- Additional data needed for retiro detail (pastos, lancamentos) ----------
+  const loadExtraData = useCallback(async () => {
     if (!fazendaId) {
       setFazendaNome("");
       setRetiros([]);
       setPastos([]);
       setLancamentos([]);
-      setProdutos([]);
-      setLoading(false);
+      setExtraLoading(false);
       return;
     }
-    setLoading(true);
+    setExtraLoading(true);
     try {
-      const [fazRes, retirosRes, prodRes] = await Promise.all([
+      const [fazRes, retirosRes] = await Promise.all([
         supabase.from("fazendas").select("nome").eq("id", fazendaId).single(),
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, produto_id")
           .eq("fazenda_id", fazendaId).eq("ativo", true),
-        supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg"),
       ]);
 
       setFazendaNome(fazRes.data?.nome ?? "");
       const allRetiros = (retirosRes.data ?? []) as Retiro[];
       const retList = retiroId ? allRetiros.filter((r) => r.id === retiroId) : allRetiros;
       setRetiros(retList);
-      setProdutos((prodRes.data ?? []) as Produto[]);
 
       let retiroIds = retList.map(r => r.id);
       if (retiroId) retiroIds = [retiroId];
 
       if (retiroIds.length > 0) {
-        // Fetch only ACTIVE pastos — consistent with PainelInteligencia and PDF reports
-        const pastosRes = await supabase.from("pastos")
-          .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, produto_id")
-          .in("retiro_id", retiroIds)
-          .eq("ativo", true);
-        const pastosList = (pastosRes.data ?? []) as Pasto[];
-        setPastos(pastosList);
-
-        // Query lancamentos by fazenda_id + period directly
-        let lancQuery = supabase.from("lancamentos")
-          .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
-          .eq("fazenda_id", fazendaId)
-          .eq("ano_referencia", ano)
-          .eq("mes_referencia", mes);
-
-        if (retiroId) {
-          lancQuery = lancQuery.eq("retiro_id", retiroId);
-        }
-
-        const lancRes = await lancQuery;
-        const lancList = (lancRes.data ?? []) as Lancamento[];
-        setLancamentos(lancList);
-
-        console.log(`[usePainelData] mes=${mes} ano=${ano} fazenda=${fazendaId} retiro=${retiroId ?? "all"} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
+        const [pastosRes, lancRes] = await Promise.all([
+          supabase.from("pastos")
+            .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, produto_id")
+            .in("retiro_id", retiroIds)
+            .eq("ativo", true),
+          (() => {
+            let q = supabase.from("lancamentos")
+              .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
+              .eq("fazenda_id", fazendaId)
+              .eq("ano_referencia", ano)
+              .eq("mes_referencia", mes);
+            if (retiroId) q = q.eq("retiro_id", retiroId);
+            return q;
+          })(),
+        ]);
+        setPastos((pastosRes.data ?? []) as Pasto[]);
+        setLancamentos((lancRes.data ?? []) as Lancamento[]);
       } else {
         setPastos([]);
         setLancamentos([]);
@@ -148,75 +145,60 @@ export function usePainelData(filters: PainelFilters) {
     } catch (e) {
       console.error("usePainelData error:", e);
     } finally {
-      setLoading(false);
+      setExtraLoading(false);
     }
   }, [fazendaId, retiroId, mes, ano]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadExtraData(); }, [loadExtraData]);
 
-  // Realtime: auto-refresh when pastos, lancamentos, movimentacoes, abates or ciclos change
-  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], loadData);
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], () => {
+    loadExtraData();
+    refreshConsumo();
+  });
 
-  // Refetch when the tab/window regains focus (ensures fresh data on screen access)
   useEffect(() => {
-    const handleFocus = () => { void loadData(); };
+    const handleFocus = () => { void loadExtraData(); void refreshConsumo(); };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void loadData();
+      if (document.visibilityState === "visible") { void loadExtraData(); void refreshConsumo(); }
     };
-
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [loadData]);
+  }, [loadExtraData, refreshConsumo]);
 
-  // Realtime
-  useEffect(() => {
-    const ch = supabase.channel(`painel-${fazendaId}-${retiroId ?? "all"}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => loadData())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [loadData, fazendaId, retiroId]);
+  const loading = consumoLoading || extraLoading;
 
-  // ---------- Metrics: read PRE-CALCULATED data from DB ----------
+  // ---------- Metrics: from centralized RPC ----------
   const metrics = useMemo<PainelMetrics>(() => {
-    const calculated = calculatePainelMetrics({ pastos, lancamentos, produtos, retiros });
-
+    if (consumoData.length === 0) return emptyMetrics;
+    const agg = aggregateConsumoMineral(consumoData);
     return {
-      totalAnimais: calculated.totalAnimais,
-      sacosUtilizados: calculated.sacosUtilizados,
-      consumoMedio: calculated.consumoMedio,
-      pastosNaMeta: calculated.pastosNaMeta,
-      totalPastos: calculated.totalPastos,
-      custoDiario: calculated.custoDiario,
-      custoMensal: calculated.custoMensal,
-      eficiencia: calculated.eficiencia,
-      gmdMedio: calculated.gmdMedio,
-      totalSalgas: calculated.totalSalgas,
-      statusDist: calculated.statusDist,
+      totalAnimais: agg.totalAnimais,
+      sacosUtilizados: agg.sacosUtilizados,
+      consumoMedio: agg.consumoMedio,
+      pastosNaMeta: agg.pastosNaMeta,
+      totalPastos: agg.totalPastos,
+      custoDiario: agg.custoDiario,
+      custoMensal: agg.custoMensal,
+      eficiencia: agg.eficiencia,
+      gmdMedio: agg.gmdMedio,
+      totalSalgas: agg.totalSalgas,
+      statusDist: agg.statusDist,
     };
-  }, [pastos, lancamentos, produtos, retiros]);
+  }, [consumoData]);
 
-  // ---------- Retiros resumo ----------
+  // ---------- Retiros resumo (using RPC data + pastos/lancamentos for detail) ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {
     const now = new Date();
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      // Filter lancamentos by retiro_id (not pasto_id) to correctly attribute data
-      // even when pastos are transferred between retiros
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
-      const resumo = calculateRetiroMetrics({
-        retiroId: r.id,
-        pastos,
-        lancamentos,
-        produtos,
-        retiros,
-      });
+
+      // Find this retiro's metrics from RPC data
+      const rpcRow = consumoData.find(c => c.retiro_id === r.id);
 
       let diasSemSalga: number | null = null;
       if (r.ultima_salga_em) {
@@ -244,19 +226,23 @@ export function usePainelData(filters: PainelFilters) {
         id: r.id,
         nome: r.nome,
         capataz: r.capataz,
-        totalAnimais: resumo.totalAnimais,
-        sacosUtilizados: resumo.sacosUtilizados,
-        consumoMedio: resumo.consumoMedio,
-        gmd: resumo.gmd,
+        totalAnimais: rpcRow ? Number(rpcRow.total_animais) : rPastos.reduce((s, p) => s + p.num_animais, 0),
+        sacosUtilizados: rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + l.num_sacos, 0),
+        consumoMedio: rpcRow ? Number(rpcRow.consumo_medio_g) : 0,
+        gmd: rpcRow ? Number(rpcRow.gmd_medio) : 0,
         diasSemSalga,
         lancamentos: rLanc,
         pastos: rPastos,
         pastosConsumo,
       };
     });
-  }, [retiros, pastos, lancamentos, produtos]);
+  }, [retiros, pastos, lancamentos, consumoData]);
+
+  const refresh = useCallback(async () => {
+    await Promise.all([loadExtraData(), refreshConsumo()]);
+  }, [loadExtraData, refreshConsumo]);
 
   return {
-    loading, fazendaNome, metrics, retirosResumo, lancamentos, refresh: loadData,
+    loading, fazendaNome, metrics, retirosResumo, lancamentos, refresh,
   };
 }
