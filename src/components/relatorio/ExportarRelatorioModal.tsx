@@ -255,26 +255,24 @@ export default function ExportarRelatorioModal({
 
       // Compute category metrics
       const CATS = ["Recria 1", "Recria 2", "Engorda"];
-      const catMap: Record<string, { consumos: number[]; animais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
-      CATS.forEach(c => { catMap[c] = { consumos: [], animais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
+      const catMap: Record<string, { weightedSum: number; totalAnimais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
+      CATS.forEach(c => { catMap[c] = { weightedSum: 0, totalAnimais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
 
       lancamentos.forEach(l => {
         const pesoMedio = l.peso_medio_kg ?? 0;
         const cat = l.categoria || classificarCategoria(pesoMedio);
         if (!catMap[cat]) return;
         const entry = catMap[cat];
-        entry.animais += l.num_animais;
+        const animais = Number(l.num_animais ?? 0);
+        entry.totalAnimais += animais;
         entry.sacos += l.num_sacos;
         entry.diasTotal += l.dias_no_pasto;
 
-        // Find product for this lancamento
         const pasto = pastos.find(p => p.id === l.pasto_id);
         const retiro = retirosData.find(r => r.id === l.retiro_id);
-        // Use consumo_g_cab_dia from view, weighted average by num_animais
         const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
-        const animais = Number(l.num_animais ?? 0);
         if (consumoReal > 0 && animais > 0) {
-          entry.consumos.push({ consumo: consumoReal, animais });
+          entry.weightedSum += consumoReal * animais;
           const prodId = pasto?.produto_id || retiro?.produto_id;
           if (prodId && produtosMap[prodId]) {
             const prod = produtosMap[prodId];
@@ -289,13 +287,13 @@ export default function ExportarRelatorioModal({
 
       const categoriaMetrics: CatMetricsPDF[] = CATS.map(cat => {
         const e = catMap[cat];
-        const consumoMedio = e.consumos.length > 0 ? e.consumos.reduce((a, b) => a + b, 0) / e.consumos.length : 0;
+        const consumoMedio = e.totalAnimais > 0 ? e.weightedSum / e.totalAnimais : 0;
         const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
-        const custoMedio = e.animais > 0 ? e.custoTotal / e.animais : 0;
-        const avgDias = e.consumos.length > 0 ? e.diasTotal / e.consumos.length : 30;
-        const kgGanho = e.animais > 0 && gmd > 0 ? e.animais * gmd * avgDias : 0;
+        const custoMedio = e.totalAnimais > 0 ? e.custoTotal / e.totalAnimais : 0;
+        const avgDias = e.sacos > 0 ? e.diasTotal / e.sacos : 30;
+        const kgGanho = e.totalAnimais > 0 && gmd > 0 ? e.totalAnimais * gmd * avgDias : 0;
         const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
-        return { categoria: cat, consumoMedio, totalAnimais: e.animais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
+        return { categoria: cat, consumoMedio, totalAnimais: e.totalAnimais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
       });
 
       const reportData: RelatorioPDFData = {
