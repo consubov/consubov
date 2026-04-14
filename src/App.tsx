@@ -30,6 +30,7 @@ import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
 import MapaFazendaPage from "./pages/MapaFazendaPage";
 import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import EscritoriosPage from "./pages/EscritoriosPage";
+import AuditoriaConfigPage from "./pages/AuditoriaConfigPage";
 import LandingPage from "./pages/LandingPage";
 import EscritorioLayout from "./pages/EscritorioLayout";
 import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
@@ -181,6 +182,7 @@ const App = () => (
                 <Route path="landing-page" element={<LandingPageConfigPage />} />
                 <Route path="ciclos" element={<CiclosPage />} />
                 <Route path="inteligencia" element={<PainelInteligenciaPage />} />
+                <Route path="auditoria" element={<AuditoriaConfigPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
