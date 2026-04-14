@@ -745,10 +745,18 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        // Calcular num_dias real a partir dos lancamentos do período
+        // Calcular num_dias real e duracao_dias a partir de data_inicio
         const cicloParaFechar = ciclos.find(c => c.id === fecharPend.ciclo_id);
         let numDiasReal = 30;
-        if (cicloParaFechar && fazendaId) {
+        let duracaoDias: number | null = null;
+        const dataFim = new Date().toISOString();
+
+        if (cicloParaFechar?.data_inicio) {
+          const inicio = new Date(cicloParaFechar.data_inicio);
+          const fim = new Date(dataFim);
+          duracaoDias = Math.max(1, Math.round((fim.getTime() - inicio.getTime()) / 86400000));
+          numDiasReal = duracaoDias;
+        } else if (cicloParaFechar && fazendaId) {
           const { data: lancDoCiclo } = await supabase.from("lancamentos")
             .select("dias_no_pasto")
             .eq("fazenda_id", fazendaId)
@@ -759,12 +767,14 @@ export default function CapatazDashboard() {
           }
         }
 
-        // Fechar ciclo atual com num_dias real
+        // Fechar ciclo atual com num_dias real + data_fim + duracao_dias
         const { error: errFechar } = await supabase.from("ciclos").update({
           fechado: true,
-          fechado_em: new Date().toISOString(),
+          fechado_em: dataFim,
           num_dias: numDiasReal,
-        }).eq("id", fecharPend.ciclo_id);
+          data_fim: dataFim,
+          duracao_dias: duracaoDias,
+        } as any).eq("id", fecharPend.ciclo_id);
         if (errFechar) throw errFechar;
 
         // Buscar ciclo fechado para calcular próximo mês
