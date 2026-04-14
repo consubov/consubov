@@ -95,7 +95,7 @@ export default function ExportarRelatorioModal({
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("view_consumo_consolidado" as any)
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia")
           .in("pasto_id", pastoIds);
 
         if (periodoSelecionado === "mensal") {
@@ -108,7 +108,13 @@ export default function ExportarRelatorioModal({
           lQuery = lQuery.gte("created_at", startIso).lte("created_at", endIso);
         }
 
-        const { data: lancData } = await lQuery;
+        const { data: lancData, error: lancError } = await lQuery;
+        if (lancError) {
+          console.error("Erro ao buscar lançamentos para PDF:", lancError);
+          toast.error("Erro ao buscar dados de lançamentos.");
+          setLoading(false);
+          return;
+        }
         lancamentos = lancData ?? [];
       }
 
