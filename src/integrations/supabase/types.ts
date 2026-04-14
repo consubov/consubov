@@ -964,12 +964,14 @@ export type Database = {
           ativo: boolean | null
           categoria: string | null
           criado_em: string | null
+          data_entrada: string | null
           dias_no_pasto: number | null
           gmd_kg_dia: number | null
           id: string
           nome: string
           num_animais: number
           peso_abate_meta_kg: number | null
+          peso_entrada: number | null
           peso_medio_kg: number | null
           produto_id: string | null
           qr_uuid: string
@@ -980,12 +982,14 @@ export type Database = {
           ativo?: boolean | null
           categoria?: string | null
           criado_em?: string | null
+          data_entrada?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
           nome: string
           num_animais?: number
           peso_abate_meta_kg?: number | null
+          peso_entrada?: number | null
           peso_medio_kg?: number | null
           produto_id?: string | null
           qr_uuid?: string
@@ -996,12 +1000,14 @@ export type Database = {
           ativo?: boolean | null
           categoria?: string | null
           criado_em?: string | null
+          data_entrada?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
           nome?: string
           num_animais?: number
           peso_abate_meta_kg?: number | null
+          peso_entrada?: number | null
           peso_medio_kg?: number | null
           produto_id?: string | null
           qr_uuid?: string

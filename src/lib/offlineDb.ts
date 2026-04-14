@@ -50,12 +50,18 @@ export interface PastoCache {
   produto_id: string | null;
   sexo: string | null;
   categoria: string | null;
+  data_entrada: string | null;
+  peso_entrada: number | null;
+  gmd_kg_dia: number | null;
 }
 
 export interface RetiroCache {
   id: string;
   nome: string;
   fazenda_nome: string;
+  gmd_recria1: number | null;
+  gmd_recria2: number | null;
+  gmd_engorda: number | null;
 }
 
 export interface CicloCache {

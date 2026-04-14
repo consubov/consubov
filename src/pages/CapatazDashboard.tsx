@@ -75,6 +75,34 @@ function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
   }, {});
 }
 
+/** Calculate dynamic dias and peso_atual from data_entrada and GMD */
+function calcDinamicoPasto(
+  pasto: PastoCache,
+  retiro: RetiroCache | null,
+): { dias: number | null; pesoAtual: number | null } {
+  if (!pasto.data_entrada) {
+    return { dias: pasto.dias_no_pasto, pesoAtual: pasto.peso_medio_kg };
+  }
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(pasto.data_entrada).getTime()) / 86400000));
+
+  const pesoEntrada = pasto.peso_entrada ?? pasto.peso_medio_kg;
+  if (pesoEntrada == null) {
+    return { dias, pesoAtual: null };
+  }
+
+  // GMD priority: pasto-level > retiro-level by category
+  let gmd = pasto.gmd_kg_dia;
+  if (gmd == null && retiro) {
+    const cat = (pasto.categoria || '').toLowerCase();
+    if (cat.includes('recria 1') || cat.includes('recria1')) gmd = retiro.gmd_recria1;
+    else if (cat.includes('recria 2') || cat.includes('recria2')) gmd = retiro.gmd_recria2;
+    else gmd = retiro.gmd_engorda;
+  }
+
+  const pesoAtual = gmd != null && gmd > 0 ? pesoEntrada + gmd * dias : pesoEntrada;
+  return { dias, pesoAtual: Math.round(pesoAtual * 10) / 10 };
+}
+
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
@@ -315,7 +343,7 @@ export default function CapatazDashboard() {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
-        .select("id, nome, fazenda_id")
+        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda")
         .eq("id", roleData.retiroId!)
         .maybeSingle();
 
@@ -330,6 +358,9 @@ export default function CapatazDashboard() {
           id: retiroData.id,
           nome: retiroData.nome,
           fazenda_nome: fazenda?.nome || '',
+          gmd_recria1: retiroData.gmd_recria1,
+          gmd_recria2: retiroData.gmd_recria2,
+          gmd_engorda: retiroData.gmd_engorda,
         };
         await cacheRetiro(retiroCache);
         setRetiro(retiroCache);
@@ -339,7 +370,7 @@ export default function CapatazDashboard() {
         // Get pastos
         const { data: pastosData } = await supabase
           .from("pastos")
-          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria")
+          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia")
           .eq("retiro_id", retiroData.id)
           .eq("ativo", true);
 
@@ -546,7 +577,6 @@ export default function CapatazDashboard() {
     await refreshLancamentosState();
   };
 
-
   const handleSync = async () => {
     setSyncError(null);
     const pendentes = await getLancamentosPendentes();
@@ -584,7 +614,11 @@ export default function CapatazDashboard() {
           }
           produto_id_final = pasto.produto_id || retiroProdutoId;
 
-          if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
+          // Use dynamic peso_atual for consumption calculation
+          const { pesoAtual: pesoAtualCalc } = calcDinamicoPasto(pasto, retiro);
+          const pesoParaConsumo = pesoAtualCalc ?? Number(pasto.peso_medio_kg) ?? 0;
+
+          if (produto_id_final && pasto.num_animais > 0 && pesoParaConsumo > 0) {
             const { data: produto } = await supabase.from("produtos")
               .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
               .eq("id", produto_id_final).maybeSingle();
@@ -626,7 +660,7 @@ export default function CapatazDashboard() {
                     peso_saco_kg: Number(produto.peso_saco_kg),
                     num_animais: pasto.num_animais,
                     dias: dias_intervalo,
-                    peso_medio_kg: Number(pasto.peso_medio_kg),
+                    peso_medio_kg: pesoParaConsumo,
                     consumo_por_100kg_categoria: consumo_por_100kg,
                     margem,
                   });
@@ -671,7 +705,7 @@ export default function CapatazDashboard() {
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
           origem: "qr",
-          peso_medio_kg: pasto?.peso_medio_kg ?? null,
+          peso_medio_kg: pasto ? (calcDinamicoPasto(pasto, retiro).pesoAtual ?? pasto.peso_medio_kg ?? null) : null,
           dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
@@ -1242,13 +1276,14 @@ export default function CapatazDashboard() {
             <div className="space-y-2">
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
+                const { dias, pesoAtual } = calcDinamicoPasto(p, retiro);
                 return (
                   <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
                     <PastoCard
                       nome={p.nome}
                       numAnimais={p.num_animais}
-                      pesoMedio={p.peso_medio_kg}
-                      diasNoPasto={p.dias_no_pasto}
+                      pesoMedio={pesoAtual}
+                      diasNoPasto={dias}
                       sacosHoje={sacosMap[p.id] || 0}
                       status={getPastoStatus(p.id)}
                       statusConsumo={cm?.status_consumo}
