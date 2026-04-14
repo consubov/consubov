@@ -53,6 +53,7 @@ export default function SalgaForm({
   const [obsFoto, setObsFoto] = useState<string | null>(initialDraft?.obsFoto ?? null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const produtoNaoConfigurado = !sugestao && numAnimais > 0;
 
   const obsFileRef = useRef<HTMLInputElement>(null);
   const auditFileRef = useRef<HTMLInputElement>(null);
