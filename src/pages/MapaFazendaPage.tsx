@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useMapaData } from "@/hooks/useMapaData";
 import type { PastoMapaData } from "@/hooks/useMapaData";
+import { useTotalAnimaisRetiro } from "@/hooks/useTotalAnimaisRetiro";
 import MonthScroller from "@/components/MonthScroller";
 import MapaViewer from "@/components/mapa/MapaViewer";
 import MapaEditor from "@/components/mapa/MapaEditor";
