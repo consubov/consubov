@@ -644,16 +644,18 @@ export default function CapatazDashboard() {
     };
     await saveLancamento(lancamento);
 
-    // Register audit counter and advance block if needed
-    const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
-    const retiroId = retiro?.id || '';
-    const fId = fazendaId || '';
-    try {
-      await registrarSalgaAuditoria(retiroId, fId, fotosPorBloco);
-      // Sync sorteio to Supabase (fire and forget)
-      const sorteio = await getSorteioAtual(retiroId, fId, fotosPorBloco);
-      syncSorteioToSupabase(supabase, sorteio);
-    } catch { /* offline — no problem */ }
+    // Register audit counter ONLY for normal salga (not cocho cheio)
+    if (!data.cocho_cheio) {
+      const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
+      const retiroId = retiro?.id || '';
+      const fId = fazendaId || '';
+      try {
+        await registrarSalgaAuditoria(retiroId, fId, fotosPorBloco);
+        // Sync sorteio to Supabase (fire and forget)
+        const sorteio = await getSorteioAtual(retiroId, fId, fotosPorBloco);
+        syncSorteioToSupabase(supabase, sorteio);
+      } catch { /* offline — no problem */ }
+    }
 
     toast.success("✅ Salvo offline");
     setFormDraft(null);
