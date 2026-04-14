@@ -614,7 +614,11 @@ export default function CapatazDashboard() {
           }
           produto_id_final = pasto.produto_id || retiroProdutoId;
 
-          if (produto_id_final && pasto.num_animais > 0 && pasto.peso_medio_kg) {
+          // Use dynamic peso_atual for consumption calculation
+          const { pesoAtual: pesoAtualCalc } = calcDinamicoPasto(pasto, retiro);
+          const pesoParaConsumo = pesoAtualCalc ?? Number(pasto.peso_medio_kg) ?? 0;
+
+          if (produto_id_final && pasto.num_animais > 0 && pesoParaConsumo > 0) {
             const { data: produto } = await supabase.from("produtos")
               .select("peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
               .eq("id", produto_id_final).maybeSingle();
@@ -656,9 +660,7 @@ export default function CapatazDashboard() {
                     peso_saco_kg: Number(produto.peso_saco_kg),
                     num_animais: pasto.num_animais,
                     dias: dias_intervalo,
-                    peso_medio_kg: Number(pasto.peso_medio_kg),
-                    consumo_por_100kg_categoria: consumo_por_100kg,
-                    margem,
+                    peso_medio_kg: pesoParaConsumo,
                   });
 
                   if (resultado) {
