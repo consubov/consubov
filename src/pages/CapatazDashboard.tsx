@@ -347,7 +347,7 @@ export default function CapatazDashboard() {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
-        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda")
+        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id")
         .eq("id", roleData.retiroId!)
         .maybeSingle();
 
