@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useMapaData } from "@/hooks/useMapaData";
 import type { PastoMapaData } from "@/hooks/useMapaData";
-import { useTotalAnimaisRetiro } from "@/hooks/useTotalAnimaisRetiro";
+
 import MonthScroller from "@/components/MonthScroller";
 import MapaViewer from "@/components/mapa/MapaViewer";
 import MapaEditor from "@/components/mapa/MapaEditor";
@@ -76,7 +76,7 @@ export default function MapaFazendaPage() {
   const activeFazendaId = fazendaId ?? resolvedFazendaId;
   const activeRetiroId = retiroId ?? "";
   const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId);
-  const { total: totalAnimaisRetiro, cicloAberto, loading: loadingTotal } = useTotalAnimaisRetiro(retiroId, mes, ano);
+  const totalAnimaisRetiro = (mapa?.pastos ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -231,7 +231,7 @@ export default function MapaFazendaPage() {
       )}
 
       {/* Resumo de animais no retiro */}
-      {mapa && !loadingTotal && (
+      {mapa && mapa.pastos.length > 0 && (
         <Card className="p-3 flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10">
             <Beef className="w-5 h-5 text-primary" />
