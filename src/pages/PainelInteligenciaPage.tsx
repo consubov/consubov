@@ -103,7 +103,7 @@ export default function PainelInteligenciaPage() {
       setRetiros(rRes.data ?? []);
       setPastos(pRes.data ?? []);
       setProdutos(prRes.data ?? []);
-      setLancamentos((lRes.data ?? []) as Lancamento[]);
+      setLancamentos((lRes.data as unknown as Lancamento[]) ?? []);
       setLoading(false);
     }
     load();
