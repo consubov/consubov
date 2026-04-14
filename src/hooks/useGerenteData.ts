@@ -23,7 +23,7 @@ interface Lancamento {
   status_consumo: string | null; indice_consumo: number | null;
 }
 interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
-interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; }
+interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; duracao_dias: number | null; }
 interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
 
 export interface Observacao {
@@ -288,7 +288,7 @@ export function useGerenteData(filters?: GerenteFilters) {
 
   // Computed: capataz scores
   const capatazScores = useMemo<CapatazScore[]>(() => {
-    const numDias = ciclo?.num_dias ?? 30;
+    const numDias = ciclo?.duracao_dias ?? ciclo?.num_dias ?? 30;
     return retirosComDados.map(r => {
       const rLanc = r.lancamentos;
       // Simplified score - no consumo_g_cab_dia available
