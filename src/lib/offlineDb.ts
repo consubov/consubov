@@ -133,7 +133,7 @@ let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 2, {
+    dbPromise = openDB<ConsubovDB>('consubov-capataz', 3, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -151,6 +151,10 @@ function getDb() {
         if (oldVersion < 2) {
           const obsStore = db.createObjectStore('observacoesOffline', { keyPath: 'id' });
           obsStore.createIndex('by-status', 'status');
+        }
+        if (oldVersion < 3) {
+          db.createObjectStore('produtoAtivo', { keyPath: 'id' });
+          db.createObjectStore('fazendaCache', { keyPath: 'id' });
         }
       },
     });
