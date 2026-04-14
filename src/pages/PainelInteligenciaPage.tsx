@@ -13,13 +13,8 @@ import {
   BarChart, Bar, Cell,
 } from "recharts";
 import {
-  calcularConsumo,
   classificarCategoria,
-  getConsumoPorCategoria,
-  getMargemPorCategoria,
-  calcConsumoGCabDia,
   calcIndiceConsumo,
-  calcConsumoEsperadoGCabDia,
 } from "@/lib/consumoCalc";
 import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
