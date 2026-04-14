@@ -89,6 +89,7 @@ export interface FazendaCache {
   id: string;
   nome: string;
   intervalo_padrao_dias: number;
+  auditoria_fotos_por_bloco: number;
 }
 
 interface ConsubovDB extends DBSchema {
