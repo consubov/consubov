@@ -150,6 +150,9 @@ export type Database = {
         Row: {
           ano: number
           criado_em: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          duracao_dias: number | null
           fazenda_id: string
           fechado: boolean | null
           fechado_em: string | null
@@ -160,6 +163,9 @@ export type Database = {
         Insert: {
           ano: number
           criado_em?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          duracao_dias?: number | null
           fazenda_id: string
           fechado?: boolean | null
           fechado_em?: string | null
@@ -170,6 +176,9 @@ export type Database = {
         Update: {
           ano?: number
           criado_em?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          duracao_dias?: number | null
           fazenda_id?: string
           fechado?: boolean | null
           fechado_em?: string | null
