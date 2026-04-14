@@ -231,20 +231,19 @@ export default function MapaFazendaPage() {
       )}
 
       {/* Resumo de animais no retiro */}
-      {mapa && mapa.pastos.length > 0 && (() => {
-        const totalAnimais = mapa.pastos.reduce((sum, p) => sum + p.num_animais, 0);
-        return (
-          <Card className="p-3 flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10">
-              <Beef className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total de animais no retiro</p>
-              <p className="text-lg font-bold text-foreground">{totalAnimais.toLocaleString("pt-BR")} <span className="text-sm font-medium text-muted-foreground">cab</span></p>
-            </div>
-          </Card>
-        );
-      })()}
+      {mapa && !loadingTotal && (
+        <Card className="p-3 flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10">
+            <Beef className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Total de animais no retiro</p>
+            <p className="text-lg font-bold text-foreground">
+              {totalAnimaisRetiro.toLocaleString("pt-BR")} <span className="text-sm font-medium text-muted-foreground">cab</span>
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* Action Sheet */}
       <MapaActionSheet
