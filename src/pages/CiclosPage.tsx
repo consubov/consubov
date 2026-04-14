@@ -16,6 +16,9 @@ interface Ciclo {
   fechado: boolean;
   fechado_em: string | null;
   fazenda_id: string;
+  data_inicio: string | null;
+  data_fim: string | null;
+  duracao_dias: number | null;
 }
 
 interface Fazenda {
@@ -35,7 +38,7 @@ export default function CiclosPage() {
 
   async function load() {
     const [ciclosRes, fazendasRes] = await Promise.all([
-      supabase.from("ciclos").select("id, mes, ano, fechado, fechado_em, fazenda_id").order("ano", { ascending: false }).order("mes", { ascending: false }),
+      supabase.from("ciclos").select("id, mes, ano, fechado, fechado_em, fazenda_id, data_inicio, data_fim, duracao_dias").order("ano", { ascending: false }).order("mes", { ascending: false }),
       supabase.from("fazendas").select("id, nome").eq("ativo", true),
     ]);
     setCiclos(ciclosRes.data ?? []);
@@ -124,9 +127,11 @@ export default function CiclosPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Fazenda</TableHead>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Fechamento</TableHead>
+                     <TableHead>Período</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Início</TableHead>
+                     <TableHead>Fechamento</TableHead>
+                     <TableHead>Duração</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -143,7 +148,13 @@ export default function CiclosPage() {
                         )}
                       </TableCell>
                       <TableCell>
+                        {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString("pt-BR") : "—"}
+                      </TableCell>
+                      <TableCell>
                         {c.fechado_em ? new Date(c.fechado_em).toLocaleDateString("pt-BR") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {c.duracao_dias ? `${c.duracao_dias} dias` : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
