@@ -19,7 +19,7 @@ import { Card } from "@/components/ui/card";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Map, RefreshCw, Beef } from "lucide-react";
 
 type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino" | "entrada";
 
