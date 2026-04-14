@@ -75,6 +75,22 @@ export interface CicloCache {
   duracao_dias?: number | null;
 }
 
+export interface ProdutoCache {
+  id: string;
+  nome: string;
+  peso_saco_kg: number;
+  consumo_por_100kg: number | null;
+  consumo_recria1: number | null;
+  consumo_recria2: number | null;
+  consumo_engorda: number | null;
+}
+
+export interface FazendaCache {
+  id: string;
+  nome: string;
+  intervalo_padrao_dias: number;
+}
+
 interface ConsubovDB extends DBSchema {
   lancamentos: {
     key: string;
@@ -93,6 +109,14 @@ interface ConsubovDB extends DBSchema {
   ciclos: {
     key: string;
     value: CicloCache;
+  };
+  produtoAtivo: {
+    key: string;
+    value: ProdutoCache;
+  };
+  fazendaCache: {
+    key: string;
+    value: FazendaCache;
   };
   config: {
     key: string;
