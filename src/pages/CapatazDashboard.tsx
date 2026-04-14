@@ -1272,13 +1272,14 @@ export default function CapatazDashboard() {
             <div className="space-y-2">
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
+                const { dias, pesoAtual } = calcDinamicoPasto(p, retiro);
                 return (
                   <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
                     <PastoCard
                       nome={p.nome}
                       numAnimais={p.num_animais}
-                      pesoMedio={p.peso_medio_kg}
-                      diasNoPasto={p.dias_no_pasto}
+                      pesoMedio={pesoAtual}
+                      diasNoPasto={dias}
                       sacosHoje={sacosMap[p.id] || 0}
                       status={getPastoStatus(p.id)}
                       statusConsumo={cm?.status_consumo}
