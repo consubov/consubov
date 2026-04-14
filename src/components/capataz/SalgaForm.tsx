@@ -43,9 +43,9 @@ interface SalgaFormProps {
 
 export default function SalgaForm({
   pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
-  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack
+  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack, numAnimais, sugestao
 }: SalgaFormProps) {
-  const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? "");
+  const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? (sugestao ? String(sugestao.sacosSugeridos) : ""));
   const [observacoes, setObservacoes] = useState<Observacao[]>(initialDraft?.observacoes ?? []);
   const [fotoAuditoria, setFotoAuditoria] = useState<string | null>(initialDraft?.fotoAuditoria ?? null);
   const [addingObs, setAddingObs] = useState(initialDraft?.addingObs ?? false);
