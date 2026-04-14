@@ -661,6 +661,8 @@ export default function CapatazDashboard() {
                     num_animais: pasto.num_animais,
                     dias: dias_intervalo,
                     peso_medio_kg: pesoParaConsumo,
+                    consumo_por_100kg_categoria: consumo_por_100kg,
+                    margem,
                   });
 
                   if (resultado) {
