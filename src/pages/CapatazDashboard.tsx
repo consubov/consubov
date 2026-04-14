@@ -562,6 +562,35 @@ export default function CapatazDashboard() {
     setFormJustificativa(justificativa);
     setFormDraft(null);
 
+    // Compute suggestion
+    const pasto = pastos.find(p => p.id === pastoId);
+    if (pasto && produtoAtivo && fazendaCache) {
+      const { pesoAtual } = calcDinamicoPasto(pasto, retiro);
+      const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
+      const categoria = pasto.categoria || 'Engorda';
+      const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
+      const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
+
+      if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
+        // consumo_por_100kg is in kg per 100kg PV
+        // consumo_diario_kg = (num_animais × peso × consumo_por_100kg) / 100
+        const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
+        const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
+        const sacos = Math.max(1, Math.ceil(consumo_periodo_kg / produtoAtivo.peso_saco_kg));
+        setFormSugestao({
+          sacosSugeridos: sacos,
+          numAnimais: pasto.num_animais,
+          intervaloDias,
+          pesoAtual: peso,
+          produtoNome: produtoAtivo.nome,
+        });
+      } else {
+        setFormSugestao(null);
+      }
+    } else {
+      setFormSugestao(null);
+    }
+
     // Audit photo logic: ~30% chance of requiring photo
     // TODO: remove `true ||` after confirming blocking works
     setFormAuditoriaExigida(true || Math.random() < 0.3);
