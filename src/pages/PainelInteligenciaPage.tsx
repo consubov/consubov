@@ -207,13 +207,13 @@ export default function PainelInteligenciaPage() {
 
   // ========= METRICS =========
 
-  // Consumption calculated client-side for each filtered lancamento
+  // Consumption from DB for each filtered lancamento (no frontend recalculation)
   const consumosPorLanc = useMemo(() => {
     return filteredLancamentos.map(l => ({
       lancamento: l,
-      consumo: calcConsumoForLanc(l),
+      consumo: getConsumoForLanc(l),
     }));
-  }, [filteredLancamentos, produtoById, pastoById, retiroById]);
+  }, [filteredLancamentos]);
 
   // 1. Average consumption
   const consumoMedioReal = useMemo(() => {
