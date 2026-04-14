@@ -137,7 +137,7 @@ export function usePainelData(filters: PainelFilters) {
           })(),
         ]);
         setPastos((pastosRes.data ?? []) as Pasto[]);
-        setLancamentos((lancRes.data ?? []) as Lancamento[]);
+        setLancamentos(((lancRes.data as unknown) ?? []) as Lancamento[]);
       } else {
         setPastos([]);
         setLancamentos([]);
