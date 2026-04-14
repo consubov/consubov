@@ -1100,7 +1100,11 @@ export default function CapatazDashboard() {
                     <CardContent className="p-3 flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-foreground">{l.pasto_nome}</p>
-                        <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        {l.cocho_cheio ? (
+                          <p className="text-xs text-blue-600 font-medium">🫙 Cocho Cheio • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        )}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
                         {l.status === 'pendente' ? '⏳ Pendente' : '✅ Sincronizado'}
