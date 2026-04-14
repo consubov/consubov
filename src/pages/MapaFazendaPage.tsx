@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +19,7 @@ import { Card } from "@/components/ui/card";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ArrowLeft, Loader2, Pencil, Map, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Map, RefreshCw, Beef } from "lucide-react";
 
 type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino" | "entrada";
 
@@ -227,6 +227,22 @@ export default function MapaFazendaPage() {
           <p className="text-muted-foreground text-sm">Este retiro ainda não possui mapa cadastrado.</p>
         </div>
       )}
+
+      {/* Resumo de animais no retiro */}
+      {mapa && mapa.pastos.length > 0 && (() => {
+        const totalAnimais = mapa.pastos.reduce((sum, p) => sum + p.num_animais, 0);
+        return (
+          <Card className="p-3 flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10">
+              <Beef className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total de animais no retiro</p>
+              <p className="text-lg font-bold text-foreground">{totalAnimais.toLocaleString("pt-BR")} <span className="text-sm font-medium text-muted-foreground">cab</span></p>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Action Sheet */}
       <MapaActionSheet
