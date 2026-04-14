@@ -689,7 +689,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        // --- Consumption calculation ---
+        // --- Consumption calculation (skip for cocho cheio) ---
         let consumo_esperado_kg: number | null = null;
         let consumo_real_kg: number | null = null;
         let indice_consumo: number | null = null;
@@ -698,7 +698,7 @@ export default function CapatazDashboard() {
         let produto_id_final: string | null = null;
 
         const pasto = pastos.find(p => p.id === l.pasto_id);
-        if (pasto) {
+        if (pasto && !l.cocho_cheio) {
           // Get retiro produto_id as fallback
           let retiroProdutoId: string | null = null;
           if (roleData.retiroId) {
