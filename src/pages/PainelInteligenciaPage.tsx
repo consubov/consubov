@@ -348,12 +348,16 @@ export default function PainelInteligenciaPage() {
       entry.animais += l.num_animais;
       entry.sacos += l.num_sacos;
       entry.diasTotal += l.dias_no_pasto;
+      // Use pre-calculated consumo from DB
+      const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
+      if (consumoReal > 0) {
+        entry.consumos.push(consumoReal);
+      }
+      // Cost: use product peso_saco_kg * preco_por_kg (read-only lookup, no consumption calc)
       const produtoId = getEffectiveProdutoId(l);
       if (produtoId) {
         const prod = produtoById[produtoId];
-        if (prod && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
-          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
-          entry.consumos.push(consumoReal);
+        if (prod && l.num_sacos > 0) {
           const preco = prod.preco_por_kg ?? 0;
           entry.custoTotal += l.num_sacos * prod.peso_saco_kg * preco;
         }
