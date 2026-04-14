@@ -285,17 +285,16 @@ export default function AdminRetiroPainelPage() {
                 ? Math.max(...consumoList.map(c => c.num_animais))
                 : p.num_animais;
 
-              // Weighted average consumption from pre-calculated data
+              // Weighted average consumption by num_animais
               let consumoGCabDia = 0;
-              let totalCD = 0;
+              let totalAnimaisConsumo = 0;
               for (const c of consumoList) {
-                if (c.consumo_g_cab_dia > 0) {
-                  const cd = c.num_animais * c.dias_no_pasto;
-                  consumoGCabDia += c.consumo_g_cab_dia * cd;
-                  totalCD += cd;
+                if (c.consumo_g_cab_dia > 0 && c.num_animais > 0) {
+                  consumoGCabDia += c.consumo_g_cab_dia * c.num_animais;
+                  totalAnimaisConsumo += c.num_animais;
                 }
               }
-              consumoGCabDia = totalCD > 0 ? consumoGCabDia / totalCD : 0;
+              consumoGCabDia = totalAnimaisConsumo > 0 ? consumoGCabDia / totalAnimaisConsumo : 0;
 
               // Status from latest lancamento (pre-calculated by DB trigger)
               const latestConsumo = consumoList.length > 0 ? consumoList[consumoList.length - 1] : null;
