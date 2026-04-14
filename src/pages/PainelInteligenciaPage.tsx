@@ -140,35 +140,10 @@ export default function PainelInteligenciaPage() {
     return fazendaById[l.fazenda_id];
   };
 
-  // Resolve effective produto_id: pasto -> retiro
-  const getEffectiveProdutoId = useCallback((l: Lancamento): string | null => {
-    const pasto = pastoById[l.pasto_id];
-    if (pasto?.produto_id) return pasto.produto_id;
-    const retiro = retiroById[l.retiro_id];
-    if (retiro?.produto_id) return retiro.produto_id;
-    return null;
-  }, [pastoById, retiroById]);
-
-  // Calculate consumption for a lancamento client-side
-  const calcConsumoForLanc = (l: Lancamento): number | null => {
-    const produtoId = getEffectiveProdutoId(l);
-    if (!produtoId) return null;
-    const prod = produtoById[produtoId];
-    if (!prod || l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) return null;
-    const pesoMedio = l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0;
-    const cat = l.categoria || classificarCategoria(pesoMedio);
-    const consumo_por_100kg = getConsumoPorCategoria(cat, prod);
-    const margem = getMargemPorCategoria(cat, prod);
-    const result = calcularConsumo({
-      num_sacos: l.num_sacos,
-      peso_saco_kg: prod.peso_saco_kg,
-      num_animais: l.num_animais,
-      dias: l.dias_no_pasto,
-      peso_medio_kg: pesoMedio,
-      consumo_por_100kg_categoria: consumo_por_100kg,
-      margem,
-    });
-    return result?.consumo_real_g_cab_dia ?? null;
+  // Use pre-calculated consumo_g_cab_dia from DB (no frontend calculation)
+  const getConsumoForLanc = (l: Lancamento): number | null => {
+    const val = Number(l.consumo_g_cab_dia ?? 0);
+    return val > 0 ? val : null;
   };
 
   // Filter by mes_referencia + ano_referencia (NOT created_at)
