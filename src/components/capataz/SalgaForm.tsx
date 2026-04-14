@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Plus, Save, X } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 
@@ -13,6 +14,14 @@ export interface SalgaFormDraft {
   addingObs: boolean;
   obsTexto: string;
   obsFoto: string | null;
+}
+
+export interface SalgaSugestao {
+  sacosSugeridos: number;
+  numAnimais: number;
+  intervaloDias: number;
+  pesoAtual: number;
+  produtoNome: string;
 }
 
 interface SalgaFormProps {
@@ -28,13 +37,15 @@ interface SalgaFormProps {
   onDraftChange?: (draft: SalgaFormDraft) => void;
   onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => void;
   onBack: () => void;
+  numAnimais: number;
+  sugestao: SalgaSugestao | null;
 }
 
 export default function SalgaForm({
   pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
-  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack
+  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack, numAnimais, sugestao
 }: SalgaFormProps) {
-  const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? "");
+  const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? (sugestao ? String(sugestao.sacosSugeridos) : ""));
   const [observacoes, setObservacoes] = useState<Observacao[]>(initialDraft?.observacoes ?? []);
   const [fotoAuditoria, setFotoAuditoria] = useState<string | null>(initialDraft?.fotoAuditoria ?? null);
   const [addingObs, setAddingObs] = useState(initialDraft?.addingObs ?? false);
@@ -42,6 +53,7 @@ export default function SalgaForm({
   const [obsFoto, setObsFoto] = useState<string | null>(initialDraft?.obsFoto ?? null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const produtoNaoConfigurado = !sugestao && numAnimais > 0;
 
   const obsFileRef = useRef<HTMLInputElement>(null);
   const auditFileRef = useRef<HTMLInputElement>(null);
@@ -138,11 +150,34 @@ export default function SalgaForm({
             {fazendaNome && (
               <p className="text-xs text-muted-foreground">Fazenda: {fazendaNome}</p>
             )}
+            <p className="text-sm text-foreground mt-1 font-medium">Animais: {numAnimais} cab</p>
             {tipo === 'falha_qr' && (
               <p className="text-xs text-destructive mt-1">⚠ Seleção manual (falha QR)</p>
             )}
           </CardContent>
         </Card>
+
+        {/* Sugestão de sacos */}
+        {sugestao ? (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className="bg-primary text-primary-foreground">Sugestão: {sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          !produtoNaoConfigurado ? null : (
+            <Card className="border-destructive/30 bg-destructive/5">
+              <CardContent className="p-3">
+                <p className="text-xs text-destructive font-medium">Produto não configurado</p>
+              </CardContent>
+            </Card>
+          )
+        )}
 
         {/* Sacos */}
         <div>

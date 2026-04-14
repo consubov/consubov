@@ -36,8 +36,9 @@ import {
   saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
+  cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
-  type FecharMesPendente,
+  type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro';
@@ -140,6 +141,9 @@ export default function CapatazDashboard() {
   const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
+  const [produtoAtivo, setProdutoAtivo] = useState<ProdutoCache | undefined>();
+  const [fazendaCache, setFazendaCache] = useState<FazendaCache | undefined>();
+  const [formSugestao, setFormSugestao] = useState<{ sacosSugeridos: number; numAnimais: number; intervaloDias: number; pesoAtual: number; produtoNome: string } | null>(null);
 
   // Abate & Transfer
   const [abateOpen, setAbateOpen] = useState(false);
@@ -249,7 +253,7 @@ export default function CapatazDashboard() {
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
-    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState, savedFazendaId] = await Promise.all([
+    const [cachedPastos, cachedRetiro, cachedCiclos, allLancamentos, pendentes, savedCiclo, savedUiState, savedFazendaId, cachedProd, cachedFaz] = await Promise.all([
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
@@ -258,11 +262,15 @@ export default function CapatazDashboard() {
       getConfig('selectedCicloId'),
       getConfig('capatazUiState'),
       getConfig('fazendaId'),
+      getCachedProdutoAtivo(),
+      getCachedFazenda(),
     ]);
     setPastos(cachedPastos);
     setRetiro(cachedRetiro || null);
     setCiclos(cachedCiclos);
     if (savedFazendaId) setFazendaId(savedFazendaId);
+    if (cachedProd) setProdutoAtivo(cachedProd);
+    if (cachedFaz) setFazendaCache(cachedFaz);
 
     let nextCicloId = "";
     if (cachedCiclos.length > 0) {
@@ -343,14 +351,14 @@ export default function CapatazDashboard() {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
-        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda")
+        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id")
         .eq("id", roleData.retiroId!)
         .maybeSingle();
 
       if (retiroData) {
         const { data: fazenda } = await supabase
           .from("fazendas")
-          .select("nome")
+          .select("nome, intervalo_padrao_dias")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
 
@@ -366,6 +374,40 @@ export default function CapatazDashboard() {
         setRetiro(retiroCache);
         setFazendaId(retiroData.fazenda_id);
         await setConfig('fazendaId', retiroData.fazenda_id);
+
+        // Cache fazenda data (intervalo)
+        if (fazenda) {
+          const fCache: FazendaCache = {
+            id: retiroData.fazenda_id,
+            nome: fazenda.nome || '',
+            intervalo_padrao_dias: fazenda.intervalo_padrao_dias ?? 4,
+          };
+          await cacheFazenda(fCache);
+          setFazendaCache(fCache);
+        }
+
+        // Cache produto ativo do retiro
+        const retiroProdutoId = (retiroData as any).produto_id;
+        if (retiroProdutoId) {
+          const { data: prodData } = await supabase
+            .from("produtos")
+            .select("id, nome, peso_saco_kg, consumo_por_100kg, consumo_recria1, consumo_recria2, consumo_engorda")
+            .eq("id", retiroProdutoId)
+            .maybeSingle();
+          if (prodData) {
+            const pCache: ProdutoCache = {
+              id: prodData.id,
+              nome: prodData.nome,
+              peso_saco_kg: Number(prodData.peso_saco_kg),
+              consumo_por_100kg: prodData.consumo_por_100kg != null ? Number(prodData.consumo_por_100kg) : null,
+              consumo_recria1: prodData.consumo_recria1 != null ? Number(prodData.consumo_recria1) : null,
+              consumo_recria2: prodData.consumo_recria2 != null ? Number(prodData.consumo_recria2) : null,
+              consumo_engorda: prodData.consumo_engorda != null ? Number(prodData.consumo_engorda) : null,
+            };
+            await cacheProdutoAtivo(pCache);
+            setProdutoAtivo(pCache);
+          }
+        }
 
         // Get pastos
         const { data: pastosData } = await supabase
@@ -519,6 +561,35 @@ export default function CapatazDashboard() {
     setFormTipo(tipo);
     setFormJustificativa(justificativa);
     setFormDraft(null);
+
+    // Compute suggestion
+    const pasto = pastos.find(p => p.id === pastoId);
+    if (pasto && produtoAtivo && fazendaCache) {
+      const { pesoAtual } = calcDinamicoPasto(pasto, retiro);
+      const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
+      const categoria = pasto.categoria || 'Engorda';
+      const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
+      const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
+
+      if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
+        // consumo_por_100kg is in kg per 100kg PV
+        // consumo_diario_kg = (num_animais × peso × consumo_por_100kg) / 100
+        const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
+        const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
+        const sacos = Math.max(1, Math.ceil(consumo_periodo_kg / produtoAtivo.peso_saco_kg));
+        setFormSugestao({
+          sacosSugeridos: sacos,
+          numAnimais: pasto.num_animais,
+          intervaloDias,
+          pesoAtual: peso,
+          produtoNome: produtoAtivo.nome,
+        });
+      } else {
+        setFormSugestao(null);
+      }
+    } else {
+      setFormSugestao(null);
+    }
 
     // Audit photo logic: ~30% chance of requiring photo
     // TODO: remove `true ||` after confirming blocking works
@@ -966,8 +1037,11 @@ export default function CapatazDashboard() {
         onSave={handleSaveSalga}
         onBack={() => {
           setFormDraft(null);
+          setFormSugestao(null);
           setScreen('salga');
         }}
+        numAnimais={pastos.find(p => p.id === formPastoId)?.num_animais ?? 0}
+        sugestao={formSugestao}
       />
     );
   }

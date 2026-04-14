@@ -75,6 +75,22 @@ export interface CicloCache {
   duracao_dias?: number | null;
 }
 
+export interface ProdutoCache {
+  id: string;
+  nome: string;
+  peso_saco_kg: number;
+  consumo_por_100kg: number | null;
+  consumo_recria1: number | null;
+  consumo_recria2: number | null;
+  consumo_engorda: number | null;
+}
+
+export interface FazendaCache {
+  id: string;
+  nome: string;
+  intervalo_padrao_dias: number;
+}
+
 interface ConsubovDB extends DBSchema {
   lancamentos: {
     key: string;
@@ -94,6 +110,14 @@ interface ConsubovDB extends DBSchema {
     key: string;
     value: CicloCache;
   };
+  produtoAtivo: {
+    key: string;
+    value: ProdutoCache;
+  };
+  fazendaCache: {
+    key: string;
+    value: FazendaCache;
+  };
   config: {
     key: string;
     value: { key: string; value: string };
@@ -109,7 +133,7 @@ let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 2, {
+    dbPromise = openDB<ConsubovDB>('consubov-capataz', 3, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -127,6 +151,10 @@ function getDb() {
         if (oldVersion < 2) {
           const obsStore = db.createObjectStore('observacoesOffline', { keyPath: 'id' });
           obsStore.createIndex('by-status', 'status');
+        }
+        if (oldVersion < 3) {
+          db.createObjectStore('produtoAtivo', { keyPath: 'id' });
+          db.createObjectStore('fazendaCache', { keyPath: 'id' });
         }
       },
     });
@@ -303,4 +331,34 @@ export async function getFecharMesPendente(): Promise<FecharMesPendente | null> 
 export async function clearFecharMes() {
   const db = await getDb();
   await db.delete('config', 'fechar_mes_pendente');
+}
+
+// Produto Ativo
+export async function cacheProdutoAtivo(produto: ProdutoCache) {
+  const db = await getDb();
+  const tx = db.transaction('produtoAtivo', 'readwrite');
+  await tx.store.clear();
+  await tx.store.put(produto);
+  await tx.done;
+}
+
+export async function getCachedProdutoAtivo(): Promise<ProdutoCache | undefined> {
+  const db = await getDb();
+  const all = await db.getAll('produtoAtivo');
+  return all[0];
+}
+
+// Fazenda Cache
+export async function cacheFazenda(fazenda: FazendaCache) {
+  const db = await getDb();
+  const tx = db.transaction('fazendaCache', 'readwrite');
+  await tx.store.clear();
+  await tx.store.put(fazenda);
+  await tx.done;
+}
+
+export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
+  const db = await getDb();
+  const all = await db.getAll('fazendaCache');
+  return all[0];
 }
