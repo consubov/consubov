@@ -35,6 +35,7 @@ interface Lancamento {
   origem: string; created_at: string;
   categoria: string | null; sexo: string | null; peso_medio_kg: number | null;
   status_consumo: string | null; indice_consumo: number | null;
+  consumo_g_cab_dia: number | null;
 }
 
 const ESTADOS_BR: Record<string, { x: number; y: number }> = {
@@ -139,6 +140,15 @@ export default function PainelInteligenciaPage() {
   const getFazendaForLancamento = (l: Lancamento): Fazenda | undefined => {
     return fazendaById[l.fazenda_id];
   };
+
+  // Resolve effective produto_id: pasto -> retiro (needed for product filters)
+  const getEffectiveProdutoId = useCallback((l: Lancamento): string | null => {
+    const pasto = pastoById[l.pasto_id];
+    if (pasto?.produto_id) return pasto.produto_id;
+    const retiro = retiroById[l.retiro_id];
+    if (retiro?.produto_id) return retiro.produto_id;
+    return null;
+  }, [pastoById, retiroById]);
 
   // Use pre-calculated consumo_g_cab_dia from DB (no frontend calculation)
   const getConsumoForLanc = (l: Lancamento): number | null => {
