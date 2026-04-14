@@ -557,7 +557,7 @@ export default function CapatazDashboard() {
     }
   };
 
-  const openForm = (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string) => {
+  const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string) => {
     setFormPastoId(pastoId);
     setFormPastoNome(pastoNome);
     setFormTipo(tipo);
@@ -574,8 +574,6 @@ export default function CapatazDashboard() {
       const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
 
       if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
-        // consumo_por_100kg is in kg per 100kg PV
-        // consumo_diario_kg = (num_animais × peso × consumo_por_100kg) / 100
         const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
         const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
         const sacos = Math.max(1, Math.ceil(consumo_periodo_kg / produtoAtivo.peso_saco_kg));
@@ -593,9 +591,17 @@ export default function CapatazDashboard() {
       setFormSugestao(null);
     }
 
-    // Audit photo logic: ~30% chance of requiring photo
-    // TODO: remove `true ||` after confirming blocking works
-    setFormAuditoriaExigida(true || Math.random() < 0.3);
+    // Audit photo lottery logic
+    const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
+    const retiroId = retiro?.id || '';
+    const fId = fazendaId || '';
+    try {
+      const obrigatoria = await verificarFotoObrigatoria(retiroId, fId, fotosPorBloco);
+      setFormAuditoriaExigida(obrigatoria);
+    } catch {
+      setFormAuditoriaExigida(true); // fallback: require photo on error
+    }
+
     setSalgaCount((current) => current + 1);
     setScreen('form');
   };
