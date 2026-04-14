@@ -16,6 +16,14 @@ export interface SalgaFormDraft {
   obsFoto: string | null;
 }
 
+export interface SalgaSugestao {
+  sacosSugeridos: number;
+  numAnimais: number;
+  intervaloDias: number;
+  pesoAtual: number;
+  produtoNome: string;
+}
+
 interface SalgaFormProps {
   pastoId: string;
   pastoNome: string;
@@ -29,6 +37,8 @@ interface SalgaFormProps {
   onDraftChange?: (draft: SalgaFormDraft) => void;
   onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => void;
   onBack: () => void;
+  numAnimais: number;
+  sugestao: SalgaSugestao | null;
 }
 
 export default function SalgaForm({
