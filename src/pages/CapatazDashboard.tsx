@@ -1037,8 +1037,11 @@ export default function CapatazDashboard() {
         onSave={handleSaveSalga}
         onBack={() => {
           setFormDraft(null);
+          setFormSugestao(null);
           setScreen('salga');
         }}
+        numAnimais={pastos.find(p => p.id === formPastoId)?.num_animais ?? 0}
+        sugestao={formSugestao}
       />
     );
   }
