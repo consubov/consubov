@@ -358,7 +358,7 @@ export default function CapatazDashboard() {
       if (retiroData) {
         const { data: fazenda } = await supabase
           .from("fazendas")
-          .select("nome, intervalo_padrao_dias")
+          .select("nome, intervalo_padrao_dias, auditoria_fotos_por_bloco")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
 
@@ -375,12 +375,13 @@ export default function CapatazDashboard() {
         setFazendaId(retiroData.fazenda_id);
         await setConfig('fazendaId', retiroData.fazenda_id);
 
-        // Cache fazenda data (intervalo)
+        // Cache fazenda data (intervalo + auditoria)
         if (fazenda) {
           const fCache: FazendaCache = {
             id: retiroData.fazenda_id,
             nome: fazenda.nome || '',
             intervalo_padrao_dias: fazenda.intervalo_padrao_dias ?? 4,
+            auditoria_fotos_por_bloco: (fazenda as any).auditoria_fotos_por_bloco ?? 3,
           };
           await cacheFazenda(fCache);
           setFazendaCache(fCache);
