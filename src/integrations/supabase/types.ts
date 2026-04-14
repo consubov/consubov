@@ -105,6 +105,48 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_sorteios: {
+        Row: {
+          bloco: number
+          fazenda_id: string
+          gerado_em: string
+          id: string
+          posicoes_com_foto: Json
+          retiro_id: string
+        }
+        Insert: {
+          bloco: number
+          fazenda_id: string
+          gerado_em?: string
+          id?: string
+          posicoes_com_foto?: Json
+          retiro_id: string
+        }
+        Update: {
+          bloco?: number
+          fazenda_id?: string
+          gerado_em?: string
+          id?: string
+          posicoes_com_foto?: Json
+          retiro_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_sorteios_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_sorteios_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capatazes: {
         Row: {
           ativo: boolean | null
@@ -430,6 +472,7 @@ export type Database = {
         Row: {
           administrador_id: string | null
           ativo: boolean | null
+          auditoria_fotos_por_bloco: number
           cidade: string
           criado_em: string | null
           estado: string
@@ -440,6 +483,7 @@ export type Database = {
         Insert: {
           administrador_id?: string | null
           ativo?: boolean | null
+          auditoria_fotos_por_bloco?: number
           cidade: string
           criado_em?: string | null
           estado?: string
@@ -450,6 +494,7 @@ export type Database = {
         Update: {
           administrador_id?: string | null
           ativo?: boolean | null
+          auditoria_fotos_por_bloco?: number
           cidade?: string
           criado_em?: string | null
           estado?: string
