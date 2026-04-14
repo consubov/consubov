@@ -64,6 +64,9 @@ export interface CicloCache {
   ano: number;
   fechado: boolean;
   num_dias: number;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  duracao_dias?: number | null;
 }
 
 interface ConsubovDB extends DBSchema {
