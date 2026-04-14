@@ -802,6 +802,8 @@ export default function CapatazDashboard() {
           dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
+          cocho_cheio: l.cocho_cheio ?? false,
+          foto_cocho_url: l.foto_cocho_url ?? null,
         };
         const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;
