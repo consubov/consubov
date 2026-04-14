@@ -71,6 +71,7 @@ function isSameLocalDay(dateIso: string, reference = new Date()) {
 function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
   return lancamentos.reduce<Record<string, number>>((acc, lancamento) => {
     if (cicloId && lancamento.ciclo_id !== cicloId) return acc;
+    if (lancamento.cocho_cheio) return acc; // Don't count cocho cheio as saco consumption
 
     acc[lancamento.pasto_id] = (acc[lancamento.pasto_id] || 0) + lancamento.sacos;
     return acc;
@@ -644,16 +645,18 @@ export default function CapatazDashboard() {
     };
     await saveLancamento(lancamento);
 
-    // Register audit counter and advance block if needed
-    const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
-    const retiroId = retiro?.id || '';
-    const fId = fazendaId || '';
-    try {
-      await registrarSalgaAuditoria(retiroId, fId, fotosPorBloco);
-      // Sync sorteio to Supabase (fire and forget)
-      const sorteio = await getSorteioAtual(retiroId, fId, fotosPorBloco);
-      syncSorteioToSupabase(supabase, sorteio);
-    } catch { /* offline — no problem */ }
+    // Register audit counter ONLY for normal salga (not cocho cheio)
+    if (!data.cocho_cheio) {
+      const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
+      const retiroId = retiro?.id || '';
+      const fId = fazendaId || '';
+      try {
+        await registrarSalgaAuditoria(retiroId, fId, fotosPorBloco);
+        // Sync sorteio to Supabase (fire and forget)
+        const sorteio = await getSorteioAtual(retiroId, fId, fotosPorBloco);
+        syncSorteioToSupabase(supabase, sorteio);
+      } catch { /* offline — no problem */ }
+    }
 
     toast.success("✅ Salvo offline");
     setFormDraft(null);
@@ -687,7 +690,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        // --- Consumption calculation ---
+        // --- Consumption calculation (skip for cocho cheio) ---
         let consumo_esperado_kg: number | null = null;
         let consumo_real_kg: number | null = null;
         let indice_consumo: number | null = null;
@@ -696,7 +699,7 @@ export default function CapatazDashboard() {
         let produto_id_final: string | null = null;
 
         const pasto = pastos.find(p => p.id === l.pasto_id);
-        if (pasto) {
+        if (pasto && !l.cocho_cheio) {
           // Get retiro produto_id as fallback
           let retiroProdutoId: string | null = null;
           if (roleData.retiroId) {
@@ -800,6 +803,8 @@ export default function CapatazDashboard() {
           dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
+          cocho_cheio: l.cocho_cheio ?? false,
+          foto_cocho_url: l.foto_cocho_url ?? null,
         };
         const { error } = await supabase.from("lancamentos").upsert(insertData as any);
         if (error) throw error;
@@ -1096,7 +1101,11 @@ export default function CapatazDashboard() {
                     <CardContent className="p-3 flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-foreground">{l.pasto_nome}</p>
-                        <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        {l.cocho_cheio ? (
+                          <p className="text-xs text-blue-600 font-medium">🫙 Cocho Cheio • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                        )}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
                         {l.status === 'pendente' ? '⏳ Pendente' : '✅ Sincronizado'}

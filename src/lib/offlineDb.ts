@@ -24,6 +24,9 @@ export interface LancamentoOffline {
   indice_consumo?: number;
   status_consumo?: string;
   dias_intervalo?: number;
+  // Cocho cheio
+  cocho_cheio?: boolean;
+  foto_cocho_url?: string | null;
 }
 
 export interface ObservacaoOffline {
