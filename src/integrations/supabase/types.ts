@@ -1474,6 +1474,29 @@ export type Database = {
         Returns: string
       }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
+      get_consumo_mineral: {
+        Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
+        Returns: {
+          capataz: string
+          consumo_medio_g: number
+          custo_diario: number
+          custo_mensal: number
+          eficiencia: number
+          gmd_medio: number
+          pastos_na_meta: number
+          retiro_id: string
+          retiro_nome: string
+          status_alto: number
+          status_baixo: number
+          status_ideal: number
+          total_animais: number
+          total_cab_dias: number
+          total_kg_consumido: number
+          total_pastos: number
+          total_sacos: number
+          total_salgas: number
+        }[]
+      }
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }

@@ -13,13 +13,8 @@ import {
   BarChart, Bar, Cell,
 } from "recharts";
 import {
-  calcularConsumo,
   classificarCategoria,
-  getConsumoPorCategoria,
-  getMargemPorCategoria,
-  calcConsumoGCabDia,
   calcIndiceConsumo,
-  calcConsumoEsperadoGCabDia,
 } from "@/lib/consumoCalc";
 import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
@@ -40,6 +35,7 @@ interface Lancamento {
   origem: string; created_at: string;
   categoria: string | null; sexo: string | null; peso_medio_kg: number | null;
   status_consumo: string | null; indice_consumo: number | null;
+  consumo_g_cab_dia: number | null;
 }
 
 const ESTADOS_BR: Record<string, { x: number; y: number }> = {
@@ -96,7 +92,7 @@ export default function PainelInteligenciaPage() {
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
-        supabase.from("lancamentos").select("id, fazenda_id, retiro_id, pasto_id, mes_referencia, ano_referencia, num_animais, num_sacos, dias_no_pasto, origem, created_at, categoria, sexo, peso_medio_kg, status_consumo, indice_consumo").order("created_at", { ascending: false }),
+        supabase.from("lancamentos").select("id, fazenda_id, retiro_id, pasto_id, mes_referencia, ano_referencia, num_animais, num_sacos, dias_no_pasto, origem, created_at, categoria, sexo, peso_medio_kg, status_consumo, indice_consumo, consumo_g_cab_dia").order("created_at", { ascending: false }),
       ]);
       setFazendas(fRes.data ?? []);
       setRetiros(rRes.data ?? []);
@@ -145,7 +141,7 @@ export default function PainelInteligenciaPage() {
     return fazendaById[l.fazenda_id];
   };
 
-  // Resolve effective produto_id: pasto -> retiro
+  // Resolve effective produto_id: pasto -> retiro (needed for product filters)
   const getEffectiveProdutoId = useCallback((l: Lancamento): string | null => {
     const pasto = pastoById[l.pasto_id];
     if (pasto?.produto_id) return pasto.produto_id;
@@ -154,26 +150,10 @@ export default function PainelInteligenciaPage() {
     return null;
   }, [pastoById, retiroById]);
 
-  // Calculate consumption for a lancamento client-side
-  const calcConsumoForLanc = (l: Lancamento): number | null => {
-    const produtoId = getEffectiveProdutoId(l);
-    if (!produtoId) return null;
-    const prod = produtoById[produtoId];
-    if (!prod || l.num_animais <= 0 || l.dias_no_pasto <= 0 || l.num_sacos <= 0) return null;
-    const pesoMedio = l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0;
-    const cat = l.categoria || classificarCategoria(pesoMedio);
-    const consumo_por_100kg = getConsumoPorCategoria(cat, prod);
-    const margem = getMargemPorCategoria(cat, prod);
-    const result = calcularConsumo({
-      num_sacos: l.num_sacos,
-      peso_saco_kg: prod.peso_saco_kg,
-      num_animais: l.num_animais,
-      dias: l.dias_no_pasto,
-      peso_medio_kg: pesoMedio,
-      consumo_por_100kg_categoria: consumo_por_100kg,
-      margem,
-    });
-    return result?.consumo_real_g_cab_dia ?? null;
+  // Use pre-calculated consumo_g_cab_dia from DB (no frontend calculation)
+  const getConsumoForLanc = (l: Lancamento): number | null => {
+    const val = Number(l.consumo_g_cab_dia ?? 0);
+    return val > 0 ? val : null;
   };
 
   // Filter by mes_referencia + ano_referencia (NOT created_at)
@@ -227,13 +207,13 @@ export default function PainelInteligenciaPage() {
 
   // ========= METRICS =========
 
-  // Consumption calculated client-side for each filtered lancamento
+  // Consumption from DB for each filtered lancamento (no frontend recalculation)
   const consumosPorLanc = useMemo(() => {
     return filteredLancamentos.map(l => ({
       lancamento: l,
-      consumo: calcConsumoForLanc(l),
+      consumo: getConsumoForLanc(l),
     }));
-  }, [filteredLancamentos, produtoById, pastoById, retiroById]);
+  }, [filteredLancamentos]);
 
   // 1. Average consumption
   const consumoMedioReal = useMemo(() => {
@@ -368,12 +348,16 @@ export default function PainelInteligenciaPage() {
       entry.animais += l.num_animais;
       entry.sacos += l.num_sacos;
       entry.diasTotal += l.dias_no_pasto;
+      // Use pre-calculated consumo from DB
+      const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
+      if (consumoReal > 0) {
+        entry.consumos.push(consumoReal);
+      }
+      // Cost: use product peso_saco_kg * preco_por_kg (read-only lookup, no consumption calc)
       const produtoId = getEffectiveProdutoId(l);
       if (produtoId) {
         const prod = produtoById[produtoId];
-        if (prod && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
-          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
-          entry.consumos.push(consumoReal);
+        if (prod && l.num_sacos > 0) {
           const preco = prod.preco_por_kg ?? 0;
           entry.custoTotal += l.num_sacos * prod.peso_saco_kg * preco;
         }
