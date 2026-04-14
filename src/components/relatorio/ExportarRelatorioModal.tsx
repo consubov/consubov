@@ -108,7 +108,13 @@ export default function ExportarRelatorioModal({
           lQuery = lQuery.gte("created_at", startIso).lte("created_at", endIso);
         }
 
-        const { data: lancData } = await lQuery;
+        const { data: lancData, error: lancError } = await lQuery;
+        if (lancError) {
+          console.error("Erro ao buscar lançamentos para PDF:", lancError);
+          toast.error("Erro ao buscar dados de lançamentos.");
+          setLoading(false);
+          return;
+        }
         lancamentos = lancData ?? [];
       }
 
