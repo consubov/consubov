@@ -141,6 +141,9 @@ export default function CapatazDashboard() {
   const [obsHistorico, setObsHistorico] = useState<ObservacaoOffline[]>([]);
   const [editingObs, setEditingObs] = useState<ObservacaoOffline | null>(null);
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
+  const [produtoAtivo, setProdutoAtivo] = useState<ProdutoCache | undefined>();
+  const [fazendaCache, setFazendaCache] = useState<FazendaCache | undefined>();
+  const [formSugestao, setFormSugestao] = useState<{ sacosSugeridos: number; numAnimais: number; intervaloDias: number; pesoAtual: number; produtoNome: string } | null>(null);
 
   // Abate & Transfer
   const [abateOpen, setAbateOpen] = useState(false);
