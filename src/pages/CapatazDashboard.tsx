@@ -315,7 +315,7 @@ export default function CapatazDashboard() {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
-        .select("id, nome, fazenda_id")
+        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda")
         .eq("id", roleData.retiroId!)
         .maybeSingle();
 
@@ -330,6 +330,9 @@ export default function CapatazDashboard() {
           id: retiroData.id,
           nome: retiroData.nome,
           fazenda_nome: fazenda?.nome || '',
+          gmd_recria1: retiroData.gmd_recria1,
+          gmd_recria2: retiroData.gmd_recria2,
+          gmd_engorda: retiroData.gmd_engorda,
         };
         await cacheRetiro(retiroCache);
         setRetiro(retiroCache);
@@ -339,7 +342,7 @@ export default function CapatazDashboard() {
         // Get pastos
         const { data: pastosData } = await supabase
           .from("pastos")
-          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria")
+          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia")
           .eq("retiro_id", retiroData.id)
           .eq("ativo", true);
 
