@@ -779,6 +779,7 @@ export type Database = {
           created_at: string
           data: string
           fazenda_id: string
+          foto_brinco_url: string | null
           foto_url: string
           id: string
           mes: number
@@ -793,6 +794,7 @@ export type Database = {
           created_at?: string
           data?: string
           fazenda_id: string
+          foto_brinco_url?: string | null
           foto_url: string
           id?: string
           mes: number
@@ -807,6 +809,7 @@ export type Database = {
           created_at?: string
           data?: string
           fazenda_id?: string
+          foto_brinco_url?: string | null
           foto_url?: string
           id?: string
           mes?: number
