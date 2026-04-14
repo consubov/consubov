@@ -97,7 +97,7 @@ export default function PainelInteligenciaPage() {
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
-        supabase.from("view_consumo_mineral" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("view_consumo_consolidado" as any).select("*").order("created_at", { ascending: false }),
       ]);
       setFazendas(fRes.data ?? []);
       setRetiros(rRes.data ?? []);
@@ -223,20 +223,20 @@ export default function PainelInteligenciaPage() {
     }));
   }, [filteredLancamentos]);
 
-  // 1. Weighted average consumption (by cab-dias, matching RPC methodology)
+  // 1. Weighted average consumption (by num_animais — single source of truth)
   const consumoMedioReal = useMemo(() => {
-    let totalKg = 0;
-    let totalCabDias = 0;
+    let weightedSum = 0;
+    let totalAnimais = 0;
     for (const { lancamento: l } of consumosPorLanc) {
-      const sal = Number(l.total_sal_kg ?? 0);
-      const cd = getCabDias(l);
-      if (sal > 0 && cd > 0) {
-        totalKg += sal;
-        totalCabDias += cd;
+      const consumo = Number(l.consumo_g_cab_dia ?? 0);
+      const animais = Number(l.num_animais ?? 0);
+      if (consumo > 0 && animais > 0) {
+        weightedSum += consumo * animais;
+        totalAnimais += animais;
       }
     }
-    if (totalCabDias <= 0) return 0;
-    return (totalKg * 1000) / totalCabDias; // g/cab/dia
+    if (totalAnimais <= 0) return 0;
+    return weightedSum / totalAnimais; // g/cab/dia
   }, [consumosPorLanc]);
 
   // 2. Expected consumption (from product + average peso_medio) in g/cab/dia
@@ -266,23 +266,23 @@ export default function PainelInteligenciaPage() {
 
   // 4. Ranking by fazenda
   const rankingFazendas = useMemo(() => {
-    const fazMap: Record<string, { nome: string; estado: string; totalKg: number; totalCabDias: number; intervalos: number[]; count: number }> = {};
+    const fazMap: Record<string, { nome: string; estado: string; weightedSum: number; totalAnimais: number; intervalos: number[]; count: number }> = {};
     consumosPorLanc.forEach(({ lancamento: l }) => {
       const faz = getFazendaForLancamento(l);
       if (!faz) return;
-      if (!fazMap[faz.id]) fazMap[faz.id] = { nome: faz.nome, estado: faz.estado, totalKg: 0, totalCabDias: 0, intervalos: [], count: 0 };
-      const sal = Number(l.total_sal_kg ?? 0);
-      const cd = getCabDias(l);
-      if (sal > 0 && cd > 0) {
-        fazMap[faz.id].totalKg += sal;
-        fazMap[faz.id].totalCabDias += cd;
+      if (!fazMap[faz.id]) fazMap[faz.id] = { nome: faz.nome, estado: faz.estado, weightedSum: 0, totalAnimais: 0, intervalos: [], count: 0 };
+      const consumo = Number(l.consumo_g_cab_dia ?? 0);
+      const animais = Number(l.num_animais ?? 0);
+      if (consumo > 0 && animais > 0) {
+        fazMap[faz.id].weightedSum += consumo * animais;
+        fazMap[faz.id].totalAnimais += animais;
         fazMap[faz.id].count += 1;
       }
       if (l.dias_no_pasto > 0) fazMap[faz.id].intervalos.push(l.dias_no_pasto);
     });
 
     return Object.entries(fazMap).map(([id, data]) => {
-      const avg = data.totalCabDias > 0 ? (data.totalKg * 1000) / data.totalCabDias : 0;
+      const avg = data.totalAnimais > 0 ? data.weightedSum / data.totalAnimais : 0;
       const avgIntervalo = data.intervalos.length ? data.intervalos.reduce((a, b) => a + b, 0) / data.intervalos.length : 0;
       const desvio = consumoEsperado > 0 ? Math.abs((avg - consumoEsperado) / consumoEsperado * 100) : 0;
       return { id, nome: data.nome, estado: data.estado, consumoMedio: avg, intervaloMedio: avgIntervalo, desvio, lancamentos: data.count };
@@ -291,18 +291,18 @@ export default function PainelInteligenciaPage() {
 
   // 5. Consumption trend over time (weighted by cab-dias)
   const tendencia = useMemo(() => {
-    const grouped: Record<string, { totalKg: number; totalCabDias: number }> = {};
+    const grouped: Record<string, { weightedSum: number; totalAnimais: number }> = {};
     consumosPorLanc.forEach(({ lancamento: l }) => {
-      const sal = Number(l.total_sal_kg ?? 0);
-      const cd = getCabDias(l);
-      if (sal <= 0 || cd <= 0) return;
+      const consumo = Number(l.consumo_g_cab_dia ?? 0);
+      const animais = Number(l.num_animais ?? 0);
+      if (consumo <= 0 || animais <= 0) return;
       const key = `${l.ano_referencia}-${String(l.mes_referencia).padStart(2, "0")}`;
-      if (!grouped[key]) grouped[key] = { totalKg: 0, totalCabDias: 0 };
-      grouped[key].totalKg += sal;
-      grouped[key].totalCabDias += cd;
+      if (!grouped[key]) grouped[key] = { weightedSum: 0, totalAnimais: 0 };
+      grouped[key].weightedSum += consumo * animais;
+      grouped[key].totalAnimais += animais;
     });
     return Object.entries(grouped)
-      .map(([periodo, v]) => ({ periodo, consumo: v.totalCabDias > 0 ? Math.round((v.totalKg * 1000) / v.totalCabDias * 100) / 100 : 0 }))
+      .map(([periodo, v]) => ({ periodo, consumo: v.totalAnimais > 0 ? Math.round((v.weightedSum / v.totalAnimais) * 100) / 100 : 0 }))
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
   }, [consumosPorLanc]);
 
@@ -328,18 +328,18 @@ export default function PainelInteligenciaPage() {
 
   // 7. Map: consumption by estado
   const consumoPorEstado = useMemo(() => {
-    const map: Record<string, { totalKg: number; totalCabDias: number }> = {};
+    const map: Record<string, { weightedSum: number; totalAnimais: number }> = {};
     consumosPorLanc.forEach(({ lancamento: l }) => {
       const faz = getFazendaForLancamento(l);
-      const sal = Number(l.total_sal_kg ?? 0);
-      const cd = getCabDias(l);
-      if (!faz || sal <= 0 || cd <= 0) return;
-      if (!map[faz.estado]) map[faz.estado] = { totalKg: 0, totalCabDias: 0 };
-      map[faz.estado].totalKg += sal;
-      map[faz.estado].totalCabDias += cd;
+      const consumo = Number(l.consumo_g_cab_dia ?? 0);
+      const animais = Number(l.num_animais ?? 0);
+      if (!faz || consumo <= 0 || animais <= 0) return;
+      if (!map[faz.estado]) map[faz.estado] = { weightedSum: 0, totalAnimais: 0 };
+      map[faz.estado].weightedSum += consumo * animais;
+      map[faz.estado].totalAnimais += animais;
     });
     const result: Record<string, number> = {};
-    Object.entries(map).forEach(([estado, v]) => { result[estado] = v.totalCabDias > 0 ? (v.totalKg * 1000) / v.totalCabDias : 0; });
+    Object.entries(map).forEach(([estado, v]) => { result[estado] = v.totalAnimais > 0 ? v.weightedSum / v.totalAnimais : 0; });
     return result;
   }, [consumosPorLanc, fazendaById]);
 
@@ -364,25 +364,25 @@ export default function PainelInteligenciaPage() {
   // 10. Category metrics for PDF export
   const CATEGORIAS_PDF = ["Recria 1", "Recria 2", "Engorda"] as const;
   const metricasCategoria = useMemo((): CatMetricsPDF[] => {
-    const catMap: Record<string, { totalKg: number; totalCabDias: number; animais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
-    CATEGORIAS_PDF.forEach(c => { catMap[c] = { totalKg: 0, totalCabDias: 0, animais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
+    const catMap: Record<string, { weightedSum: number; totalAnimais: number; sacos: number; custoTotal: number; gmds: number[]; diasTotal: number }> = {};
+    CATEGORIAS_PDF.forEach(c => { catMap[c] = { weightedSum: 0, totalAnimais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 }; });
 
     filteredLancamentos.forEach(l => {
       const pesoMedio = l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0;
       const cat = l.categoria || classificarCategoria(pesoMedio);
       if (!catMap[cat]) return;
       const entry = catMap[cat];
-      entry.animais += l.num_animais;
+      const animais = Number(l.num_animais ?? 0);
+      entry.totalAnimais += animais;
       entry.sacos += l.num_sacos;
       entry.diasTotal += l.dias_no_pasto;
-      // Use total_sal_kg and cab_dias from view (no frontend calculation)
-      const sal = Number(l.total_sal_kg ?? 0);
-      const cd = getCabDias(l);
-      if (sal > 0 && cd > 0) {
-        entry.totalKg += sal;
-        entry.totalCabDias += cd;
+      // Weighted sum for consumption average
+      const consumo = Number(l.consumo_g_cab_dia ?? 0);
+      if (consumo > 0 && animais > 0) {
+        entry.weightedSum += consumo * animais;
       }
       // Cost: use total_sal_kg * preco_por_kg from view
+      const sal = Number(l.total_sal_kg ?? 0);
       const preco = Number(l.preco_por_kg ?? 0);
       if (sal > 0 && preco > 0) {
         entry.custoTotal += sal * preco;
@@ -393,13 +393,13 @@ export default function PainelInteligenciaPage() {
 
     return CATEGORIAS_PDF.map(cat => {
       const e = catMap[cat];
-      const consumoMedio = e.totalCabDias > 0 ? (e.totalKg * 1000) / e.totalCabDias : 0;
+      const consumoMedio = e.totalAnimais > 0 ? e.weightedSum / e.totalAnimais : 0;
       const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
-      const custoMedio = e.animais > 0 ? e.custoTotal / e.animais : 0;
+      const custoMedio = e.totalAnimais > 0 ? e.custoTotal / e.totalAnimais : 0;
       const avgDias = e.sacos > 0 ? e.diasTotal / e.sacos : 30;
-      const kgGanho = e.animais > 0 && gmd > 0 ? e.animais * gmd * avgDias : 0;
+      const kgGanho = e.totalAnimais > 0 && gmd > 0 ? e.totalAnimais * gmd * avgDias : 0;
       const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
-      return { categoria: cat, consumoMedio, totalAnimais: e.animais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
+      return { categoria: cat, consumoMedio, totalAnimais: e.totalAnimais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
     });
   }, [filteredLancamentos, pastoById]);
 

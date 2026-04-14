@@ -127,7 +127,7 @@ export function usePainelData(filters: PainelFilters) {
             .in("retiro_id", retiroIds)
             .eq("ativo", true),
           (() => {
-            let q = supabase.from("lancamentos")
+            let q = supabase.from("view_consumo_consolidado" as any)
               .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
               .eq("fazenda_id", fazendaId)
               .eq("ano_referencia", ano)
@@ -137,7 +137,7 @@ export function usePainelData(filters: PainelFilters) {
           })(),
         ]);
         setPastos((pastosRes.data ?? []) as Pasto[]);
-        setLancamentos((lancRes.data ?? []) as Lancamento[]);
+        setLancamentos(((lancRes.data as unknown) ?? []) as Lancamento[]);
       } else {
         setPastos([]);
         setLancamentos([]);

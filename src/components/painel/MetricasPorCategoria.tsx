@@ -59,12 +59,12 @@ export default function MetricasPorCategoria({
 }: Props) {
   const metricas = useMemo(() => {
     const catMap: Record<string, {
-      consumos: number[]; animais: number; sacos: number;
+      weightedSum: number; totalAnimais: number; sacos: number;
       custoTotal: number; gmds: number[]; diasTotal: number;
     }> = {};
 
     CATEGORIAS.forEach(c => {
-      catMap[c] = { consumos: [], animais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 };
+      catMap[c] = { weightedSum: 0, totalAnimais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 };
     });
 
     filteredLancamentos.forEach(l => {
@@ -73,14 +73,15 @@ export default function MetricasPorCategoria({
       if (!catMap[cat]) return;
 
       const entry = catMap[cat];
-      entry.animais += l.num_animais;
+      const animais = Number(l.num_animais ?? 0);
+      entry.totalAnimais += animais;
       entry.sacos += l.num_sacos;
       entry.diasTotal += l.dias_no_pasto;
 
-      // Use pre-calculated consumo from DB
+      // Weighted sum for consumption average (by num_animais)
       const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
-      if (consumoReal > 0) {
-        entry.consumos.push(consumoReal);
+      if (consumoReal > 0 && animais > 0) {
+        entry.weightedSum += consumoReal * animais;
       }
 
       // Cost: product peso_saco_kg * preco_por_kg (read-only lookup)
@@ -103,21 +104,19 @@ export default function MetricasPorCategoria({
     const result: CatMetrics[] = [];
     CATEGORIAS.forEach(cat => {
       const e = catMap[cat];
-      const consumoMedio = e.consumos.length > 0
-        ? e.consumos.reduce((a, b) => a + b, 0) / e.consumos.length : 0;
+      const consumoMedio = e.totalAnimais > 0
+        ? e.weightedSum / e.totalAnimais : 0;
       const gmd = e.gmds.length > 0
         ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
-      // Custo médio por cabeça/mês = custoTotal / animais (approximation)
-      const custoMedio = e.animais > 0 ? e.custoTotal / e.animais : 0;
-      // Custo por kg de ganho = custoTotal / (totalAnimais * gmd * diasTotal / lancamentos)
-      const avgDias = e.consumos.length > 0 ? e.diasTotal / e.consumos.length : 30;
-      const kgGanho = e.animais > 0 && gmd > 0 ? e.animais * gmd * avgDias : 0;
+      const custoMedio = e.totalAnimais > 0 ? e.custoTotal / e.totalAnimais : 0;
+      const avgDias = e.sacos > 0 ? e.diasTotal / e.sacos : 30;
+      const kgGanho = e.totalAnimais > 0 && gmd > 0 ? e.totalAnimais * gmd * avgDias : 0;
       const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
 
       result.push({
         categoria: cat,
         consumoMedio,
-        totalAnimais: e.animais,
+        totalAnimais: e.totalAnimais,
         totalSacos: e.sacos,
         custoMedio,
         custoPorKgGanho,
