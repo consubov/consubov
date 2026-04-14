@@ -36,8 +36,9 @@ import {
   saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
+  cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
-  type FecharMesPendente,
+  type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro';
