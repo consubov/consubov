@@ -94,8 +94,8 @@ export default function ExportarRelatorioModal({
 
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
-        let lQuery = supabase.from("lancamentos")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo")
+        let lQuery = supabase.from("view_consumo_consolidado" as any)
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia")
           .in("pasto_id", pastoIds);
 
         if (periodoSelecionado === "mensal") {
@@ -147,12 +147,18 @@ export default function ExportarRelatorioModal({
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
 
-        const consumoValues: number[] = [];
+        // Weighted average consumption by num_animais
+        let weightedSum = 0;
+        let totalAnimaisConsumo = 0;
         rLanc.forEach(l => {
-          const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
-          if (c > 0) consumoValues.push(c);
+          const consumo = Number(l.consumo_g_cab_dia ?? 0);
+          const animais = Number(l.num_animais ?? 0);
+          if (consumo > 0 && animais > 0) {
+            weightedSum += consumo * animais;
+            totalAnimaisConsumo += animais;
+          }
         });
-        const consumoMedio = consumoValues.length > 0 ? consumoValues.reduce((a, b) => a + b, 0) / consumoValues.length : 0;
+        const consumoMedio = totalAnimaisConsumo > 0 ? weightedSum / totalAnimaisConsumo : 0;
 
         const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
@@ -177,12 +183,18 @@ export default function ExportarRelatorioModal({
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-          const pConsVals: number[] = [];
+          // Weighted average consumption by num_animais
+          let pWeightedSum = 0;
+          let pTotalAnimais = 0;
           pLanc.forEach(l => {
-            const c = calcConsumoGCabDia(l.num_sacos, pesoSacoKg, l.num_animais, l.dias_no_pasto);
-            if (c > 0) pConsVals.push(c);
+            const consumo = Number(l.consumo_g_cab_dia ?? 0);
+            const animais = Number(l.num_animais ?? 0);
+            if (consumo > 0 && animais > 0) {
+              pWeightedSum += consumo * animais;
+              pTotalAnimais += animais;
+            }
           });
-          const pConsumo = pConsVals.length > 0 ? pConsVals.reduce((a, b) => a + b, 0) / pConsVals.length : 0;
+          const pConsumo = pTotalAnimais > 0 ? pWeightedSum / pTotalAnimais : 0;
 
           const statusLancs = pLanc.map(l => l.status_consumo).filter(Boolean);
           const pStatus = statusLancs.length > 0 ? statusLancs[statusLancs.length - 1] : "—";
@@ -258,12 +270,16 @@ export default function ExportarRelatorioModal({
         // Find product for this lancamento
         const pasto = pastos.find(p => p.id === l.pasto_id);
         const retiro = retirosData.find(r => r.id === l.retiro_id);
-        const prodId = pasto?.produto_id || retiro?.produto_id;
-        if (prodId && produtosMap[prodId] && l.num_animais > 0 && l.dias_no_pasto > 0 && l.num_sacos > 0) {
-          const prod = produtosMap[prodId];
-          const consumoReal = (l.num_sacos * prod.peso_saco_kg * 1000) / (l.num_animais * l.dias_no_pasto);
-          entry.consumos.push(consumoReal);
-          entry.custoTotal += l.num_sacos * prod.peso_saco_kg * prod.preco_por_kg;
+        // Use consumo_g_cab_dia from view, weighted average by num_animais
+        const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
+        const animais = Number(l.num_animais ?? 0);
+        if (consumoReal > 0 && animais > 0) {
+          entry.consumos.push({ consumo: consumoReal, animais });
+          const prodId = pasto?.produto_id || retiro?.produto_id;
+          if (prodId && produtosMap[prodId]) {
+            const prod = produtosMap[prodId];
+            entry.custoTotal += l.num_sacos * prod.peso_saco_kg * prod.preco_por_kg;
+          }
         }
 
         if (pasto?.gmd_kg_dia && Number(pasto.gmd_kg_dia) > 0) {
