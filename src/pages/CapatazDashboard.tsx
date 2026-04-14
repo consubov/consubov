@@ -354,7 +354,7 @@ export default function CapatazDashboard() {
       if (retiroData) {
         const { data: fazenda } = await supabase
           .from("fazendas")
-          .select("nome")
+          .select("nome, intervalo_padrao_dias")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
 
@@ -370,6 +370,40 @@ export default function CapatazDashboard() {
         setRetiro(retiroCache);
         setFazendaId(retiroData.fazenda_id);
         await setConfig('fazendaId', retiroData.fazenda_id);
+
+        // Cache fazenda data (intervalo)
+        if (fazenda) {
+          const fCache: FazendaCache = {
+            id: retiroData.fazenda_id,
+            nome: fazenda.nome || '',
+            intervalo_padrao_dias: fazenda.intervalo_padrao_dias ?? 4,
+          };
+          await cacheFazenda(fCache);
+          setFazendaCache(fCache);
+        }
+
+        // Cache produto ativo do retiro
+        const retiroProdutoId = (retiroData as any).produto_id;
+        if (retiroProdutoId) {
+          const { data: prodData } = await supabase
+            .from("produtos")
+            .select("id, nome, peso_saco_kg, consumo_por_100kg, consumo_recria1, consumo_recria2, consumo_engorda")
+            .eq("id", retiroProdutoId)
+            .maybeSingle();
+          if (prodData) {
+            const pCache: ProdutoCache = {
+              id: prodData.id,
+              nome: prodData.nome,
+              peso_saco_kg: Number(prodData.peso_saco_kg),
+              consumo_por_100kg: prodData.consumo_por_100kg != null ? Number(prodData.consumo_por_100kg) : null,
+              consumo_recria1: prodData.consumo_recria1 != null ? Number(prodData.consumo_recria1) : null,
+              consumo_recria2: prodData.consumo_recria2 != null ? Number(prodData.consumo_recria2) : null,
+              consumo_engorda: prodData.consumo_engorda != null ? Number(prodData.consumo_engorda) : null,
+            };
+            await cacheProdutoAtivo(pCache);
+            setProdutoAtivo(pCache);
+          }
+        }
 
         // Get pastos
         const { data: pastosData } = await supabase
