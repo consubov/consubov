@@ -332,3 +332,33 @@ export async function clearFecharMes() {
   const db = await getDb();
   await db.delete('config', 'fechar_mes_pendente');
 }
+
+// Produto Ativo
+export async function cacheProdutoAtivo(produto: ProdutoCache) {
+  const db = await getDb();
+  const tx = db.transaction('produtoAtivo', 'readwrite');
+  await tx.store.clear();
+  await tx.store.put(produto);
+  await tx.done;
+}
+
+export async function getCachedProdutoAtivo(): Promise<ProdutoCache | undefined> {
+  const db = await getDb();
+  const all = await db.getAll('produtoAtivo');
+  return all[0];
+}
+
+// Fazenda Cache
+export async function cacheFazenda(fazenda: FazendaCache) {
+  const db = await getDb();
+  const tx = db.transaction('fazendaCache', 'readwrite');
+  await tx.store.clear();
+  await tx.store.put(fazenda);
+  await tx.done;
+}
+
+export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
+  const db = await getDb();
+  const all = await db.getAll('fazendaCache');
+  return all[0];
+}
