@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import CarenciaBadge from "@/components/eventos/CarenciaBadge";
 
 interface PastoCardProps {
   nome: string;
@@ -10,6 +11,7 @@ interface PastoCardProps {
   status: 'feito' | 'pendente' | 'atrasado';
   statusConsumo?: string | null;
   indiceConsumo?: number | null;
+  dataFimCarencia?: string | null;
 }
 
 const statusConfig = {
@@ -25,7 +27,7 @@ const consumoBadge: Record<string, { emoji: string; className: string }> = {
   ERRO: { emoji: '⚠️', className: 'bg-muted text-muted-foreground' },
 };
 
-export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sacosHoje, status, statusConsumo, indiceConsumo }: PastoCardProps) {
+export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sacosHoje, status, statusConsumo, indiceConsumo, dataFimCarencia }: PastoCardProps) {
   const s = statusConfig[status];
   const cb = statusConsumo ? consumoBadge[statusConsumo] : null;
 
