@@ -279,18 +279,20 @@ export default function LandingPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {diferenciais.map((d) => (
               <div
                 key={d.title}
-                className="rounded-xl p-6 transition-all duration-200 hover:scale-[1.02]"
+                className="rounded-xl p-4 md:p-6 flex flex-col gap-3 transition-all duration-200 hover:scale-[1.02]"
                 style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}
               >
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(201,168,76,0.15)" }}>
-                  <d.icon className="w-5 h-5" style={{ color: "#C9A84C" }} />
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(201,168,76,0.15)" }}>
+                    <d.icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: "#C9A84C" }} />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-base mb-2" style={{ color: "#F5F0E8" }}>{d.title}</h3>
-                <p className="text-sm text-left" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
+                <h3 className="font-bold text-sm md:text-base" style={{ color: "#F5F0E8" }}>{d.title}</h3>
+                <p className="text-xs md:text-sm text-left leading-relaxed" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
               </div>
             ))}
           </div>
@@ -318,7 +320,7 @@ export default function LandingPage() {
                     <div
                       key={i}
                       className="w-24 h-24 shrink-0 rounded-xl flex items-center justify-center overflow-hidden"
-                      style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}
+                      style={{ background: "#FFFFFF", border: "1px solid #E0E0E0", padding: "24px" }}
                     >
                       {logo ? (
                         <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
