@@ -171,7 +171,7 @@ export default function CapatazDashboard() {
   const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
   const [detalhesLoteOpen, setDetalhesLoteOpen] = useState(false);
   const [historicoLoteOpen, setHistoricoLoteOpen] = useState(false);
-  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
+  const [combinedMode, setCombinedMode] = useState(false);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
