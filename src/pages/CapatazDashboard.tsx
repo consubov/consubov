@@ -29,6 +29,12 @@ import PastoActionSheet from "@/components/capataz/PastoActionSheet";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
 import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
 import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
+import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
+import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
+import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
+import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
