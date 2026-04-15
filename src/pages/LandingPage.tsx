@@ -376,7 +376,6 @@ export default function LandingPage() {
                     background: "#0D1F0F",
                     border: "1px solid #2E4A30",
                     color: "#F5F0E8",
-                    focusRingColor: "#C9A84C",
                   }}
                 />
                 {errors[field.key] && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{errors[field.key]}</p>}
