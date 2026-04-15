@@ -45,6 +45,7 @@ export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sa
             <span className="text-xs" title={s.label}>{s.icon}</span>
           </div>
         </div>
+        <CarenciaBadge dataFimCarencia={dataFimCarencia} className="mb-1 text-[9px]" />
         <div className="grid grid-cols-4 gap-1 text-xs text-muted-foreground">
           <div className="text-center">
             <p className="font-semibold text-foreground">{numAnimais}</p>
