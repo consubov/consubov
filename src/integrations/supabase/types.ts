@@ -468,6 +468,107 @@ export type Database = {
           },
         ]
       }
+      eventos_lote: {
+        Row: {
+          criado_em: string
+          dados: Json | null
+          data_evento: string
+          id: string
+          lote_id: string
+          tipo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          dados?: Json | null
+          data_evento?: string
+          id?: string
+          lote_id: string
+          tipo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          dados?: Json | null
+          data_evento?: string
+          id?: string
+          lote_id?: string
+          tipo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_lote_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_sanitarios: {
+        Row: {
+          aplicador_id: string | null
+          categoria: string
+          data_aplicacao: string
+          data_fim_carencia: string | null
+          dias_carencia: number | null
+          dose: string
+          evento_id: string
+          id: string
+          lote_completo: boolean
+          lote_id: string
+          medicamento: string
+          quantidade_tratada: number | null
+          tem_carencia: boolean
+        }
+        Insert: {
+          aplicador_id?: string | null
+          categoria: string
+          data_aplicacao?: string
+          data_fim_carencia?: string | null
+          dias_carencia?: number | null
+          dose: string
+          evento_id: string
+          id?: string
+          lote_completo?: boolean
+          lote_id: string
+          medicamento: string
+          quantidade_tratada?: number | null
+          tem_carencia?: boolean
+        }
+        Update: {
+          aplicador_id?: string | null
+          categoria?: string
+          data_aplicacao?: string
+          data_fim_carencia?: string | null
+          dias_carencia?: number | null
+          dose?: string
+          evento_id?: string
+          id?: string
+          lote_completo?: boolean
+          lote_id?: string
+          medicamento?: string
+          quantidade_tratada?: number | null
+          tem_carencia?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_sanitarios_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_lote"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_sanitarios_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fazendas: {
         Row: {
           administrador_id: string | null
@@ -1019,6 +1120,7 @@ export type Database = {
           categoria: string | null
           criado_em: string | null
           data_entrada: string | null
+          data_fim_carencia: string | null
           dias_no_pasto: number | null
           gmd_kg_dia: number | null
           id: string
@@ -1031,12 +1133,15 @@ export type Database = {
           qr_uuid: string
           retiro_id: string
           sexo: string | null
+          ultima_pesagem_em: string | null
+          ultimo_evento_sanitario_id: string | null
         }
         Insert: {
           ativo?: boolean | null
           categoria?: string | null
           criado_em?: string | null
           data_entrada?: string | null
+          data_fim_carencia?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
@@ -1049,12 +1154,15 @@ export type Database = {
           qr_uuid?: string
           retiro_id: string
           sexo?: string | null
+          ultima_pesagem_em?: string | null
+          ultimo_evento_sanitario_id?: string | null
         }
         Update: {
           ativo?: boolean | null
           categoria?: string | null
           criado_em?: string | null
           data_entrada?: string | null
+          data_fim_carencia?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
@@ -1067,6 +1175,8 @@ export type Database = {
           qr_uuid?: string
           retiro_id?: string
           sexo?: string | null
+          ultima_pesagem_em?: string | null
+          ultimo_evento_sanitario_id?: string | null
         }
         Relationships: [
           {
@@ -1081,6 +1191,13 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pastos_ultimo_evento_sanitario_id_fkey"
+            columns: ["ultimo_evento_sanitario_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_sanitarios"
             referencedColumns: ["id"]
           },
         ]
@@ -1121,6 +1238,57 @@ export type Database = {
           {
             foreignKeyName: "pastos_mapa_pasto_id_fkey"
             columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesagens: {
+        Row: {
+          data_pesagem: string
+          evento_id: string
+          id: string
+          lote_id: string
+          media_calculada: number | null
+          peso_medio_aplicado: number | null
+          pesos: Json
+          total_pesado: number
+          usuario_id: string | null
+        }
+        Insert: {
+          data_pesagem?: string
+          evento_id: string
+          id?: string
+          lote_id: string
+          media_calculada?: number | null
+          peso_medio_aplicado?: number | null
+          pesos?: Json
+          total_pesado?: number
+          usuario_id?: string | null
+        }
+        Update: {
+          data_pesagem?: string
+          evento_id?: string
+          id?: string
+          lote_id?: string
+          media_calculada?: number | null
+          peso_medio_aplicado?: number | null
+          pesos?: Json
+          total_pesado?: number
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesagens_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_lote"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesagens_lote_id_fkey"
+            columns: ["lote_id"]
             isOneToOne: false
             referencedRelation: "pastos"
             referencedColumns: ["id"]
