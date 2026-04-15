@@ -1591,15 +1591,15 @@ export default function CapatazDashboard() {
             onSelect={(tipo: TipoEvento) => {
               setEventoSelectorOpen(false);
               if (tipo === "pesagem") {
+                setCombinedMode(false);
                 setPendingSanitarioData(null);
                 setPesagemOpen(true);
               } else if (tipo === "sanitario") {
+                setCombinedMode(false);
                 setSanitarioOpen(true);
               } else if (tipo === "pesagem_sanitario") {
-                // First collect sanitario data, then pesagem
+                setCombinedMode(true);
                 setSanitarioOpen(true);
-                // Mark as combined mode
-                setPendingSanitarioData(null);
               } else if (tipo === "observacao") {
                 setObservacaoLoteOpen(true);
               }
@@ -1608,13 +1608,13 @@ export default function CapatazDashboard() {
 
           <SanitarioFormModal
             open={sanitarioOpen}
-            onClose={() => setSanitarioOpen(false)}
+            onClose={() => { setSanitarioOpen(false); setCombinedMode(false); }}
             pastoId={eventoPasto.id}
             pastoNome={eventoPasto.nome}
             numAnimais={eventoPasto.num_animais}
             userId={user?.id || ""}
             userName={userName}
-            collectOnly={pendingSanitarioData === null && !sanitarioOpen ? false : undefined}
+            collectOnly={combinedMode}
             onCollected={(data) => {
               setPendingSanitarioData(data);
               setSanitarioOpen(false);
