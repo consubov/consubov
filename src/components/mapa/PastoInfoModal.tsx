@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Beef, Droplets, TrendingUp, Calendar, Package } from "lucide-react";
+import CarenciaBadge from "@/components/eventos/CarenciaBadge";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -36,6 +37,8 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
         </DialogHeader>
 
         <div className="space-y-3">
+          <CarenciaBadge dataFimCarencia={(pasto as any).data_fim_carencia} />
+
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Status consumo</span>
             {statusBadge(pasto.status_consumo) || <span className="text-sm">—</span>}
