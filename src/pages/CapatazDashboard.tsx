@@ -29,6 +29,12 @@ import PastoActionSheet from "@/components/capataz/PastoActionSheet";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
 import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
 import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
+import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
+import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
+import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
+import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -156,6 +162,17 @@ export default function CapatazDashboard() {
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [entradaOpen, setEntradaOpen] = useState(false);
   const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
+
+  // Eventos do Lote
+  const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
+  const [eventoPasto, setEventoPasto] = useState<{ id: string; nome: string; num_animais: number; peso_medio_kg: number | null } | null>(null);
+  const [sanitarioOpen, setSanitarioOpen] = useState(false);
+  const [pesagemOpen, setPesagemOpen] = useState(false);
+  const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
+  const [detalhesLoteOpen, setDetalhesLoteOpen] = useState(false);
+  const [historicoLoteOpen, setHistoricoLoteOpen] = useState(false);
+  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
+  const [combinedMode, setCombinedMode] = useState(false);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
@@ -1514,6 +1531,13 @@ export default function CapatazDashboard() {
             setEntradaOpen(true);
           }
         }}
+        onRegistrarEvento={() => {
+          if (actionSheetPasto) {
+            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+            setEventoSelectorOpen(true);
+          }
+        }}
       />
 
       <AbateModal
@@ -1556,6 +1580,92 @@ export default function CapatazDashboard() {
           retiroId={roleData.retiroId || ""}
           onPastoUpdated={() => { loadFromSupabase(); }}
         />
+      )}
+      {/* Evento modals */}
+      {eventoPasto && (
+        <>
+          <SelecionarEventoModal
+            open={eventoSelectorOpen}
+            onClose={() => setEventoSelectorOpen(false)}
+            pastoNome={eventoPasto.nome}
+            onSelect={(tipo: TipoEvento) => {
+              setEventoSelectorOpen(false);
+              if (tipo === "pesagem") {
+                setCombinedMode(false);
+                setPendingSanitarioData(null);
+                setPesagemOpen(true);
+              } else if (tipo === "sanitario") {
+                setCombinedMode(false);
+                setSanitarioOpen(true);
+              } else if (tipo === "pesagem_sanitario") {
+                setCombinedMode(true);
+                setSanitarioOpen(true);
+              } else if (tipo === "observacao") {
+                setObservacaoLoteOpen(true);
+              }
+            }}
+          />
+
+          <SanitarioFormModal
+            open={sanitarioOpen}
+            onClose={() => { setSanitarioOpen(false); setCombinedMode(false); }}
+            pastoId={eventoPasto.id}
+            pastoNome={eventoPasto.nome}
+            numAnimais={eventoPasto.num_animais}
+            userId={user?.id || ""}
+            userName={userName}
+            collectOnly={combinedMode}
+            onCollected={(data) => {
+              setPendingSanitarioData(data);
+              setSanitarioOpen(false);
+              setPesagemOpen(true);
+            }}
+            onSaved={() => loadFromSupabase()}
+          />
+
+          <PesagemFlowModal
+            open={pesagemOpen}
+            onClose={() => { setPesagemOpen(false); setPendingSanitarioData(null); }}
+            pastoId={eventoPasto.id}
+            pastoNome={eventoPasto.nome}
+            numAnimais={eventoPasto.num_animais}
+            pesoMedioAtual={eventoPasto.peso_medio_kg}
+            userId={user?.id || ""}
+            userName={userName}
+            sanitarioData={pendingSanitarioData}
+            onSaved={() => loadFromSupabase()}
+          />
+
+          <ObservacaoLoteModal
+            open={observacaoLoteOpen}
+            onClose={() => setObservacaoLoteOpen(false)}
+            pastoId={eventoPasto.id}
+            pastoNome={eventoPasto.nome}
+            userId={user?.id || ""}
+            onSaved={() => loadFromSupabase()}
+          />
+
+          <DetalhesLoteModal
+            open={detalhesLoteOpen}
+            onClose={() => setDetalhesLoteOpen(false)}
+            pasto={{
+              id: eventoPasto.id,
+              nome: eventoPasto.nome,
+              num_animais: eventoPasto.num_animais,
+              peso_medio_kg: eventoPasto.peso_medio_kg,
+              categoria: pastos.find(p => p.id === eventoPasto.id)?.categoria ?? null,
+              sexo: pastos.find(p => p.id === eventoPasto.id)?.sexo ?? null,
+            }}
+            onVerHistorico={() => { setDetalhesLoteOpen(false); setHistoricoLoteOpen(true); }}
+          />
+
+          <HistoricoLoteModal
+            open={historicoLoteOpen}
+            onClose={() => setHistoricoLoteOpen(false)}
+            pastoId={eventoPasto.id}
+            pastoNome={eventoPasto.nome}
+          />
+        </>
       )}
     </div>
   );
