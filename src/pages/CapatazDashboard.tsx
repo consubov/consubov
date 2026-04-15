@@ -1530,6 +1530,13 @@ export default function CapatazDashboard() {
             setEntradaOpen(true);
           }
         }}
+        onRegistrarEvento={() => {
+          if (actionSheetPasto) {
+            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+            setEventoSelectorOpen(true);
+          }
+        }}
       />
 
       <AbateModal
