@@ -45,8 +45,8 @@ export function useEventosLote(loteId: string | undefined) {
   const load = useCallback(async () => {
     if (!loteId) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("eventos_lote")
+    const { data } = await (supabase
+      .from("eventos_lote") as any)
       .select("*")
       .eq("lote_id", loteId)
       .order("data_evento", { ascending: false });
@@ -64,14 +64,14 @@ export function useUltimaPesagem(loteId: string | undefined) {
 
   useEffect(() => {
     if (!loteId) return;
-    supabase
-      .from("pesagens")
+    (supabase
+      .from("pesagens") as any)
       .select("*")
       .eq("lote_id", loteId)
       .order("data_pesagem", { ascending: false })
       .limit(1)
       .maybeSingle()
-      .then(({ data }) => setPesagem(data as PesagemData | null));
+      .then(({ data }: any) => setPesagem(data as PesagemData | null));
   }, [loteId]);
 
   return pesagem;
@@ -82,14 +82,14 @@ export function useUltimoSanitario(loteId: string | undefined) {
 
   useEffect(() => {
     if (!loteId) return;
-    supabase
-      .from("eventos_sanitarios")
+    (supabase
+      .from("eventos_sanitarios") as any)
       .select("*")
       .eq("lote_id", loteId)
       .order("data_aplicacao", { ascending: false })
       .limit(1)
       .maybeSingle()
-      .then(({ data }) => setSanitario(data as EventoSanitarioData | null));
+      .then(({ data }: any) => setSanitario(data as EventoSanitarioData | null));
   }, [loteId]);
 
   return sanitario;
