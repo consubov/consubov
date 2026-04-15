@@ -78,8 +78,8 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
         : null;
 
       // Insert evento_lote
-      const { data: evento, error: evErr } = await supabase
-        .from("eventos_lote")
+      const { data: evento, error: evErr } = await (supabase
+        .from("eventos_lote") as any)
         .insert({
           lote_id: pastoId,
           tipo: "sanitario",
@@ -93,8 +93,8 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
       if (evErr) throw evErr;
 
       // Insert evento_sanitario
-      const { error: sanErr } = await supabase
-        .from("eventos_sanitarios")
+      const { error: sanErr } = await (supabase
+        .from("eventos_sanitarios") as any)
         .insert({
           evento_id: evento.id,
           lote_id: pastoId,

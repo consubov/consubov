@@ -78,8 +78,8 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       const tipo = sanitarioData ? "pesagem_sanitario" : "pesagem";
 
       // 1. Create evento_lote
-      const { data: evento, error: evErr } = await supabase
-        .from("eventos_lote")
+      const { data: evento, error: evErr } = await (supabase
+        .from("eventos_lote") as any)
         .insert({
           lote_id: pastoId,
           tipo,
