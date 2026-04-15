@@ -163,6 +163,16 @@ export default function CapatazDashboard() {
   const [entradaOpen, setEntradaOpen] = useState(false);
   const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
 
+  // Eventos do Lote
+  const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
+  const [eventoPasto, setEventoPasto] = useState<{ id: string; nome: string; num_animais: number; peso_medio_kg: number | null } | null>(null);
+  const [sanitarioOpen, setSanitarioOpen] = useState(false);
+  const [pesagemOpen, setPesagemOpen] = useState(false);
+  const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
+  const [detalhesLoteOpen, setDetalhesLoteOpen] = useState(false);
+  const [historicoLoteOpen, setHistoricoLoteOpen] = useState(false);
+  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
+
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
   const refreshObservacoes = useCallback(async () => {
