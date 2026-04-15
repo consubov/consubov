@@ -16,6 +16,7 @@ export interface PastoMapaData {
   status_consumo: string | null;
   ultima_movimentacao: string | null;
   ultima_salga: string | null;
+  data_fim_carencia: string | null;
 }
 
 export interface LinhaMapaData {
@@ -130,7 +131,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
     const filteredPastosMapa = pastosMapa.filter((pm) => pastoIds.includes(pm.pasto_id));
 
     const [pastosRes, lancamentosRes, movimentacoesRes] = await Promise.all([
-      supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo").in("id", pastoIds),
+      supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo, data_fim_carencia").in("id", pastoIds),
       supabase.from("lancamentos").select("pasto_id, consumo_g_cab_dia, status_consumo, created_at").in("pasto_id", pastoIds).eq("mes_referencia", mes).eq("ano_referencia", ano).order("created_at", { ascending: false }),
       supabase.from("movimentacoes_animais").select("pasto_origem_id, pasto_destino_id, data").or(pastoIds.map((id) => `pasto_origem_id.eq.${id},pasto_destino_id.eq.${id}`).join(",")).order("data", { ascending: false }).limit(100),
     ]);
@@ -170,6 +171,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
         status_consumo: consumo?.status ?? null,
         ultima_movimentacao: movMap.get(pm.pasto_id) ?? null,
         ultima_salga: consumo?.data ?? null,
+        data_fim_carencia: (pasto as any)?.data_fim_carencia ?? null,
       };
     });
 
