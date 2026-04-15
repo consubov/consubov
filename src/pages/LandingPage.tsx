@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react";
 
 import heroImg1 from "@/assets/landing-hero-1.jpg";
 import heroImg2 from "@/assets/landing-hero-2.jpg";
@@ -56,23 +55,26 @@ export default function LandingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     supabase.from("landing_page_content").select("chave, valor").then(({ data, error }) => {
-      if (error) {
-        console.error("Erro ao carregar conteúdo da landing page:", error);
-      }
+      if (error) console.error("Erro ao carregar conteúdo da landing page:", error);
       if (data) {
         const map: LandingContent = {};
         data.forEach((r) => { if (r.valor) map[r.chave] = r.valor; });
-        console.log("Landing page content loaded:", Object.keys(map));
         setContent(map);
       }
       setLoading(false);
     });
   }, []);
 
-  // Derived dynamic images
   const heroImages = (() => {
     const dynamic = parseImageArray(content.img_carrossel);
     return dynamic.length > 0 ? dynamic : fallbackHeroes;
@@ -87,17 +89,13 @@ export default function LandingPage() {
   })();
   const parceirosLogos = parseImageArray(content.img_parceiros);
 
-  // Hero carousel auto-advance
   useEffect(() => {
     if (heroImages.length <= 1) return;
     const timer = setInterval(() => setHeroIndex((i) => (i + 1) % heroImages.length), 5000);
     return () => clearInterval(timer);
   }, [heroImages.length]);
 
-  // Reset index if images change
-  useEffect(() => {
-    setHeroIndex(0);
-  }, [heroImages.length]);
+  useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
 
   const handleSubmit = useCallback(async () => {
     const result = leadSchema.safeParse(form);
@@ -109,7 +107,6 @@ export default function LandingPage() {
     }
     setErrors({});
     setSubmitting(true);
-
     const { error } = await supabase.from("leads").insert({
       nome: form.nome.trim(),
       email: form.email.trim(),
@@ -117,15 +114,11 @@ export default function LandingPage() {
       whatsapp: form.whatsapp.trim(),
       mensagem: form.mensagem?.trim() || null,
     });
-
     if (error) {
-      console.error("Erro ao salvar lead:", error);
       toast.error("Erro ao enviar. Tente novamente.");
       setSubmitting(false);
       return;
     }
-
-    console.log("Lead salvo com sucesso. Notificação gerada automaticamente via trigger.");
     setSubmitted(true);
     setSubmitting(false);
     setForm({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
@@ -142,36 +135,46 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center animate-pulse">
-          <span className="text-xl font-extrabold text-secondary">C</span>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0D1F0F" }}>
+        <div className="w-12 h-12 rounded-xl overflow-hidden animate-pulse">
+          <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-primary/95 backdrop-blur-sm border-b border-primary/20">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg overflow-hidden">
+    <div className="min-h-screen flex flex-col" style={{ background: "#0D1F0F", color: "#F5F0E8" }}>
+      {/* Navbar */}
+      <header
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        style={{
+          background: scrolled ? "rgba(13,31,15,0.92)" : "transparent",
+          backdropFilter: scrolled ? "blur(12px)" : "none",
+          borderBottom: scrolled ? "1px solid rgba(46,74,48,0.5)" : "none",
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg overflow-hidden">
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <span className="text-primary-foreground font-bold text-lg">Consubov</span>
+            <span className="font-bold text-lg tracking-wide" style={{ color: "#F5F0E8" }}>Consubov</span>
           </div>
           <Link to="/login">
-            <Button variant="secondary" size="sm" className="gap-2 font-semibold">
+            <button
+              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:brightness-110"
+              style={{ background: "#C9A84C", color: "#0D1F0F" }}
+            >
               <LogIn className="w-4 h-4" />
               Entrar
-            </Button>
+            </button>
           </Link>
         </div>
       </header>
 
-      {/* Hero Carousel - sem texto sobreposto */}
-      <section className="relative w-full h-[70vh] min-h-[400px] mt-14 overflow-hidden">
+      {/* Hero */}
+      <section className="relative w-full overflow-hidden" style={{ height: "70vh", minHeight: "400px" }}>
         {heroImages.map((img, i) => (
           <div
             key={`${img}-${i}`}
@@ -188,111 +191,122 @@ export default function LandingPage() {
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-transparent to-background/80" />
+        {/* Dark overlay */}
+        <div className="absolute inset-0" style={{ background: "rgba(13,31,15,0.55)" }} />
+        {/* Gradient bottom fade */}
+        <div className="absolute inset-x-0 bottom-0 h-32" style={{ background: "linear-gradient(to top, #0D1F0F, transparent)" }} />
+
+        {/* Hero content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-10">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-wider mb-4" style={{ color: "#F5F0E8" }}>
+            CONSUBOV
+          </h1>
+          <p className="text-base md:text-xl max-w-2xl leading-relaxed opacity-90" style={{ color: "#F5F0E8" }}>
+            {content.hero_subtitulo || "Gestão pecuária inteligente. Controle, dados e resultados — direto do pasto."}
+          </p>
+          <Link to="/login">
+            <button
+              className="mt-8 px-8 py-3 rounded-lg text-base font-bold uppercase tracking-wide transition-all duration-200 hover:brightness-110 hover:scale-105"
+              style={{ background: "#C9A84C", color: "#0D1F0F" }}
+            >
+              {content.cta_texto || "Entrar"}
+            </button>
+          </Link>
+        </div>
+
+        {/* Carousel controls */}
         {heroImages.length > 1 && (
           <>
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
               {heroImages.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setHeroIndex(i)}
-                  className={`w-3 h-3 rounded-full transition-all ${heroIndex === i ? "bg-secondary scale-125" : "bg-primary-foreground/50"}`}
+                  className="w-2.5 h-2.5 rounded-full transition-all"
+                  style={{
+                    background: heroIndex === i ? "#C9A84C" : "rgba(245,240,232,0.4)",
+                    transform: heroIndex === i ? "scale(1.3)" : "scale(1)",
+                  }}
                 />
               ))}
             </div>
-            <button onClick={() => setHeroIndex((i) => (i - 1 + heroImages.length) % heroImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
+            <button onClick={() => setHeroIndex((i) => (i - 1 + heroImages.length) % heroImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-2 transition-colors z-10" style={{ background: "rgba(13,31,15,0.5)", color: "#F5F0E8" }}>
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <button onClick={() => setHeroIndex((i) => (i + 1) % heroImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary/50 hover:bg-primary/70 text-primary-foreground rounded-full p-2 transition-colors">
+            <button onClick={() => setHeroIndex((i) => (i + 1) % heroImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-2 transition-colors z-10" style={{ background: "rgba(13,31,15,0.5)", color: "#F5F0E8" }}>
               <ChevronRight className="w-6 h-6" />
             </button>
           </>
         )}
       </section>
 
-      {/* Texto institucional abaixo do carrossel */}
-      <section className="py-12 md:py-16 px-4 bg-primary/5">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-3xl md:text-5xl font-extrabold text-foreground uppercase mb-4">
-            {content.hero_titulo || "GESTÃO PECUÁRIA INTELIGENTE"}
-          </h1>
-          <p className="text-muted-foreground text-base md:text-lg leading-relaxed text-justify">
-            {content.hero_subtitulo || "Controle de sal mineral, relatórios automáticos e inteligência nutricional — direto do pasto."}
-          </p>
-          <Button
-            size="lg"
-            className="mt-6 text-base font-bold uppercase px-8 py-3"
-            onClick={() => document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" })}
-          >
-            {content.cta_texto || "FAÇA PARTE DA NOSSA HISTÓRIA"}
-          </Button>
+      {/* Quem Somos */}
+      <section className="py-16 md:py-24 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide" style={{ color: "#F5F0E8" }}>
+              Quem Somos
+            </h2>
+            <div className="w-16 h-1 mx-auto mt-3 rounded-full" style={{ background: "#C9A84C" }} />
+          </div>
+          <div className="flex flex-col md:flex-row gap-10 items-center">
+            <div className="w-full md:w-1/2 rounded-xl overflow-hidden" style={{ maxHeight: "60vh" }}>
+              <img src={quemSomosImg} alt="Quem somos" className="w-full h-full object-cover" loading="lazy" />
+            </div>
+            <div className="w-full md:w-1/2">
+              <p className="text-base md:text-lg leading-relaxed whitespace-pre-line text-left" style={{ color: "rgba(245,240,232,0.8)" }}>
+                {quemSomosText}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Quem Somos & Diferenciais - Accordions */}
-      <section className="py-12 md:py-20 px-4">
+      {/* Diferenciais */}
+      <section className="py-16 md:py-24 px-4" style={{ background: "#0A1A0C" }}>
         <div className="max-w-5xl mx-auto">
-          <Accordion type="multiple" className="space-y-4">
-            <AccordionItem value="quem-somos" className="border border-border/50 rounded-xl overflow-hidden px-4">
-              <AccordionTrigger className="text-xl md:text-2xl font-bold text-foreground uppercase hover:no-underline py-5">
-                QUEM SOMOS NÓS
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="flex flex-col md:flex-row gap-8 items-center pb-4">
-                  <div className="w-full md:w-1/2 rounded-xl overflow-hidden shadow-lg">
-                    <img src={quemSomosImg} alt="Quem somos" className="w-full h-auto object-contain" loading="lazy" />
-                  </div>
-                  <div className="w-full md:w-1/2">
-                    <p className="text-muted-foreground text-base md:text-lg leading-relaxed whitespace-pre-line text-justify">
-                      {quemSomosText}
-                    </p>
-                  </div>
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide" style={{ color: "#F5F0E8" }}>
+              Nossos Diferenciais
+            </h2>
+            <div className="w-16 h-1 mx-auto mt-3 rounded-full" style={{ background: "#C9A84C" }} />
+            <p className="mt-4 max-w-2xl mx-auto text-left" style={{ color: "rgba(245,240,232,0.65)" }}>{diferenciaisText}</p>
+          </div>
+
+          {diferenciaisImg && (
+            <div className="mb-12 rounded-xl overflow-hidden max-w-3xl mx-auto" style={{ maxHeight: "60vh" }}>
+              <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-auto object-contain" loading="lazy" />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {diferenciais.map((d) => (
+              <div
+                key={d.title}
+                className="rounded-xl p-6 transition-all duration-200 hover:scale-[1.02]"
+                style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(201,168,76,0.15)" }}>
+                  <d.icon className="w-5 h-5" style={{ color: "#C9A84C" }} />
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="diferenciais" className="border border-border/50 rounded-xl overflow-hidden px-4">
-              <AccordionTrigger className="text-xl md:text-2xl font-bold text-foreground uppercase hover:no-underline py-5">
-                NOSSOS DIFERENCIAIS
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="text-muted-foreground mb-8 max-w-2xl text-justify">{diferenciaisText}</p>
-
-                {diferenciaisImg && (
-                  <div className="mb-8 rounded-xl overflow-hidden shadow-lg max-w-3xl mx-auto">
-                    <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-auto object-contain" loading="lazy" />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {diferenciais.map((d) => (
-                    <Card key={d.title} className="hover:shadow-lg transition-shadow border-border/50">
-                      <CardContent className="pt-6 flex flex-col items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <d.icon className="w-5 h-5 text-primary" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">{d.title}</h3>
-                        <p className="text-sm text-muted-foreground text-justify">{d.desc}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                <h3 className="font-semibold text-base mb-2" style={{ color: "#F5F0E8" }}>{d.title}</h3>
+                <p className="text-sm text-left" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Parceiros */}
       <section className="py-16 md:py-24 px-4 overflow-hidden">
         <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 uppercase">PARCEIROS QUE USAM</h2>
-          <p className="text-muted-foreground mb-8">Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
+          <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide mb-3" style={{ color: "#F5F0E8" }}>
+            Parceiros que Usam
+          </h2>
+          <div className="w-16 h-1 mx-auto mb-6 rounded-full" style={{ background: "#C9A84C" }} />
+          <p className="mb-10" style={{ color: "rgba(245,240,232,0.65)" }}>Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
           {(() => {
-            const logos = parceirosLogos.length > 0
-              ? parceirosLogos
-              : [null, null, null];
-            // Duplicate for seamless loop
+            const logos = parceirosLogos.length > 0 ? parceirosLogos : [null, null, null];
             const items = [...logos, ...logos];
             return (
               <div
@@ -301,11 +315,15 @@ export default function LandingPage() {
               >
                 <div className="flex items-center gap-10 animate-[marquee_20s_linear_infinite] group-hover:[animation-play-state:paused] w-max">
                   {items.map((logo, i) => (
-                    <div key={i} className="w-24 h-24 shrink-0 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-border">
+                    <div
+                      key={i}
+                      className="w-24 h-24 shrink-0 rounded-xl flex items-center justify-center overflow-hidden"
+                      style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}
+                    >
                       {logo ? (
                         <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
                       ) : (
-                        <span className="text-muted-foreground text-xs">Logo {(i % 3) + 1}</span>
+                        <span className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>Logo {(i % 3) + 1}</span>
                       )}
                     </div>
                   ))}
@@ -317,72 +335,94 @@ export default function LandingPage() {
       </section>
 
       {/* Formulário */}
-      <section id="formulario" className="py-16 md:py-24 px-4 bg-primary/5">
+      <section id="formulario" className="py-16 md:py-24 px-4" style={{ background: "#0A1A0C" }}>
         <div className="max-w-lg mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center uppercase">{formTitle}</h2>
-          <p className="text-muted-foreground text-center mb-8">{formDesc}</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-center uppercase tracking-wide mb-2" style={{ color: "#F5F0E8" }}>
+            {formTitle}
+          </h2>
+          <div className="w-16 h-1 mx-auto mt-2 mb-4 rounded-full" style={{ background: "#C9A84C" }} />
+          <p className="text-center mb-8" style={{ color: "rgba(245,240,232,0.65)" }}>{formDesc}</p>
 
           <Dialog open={submitted} onOpenChange={setSubmitted}>
-            <DialogContent className="text-center max-w-md">
+            <DialogContent className="text-center max-w-md" style={{ background: "#1A2E1C", color: "#F5F0E8", border: "1px solid #2E4A30" }}>
               <DialogHeader>
-                <DialogTitle className="flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-6 h-6 text-primary" />
+                <DialogTitle className="flex items-center justify-center gap-2" style={{ color: "#C9A84C" }}>
+                  <CheckCircle2 className="w-6 h-6" />
                   Mensagem enviada!
                 </DialogTitle>
               </DialogHeader>
-              <p className="text-muted-foreground text-sm whitespace-pre-line leading-relaxed mt-2">
+              <p className="text-sm whitespace-pre-line leading-relaxed mt-2" style={{ color: "rgba(245,240,232,0.8)" }}>
                 {formMsgConfirmacao}
               </p>
             </DialogContent>
           </Dialog>
 
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <Input placeholder="Nome *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} maxLength={100} />
-                {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
+          <div className="rounded-xl p-6 space-y-4" style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}>
+            {[
+              { key: "nome", placeholder: "Nome *", type: "text" },
+              { key: "email", placeholder: "E-mail *", type: "email" },
+              { key: "telefone", placeholder: "Telefone *", type: "text" },
+              { key: "whatsapp", placeholder: "WhatsApp *", type: "text" },
+            ].map((field) => (
+              <div key={field.key}>
+                <input
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={(form as Record<string, string>)[field.key]}
+                  onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                  maxLength={field.key === "email" ? 255 : field.key === "nome" ? 100 : 20}
+                  className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all focus:ring-2"
+                  style={{
+                    background: "#0D1F0F",
+                    border: "1px solid #2E4A30",
+                    color: "#F5F0E8",
+                    focusRingColor: "#C9A84C",
+                  }}
+                />
+                {errors[field.key] && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{errors[field.key]}</p>}
               </div>
-              <div>
-                <Input type="email" placeholder="E-mail *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
-                {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
-              </div>
-              <div>
-                <Input placeholder="Telefone *" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} maxLength={20} />
-                {errors.telefone && <p className="text-xs text-destructive mt-1">{errors.telefone}</p>}
-              </div>
-              <div>
-                <Input placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} maxLength={20} />
-                {errors.whatsapp && <p className="text-xs text-destructive mt-1">{errors.whatsapp}</p>}
-              </div>
-              <div>
-                <Textarea placeholder={formPlaceholder} value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} maxLength={1000} rows={4} />
-                <p className="text-xs text-muted-foreground/70 mt-1 italic">{formMicrofrase}</p>
-              </div>
-              <Button className="w-full font-semibold" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Enviando..." : "Enviar"}
-              </Button>
-            </CardContent>
-          </Card>
+            ))}
+            <div>
+              <textarea
+                placeholder={formPlaceholder}
+                value={form.mensagem}
+                onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
+                maxLength={1000}
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg text-sm outline-none resize-none transition-all focus:ring-2"
+                style={{ background: "#0D1F0F", border: "1px solid #2E4A30", color: "#F5F0E8" }}
+              />
+              <p className="text-xs mt-1 italic" style={{ color: "rgba(245,240,232,0.45)" }}>{formMicrofrase}</p>
+            </div>
+            <button
+              className="w-full py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-all duration-200 hover:brightness-110 disabled:opacity-50"
+              style={{ background: "#C9A84C", color: "#0D1F0F" }}
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? "Enviando..." : "Enviar"}
+            </button>
+          </div>
         </div>
       </section>
 
       {/* Rodapé */}
-      <footer className="bg-primary text-primary-foreground py-12 px-4">
+      <footer className="py-12 px-4" style={{ background: "#081408", borderTop: "1px solid #2E4A30" }}>
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl overflow-hidden">
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold">Consubov</span>
+            <span className="text-xl font-bold" style={{ color: "#F5F0E8" }}>Consubov</span>
           </div>
           <div className="flex-1 text-center md:text-left">
-            <p className="text-primary-foreground/80 text-sm whitespace-pre-line leading-relaxed">
+            <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "rgba(245,240,232,0.6)" }}>
               {rodapeText}
             </p>
           </div>
         </div>
-        <div className="max-w-5xl mx-auto mt-8 pt-6 border-t border-primary-foreground/20 text-center">
-          <p className="text-primary-foreground/60 text-xs">© {new Date().getFullYear()} Consubov. Todos os direitos reservados.</p>
+        <div className="max-w-5xl mx-auto mt-8 pt-6 text-center" style={{ borderTop: "1px solid rgba(46,74,48,0.5)" }}>
+          <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>© {new Date().getFullYear()} Consubov. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
