@@ -291,8 +291,10 @@ export default function LandingPage() {
                     <d.icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: "#C9A84C" }} />
                   </div>
                 </div>
-                <h3 className="font-bold text-sm md:text-base" style={{ color: "#F5F0E8" }}>{d.title}</h3>
-                <p className="text-xs md:text-sm text-left leading-relaxed" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
+                <div>
+                  <h3 className="font-bold text-sm md:text-base" style={{ color: "#F5F0E8" }}>{d.title}</h3>
+                  <p className="text-xs md:text-sm text-left leading-relaxed mt-1" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -323,7 +325,7 @@ export default function LandingPage() {
                       style={{ background: "#FFFFFF", border: "1px solid #E0E0E0", padding: "24px" }}
                     >
                       {logo ? (
-                        <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} className="w-full h-full object-contain p-2" loading="lazy" />
+                        <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} style={{ width: "85%", height: "auto", objectFit: "contain" }} loading="lazy" />
                       ) : (
                         <span className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>Logo {(i % 3) + 1}</span>
                       )}
