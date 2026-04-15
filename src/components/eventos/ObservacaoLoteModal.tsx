@@ -24,7 +24,7 @@ export default function ObservacaoLoteModal({ open, onClose, pastoId, pastoNome,
     if (!texto.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("eventos_lote").insert({
+      const { error } = await (supabase.from("eventos_lote") as any).insert({
         lote_id: pastoId,
         tipo: "observacao",
         usuario_id: userId,

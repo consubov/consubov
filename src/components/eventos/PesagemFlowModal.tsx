@@ -99,8 +99,8 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       if (evErr) throw evErr;
 
       // 2. Insert pesagem
-      const { error: pesErr } = await supabase
-        .from("pesagens")
+      const { error: pesErr } = await (supabase
+        .from("pesagens") as any)
         .insert({
           evento_id: evento.id,
           lote_id: pastoId,
@@ -126,8 +126,8 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
           ? new Date(Date.now() + sanitarioData.dias_carencia * 86400000).toISOString().slice(0, 10)
           : null;
 
-        const { data: sanEvento, error: sanErr } = await supabase
-          .from("eventos_sanitarios")
+        const { data: sanEvento, error: sanErr } = await (supabase
+          .from("eventos_sanitarios") as any)
           .insert({
             evento_id: evento.id,
             lote_id: pastoId,
