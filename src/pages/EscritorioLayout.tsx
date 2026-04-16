@@ -23,6 +23,7 @@ import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 import { QRCodeSVG } from "qrcode.react";
 import { format } from "date-fns";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import AdicionarEstoqueModal from "@/components/estoque/AdicionarEstoqueModal";
 import EstoqueDashboard from "@/components/estoque/EstoqueDashboard";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
