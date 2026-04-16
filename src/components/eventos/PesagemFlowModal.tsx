@@ -44,6 +44,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
+      if (pesos.length >= numAnimais) return;
       const val = parseFloat(currentPeso.replace(",", "."));
       if (!val || val <= 0) return;
       setPesos((prev) => [...prev, val]);
