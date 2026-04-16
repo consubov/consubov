@@ -456,7 +456,7 @@ export default function CapatazDashboard() {
         // Get pastos
         const { data: pastosData } = await supabase
           .from("pastos")
-          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia")
+          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia, data_movimentacao")
           .eq("retiro_id", retiroData.id)
           .eq("ativo", true);
 
