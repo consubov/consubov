@@ -178,8 +178,7 @@ export default function CapatazDashboard() {
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
-    // After sync, refresh pastos data
-    loadData();
+    loadLocalData();
   });
 
   const refreshObservacoes = useCallback(async () => {
