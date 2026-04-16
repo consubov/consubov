@@ -1668,6 +1668,9 @@ export default function CapatazDashboard() {
             pesoMedioAtual={eventoPasto.peso_medio_kg}
             userId={user?.id || ""}
             userName={userName}
+            fazendaId={fazendaId}
+            fazendaNome={retiro?.fazenda_nome || ""}
+            retiroNome={retiro?.nome || ""}
             sanitarioData={pendingSanitarioData}
             onSaved={() => { loadFromSupabase(); refreshPesagemCount(); }}
           />

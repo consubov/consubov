@@ -6,6 +6,8 @@ import {
   getPesagensPendentes,
   countPesagensPendentes,
   markPesagemSincronizada,
+  getSyncQueueItems,
+  deleteSyncQueueItem,
   type PesagemPendente,
 } from "@/lib/offlineDb";
 
@@ -44,22 +46,22 @@ export function useOfflinePesagemSync(onSynced?: () => void) {
 
     try {
       const pendentes = await getPesagensPendentes();
-      if (pendentes.length === 0) return;
-
       for (const p of pendentes) {
         try {
           await syncOnePesagem(p);
           await markPesagemSincronizada(p.id);
         } catch (err: any) {
           console.error("Sync pesagem failed:", p.id, err);
-          // Keep for next attempt
         }
       }
+
+      // Process sync queue (e.g., offline PDF uploads)
+      await processSyncQueue();
 
       const remaining = await countPesagensPendentes();
       setPendingCount(remaining);
 
-      if (remaining === 0) {
+      if (remaining === 0 && pendentes.length > 0) {
         toast.success("Pesagens offline sincronizadas com sucesso!");
       }
       onSynced?.();
@@ -82,6 +84,38 @@ export function useOfflinePesagemSync(onSynced?: () => void) {
   }, [refreshCount]);
 
   return { pendingCount, syncing, syncAll, refreshCount, isOnline };
+}
+
+async function processSyncQueue() {
+  try {
+    const items = await getSyncQueueItems();
+    for (const item of items) {
+      if (item.type === "upload_pdf_pesagem") {
+        try {
+          const { pesagemId, fazendaId, fileName, blobBase64 } = item.payload;
+          const byteCharacters = atob(blobBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: "application/pdf" });
+
+          const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
+          const { error } = await supabase.storage
+            .from("relatorios")
+            .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
+
+          if (error) throw error;
+          await deleteSyncQueueItem(item.id);
+        } catch (err) {
+          console.error("Sync queue item failed:", item.id, err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("processSyncQueue error:", err);
+  }
 }
 
 async function syncOnePesagem(p: PesagemPendente) {
