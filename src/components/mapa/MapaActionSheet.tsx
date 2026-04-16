@@ -38,7 +38,7 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
 
           {/* 2. Registrar evento */}
           {onRegistrarEvento && (
-            <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => { onClose(); onRegistrarEvento(); }}>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => onRegistrarEvento()}>
               <ClipboardList className="w-5 h-5" />
               Registrar evento
             </Button>
