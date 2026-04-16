@@ -227,6 +227,17 @@ export default function EscritorioLayout() {
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { fazendaId: string; fazendaNome: string; escritorioNome: string }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [salgaOpen, setSalgaOpen] = useState(false);
+
+  if (salgaOpen) {
+    return (
+      <RelatorioSalgaPage
+        onBack={() => setSalgaOpen(false)}
+        fazendaId={fazendaId}
+        fazendaNome={fazendaNome}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -239,7 +250,11 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
       </p>
 
       <Button className="w-full gap-2" onClick={() => setModalOpen(true)}>
-        <FileDown className="w-4 h-4" /> Gerar Relatório / Baixar PDF
+        <FileDown className="w-4 h-4" /> Gerar Relatório de Consumo
+      </Button>
+
+      <Button className="w-full gap-2" variant="outline" onClick={() => setSalgaOpen(true)}>
+        <FileDown className="w-4 h-4" /> Relatório de Salga
       </Button>
 
       <ExportarRelatorioModal
