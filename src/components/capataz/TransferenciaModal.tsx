@@ -61,15 +61,48 @@ export default function TransferenciaModal({
       });
       if (movErr) throw movErr;
 
-      // 2. Update origin pasto
+      // 2. Fetch full origin pasto data for lote transfer
+      const { data: origemData } = await supabase.from("pastos")
+        .select("peso_medio_kg, categoria, sexo, peso_entrada, data_entrada, gmd_kg_dia, dias_no_pasto, produto_id, peso_abate_meta_kg")
+        .eq("id", pasto.id)
+        .maybeSingle();
+
+      const isFullTransfer = qtd === pasto.num_animais;
+
+      // 3. Update origin pasto
+      const origemUpdate: Record<string, any> = { num_animais: pasto.num_animais - qtd };
+      if (isFullTransfer) {
+        // Clear lote data from origin when all animals leave
+        origemUpdate.peso_medio_kg = null;
+        origemUpdate.categoria = null;
+        origemUpdate.sexo = null;
+        origemUpdate.peso_entrada = null;
+        origemUpdate.data_entrada = null;
+        origemUpdate.dias_no_pasto = 0;
+      }
       const { error: errOrigem } = await supabase.from("pastos")
-        .update({ num_animais: pasto.num_animais - qtd })
+        .update(origemUpdate)
         .eq("id", pasto.id);
       if (errOrigem) throw errOrigem;
 
-      // 3. Update destination pasto
+      // 4. Update destination pasto with lote data
+      const destinoUpdate: Record<string, any> = { num_animais: destino.num_animais + qtd };
+      if (origemData) {
+        // Transfer lote metadata to destination
+        if (origemData.peso_medio_kg != null) destinoUpdate.peso_medio_kg = origemData.peso_medio_kg;
+        if (origemData.categoria) destinoUpdate.categoria = origemData.categoria;
+        if (origemData.sexo) destinoUpdate.sexo = origemData.sexo;
+        if (isFullTransfer) {
+          if (origemData.peso_entrada != null) destinoUpdate.peso_entrada = origemData.peso_entrada;
+          if (origemData.data_entrada) destinoUpdate.data_entrada = origemData.data_entrada;
+          if (origemData.gmd_kg_dia != null) destinoUpdate.gmd_kg_dia = origemData.gmd_kg_dia;
+          if (origemData.dias_no_pasto != null) destinoUpdate.dias_no_pasto = origemData.dias_no_pasto;
+          if (origemData.produto_id) destinoUpdate.produto_id = origemData.produto_id;
+          if (origemData.peso_abate_meta_kg != null) destinoUpdate.peso_abate_meta_kg = origemData.peso_abate_meta_kg;
+        }
+      }
       const { error: errDestino } = await supabase.from("pastos")
-        .update({ num_animais: destino.num_animais + qtd })
+        .update(destinoUpdate)
         .eq("id", destinoId);
       if (errDestino) throw errDestino;
 
