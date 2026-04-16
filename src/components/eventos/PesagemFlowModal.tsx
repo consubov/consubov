@@ -230,11 +230,13 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
           </div>
         )}
 
-        {step === "digitacao" && (
+        {step === "digitacao" && (() => {
+          const todospesados = pesos.length >= numAnimais;
+          return (
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3 rounded-lg bg-muted">
-                <p className="text-2xl font-bold text-primary">{pesos.length}</p>
+                <p className="text-2xl font-bold text-primary">{pesos.length}/{numAnimais}</p>
                 <p className="text-xs text-muted-foreground">pesados</p>
               </div>
               <div className="p-3 rounded-lg bg-muted">
@@ -244,6 +246,12 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                 <p className="text-xs text-muted-foreground">média (kg)</p>
               </div>
             </div>
+
+            {todospesados && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-300 text-center font-medium">
+                ✅ Todos os animais foram pesados. Clique em Finalizar.
+              </div>
+            )}
 
             <div className="space-y-2">
               <Input
@@ -256,12 +264,13 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                 onKeyDown={handleKeyDown}
                 className="text-lg h-12 text-center"
                 autoFocus
+                disabled={todospesados}
               />
               <Button
                 type="button"
                 className="w-full h-12 text-base"
                 variant="secondary"
-                disabled={!currentPeso || parseFloat(currentPeso.replace(",", ".")) <= 0}
+                disabled={todospesados || !currentPeso || parseFloat(currentPeso.replace(",", ".")) <= 0}
                 onClick={() => {
                   const val = parseFloat(currentPeso.replace(",", "."));
                   if (!val || val <= 0) return;
@@ -290,13 +299,14 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                   Desfazer último
                 </Button>
               )}
-              <Button className="flex-1" onClick={() => setStep("finalizando")} disabled={pesos.length === 0}>
+              <Button className={`flex-1 ${todosbesados ? "animate-pulse" : ""}`} onClick={() => setStep("finalizando")} disabled={pesos.length === 0}>
                 <Check className="w-4 h-4 mr-2" />
                 Finalizar ({pesos.length})
               </Button>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {step === "finalizando" && (
           <div className="space-y-4 py-4">
