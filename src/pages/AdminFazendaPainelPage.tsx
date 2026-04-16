@@ -202,7 +202,7 @@ export default function AdminFazendaPainelPage() {
         onOpenChange={setRelatorioOpen}
         fazendaId={fazendaId!}
         fazendaNome={fazendaNome}
-        geradoPor={user?.user_metadata?.nome || user?.email || "Administrador"}
+        geradoPor={user?.user_metadata?.nome || user?.email?.split('@')[0] || "Administrador"}
         initialMes={mes}
         initialAno={ano}
       />
