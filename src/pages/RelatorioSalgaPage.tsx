@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +19,7 @@ interface Props {
   onBack: () => void;
   fazendaId: string;
   fazendaNome: string;
+  /** If provided, lock to this retiro (capataz mode) */
   retiroId?: string;
   retiroNome?: string;
 }
@@ -47,15 +47,34 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
   const pdfBlobRef = useRef<Blob | null>(null);
   const fileNameRef = useRef<string>("");
 
-  // Fetch ultima salga date when "ultima_salga" is selected
+  // Load retiros list for gerente/escritorio (when not locked)
   useEffect(() => {
-    if (periodoTipo !== "ultima_salga") return;
+    if (fixedRetiroId || !fazendaId) return;
+    supabase
+      .from("retiros")
+      .select("id, nome")
+      .eq("fazenda_id", fazendaId)
+      .eq("ativo", true)
+      .order("nome")
+      .then(({ data }) => {
+        const list = data ?? [];
+        setRetirosList(list);
+        if (list.length > 0 && !selectedRetiroId) {
+          setSelectedRetiroId(list[0].id);
+          setSelectedRetiroNome(list[0].nome);
+        }
+      });
+  }, [fazendaId, fixedRetiroId]);
+
+  // Fetch ultima salga date
+  useEffect(() => {
+    if (periodoTipo !== "ultima_salga" || !selectedRetiroId) return;
     setLoadingUltima(true);
     setUltimaSalgaDate(null);
     supabase
       .from("lancamentos")
       .select("created_at")
-      .eq("retiro_id", retiroId)
+      .eq("retiro_id", selectedRetiroId)
       .eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -65,7 +84,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         }
         setLoadingUltima(false);
       });
-  }, [periodoTipo, retiroId, fazendaId]);
+  }, [periodoTipo, selectedRetiroId, fazendaId]);
 
   function getDateRange(): { start: Date; end: Date; label: string } | null {
     if (periodoTipo === "ultima_salga") {
@@ -87,7 +106,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       return { start, end, label: `SEMANAL_${fmt(start)}_${fmt(end)}` };
     }
-    // mensal
     const start = new Date(anoSel, mesSel - 1, 1);
     const end = new Date(anoSel, mesSel, 0, 23, 59, 59);
     return { start, end, label: `MENSAL_${anoSel}-${String(mesSel).padStart(2, "0")}` };
@@ -103,7 +121,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
     return `${MESES[mesSel - 1]} ${anoSel}`;
   }
 
-  const canGenerate = periodoTipo !== "ultima_salga" || (ultimaSalgaDate != null && !loadingUltima);
+  const canGenerate = selectedRetiroId && (periodoTipo !== "ultima_salga" || (ultimaSalgaDate != null && !loadingUltima));
 
   async function handleGerarPdf() {
     setGenerating(true);
@@ -120,11 +138,10 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         return;
       }
 
-      // Query lancamentos for the period
       const { data: lancData, error } = await supabase
         .from("lancamentos")
         .select("pasto_id, num_sacos")
-        .eq("retiro_id", retiroId)
+        .eq("retiro_id", selectedRetiroId)
         .eq("fazenda_id", fazendaId)
         .gte("created_at", range.start.toISOString())
         .lte("created_at", range.end.toISOString());
@@ -136,7 +153,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         return;
       }
 
-      // Aggregate by pasto
       const pastoMap: Record<string, number> = {};
       lancData.forEach((l) => {
         pastoMap[l.pasto_id] = (pastoMap[l.pasto_id] || 0) + (l.num_sacos || 0);
@@ -159,7 +175,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
       const pdfData: SalgaPdfData = {
         fazendaNome,
-        retiroNome,
+        retiroNome: selectedRetiroNome,
         periodoLabel: getPeriodoDisplay(),
         pastos: rows,
       };
@@ -168,7 +184,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       pdfBlobRef.current = blob;
       fileNameRef.current = fileName;
 
-      // Upload to Supabase Storage
       const storagePath = `salgas/${fazendaId}/${fileName}`;
       await supabase.storage
         .from("relatorios")
@@ -199,7 +214,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       } catch { /* cancelled */ }
     }
 
-    // Fallback: download
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -216,7 +230,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
   return (
     <div className="min-h-screen bg-background p-4 space-y-4 max-w-lg mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-5 h-5" />
@@ -226,13 +239,35 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
             <FileText className="w-5 h-5 text-primary" />
             Relatório de Salga
           </h1>
-          <p className="text-xs text-muted-foreground">{fazendaNome} — {retiroNome}</p>
+          <p className="text-xs text-muted-foreground">{fazendaNome}{selectedRetiroNome ? ` — ${selectedRetiroNome}` : ""}</p>
         </div>
       </div>
 
-      {/* Period Selection */}
       <Card>
         <CardContent className="p-4 space-y-4">
+          {/* Retiro selector for gerente/escritorio */}
+          {!fixedRetiroId && retirosList.length > 0 && (
+            <div className="space-y-2">
+              <Label>Retiro</Label>
+              <Select
+                value={selectedRetiroId}
+                onValueChange={(v) => {
+                  setSelectedRetiroId(v);
+                  setSelectedRetiroNome(retirosList.find((r) => r.id === v)?.nome || "");
+                  setPdfUrl(null);
+                  setNoData(false);
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+                <SelectContent>
+                  {retirosList.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Período</Label>
             <Select value={periodoTipo} onValueChange={(v) => { setPeriodoTipo(v as PeriodoTipo); setPdfUrl(null); setNoData(false); }}>
@@ -293,7 +328,6 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         </CardContent>
       </Card>
 
-      {/* Actions */}
       <div className="flex gap-2">
         {!pdfUrl ? (
           <>
@@ -301,7 +335,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
               Voltar
             </Button>
             <Button
-              className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleGerarPdf}
               disabled={generating || !canGenerate || noData}
             >
@@ -324,7 +358,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
               Abrir PDF
             </Button>
             <Button
-              className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleShare}
             >
               <Share2 className="w-4 h-4 mr-2" />
