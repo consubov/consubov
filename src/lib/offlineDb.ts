@@ -96,6 +96,13 @@ export interface FazendaCache {
   auditoria_fotos_por_bloco: number;
 }
 
+export interface SyncQueueItem {
+  id: string;
+  type: string;
+  payload: any;
+  createdAt: string;
+}
+
 export interface PesagemPendente {
   id: string;
   lote_id: string;
@@ -155,13 +162,17 @@ interface ConsubovDB extends DBSchema {
     value: PesagemPendente;
     indexes: { 'by-sincronizado': string };
   };
+  syncQueue: {
+    key: string;
+    value: SyncQueueItem;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 4, {
+    dbPromise = openDB<ConsubovDB>('consubov-capataz', 5, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -187,6 +198,9 @@ function getDb() {
         if (oldVersion < 4) {
           const pesStore = db.createObjectStore('pesagensPendentes', { keyPath: 'id' });
           pesStore.createIndex('by-sincronizado', 'sincronizado');
+        }
+        if (oldVersion < 5) {
+          db.createObjectStore('syncQueue', { keyPath: 'id' });
         }
       },
     });
