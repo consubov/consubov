@@ -105,7 +105,10 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         };
         await savePesagemPendente(pendente);
         toast.success("Pesagem salva localmente. Sincronização pendente.", { icon: "📴" });
-        resetAndClose();
+        const animais = buildAnimaisArray(pesos);
+        const hora = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        setExportData({ pesagemId: pendente.id, animais, dataPesagem: now, hora });
+        setStep("inicio");
         onSaved?.();
         return;
       }
@@ -181,7 +184,10 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
 
       await supabase.from("pastos").update(pastoUpdate).eq("id", pastoId);
       toast.success(`Pesagem finalizada! ${pesos.length} animais, média ${Math.round(mp * 10) / 10} kg`);
-      resetAndClose();
+      const animais = buildAnimaisArray(pesos);
+      const hora = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setExportData({ pesagemId: evento.id, animais, dataPesagem: now, hora });
+      setStep("inicio");
       onSaved?.();
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err.message || ""));
@@ -190,14 +196,24 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
     }
   }
 
+  function buildAnimaisArray(pesosArr: number[]): AnimalPesagem[] {
+    return pesosArr.map((p, i) => ({
+      id: crypto.randomUUID(),
+      numero: i + 1,
+      pesoKg: p,
+    }));
+  }
+
   function resetAndClose() {
     setStep("inicio");
     setPesos([]);
     setCurrentPeso("");
+    setExportData(null);
     onClose();
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -341,5 +357,20 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         )}
       </DialogContent>
     </Dialog>
+
+    <ExportarPesagemModal
+      open={!!exportData}
+      onClose={() => { setExportData(null); resetAndClose(); }}
+      pesagemId={exportData?.pesagemId || ""}
+      fazendaId={fazendaId}
+      fazendaNome={fazendaNome}
+      retiroNome={retiroNome}
+      pastoNome={pastoNome}
+      dataPesagem={exportData?.dataPesagem || ""}
+      horaFinalizacao={exportData?.hora || ""}
+      responsavelNome={userName}
+      animais={exportData?.animais || []}
+    />
+    </>
   );
 }
