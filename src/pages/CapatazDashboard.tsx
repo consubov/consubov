@@ -1527,13 +1527,26 @@ export default function CapatazDashboard() {
         onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
         pastoNome={actionSheetPasto?.nome || ""}
         numAnimais={actionSheetPasto?.num_animais ?? 0}
+        dataFimCarencia={actionSheetPasto ? pastos.find(p => p.id === actionSheetPasto.id)?.data_fim_carencia : undefined}
+        onVerDetalhes={() => {
+          if (actionSheetPasto) {
+            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+            setDetalhesLoteOpen(true);
+          }
+        }}
         onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
         onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
-        onMortalidade={() => { setMortalidadeOpen(true); }}
         onEntrada={() => {
           if (actionSheetPasto) {
             setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
             setEntradaOpen(true);
+          }
+        }}
+        onEditarPeso={() => {
+          if (actionSheetPasto) {
+            setEditarPesoPasto(actionSheetPasto);
+            setEditarPesoOpen(true);
           }
         }}
         onRegistrarEvento={() => {
