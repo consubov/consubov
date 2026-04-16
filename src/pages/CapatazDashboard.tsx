@@ -1232,9 +1232,9 @@ export default function CapatazDashboard() {
           <Button onClick={handleSync} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
             Sincronizar
-            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)) > 0 && (
+            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount) > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold">
-                {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)}
+                {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount}
               </span>
             )}
           </Button>
