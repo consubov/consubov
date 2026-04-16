@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft, FileText } from "lucide-react";
 import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import { verificarFotoObrigatoria, registrarSalgaAuditoria, getSorteioAtual, syncSorteioToSupabase } from "@/lib/auditoriaSort";
 import {
@@ -33,6 +33,7 @@ import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/Sel
 import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
 import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
+import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
@@ -50,7 +51,7 @@ import {
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 
-type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro';
+type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
 
 interface PersistedCapatazState {
@@ -1206,6 +1207,18 @@ export default function CapatazDashboard() {
     return <TransferenciaRetiroPage onBack={() => setScreen('home')} />;
   }
 
+  if (screen === 'relatorio-salga') {
+    return (
+      <RelatorioSalgaPage
+        onBack={() => setScreen('home')}
+        fazendaId={fazendaId}
+        fazendaNome={retiro?.fazenda_nome || ""}
+        retiroId={roleData.retiroId || ""}
+        retiroNome={retiro?.nome || ""}
+      />
+    );
+  }
+
   // ============ HOME SCREEN ============
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
@@ -1277,8 +1290,11 @@ export default function CapatazDashboard() {
           <ArrowRightLeft className="w-5 h-5" />
           Transferência entre Retiros
         </Button>
+        <Button onClick={() => setScreen('relatorio-salga')} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+          <FileText className="w-5 h-5" />
+          Relatório de Salga
+        </Button>
 
-        {/* Estoque de Sal */}
         {roleData.retiroId && fazendaId && (
           <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
         )}

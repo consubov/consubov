@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
+import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useAbatesData } from "@/hooks/useAbatesData";
@@ -19,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -100,6 +101,7 @@ export default function GerenteDashboard() {
   const [selectedRetiro, setSelectedRetiro] = useState<RetiroComDados | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
+  const [salgaReportOpen, setSalgaReportOpen] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -123,6 +125,16 @@ export default function GerenteDashboard() {
 
   if (loading) return <LoadingScreen />;
 
+  if (salgaReportOpen && roleData.fazendaId) {
+    return (
+      <RelatorioSalgaPage
+        onBack={() => setSalgaReportOpen(false)}
+        fazendaId={roleData.fazendaId}
+        fazendaNome={fazendaNome}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
@@ -137,7 +149,10 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80">
+            <Button variant="ghost" size="icon" onClick={() => setSalgaReportOpen(true)} className="text-primary-foreground hover:bg-primary/80" title="Relatório de Salga">
+              <FileText className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80" title="Relatório de Consumo">
               <FileDown className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing}>
