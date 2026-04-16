@@ -49,19 +49,26 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
   const pesoMedioArroba = pesoMedioKg / 30;
   const pesoTotalArroba = pesoTotalKg / 30;
 
-  // --- Header ---
-  doc.setFillColor(27, 67, 50); // #1B4332
-  doc.rect(0, 0, pageWidth, 38, "F");
-  doc.setTextColor(255, 255, 255);
+  // --- Header (same style as consumption report) ---
+  let y = 15;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("CONSUBOV", pageWidth / 2, 16, { align: "center" });
   doc.setFontSize(14);
+  doc.setTextColor(27, 67, 50); // #1B4332
+  doc.text(`CONSUBOV — ${data.fazendaNome}`, margin, y);
+
+  y += 6;
   doc.setFont("helvetica", "normal");
-  doc.text("Relatório de Pesagem", pageWidth / 2, 28, { align: "center" });
+  doc.setFontSize(8);
+  doc.setTextColor(102, 102, 102);
+  doc.text(`Período: ${formatDate(data.dataPesagem)}`, margin, y);
+
+  y += 3;
+  doc.setDrawColor(27, 67, 50);
+  doc.setLineWidth(0.6);
+  doc.line(margin, y, pageWidth - margin, y);
 
   // --- Identification Block ---
-  let y = 46;
+  y += 6;
   doc.setFillColor(249, 250, 251); // #F9FAFB
   doc.roundedRect(margin, y, pageWidth - margin * 2, 42, 2, 2, "F");
   doc.setTextColor(55, 65, 81);
@@ -100,8 +107,8 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
   const boxH = 20;
 
   const summaryItems = [
-    { label: "Qtd. Animais", value: String(totalAnimais) },
-    { label: "Peso Médio", value: `${pesoMedioKg.toFixed(1)} kg (${pesoMedioArroba.toFixed(2)} @)` },
+    { label: "Quantidade de Animais", value: String(totalAnimais) },
+    { label: "Peso Médio", value: `${pesoMedioKg.toFixed(1)} kg` },
     { label: "Peso Total", value: `${pesoTotalKg.toFixed(1)} kg (${pesoTotalArroba.toFixed(2)} @)` },
     { label: "Média por Arroba", value: `${pesoMedioArroba.toFixed(2)} @` },
   ];
