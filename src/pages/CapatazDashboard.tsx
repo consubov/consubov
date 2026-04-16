@@ -1620,6 +1620,7 @@ export default function CapatazDashboard() {
             if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
             return p;
           }));
+          loadFromSupabase();
         }}
       />
 
