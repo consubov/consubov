@@ -59,12 +59,19 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
   // --- Table ---
   y += 6;
 
+  // Calculate totals
+  const totalAnimais = data.pastos.reduce((sum, p) => sum + p.numAnimais, 0);
+  const totalSacos = data.pastos.reduce((sum, p) => sum + p.sacosUtilizados, 0);
+
   const tableBody = data.pastos.map((p) => [
     p.nome,
     String(p.numAnimais),
     `${p.pesoMedioKg.toFixed(1)}`,
     String(p.sacosUtilizados),
   ]);
+
+  // Add totals row
+  tableBody.push(["TOTAL", String(totalAnimais), "—", String(totalSacos)]);
 
   autoTable(doc, {
     startY: y,
@@ -84,6 +91,17 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
     },
     alternateRowStyles: {
       fillColor: [240, 253, 244], // #F0FDF4
+    },
+    // Style the last row (totals) differently
+    didParseCell: (hookData) => {
+      const { row, cell } = hookData;
+      // Check if this is the last row (totals row)
+      if (row.section === "body" && row.index === tableBody.length - 1) {
+        cell.styles.fillColor = [27, 67, 50]; // #1B4332
+        cell.styles.textColor = [255, 255, 255];
+        cell.styles.fontStyle = "bold";
+        cell.styles.halign = "center";
+      }
     },
     styles: {
       cellPadding: 3,
