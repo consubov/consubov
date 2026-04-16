@@ -36,6 +36,7 @@ import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
+import EditarPesoCapatazModal from "@/components/capataz/EditarPesoCapatazModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
