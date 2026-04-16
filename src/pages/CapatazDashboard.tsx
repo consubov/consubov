@@ -1290,8 +1290,11 @@ export default function CapatazDashboard() {
           <ArrowRightLeft className="w-5 h-5" />
           Transferência entre Retiros
         </Button>
+        <Button onClick={() => setScreen('relatorio-salga')} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+          <FileText className="w-5 h-5" />
+          Relatório de Salga
+        </Button>
 
-        {/* Estoque de Sal */}
         {roleData.retiroId && fazendaId && (
           <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
         )}
