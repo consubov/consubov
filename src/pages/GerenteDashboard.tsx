@@ -125,6 +125,16 @@ export default function GerenteDashboard() {
 
   if (loading) return <LoadingScreen />;
 
+  if (salgaReportOpen && roleData.fazendaId) {
+    return (
+      <RelatorioSalgaPage
+        onBack={() => setSalgaReportOpen(false)}
+        fazendaId={roleData.fazendaId}
+        fazendaNome={fazendaNome}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
