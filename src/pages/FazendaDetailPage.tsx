@@ -211,7 +211,7 @@ export default function FazendaDetailPage() {
         onOpenChange={setRelatorioOpen}
         fazendaId={fazendaId!}
         fazendaNome={fazenda.nome}
-        geradoPor={user?.user_metadata?.nome || user?.email || "Administrador"}
+        geradoPor={user?.user_metadata?.nome || user?.email?.split('@')[0] || "Administrador"}
       />
 
       {retiros.length === 0 ? (

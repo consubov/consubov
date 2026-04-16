@@ -347,7 +347,7 @@ export default function AdminRetiroPainelPage() {
         onOpenChange={setRelatorioOpen}
         fazendaId={activeFazendaId}
         fazendaNome={fazendaNome}
-        geradoPor={user?.user_metadata?.nome || user?.email || (isGerente ? "Gerente" : "Administrador")}
+        geradoPor={user?.user_metadata?.nome || user?.email?.split('@')[0] || (isGerente ? "Gerente" : "Administrador")}
         initialMes={mes}
         initialAno={ano}
         lockedRetiroId={retiroId}

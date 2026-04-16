@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Share2, ExternalLink, Loader2 } from "lucide-react";
@@ -28,11 +28,14 @@ export default function ExportarPesagemModal({
 }: Props) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const pdfBlobRef = useRef<Blob | null>(null);
   const isOnline = useOnlineStatus();
 
   const totalAnimais = animais.length;
   const pesoTotalKg = animais.reduce((s, a) => s + a.pesoKg, 0);
   const pesoMedioKg = totalAnimais > 0 ? pesoTotalKg / totalAnimais : 0;
+
+  const shareFileName = `Relatório de Pesagem - ${fazendaNome}.pdf`;
 
   async function handleGerarPdf() {
     setGenerating(true);
@@ -44,6 +47,7 @@ export default function ExportarPesagemModal({
         dataPesagem, horaFinalizacao, responsavelNome, animais,
       };
       const { blob, fileName } = gerarPdfPesagem(pdfData);
+      pdfBlobRef.current = blob;
 
       if (!isOnline) {
         // Offline: local blob URL + queue upload
@@ -76,8 +80,8 @@ export default function ExportarPesagemModal({
 
       if (uploadErr) throw uploadErr;
 
-      const { data: urlData } = supabase.storage.from("relatorios").getPublicUrl(storagePath);
-      setPdfUrl(urlData.publicUrl);
+      const localUrl = URL.createObjectURL(blob);
+      setPdfUrl(localUrl);
       toast.success("PDF gerado com sucesso!");
     } catch (err: any) {
       console.error("Erro ao gerar PDF:", err);
@@ -88,26 +92,39 @@ export default function ExportarPesagemModal({
   }
 
   async function handleShare() {
-    if (!pdfUrl) return;
-    const shareData = {
-      title: `Pesagem - ${pastoNome}`,
-      text: `Relatório de pesagem do pasto ${pastoNome} - ${totalAnimais} animais, média ${pesoMedioKg.toFixed(1)} kg`,
-      url: pdfUrl,
-    };
-    if (navigator.share) {
+    const blob = pdfBlobRef.current;
+    if (!blob) return;
+
+    const file = new File([blob], shareFileName, { type: "application/pdf" });
+
+    // Try sharing the file directly
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({
+          files: [file],
+          title: `Relatório de Pesagem - ${fazendaNome}`,
+        });
+        return;
       } catch {
-        // user cancelled
+        // User cancelled or error — fall through to download
       }
-    } else {
-      await navigator.clipboard.writeText(pdfUrl);
-      toast.success("Link copiado!");
     }
+
+    // Fallback: download the file directly
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = shareFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("PDF baixado!");
   }
 
   function handleClose() {
     setPdfUrl(null);
+    pdfBlobRef.current = null;
     setGenerating(false);
     onClose();
   }
