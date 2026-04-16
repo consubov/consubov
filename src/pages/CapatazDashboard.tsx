@@ -1687,6 +1687,18 @@ export default function CapatazDashboard() {
           />
         </>
       )}
+
+      {/* Editar Peso Modal (inline simples) */}
+      {editarPesoPasto && (
+        <EditarPesoCapatazModal
+          open={editarPesoOpen}
+          onClose={() => { setEditarPesoOpen(false); setEditarPesoPasto(null); }}
+          pastoId={editarPesoPasto.id}
+          pastoNome={editarPesoPasto.nome}
+          pesoAtual={pastos.find(p => p.id === editarPesoPasto.id)?.peso_medio_kg ?? null}
+          onDone={() => { loadFromSupabase(); }}
+        />
+      )}
     </div>
   );
 }
