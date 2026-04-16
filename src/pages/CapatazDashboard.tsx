@@ -32,6 +32,7 @@ import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
 import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
 import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
@@ -175,6 +176,10 @@ export default function CapatazDashboard() {
   const [combinedMode, setCombinedMode] = useState(false);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
+
+  const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
+    loadLocalData();
+  });
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
@@ -1227,9 +1232,9 @@ export default function CapatazDashboard() {
           <Button onClick={handleSync} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
             Sincronizar
-            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)) > 0 && (
+            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount) > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold">
-                {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0)}
+                {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount}
               </span>
             )}
           </Button>
@@ -1633,7 +1638,7 @@ export default function CapatazDashboard() {
             userId={user?.id || ""}
             userName={userName}
             sanitarioData={pendingSanitarioData}
-            onSaved={() => loadFromSupabase()}
+            onSaved={() => { loadFromSupabase(); refreshPesagemCount(); }}
           />
 
           <ObservacaoLoteModal

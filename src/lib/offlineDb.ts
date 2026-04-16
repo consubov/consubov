@@ -95,6 +95,24 @@ export interface FazendaCache {
   auditoria_fotos_por_bloco: number;
 }
 
+export interface PesagemPendente {
+  id: string;
+  lote_id: string;
+  pesos: number[];
+  total_pesado: number;
+  media_calculada: number;
+  peso_medio_aplicado: number | null;
+  data_pesagem: string;
+  usuario_id: string;
+  usuario_nome: string;
+  pasto_nome: string;
+  num_animais: number;
+  peso_medio_atual: number | null;
+  sincronizado: boolean;
+  criado_em: string;
+  sanitario_data?: any | null;
+}
+
 interface ConsubovDB extends DBSchema {
   lancamentos: {
     key: string;
@@ -131,13 +149,18 @@ interface ConsubovDB extends DBSchema {
     value: ObservacaoOffline;
     indexes: { 'by-status': string };
   };
+  pesagensPendentes: {
+    key: string;
+    value: PesagemPendente;
+    indexes: { 'by-sincronizado': string };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 3, {
+    dbPromise = openDB<ConsubovDB>('consubov-capataz', 4, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -159,6 +182,10 @@ function getDb() {
         if (oldVersion < 3) {
           db.createObjectStore('produtoAtivo', { keyPath: 'id' });
           db.createObjectStore('fazendaCache', { keyPath: 'id' });
+        }
+        if (oldVersion < 4) {
+          const pesStore = db.createObjectStore('pesagensPendentes', { keyPath: 'id' });
+          pesStore.createIndex('by-sincronizado', 'sincronizado');
         }
       },
     });
@@ -365,4 +392,36 @@ export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
   const db = await getDb();
   const all = await db.getAll('fazendaCache');
   return all[0];
+}
+
+// Pesagens Pendentes (offline)
+export async function savePesagemPendente(pesagem: PesagemPendente) {
+  const db = await getDb();
+  await db.put('pesagensPendentes', pesagem);
+}
+
+export async function getPesagensPendentes(): Promise<PesagemPendente[]> {
+  const db = await getDb();
+  const all = await db.getAll('pesagensPendentes');
+  return all.filter(p => !p.sincronizado);
+}
+
+export async function countPesagensPendentes(): Promise<number> {
+  const db = await getDb();
+  const all = await db.getAll('pesagensPendentes');
+  return all.filter(p => !p.sincronizado).length;
+}
+
+export async function markPesagemSincronizada(id: string) {
+  const db = await getDb();
+  const p = await db.get('pesagensPendentes', id);
+  if (p) {
+    p.sincronizado = true;
+    await db.put('pesagensPendentes', p);
+  }
+}
+
+export async function deletePesagemPendente(id: string) {
+  const db = await getDb();
+  await db.delete('pesagensPendentes', id);
 }
