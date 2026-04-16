@@ -299,7 +299,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                   Desfazer último
                 </Button>
               )}
-              <Button className={`flex-1 ${todosbesados ? "animate-pulse" : ""}`} onClick={() => setStep("finalizando")} disabled={pesos.length === 0}>
+              <Button className={`flex-1 ${todospesados ? "animate-pulse" : ""}`} onClick={() => setStep("finalizando")} disabled={pesos.length === 0}>
                 <Check className="w-4 h-4 mr-2" />
                 Finalizar ({pesos.length})
               </Button>
