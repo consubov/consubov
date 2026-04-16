@@ -245,18 +245,33 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
               </div>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Input
                 ref={inputRef}
                 type="number"
                 inputMode="decimal"
-                placeholder="Peso (kg) — ENTER para confirmar"
+                placeholder="Peso (kg)"
                 value={currentPeso}
                 onChange={(e) => setCurrentPeso(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="text-lg h-12 text-center"
                 autoFocus
               />
+              <Button
+                type="button"
+                className="w-full h-12 text-base"
+                variant="secondary"
+                disabled={!currentPeso || parseFloat(currentPeso.replace(",", ".")) <= 0}
+                onClick={() => {
+                  const val = parseFloat(currentPeso.replace(",", "."));
+                  if (!val || val <= 0) return;
+                  setPesos((prev) => [...prev, val]);
+                  setCurrentPeso("");
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+              >
+                Próximo ➜
+              </Button>
             </div>
 
             {pesos.length > 0 && (
