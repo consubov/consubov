@@ -327,6 +327,75 @@ export default function MapaFazendaPage() {
         ano={ano}
         onDone={handleActionDone}
       />
+
+      {/* Evento Modals */}
+      {selectedPasto && (
+        <>
+          <SelecionarEventoModal
+            open={eventoSelectorOpen}
+            onClose={() => setEventoSelectorOpen(false)}
+            pastoNome={selectedPasto.pasto_nome}
+            onSelect={(tipo: TipoEvento) => {
+              setEventoSelectorOpen(false);
+              if (tipo === "pesagem") {
+                setCombinedMode(false);
+                setPendingSanitarioData(null);
+                setPesagemOpen(true);
+              } else if (tipo === "sanitario") {
+                setCombinedMode(false);
+                setSanitarioOpen(true);
+              } else if (tipo === "pesagem_sanitario") {
+                setCombinedMode(true);
+                setSanitarioOpen(true);
+              } else if (tipo === "observacao") {
+                setObservacaoLoteOpen(true);
+              }
+            }}
+          />
+
+          <SanitarioFormModal
+            open={sanitarioOpen}
+            onClose={() => { setSanitarioOpen(false); setCombinedMode(false); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            userId={user?.id || ""}
+            userName={userName}
+            collectOnly={combinedMode}
+            onCollected={(data) => {
+              setPendingSanitarioData(data);
+              setSanitarioOpen(false);
+              setPesagemOpen(true);
+            }}
+            onSaved={() => refresh()}
+          />
+
+          <PesagemFlowModal
+            open={pesagemOpen}
+            onClose={() => { setPesagemOpen(false); setPendingSanitarioData(null); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            pesoMedioAtual={(selectedPasto as any).peso_medio_kg ?? null}
+            userId={user?.id || ""}
+            userName={userName}
+            fazendaId={activeFazendaId ?? ""}
+            fazendaNome={fazendaNome}
+            retiroNome={retiroNome}
+            sanitarioData={pendingSanitarioData}
+            onSaved={() => refresh()}
+          />
+
+          <ObservacaoLoteModal
+            open={observacaoLoteOpen}
+            onClose={() => setObservacaoLoteOpen(false)}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            userId={user?.id || ""}
+            onSaved={() => refresh()}
+          />
+        </>
+      )}
     </div>
   );
 }
