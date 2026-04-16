@@ -1,9 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Beef, Scale, Syringe, Calendar, History } from "lucide-react";
 import CarenciaBadge from "./CarenciaBadge";
-import { useUltimaPesagem, useUltimoSanitario } from "@/hooks/useEventosLote";
+import { useUltimaPesagem, useUltimoSanitario, calcCarenciaDias } from "@/hooks/useEventosLote";
 
 interface PastoInfo {
   id: string;
@@ -44,6 +43,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
 
   if (!pasto) return null;
 
+  const carenciaDias = sanitario ? calcCarenciaDias(sanitario.data_fim_carencia) : 0;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
@@ -57,7 +58,7 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
 
         <CarenciaBadge dataFimCarencia={pasto.data_fim_carencia} className="mb-2" />
 
-        {/* Informações Gerais */}
+        {/* Seção 1 — Informações Gerais */}
         <div className="space-y-1">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Informações Gerais</h4>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -70,7 +71,23 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
           </div>
         </div>
 
-        {/* Sanidade */}
+        {/* Seção 2 — Pesagem */}
+        <div className="space-y-1 border-t pt-3">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
+            <Scale className="w-3 h-3" /> Pesagem
+          </h4>
+          {pesagem ? (
+            <div className="text-sm space-y-0.5">
+              <p>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></p>
+              <p>Animais pesados: <strong>{pesagem.total_pesado}</strong></p>
+              <p>Peso médio calculado: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma pesagem registrada</p>
+          )}
+        </div>
+
+        {/* Seção 3 — Sanidade */}
         <div className="space-y-1 border-t pt-3">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
             <Syringe className="w-3 h-3" /> Sanidade
@@ -80,25 +97,14 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
               <p><strong>{catLabels[sanitario.categoria] || sanitario.categoria}</strong>: {sanitario.medicamento}</p>
               <p className="text-muted-foreground">Dose: {sanitario.dose}</p>
               <p className="text-muted-foreground">Data: {fmtDate(sanitario.data_aplicacao)}</p>
+              {carenciaDias > 0 && (
+                <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30">
+                  Carência restante: {carenciaDias} dias
+                </span>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Nenhum evento sanitário registrado</p>
-          )}
-        </div>
-
-        {/* Pesagem */}
-        <div className="space-y-1 border-t pt-3">
-          <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-            <Scale className="w-3 h-3" /> Pesagem
-          </h4>
-          {pesagem ? (
-            <div className="text-sm space-y-0.5">
-              <p>Data: <strong>{fmtDate(pesagem.data_pesagem)}</strong></p>
-              <p>Pesados: <strong>{pesagem.total_pesado}</strong> animais</p>
-              <p>Média calculada: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma pesagem registrada</p>
           )}
         </div>
 

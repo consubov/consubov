@@ -36,6 +36,7 @@ import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
+import EditarPesoCapatazModal from "@/components/capataz/EditarPesoCapatazModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -163,6 +164,8 @@ export default function CapatazDashboard() {
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [entradaOpen, setEntradaOpen] = useState(false);
   const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
+  const [editarPesoOpen, setEditarPesoOpen] = useState(false);
+  const [editarPesoPasto, setEditarPesoPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
   // Eventos do Lote
   const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
@@ -437,7 +440,7 @@ export default function CapatazDashboard() {
         // Get pastos
         const { data: pastosData } = await supabase
           .from("pastos")
-          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia")
+          .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia")
           .eq("retiro_id", retiroData.id)
           .eq("ativo", true);
 
@@ -1527,13 +1530,26 @@ export default function CapatazDashboard() {
         onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
         pastoNome={actionSheetPasto?.nome || ""}
         numAnimais={actionSheetPasto?.num_animais ?? 0}
+        dataFimCarencia={actionSheetPasto ? pastos.find(p => p.id === actionSheetPasto.id)?.data_fim_carencia : undefined}
+        onVerDetalhes={() => {
+          if (actionSheetPasto) {
+            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+            setDetalhesLoteOpen(true);
+          }
+        }}
         onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
         onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
-        onMortalidade={() => { setMortalidadeOpen(true); }}
         onEntrada={() => {
           if (actionSheetPasto) {
             setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
             setEntradaOpen(true);
+          }
+        }}
+        onEditarPeso={() => {
+          if (actionSheetPasto) {
+            setEditarPesoPasto(actionSheetPasto);
+            setEditarPesoOpen(true);
           }
         }}
         onRegistrarEvento={() => {
@@ -1671,6 +1687,18 @@ export default function CapatazDashboard() {
             pastoNome={eventoPasto.nome}
           />
         </>
+      )}
+
+      {/* Editar Peso Modal (inline simples) */}
+      {editarPesoPasto && (
+        <EditarPesoCapatazModal
+          open={editarPesoOpen}
+          onClose={() => { setEditarPesoOpen(false); setEditarPesoPasto(null); }}
+          pastoId={editarPesoPasto.id}
+          pastoNome={editarPesoPasto.nome}
+          pesoAtual={pastos.find(p => p.id === editarPesoPasto.id)?.peso_medio_kg ?? null}
+          onDone={() => { loadFromSupabase(); }}
+        />
       )}
     </div>
   );
