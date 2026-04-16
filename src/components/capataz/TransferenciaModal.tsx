@@ -47,27 +47,30 @@ export default function TransferenciaModal({
     setConfirmando(true);
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const nowIso = new Date().toISOString();
 
-      // 1. Record transfer event
-      const { error: movErr } = await supabase.from("movimentacoes_animais" as any).insert({
-        fazenda_id: fazendaId,
-        retiro_id: retiroId,
-        pasto_origem_id: pasto.id,
-        pasto_destino_id: destinoId,
-        quantidade: qtd,
-        mes: mesOperacional,
-        ano: anoOperacional,
-        usuario_id: userId,
-      });
-      if (movErr) throw movErr;
-
-      // 2. Fetch full origin pasto data for lote transfer
+      // 1. Fetch full origin pasto data (needed for movimentacao + lote transfer)
       const { data: origemData } = await supabase.from("pastos")
         .select("peso_medio_kg, categoria, sexo, peso_entrada, data_entrada, gmd_kg_dia, dias_no_pasto, produto_id, peso_abate_meta_kg")
         .eq("id", pasto.id)
         .maybeSingle();
 
       const isFullTransfer = qtd === pasto.num_animais;
+
+      // 2. Record transfer event (with peso_medio + categoria)
+      const { error: movErr } = await supabase.from("movimentacoes_animais" as any).insert({
+        fazenda_id: fazendaId,
+        retiro_id: retiroId,
+        pasto_origem_id: pasto.id,
+        pasto_destino_id: destinoId,
+        quantidade: qtd,
+        peso_medio: origemData?.peso_medio_kg ?? null,
+        categoria: origemData?.categoria ?? null,
+        mes: mesOperacional,
+        ano: anoOperacional,
+        usuario_id: userId,
+      });
+      if (movErr) throw movErr;
 
       // 3. Update origin pasto
       const origemUpdate: Record<string, any> = { num_animais: pasto.num_animais - qtd };
@@ -79,14 +82,18 @@ export default function TransferenciaModal({
         origemUpdate.peso_entrada = null;
         origemUpdate.data_entrada = null;
         origemUpdate.dias_no_pasto = 0;
+        origemUpdate.data_movimentacao = null;
       }
       const { error: errOrigem } = await supabase.from("pastos")
         .update(origemUpdate)
         .eq("id", pasto.id);
       if (errOrigem) throw errOrigem;
 
-      // 4. Update destination pasto with lote data
-      const destinoUpdate: Record<string, any> = { num_animais: destino.num_animais + qtd };
+      // 4. Update destination pasto with lote data + data_movimentacao
+      const destinoUpdate: Record<string, any> = {
+        num_animais: destino.num_animais + qtd,
+        data_movimentacao: nowIso,
+      };
       if (origemData) {
         // Transfer lote metadata to destination
         if (origemData.peso_medio_kg != null) destinoUpdate.peso_medio_kg = origemData.peso_medio_kg;
@@ -105,6 +112,15 @@ export default function TransferenciaModal({
         .update(destinoUpdate)
         .eq("id", destinoId);
       if (errDestino) throw errDestino;
+
+      // 5. In full transfer, migrate full history to destination pasto
+      if (isFullTransfer) {
+        await Promise.all([
+          supabase.from("eventos_lote").update({ lote_id: destinoId }).eq("lote_id", pasto.id),
+          supabase.from("pesagens").update({ lote_id: destinoId }).eq("lote_id", pasto.id),
+          supabase.from("eventos_sanitarios").update({ lote_id: destinoId }).eq("lote_id", pasto.id),
+        ]);
+      }
 
       toast.success(`${qtd} animais transferidos de ${pasto.nome} para ${destino.nome}.`);
       onTransferConfirmed(pasto.id, destinoId, qtd);
