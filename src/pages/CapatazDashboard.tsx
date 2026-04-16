@@ -32,6 +32,7 @@ import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
 import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
 import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
@@ -175,6 +176,11 @@ export default function CapatazDashboard() {
   const [combinedMode, setCombinedMode] = useState(false);
 
   const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
+
+  const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
+    // After sync, refresh pastos data
+    loadData();
+  });
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
