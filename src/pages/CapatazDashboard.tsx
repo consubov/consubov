@@ -1620,6 +1620,7 @@ export default function CapatazDashboard() {
             if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
             return p;
           }));
+          loadFromSupabase();
         }}
       />
 
@@ -1710,6 +1711,7 @@ export default function CapatazDashboard() {
               peso_medio_kg: eventoPasto.peso_medio_kg,
               categoria: pastos.find(p => p.id === eventoPasto.id)?.categoria ?? null,
               sexo: pastos.find(p => p.id === eventoPasto.id)?.sexo ?? null,
+              ultima_movimentacao: (pastos.find(p => p.id === eventoPasto.id) as any)?.data_movimentacao ?? null,
             }}
             onVerHistorico={() => { setDetalhesLoteOpen(false); setHistoricoLoteOpen(true); }}
           />

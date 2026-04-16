@@ -931,6 +931,7 @@ export type Database = {
       movimentacoes_animais: {
         Row: {
           ano: number
+          categoria: string | null
           created_at: string
           data: string
           fazenda_id: string
@@ -938,12 +939,14 @@ export type Database = {
           mes: number
           pasto_destino_id: string
           pasto_origem_id: string
+          peso_medio: number | null
           quantidade: number
           retiro_id: string
           usuario_id: string | null
         }
         Insert: {
           ano: number
+          categoria?: string | null
           created_at?: string
           data?: string
           fazenda_id: string
@@ -951,12 +954,14 @@ export type Database = {
           mes: number
           pasto_destino_id: string
           pasto_origem_id: string
+          peso_medio?: number | null
           quantidade: number
           retiro_id: string
           usuario_id?: string | null
         }
         Update: {
           ano?: number
+          categoria?: string | null
           created_at?: string
           data?: string
           fazenda_id?: string
@@ -964,6 +969,7 @@ export type Database = {
           mes?: number
           pasto_destino_id?: string
           pasto_origem_id?: string
+          peso_medio?: number | null
           quantidade?: number
           retiro_id?: string
           usuario_id?: string | null
@@ -1121,6 +1127,7 @@ export type Database = {
           criado_em: string | null
           data_entrada: string | null
           data_fim_carencia: string | null
+          data_movimentacao: string | null
           dias_no_pasto: number | null
           gmd_kg_dia: number | null
           id: string
@@ -1142,6 +1149,7 @@ export type Database = {
           criado_em?: string | null
           data_entrada?: string | null
           data_fim_carencia?: string | null
+          data_movimentacao?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
@@ -1163,6 +1171,7 @@ export type Database = {
           criado_em?: string | null
           data_entrada?: string | null
           data_fim_carencia?: string | null
+          data_movimentacao?: string | null
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string

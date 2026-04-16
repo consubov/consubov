@@ -53,14 +53,18 @@ export default function MapaTransferenciaModal({
     setConfirmando(true);
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
+      const nowIso = new Date().toISOString();
+      const isFullTransfer = qtd === pasto.num_animais;
 
-      // Record transfer
+      // Record transfer (with peso_medio + categoria)
       const { error: movErr } = await supabase.from("movimentacoes_animais").insert({
         fazenda_id: fazendaId,
         retiro_id: retiroId,
         pasto_origem_id: pasto.pasto_id,
         pasto_destino_id: selectedDestino.pasto_id,
         quantidade: qtd,
+        peso_medio: pesoTransf || null,
+        categoria: pasto.categoria ?? null,
         mes, ano,
         usuario_id: userId,
       });
@@ -68,23 +72,49 @@ export default function MapaTransferenciaModal({
 
       // Update origin
       const newOrigemQtd = pasto.num_animais - qtd;
+      const origemUpdate: Record<string, any> = { num_animais: newOrigemQtd };
+      if (isFullTransfer) {
+        origemUpdate.peso_medio_kg = null;
+        origemUpdate.categoria = null;
+        origemUpdate.sexo = null;
+        origemUpdate.peso_entrada = null;
+        origemUpdate.data_entrada = null;
+        origemUpdate.dias_no_pasto = 0;
+        origemUpdate.data_movimentacao = null;
+      }
       const { error: errO } = await supabase.from("pastos")
-        .update({ num_animais: newOrigemQtd })
+        .update(origemUpdate)
         .eq("id", pasto.pasto_id);
       if (errO) throw errO;
 
-      // Update destination with weighted average
+      // Update destination with weighted average + data_movimentacao
       const newDestinoQtd = selectedDestino.num_animais + qtd;
       const pesoDestino = selectedDestino.peso_medio_kg ?? 0;
       const novoPesoDestino = calcWeightedAvg(selectedDestino.num_animais, pesoDestino, qtd, pesoTransf);
 
+      const destinoUpdate: Record<string, any> = {
+        num_animais: newDestinoQtd,
+        peso_medio_kg: Math.round(novoPesoDestino * 10) / 10,
+        data_movimentacao: nowIso,
+      };
+      if (isFullTransfer) {
+        if (pasto.categoria) destinoUpdate.categoria = pasto.categoria;
+        if (pasto.sexo) destinoUpdate.sexo = pasto.sexo;
+      }
+
       const { error: errD } = await supabase.from("pastos")
-        .update({
-          num_animais: newDestinoQtd,
-          peso_medio_kg: Math.round(novoPesoDestino * 10) / 10,
-        })
+        .update(destinoUpdate)
         .eq("id", selectedDestino.pasto_id);
       if (errD) throw errD;
+
+      // In full transfer, migrate full history to destination pasto
+      if (isFullTransfer) {
+        await Promise.all([
+          supabase.from("eventos_lote").update({ lote_id: selectedDestino.pasto_id }).eq("lote_id", pasto.pasto_id),
+          supabase.from("pesagens").update({ lote_id: selectedDestino.pasto_id }).eq("lote_id", pasto.pasto_id),
+          supabase.from("eventos_sanitarios").update({ lote_id: selectedDestino.pasto_id }).eq("lote_id", pasto.pasto_id),
+        ]);
+      }
 
       toast.success(`${qtd} animais transferidos de ${pasto.pasto_nome} → ${selectedDestino.pasto_nome}`);
       onDone();
