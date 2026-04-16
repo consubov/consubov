@@ -393,3 +393,35 @@ export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
   const all = await db.getAll('fazendaCache');
   return all[0];
 }
+
+// Pesagens Pendentes (offline)
+export async function savePesagemPendente(pesagem: PesagemPendente) {
+  const db = await getDb();
+  await db.put('pesagensPendentes', pesagem);
+}
+
+export async function getPesagensPendentes(): Promise<PesagemPendente[]> {
+  const db = await getDb();
+  const all = await db.getAll('pesagensPendentes');
+  return all.filter(p => !p.sincronizado);
+}
+
+export async function countPesagensPendentes(): Promise<number> {
+  const db = await getDb();
+  const all = await db.getAll('pesagensPendentes');
+  return all.filter(p => !p.sincronizado).length;
+}
+
+export async function markPesagemSincronizada(id: string) {
+  const db = await getDb();
+  const p = await db.get('pesagensPendentes', id);
+  if (p) {
+    p.sincronizado = true;
+    await db.put('pesagensPendentes', p);
+  }
+}
+
+export async function deletePesagemPendente(id: string) {
+  const db = await getDb();
+  await db.delete('pesagensPendentes', id);
+}
