@@ -1206,6 +1206,18 @@ export default function CapatazDashboard() {
     return <TransferenciaRetiroPage onBack={() => setScreen('home')} />;
   }
 
+  if (screen === 'relatorio-salga') {
+    return (
+      <RelatorioSalgaPage
+        onBack={() => setScreen('home')}
+        fazendaId={fazendaId}
+        fazendaNome={retiro?.fazenda_nome || ""}
+        retiroId={roleData.retiroId || ""}
+        retiroNome={retiro?.nome || ""}
+      />
+    );
+  }
+
   // ============ HOME SCREEN ============
   const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
