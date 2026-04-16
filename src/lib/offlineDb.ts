@@ -440,3 +440,19 @@ export async function deletePesagemPendente(id: string) {
   const db = await getDb();
   await db.delete('pesagensPendentes', id);
 }
+
+// Sync Queue (for offline PDF uploads etc.)
+export async function saveSyncQueueItem(item: SyncQueueItem) {
+  const db = await getDb();
+  await db.put('syncQueue', item);
+}
+
+export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
+  const db = await getDb();
+  return db.getAll('syncQueue');
+}
+
+export async function deleteSyncQueueItem(id: string) {
+  const db = await getDb();
+  await db.delete('syncQueue', id);
+}
