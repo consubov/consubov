@@ -245,10 +245,6 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
         <BarChart3 className="w-4 h-4" /> Relatórios da Fazenda
       </h2>
 
-      <p className="text-sm text-muted-foreground">
-        Gere relatórios de consumo por pasto, lote e animal com os mesmos filtros disponíveis para administradores e gerentes.
-      </p>
-
       <Button className="w-full gap-2" onClick={() => setModalOpen(true)}>
         <FileDown className="w-4 h-4" /> Gerar Relatório de Consumo
       </Button>
