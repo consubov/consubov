@@ -20,11 +20,14 @@ interface Props {
   onBack: () => void;
   fazendaId: string;
   fazendaNome: string;
-  retiroId: string;
-  retiroNome: string;
+  retiroId?: string;
+  retiroNome?: string;
 }
 
-export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, retiroId, retiroNome }: Props) {
+export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, retiroId: fixedRetiroId, retiroNome: fixedRetiroNome }: Props) {
+  const [retirosList, setRetirosList] = useState<{ id: string; nome: string }[]>([]);
+  const [selectedRetiroId, setSelectedRetiroId] = useState(fixedRetiroId || "");
+  const [selectedRetiroNome, setSelectedRetiroNome] = useState(fixedRetiroNome || "");
   const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>("mensal");
   const [mesSel, setMesSel] = useState(() => {
     const now = new Date();
