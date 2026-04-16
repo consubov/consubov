@@ -178,7 +178,22 @@ export default function CapatazDashboard() {
   const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
   const [combinedMode, setCombinedMode] = useState(false);
 
-  const userName = user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz';
+  const [userName, setUserName] = useState(user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz');
+
+  // Fetch real name from capatazes table
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("capatazes")
+      .select("nome")
+      .eq("user_id", user.id)
+      .eq("ativo", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.nome) setUserName(data.nome);
+        else if (user.email) setUserName(user.email.split('@')[0]);
+      });
+  }, [user?.id, user?.email]);
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
     loadLocalData();
