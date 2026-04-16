@@ -1,8 +1,9 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Beef, Scale, Syringe, Calendar, History } from "lucide-react";
+import { Beef, Scale, Syringe, History } from "lucide-react";
 import CarenciaBadge from "./CarenciaBadge";
-import { useUltimaPesagem, useUltimoSanitario, calcCarenciaDias } from "@/hooks/useEventosLote";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PastoInfo {
   id: string;
@@ -37,9 +38,61 @@ const catLabels: Record<string, string> = {
   outro: "Outro",
 };
 
+function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
+  if (!dataFimCarencia) return 0;
+  const fim = new Date(dataFimCarencia);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  fim.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((fim.getTime() - hoje.getTime()) / 86400000);
+  return Math.max(0, diff);
+}
+
 export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico }: Props) {
-  const pesagem = useUltimaPesagem(pasto?.id);
-  const sanitario = useUltimoSanitario(pasto?.id);
+  const [pesagem, setPesagem] = useState<any>(null);
+  const [sanitario, setSanitario] = useState<any>(null);
+  const [consumoMedio, setConsumoMedio] = useState<number | null>(null);
+
+  // Fetch fresh data every time modal opens
+  useEffect(() => {
+    if (!open || !pasto?.id) {
+      setPesagem(null);
+      setSanitario(null);
+      setConsumoMedio(null);
+      return;
+    }
+
+    // Fetch última pesagem
+    (supabase.from("pesagens") as any)
+      .select("*")
+      .eq("lote_id", pasto.id)
+      .order("data_pesagem", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => setPesagem(data));
+
+    // Fetch último sanitário
+    (supabase.from("eventos_sanitarios") as any)
+      .select("*")
+      .eq("lote_id", pasto.id)
+      .order("data_aplicacao", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => setSanitario(data));
+
+    // Fetch consumo médio from latest lancamento
+    supabase
+      .from("lancamentos")
+      .select("consumo_g_cab_dia")
+      .eq("pasto_id", pasto.id)
+      .not("consumo_g_cab_dia", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setConsumoMedio(data?.consumo_g_cab_dia != null ? Number(data.consumo_g_cab_dia) : null);
+      });
+  }, [open, pasto?.id]);
 
   if (!pasto) return null;
 
@@ -64,6 +117,7 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
           <div className="grid grid-cols-2 gap-2 text-sm">
             <Item label="Animais" value={String(pasto.num_animais)} />
             <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
+            <Item label="Consumo médio" value={consumoMedio != null ? `${consumoMedio.toFixed(1).replace(".", ",")} g/cab/dia` : "—"} />
             <Item label="Categoria" value={pasto.categoria || "—"} />
             <Item label="Sexo" value={pasto.sexo || "—"} />
             <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />

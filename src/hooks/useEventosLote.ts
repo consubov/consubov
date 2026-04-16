@@ -38,7 +38,7 @@ export interface EventoSanitarioData {
   data_aplicacao: string;
 }
 
-export function useEventosLote(loteId: string | undefined) {
+export function useEventosLote(loteId: string | undefined, refreshKey?: number) {
   const [eventos, setEventos] = useState<EventoLote[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -52,7 +52,7 @@ export function useEventosLote(loteId: string | undefined) {
       .order("data_evento", { ascending: false });
     setEventos((data as EventoLote[]) ?? []);
     setLoading(false);
-  }, [loteId]);
+  }, [loteId, refreshKey]);
 
   useEffect(() => { load(); }, [load]);
 

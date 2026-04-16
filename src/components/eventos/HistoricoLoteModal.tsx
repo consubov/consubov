@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Scale, Syringe, FileText, ArrowRightLeft, Scissors } from "lucide-react";
@@ -42,7 +43,13 @@ function formatEventoResumo(ev: any): string {
 }
 
 export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }: Props) {
-  const { eventos, loading } = useEventosLote(pastoId);
+  // Use a refreshKey that increments every time the modal opens to force re-fetch
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    if (open) setRefreshKey((k) => k + 1);
+  }, [open]);
+
+  const { eventos, loading } = useEventosLote(open ? pastoId : undefined, refreshKey);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
