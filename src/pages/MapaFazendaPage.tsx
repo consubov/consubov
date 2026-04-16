@@ -15,6 +15,10 @@ import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
 import MapaAbateModal from "@/components/mapa/MapaAbateModal";
 import EditarPesoModal from "@/components/mapa/EditarPesoModal";
 import MapaEntradaAnimaisModal from "@/components/mapa/MapaEntradaAnimaisModal";
+import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
+import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -27,7 +31,8 @@ type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPes
 export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const userName = (user?.user_metadata as any)?.nome || user?.email || "";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 
   const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
@@ -84,6 +89,14 @@ export default function MapaFazendaPage() {
   const [currentAction, setCurrentAction] = useState<MapAction>(null);
   const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
   const [destinoPasto, setDestinoPasto] = useState<PastoMapaData | null>(null);
+
+  // Evento modals state
+  const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
+  const [sanitarioOpen, setSanitarioOpen] = useState(false);
+  const [pesagemOpen, setPesagemOpen] = useState(false);
+  const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
+  const [combinedMode, setCombinedMode] = useState(false);
+  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
 
   const isAdmin = role === "administrador";
   const canEditMapa = isAdmin && Boolean(fazendaId);
@@ -255,6 +268,10 @@ export default function MapaFazendaPage() {
         onAbater={() => setCurrentAction("abater")}
         onEditarPeso={() => setCurrentAction("editarPeso")}
         onEntrada={() => setCurrentAction("entrada")}
+        onRegistrarEvento={() => {
+          setCurrentAction(null);
+          setEventoSelectorOpen(true);
+        }}
       />
 
       {/* Info Modal */}
