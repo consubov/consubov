@@ -15,6 +15,10 @@ import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
 import MapaAbateModal from "@/components/mapa/MapaAbateModal";
 import EditarPesoModal from "@/components/mapa/EditarPesoModal";
 import MapaEntradaAnimaisModal from "@/components/mapa/MapaEntradaAnimaisModal";
+import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
+import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -27,7 +31,8 @@ type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPes
 export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const userName = (user?.user_metadata as any)?.nome || user?.email || "";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 
   const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
@@ -84,6 +89,14 @@ export default function MapaFazendaPage() {
   const [currentAction, setCurrentAction] = useState<MapAction>(null);
   const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
   const [destinoPasto, setDestinoPasto] = useState<PastoMapaData | null>(null);
+
+  // Evento modals state
+  const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
+  const [sanitarioOpen, setSanitarioOpen] = useState(false);
+  const [pesagemOpen, setPesagemOpen] = useState(false);
+  const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
+  const [combinedMode, setCombinedMode] = useState(false);
+  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
 
   const isAdmin = role === "administrador";
   const canEditMapa = isAdmin && Boolean(fazendaId);
@@ -255,6 +268,10 @@ export default function MapaFazendaPage() {
         onAbater={() => setCurrentAction("abater")}
         onEditarPeso={() => setCurrentAction("editarPeso")}
         onEntrada={() => setCurrentAction("entrada")}
+        onRegistrarEvento={() => {
+          setCurrentAction(null);
+          setEventoSelectorOpen(true);
+        }}
       />
 
       {/* Info Modal */}
@@ -310,6 +327,75 @@ export default function MapaFazendaPage() {
         ano={ano}
         onDone={handleActionDone}
       />
+
+      {/* Evento Modals */}
+      {selectedPasto && (
+        <>
+          <SelecionarEventoModal
+            open={eventoSelectorOpen}
+            onClose={() => setEventoSelectorOpen(false)}
+            pastoNome={selectedPasto.pasto_nome}
+            onSelect={(tipo: TipoEvento) => {
+              setEventoSelectorOpen(false);
+              if (tipo === "pesagem") {
+                setCombinedMode(false);
+                setPendingSanitarioData(null);
+                setPesagemOpen(true);
+              } else if (tipo === "sanitario") {
+                setCombinedMode(false);
+                setSanitarioOpen(true);
+              } else if (tipo === "pesagem_sanitario") {
+                setCombinedMode(true);
+                setSanitarioOpen(true);
+              } else if (tipo === "observacao") {
+                setObservacaoLoteOpen(true);
+              }
+            }}
+          />
+
+          <SanitarioFormModal
+            open={sanitarioOpen}
+            onClose={() => { setSanitarioOpen(false); setCombinedMode(false); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            userId={user?.id || ""}
+            userName={userName}
+            collectOnly={combinedMode}
+            onCollected={(data) => {
+              setPendingSanitarioData(data);
+              setSanitarioOpen(false);
+              setPesagemOpen(true);
+            }}
+            onSaved={() => refresh()}
+          />
+
+          <PesagemFlowModal
+            open={pesagemOpen}
+            onClose={() => { setPesagemOpen(false); setPendingSanitarioData(null); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            pesoMedioAtual={(selectedPasto as any).peso_medio_kg ?? null}
+            userId={user?.id || ""}
+            userName={userName}
+            fazendaId={activeFazendaId ?? ""}
+            fazendaNome={fazendaNome}
+            retiroNome={retiroNome}
+            sanitarioData={pendingSanitarioData}
+            onSaved={() => refresh()}
+          />
+
+          <ObservacaoLoteModal
+            open={observacaoLoteOpen}
+            onClose={() => setObservacaoLoteOpen(false)}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            userId={user?.id || ""}
+            onSaved={() => refresh()}
+          />
+        </>
+      )}
     </div>
   );
 }
