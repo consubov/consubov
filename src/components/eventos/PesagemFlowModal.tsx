@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
 import { savePesagemPendente, type PesagemPendente } from "@/lib/offlineDb";
 import type { SanitarioFormData } from "./SanitarioFormModal";
+import ExportarPesagemModal from "@/components/pesagem/ExportarPesagemModal";
+import type { AnimalPesagem } from "@/utils/gerarPdfPesagem";
 
 interface Props {
   open: boolean;
@@ -19,17 +21,21 @@ interface Props {
   pesoMedioAtual: number | null;
   userId: string;
   userName: string;
+  fazendaId: string;
+  fazendaNome: string;
+  retiroNome: string;
   sanitarioData?: SanitarioFormData | null;
   onSaved?: () => void;
 }
 
 type Step = "inicio" | "digitacao" | "finalizando";
 
-export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, sanitarioData, onSaved }: Props) {
+export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, sanitarioData, onSaved }: Props) {
   const [step, setStep] = useState<Step>("inicio");
   const [pesos, setPesos] = useState<number[]>([]);
   const [currentPeso, setCurrentPeso] = useState("");
   const [saving, setSaving] = useState(false);
+  const [exportData, setExportData] = useState<{ pesagemId: string; animais: AnimalPesagem[]; dataPesagem: string; hora: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
 
