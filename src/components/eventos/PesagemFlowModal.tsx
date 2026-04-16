@@ -118,6 +118,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
             total_pesado: pesos.length,
             media: Math.round(mp * 10) / 10,
             peso_aplicado: pesoAplicado,
+            aplicador: userName,
             ...(sanitarioData ? { sanitario: sanitarioData } : {}),
           },
         })
