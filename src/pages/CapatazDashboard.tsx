@@ -33,6 +33,7 @@ import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/Sel
 import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
 import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
+import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
 import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
 import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
