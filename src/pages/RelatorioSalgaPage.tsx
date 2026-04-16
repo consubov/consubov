@@ -1,0 +1,335 @@
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, FileText, Download, Loader2, ExternalLink, Share2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { gerarPdfSalga, type PastoSalgaRow, type SalgaPdfData } from "@/utils/gerarPdfSalga";
+
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+type PeriodoTipo = "ultima_salga" | "semanal" | "mensal";
+
+interface Props {
+  onBack: () => void;
+  fazendaId: string;
+  fazendaNome: string;
+  retiroId: string;
+  retiroNome: string;
+}
+
+export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, retiroId, retiroNome }: Props) {
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>("mensal");
+  const [mesSel, setMesSel] = useState(() => {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return prev.getMonth() + 1;
+  });
+  const [anoSel, setAnoSel] = useState(() => {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return prev.getFullYear();
+  });
+  const [ultimaSalgaDate, setUltimaSalgaDate] = useState<string | null>(null);
+  const [loadingUltima, setLoadingUltima] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [noData, setNoData] = useState(false);
+  const pdfBlobRef = useRef<Blob | null>(null);
+  const fileNameRef = useRef<string>("");
+
+  // Fetch ultima salga date when "ultima_salga" is selected
+  useEffect(() => {
+    if (periodoTipo !== "ultima_salga") return;
+    setLoadingUltima(true);
+    setUltimaSalgaDate(null);
+    supabase
+      .from("lancamentos")
+      .select("created_at")
+      .eq("retiro_id", retiroId)
+      .eq("fazenda_id", fazendaId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setUltimaSalgaDate(data[0].created_at);
+        }
+        setLoadingUltima(false);
+      });
+  }, [periodoTipo, retiroId, fazendaId]);
+
+  function getDateRange(): { start: Date; end: Date; label: string } | null {
+    if (periodoTipo === "ultima_salga") {
+      if (!ultimaSalgaDate) return null;
+      const d = new Date(ultimaSalgaDate);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return { start, end, label: `ULTIMA_SALGA_${yyyy}-${mm}-${dd}` };
+    }
+    if (periodoTipo === "semanal") {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return { start, end, label: `SEMANAL_${fmt(start)}_${fmt(end)}` };
+    }
+    // mensal
+    const start = new Date(anoSel, mesSel - 1, 1);
+    const end = new Date(anoSel, mesSel, 0, 23, 59, 59);
+    return { start, end, label: `MENSAL_${anoSel}-${String(mesSel).padStart(2, "0")}` };
+  }
+
+  function getPeriodoDisplay(): string {
+    if (periodoTipo === "ultima_salga") {
+      if (!ultimaSalgaDate) return "Carregando…";
+      const d = new Date(ultimaSalgaDate);
+      return `Última salga: ${d.toLocaleDateString("pt-BR")}`;
+    }
+    if (periodoTipo === "semanal") return "Últimos 7 dias";
+    return `${MESES[mesSel - 1]} ${anoSel}`;
+  }
+
+  const canGenerate = periodoTipo !== "ultima_salga" || (ultimaSalgaDate != null && !loadingUltima);
+
+  async function handleGerarPdf() {
+    setGenerating(true);
+    setNoData(false);
+    setPdfUrl(null);
+    pdfBlobRef.current = null;
+    toast.info("Gerando PDF…");
+
+    try {
+      const range = getDateRange();
+      if (!range) {
+        toast.error("Nenhuma salga encontrada.");
+        setGenerating(false);
+        return;
+      }
+
+      // Query lancamentos for the period
+      const { data: lancData, error } = await supabase
+        .from("lancamentos")
+        .select("pasto_id, num_sacos")
+        .eq("retiro_id", retiroId)
+        .eq("fazenda_id", fazendaId)
+        .gte("created_at", range.start.toISOString())
+        .lte("created_at", range.end.toISOString());
+
+      if (error) throw error;
+      if (!lancData || lancData.length === 0) {
+        setNoData(true);
+        setGenerating(false);
+        return;
+      }
+
+      // Aggregate by pasto
+      const pastoMap: Record<string, number> = {};
+      lancData.forEach((l) => {
+        pastoMap[l.pasto_id] = (pastoMap[l.pasto_id] || 0) + (l.num_sacos || 0);
+      });
+
+      const pastoIds = Object.keys(pastoMap);
+      const { data: pastosData } = await supabase
+        .from("pastos")
+        .select("id, nome, num_animais, peso_medio_kg")
+        .in("id", pastoIds);
+
+      const rows: PastoSalgaRow[] = (pastosData || []).map((p) => ({
+        nome: p.nome,
+        numAnimais: p.num_animais || 0,
+        pesoMedioKg: Number(p.peso_medio_kg ?? 0),
+        sacosUtilizados: pastoMap[p.id] || 0,
+      }));
+
+      rows.sort((a, b) => a.nome.localeCompare(b.nome));
+
+      const pdfData: SalgaPdfData = {
+        fazendaNome,
+        retiroNome,
+        periodoLabel: getPeriodoDisplay(),
+        pastos: rows,
+      };
+
+      const { blob, fileName } = gerarPdfSalga(pdfData);
+      pdfBlobRef.current = blob;
+      fileNameRef.current = fileName;
+
+      // Upload to Supabase Storage
+      const storagePath = `salgas/${fazendaId}/${fileName}`;
+      await supabase.storage
+        .from("relatorios")
+        .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
+
+      const localUrl = URL.createObjectURL(blob);
+      setPdfUrl(localUrl);
+      toast.success("PDF gerado com sucesso!");
+    } catch (err: any) {
+      console.error("Erro ao gerar PDF de salga:", err);
+      toast.error("Erro ao gerar PDF. Tente novamente.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleShare() {
+    const blob = pdfBlobRef.current;
+    if (!blob) return;
+
+    const shareFileName = `Relatório de Salga - ${fazendaNome}.pdf`;
+    const file = new File([blob], shareFileName, { type: "application/pdf" });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `Relatório de Salga - ${fazendaNome}` });
+        return;
+      } catch { /* cancelled */ }
+    }
+
+    // Fallback: download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = shareFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("PDF baixado!");
+  }
+
+  const now = new Date();
+  const years = Array.from({ length: 2 }, (_, i) => now.getFullYear() - i);
+
+  return (
+    <div className="min-h-screen bg-background p-4 space-y-4 max-w-lg mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
+            Relatório de Salga
+          </h1>
+          <p className="text-xs text-muted-foreground">{fazendaNome} — {retiroNome}</p>
+        </div>
+      </div>
+
+      {/* Period Selection */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="space-y-2">
+            <Label>Período</Label>
+            <Select value={periodoTipo} onValueChange={(v) => { setPeriodoTipo(v as PeriodoTipo); setPdfUrl(null); setNoData(false); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ultima_salga">Última Salga</SelectItem>
+                <SelectItem value="semanal">Última Semana</SelectItem>
+                <SelectItem value="mensal">Mensal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {periodoTipo === "ultima_salga" && (
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
+              {loadingUltima ? (
+                <span className="text-muted-foreground">Buscando última salga…</span>
+              ) : ultimaSalgaDate ? (
+                `Última salga: ${new Date(ultimaSalgaDate).toLocaleDateString("pt-BR")}`
+              ) : (
+                <span className="text-muted-foreground">Nenhuma salga encontrada</span>
+              )}
+            </div>
+          )}
+
+          {periodoTipo === "mensal" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Mês</Label>
+                <Select value={String(mesSel)} onValueChange={(v) => { setMesSel(Number(v)); setPdfUrl(null); setNoData(false); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MESES.map((m, i) => (
+                      <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Ano</Label>
+                <Select value={String(anoSel)} onValueChange={(v) => { setAnoSel(Number(v)); setPdfUrl(null); setNoData(false); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {noData && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Nenhuma salga registrada no período selecionado.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        {!pdfUrl ? (
+          <>
+            <Button variant="outline" className="flex-1" onClick={onBack}>
+              Voltar
+            </Button>
+            <Button
+              className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
+              onClick={handleGerarPdf}
+              disabled={generating || !canGenerate || noData}
+            >
+              {generating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Gerar PDF
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => window.open(pdfUrl, "_blank")}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Abrir PDF
+            </Button>
+            <Button
+              className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
+              onClick={handleShare}
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Compartilhar
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
