@@ -86,6 +86,38 @@ export function useOfflinePesagemSync(onSynced?: () => void) {
   return { pendingCount, syncing, syncAll, refreshCount, isOnline };
 }
 
+async function processSyncQueue() {
+  try {
+    const items = await getSyncQueueItems();
+    for (const item of items) {
+      if (item.type === "upload_pdf_pesagem") {
+        try {
+          const { pesagemId, fazendaId, fileName, blobBase64 } = item.payload;
+          const byteCharacters = atob(blobBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: "application/pdf" });
+
+          const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
+          const { error } = await supabase.storage
+            .from("relatorios")
+            .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
+
+          if (error) throw error;
+          await deleteSyncQueueItem(item.id);
+        } catch (err) {
+          console.error("Sync queue item failed:", item.id, err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("processSyncQueue error:", err);
+  }
+}
+
 async function syncOnePesagem(p: PesagemPendente) {
   const now = p.data_pesagem;
   const mp = p.media_calculada;
