@@ -56,6 +56,7 @@ export interface PastoCache {
   data_entrada: string | null;
   peso_entrada: number | null;
   gmd_kg_dia: number | null;
+  data_fim_carencia?: string | null;
 }
 
 export interface RetiroCache {
