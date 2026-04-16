@@ -6,6 +6,8 @@ import {
   getPesagensPendentes,
   countPesagensPendentes,
   markPesagemSincronizada,
+  getSyncQueueItems,
+  deleteSyncQueueItem,
   type PesagemPendente,
 } from "@/lib/offlineDb";
 
@@ -44,22 +46,22 @@ export function useOfflinePesagemSync(onSynced?: () => void) {
 
     try {
       const pendentes = await getPesagensPendentes();
-      if (pendentes.length === 0) return;
-
       for (const p of pendentes) {
         try {
           await syncOnePesagem(p);
           await markPesagemSincronizada(p.id);
         } catch (err: any) {
           console.error("Sync pesagem failed:", p.id, err);
-          // Keep for next attempt
         }
       }
+
+      // Process sync queue (e.g., offline PDF uploads)
+      await processSyncQueue();
 
       const remaining = await countPesagensPendentes();
       setPendingCount(remaining);
 
-      if (remaining === 0) {
+      if (remaining === 0 && pendentes.length > 0) {
         toast.success("Pesagens offline sincronizadas com sucesso!");
       }
       onSynced?.();
