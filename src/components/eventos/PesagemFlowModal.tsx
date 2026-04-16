@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Scale, Check } from "lucide-react";
+import { Loader2, Scale, Check, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
+import { savePesagemPendente, type PesagemPendente } from "@/lib/offlineDb";
 import type { SanitarioFormData } from "./SanitarioFormModal";
 
 interface Props {
@@ -17,7 +19,6 @@ interface Props {
   pesoMedioAtual: number | null;
   userId: string;
   userName: string;
-  /** If provided, saves combined pesagem+sanitario event */
   sanitarioData?: SanitarioFormData | null;
   onSaved?: () => void;
 }
@@ -30,6 +31,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
   const [currentPeso, setCurrentPeso] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     if (step === "digitacao" && inputRef.current) {
@@ -59,7 +61,6 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
     if (pesos.length >= numAnimais || pesoMedioAtual == null || pesoMedioAtual <= 0) {
       return Math.round(mp * 10) / 10;
     }
-    // Weighted average
     const novo = (pesoMedioAtual * numAnimais + mp * pesos.length) / numAnimais;
     return Math.round(novo * 10) / 10;
   }, [pesos, numAnimais, pesoMedioAtual]);
@@ -75,11 +76,37 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       const now = new Date().toISOString();
       const mp = pesos.reduce((a, b) => a + b, 0) / pesos.length;
       const pesoAplicado = calcNovoPesoMedio();
+
+      if (!isOnline) {
+        // OFFLINE: save to IndexedDB
+        const pendente: PesagemPendente = {
+          id: crypto.randomUUID(),
+          lote_id: pastoId,
+          pesos: [...pesos],
+          total_pesado: pesos.length,
+          media_calculada: Math.round(mp * 10) / 10,
+          peso_medio_aplicado: pesoAplicado,
+          data_pesagem: now,
+          usuario_id: userId,
+          usuario_nome: userName,
+          pasto_nome: pastoNome,
+          num_animais: numAnimais,
+          peso_medio_atual: pesoMedioAtual,
+          sincronizado: false,
+          criado_em: now,
+          sanitario_data: sanitarioData || null,
+        };
+        await savePesagemPendente(pendente);
+        toast.success("Pesagem salva localmente. Sincronização pendente.", { icon: "📴" });
+        resetAndClose();
+        onSaved?.();
+        return;
+      }
+
+      // ONLINE: save directly to Supabase (existing behavior)
       const tipo = sanitarioData ? "pesagem_sanitario" : "pesagem";
 
-      // 1. Create evento_lote
-      const { data: evento, error: evErr } = await (supabase
-        .from("eventos_lote") as any)
+      const { data: evento, error: evErr } = await (supabase.from("eventos_lote") as any)
         .insert({
           lote_id: pastoId,
           tipo,
@@ -98,36 +125,30 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
 
       if (evErr) throw evErr;
 
-      // 2. Insert pesagem
-      const { error: pesErr } = await (supabase
-        .from("pesagens") as any)
-        .insert({
-          evento_id: evento.id,
-          lote_id: pastoId,
-          total_pesado: pesos.length,
-          pesos: pesos as any,
-          media_calculada: Math.round(mp * 10) / 10,
-          peso_medio_aplicado: pesoAplicado,
-          data_pesagem: now,
-          usuario_id: userId,
-        });
+      const { error: pesErr } = await (supabase.from("pesagens") as any).insert({
+        evento_id: evento.id,
+        lote_id: pastoId,
+        total_pesado: pesos.length,
+        pesos: pesos as any,
+        media_calculada: Math.round(mp * 10) / 10,
+        peso_medio_aplicado: pesoAplicado,
+        data_pesagem: now,
+        usuario_id: userId,
+      });
 
       if (pesErr) throw pesErr;
 
-      // 3. Update pasto
       const pastoUpdate: any = {
         peso_medio_kg: pesoAplicado,
         ultima_pesagem_em: now,
       };
 
-      // 4. If sanitario combined
       if (sanitarioData) {
         const dataFimCarencia = sanitarioData.tem_carencia && sanitarioData.dias_carencia > 0
           ? new Date(Date.now() + sanitarioData.dias_carencia * 86400000).toISOString().slice(0, 10)
           : null;
 
-        const { data: sanEvento, error: sanErr } = await (supabase
-          .from("eventos_sanitarios") as any)
+        const { data: sanEvento, error: sanErr } = await (supabase.from("eventos_sanitarios") as any)
           .insert({
             evento_id: evento.id,
             lote_id: pastoId,
@@ -146,13 +167,11 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
           .single();
 
         if (sanErr) throw sanErr;
-
         pastoUpdate.ultimo_evento_sanitario_id = sanEvento.id;
         if (dataFimCarencia) pastoUpdate.data_fim_carencia = dataFimCarencia;
       }
 
       await supabase.from("pastos").update(pastoUpdate).eq("id", pastoId);
-
       toast.success(`Pesagem finalizada! ${pesos.length} animais, média ${Math.round(mp * 10) / 10} kg`);
       resetAndClose();
       onSaved?.();
@@ -177,9 +196,20 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
           <DialogTitle className="flex items-center gap-2">
             <Scale className="w-5 h-5" />
             Pesagem
+            {!isOnline && (
+              <Badge variant="destructive" className="ml-auto text-xs flex items-center gap-1">
+                <WifiOff className="w-3 h-3" /> Offline
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>{pastoNome} — {numAnimais} animais</DialogDescription>
         </DialogHeader>
+
+        {!isOnline && step === "inicio" && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs text-yellow-700 dark:text-yellow-300">
+            Você está offline. Os dados serão salvos localmente e sincronizados quando a conexão for restaurada.
+          </div>
+        )}
 
         {step === "inicio" && (
           <div className="space-y-4 py-4">
@@ -261,6 +291,11 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
               <p className="text-sm">
                 Novo peso médio do lote: <strong>{calcNovoPesoMedio()?.toFixed(1).replace(".", ",")} kg</strong>
               </p>
+              {!isOnline && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  📴 Será salvo localmente (offline)
+                </p>
+              )}
             </div>
             <DialogFooter className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("digitacao")}>Voltar</Button>
