@@ -1638,7 +1638,7 @@ export default function CapatazDashboard() {
             userId={user?.id || ""}
             userName={userName}
             sanitarioData={pendingSanitarioData}
-            onSaved={() => loadFromSupabase()}
+            onSaved={() => { loadFromSupabase(); refreshPesagemCount(); }}
           />
 
           <ObservacaoLoteModal
