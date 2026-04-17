@@ -25,17 +25,19 @@ interface Props {
   fazendaId: string;
   fazendaNome: string;
   retiroNome: string;
+  retiroId?: string;
   sanitarioData?: SanitarioFormData | null;
   onSaved?: () => void;
 }
 
 type Step = "inicio" | "digitacao" | "finalizando";
 
-export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, sanitarioData, onSaved }: Props) {
+export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, retiroId, sanitarioData, onSaved }: Props) {
   const [step, setStep] = useState<Step>("inicio");
   const [pesos, setPesos] = useState<number[]>([]);
   const [currentPeso, setCurrentPeso] = useState("");
   const [saving, setSaving] = useState(false);
+  const [apartacaoOpen, setApartacaoOpen] = useState(false);
   const [exportData, setExportData] = useState<{ pesagemId: string; animais: AnimalPesagem[]; dataPesagem: string; hora: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
