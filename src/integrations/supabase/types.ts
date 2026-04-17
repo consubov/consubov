@@ -105,6 +105,114 @@ export type Database = {
         }
         Relationships: []
       }
+      apartacao_lotes: {
+        Row: {
+          apartacao_id: string
+          created_at: string
+          faixa_peso_max: number | null
+          faixa_peso_min: number | null
+          id: string
+          media_kg: number | null
+          nome_lote: string
+          ordem: string
+          pasto_destino_id: string | null
+          quantidade: number
+        }
+        Insert: {
+          apartacao_id: string
+          created_at?: string
+          faixa_peso_max?: number | null
+          faixa_peso_min?: number | null
+          id?: string
+          media_kg?: number | null
+          nome_lote: string
+          ordem: string
+          pasto_destino_id?: string | null
+          quantidade?: number
+        }
+        Update: {
+          apartacao_id?: string
+          created_at?: string
+          faixa_peso_max?: number | null
+          faixa_peso_min?: number | null
+          id?: string
+          media_kg?: number | null
+          nome_lote?: string
+          ordem?: string
+          pasto_destino_id?: string | null
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apartacao_lotes_apartacao_id_fkey"
+            columns: ["apartacao_id"]
+            isOneToOne: false
+            referencedRelation: "apartacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apartacao_lotes_pasto_destino_id_fkey"
+            columns: ["pasto_destino_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      apartacoes: {
+        Row: {
+          created_at: string
+          data_apartacao: string
+          id: string
+          media_geral_kg: number
+          observacoes: string | null
+          pasto_origem_id: string | null
+          quantidade_lotes: number
+          retiro_id: string | null
+          total_animais: number
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_apartacao?: string
+          id?: string
+          media_geral_kg: number
+          observacoes?: string | null
+          pasto_origem_id?: string | null
+          quantidade_lotes: number
+          retiro_id?: string | null
+          total_animais: number
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_apartacao?: string
+          id?: string
+          media_geral_kg?: number
+          observacoes?: string | null
+          pasto_origem_id?: string | null
+          quantidade_lotes?: number
+          retiro_id?: string | null
+          total_animais?: number
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apartacoes_pasto_origem_id_fkey"
+            columns: ["pasto_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apartacoes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_sorteios: {
         Row: {
           bloco: number
@@ -1133,6 +1241,7 @@ export type Database = {
           id: string
           nome: string
           num_animais: number
+          pasto_origem_id: string | null
           peso_abate_meta_kg: number | null
           peso_entrada: number | null
           peso_medio_kg: number | null
@@ -1155,6 +1264,7 @@ export type Database = {
           id?: string
           nome: string
           num_animais?: number
+          pasto_origem_id?: string | null
           peso_abate_meta_kg?: number | null
           peso_entrada?: number | null
           peso_medio_kg?: number | null
@@ -1177,6 +1287,7 @@ export type Database = {
           id?: string
           nome?: string
           num_animais?: number
+          pasto_origem_id?: string | null
           peso_abate_meta_kg?: number | null
           peso_entrada?: number | null
           peso_medio_kg?: number | null
@@ -1188,6 +1299,13 @@ export type Database = {
           ultimo_evento_sanitario_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pastos_pasto_origem_id_fkey"
+            columns: ["pasto_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pastos_produto_id_fkey"
             columns: ["produto_id"]
