@@ -47,7 +47,7 @@ interface PastoOption {
   num_animais: number;
 }
 
-export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, retiroId, userId, userName, onSaved }: Props) {
+export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, retiroId, userId, userName, fazendaId, fazendaNome, retiroNome, onSaved }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loteCount, setLoteCount] = useState<LoteCount>(2);
   const [lotes, setLotes] = useState<LoteConfig[]>([
@@ -60,6 +60,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
   const [destinos, setDestinos] = useState<Record<Ordem, string>>({ A: "", B: "", C: "", D: "" });
   const [destinoIndex, setDestinoIndex] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [exportData, setExportData] = useState<{ pesagemId: string; animais: AnimalPesagem[]; dataPesagem: string; hora: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -198,6 +199,8 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         }
       }
 
+      const nowIso = new Date().toISOString();
+
       // 1) Insert apartacao
       const { data: apart, error: apartErr } = await (supabase.from("apartacoes") as any)
         .insert({
@@ -231,17 +234,40 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
       const { error: lotesErr } = await (supabase.from("apartacao_lotes") as any).insert(loteRows);
       if (lotesErr) throw lotesErr;
 
-      // 3) Update pastos destino: pasto_origem_id + add num_animais + update peso medio if applicable
+      // Detect if origin pasto is also a destination, and how many animals stay
+      const loteFicaOrigem = lotes.find((l) => destinos[l.ordem] === pastoId && stats[l.ordem].qtd > 0);
+      const qtdFicaOrigem = loteFicaOrigem ? stats[loteFicaOrigem.ordem].qtd : 0;
+      const mediaFicaOrigem = loteFicaOrigem
+        ? Math.round((stats[loteFicaOrigem.ordem].total / stats[loteFicaOrigem.ordem].qtd) * 10) / 10
+        : null;
+
+      // 3) Fetch origin history once (for copy to other destinations)
+      const [pesagensOrig, sanitariosOrig, eventosOrig] = await Promise.all([
+        supabase.from("pesagens").select("*").eq("lote_id", pastoId),
+        supabase.from("eventos_sanitarios").select("*").eq("lote_id", pastoId),
+        supabase.from("eventos_lote").select("*").eq("lote_id", pastoId),
+      ]);
+
+      // 4) Update destinos: pasto_origem_id, num_animais, peso_medio + copy history
+      const destinosProcessados = new Set<string>();
       for (const lote of lotes) {
         const s = stats[lote.ordem];
         const destId = destinos[lote.ordem];
         if (!destId || s.qtd === 0) continue;
+
+        const isOrigem = destId === pastoId;
+        const mediaLote = s.total / s.qtd;
+
+        if (isOrigem) {
+          // Lote permanece no pasto de origem: NÃO mexer aqui, será tratado abaixo
+          continue;
+        }
+
         const { data: pastoDest } = await (supabase.from("pastos") as any)
           .select("num_animais, peso_medio_kg")
           .eq("id", destId)
           .single();
         const novaQtd = (pastoDest?.num_animais || 0) + s.qtd;
-        const mediaLote = s.total / s.qtd;
         const pesoAtual = pastoDest?.peso_medio_kg || 0;
         const qtdAtual = pastoDest?.num_animais || 0;
         const novoPesoMedio = novaQtd > 0
@@ -252,19 +278,121 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
             pasto_origem_id: pastoId,
             num_animais: novaQtd,
             peso_medio_kg: novoPesoMedio,
-            data_movimentacao: new Date().toISOString(),
+            data_movimentacao: nowIso,
+            ultima_pesagem_em: nowIso,
           })
           .eq("id", destId);
+
+        // Copy history once per unique destination (not origin)
+        if (!destinosProcessados.has(destId)) {
+          destinosProcessados.add(destId);
+
+          if (pesagensOrig.data && pesagensOrig.data.length > 0) {
+            const rows = pesagensOrig.data.map((r: any) => {
+              const { id, ...rest } = r;
+              return { ...rest, lote_id: destId };
+            });
+            await (supabase.from("pesagens") as any).insert(rows);
+          }
+          if (sanitariosOrig.data && sanitariosOrig.data.length > 0) {
+            const rows = sanitariosOrig.data.map((r: any) => {
+              const { id, ...rest } = r;
+              return { ...rest, lote_id: destId };
+            });
+            await (supabase.from("eventos_sanitarios") as any).insert(rows);
+          }
+          if (eventosOrig.data && eventosOrig.data.length > 0) {
+            const rows = eventosOrig.data.map((r: any) => {
+              const { id, criado_em, ...rest } = r;
+              return { ...rest, lote_id: destId };
+            });
+            await (supabase.from("eventos_lote") as any).insert(rows);
+          }
+        }
       }
 
-      // 4) Zero pasto origem
-      await (supabase.from("pastos") as any)
-        .update({ num_animais: 0, data_movimentacao: new Date().toISOString() })
-        .eq("id", pastoId);
+      // 5) Update pasto origem: se um lote ficou nele, manter qtd e atualizar peso médio; senão zerar
+      if (loteFicaOrigem) {
+        await (supabase.from("pastos") as any)
+          .update({
+            num_animais: qtdFicaOrigem,
+            peso_medio_kg: mediaFicaOrigem,
+            data_movimentacao: nowIso,
+            ultima_pesagem_em: nowIso,
+          })
+          .eq("id", pastoId);
+      } else {
+        await (supabase.from("pastos") as any)
+          .update({ num_animais: 0, data_movimentacao: nowIso })
+          .eq("id", pastoId);
+      }
+
+      // 6) Insert pesagem record (the apartacao IS a pesagem) — becomes most recent for origin and destinations
+      const animaisArr: AnimalPesagem[] = pesosLancados.map((p, i) => ({
+        id: crypto.randomUUID(),
+        numero: i + 1,
+        pesoKg: p.peso,
+      }));
+      const pesosNumeros = pesosLancados.map((p) => p.peso);
+      const mediaCalc = Math.round(mediaGeral * 10) / 10;
+
+      // Create one evento_lote + pesagem for the origin (canonical record of the apartação)
+      const { data: evento } = await (supabase.from("eventos_lote") as any)
+        .insert({
+          lote_id: pastoId,
+          tipo: "pesagem_apartacao",
+          usuario_id: userId,
+          data_evento: nowIso,
+          dados: { apartacao_id: apart.id, total_pesado: totalPesado, media: mediaCalc },
+        })
+        .select("id")
+        .single();
+
+      if (evento) {
+        await (supabase.from("pesagens") as any).insert({
+          evento_id: evento.id,
+          lote_id: pastoId,
+          total_pesado: totalPesado,
+          pesos: pesosNumeros as any,
+          media_calculada: mediaCalc,
+          peso_medio_aplicado: mediaCalc,
+          data_pesagem: nowIso,
+          usuario_id: userId,
+        });
+
+        // Replicate this pesagem to each destination so it becomes their latest
+        for (const destId of destinosProcessados) {
+          const { data: evDest } = await (supabase.from("eventos_lote") as any)
+            .insert({
+              lote_id: destId,
+              tipo: "pesagem_apartacao",
+              usuario_id: userId,
+              data_evento: nowIso,
+              dados: { apartacao_id: apart.id, total_pesado: totalPesado, media: mediaCalc },
+            })
+            .select("id")
+            .single();
+          if (evDest) {
+            await (supabase.from("pesagens") as any).insert({
+              evento_id: evDest.id,
+              lote_id: destId,
+              total_pesado: totalPesado,
+              pesos: pesosNumeros as any,
+              media_calculada: mediaCalc,
+              peso_medio_aplicado: mediaCalc,
+              data_pesagem: nowIso,
+              usuario_id: userId,
+            });
+          }
+        }
+      }
 
       toast.success("Apartação finalizada!");
       onSaved?.();
-      onClose();
+
+      // Open export PDF modal
+      const hora = new Date(nowIso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setExportData({ pesagemId: evento?.id || apart.id, animais: animaisArr, dataPesagem: nowIso, hora });
     } catch (err: any) {
       toast.error("Erro ao salvar apartação: " + (err.message || ""));
     } finally {
