@@ -384,6 +384,24 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       responsavelNome={userName}
       animais={exportData?.animais || []}
     />
+
+    {retiroId && (
+      <ApartacaoFlowModal
+        open={apartacaoOpen}
+        onClose={() => setApartacaoOpen(false)}
+        pastoId={pastoId}
+        pastoNome={pastoNome}
+        numAnimais={numAnimais}
+        retiroId={retiroId}
+        userId={userId}
+        userName={userName}
+        onSaved={() => {
+          setApartacaoOpen(false);
+          onSaved?.();
+          resetAndClose();
+        }}
+      />
+    )}
     </>
   );
 }
