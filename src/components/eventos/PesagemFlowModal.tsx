@@ -254,6 +254,16 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
               <Scale className="w-5 h-5 mr-2" />
               Iniciar Pesagem
             </Button>
+            {retiroId && !sanitarioData && (
+              <Button
+                variant="outline"
+                className="w-full h-12 border-primary text-primary hover:bg-primary/10 bg-transparent"
+                onClick={() => setApartacaoOpen(true)}
+              >
+                <GitFork className="w-5 h-5 mr-2" />
+                Pesagem + Apartação
+              </Button>
+            )}
           </div>
         )}
 
