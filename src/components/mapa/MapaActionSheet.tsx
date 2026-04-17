@@ -31,7 +31,7 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
 
         <div className="space-y-2 py-2">
           {/* 1. Ver detalhes */}
-          <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => { onClose(); onVerDetalhes(); }}>
+          <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onVerDetalhes()}>
             <Eye className="w-5 h-5 text-primary" />
             Ver detalhes
           </Button>
@@ -46,7 +46,7 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
 
           {/* 3. Transferir animais */}
           {pasto.num_animais > 0 && (
-            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => { onClose(); onTransferir(); }}>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onTransferir()}>
               <ArrowRightLeft className="w-5 h-5 text-primary" />
               Transferir animais
             </Button>
@@ -54,20 +54,20 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
 
           {/* 4. Abater animais */}
           {pasto.num_animais > 0 && (
-            <Button variant="outline" className="w-full justify-start gap-3 h-12 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => { onClose(); onAbater(); }}>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => onAbater()}>
               <Scissors className="w-5 h-5" />
               Abater animais
             </Button>
           )}
 
           {/* 5. Adicionar animais */}
-          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => { onClose(); onEntrada(); }}>
+          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => onEntrada()}>
             <Plus className="w-5 h-5" />
             Adicionar animais
           </Button>
 
           {/* 6. Editar peso médio */}
-          <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => { onClose(); onEditarPeso(); }}>
+          <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onEditarPeso()}>
             <Scale className="w-5 h-5 text-primary" />
             Editar peso médio
           </Button>
