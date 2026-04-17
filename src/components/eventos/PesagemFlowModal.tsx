@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Scale, Check, WifiOff } from "lucide-react";
+import { Loader2, Scale, Check, WifiOff, GitFork } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
@@ -11,6 +11,7 @@ import { savePesagemPendente, type PesagemPendente } from "@/lib/offlineDb";
 import type { SanitarioFormData } from "./SanitarioFormModal";
 import ExportarPesagemModal from "@/components/pesagem/ExportarPesagemModal";
 import type { AnimalPesagem } from "@/utils/gerarPdfPesagem";
+import ApartacaoFlowModal from "./ApartacaoFlowModal";
 
 interface Props {
   open: boolean;
