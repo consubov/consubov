@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -326,8 +327,7 @@ export default function AdminListSection({ refreshKey }: Props) {
             </div>
             <div className="space-y-1">
               <Label>Nova senha (opcional)</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={editSenha}
                 onChange={(e) => setEditSenha(e.target.value)}
                 placeholder="Deixe vazio para manter a atual"
