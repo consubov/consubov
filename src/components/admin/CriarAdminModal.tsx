@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -185,11 +186,11 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-senha">Senha *</Label>
-              <Input id="admin-senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <PasswordInput id="admin-senha" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-confirmar">Confirmar senha *</Label>
-              <Input id="admin-confirmar" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
+              <PasswordInput id="admin-confirmar" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
             </div>
             <DialogFooter>
               <Button onClick={handleSubmit} className="w-full bg-primary text-primary-foreground">Criar Administrador</Button>
