@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Scale, Check, WifiOff } from "lucide-react";
+import { Loader2, Scale, Check, WifiOff, GitFork } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
@@ -11,6 +11,7 @@ import { savePesagemPendente, type PesagemPendente } from "@/lib/offlineDb";
 import type { SanitarioFormData } from "./SanitarioFormModal";
 import ExportarPesagemModal from "@/components/pesagem/ExportarPesagemModal";
 import type { AnimalPesagem } from "@/utils/gerarPdfPesagem";
+import ApartacaoFlowModal from "./ApartacaoFlowModal";
 
 interface Props {
   open: boolean;
@@ -24,17 +25,19 @@ interface Props {
   fazendaId: string;
   fazendaNome: string;
   retiroNome: string;
+  retiroId?: string;
   sanitarioData?: SanitarioFormData | null;
   onSaved?: () => void;
 }
 
 type Step = "inicio" | "digitacao" | "finalizando";
 
-export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, sanitarioData, onSaved }: Props) {
+export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, retiroId, sanitarioData, onSaved }: Props) {
   const [step, setStep] = useState<Step>("inicio");
   const [pesos, setPesos] = useState<number[]>([]);
   const [currentPeso, setCurrentPeso] = useState("");
   const [saving, setSaving] = useState(false);
+  const [apartacaoOpen, setApartacaoOpen] = useState(false);
   const [exportData, setExportData] = useState<{ pesagemId: string; animais: AnimalPesagem[]; dataPesagem: string; hora: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
@@ -251,6 +254,16 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
               <Scale className="w-5 h-5 mr-2" />
               Iniciar Pesagem
             </Button>
+            {retiroId && !sanitarioData && (
+              <Button
+                variant="outline"
+                className="w-full h-12 border-primary text-primary hover:bg-primary/10 bg-transparent"
+                onClick={() => setApartacaoOpen(true)}
+              >
+                <GitFork className="w-5 h-5 mr-2" />
+                Pesagem + Apartação
+              </Button>
+            )}
           </div>
         )}
 
@@ -371,6 +384,24 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       responsavelNome={userName}
       animais={exportData?.animais || []}
     />
+
+    {retiroId && (
+      <ApartacaoFlowModal
+        open={apartacaoOpen}
+        onClose={() => setApartacaoOpen(false)}
+        pastoId={pastoId}
+        pastoNome={pastoNome}
+        numAnimais={numAnimais}
+        retiroId={retiroId}
+        userId={userId}
+        userName={userName}
+        onSaved={() => {
+          setApartacaoOpen(false);
+          onSaved?.();
+          resetAndClose();
+        }}
+      />
+    )}
     </>
   );
 }
