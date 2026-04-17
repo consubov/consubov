@@ -1688,6 +1688,7 @@ export default function CapatazDashboard() {
             fazendaId={fazendaId}
             fazendaNome={retiro?.fazenda_nome || ""}
             retiroNome={retiro?.nome || ""}
+            retiroId={roleData.retiroId || ""}
             sanitarioData={pendingSanitarioData}
             onSaved={() => { loadFromSupabase(); refreshPesagemCount(); }}
           />

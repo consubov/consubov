@@ -382,6 +382,7 @@ export default function MapaFazendaPage() {
             fazendaId={activeFazendaId ?? ""}
             fazendaNome={fazendaNome}
             retiroNome={retiroNome}
+            retiroId={activeRetiroId}
             sanitarioData={pendingSanitarioData}
             onSaved={() => refresh()}
           />
