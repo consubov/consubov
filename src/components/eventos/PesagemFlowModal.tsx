@@ -395,6 +395,9 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         retiroId={retiroId}
         userId={userId}
         userName={userName}
+        fazendaId={fazendaId}
+        fazendaNome={fazendaNome}
+        retiroNome={retiroNome}
         onSaved={() => {
           setApartacaoOpen(false);
           onSaved?.();
