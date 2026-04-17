@@ -410,7 +410,8 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
   const loteAtualDestino = lotesComAnimais[destinoIndex];
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && !exportData && onClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -735,5 +736,20 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         )}
       </DialogContent>
     </Dialog>
+
+    <ExportarPesagemModal
+      open={!!exportData}
+      onClose={() => { setExportData(null); onClose(); }}
+      pesagemId={exportData?.pesagemId || ""}
+      fazendaId={fazendaId}
+      fazendaNome={fazendaNome}
+      retiroNome={retiroNome}
+      pastoNome={pastoNome}
+      dataPesagem={exportData?.dataPesagem || ""}
+      horaFinalizacao={exportData?.hora || ""}
+      responsavelNome={userName}
+      animais={exportData?.animais || []}
+    />
+    </>
   );
 }
