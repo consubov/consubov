@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, GitFork, Loader2, Check, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ExportarPesagemModal from "@/components/pesagem/ExportarPesagemModal";
+import type { AnimalPesagem } from "@/utils/gerarPdfPesagem";
 
 interface Props {
   open: boolean;
@@ -18,6 +20,9 @@ interface Props {
   retiroId: string;
   userId: string;
   userName: string;
+  fazendaId: string;
+  fazendaNome: string;
+  retiroNome: string;
   onSaved?: () => void;
 }
 
