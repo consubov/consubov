@@ -241,21 +241,27 @@ async function safeRun<T>(op: () => Promise<T>, fallback: T): Promise<T> {
 
 // Pastos
 export async function cachePastos(pastos: PastoCache[]) {
-  const db = await getDb();
-  const tx = db.transaction('pastos', 'readwrite');
-  await tx.store.clear();
-  for (const p of pastos) await tx.store.put(p);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('pastos', 'readwrite');
+    await tx.store.clear();
+    for (const p of pastos) await tx.store.put(p);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedPastos(): Promise<PastoCache[]> {
-  const db = await getDb();
-  return db.getAll('pastos');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('pastos')) ?? [];
+  }, []);
 }
 
 export async function getPastoByQr(qrUuid: string): Promise<PastoCache | undefined> {
-  const db = await getDb();
-  return db.getFromIndex('pastos', 'by-qr', qrUuid);
+  return safeRun(async () => {
+    const db = await getDb();
+    return db.getFromIndex('pastos', 'by-qr', qrUuid);
+  }, undefined);
 }
 
 // Retiro
@@ -268,9 +274,11 @@ export async function cacheRetiro(retiro: RetiroCache) {
 }
 
 export async function getCachedRetiro(): Promise<RetiroCache | undefined> {
-  const db = await getDb();
-  const all = await db.getAll('retiro');
-  return all[0];
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('retiro')) ?? [];
+    return all[0];
+  }, undefined);
 }
 
 // Ciclos
@@ -283,8 +291,10 @@ export async function cacheCiclos(ciclos: CicloCache[]) {
 }
 
 export async function getCachedCiclos(): Promise<CicloCache[]> {
-  const db = await getDb();
-  return db.getAll('ciclos');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('ciclos')) ?? [];
+  }, []);
 }
 
 // Lancamentos
@@ -294,20 +304,26 @@ export async function saveLancamento(lancamento: LancamentoOffline) {
 }
 
 export async function getLancamentosPendentes(): Promise<LancamentoOffline[]> {
-  const db = await getDb();
-  return db.getAllFromIndex('lancamentos', 'by-status', 'pendente');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAllFromIndex('lancamentos', 'by-status', 'pendente')) ?? [];
+  }, []);
 }
 
 export async function getLancamentosHoje(): Promise<LancamentoOffline[]> {
-  const db = await getDb();
-  const all = await db.getAll('lancamentos');
-  const hoje = new Date().toISOString().slice(0, 10);
-  return all.filter((l) => l.data.slice(0, 10) === hoje);
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('lancamentos')) ?? [];
+    const hoje = new Date().toISOString().slice(0, 10);
+    return all.filter((l) => typeof l?.data === 'string' && l.data.slice(0, 10) === hoje);
+  }, []);
 }
 
 export async function getAllLancamentos(): Promise<LancamentoOffline[]> {
-  const db = await getDb();
-  return db.getAll('lancamentos');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('lancamentos')) ?? [];
+  }, []);
 }
 
 export async function markSincronizado(id: string) {
@@ -326,9 +342,11 @@ export async function setConfig(key: string, value: string) {
 }
 
 export async function getConfig(key: string): Promise<string | undefined> {
-  const db = await getDb();
-  const item = await db.get('config', key);
-  return item?.value;
+  return safeRun(async () => {
+    const db = await getDb();
+    const item = await db.get('config', key);
+    return item?.value;
+  }, undefined);
 }
 
 export async function deleteLancamento(id: string) {
@@ -353,18 +371,24 @@ export async function saveObservacaoOffline(obs: ObservacaoOffline) {
 }
 
 export async function getAllObservacoes(): Promise<ObservacaoOffline[]> {
-  const db = await getDb();
-  return db.getAll('observacoesOffline');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('observacoesOffline')) ?? [];
+  }, []);
 }
 
 export async function getObservacoesPendentes(): Promise<ObservacaoOffline[]> {
-  const db = await getDb();
-  return db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente')) ?? [];
+  }, []);
 }
 
 export async function getObservacoesSincronizadas(): Promise<ObservacaoOffline[]> {
-  const db = await getDb();
-  return db.getAllFromIndex('observacoesOffline', 'by-status', 'sincronizado');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAllFromIndex('observacoesOffline', 'by-status', 'sincronizado')) ?? [];
+  }, []);
 }
 
 export async function markObservacaoSincronizada(id: string) {
@@ -395,14 +419,16 @@ export async function saveFecharMes(action: FecharMesPendente) {
 }
 
 export async function getFecharMesPendente(): Promise<FecharMesPendente | null> {
-  const db = await getDb();
-  const item = await db.get('config', 'fechar_mes_pendente');
-  if (!item?.value) return null;
-  try {
-    return JSON.parse(item.value) as FecharMesPendente;
-  } catch {
-    return null;
-  }
+  return safeRun(async () => {
+    const db = await getDb();
+    const item = await db.get('config', 'fechar_mes_pendente');
+    if (!item?.value) return null;
+    try {
+      return JSON.parse(item.value) as FecharMesPendente;
+    } catch {
+      return null;
+    }
+  }, null);
 }
 
 export async function clearFecharMes() {
@@ -420,9 +446,11 @@ export async function cacheProdutoAtivo(produto: ProdutoCache) {
 }
 
 export async function getCachedProdutoAtivo(): Promise<ProdutoCache | undefined> {
-  const db = await getDb();
-  const all = await db.getAll('produtoAtivo');
-  return all[0];
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('produtoAtivo')) ?? [];
+    return all[0];
+  }, undefined);
 }
 
 // Fazenda Cache
@@ -435,9 +463,11 @@ export async function cacheFazenda(fazenda: FazendaCache) {
 }
 
 export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
-  const db = await getDb();
-  const all = await db.getAll('fazendaCache');
-  return all[0];
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('fazendaCache')) ?? [];
+    return all[0];
+  }, undefined);
 }
 
 // Pesagens Pendentes (offline)
@@ -447,15 +477,19 @@ export async function savePesagemPendente(pesagem: PesagemPendente) {
 }
 
 export async function getPesagensPendentes(): Promise<PesagemPendente[]> {
-  const db = await getDb();
-  const all = await db.getAll('pesagensPendentes');
-  return all.filter(p => !p.sincronizado);
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('pesagensPendentes')) ?? [];
+    return all.filter(p => p && !p.sincronizado);
+  }, []);
 }
 
 export async function countPesagensPendentes(): Promise<number> {
-  const db = await getDb();
-  const all = await db.getAll('pesagensPendentes');
-  return all.filter(p => !p.sincronizado).length;
+  return safeRun(async () => {
+    const db = await getDb();
+    const all = (await db.getAll('pesagensPendentes')) ?? [];
+    return all.filter(p => p && !p.sincronizado).length;
+  }, 0);
 }
 
 export async function markPesagemSincronizada(id: string) {
@@ -479,8 +513,10 @@ export async function saveSyncQueueItem(item: SyncQueueItem) {
 }
 
 export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
-  const db = await getDb();
-  return db.getAll('syncQueue');
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('syncQueue')) ?? [];
+  }, []);
 }
 
 export async function deleteSyncQueueItem(id: string) {
