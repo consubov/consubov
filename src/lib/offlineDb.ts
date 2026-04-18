@@ -170,42 +170,73 @@ interface ConsubovDB extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
+function openConsubovDb() {
+  return openDB<ConsubovDB>('consubov-capataz', 5, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
+        lancStore.createIndex('by-status', 'status');
+        lancStore.createIndex('by-pasto', 'pasto_id');
+        lancStore.createIndex('by-data', 'data');
+
+        const pastosStore = db.createObjectStore('pastos', { keyPath: 'id' });
+        pastosStore.createIndex('by-qr', 'qr_uuid');
+
+        db.createObjectStore('retiro', { keyPath: 'id' });
+        db.createObjectStore('ciclos', { keyPath: 'id' });
+        db.createObjectStore('config', { keyPath: 'key' });
+      }
+      if (oldVersion < 2) {
+        const obsStore = db.createObjectStore('observacoesOffline', { keyPath: 'id' });
+        obsStore.createIndex('by-status', 'status');
+      }
+      if (oldVersion < 3) {
+        db.createObjectStore('produtoAtivo', { keyPath: 'id' });
+        db.createObjectStore('fazendaCache', { keyPath: 'id' });
+      }
+      if (oldVersion < 4) {
+        const pesStore = db.createObjectStore('pesagensPendentes', { keyPath: 'id' });
+        pesStore.createIndex('by-sincronizado', 'sincronizado');
+      }
+      if (oldVersion < 5) {
+        db.createObjectStore('syncQueue', { keyPath: 'id' });
+      }
+    },
+    blocked() {
+      console.warn('[offlineDb] open blocked by another tab');
+    },
+    blocking() {
+      console.warn('[offlineDb] another tab is upgrading the DB');
+    },
+    terminated() {
+      console.warn('[offlineDb] connection terminated — will reopen on next call');
+      dbPromise = null;
+    },
+  });
+}
+
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<ConsubovDB>('consubov-capataz', 5, {
-      upgrade(db, oldVersion) {
-        if (oldVersion < 1) {
-          const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
-          lancStore.createIndex('by-status', 'status');
-          lancStore.createIndex('by-pasto', 'pasto_id');
-          lancStore.createIndex('by-data', 'data');
-
-          const pastosStore = db.createObjectStore('pastos', { keyPath: 'id' });
-          pastosStore.createIndex('by-qr', 'qr_uuid');
-
-          db.createObjectStore('retiro', { keyPath: 'id' });
-          db.createObjectStore('ciclos', { keyPath: 'id' });
-          db.createObjectStore('config', { keyPath: 'key' });
-        }
-        if (oldVersion < 2) {
-          const obsStore = db.createObjectStore('observacoesOffline', { keyPath: 'id' });
-          obsStore.createIndex('by-status', 'status');
-        }
-        if (oldVersion < 3) {
-          db.createObjectStore('produtoAtivo', { keyPath: 'id' });
-          db.createObjectStore('fazendaCache', { keyPath: 'id' });
-        }
-        if (oldVersion < 4) {
-          const pesStore = db.createObjectStore('pesagensPendentes', { keyPath: 'id' });
-          pesStore.createIndex('by-sincronizado', 'sincronizado');
-        }
-        if (oldVersion < 5) {
-          db.createObjectStore('syncQueue', { keyPath: 'id' });
-        }
-      },
+    dbPromise = openConsubovDb().catch((err) => {
+      // Reset so the next call retries instead of caching a rejected promise
+      dbPromise = null;
+      console.error('[offlineDb] openDB failed:', err);
+      throw err;
     });
   }
   return dbPromise;
+}
+
+/** Run an IndexedDB operation safely. Returns fallback on any failure
+ *  (Safari private mode, quota exceeded, schema mismatch, etc.) so the
+ *  UI never crashes from a low-level storage error. */
+async function safeRun<T>(op: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    console.error('[offlineDb] operation failed, using fallback:', err);
+    return fallback;
+  }
 }
 
 // Pastos
