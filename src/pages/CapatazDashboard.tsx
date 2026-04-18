@@ -77,12 +77,14 @@ function isSameLocalDay(dateIso: string, reference = new Date()) {
   );
 }
 
-function buildSacosMap(lancamentos: LancamentoOffline[], cicloId?: string) {
-  return lancamentos.reduce<Record<string, number>>((acc, lancamento) => {
+function buildSacosMap(lancamentos: LancamentoOffline[] | undefined | null, cicloId?: string) {
+  const list = Array.isArray(lancamentos) ? lancamentos : [];
+  return list.reduce<Record<string, number>>((acc, lancamento) => {
+    if (!lancamento || !lancamento.pasto_id) return acc;
     if (cicloId && lancamento.ciclo_id !== cicloId) return acc;
     if (lancamento.cocho_cheio) return acc; // Don't count cocho cheio as saco consumption
 
-    acc[lancamento.pasto_id] = (acc[lancamento.pasto_id] || 0) + lancamento.sacos;
+    acc[lancamento.pasto_id] = (acc[lancamento.pasto_id] || 0) + (lancamento.sacos || 0);
     return acc;
   }, {});
 }
@@ -206,15 +208,16 @@ export default function CapatazDashboard() {
     setObsHistorico(hist);
   }, []);
 
-  const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[], pendingCountValue: number, cicloId?: string) => {
-    setLancamentosHoje(allLancamentos.filter((lancamento) => isSameLocalDay(lancamento.data)));
-    setSacosMap(buildSacosMap(allLancamentos, cicloId));
-    setPendingCount(pendingCountValue);
+  const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[] | undefined | null, pendingCountValue: number, cicloId?: string) => {
+    const list = Array.isArray(allLancamentos) ? allLancamentos.filter(Boolean) : [];
+    setLancamentosHoje(list.filter((lancamento) => typeof lancamento?.data === 'string' && isSameLocalDay(lancamento.data)));
+    setSacosMap(buildSacosMap(list, cicloId));
+    setPendingCount(pendingCountValue ?? 0);
     // Build consumo map from latest lancamento per pasto
     const cMap: Record<string, { status_consumo?: string; indice_consumo?: number }> = {};
-    const sorted = [...allLancamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const sorted = [...list].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
     for (const l of sorted) {
-      if (!cMap[l.pasto_id] && l.status_consumo) {
+      if (l?.pasto_id && !cMap[l.pasto_id] && l.status_consumo) {
         cMap[l.pasto_id] = { status_consumo: l.status_consumo, indice_consumo: l.indice_consumo };
       }
     }
