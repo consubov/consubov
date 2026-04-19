@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
+import { useSyncEngine } from "@/hooks/useSyncEngine";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
