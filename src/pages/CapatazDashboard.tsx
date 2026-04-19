@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
+import { useSyncEngine } from "@/hooks/useSyncEngine";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
@@ -1004,6 +1006,22 @@ export default function CapatazDashboard() {
     try { await loadFromSupabase(); } catch {}
   };
 
+  // Sync engine: auto-triggers on online/visibility/mount + retry with backoff.
+  // It wraps handleSync (which throws on internal failures via setSyncError → we re-throw).
+  const runSyncForEngine = useCallback(async () => {
+    setSyncError(null);
+    await handleSync();
+    // If handleSync surfaced an error via state, propagate it so the engine schedules a retry.
+    if (syncError) {
+      throw new Error(syncError);
+    }
+  }, [handleSync, syncError]);
+
+  const sync = useSyncEngine({
+    runSync: runSyncForEngine,
+    enabled: Boolean(user?.id),
+  });
+
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
   };
@@ -1239,6 +1257,17 @@ export default function CapatazDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <UpdateBanner />
+      <div className="px-4 pt-2">
+        <SyncStatusBanner
+          status={sync.status}
+          pendingCount={sync.pendingCount}
+          lastSyncedAt={sync.lastSyncedAt}
+          retryAttempt={sync.retryAttempt}
+          errorMessage={sync.errorMessage}
+          onRetry={() => sync.triggerSync(true)}
+          onLoginAgain={signOut}
+        />
+      </div>
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
