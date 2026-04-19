@@ -43,14 +43,16 @@ self.addEventListener('install', (event) => {
       })
       .catch(() => undefined),
   );
-  self.skipWaiting();
+  // NOTE: skipWaiting() removed from install — only triggered explicitly via
+  // SKIP_WAITING message from the update banner. Prevents reload loops.
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    ).then(() => self.clients.claim())
+    )
+    // NOTE: clients.claim() removed — new SW only controls pages after reload.
   );
 });
 
