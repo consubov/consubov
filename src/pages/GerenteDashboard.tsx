@@ -251,6 +251,7 @@ export default function GerenteDashboard() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="sync" className="text-xs data-[state=active]:text-primary">Sync</TabsTrigger>
         </TabsList>
 
         {/* ===== PAINEL ===== */}
