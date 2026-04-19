@@ -4,7 +4,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-const CACHE_NAME = 'consubov-v3';
+const CACHE_NAME = 'consubov-v4';
 const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
@@ -12,9 +12,36 @@ const STATIC_ASSETS = [
   '/icon-512.png',
 ];
 
+// ZXing wasm/worker assets are loaded lazily by the QR scanner. Pre-warm
+// the runtime cache so the camera works after long offline periods.
+async function precacheZxingAssets(cache) {
+  try {
+    const res = await fetch('/');
+    if (!res.ok) return;
+    const html = await res.text();
+    const matches = html.match(/\/assets\/[^"'\s]+\.(?:js|wasm)/g) || [];
+    const zxing = matches.filter((p) => /zxing|qr|barcode/i.test(p));
+    await Promise.all(
+      zxing.map((path) =>
+        fetch(path)
+          .then((r) => (r && r.ok ? cache.put(path, r.clone()) : null))
+          .catch(() => null),
+      ),
+    );
+  } catch {
+    /* ignore — best-effort warmup */
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => undefined)
+    caches
+      .open(CACHE_NAME)
+      .then(async (cache) => {
+        try { await cache.addAll(STATIC_ASSETS); } catch { /* ignore */ }
+        await precacheZxingAssets(cache);
+      })
+      .catch(() => undefined),
   );
   self.skipWaiting();
 });
