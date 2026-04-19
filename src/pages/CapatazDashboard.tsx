@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useKeepAlive } from "@/hooks/useKeepAlive";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -120,6 +121,10 @@ function calcDinamicoPasto(
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
+
+  // Keep the page/SW alive while the capataz is logged in to prevent
+  // the browser from discarding offline state after idle time.
+  useKeepAlive(Boolean(user?.id));
   const [screen, setScreen] = useState<Screen>('home');
   const [pastos, setPastos] = useState<PastoCache[]>([]);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
