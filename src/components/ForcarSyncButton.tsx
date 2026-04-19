@@ -35,16 +35,34 @@ export function ForcarSyncButton({
       const { data: sessionData } = await supabase.auth.getSession();
       const senderId = sessionData?.session?.user?.id ?? null;
 
-      const { error } = await supabase.from("sync_commands").insert({
-        target_user_id: targetUserId,
-        sender_user_id: senderId,
-        command: "sync",
-      });
-      if (error) throw error;
-      toast.success(`Sinal enviado para ${targetName}`);
+      const { data: inserted, error } = await supabase
+        .from("sync_commands")
+        .insert({
+          target_user_id: targetUserId,
+          sender_user_id: senderId,
+          command: "sync",
+        })
+        .select("id")
+        .single();
+      if (error || !inserted?.id) {
+        console.error("[ForcarSyncButton] insert failed:", error);
+        toast.error("Erro ao enviar sinal — tente novamente.");
+        return;
+      }
+
+      // Verify the row exists (RLS-safe read-back)
+      const { data: verify } = await supabase
+        .from("sync_commands")
+        .select("id")
+        .eq("id", inserted.id)
+        .maybeSingle();
+      if (!verify) {
+        console.warn("[ForcarSyncButton] insert succeeded but verification failed (likely RLS) — signal still delivered");
+      }
+      toast.success(`Sinal enviado ✓ — aguardando ${targetName}...`);
     } catch (err: any) {
       console.error("[ForcarSyncButton] error:", err);
-      toast.error("Erro ao enviar sinal: " + (err?.message ?? "desconhecido"));
+      toast.error("Erro ao enviar sinal — tente novamente.");
     } finally {
       setSending(false);
     }
