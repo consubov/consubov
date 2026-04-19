@@ -21,6 +21,7 @@ import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
+import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
 import PastoCard from "@/components/capataz/PastoCard";
 import QrScanner from "@/components/capataz/QrScanner";
 import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
@@ -1021,6 +1022,9 @@ export default function CapatazDashboard() {
     runSync: runSyncForEngine,
     enabled: Boolean(user?.id),
   });
+
+  // Listen for remote "Force Sync" commands from Admin/Gerente dashboard
+  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false));
 
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];

@@ -1628,6 +1628,33 @@ export type Database = {
           },
         ]
       }
+      sync_commands: {
+        Row: {
+          acknowledged_at: string | null
+          command: string
+          created_at: string
+          id: string
+          sender_user_id: string | null
+          target_user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          command?: string
+          created_at?: string
+          id?: string
+          sender_user_id?: string | null
+          target_user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          command?: string
+          created_at?: string
+          id?: string
+          sender_user_id?: string | null
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       teste: {
         Row: {
           id: number
