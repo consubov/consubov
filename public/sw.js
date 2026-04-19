@@ -4,7 +4,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-const CACHE_NAME = 'consubov-v4';
+const CACHE_NAME = 'consubov-v5';
 const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
