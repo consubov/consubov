@@ -112,23 +112,41 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
           console.warn("[sync] auth check failed:", authErr);
         }
 
-        // 2. Run the actual sync
+        // 2. Backup current pending records to localStorage mirror BEFORE
+        //    we touch the network — guarantees a redundant copy even if the
+        //    sync crashes mid-flight.
+        try { await backupPendingToLocalStorage(backupUserInfo); } catch { /* ignore */ }
+
+        // 3. Run the actual sync
         const previousLastSyncedAt = lastSyncedAtRef.current;
         await runSyncRef.current();
 
-        // 3. Success
+        // 4. Success
         const newSyncedAt = new Date().toISOString();
         lastSyncedAtRef.current = newSyncedAt;
+        const remaining = await getTotalPendingCount();
         setState((s) => ({
           ...s,
           status: "success",
           retryAttempt: 0,
           errorMessage: null,
           lastSyncedAt: newSyncedAt,
+          pendingCount: remaining,
         }));
-        await refreshPendingCount();
 
-        // 4. Post-success hook (e.g. auto-generate PDF)
+        // 5. Refresh local backup mirror with the (now smaller) pending set
+        try { await backupPendingToLocalStorage(backupUserInfo); } catch { /* ignore */ }
+
+        // 6. Report sync_log so Admin/Gerente sees the device state
+        if (userId) {
+          void reportSyncLog(userId, {
+            pendingCount: remaining,
+            lastAttempt: newSyncedAt,
+            lastSuccess: newSyncedAt,
+          });
+        }
+
+        // 7. Post-success hook (e.g. auto-generate PDF)
         if (onSyncSuccessRef.current) {
           try {
             await onSyncSuccessRef.current(previousLastSyncedAt);
@@ -141,7 +159,7 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
         const isAuthErr = /401|jwt|token|unauthor/i.test(msg);
 
         setState((s) => {
-          const nextAttempt = Math.min(s.retryAttempt + 1, RETRY_DELAYS_MS.length);
+          const nextAttempt = Math.min(s.retryAttempt + 1, MAX_RETRY_ATTEMPTS);
           return {
             ...s,
             status: isAuthErr ? "auth-required" : "error",
@@ -150,10 +168,20 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
           };
         });
 
+        // Report failure to sync_log too — Admin needs visibility on stuck devices
+        if (userId) {
+          void reportSyncLog(userId, {
+            pendingCount: await getTotalPendingCount(),
+            lastAttempt: new Date().toISOString(),
+            lastSuccess: lastSyncedAtRef.current,
+          });
+        }
+
         if (isAuthErr) {
           toast.error("Faça login novamente para sincronizar");
-        } else {
-          // Schedule backoff retry
+        } else if (state.retryAttempt < MAX_RETRY_ATTEMPTS) {
+          // Schedule backoff retry — capped at MAX_RETRY_ATTEMPTS so we
+          // don't spin forever; capataz can re-trigger manually after that.
           const attempt = Math.min(state.retryAttempt, RETRY_DELAYS_MS.length - 1);
           const delay = RETRY_DELAYS_MS[attempt];
           clearRetry();
@@ -166,7 +194,7 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, refreshPendingCount, clearRetry]
+    [enabled, refreshPendingCount, clearRetry, userId, backupUserInfo]
   );
 
   // Auto-triggers
