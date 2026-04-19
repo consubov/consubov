@@ -538,3 +538,48 @@ export async function deleteSyncQueueItem(id: string) {
   const db = await getDb();
   await db.delete('syncQueue', id);
 }
+
+// Sync Errors (for visibility / retry per-record)
+export async function logSyncError(entry: Omit<SyncErrorLog, 'timestamp'> & { timestamp?: string }) {
+  return safeRun(async () => {
+    const db = await getDb();
+    const existing = await db.get('syncErrors', entry.id);
+    const attemptCount = (existing?.attemptCount ?? 0) + 1;
+    await db.put('syncErrors', {
+      id: entry.id,
+      recordType: entry.recordType,
+      errorMessage: entry.errorMessage,
+      timestamp: entry.timestamp ?? new Date().toISOString(),
+      attemptCount,
+    });
+  }, undefined);
+}
+
+export async function clearSyncError(id: string) {
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('syncErrors', id);
+  }, undefined);
+}
+
+export async function getSyncErrors(): Promise<SyncErrorLog[]> {
+  return safeRun(async () => {
+    const db = await getDb();
+    return (await db.getAll('syncErrors')) ?? [];
+  }, []);
+}
+
+export async function getTotalPendingCount(): Promise<number> {
+  return safeRun(async () => {
+    const db = await getDb();
+    const [lanc, obs, pes, fechar] = await Promise.all([
+      db.getAllFromIndex('lancamentos', 'by-status', 'pendente'),
+      db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente'),
+      db.getAll('pesagensPendentes'),
+      db.get('config', 'fechar_mes_pendente'),
+    ]);
+    const pesPend = (pes ?? []).filter((p) => p && !p.sincronizado).length;
+    return (lanc?.length ?? 0) + (obs?.length ?? 0) + pesPend + (fechar?.value ? 1 : 0);
+  }, 0);
+}
+
