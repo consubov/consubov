@@ -104,6 +104,59 @@ export default function GerenteDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [salgaReportOpen, setSalgaReportOpen] = useState(false);
+  const [pdfLoadingByRetiro, setPdfLoadingByRetiro] = useState<Record<string, boolean>>({});
+  const [pdfRefreshTick, setPdfRefreshTick] = useState(0);
+
+  // Realtime: when any capataz syncs (lancamento INSERT into our fazenda),
+  // bump a tick so retiro rows re-render the "Baixar PDF" affordance.
+  useEffect(() => {
+    if (!roleData.fazendaId) return;
+    const channel = supabase
+      .channel(`gerente-lancamentos-${roleData.fazendaId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "lancamentos",
+          filter: `fazenda_id=eq.${roleData.fazendaId}`,
+        },
+        () => {
+          setPdfRefreshTick((t) => t + 1);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roleData.fazendaId]);
+
+  const handleBaixarSalgaPdf = async (retiro: RetiroComDados) => {
+    if (!retiro.id || !roleData.fazendaId) return;
+    setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: true }));
+    try {
+      // Use the last 24h as default range when generating on demand
+      const result = await generateAndStoreSalgaPdf({
+        fazendaId: roleData.fazendaId,
+        fazendaNome,
+        retiroId: retiro.id,
+        retiroNome: retiro.nome,
+        sinceIso: null,
+        responsavelNome: retiro.capataz || gerenteNome,
+      });
+      if (result.empty) {
+        toast.info("Sem salgas recentes para gerar PDF.");
+      } else {
+        downloadBlob(result.blob, result.fileName);
+        toast.success("PDF baixado");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Falha ao gerar PDF");
+    } finally {
+      setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: false }));
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
