@@ -1022,6 +1022,7 @@ export default function CapatazDashboard() {
     enabled: Boolean(user?.id),
   });
 
+  const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
   };
 
