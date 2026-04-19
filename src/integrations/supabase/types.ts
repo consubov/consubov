@@ -1655,6 +1655,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_log: {
+        Row: {
+          device_info: Json | null
+          id: string
+          last_attempt: string | null
+          last_success: string | null
+          record_count_pending: number
+          storage_estimate_bytes: number | null
+          storage_quota_bytes: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          device_info?: Json | null
+          id?: string
+          last_attempt?: string | null
+          last_success?: string | null
+          record_count_pending?: number
+          storage_estimate_bytes?: number | null
+          storage_quota_bytes?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          device_info?: Json | null
+          id?: string
+          last_attempt?: string | null
+          last_success?: string | null
+          record_count_pending?: number
+          storage_estimate_bytes?: number | null
+          storage_quota_bytes?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teste: {
         Row: {
           id: number

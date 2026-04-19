@@ -35,6 +35,7 @@ import LandingPage from "./pages/LandingPage";
 import EscritorioLayout from "./pages/EscritorioLayout";
 import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
+import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -184,6 +185,7 @@ const App = () => (
                 <Route path="ciclos" element={<CiclosPage />} />
                 <Route path="inteligencia" element={<PainelInteligenciaPage />} />
                 <Route path="auditoria" element={<AuditoriaConfigPage />} />
+                <Route path="recuperar" element={<RecuperarDadosPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
