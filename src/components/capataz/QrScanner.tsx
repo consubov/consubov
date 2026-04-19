@@ -178,9 +178,13 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
   }, []);
 
   const openCameraStream = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Camera API indisponível.");
+    if (typeof navigator === "undefined" || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      throw new Error("Camera API indisponível neste navegador.");
     }
+
+    // iOS Safari sometimes requires a tick after a user gesture before
+    // getUserMedia resolves cleanly when the page has been idle.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     let lastError: unknown = null;
 

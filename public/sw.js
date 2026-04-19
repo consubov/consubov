@@ -4,7 +4,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-const CACHE_NAME = 'consubov-v2';
+const CACHE_NAME = 'consubov-v3';
 const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
@@ -27,6 +27,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+async function safeCacheMatch(request) {
+  try {
+    return await caches.match(request);
+  } catch {
+    return undefined;
+  }
+}
+
+async function safeCachePut(request, response) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response);
+  } catch {
+    /* ignore quota / opaque errors */
+  }
+}
+
 async function networkFirst(request, fallbackUrl) {
   try {
     const response = await fetch(request);
@@ -34,55 +51,113 @@ async function networkFirst(request, fallbackUrl) {
     if (response && response.status === 200) {
       const url = new URL(request.url);
       if (request.method === 'GET' && url.origin === self.location.origin) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, response.clone());
+        // Fire-and-forget — never let cache errors break the response
+        void safeCachePut(request, response.clone());
       }
     }
 
     return response;
   } catch {
-    const cached = await caches.match(request);
+    const cached = await safeCacheMatch(request);
     if (cached) return cached;
     if (fallbackUrl) {
-      const fallback = await caches.match(fallbackUrl);
+      const fallback = await safeCacheMatch(fallbackUrl);
       if (fallback) return fallback;
     }
-    throw new Error('Network request failed and no cache was available.');
+    // Last-resort empty response so the SW never throws to the page
+    return new Response('', { status: 504, statusText: 'Offline' });
   }
+}
+
+async function cacheFirst(request) {
+  const cached = await safeCacheMatch(request);
+  const url = new URL(request.url);
+
+  const fetchPromise = fetch(request)
+    .then((response) => {
+      if (response && response.status === 200 && url.origin === self.location.origin) {
+        void safeCachePut(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => cached || new Response('', { status: 504, statusText: 'Offline' }));
+
+  return cached || fetchPromise;
 }
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
+
+  // Hard passthrough — never intercept these (camera, extensions, dev tools)
+  const rawUrl = request.url || '';
+  if (
+    rawUrl.startsWith('blob:') ||
+    rawUrl.startsWith('mediastream:') ||
+    rawUrl.startsWith('chrome-extension:') ||
+    rawUrl.startsWith('data:')
+  ) {
+    return;
+  }
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
 
   if (request.method !== 'GET') {
-    event.respondWith(fetch(request));
+    // Let non-GET requests go straight to the network without SW handling
     return;
   }
 
+  // Navigation: always try network, fall back to cached index.html
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, '/index.html'));
+    event.respondWith(
+      (async () => {
+        try {
+          return await networkFirst(request, '/index.html');
+        } catch {
+          const fallback = await safeCacheMatch('/index.html');
+          return fallback || new Response('', { status: 504, statusText: 'Offline' });
+        }
+      })()
+    );
     return;
   }
 
+  // Supabase / API: network-first, no fallback page
   if (url.hostname.includes('supabase') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/auth/')) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(
+      (async () => {
+        try {
+          return await networkFirst(request);
+        } catch {
+          return new Response('', { status: 504, statusText: 'Offline' });
+        }
+      })()
+    );
     return;
   }
 
+  // Same-origin assets (JS, CSS, wasm, workers): cache-first for offline reliability
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && url.origin === self.location.origin) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || fetchPromise;
-    })
+    (async () => {
+      try {
+        return await cacheFirst(request);
+      } catch {
+        const cached = await safeCacheMatch(request);
+        return cached || new Response('', { status: 504, statusText: 'Offline' });
+      }
+    })()
   );
+});
+
+// Global safety net so a rejected promise never tears down the SW
+self.addEventListener('error', (event) => {
+  console.warn('[SW] error event:', event.message);
+});
+self.addEventListener('unhandledrejection', (event) => {
+  console.warn('[SW] unhandledrejection:', event.reason);
+  event.preventDefault?.();
 });
