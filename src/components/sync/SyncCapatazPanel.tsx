@@ -283,7 +283,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
                         Nunca sincronizou
                       </Badge>
                     ) : pending > 0 ? (
-                      <Badge className="gap-1 bg-yellow-500/15 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/20 dark:text-yellow-400">
+                      <Badge variant="outline" className="gap-1 border-secondary bg-secondary/15 text-secondary-foreground">
                         <AlertTriangle className="w-3 h-3" />
                         {pending} pendente{pending > 1 ? "s" : ""}
                       </Badge>
