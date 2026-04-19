@@ -601,3 +601,25 @@ export async function getTotalPendingCount(): Promise<number> {
   }, 0);
 }
 
+
+// Last generated salga PDF per retiro
+export async function saveLastPdf(entry: LastPdfEntry) {
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('lastPdfs', entry);
+  }, undefined);
+}
+
+export async function getLastPdf(retiroId: string): Promise<LastPdfEntry | undefined> {
+  return safeRun(async () => {
+    const db = await getDb();
+    return db.get('lastPdfs', `last_pdf_${retiroId}`);
+  }, undefined);
+}
+
+export async function deleteLastPdf(retiroId: string) {
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('lastPdfs', `last_pdf_${retiroId}`);
+  }, undefined);
+}
