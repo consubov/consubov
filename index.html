@@ -32,6 +32,28 @@
 
   <body>
     <div id="root"></div>
+    <!--
+      ONE-TIME SW CLEANUP — remove after one successful deploy.
+      Clears any corrupted service worker / cache from previous builds
+      that caused infinite reload loops on client devices.
+    -->
+    <script>
+      (function () {
+        try {
+          if ('serviceWorker' in navigator && !sessionStorage.getItem('sw-cleanup-done')) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (r) { r.unregister(); });
+            });
+            if (window.caches) {
+              caches.keys().then(function (keys) {
+                keys.forEach(function (k) { caches.delete(k); });
+              });
+            }
+            sessionStorage.setItem('sw-cleanup-done', '1');
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
