@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  saveAuthSession,
+  getAuthSession,
+  clearAuthSession,
+  buildSessionPayload,
+} from "@/lib/offlineSession";
 
 export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | null;
 
@@ -157,6 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentSession?.user ?? null);
 
       if (currentSession?.user) {
+        // Persist session to IndexedDB so the capataz never needs to
+        // return to base just because their token expired offline.
+        void saveAuthSession(buildSessionPayload(currentSession));
+
         const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
 
         if (cachedCapatazRole && !cancelled) {
@@ -183,16 +193,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setRoleData(emptyRoleData);
         clearCachedCapatazRole();
+        void clearAuthSession();
       }
       if (!cancelled) setLoading(false);
     }
 
     // 1. Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Persist session payload on every auth change so refresh tokens are
+      // always up-to-date in IndexedDB even when the page reloads cold.
+      if (session) {
+        void saveAuthSession(buildSessionPayload(session));
+      }
+
       // After initial load, handle subsequent auth changes
       if (initializedRef.current) {
-        // For token refresh events, only update session/user without re-detecting role
-        // This prevents brief state resets that cause unwanted redirects
         if (event === "TOKEN_REFRESHED" && session?.user) {
           setSession(session);
           setUser(session.user);
@@ -202,11 +217,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // 2. Then get initial session (prevents race condition)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      initializedRef.current = true;
-      loadRole(session);
-    });
+    // 2. Then get initial session — try Supabase first, then fall back to
+    //    IndexedDB-persisted session if we're offline / token expired.
+    (async () => {
+      try {
+        const { data: { session: liveSession } } = await supabase.auth.getSession();
+        if (liveSession) {
+          initializedRef.current = true;
+          await loadRole(liveSession);
+          return;
+        }
+
+        // No live session — try restoring from IndexedDB
+        const persisted = await getAuthSession();
+        if (persisted?.access_token && persisted?.refresh_token) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: persisted.access_token,
+            refresh_token: persisted.refresh_token,
+          });
+          if (!error && data.session) {
+            initializedRef.current = true;
+            await loadRole(data.session);
+            return;
+          }
+          // setSession failed (e.g. truly offline). Build a synthetic session
+          // so the capataz lands on their dashboard instead of the login screen.
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            const offlineSession = {
+              access_token: persisted.access_token,
+              refresh_token: persisted.refresh_token,
+              expires_at: persisted.expires_at,
+              expires_in: Math.max(0, persisted.expires_at - Math.floor(Date.now() / 1000)),
+              token_type: "bearer",
+              user: {
+                id: persisted.user_id,
+                email: persisted.email ?? undefined,
+                app_metadata: {},
+                user_metadata: { nome: persisted.user_name ?? undefined },
+                aud: "authenticated",
+                created_at: persisted.saved_at,
+              },
+            } as unknown as Session;
+            initializedRef.current = true;
+            await loadRole(offlineSession);
+            return;
+          }
+        }
+
+        initializedRef.current = true;
+        await loadRole(null);
+      } catch (e) {
+        console.error("[useAuth] init failed:", e);
+        initializedRef.current = true;
+        await loadRole(null);
+      }
+    })();
 
     // Safety timeout
     const timeout = setTimeout(() => {
@@ -235,6 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRoleData(emptyRoleData);
       clearCachedCapatazRole();
+      void clearAuthSession();
       if (typeof window !== "undefined") {
         window.location.replace("/");
       }
