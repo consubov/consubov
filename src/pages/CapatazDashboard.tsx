@@ -1006,7 +1006,22 @@ export default function CapatazDashboard() {
     try { await loadFromSupabase(); } catch {}
   };
 
-  const getMonthName = (m: number) => {
+  // Sync engine: auto-triggers on online/visibility/mount + retry with backoff.
+  // It wraps handleSync (which throws on internal failures via setSyncError → we re-throw).
+  const runSyncForEngine = useCallback(async () => {
+    setSyncError(null);
+    await handleSync();
+    // If handleSync surfaced an error via state, propagate it so the engine schedules a retry.
+    if (syncError) {
+      throw new Error(syncError);
+    }
+  }, [handleSync, syncError]);
+
+  const sync = useSyncEngine({
+    runSync: runSyncForEngine,
+    enabled: Boolean(user?.id),
+  });
+
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
   };
 
