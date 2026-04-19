@@ -55,13 +55,8 @@ export function registerSW() {
     })
     .catch((err) => console.warn("SW registration failed:", err));
 
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload();
-    }
-  });
+  // NOTE: controllerchange reload removed — was causing infinite reload loop.
+  // Updates are now applied only when the user clicks the update banner.
 }
 
 export function useSWUpdate() {
