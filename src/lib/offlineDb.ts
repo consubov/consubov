@@ -103,6 +103,14 @@ export interface SyncQueueItem {
   createdAt: string;
 }
 
+export interface SyncErrorLog {
+  id: string;            // record_id (lancamento/observacao/...)
+  recordType: string;    // 'lancamento' | 'observacao' | 'mortalidade' | 'fechar_mes' | ...
+  errorMessage: string;
+  timestamp: string;     // ISO
+  attemptCount: number;
+}
+
 export interface PesagemPendente {
   id: string;
   lote_id: string;
@@ -166,12 +174,16 @@ interface ConsubovDB extends DBSchema {
     key: string;
     value: SyncQueueItem;
   };
+  syncErrors: {
+    key: string;
+    value: SyncErrorLog;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function openConsubovDb() {
-  return openDB<ConsubovDB>('consubov-capataz', 5, {
+  return openDB<ConsubovDB>('consubov-capataz', 6, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -200,6 +212,9 @@ function openConsubovDb() {
       }
       if (oldVersion < 5) {
         db.createObjectStore('syncQueue', { keyPath: 'id' });
+      }
+      if (oldVersion < 6) {
+        db.createObjectStore('syncErrors', { keyPath: 'id' });
       }
     },
     blocked() {
