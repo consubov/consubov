@@ -114,6 +114,7 @@ async function cacheFirst(request) {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const rawUrl = request.url || '';
 
   // Hard passthrough for camera / extensions / inline data — never intercept
   if (
