@@ -47,6 +47,7 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess }: UseSyncEngine
   runSyncRef.current = runSync;
   const onSyncSuccessRef = useRef(onSyncSuccess);
   onSyncSuccessRef.current = onSyncSuccess;
+  const lastSyncedAtRef = useRef<string | null>(null);
 
   const refreshPendingCount = useCallback(async () => {
     const count = await getTotalPendingCount();
@@ -105,21 +106,18 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess }: UseSyncEngine
         }
 
         // 2. Run the actual sync
-        const previousLastSyncedAt = (await new Promise<string | null>((resolve) => {
-          setState((s) => {
-            resolve(s.lastSyncedAt);
-            return s;
-          });
-        }));
+        const previousLastSyncedAt = lastSyncedAtRef.current;
         await runSyncRef.current();
 
         // 3. Success
+        const newSyncedAt = new Date().toISOString();
+        lastSyncedAtRef.current = newSyncedAt;
         setState((s) => ({
           ...s,
           status: "success",
           retryAttempt: 0,
           errorMessage: null,
-          lastSyncedAt: new Date().toISOString(),
+          lastSyncedAt: newSyncedAt,
         }));
         await refreshPendingCount();
 
