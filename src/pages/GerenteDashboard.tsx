@@ -346,6 +346,26 @@ export default function GerenteDashboard() {
                       </span>
                     )}
                   </div>
+                  {/* Inline PDF download — auto-refreshes via realtime tick */}
+                  <div className="mt-2 flex justify-end" data-tick={pdfRefreshTick}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      disabled={!r.id || !!pdfLoadingByRetiro[r.id!]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleBaixarSalgaPdf(r);
+                      }}
+                    >
+                      {r.id && pdfLoadingByRetiro[r.id] ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Download className="w-3 h-3" />
+                      )}
+                      Baixar PDF
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))
