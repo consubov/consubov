@@ -50,7 +50,7 @@ export function SyncStatusBanner({
 
   if (status === "syncing") {
     return (
-      <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-900 dark:text-yellow-200 rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
+      <div className="bg-secondary/30 border border-secondary text-secondary-foreground rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
         <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
         <span className="flex-1 font-medium">
           Sincronizando…
