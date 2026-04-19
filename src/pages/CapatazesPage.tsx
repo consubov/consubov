@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import { ForcarSyncButton } from "@/components/ForcarSyncButton";
 
 interface Retiro {
   id: string;
@@ -236,6 +237,7 @@ export default function CapatazesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <ForcarSyncButton targetUserId={c.user_id} targetName={c.nome} />
                       <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar">
                         <Pencil className="w-4 h-4" />
                       </Button>
