@@ -1257,6 +1257,17 @@ export default function CapatazDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <UpdateBanner />
+      <div className="px-4 pt-2">
+        <SyncStatusBanner
+          status={sync.status}
+          pendingCount={sync.pendingCount}
+          lastSyncedAt={sync.lastSyncedAt}
+          retryAttempt={sync.retryAttempt}
+          errorMessage={sync.errorMessage}
+          onRetry={() => sync.triggerSync(true)}
+          onLoginAgain={signOut}
+        />
+      </div>
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
