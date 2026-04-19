@@ -115,13 +115,14 @@ async function cacheFirst(request) {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Hard passthrough — never intercept these (camera, extensions, dev tools)
-  const rawUrl = request.url || '';
+  // Hard passthrough for camera / extensions / inline data — never intercept
   if (
     rawUrl.startsWith('blob:') ||
     rawUrl.startsWith('mediastream:') ||
     rawUrl.startsWith('chrome-extension:') ||
-    rawUrl.startsWith('data:')
+    rawUrl.startsWith('moz-extension:') ||
+    rawUrl.startsWith('data:') ||
+    rawUrl.includes('mediastream')
   ) {
     return;
   }
