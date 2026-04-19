@@ -41,11 +41,11 @@ interface Props {
 const ALL = "__all__";
 
 function formatTime(iso: string | null | undefined) {
-  if (!iso) return "Nunca sincronizou";
+  if (!iso) return null;
   try {
     return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   } catch {
-    return "—";
+    return null;
   }
 }
 
@@ -255,24 +255,35 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza�
             {capatazesByFilter.map((c) => {
               const log = c.user_id ? logs.get(c.user_id) : undefined;
               const pending = log?.record_count_pending ?? 0;
+              const lastSync = log?.last_success ?? null;
+              const lastSyncFormatted = formatTime(lastSync);
+              const neverSynced = !lastSync;
+
               return (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors flex-wrap"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-foreground truncate">{c.nome}</div>
-                    <div className="text-xs text-muted-foreground truncate">
+                  <div className="w-full sm:flex-1 min-w-0">
+                    <div className="font-medium text-foreground break-words whitespace-normal">{c.nome}</div>
+                    <div className="text-xs text-muted-foreground break-words whitespace-normal">
                       {c.retiro_nome ?? "—"}
                       {c.fazenda_nome ? ` · ${c.fazenda_nome}` : ""}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Último sync: {formatTime(log?.last_success ?? null)}
-                    </div>
+                    {!neverSynced && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Último sync: {lastSyncFormatted}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {pending > 0 ? (
+                  <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
+                    {neverSynced ? (
                       <Badge variant="destructive" className="gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Nunca sincronizou
+                      </Badge>
+                    ) : pending > 0 ? (
+                      <Badge className="gap-1 bg-yellow-500/15 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/20 dark:text-yellow-400">
                         <AlertTriangle className="w-3 h-3" />
                         {pending} pendente{pending > 1 ? "s" : ""}
                       </Badge>
