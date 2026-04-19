@@ -27,6 +27,7 @@ import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
+import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -231,7 +232,7 @@ export default function GerenteDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-5 rounded-none border-b bg-card h-10 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-6 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="painel" className="text-xs data-[state=active]:text-primary">Painel</TabsTrigger>
           <TabsTrigger value="retiros" className="text-xs data-[state=active]:text-primary">Retiros</TabsTrigger>
           <TabsTrigger value="estoque" className="text-xs data-[state=active]:text-primary relative">
@@ -251,6 +252,7 @@ export default function GerenteDashboard() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="sync" className="text-xs data-[state=active]:text-primary">Sync</TabsTrigger>
         </TabsList>
 
         {/* ===== PAINEL ===== */}
@@ -530,6 +532,15 @@ export default function GerenteDashboard() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* ===== SYNC ===== */}
+        <TabsContent value="sync" className="flex-1 overflow-auto p-4 mt-0">
+          {roleData.fazendaId ? (
+            <SyncCapatazPanel fazendaIdsScope={[roleData.fazendaId]} />
+          ) : (
+            <p className="text-center text-muted-foreground text-sm py-8">Carregando...</p>
+          )}
         </TabsContent>
       </Tabs>
 
