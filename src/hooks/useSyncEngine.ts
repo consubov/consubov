@@ -20,6 +20,8 @@ interface UseSyncEngineOptions {
   runSync: () => Promise<void>;
   /** Whether sync should be active (e.g. user logged in). */
   enabled: boolean;
+  /** Optional callback fired only after a successful sync. Receives the previous lastSyncedAt (ISO) so caller can compute "since last sync" range. */
+  onSyncSuccess?: (previousLastSyncedAt: string | null) => void | Promise<void>;
 }
 
 /**
@@ -30,7 +32,7 @@ interface UseSyncEngineOptions {
  *  - Visible status (idle / syncing / success / error / auth-required)
  *  - Pending-count polling
  */
-export function useSyncEngine({ runSync, enabled }: UseSyncEngineOptions) {
+export function useSyncEngine({ runSync, enabled, onSyncSuccess }: UseSyncEngineOptions) {
   const [state, setState] = useState<SyncEngineState>({
     status: "idle",
     pendingCount: 0,
@@ -43,6 +45,9 @@ export function useSyncEngine({ runSync, enabled }: UseSyncEngineOptions) {
   const retryTimerRef = useRef<number | null>(null);
   const runSyncRef = useRef(runSync);
   runSyncRef.current = runSync;
+  const onSyncSuccessRef = useRef(onSyncSuccess);
+  onSyncSuccessRef.current = onSyncSuccess;
+  const lastSyncedAtRef = useRef<string | null>(null);
 
   const refreshPendingCount = useCallback(async () => {
     const count = await getTotalPendingCount();
@@ -101,17 +106,29 @@ export function useSyncEngine({ runSync, enabled }: UseSyncEngineOptions) {
         }
 
         // 2. Run the actual sync
+        const previousLastSyncedAt = lastSyncedAtRef.current;
         await runSyncRef.current();
 
         // 3. Success
+        const newSyncedAt = new Date().toISOString();
+        lastSyncedAtRef.current = newSyncedAt;
         setState((s) => ({
           ...s,
           status: "success",
           retryAttempt: 0,
           errorMessage: null,
-          lastSyncedAt: new Date().toISOString(),
+          lastSyncedAt: newSyncedAt,
         }));
         await refreshPendingCount();
+
+        // 4. Post-success hook (e.g. auto-generate PDF)
+        if (onSyncSuccessRef.current) {
+          try {
+            await onSyncSuccessRef.current(previousLastSyncedAt);
+          } catch (hookErr) {
+            console.warn("[sync] onSyncSuccess hook failed:", hookErr);
+          }
+        }
       } catch (err: any) {
         const msg = err?.message || err?.details || "Erro desconhecido";
         const isAuthErr = /401|jwt|token|unauthor/i.test(msg);

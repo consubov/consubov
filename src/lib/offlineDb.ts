@@ -178,12 +178,27 @@ interface ConsubovDB extends DBSchema {
     key: string;
     value: SyncErrorLog;
   };
+  lastPdfs: {
+    key: string; // 'last_pdf_{retiro_id}'
+    value: LastPdfEntry;
+  };
+}
+
+export interface LastPdfEntry {
+  id: string;            // 'last_pdf_{retiro_id}'
+  retiroId: string;
+  retiroNome: string;
+  fileName: string;
+  blob: Blob;
+  generatedAt: string;   // ISO
+  rangeStartIso?: string | null;
+  rangeEndIso?: string | null;
 }
 
 let dbPromise: Promise<IDBPDatabase<ConsubovDB>> | null = null;
 
 function openConsubovDb() {
-  return openDB<ConsubovDB>('consubov-capataz', 6, {
+  return openDB<ConsubovDB>('consubov-capataz', 7, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         const lancStore = db.createObjectStore('lancamentos', { keyPath: 'id' });
@@ -215,6 +230,9 @@ function openConsubovDb() {
       }
       if (oldVersion < 6) {
         db.createObjectStore('syncErrors', { keyPath: 'id' });
+      }
+      if (oldVersion < 7) {
+        db.createObjectStore('lastPdfs', { keyPath: 'id' });
       }
     },
     blocked() {
@@ -583,3 +601,25 @@ export async function getTotalPendingCount(): Promise<number> {
   }, 0);
 }
 
+
+// Last generated salga PDF per retiro
+export async function saveLastPdf(entry: LastPdfEntry) {
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('lastPdfs', entry);
+  }, undefined);
+}
+
+export async function getLastPdf(retiroId: string): Promise<LastPdfEntry | undefined> {
+  return safeRun(async () => {
+    const db = await getDb();
+    return db.get('lastPdfs', `last_pdf_${retiroId}`);
+  }, undefined);
+}
+
+export async function deleteLastPdf(retiroId: string) {
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('lastPdfs', `last_pdf_${retiroId}`);
+  }, undefined);
+}

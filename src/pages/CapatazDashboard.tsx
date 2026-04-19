@@ -54,6 +54,7 @@ import {
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
+import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -1021,6 +1022,30 @@ export default function CapatazDashboard() {
   const sync = useSyncEngine({
     runSync: runSyncForEngine,
     enabled: Boolean(user?.id),
+    onSyncSuccess: async (previousLastSyncedAt) => {
+      // Auto-generate the latest salga PDF and offer immediate download
+      if (!retiro?.id || !fazendaId) return;
+      try {
+        const result = await generateAndStoreSalgaPdf({
+          fazendaId,
+          fazendaNome: retiro.fazenda_nome || "",
+          retiroId: retiro.id,
+          retiroNome: retiro.nome,
+          sinceIso: previousLastSyncedAt,
+          responsavelNome: userName,
+        });
+        if (result.empty) return;
+        toast.success("Sync concluído — PDF disponível", {
+          duration: 10_000,
+          action: {
+            label: "Baixar PDF",
+            onClick: () => downloadBlob(result.blob, result.fileName),
+          },
+        });
+      } catch (e) {
+        console.warn("[capataz] auto PDF generation failed:", e);
+      }
+    },
   });
 
   // Listen for remote "Force Sync" commands from Admin/Gerente dashboard

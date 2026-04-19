@@ -20,11 +20,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -102,6 +104,59 @@ export default function GerenteDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [salgaReportOpen, setSalgaReportOpen] = useState(false);
+  const [pdfLoadingByRetiro, setPdfLoadingByRetiro] = useState<Record<string, boolean>>({});
+  const [pdfRefreshTick, setPdfRefreshTick] = useState(0);
+
+  // Realtime: when any capataz syncs (lancamento INSERT into our fazenda),
+  // bump a tick so retiro rows re-render the "Baixar PDF" affordance.
+  useEffect(() => {
+    if (!roleData.fazendaId) return;
+    const channel = supabase
+      .channel(`gerente-lancamentos-${roleData.fazendaId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "lancamentos",
+          filter: `fazenda_id=eq.${roleData.fazendaId}`,
+        },
+        () => {
+          setPdfRefreshTick((t) => t + 1);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roleData.fazendaId]);
+
+  const handleBaixarSalgaPdf = async (retiro: RetiroComDados) => {
+    if (!retiro.id || !roleData.fazendaId) return;
+    setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: true }));
+    try {
+      // Use the last 24h as default range when generating on demand
+      const result = await generateAndStoreSalgaPdf({
+        fazendaId: roleData.fazendaId,
+        fazendaNome,
+        retiroId: retiro.id,
+        retiroNome: retiro.nome,
+        sinceIso: null,
+        responsavelNome: retiro.capataz || gerenteNome,
+      });
+      if (result.empty) {
+        toast.info("Sem salgas recentes para gerar PDF.");
+      } else {
+        downloadBlob(result.blob, result.fileName);
+        toast.success("PDF baixado");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Falha ao gerar PDF");
+    } finally {
+      setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: false }));
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -290,6 +345,26 @@ export default function GerenteDashboard() {
                         {r.diasSemSalga}d sem salga
                       </span>
                     )}
+                  </div>
+                  {/* Inline PDF download — auto-refreshes via realtime tick */}
+                  <div className="mt-2 flex justify-end" data-tick={pdfRefreshTick}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      disabled={!r.id || !!pdfLoadingByRetiro[r.id!]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleBaixarSalgaPdf(r);
+                      }}
+                    >
+                      {r.id && pdfLoadingByRetiro[r.id] ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Download className="w-3 h-3" />
+                      )}
+                      Baixar PDF
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
