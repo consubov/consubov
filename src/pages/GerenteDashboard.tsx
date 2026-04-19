@@ -231,7 +231,7 @@ export default function GerenteDashboard() {
 
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-5 rounded-none border-b bg-card h-10 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-6 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="painel" className="text-xs data-[state=active]:text-primary">Painel</TabsTrigger>
           <TabsTrigger value="retiros" className="text-xs data-[state=active]:text-primary">Retiros</TabsTrigger>
           <TabsTrigger value="estoque" className="text-xs data-[state=active]:text-primary relative">
