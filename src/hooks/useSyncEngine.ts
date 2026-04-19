@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTotalPendingCount } from "@/lib/offlineDb";
+import { reportSyncLog } from "@/lib/syncLogReporter";
+import { backupPendingToLocalStorage, type PendingBackup } from "@/lib/backupMirror";
 import { toast } from "sonner";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "error" | "auth-required";
@@ -13,7 +15,8 @@ export interface SyncEngineState {
   errorMessage: string | null;
 }
 
-const RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000];
+const RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000, 5 * 60_000];
+const MAX_RETRY_ATTEMPTS = 10;
 
 interface UseSyncEngineOptions {
   /** The actual sync routine. Should THROW on failure. */
@@ -22,6 +25,10 @@ interface UseSyncEngineOptions {
   enabled: boolean;
   /** Optional callback fired only after a successful sync. Receives the previous lastSyncedAt (ISO) so caller can compute "since last sync" range. */
   onSyncSuccess?: (previousLastSyncedAt: string | null) => void | Promise<void>;
+  /** Current user id — used to write a sync_log row visible to Admin/Gerente. */
+  userId?: string | null;
+  /** Optional info attached to localStorage backup mirror for emergency export. */
+  backupUserInfo?: PendingBackup["userInfo"];
 }
 
 /**
@@ -32,7 +39,7 @@ interface UseSyncEngineOptions {
  *  - Visible status (idle / syncing / success / error / auth-required)
  *  - Pending-count polling
  */
-export function useSyncEngine({ runSync, enabled, onSyncSuccess }: UseSyncEngineOptions) {
+export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupUserInfo }: UseSyncEngineOptions) {
   const [state, setState] = useState<SyncEngineState>({
     status: "idle",
     pendingCount: 0,
