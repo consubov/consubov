@@ -129,6 +129,8 @@ export default function CapatazDashboard() {
   // Keep the page/SW alive while the capataz is logged in to prevent
   // the browser from discarding offline state after idle time.
   useKeepAlive(Boolean(user?.id));
+  const [bootReady, setBootReady] = useState(false);
+  const [startupError, setStartupError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [pastos, setPastos] = useState<PastoCache[]>([]);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
@@ -209,7 +211,7 @@ export default function CapatazDashboard() {
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
     loadLocalData();
-  });
+  }, bootReady);
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
@@ -349,11 +351,39 @@ export default function CapatazDashboard() {
     await refreshObservacoes();
     const fecharPend = await getFecharMesPendente();
     setFecharMesPendente(fecharPend);
-  }, [applyLancamentosState, restoreUiState]);
+  }, [applyLancamentosState, refreshObservacoes, restoreUiState]);
 
   useEffect(() => {
-    loadLocalData();
-  }, [loadLocalData]);
+    let cancelled = false;
+    let timerId: number | null = null;
+    let rafId: number | null = null;
+
+    const startBoot = () => {
+      timerId = window.setTimeout(() => {
+        if (!cancelled) setBootReady(true);
+      }, 0);
+    };
+
+    if (typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
+      rafId = window.requestAnimationFrame(startBoot);
+    } else {
+      startBoot();
+    }
+
+    return () => {
+      cancelled = true;
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!bootReady) return;
+    void loadLocalData().catch((error) => {
+      console.error('[CapatazDashboard] local bootstrap failed:', error);
+      setStartupError('Não foi possível iniciar os dados offline do capataz.');
+    });
+  }, [bootReady, loadLocalData]);
 
   useEffect(() => {
     if (!uiStateReady) return;
@@ -1021,7 +1051,7 @@ export default function CapatazDashboard() {
 
   const sync = useSyncEngine({
     runSync: runSyncForEngine,
-    enabled: Boolean(user?.id),
+    enabled: bootReady && Boolean(user?.id),
     onSyncSuccess: async (previousLastSyncedAt) => {
       // Auto-generate the latest salga PDF and offer immediate download
       if (!retiro?.id || !fazendaId) return;
@@ -1049,11 +1079,36 @@ export default function CapatazDashboard() {
   });
 
   // Listen for remote "Force Sync" commands from Admin/Gerente dashboard
-  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false));
+  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), bootReady);
 
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
   };
+
+  if (startupError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+          <h1 className="text-lg font-semibold text-foreground">Falha ao abrir o painel</h1>
+          <p className="text-sm text-muted-foreground">{startupError}</p>
+          <Button onClick={() => window.location.reload()} className="w-full">
+            Recarregar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!bootReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="text-center space-y-2">
+          <p className="text-base font-medium text-foreground">Preparando painel do capataz…</p>
+          <p className="text-sm text-muted-foreground">Carregando a interface antes dos dados offline.</p>
+        </div>
+      </div>
+    );
+  }
 
   const getPastoStatus = (pastoId: string): 'feito' | 'pendente' | 'atrasado' => {
     const hoje = lancamentosHoje.filter(l => l.pasto_id === pastoId);

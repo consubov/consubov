@@ -87,6 +87,29 @@ function cacheCapatazRole(userId: string, roleData: RoleData) {
   }
 }
 
+function isCapatazRoute() {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname === "/capataz" || window.location.pathname.startsWith("/capataz/");
+}
+
+function deferNonCritical(task: () => void) {
+  if (typeof window === "undefined") {
+    task();
+    return;
+  }
+
+  const run = () => {
+    window.setTimeout(task, 0);
+  };
+
+  if ("requestAnimationFrame" in window) {
+    window.requestAnimationFrame(run);
+    return;
+  }
+
+  run();
+}
+
 async function detectRole(userId: string): Promise<RoleData> {
   // 1. Check capataz first (as user requested order)
   const { data: capataz, error: capatazError } = await supabase
@@ -162,10 +185,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
-      if (currentSession?.user) {
-        // Persist session to IndexedDB so the capataz never needs to
-        // return to base just because their token expired offline.
-        void saveAuthSession(buildSessionPayload(currentSession));
+        if (currentSession?.user) {
+          // Never block the first paint of /capataz on an IndexedDB write.
+          deferNonCritical(() => {
+            void saveAuthSession(buildSessionPayload(currentSession));
+          });
 
         const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
 
@@ -203,7 +227,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Persist session payload on every auth change so refresh tokens are
       // always up-to-date in IndexedDB even when the page reloads cold.
       if (session) {
-        void saveAuthSession(buildSessionPayload(session));
+        deferNonCritical(() => {
+          void saveAuthSession(buildSessionPayload(session));
+        });
       }
 
       // After initial load, handle subsequent auth changes
@@ -229,6 +255,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // No live session — try restoring from IndexedDB
+        const shouldDelayOfflineRestore = isCapatazRoute() && typeof navigator !== "undefined" && navigator.onLine;
+        if (shouldDelayOfflineRestore) {
+          initializedRef.current = true;
+          await loadRole(null);
+          return;
+        }
+
         const persisted = await getAuthSession();
         if (persisted?.access_token && persisted?.refresh_token) {
           const { data, error } = await supabase.auth.setSession({
