@@ -170,6 +170,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.pathname === '/version.json') {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
   if (url.hostname.includes('supabase') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/auth/')) {
     event.respondWith(networkFirst(request));
     return;
