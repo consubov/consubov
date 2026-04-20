@@ -1904,6 +1904,19 @@ export default function CapatazDashboard() {
           onDone={() => { loadFromSupabase(); }}
         />
       )}
+
+      {/* Lançamento Manual Modal */}
+      {lancManualOpen && roleData.retiroId && fazendaId && (
+        <Suspense fallback={null}>
+          <LancamentoManualModal
+            open={lancManualOpen}
+            onOpenChange={setLancManualOpen}
+            pastos={pastos.map(p => ({ id: p.id, nome: p.nome, num_animais: p.num_animais }))}
+            retiroId={roleData.retiroId}
+            fazendaId={fazendaId}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
