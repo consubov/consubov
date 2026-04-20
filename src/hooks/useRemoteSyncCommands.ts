@@ -13,13 +13,14 @@ const POLL_LOOKBACK_MS = 10 * 60_000; // 10 minutes
 export function useRemoteSyncCommands(
   userId: string | undefined,
   onCommand: () => void | Promise<void>,
+  enabled = true,
 ) {
   const onCommandRef = useRef(onCommand);
   onCommandRef.current = onCommand;
   const handlingRef = useRef(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!enabled || !userId) return;
 
     const handleCommand = async (rowId: string) => {
       if (handlingRef.current) return;
@@ -102,5 +103,5 @@ export function useRemoteSyncCommands(
       supabase.removeChannel(channel);
       window.clearInterval(pollId);
     };
-  }, [userId]);
+  }, [enabled, userId]);
 }
