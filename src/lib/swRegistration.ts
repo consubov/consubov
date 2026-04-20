@@ -1,8 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 
 let swRegistration: ServiceWorkerRegistration | null = null;
+let controllerChangeBound = false;
+let reloadingForUpdate = false;
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
+
+function logSw(message: string, ...args: unknown[]) {
+  console.log(`[SW] ${message}`, ...args);
+}
 
 function notifyListeners(waiting: boolean) {
   listeners.forEach((fn) => fn(waiting));
@@ -14,52 +20,76 @@ async function clearAppCaches() {
   await Promise.all(keys.filter((key) => key.startsWith(APP_CACHE_PREFIX)).map((key) => caches.delete(key)));
 }
 
+function bindControllerChangeReload() {
+  if (controllerChangeBound) return;
+  controllerChangeBound = true;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    logSw("Reload após update");
+    window.location.reload();
+  });
+}
+
+async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
+  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
+  logSw("Novo Service Worker encontrado");
+  logSw("Atualizando aplicação");
+  registration.waiting.postMessage({ type: "SKIP_WAITING" });
+  return true;
+}
+
 function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
-  // SW already waiting on load → notify immediately.
   if (registration.waiting && navigator.serviceWorker.controller) {
-    notifyListeners(true);
+    void activateWaitingServiceWorker(registration);
   }
 
   registration.addEventListener("updatefound", () => {
     const newWorker = registration.installing;
     if (!newWorker) return;
 
+    logSw("Novo Service Worker encontrado");
+
     newWorker.addEventListener("statechange", () => {
       if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-        // New version available — surface to the user via toast.
-        notifyListeners(true);
+        void activateWaitingServiceWorker(registration);
       }
     });
   });
 }
 
 export async function maybeUpdateActiveServiceWorker() {
-  if (!("serviceWorker" in navigator)) return;
+  if (!("serviceWorker" in navigator)) return false;
 
   try {
-    if (window.self !== window.top) return;
+    if (window.self !== window.top) return false;
   } catch {
-    return;
+    return false;
   }
 
   if (
     window.location.hostname.includes("id-preview--") ||
     window.location.hostname.includes("lovableproject.com")
   ) {
-    return;
+    return false;
   }
 
   try {
     const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
-      await registration.update();
-      if (registration.waiting && navigator.serviceWorker.controller) {
-        notifyListeners(true);
-      }
+    if (!registration) return false;
+    swRegistration = registration;
+    bindControllerChangeReload();
+    attachRegistrationListeners(registration);
+    await registration.update();
+    if (registration.waiting && navigator.serviceWorker.controller) {
+      return await activateWaitingServiceWorker(registration);
     }
   } catch (err) {
     console.warn("SW update check failed:", err);
   }
+
+  return false;
 }
 
 export function registerSW() {
@@ -81,16 +111,20 @@ export function registerSW() {
     return;
   }
 
+  bindControllerChangeReload();
+
   navigator.serviceWorker
-    .register("/sw.js")
+    .register("/sw.js", { updateViaCache: "none" })
     .then((reg) => {
       swRegistration = reg;
       attachRegistrationListeners(reg);
       void reg.update();
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        void activateWaitingServiceWorker(reg);
+      }
     })
     .catch((err) => console.warn("SW registration failed:", err));
 
-  // Periodic background check so long-lived sessions still pick up new versions.
   setInterval(() => void maybeUpdateActiveServiceWorker(), 60 * 60 * 1000);
 }
 
@@ -111,9 +145,9 @@ export function useSWUpdate() {
   }, []);
 
   const applyUpdate = useCallback(() => {
-    // Tell waiting SW to take over, then reload so the user gets the fresh shell.
     if (swRegistration?.waiting) {
-      swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
+      void activateWaitingServiceWorker(swRegistration);
+      return;
     }
     window.location.reload();
   }, []);
