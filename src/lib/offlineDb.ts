@@ -299,11 +299,13 @@ export async function getPastoByQr(qrUuid: string): Promise<PastoCache | undefin
 
 // Retiro
 export async function cacheRetiro(retiro: RetiroCache) {
-  const db = await getDb();
-  const tx = db.transaction('retiro', 'readwrite');
-  await tx.store.clear();
-  await tx.store.put(retiro);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('retiro', 'readwrite');
+    await tx.store.clear();
+    await tx.store.put(retiro);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedRetiro(): Promise<RetiroCache | undefined> {
@@ -316,11 +318,13 @@ export async function getCachedRetiro(): Promise<RetiroCache | undefined> {
 
 // Ciclos
 export async function cacheCiclos(ciclos: CicloCache[]) {
-  const db = await getDb();
-  const tx = db.transaction('ciclos', 'readwrite');
-  await tx.store.clear();
-  for (const c of ciclos) await tx.store.put(c);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('ciclos', 'readwrite');
+    await tx.store.clear();
+    for (const c of ciclos) await tx.store.put(c);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedCiclos(): Promise<CicloCache[]> {
@@ -332,8 +336,10 @@ export async function getCachedCiclos(): Promise<CicloCache[]> {
 
 // Lancamentos
 export async function saveLancamento(lancamento: LancamentoOffline) {
-  const db = await getDb();
-  await db.put('lancamentos', lancamento);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('lancamentos', lancamento);
+  }, undefined);
 }
 
 export async function getLancamentosPendentes(): Promise<LancamentoOffline[]> {
@@ -360,18 +366,22 @@ export async function getAllLancamentos(): Promise<LancamentoOffline[]> {
 }
 
 export async function markSincronizado(id: string) {
-  const db = await getDb();
-  const l = await db.get('lancamentos', id);
-  if (l) {
-    l.status = 'sincronizado';
-    await db.put('lancamentos', l);
-  }
+  return safeRun(async () => {
+    const db = await getDb();
+    const l = await db.get('lancamentos', id);
+    if (l) {
+      l.status = 'sincronizado';
+      await db.put('lancamentos', l);
+    }
+  }, undefined);
 }
 
 // Config
 export async function setConfig(key: string, value: string) {
-  const db = await getDb();
-  await db.put('config', { key, value });
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('config', { key, value });
+  }, undefined);
 }
 
 export async function getConfig(key: string): Promise<string | undefined> {
@@ -383,8 +393,10 @@ export async function getConfig(key: string): Promise<string | undefined> {
 }
 
 export async function deleteLancamento(id: string) {
-  const db = await getDb();
-  await db.delete('lancamentos', id);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('lancamentos', id);
+  }, undefined);
 }
 
 // Sacos consumidos por pasto hoje
@@ -399,8 +411,10 @@ export async function getSacosHojePorPasto(): Promise<Record<string, number>> {
 
 // Observações Offline
 export async function saveObservacaoOffline(obs: ObservacaoOffline) {
-  const db = await getDb();
-  await db.put('observacoesOffline', obs);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('observacoesOffline', obs);
+  }, undefined);
 }
 
 export async function getAllObservacoes(): Promise<ObservacaoOffline[]> {
@@ -425,17 +439,21 @@ export async function getObservacoesSincronizadas(): Promise<ObservacaoOffline[]
 }
 
 export async function markObservacaoSincronizada(id: string) {
-  const db = await getDb();
-  const obs = await db.get('observacoesOffline', id);
-  if (obs) {
-    obs.status = 'sincronizado';
-    await db.put('observacoesOffline', obs);
-  }
+  return safeRun(async () => {
+    const db = await getDb();
+    const obs = await db.get('observacoesOffline', id);
+    if (obs) {
+      obs.status = 'sincronizado';
+      await db.put('observacoesOffline', obs);
+    }
+  }, undefined);
 }
 
 export async function deleteObservacaoOffline(id: string) {
-  const db = await getDb();
-  await db.delete('observacoesOffline', id);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('observacoesOffline', id);
+  }, undefined);
 }
 
 // Fechar Mês (stored in config store)
@@ -447,8 +465,10 @@ export interface FecharMesPendente {
 }
 
 export async function saveFecharMes(action: FecharMesPendente) {
-  const db = await getDb();
-  await db.put('config', { key: 'fechar_mes_pendente', value: JSON.stringify(action) });
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('config', { key: 'fechar_mes_pendente', value: JSON.stringify(action) });
+  }, undefined);
 }
 
 export async function getFecharMesPendente(): Promise<FecharMesPendente | null> {
@@ -465,17 +485,21 @@ export async function getFecharMesPendente(): Promise<FecharMesPendente | null> 
 }
 
 export async function clearFecharMes() {
-  const db = await getDb();
-  await db.delete('config', 'fechar_mes_pendente');
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('config', 'fechar_mes_pendente');
+  }, undefined);
 }
 
 // Produto Ativo
 export async function cacheProdutoAtivo(produto: ProdutoCache) {
-  const db = await getDb();
-  const tx = db.transaction('produtoAtivo', 'readwrite');
-  await tx.store.clear();
-  await tx.store.put(produto);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('produtoAtivo', 'readwrite');
+    await tx.store.clear();
+    await tx.store.put(produto);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedProdutoAtivo(): Promise<ProdutoCache | undefined> {
@@ -488,11 +512,13 @@ export async function getCachedProdutoAtivo(): Promise<ProdutoCache | undefined>
 
 // Fazenda Cache
 export async function cacheFazenda(fazenda: FazendaCache) {
-  const db = await getDb();
-  const tx = db.transaction('fazendaCache', 'readwrite');
-  await tx.store.clear();
-  await tx.store.put(fazenda);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('fazendaCache', 'readwrite');
+    await tx.store.clear();
+    await tx.store.put(fazenda);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
@@ -505,8 +531,10 @@ export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
 
 // Pesagens Pendentes (offline)
 export async function savePesagemPendente(pesagem: PesagemPendente) {
-  const db = await getDb();
-  await db.put('pesagensPendentes', pesagem);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('pesagensPendentes', pesagem);
+  }, undefined);
 }
 
 export async function getPesagensPendentes(): Promise<PesagemPendente[]> {
@@ -526,23 +554,29 @@ export async function countPesagensPendentes(): Promise<number> {
 }
 
 export async function markPesagemSincronizada(id: string) {
-  const db = await getDb();
-  const p = await db.get('pesagensPendentes', id);
-  if (p) {
-    p.sincronizado = true;
-    await db.put('pesagensPendentes', p);
-  }
+  return safeRun(async () => {
+    const db = await getDb();
+    const p = await db.get('pesagensPendentes', id);
+    if (p) {
+      p.sincronizado = true;
+      await db.put('pesagensPendentes', p);
+    }
+  }, undefined);
 }
 
 export async function deletePesagemPendente(id: string) {
-  const db = await getDb();
-  await db.delete('pesagensPendentes', id);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('pesagensPendentes', id);
+  }, undefined);
 }
 
 // Sync Queue (for offline PDF uploads etc.)
 export async function saveSyncQueueItem(item: SyncQueueItem) {
-  const db = await getDb();
-  await db.put('syncQueue', item);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('syncQueue', item);
+  }, undefined);
 }
 
 export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
@@ -553,8 +587,10 @@ export async function getSyncQueueItems(): Promise<SyncQueueItem[]> {
 }
 
 export async function deleteSyncQueueItem(id: string) {
-  const db = await getDb();
-  await db.delete('syncQueue', id);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.delete('syncQueue', id);
+  }, undefined);
 }
 
 // Sync Errors (for visibility / retry per-record)

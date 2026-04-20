@@ -14,6 +14,32 @@ async function clearAppCaches() {
   await Promise.all(keys.filter((key) => key.startsWith(APP_CACHE_PREFIX)).map((key) => caches.delete(key)));
 }
 
+export async function maybeUpdateActiveServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  try {
+    if (window.self !== window.top) return;
+  } catch {
+    return;
+  }
+
+  if (
+    window.location.hostname.includes("id-preview--") ||
+    window.location.hostname.includes("lovableproject.com")
+  ) {
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) {
+      await registration.update();
+    }
+  } catch (err) {
+    console.warn("SW update check failed:", err);
+  }
+}
+
 export function registerSW() {
   if (!("serviceWorker" in navigator)) return;
 
