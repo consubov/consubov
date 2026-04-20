@@ -4,6 +4,12 @@ const BUILD_VERSION = '__BUILD_TIMESTAMP__';
 const CACHE_VERSION = `v-${BUILD_VERSION}`;
 const CACHE_NAME = `consubov-${CACHE_VERSION}`;
 const SHELL_CACHE = `consubov-shell-${CACHE_VERSION}`;
+const SW_VERSION_RESPONSE = new Response(CACHE_VERSION, {
+  headers: {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+  },
+});
 
 const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
 
@@ -146,6 +152,11 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname === '/sw.js') {
     event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
+  if (url.pathname === '/sw-version') {
+    event.respondWith(SW_VERSION_RESPONSE.clone());
     return;
   }
 
