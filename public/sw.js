@@ -184,12 +184,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
-    event.respondWith(staleWhileRevalidate('/index.html'));
+    event.respondWith(networkFirstWithFallback(request, '/index.html'));
     return;
   }
 
   if (url.pathname === '/manifest.json') {
-    event.respondWith(staleWhileRevalidate('/manifest.json'));
+    event.respondWith(networkFirstWithFallback(request, '/manifest.json'));
     return;
   }
 
