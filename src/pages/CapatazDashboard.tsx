@@ -133,7 +133,6 @@ function calcDinamicoPasto(
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
-  const [offlineReady, setOfflineReady] = useState(false);
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
   // Keep the page/SW alive while the capataz is logged in to prevent
@@ -206,7 +205,7 @@ export default function CapatazDashboard() {
 
   // Fetch real name from capatazes table
   useEffect(() => {
-    if (!user?.id) return;
+    if (!backgroundBootReady || !user?.id) return;
     supabase
       .from("capatazes")
       .select("nome")
@@ -217,7 +216,7 @@ export default function CapatazDashboard() {
         if (data?.nome) setUserName(data.nome);
         else if (user.email) setUserName(user.email.split('@')[0]);
       });
-  }, [user?.id, user?.email]);
+  }, [backgroundBootReady, user?.id, user?.email]);
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
     loadLocalData();
@@ -389,11 +388,40 @@ export default function CapatazDashboard() {
 
   useEffect(() => {
     if (!bootReady) return;
+
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const startBackgroundBoot = () => {
+      timerId = window.setTimeout(() => {
+        if (!cancelled) setBackgroundBootReady(true);
+      }, 900);
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(startBackgroundBoot, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+        if (timerId !== null) window.clearTimeout(timerId);
+      };
+    }
+
+    startBackgroundBoot();
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bootReady]);
+
+  useEffect(() => {
+    if (!backgroundBootReady) return;
     void loadLocalData().catch((error) => {
       console.error('[CapatazDashboard] local bootstrap failed:', error);
       setStartupError('Não foi possível iniciar os dados offline do capataz.');
     });
-  }, [bootReady, loadLocalData]);
+  }, [backgroundBootReady, loadLocalData]);
 
   useEffect(() => {
     if (!uiStateReady) return;
