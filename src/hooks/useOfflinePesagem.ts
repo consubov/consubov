@@ -12,9 +12,12 @@ import {
 } from "@/lib/offlineDb";
 
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setIsOnline(navigator.onLine);
+    }
     const goOnline = () => setIsOnline(true);
     const goOffline = () => setIsOnline(false);
     window.addEventListener("online", goOnline);
@@ -45,7 +48,7 @@ export function useOfflinePesagemSync(onSynced?: () => void, enabled = true) {
   }, [enabled]);
 
   const syncAll = useCallback(async () => {
-    if (!enabled || syncingRef.current || !navigator.onLine) return;
+    if (!enabled || syncingRef.current || !isOnline) return;
     syncingRef.current = true;
     setSyncing(true);
 
@@ -74,7 +77,7 @@ export function useOfflinePesagemSync(onSynced?: () => void, enabled = true) {
       syncingRef.current = false;
       setSyncing(false);
     }
-  }, [enabled, onSynced]);
+  }, [enabled, isOnline, onSynced]);
 
   // Sync when coming online
   useEffect(() => {

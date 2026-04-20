@@ -627,9 +627,11 @@ export default function CapatazDashboard() {
 
   // Try to load from Supabase on mount (if online)
   useEffect(() => {
-    if (!roleData.retiroId) return;
-    loadFromSupabase();
-  }, [loadFromSupabase, roleData.retiroId]);
+    if (!backgroundBootReady || !roleData.retiroId) return;
+    void loadFromSupabase().catch((error) => {
+      console.warn('[CapatazDashboard] supabase bootstrap failed:', error);
+    });
+  }, [backgroundBootReady, loadFromSupabase, roleData.retiroId]);
 
   // Prepare offline mode
   const handleIniciarSalga = async () => {

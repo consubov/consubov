@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 
 function CapatazFallback({
   title,
@@ -15,7 +16,7 @@ function CapatazFallback({
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>
         <Button onClick={() => window.location.reload()} className="w-full">
-          Recarregar
+          Tentar novamente
         </Button>
       </div>
     </div>
@@ -31,9 +32,25 @@ export default function CapatazRoute() {
     let timeoutId: number | null = null;
     let rafId: number | null = null;
 
+    const handleWindowError = (event: ErrorEvent) => {
+      console.error("[CapatazRoute] uncaught error:", event.error ?? event.message);
+      if (!cancelled) {
+        setLoadError("Erro ao carregar. Seus dados estão salvos.");
+      }
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("[CapatazRoute] unhandled rejection:", event.reason);
+      event.preventDefault?.();
+      if (!cancelled) {
+        setLoadError("Erro ao carregar. Seus dados estão salvos.");
+      }
+    };
+
     const loadDashboard = () => {
       timeoutId = window.setTimeout(async () => {
         try {
+          void maybeUpdateActiveServiceWorker();
           const module = await import("./CapatazDashboard");
           if (!cancelled) {
             setDashboard(() => module.default);
@@ -48,13 +65,19 @@ export default function CapatazRoute() {
     };
 
     if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+      window.addEventListener("error", handleWindowError);
+      window.addEventListener("unhandledrejection", handleUnhandledRejection);
       rafId = window.requestAnimationFrame(loadDashboard);
     } else {
+      window.addEventListener("error", handleWindowError);
+      window.addEventListener("unhandledrejection", handleUnhandledRejection);
       loadDashboard();
     }
 
     return () => {
       cancelled = true;
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       if (rafId !== null) window.cancelAnimationFrame(rafId);
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
@@ -80,7 +103,12 @@ export default function CapatazRoute() {
   }
 
   return (
-    <ErrorBoundary message="O painel do capataz encontrou um erro ao iniciar. Seus dados offline continuam preservados.">
+    <ErrorBoundary
+      title="Erro ao carregar"
+      message="Seus dados estão salvos."
+      retryLabel="Tentar novamente"
+      showErrorDetails={false}
+    >
       <Dashboard />
     </ErrorBoundary>
   );
