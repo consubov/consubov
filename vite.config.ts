@@ -16,6 +16,11 @@ function injectSwBuildTimestamp(): Plugin {
       if (!fs.existsSync(swPath)) return;
       const content = fs.readFileSync(swPath, "utf-8");
       fs.writeFileSync(swPath, content.replace(/__BUILD_TIMESTAMP__/g, buildTimestamp));
+
+      fs.writeFileSync(
+        path.resolve(__dirname, "dist/version.json"),
+        JSON.stringify({ version: buildTimestamp }, null, 2),
+      );
     },
   };
 }

@@ -9,6 +9,8 @@ const observedRegistrations = new WeakSet<ServiceWorkerRegistration>();
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
 const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
+const VERSION_URL = "/version.json";
+let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 
 function logSw(message: string, ...args: unknown[]) {
   console.log(`[SW] ${message}`, ...args);
@@ -66,6 +68,56 @@ function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
   });
 }
 
+async function fetchPublishedBuildVersion() {
+  try {
+    const response = await fetch(`${VERSION_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "cache-control": "no-cache",
+      },
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { version?: string };
+    return data.version ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureLatestPublishedVersion() {
+  const remoteVersion = await fetchPublishedBuildVersion();
+  if (!remoteVersion || remoteVersion === lastKnownRemoteVersion) {
+    return false;
+  }
+
+  lastKnownRemoteVersion = remoteVersion;
+  logSw("Versão remota detectada", remoteVersion);
+
+  try {
+    const registration = await navigator.serviceWorker.register(`/sw.js?v=${remoteVersion}`, {
+      updateViaCache: "none",
+    });
+    swRegistration = registration;
+    bindControllerChangeReload();
+    attachRegistrationListeners(registration);
+    await registration.update();
+
+    if (registration.waiting && navigator.serviceWorker.controller) {
+      return await activateWaitingServiceWorker(registration);
+    }
+
+    if (registration.active && navigator.serviceWorker.controller?.scriptURL !== registration.active.scriptURL) {
+      logSw("Atualizando aplicação");
+      window.location.reload();
+      return true;
+    }
+  } catch (error) {
+    console.warn("Remote SW version sync failed:", error);
+  }
+
+  return false;
+}
+
 export async function maybeUpdateActiveServiceWorker() {
   if (!("serviceWorker" in navigator)) return false;
 
@@ -83,6 +135,7 @@ export async function maybeUpdateActiveServiceWorker() {
   }
 
   try {
+    await ensureLatestPublishedVersion();
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return false;
     swRegistration = registration;
