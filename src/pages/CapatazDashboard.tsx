@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft, FileText } from "lucide-react";
+import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft, FileText, ClipboardList } from "lucide-react";
 import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import { verificarFotoObrigatoria, registrarSalgaAuditoria, getSorteioAtual, syncSorteioToSupabase } from "@/lib/auditoriaSort";
 import {
@@ -75,6 +75,7 @@ const PesagemFlowModal = lazy(() => import("@/components/eventos/PesagemFlowModa
 const ObservacaoLoteModal = lazy(() => import("@/components/eventos/ObservacaoLoteModal"));
 const DetalhesLoteModal = lazy(() => import("@/components/eventos/DetalhesLoteModal"));
 const HistoricoLoteModal = lazy(() => import("@/components/eventos/HistoricoLoteModal"));
+const LancamentoManualModal = lazy(() => import("@/components/capataz/LancamentoManualModal"));
 
 function DeferredFallback({ label = "Carregando..." }: { label?: string }) {
   return <p className="text-sm text-muted-foreground text-center py-4">{label}</p>;
@@ -200,6 +201,7 @@ export default function CapatazDashboard() {
   const [historicoLoteOpen, setHistoricoLoteOpen] = useState(false);
   const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
   const [combinedMode, setCombinedMode] = useState(false);
+  const [lancManualOpen, setLancManualOpen] = useState(false);
 
   const [userName, setUserName] = useState(user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz');
 
@@ -1441,6 +1443,10 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
+        <Button onClick={() => setLancManualOpen(true)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+          <ClipboardList className="w-5 h-5" />
+          Lançamento Manual
+        </Button>
         {roleData.retiroId && (
           <Button onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
             <MapIcon className="w-5 h-5" />

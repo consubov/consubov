@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
+import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -492,6 +493,9 @@ export default function GerenteDashboard() {
               </div>
             </div>
           )}
+
+          {/* Lançamentos Manuais Pendentes */}
+          {roleData.fazendaId && <LancamentosManuaisPendentes fazendaId={roleData.fazendaId} />}
 
           {/* Pendentes */}
           <div>
