@@ -775,68 +775,89 @@ export type Database = {
       lancamentos: {
         Row: {
           ano_referencia: number
+          aprovado_em: string | null
+          aprovado_por: string | null
           categoria: string | null
           ciclo_id: string | null
           cocho_cheio: boolean
           consumo_g_cab_dia: number | null
           created_at: string
+          criado_por: string | null
+          data_salga_informada: string | null
           dias_no_pasto: number
           fazenda_id: string
           foto_cocho_url: string | null
           id: string
           indice_consumo: number | null
           mes_referencia: number
+          motivo_recusa: string | null
           num_animais: number
           num_sacos: number
+          observacao: string | null
           origem: string
           pasto_id: string
           peso_medio_kg: number | null
           retiro_id: string
           sexo: string | null
+          status_aprovacao: string | null
           status_consumo: string | null
         }
         Insert: {
           ano_referencia: number
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           categoria?: string | null
           ciclo_id?: string | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
+          criado_por?: string | null
+          data_salga_informada?: string | null
           dias_no_pasto?: number
           fazenda_id: string
           foto_cocho_url?: string | null
           id?: string
           indice_consumo?: number | null
           mes_referencia: number
+          motivo_recusa?: string | null
           num_animais?: number
           num_sacos?: number
+          observacao?: string | null
           origem?: string
           pasto_id: string
           peso_medio_kg?: number | null
           retiro_id: string
           sexo?: string | null
+          status_aprovacao?: string | null
           status_consumo?: string | null
         }
         Update: {
           ano_referencia?: number
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           categoria?: string | null
           ciclo_id?: string | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
+          criado_por?: string | null
+          data_salga_informada?: string | null
           dias_no_pasto?: number
           fazenda_id?: string
           foto_cocho_url?: string | null
           id?: string
           indice_consumo?: number | null
           mes_referencia?: number
+          motivo_recusa?: string | null
           num_animais?: number
           num_sacos?: number
+          observacao?: string | null
           origem?: string
           pasto_id?: string
           peso_medio_kg?: number | null
           retiro_id?: string
           sexo?: string | null
+          status_aprovacao?: string | null
           status_consumo?: string | null
         }
         Relationships: [
