@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 let swRegistration: ServiceWorkerRegistration | null = null;
 let controllerChangeBound = false;
 let reloadingForUpdate = false;
+const observedRegistrations = new WeakSet<ServiceWorkerRegistration>();
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
 
@@ -41,6 +42,9 @@ async function activateWaitingServiceWorker(registration: ServiceWorkerRegistrat
 }
 
 function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
+  if (observedRegistrations.has(registration)) return;
+  observedRegistrations.add(registration);
+
   if (registration.waiting && navigator.serviceWorker.controller) {
     void activateWaitingServiceWorker(registration);
   }
