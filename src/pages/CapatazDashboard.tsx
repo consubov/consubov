@@ -1089,7 +1089,7 @@ export default function CapatazDashboard() {
 
   const sync = useSyncEngine({
     runSync: runSyncForEngine,
-    enabled: bootReady && Boolean(user?.id),
+    enabled: backgroundBootReady && Boolean(user?.id),
     onSyncSuccess: async (previousLastSyncedAt) => {
       // Auto-generate the latest salga PDF and offer immediate download
       if (!retiro?.id || !fazendaId) return;
@@ -1117,7 +1117,7 @@ export default function CapatazDashboard() {
   });
 
   // Listen for remote "Force Sync" commands from Admin/Gerente dashboard
-  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), bootReady);
+  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), backgroundBootReady);
 
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
