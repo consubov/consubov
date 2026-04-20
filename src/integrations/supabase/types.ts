@@ -1649,6 +1649,95 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_lancamento_itens: {
+        Row: {
+          created_at: string
+          data_salga: string
+          id: string
+          lancamento_id: string | null
+          num_sacos: number
+          pasto_id: string
+          solicitacao_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_salga: string
+          id?: string
+          lancamento_id?: string | null
+          num_sacos: number
+          pasto_id: string
+          solicitacao_id: string
+        }
+        Update: {
+          created_at?: string
+          data_salga?: string
+          id?: string
+          lancamento_id?: string | null
+          num_sacos?: number
+          pasto_id?: string
+          solicitacao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_lancamento_itens_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_lancamento_manual"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes_lancamento_manual: {
+        Row: {
+          capataz_nome: string | null
+          capataz_user_id: string | null
+          created_at: string
+          data_salga_geral: string
+          decidido_em: string | null
+          decidido_por: string | null
+          fazenda_id: string
+          id: string
+          motivo_recusa: string | null
+          observacao: string | null
+          retiro_id: string
+          status: string
+          total_sacos: number
+          updated_at: string
+        }
+        Insert: {
+          capataz_nome?: string | null
+          capataz_user_id?: string | null
+          created_at?: string
+          data_salga_geral?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          fazenda_id: string
+          id?: string
+          motivo_recusa?: string | null
+          observacao?: string | null
+          retiro_id: string
+          status?: string
+          total_sacos?: number
+          updated_at?: string
+        }
+        Update: {
+          capataz_nome?: string | null
+          capataz_user_id?: string | null
+          created_at?: string
+          data_salga_geral?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          fazenda_id?: string
+          id?: string
+          motivo_recusa?: string | null
+          observacao?: string | null
+          retiro_id?: string
+          status?: string
+          total_sacos?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sync_commands: {
         Row: {
           acknowledged_at: string | null

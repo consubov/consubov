@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Loader2, Send, Clock, CheckCircle2, XCircle, CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface PastoLite {
   id: string;
@@ -18,15 +21,14 @@ interface PastoLite {
   num_animais: number;
 }
 
-interface LancamentoManualPendente {
+interface SolicitacaoRow {
   id: string;
-  pasto_id: string;
-  num_sacos: number;
-  data_salga_informada: string | null;
-  observacao: string | null;
-  status_aprovacao: string | null;
+  data_salga_geral: string;
+  total_sacos: number;
+  status: string;
   motivo_recusa: string | null;
   created_at: string;
+  itens: { id: string; pasto_id: string; num_sacos: number; data_salga: string }[];
 }
 
 interface Props {
@@ -37,16 +39,18 @@ interface Props {
   fazendaId: string;
 }
 
+type PastoEntry = { sacos: string; data: Date };
+
 export default function LancamentoManualModal({ open, onOpenChange, pastos, retiroId, fazendaId }: Props) {
   const { user } = useAuth();
-  const [step, setStep] = useState<"select" | "form" | "list">("select");
-  const [selectedPasto, setSelectedPasto] = useState<PastoLite | null>(null);
-  const [sacos, setSacos] = useState("");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
-  const [observacao, setObservacao] = useState("");
+  const [tab, setTab] = useState<"novo" | "historico">("novo");
+  const [dataGeral, setDataGeral] = useState<Date>(() => new Date());
+  const [entries, setEntries] = useState<Record<string, PastoEntry>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [meusLancamentos, setMeusLancamentos] = useState<LancamentoManualPendente[]>([]);
-  const [loadingList, setLoadingList] = useState(false);
+  const [historico, setHistorico] = useState<SolicitacaoRow[]>([]);
+  const [loadingHist, setLoadingHist] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState<string | null>(null);
+  const [generalDateOpen, setGeneralDateOpen] = useState(false);
 
   const pastoMap = useMemo(() => {
     const m = new Map<string, PastoLite>();
@@ -54,238 +58,332 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     return m;
   }, [pastos]);
 
-  const loadMeus = async () => {
-    if (!retiroId) return;
-    setLoadingList(true);
-    try {
-      const { data: rows, error } = await supabase
-        .from("lancamentos")
-        .select("id, pasto_id, num_sacos, data_salga_informada, observacao, status_aprovacao, motivo_recusa, created_at")
-        .eq("retiro_id", retiroId)
-        .eq("origem", "manual")
-        .not("status_aprovacao", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      setMeusLancamentos((rows ?? []) as LancamentoManualPendente[]);
-    } catch (e: any) {
-      console.error("[LancamentoManual] load list", e);
-    } finally {
-      setLoadingList(false);
-    }
-  };
-
+  // Reset on close / open
   useEffect(() => {
-    if (!open) {
-      // Reset on close
-      setStep("select");
-      setSelectedPasto(null);
-      setSacos("");
-      setObservacao("");
-      setData(new Date().toISOString().slice(0, 10));
-      return;
-    }
-    void loadMeus();
+    if (!open) return;
+    const today = new Date();
+    setDataGeral(today);
+    setEntries({});
+    setTab("novo");
+    void loadHistorico();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, retiroId]);
 
-  const handleSelectPasto = (p: PastoLite) => {
-    setSelectedPasto(p);
-    setStep("form");
+  // Quando muda a data geral, propaga para pastos que ainda usam a data padrão (sem custom)
+  const handleDataGeralChange = (d: Date | undefined) => {
+    if (!d) return;
+    setDataGeral(d);
+    setEntries((prev) => {
+      const next: Record<string, PastoEntry> = {};
+      Object.entries(prev).forEach(([pid, e]) => {
+        next[pid] = { ...e, data: e.data.getTime() === dataGeral.getTime() ? d : e.data };
+      });
+      return next;
+    });
+    setGeneralDateOpen(false);
+  };
+
+  const updateSacos = (pastoId: string, sacos: string) => {
+    setEntries((prev) => {
+      const cur = prev[pastoId];
+      if (!sacos || sacos === "0") {
+        // remove se vazio
+        const { [pastoId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [pastoId]: { sacos, data: cur?.data ?? dataGeral } };
+    });
+  };
+
+  const updateData = (pastoId: string, d: Date | undefined) => {
+    if (!d) return;
+    setEntries((prev) => {
+      const cur = prev[pastoId];
+      if (!cur) return prev;
+      return { ...prev, [pastoId]: { ...cur, data: d } };
+    });
+    setDatePickerOpen(null);
+  };
+
+  const loadHistorico = async () => {
+    if (!retiroId) return;
+    setLoadingHist(true);
+    try {
+      const { data: sols, error } = await supabase
+        .from("solicitacoes_lancamento_manual" as any)
+        .select("id, data_salga_geral, total_sacos, status, motivo_recusa, created_at")
+        .eq("retiro_id", retiroId)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      const sList = (sols ?? []) as any[];
+      if (sList.length === 0) {
+        setHistorico([]);
+        return;
+      }
+      const ids = sList.map((s) => s.id);
+      const { data: itens } = await supabase
+        .from("solicitacoes_lancamento_itens" as any)
+        .select("id, solicitacao_id, pasto_id, num_sacos, data_salga")
+        .in("solicitacao_id", ids);
+      const grouped: SolicitacaoRow[] = sList.map((s: any) => ({
+        ...s,
+        itens: ((itens as any[]) ?? []).filter((i) => i.solicitacao_id === s.id),
+      }));
+      setHistorico(grouped);
+    } catch (e: any) {
+      console.error("[LancManual] historico", e);
+    } finally {
+      setLoadingHist(false);
+    }
   };
 
   const handleSubmit = async () => {
-    if (!selectedPasto || !user?.id) return;
-    const numSacos = parseInt(sacos, 10);
-    if (!Number.isFinite(numSacos) || numSacos <= 0) {
-      toast.error("Informe a quantidade de sacos");
+    if (!user?.id) return;
+    const filled = Object.entries(entries)
+      .map(([pid, e]) => ({ pid, sacos: parseInt(e.sacos, 10), data: e.data }))
+      .filter((e) => Number.isFinite(e.sacos) && e.sacos > 0);
+
+    if (filled.length === 0) {
+      toast.error("Preencha a quantidade de sacos em pelo menos um pasto");
       return;
     }
-    if (!data) {
-      toast.error("Informe a data da salga");
-      return;
-    }
+
     setSubmitting(true);
     try {
-      const dataIso = new Date(`${data}T12:00:00`).toISOString();
-      const now = new Date(dataIso);
-      const { error } = await supabase.from("lancamentos").insert({
-        pasto_id: selectedPasto.id,
-        retiro_id: retiroId,
-        fazenda_id: fazendaId,
-        num_sacos: numSacos,
-        num_animais: selectedPasto.num_animais ?? 0,
-        dias_no_pasto: 1,
-        origem: "manual",
-        status_aprovacao: "pendente_aprovacao",
-        data_salga_informada: dataIso,
-        observacao: observacao.trim() || null,
-        criado_por: user.id,
-        mes_referencia: now.getMonth() + 1,
-        ano_referencia: now.getFullYear(),
-        cocho_cheio: false,
-      } as any);
-      if (error) throw error;
-      toast.success("Solicitação enviada ao gerente");
-      setStep("list");
-      setSelectedPasto(null);
-      setSacos("");
-      setObservacao("");
-      setData(new Date().toISOString().slice(0, 10));
-      void loadMeus();
+      const totalSacos = filled.reduce((s, e) => s + e.sacos, 0);
+      const capatazNome = user.user_metadata?.nome || user.email?.split("@")[0] || "Capataz";
+
+      const { data: solIns, error: solErr } = await (supabase as any)
+        .from("solicitacoes_lancamento_manual")
+        .insert({
+          fazenda_id: fazendaId,
+          retiro_id: retiroId,
+          capataz_user_id: user.id,
+          capataz_nome: capatazNome,
+          data_salga_geral: dataGeral.toISOString(),
+          total_sacos: totalSacos,
+          status: "pendente",
+        })
+        .select("id")
+        .single();
+      if (solErr) throw solErr;
+
+      const itensPayload = filled.map((e) => ({
+        solicitacao_id: solIns.id,
+        pasto_id: e.pid,
+        num_sacos: e.sacos,
+        data_salga: e.data.toISOString(),
+      }));
+
+      const { error: itErr } = await (supabase as any)
+        .from("solicitacoes_lancamento_itens")
+        .insert(itensPayload);
+      if (itErr) throw itErr;
+
+      toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
+      setEntries({});
+      setTab("historico");
+      void loadHistorico();
     } catch (e: any) {
-      console.error("[LancamentoManual] insert", e);
+      console.error("[LancManual] submit", e);
       toast.error(e?.message || "Falha ao enviar solicitação");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const renderStatus = (status: string | null) => {
-    if (status === "aprovado") {
-      return <Badge className="bg-primary text-primary-foreground gap-1"><CheckCircle2 className="w-3 h-3" />Aprovado</Badge>;
+  const renderStatus = (status: string) => {
+    if (status === "aprovada") {
+      return <Badge className="bg-primary text-primary-foreground gap-1"><CheckCircle2 className="w-3 h-3" />Aprovada</Badge>;
     }
-    if (status === "recusado") {
-      return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />Recusado</Badge>;
+    if (status === "recusada") {
+      return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />Recusada</Badge>;
     }
-    return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Aguardando aprovação</Badge>;
+    return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
   };
+
+  const totalPreenchido = Object.values(entries).reduce((s, e) => s + (parseInt(e.sacos, 10) || 0), 0);
+  const countPreenchido = Object.values(entries).filter((e) => parseInt(e.sacos, 10) > 0).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-md p-0 overflow-hidden max-h-[92vh] flex flex-col">
         <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
-          <div className="flex items-center gap-2">
-            {step !== "select" && step !== "list" && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStep("select")}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
-            <DialogTitle className="text-base">
-              {step === "select" && "Lançamento Manual"}
-              {step === "form" && (selectedPasto?.nome ?? "Lançamento")}
-              {step === "list" && "Meus Lançamentos"}
-            </DialogTitle>
-          </div>
+          <DialogTitle className="text-base">Lançamento Manual</DialogTitle>
           <DialogDescription className="text-xs">
-            {step === "select" && "Selecione o pasto para lançar uma salga manual"}
-            {step === "form" && "Preencha os dados da salga para enviar ao gerente"}
-            {step === "list" && "Solicitações enviadas para aprovação"}
+            {tab === "novo"
+              ? "Preencha os pastos com salga e envie ao gerente"
+              : "Histórico de solicitações enviadas"}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Tabs simples */}
         <div className="px-4 flex gap-2 border-b shrink-0">
           <button
-            onClick={() => setStep("select")}
-            className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px ${
-              step === "select" || step === "form" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-            }`}
+            onClick={() => setTab("novo")}
+            className={cn(
+              "px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors",
+              tab === "novo" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+            )}
           >
-            Novo
+            Nova solicitação
           </button>
           <button
-            onClick={() => setStep("list")}
-            className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px ${
-              step === "list" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-            }`}
+            onClick={() => setTab("historico")}
+            className={cn(
+              "px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors",
+              tab === "historico" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+            )}
           >
-            Pendentes / Histórico
+            Histórico
           </button>
         </div>
 
         <div className="flex-1 overflow-auto px-4 py-3">
-          {step === "select" && (
-            <div className="space-y-2">
+          {tab === "novo" && (
+            <div className="space-y-3">
+              {/* Data geral */}
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                <Label className="text-xs font-semibold">Data da salga (geral)</Label>
+                <Popover open={generalDateOpen} onOpenChange={setGeneralDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="w-4 h-4 mr-2" />
+                      {format(dataGeral, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataGeral}
+                      onSelect={handleDataGeralChange}
+                      disabled={(d) => d > new Date()}
+                      initialFocus
+                      locale={ptBR}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-[11px] text-muted-foreground">
+                  Aplicada por padrão a todos os pastos. Você pode alterar individualmente abaixo.
+                </p>
+              </div>
+
+              {/* Lista de pastos */}
               {pastos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Nenhum pasto disponível.</p>
               ) : (
-                pastos.map((p) => (
-                  <Card key={p.id} className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => handleSelectPasto(p)}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-sm">{p.nome}</p>
-                        <p className="text-xs text-muted-foreground">{p.num_animais} animais</p>
-                      </div>
-                      <ArrowLeft className="w-4 h-4 rotate-180 text-muted-foreground" />
-                    </CardContent>
-                  </Card>
-                ))
+                <div className="space-y-2">
+                  {pastos.map((p) => {
+                    const entry = entries[p.id];
+                    const dataPasto = entry?.data ?? dataGeral;
+                    const isCustom = entry && entry.data.toDateString() !== dataGeral.toDateString();
+                    return (
+                      <Card key={p.id} className={cn("transition-colors", entry && "border-primary/40 bg-primary/5")}>
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm truncate">{p.nome}</p>
+                              <p className="text-[11px] text-muted-foreground">{p.num_animais} animais</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              inputMode="numeric"
+                              placeholder="Sacos"
+                              value={entry?.sacos ?? ""}
+                              onChange={(e) => updateSacos(p.id, e.target.value)}
+                              className="h-9 text-sm"
+                            />
+                            <Popover
+                              open={datePickerOpen === p.id}
+                              onOpenChange={(o) => setDatePickerOpen(o ? p.id : null)}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={cn("h-9 w-9 shrink-0", isCustom && "border-primary text-primary")}
+                                  title={isCustom ? `Data: ${format(dataPasto, "dd/MM/yyyy")}` : "Alterar data"}
+                                >
+                                  <CalendarIcon className="w-4 h-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                  mode="single"
+                                  selected={dataPasto}
+                                  onSelect={(d) => {
+                                    if (!entry) {
+                                      // se ainda não tem entry, cria com sacos vazio? Melhor exigir sacos primeiro
+                                      if (d) setEntries((prev) => ({ ...prev, [p.id]: { sacos: prev[p.id]?.sacos ?? "", data: d } }));
+                                    } else {
+                                      updateData(p.id, d);
+                                    }
+                                    setDatePickerOpen(null);
+                                  }}
+                                  disabled={(d) => d > new Date()}
+                                  initialFocus
+                                  locale={ptBR}
+                                  className={cn("p-3 pointer-events-auto")}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          {isCustom && (
+                            <p className="text-[11px] text-primary">
+                              Data específica: {format(dataPasto, "dd/MM/yyyy")}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
 
-          {step === "form" && selectedPasto && (
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="sacos" className="text-xs">Quantidade de sacos *</Label>
-                <Input
-                  id="sacos"
-                  type="number"
-                  min="1"
-                  inputMode="numeric"
-                  value={sacos}
-                  onChange={(e) => setSacos(e.target.value)}
-                  placeholder="Ex: 5"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="data" className="text-xs">Data da salga *</Label>
-                <Input
-                  id="data"
-                  type="date"
-                  value={data}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setData(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="obs" className="text-xs">Observação (opcional)</Label>
-                <Textarea
-                  id="obs"
-                  value={observacao}
-                  onChange={(e) => setObservacao(e.target.value)}
-                  placeholder="Motivo do lançamento manual..."
-                  className="mt-1 min-h-[80px]"
-                />
-              </div>
-              <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" size="lg">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Enviar para aprovação
-              </Button>
-            </div>
-          )}
-
-          {step === "list" && (
+          {tab === "historico" && (
             <div className="space-y-2">
-              {loadingList ? (
+              {loadingHist ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-              ) : meusLancamentos.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhum lançamento manual ainda.</p>
+              ) : historico.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação ainda.</p>
               ) : (
-                meusLancamentos.map((l) => {
-                  const pasto = pastoMap.get(l.pasto_id);
-                  const dataSalga = l.data_salga_informada ? new Date(l.data_salga_informada).toLocaleDateString("pt-BR") : "—";
+                historico.map((s) => {
+                  const dataGer = new Date(s.data_salga_geral).toLocaleDateString("pt-BR");
                   return (
-                    <Card key={l.id}>
-                      <CardContent className="p-3 space-y-1.5">
+                    <Card key={s.id}>
+                      <CardContent className="p-3 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-sm">{pasto?.nome ?? "Pasto"}</p>
-                          {renderStatus(l.status_aprovacao)}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">Solicitação de {dataGer}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {s.itens.length} pasto{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} sacos
+                            </p>
+                          </div>
+                          {renderStatus(s.status)}
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-3">
-                          <span><strong className="text-foreground">{l.num_sacos}</strong> sacos</span>
-                          <span>Data: {dataSalga}</span>
+                        <div className="space-y-0.5 pl-2 border-l-2 border-muted">
+                          {s.itens.map((it) => {
+                            const pasto = pastoMap.get(it.pasto_id);
+                            const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
+                            return (
+                              <p key={it.id} className="text-[11px] text-muted-foreground">
+                                <span className="text-foreground font-medium">{pasto?.nome ?? "Pasto"}</span>
+                                {" — "}{it.num_sacos} sacos · {dItem}
+                              </p>
+                            );
+                          })}
                         </div>
-                        {l.observacao && (
-                          <p className="text-xs text-muted-foreground italic">"{l.observacao}"</p>
-                        )}
-                        {l.status_aprovacao === "recusado" && l.motivo_recusa && (
-                          <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20">
+                        {s.status === "recusada" && s.motivo_recusa && (
+                          <div className="p-2 rounded bg-destructive/10 border border-destructive/20">
                             <p className="text-[10px] font-semibold text-destructive uppercase">Motivo da recusa</p>
-                            <p className="text-xs text-destructive">{l.motivo_recusa}</p>
+                            <p className="text-xs text-destructive">{s.motivo_recusa}</p>
                           </div>
                         )}
                       </CardContent>
@@ -296,6 +394,26 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
             </div>
           )}
         </div>
+
+        {tab === "novo" && pastos.length > 0 && (
+          <div className="border-t bg-background p-3 shrink-0 space-y-2">
+            {countPreenchido > 0 && (
+              <p className="text-xs text-center text-muted-foreground">
+                <span className="text-foreground font-semibold">{countPreenchido}</span> pasto{countPreenchido > 1 ? "s" : ""} ·{" "}
+                <span className="text-foreground font-semibold">{totalPreenchido}</span> sacos no total
+              </p>
+            )}
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || countPreenchido === 0}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Enviar Solicitação
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
