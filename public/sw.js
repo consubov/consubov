@@ -4,13 +4,8 @@ self.addEventListener('message', (event) => {
   }
 });
 
-const CACHE_NAME = 'consubov-v6';
-const STATIC_ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-];
+const CACHE_NAME = 'consubov-v7';
+const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
 
 // ZXing wasm/worker assets are loaded lazily by the QR scanner. Pre-warm
 // the runtime cache so the camera works after long offline periods.
@@ -37,14 +32,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then(async (cache) => {
-        try { await cache.addAll(STATIC_ASSETS); } catch { /* ignore */ }
-        await precacheZxingAssets(cache);
-      })
+      .then((cache) => precacheZxingAssets(cache))
       .catch(() => undefined),
   );
-  // NOTE: skipWaiting() removed from install — only triggered explicitly via
-  // SKIP_WAITING message from the update banner. Prevents reload loops.
 });
 
 self.addEventListener('activate', (event) => {
@@ -66,6 +56,7 @@ async function safeCacheMatch(request) {
 
 async function safeCachePut(request, response) {
   try {
+    if (!shouldCacheRequest(request)) return;
     const cache = await caches.open(CACHE_NAME);
     await cache.put(request, response);
   } catch {
@@ -73,16 +64,24 @@ async function safeCachePut(request, response) {
   }
 }
 
+function shouldCacheRequest(request) {
+  if (request.method !== 'GET') return false;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/manifest.json' || url.pathname === '/sw.js') {
+    return false;
+  }
+
+  return HASHED_ASSET_PATTERN.test(url.pathname);
+}
+
 async function networkFirst(request, fallbackUrl) {
   try {
     const response = await fetch(request);
 
-    if (response && response.status === 200) {
-      const url = new URL(request.url);
-      if (request.method === 'GET' && url.origin === self.location.origin) {
-        // Fire-and-forget — never let cache errors break the response
-        void safeCachePut(request, response.clone());
-      }
+    if (response && response.status === 200 && shouldCacheRequest(request)) {
+      void safeCachePut(request, response.clone());
     }
 
     return response;
@@ -99,19 +98,7 @@ async function networkFirst(request, fallbackUrl) {
 }
 
 async function cacheFirst(request) {
-  const cached = await safeCacheMatch(request);
-  const url = new URL(request.url);
-
-  const fetchPromise = fetch(request)
-    .then((response) => {
-      if (response && response.status === 200 && url.origin === self.location.origin) {
-        void safeCachePut(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => cached || new Response('', { status: 504, statusText: 'Offline' }));
-
-  return cached || fetchPromise;
+  return networkFirst(request);
 }
 
 self.addEventListener('fetch', (event) => {
@@ -139,6 +126,11 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') {
     // Let non-GET requests go straight to the network without SW handling
+    return;
+  }
+
+  if (url.pathname === '/sw.js' || url.pathname === '/index.html' || url.pathname === '/manifest.json') {
+    event.respondWith(fetch(request));
     return;
   }
 
@@ -171,11 +163,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin assets (JS, CSS, wasm, workers): cache-first for offline reliability
+  // Same-origin hashed assets: network-first, falling back to cache when offline
   event.respondWith(
     (async () => {
       try {
-        return await cacheFirst(request);
+        return await networkFirst(request);
       } catch {
         const cached = await safeCacheMatch(request);
         return cached || new Response('', { status: 504, statusText: 'Offline' });
