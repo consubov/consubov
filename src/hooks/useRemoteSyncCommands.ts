@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { toast } from "sonner";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -27,6 +28,8 @@ export function useRemoteSyncCommands(
       handlingRef.current = true;
       try {
         toast.info("Sinal de sincronização recebido");
+        // Piggy-back a SW update check so remote sync also delivers new app versions.
+        void maybeUpdateActiveServiceWorker();
         await onCommandRef.current();
         const { error: ackErr } = await supabase
           .from("sync_commands")
