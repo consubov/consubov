@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import GerenteDashboard from "./GerenteDashboard";
-import CapatazDashboard from "./CapatazDashboard";
+import CapatazRoute from "./CapatazRoute";
 import EscritorioLayout from "./EscritorioLayout";
 
 type ViewMode = "administrador" | "gerente" | "capataz" | "escritorio";
@@ -258,7 +258,7 @@ export default function AdminLayout() {
           {isSimulating && simulationOverride ? (
             <SimulationContext.Provider value={simulationOverride}>
               {viewMode === "gerente" ? <GerenteDashboard /> :
-               viewMode === "capataz" ? <CapatazDashboard /> :
+               viewMode === "capataz" ? <CapatazRoute /> :
                <EscritorioLayout />}
             </SimulationContext.Provider>
           ) : (

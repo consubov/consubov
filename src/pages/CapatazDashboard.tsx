@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
@@ -23,25 +23,11 @@ import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
 import PastoCard from "@/components/capataz/PastoCard";
-import QrScanner from "@/components/capataz/QrScanner";
-import SalgaForm, { type SalgaFormDraft } from "@/components/capataz/SalgaForm";
-import ObservacaoModal from "@/components/capataz/ObservacaoModal";
-import MortalidadeModal from "@/components/capataz/MortalidadeModal";
-import AbateModal from "@/components/capataz/AbateModal";
-import TransferenciaModal from "@/components/capataz/TransferenciaModal";
-import PastoActionSheet from "@/components/capataz/PastoActionSheet";
+import type { SalgaFormDraft } from "@/components/capataz/SalgaForm";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
-import EntradaAnimaisModal from "@/components/capataz/EntradaAnimaisModal";
-import TransferenciaRetiroPage from "@/pages/TransferenciaRetiroPage";
-import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
-import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
-import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import type { TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import type { SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
-import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
-import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
-import DetalhesLoteModal from "@/components/eventos/DetalhesLoteModal";
-import HistoricoLoteModal from "@/components/eventos/HistoricoLoteModal";
-import EditarPesoCapatazModal from "@/components/capataz/EditarPesoCapatazModal";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
   getCachedCiclos,
@@ -70,6 +56,28 @@ interface PersistedCapatazState {
   formJustificativa?: string;
   formAuditoriaExigida: boolean;
   formDraft: SalgaFormDraft | null;
+}
+
+const QrScanner = lazy(() => import("@/components/capataz/QrScanner"));
+const SalgaForm = lazy(() => import("@/components/capataz/SalgaForm"));
+const ObservacaoModal = lazy(() => import("@/components/capataz/ObservacaoModal"));
+const MortalidadeModal = lazy(() => import("@/components/capataz/MortalidadeModal"));
+const AbateModal = lazy(() => import("@/components/capataz/AbateModal"));
+const TransferenciaModal = lazy(() => import("@/components/capataz/TransferenciaModal"));
+const PastoActionSheet = lazy(() => import("@/components/capataz/PastoActionSheet"));
+const EntradaAnimaisModal = lazy(() => import("@/components/capataz/EntradaAnimaisModal"));
+const EditarPesoCapatazModal = lazy(() => import("@/components/capataz/EditarPesoCapatazModal"));
+const TransferenciaRetiroPage = lazy(() => import("@/pages/TransferenciaRetiroPage"));
+const RelatorioSalgaPage = lazy(() => import("@/pages/RelatorioSalgaPage"));
+const SelecionarEventoModal = lazy(() => import("@/components/eventos/SelecionarEventoModal"));
+const SanitarioFormModal = lazy(() => import("@/components/eventos/SanitarioFormModal"));
+const PesagemFlowModal = lazy(() => import("@/components/eventos/PesagemFlowModal"));
+const ObservacaoLoteModal = lazy(() => import("@/components/eventos/ObservacaoLoteModal"));
+const DetalhesLoteModal = lazy(() => import("@/components/eventos/DetalhesLoteModal"));
+const HistoricoLoteModal = lazy(() => import("@/components/eventos/HistoricoLoteModal"));
+
+function DeferredFallback({ label = "Carregando..." }: { label?: string }) {
+  return <p className="text-sm text-muted-foreground text-center py-4">{label}</p>;
 }
 
 function isSameLocalDay(dateIso: string, reference = new Date()) {
@@ -125,10 +133,11 @@ function calcDinamicoPasto(
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
+  const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
   // Keep the page/SW alive while the capataz is logged in to prevent
   // the browser from discarding offline state after idle time.
-  useKeepAlive(Boolean(user?.id));
+  useKeepAlive(Boolean(user?.id) && backgroundBootReady);
   const [bootReady, setBootReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
@@ -196,7 +205,7 @@ export default function CapatazDashboard() {
 
   // Fetch real name from capatazes table
   useEffect(() => {
-    if (!user?.id) return;
+    if (!backgroundBootReady || !user?.id) return;
     supabase
       .from("capatazes")
       .select("nome")
@@ -207,11 +216,11 @@ export default function CapatazDashboard() {
         if (data?.nome) setUserName(data.nome);
         else if (user.email) setUserName(user.email.split('@')[0]);
       });
-  }, [user?.id, user?.email]);
+  }, [backgroundBootReady, user?.id, user?.email]);
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
     loadLocalData();
-  }, bootReady);
+  }, backgroundBootReady);
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
@@ -379,11 +388,40 @@ export default function CapatazDashboard() {
 
   useEffect(() => {
     if (!bootReady) return;
+
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const startBackgroundBoot = () => {
+      timerId = window.setTimeout(() => {
+        if (!cancelled) setBackgroundBootReady(true);
+      }, 900);
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(startBackgroundBoot, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+        if (timerId !== null) window.clearTimeout(timerId);
+      };
+    }
+
+    startBackgroundBoot();
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [bootReady]);
+
+  useEffect(() => {
+    if (!backgroundBootReady) return;
     void loadLocalData().catch((error) => {
       console.error('[CapatazDashboard] local bootstrap failed:', error);
       setStartupError('Não foi possível iniciar os dados offline do capataz.');
     });
-  }, [bootReady, loadLocalData]);
+  }, [backgroundBootReady, loadLocalData]);
 
   useEffect(() => {
     if (!uiStateReady) return;
@@ -1051,7 +1089,7 @@ export default function CapatazDashboard() {
 
   const sync = useSyncEngine({
     runSync: runSyncForEngine,
-    enabled: bootReady && Boolean(user?.id),
+    enabled: backgroundBootReady && Boolean(user?.id),
     onSyncSuccess: async (previousLastSyncedAt) => {
       // Auto-generate the latest salga PDF and offer immediate download
       if (!retiro?.id || !fazendaId) return;
@@ -1079,7 +1117,7 @@ export default function CapatazDashboard() {
   });
 
   // Listen for remote "Force Sync" commands from Admin/Gerente dashboard
-  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), bootReady);
+  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), backgroundBootReady);
 
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
