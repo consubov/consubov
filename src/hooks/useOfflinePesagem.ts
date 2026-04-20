@@ -28,19 +28,24 @@ export function useOnlineStatus() {
   return isOnline;
 }
 
-export function useOfflinePesagemSync(onSynced?: () => void) {
+export function useOfflinePesagemSync(onSynced?: () => void, enabled = true) {
   const isOnline = useOnlineStatus();
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
+    if (!enabled) {
+      setPendingCount(0);
+      return 0;
+    }
     const count = await countPesagensPendentes();
     setPendingCount(count);
-  }, []);
+    return count;
+  }, [enabled]);
 
   const syncAll = useCallback(async () => {
-    if (syncingRef.current || !navigator.onLine) return;
+    if (!enabled || syncingRef.current || !navigator.onLine) return;
     syncingRef.current = true;
     setSyncing(true);
 
@@ -69,19 +74,23 @@ export function useOfflinePesagemSync(onSynced?: () => void) {
       syncingRef.current = false;
       setSyncing(false);
     }
-  }, [onSynced]);
+  }, [enabled, onSynced]);
 
   // Sync when coming online
   useEffect(() => {
-    if (isOnline) {
+    if (enabled && isOnline) {
       syncAll();
     }
-  }, [isOnline, syncAll]);
+  }, [enabled, isOnline, syncAll]);
 
   // Initial count
   useEffect(() => {
+    if (!enabled) {
+      setPendingCount(0);
+      return;
+    }
     refreshCount();
-  }, [refreshCount]);
+  }, [enabled, refreshCount]);
 
   return { pendingCount, syncing, syncAll, refreshCount, isOnline };
 }

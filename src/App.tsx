@@ -15,7 +15,7 @@ import FazendaDetailPage from "./pages/FazendaDetailPage";
 import RetiroDetailPage from "./pages/RetiroDetailPage";
 import PastoDetailPage from "./pages/PastoDetailPage";
 import GerenteDashboard from "./pages/GerenteDashboard";
-import CapatazDashboard from "./pages/CapatazDashboard";
+import CapatazRoute from "./pages/CapatazRoute";
 import GerentesPage from "./pages/GerentesPage";
 import CapatazesPage from "./pages/CapatazesPage";
 import QrCodesPage from "./pages/QrCodesPage";
@@ -190,7 +190,7 @@ const App = () => (
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
-              <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><ErrorBoundary><CapatazDashboard /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazRoute /></ProtectedRoute>} />
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
 
