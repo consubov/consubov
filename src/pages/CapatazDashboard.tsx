@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LogOut, QrCode, RefreshCw, Lock, Loader2, CheckCircle2, ScanLine, ArrowLeft, Trash2, AlertTriangle, Eye, Pencil, Map as MapIcon, ArrowRightLeft, FileText, ClipboardList } from "lucide-react";
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import { verificarFotoObrigatoria, registrarSalgaAuditoria, getSorteioAtual, syncSorteioToSupabase } from "@/lib/auditoriaSort";
 import {
@@ -203,6 +206,7 @@ export default function CapatazDashboard() {
   const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
   const [combinedMode, setCombinedMode] = useState(false);
   const [lancManualOpen, setLancManualOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [userName, setUserName] = useState(user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz');
 
@@ -1400,6 +1404,77 @@ export default function CapatazDashboard() {
       <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary/80 -ml-2"
+                  aria-label="Abrir menu"
+                >
+                  <Menu className="w-6 h-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="w-[80vw] max-w-sm p-0 flex flex-col"
+              >
+                <SheetHeader className="bg-primary text-primary-foreground p-4 text-left space-y-1">
+                  <SheetTitle className="text-primary-foreground text-base font-bold">
+                    {userName}
+                  </SheetTitle>
+                  {retiro && (
+                    <SheetDescription className="text-primary-foreground/80 text-xs">
+                      {retiro.nome} • {retiro.fazenda_nome}
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+                <Separator />
+                <nav className="flex-1 overflow-y-auto p-2">
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setLancManualOpen(true); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <ClipboardList className="w-5 h-5 text-primary" />
+                        Lançamento Manual
+                      </button>
+                    </li>
+                    {roleData.retiroId && (
+                      <li>
+                        <button
+                          onClick={() => { setMenuOpen(false); navigate(`/mapa/retiro/${roleData.retiroId}`); }}
+                          className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        >
+                          <MapIcon className="w-5 h-5 text-primary" />
+                          Ver Mapa
+                        </button>
+                      </li>
+                    )}
+                    <li><Separator className="my-1" /></li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setScreen('transferencia-retiro'); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <ArrowRightLeft className="w-5 h-5 text-primary" />
+                        Transferência entre Retiros
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setScreen('relatorio-salga'); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <FileText className="w-5 h-5 text-primary" />
+                        Relatório de Salga
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </SheetContent>
+            </Sheet>
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
             <div>
               <h1 className="text-base font-bold leading-tight">Consubov</h1>
@@ -1445,25 +1520,6 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
-        <Button onClick={() => setLancManualOpen(true)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
-          <ClipboardList className="w-5 h-5" />
-          Lançamento Manual
-        </Button>
-        {roleData.retiroId && (
-          <Button onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
-            <MapIcon className="w-5 h-5" />
-            Ver Mapa
-          </Button>
-        )}
-        <Button onClick={() => setScreen('transferencia-retiro')} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
-          <ArrowRightLeft className="w-5 h-5" />
-          Transferência entre Retiros
-        </Button>
-        <Button onClick={() => setScreen('relatorio-salga')} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
-          <FileText className="w-5 h-5" />
-          Relatório de Salga
-        </Button>
-
         {roleData.retiroId && fazendaId && (
           <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
         )}
