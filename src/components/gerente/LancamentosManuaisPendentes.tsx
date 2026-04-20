@@ -6,21 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle2, XCircle, Clock, Loader2, ClipboardList } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Loader2, ClipboardList, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-interface Pendente {
+interface ItemView {
   id: string;
   pasto_id: string;
-  retiro_id: string;
   num_sacos: number;
-  num_animais: number;
-  data_salga_informada: string | null;
-  observacao: string | null;
-  created_at: string;
+  data_salga: string;
   pasto_nome?: string;
+  num_animais?: number;
+}
+
+interface SolicitacaoView {
+  id: string;
+  retiro_id: string;
+  fazenda_id: string;
+  capataz_user_id: string | null;
+  capataz_nome: string | null;
+  data_salga_geral: string;
+  total_sacos: number;
+  created_at: string;
   retiro_nome?: string;
-  capataz_nome?: string;
+  itens: ItemView[];
 }
 
 interface Props {
@@ -29,47 +37,65 @@ interface Props {
 
 export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
   const { user } = useAuth();
-  const [pendentes, setPendentes] = useState<Pendente[]>([]);
+  const [pendentes, setPendentes] = useState<SolicitacaoView[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [recusarOpen, setRecusarOpen] = useState(false);
-  const [recusarTarget, setRecusarTarget] = useState<Pendente | null>(null);
+  const [recusarTarget, setRecusarTarget] = useState<SolicitacaoView | null>(null);
   const [motivoRecusa, setMotivoRecusa] = useState("");
 
   const load = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("lancamentos")
-        .select("id, pasto_id, retiro_id, num_sacos, num_animais, data_salga_informada, observacao, created_at")
+      const { data: sols, error } = await (supabase as any)
+        .from("solicitacoes_lancamento_manual")
+        .select("id, retiro_id, fazenda_id, capataz_user_id, capataz_nome, data_salga_geral, total_sacos, created_at")
         .eq("fazenda_id", fazendaId)
-        .eq("origem", "manual")
-        .eq("status_aprovacao", "pendente_aprovacao")
+        .eq("status", "pendente")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const rows = (data ?? []) as Pendente[];
+      const sList = (sols ?? []) as any[];
+      if (sList.length === 0) {
+        setPendentes([]);
+        return;
+      }
 
-      // Resolve names
-      const pastoIds = Array.from(new Set(rows.map((r) => r.pasto_id)));
-      const retiroIds = Array.from(new Set(rows.map((r) => r.retiro_id)));
+      const solIds = sList.map((s) => s.id);
+      const retiroIds = Array.from(new Set(sList.map((s) => s.retiro_id)));
 
-      const [pastosRes, retirosRes] = await Promise.all([
-        pastoIds.length ? supabase.from("pastos").select("id, nome").in("id", pastoIds) : Promise.resolve({ data: [] as any[] }),
-        retiroIds.length ? supabase.from("retiros").select("id, nome, capataz").in("id", retiroIds) : Promise.resolve({ data: [] as any[] }),
+      const [itensRes, retirosRes] = await Promise.all([
+        (supabase as any)
+          .from("solicitacoes_lancamento_itens")
+          .select("id, solicitacao_id, pasto_id, num_sacos, data_salga")
+          .in("solicitacao_id", solIds),
+        supabase.from("retiros").select("id, nome").in("id", retiroIds),
       ]);
 
-      const pastoMap = new Map((pastosRes.data ?? []).map((p: any) => [p.id, p.nome]));
-      const retiroMap = new Map((retirosRes.data ?? []).map((r: any) => [r.id, r]));
+      const itens = ((itensRes.data as any[]) ?? []);
+      const pastoIds = Array.from(new Set(itens.map((i) => i.pasto_id)));
+      const pastosRes = pastoIds.length
+        ? await supabase.from("pastos").select("id, nome, num_animais").in("id", pastoIds)
+        : { data: [] as any[] };
 
-      setPendentes(
-        rows.map((r) => ({
-          ...r,
-          pasto_nome: pastoMap.get(r.pasto_id) ?? "Pasto",
-          retiro_nome: retiroMap.get(r.retiro_id)?.nome ?? "Retiro",
-          capataz_nome: retiroMap.get(r.retiro_id)?.capataz ?? "",
-        }))
-      );
+      const pastoMap = new Map((pastosRes.data ?? []).map((p: any) => [p.id, p]));
+      const retiroMap = new Map((retirosRes.data ?? []).map((r: any) => [r.id, r.nome]));
+
+      const grouped: SolicitacaoView[] = sList.map((s: any) => ({
+        ...s,
+        retiro_nome: retiroMap.get(s.retiro_id) ?? "Retiro",
+        itens: itens
+          .filter((i) => i.solicitacao_id === s.id)
+          .map((i) => ({
+            id: i.id,
+            pasto_id: i.pasto_id,
+            num_sacos: i.num_sacos,
+            data_salga: i.data_salga,
+            pasto_nome: pastoMap.get(i.pasto_id)?.nome ?? "Pasto",
+            num_animais: pastoMap.get(i.pasto_id)?.num_animais ?? 0,
+          })),
+      }));
+      setPendentes(grouped);
     } catch (e: any) {
       console.error("[LancManuaisPendentes] load", e);
     } finally {
@@ -81,14 +107,19 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
     void load();
   }, [load]);
 
-  // Realtime
+  // Realtime nas duas tabelas
   useEffect(() => {
     if (!fazendaId) return;
     const channel = supabase
-      .channel(`gerente-manual-pend-${fazendaId}`)
+      .channel(`gerente-solic-manual-${fazendaId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "lancamentos", filter: `fazenda_id=eq.${fazendaId}` },
+        { event: "*", schema: "public", table: "solicitacoes_lancamento_manual", filter: `fazenda_id=eq.${fazendaId}` },
+        () => void load()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "solicitacoes_lancamento_itens" },
         () => void load()
       )
       .subscribe();
@@ -97,51 +128,117 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
     };
   }, [fazendaId, load]);
 
-  const handleAprovar = async (p: Pendente) => {
+  const handleAprovar = async (s: SolicitacaoView) => {
     if (!user?.id) return;
-    setActionId(p.id);
+    setActionId(s.id);
     try {
-      const { error } = await supabase
-        .from("lancamentos")
-        .update({
-          status_aprovacao: "aprovado",
-          aprovado_por: user.id,
-          aprovado_em: new Date().toISOString(),
-        } as any)
-        .eq("id", p.id);
-      if (error) throw error;
-
-      // Desconta do estoque do retiro (mes/ano da data informada ou atual)
-      const ref = p.data_salga_informada ? new Date(p.data_salga_informada) : new Date();
-      const mes = ref.getMonth() + 1;
-      const ano = ref.getFullYear();
-
-      const { data: estoque } = await supabase
-        .from("estoque_retiro")
-        .select("id, quantidade_atual")
-        .eq("retiro_id", p.retiro_id)
-        .eq("mes", mes)
-        .eq("ano", ano)
-        .maybeSingle();
-
-      if (estoque) {
-        await supabase
-          .from("estoque_retiro")
-          .update({ quantidade_atual: Math.max(0, (estoque.quantidade_atual ?? 0) - p.num_sacos) })
-          .eq("id", estoque.id);
+      // 1) Verifica estoque por (mes, ano) — soma sacos por bucket
+      const buckets = new Map<string, number>(); // key: `${mes}-${ano}` -> sacos
+      for (const it of s.itens) {
+        const d = new Date(it.data_salga);
+        const key = `${d.getMonth() + 1}-${d.getFullYear()}`;
+        buckets.set(key, (buckets.get(key) || 0) + it.num_sacos);
       }
 
-      await supabase.from("movimentacoes_estoque").insert({
-        retiro_id: p.retiro_id,
-        mes,
-        ano,
-        tipo: "saida",
-        quantidade: p.num_sacos,
-        origem: "lancamento_manual",
-        referencia_id: p.id,
+      // Carrega estoques relevantes
+      const checks = await Promise.all(
+        Array.from(buckets.entries()).map(async ([key, sacos]) => {
+          const [mes, ano] = key.split("-").map(Number);
+          const { data: est } = await supabase
+            .from("estoque_retiro")
+            .select("id, quantidade_atual")
+            .eq("retiro_id", s.retiro_id)
+            .eq("mes", mes)
+            .eq("ano", ano)
+            .maybeSingle();
+          const disponivel = est?.quantidade_atual ?? 0;
+          return { key, mes, ano, sacos, disponivel, estoqueId: est?.id ?? null };
+        })
+      );
+
+      const insuficiente = checks.find((c) => c.disponivel < c.sacos);
+      if (insuficiente) {
+        toast.error(
+          `Estoque insuficiente em ${String(insuficiente.mes).padStart(2, "0")}/${insuficiente.ano}: ${insuficiente.disponivel} disponível, ${insuficiente.sacos} necessário`
+        );
+        setActionId(null);
+        return;
+      }
+
+      // 2) Cria um lancamento por item (origem manual + aprovado)
+      const lancPayloads = s.itens.map((it) => {
+        const d = new Date(it.data_salga);
+        return {
+          pasto_id: it.pasto_id,
+          retiro_id: s.retiro_id,
+          fazenda_id: s.fazenda_id,
+          num_sacos: it.num_sacos,
+          num_animais: it.num_animais ?? 0,
+          dias_no_pasto: 1,
+          origem: "manual",
+          status_aprovacao: "aprovado",
+          data_salga_informada: it.data_salga,
+          criado_por: s.capataz_user_id,
+          aprovado_por: user.id,
+          aprovado_em: new Date().toISOString(),
+          mes_referencia: d.getMonth() + 1,
+          ano_referencia: d.getFullYear(),
+          cocho_cheio: false,
+        } as any;
       });
 
-      toast.success("Lançamento aprovado");
+      const { data: lancRows, error: lancErr } = await supabase
+        .from("lancamentos")
+        .insert(lancPayloads)
+        .select("id, pasto_id, data_salga_informada");
+      if (lancErr) throw lancErr;
+
+      // 3) Vincula lancamento_id em cada item (best-effort, por ordem)
+      try {
+        const updates = s.itens.map((it, idx) => {
+          const lancId = (lancRows as any[])?.[idx]?.id;
+          if (!lancId) return null;
+          return (supabase as any)
+            .from("solicitacoes_lancamento_itens")
+            .update({ lancamento_id: lancId })
+            .eq("id", it.id);
+        });
+        await Promise.all(updates.filter(Boolean));
+      } catch (e) {
+        console.warn("[Aprovar] vincular lancamento_id falhou", e);
+      }
+
+      // 4) Desconta estoque por bucket
+      for (const c of checks) {
+        if (c.estoqueId) {
+          await supabase
+            .from("estoque_retiro")
+            .update({ quantidade_atual: Math.max(0, c.disponivel - c.sacos) })
+            .eq("id", c.estoqueId);
+        }
+        await supabase.from("movimentacoes_estoque").insert({
+          retiro_id: s.retiro_id,
+          mes: c.mes,
+          ano: c.ano,
+          tipo: "saida",
+          quantidade: c.sacos,
+          origem: "lancamento_manual",
+          referencia_id: s.id,
+        });
+      }
+
+      // 5) Marca solicitação como aprovada
+      const { error: updErr } = await (supabase as any)
+        .from("solicitacoes_lancamento_manual")
+        .update({
+          status: "aprovada",
+          decidido_por: user.id,
+          decidido_em: new Date().toISOString(),
+        })
+        .eq("id", s.id);
+      if (updErr) throw updErr;
+
+      toast.success(`Solicitação aprovada: ${s.itens.length} pasto(s), ${s.total_sacos} sacos`);
       void load();
     } catch (e: any) {
       console.error("[Aprovar]", e);
@@ -151,8 +248,8 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
     }
   };
 
-  const openRecusar = (p: Pendente) => {
-    setRecusarTarget(p);
+  const openRecusar = (s: SolicitacaoView) => {
+    setRecusarTarget(s);
     setMotivoRecusa("");
     setRecusarOpen(true);
   };
@@ -161,17 +258,17 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
     if (!recusarTarget || !user?.id) return;
     setActionId(recusarTarget.id);
     try {
-      const { error } = await supabase
-        .from("lancamentos")
+      const { error } = await (supabase as any)
+        .from("solicitacoes_lancamento_manual")
         .update({
-          status_aprovacao: "recusado",
+          status: "recusada",
           motivo_recusa: motivoRecusa.trim() || null,
-          aprovado_por: user.id,
-          aprovado_em: new Date().toISOString(),
-        } as any)
+          decidido_por: user.id,
+          decidido_em: new Date().toISOString(),
+        })
         .eq("id", recusarTarget.id);
       if (error) throw error;
-      toast.success("Lançamento recusado");
+      toast.success("Solicitação recusada");
       setRecusarOpen(false);
       setRecusarTarget(null);
       setMotivoRecusa("");
@@ -199,38 +296,55 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
           <ClipboardList className="w-4 h-4" />
-          Lançamentos Manuais Pendentes
+          Solicitações de Lançamento Manual
           <Badge variant="destructive" className="text-[10px] h-5">{pendentes.length}</Badge>
         </h2>
-        <div className="space-y-2">
-          {pendentes.map((p) => {
-            const dataSalga = p.data_salga_informada ? new Date(p.data_salga_informada).toLocaleDateString("pt-BR") : "—";
-            const isLoading = actionId === p.id;
+        <div className="space-y-3">
+          {pendentes.map((s) => {
+            const dataGer = new Date(s.data_salga_geral).toLocaleDateString("pt-BR");
+            const isLoading = actionId === s.id;
             return (
-              <Card key={p.id} className="border-primary/30">
+              <Card key={s.id} className="border-primary/30">
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{p.pasto_nome}</p>
+                      <p className="font-semibold text-sm truncate">
+                        {s.capataz_nome || "Capataz"}
+                      </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {p.retiro_nome} · {p.capataz_nome}
+                        {s.retiro_nome} · Data geral: {dataGer}
                       </p>
                     </div>
                     <Badge variant="outline" className="gap-1 shrink-0">
                       <Clock className="w-3 h-3" />Pendente
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span><strong className="text-foreground">{p.num_sacos}</strong> sacos</span>
-                    <span>Data: {dataSalga}</span>
+
+                  <div className="rounded-md bg-muted/40 p-2 space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {s.itens.length} pasto{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} sacos
+                    </p>
+                    {s.itens.map((it) => {
+                      const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
+                      const isCustom = dItem !== dataGer;
+                      return (
+                        <div key={it.id} className="flex items-center justify-between text-xs">
+                          <span className="truncate">
+                            <strong className="text-foreground">{it.pasto_nome}</strong>
+                            <span className="text-muted-foreground"> — {it.num_sacos} sacos</span>
+                          </span>
+                          <span className={isCustom ? "text-primary font-medium shrink-0 ml-2" : "text-muted-foreground shrink-0 ml-2"}>
+                            {dItem}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {p.observacao && (
-                    <p className="text-xs text-muted-foreground italic">"{p.observacao}"</p>
-                  )}
+
                   <div className="flex gap-2 pt-1">
                     <Button
                       size="sm"
-                      onClick={() => handleAprovar(p)}
+                      onClick={() => handleAprovar(s)}
                       disabled={isLoading}
                       className="flex-1 h-8 gap-1"
                     >
@@ -240,7 +354,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => openRecusar(p)}
+                      onClick={() => openRecusar(s)}
                       disabled={isLoading}
                       className="flex-1 h-8 gap-1"
                     >
@@ -258,10 +372,16 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       <Dialog open={recusarOpen} onOpenChange={setRecusarOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Recusar lançamento</DialogTitle>
+            <DialogTitle>Recusar solicitação</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Informe o motivo (opcional, visível ao capataz):</p>
+            <div className="flex items-start gap-2 p-2 rounded bg-muted/40">
+              <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Toda a solicitação será recusada ({recusarTarget?.itens.length} pasto{(recusarTarget?.itens.length ?? 0) !== 1 ? "s" : ""}).
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">Motivo (opcional, visível ao capataz):</p>
             <Textarea
               value={motivoRecusa}
               onChange={(e) => setMotivoRecusa(e.target.value)}
