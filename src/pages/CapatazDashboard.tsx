@@ -206,6 +206,7 @@ export default function CapatazDashboard() {
   const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
   const [combinedMode, setCombinedMode] = useState(false);
   const [lancManualOpen, setLancManualOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [userName, setUserName] = useState(user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz');
 
