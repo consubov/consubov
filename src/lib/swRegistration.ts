@@ -151,7 +151,7 @@ export function useSWUpdate() {
     const handler = (waiting: boolean) => setUpdateAvailable(waiting);
     listeners.add(handler);
 
-    if (swRegistration?.waiting) {
+    if (swRegistration?.waiting && !autoUpdateRequested) {
       setUpdateAvailable(true);
     }
 
