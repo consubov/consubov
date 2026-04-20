@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 
+declare const __APP_BUILD_VERSION__: string;
+
 let swRegistration: ServiceWorkerRegistration | null = null;
 let controllerChangeBound = false;
 let reloadingForUpdate = false;
 const observedRegistrations = new WeakSet<ServiceWorkerRegistration>();
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
+const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 
 function logSw(message: string, ...args: unknown[]) {
   console.log(`[SW] ${message}`, ...args);
@@ -117,8 +120,20 @@ export function registerSW() {
 
   bindControllerChangeReload();
 
+  const triggerUpdateCheck = () => {
+    void maybeUpdateActiveServiceWorker();
+  };
+
+  window.addEventListener("pageshow", triggerUpdateCheck);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      triggerUpdateCheck();
+    }
+  });
+  window.addEventListener("online", triggerUpdateCheck);
+
   navigator.serviceWorker
-    .register("/sw.js", { updateViaCache: "none" })
+    .register(SW_SCRIPT_URL, { updateViaCache: "none" })
     .then((reg) => {
       swRegistration = reg;
       attachRegistrationListeners(reg);
