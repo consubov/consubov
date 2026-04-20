@@ -1,12 +1,11 @@
 // Build timestamp is injected at build-time by vite.config.ts.
 // In dev it stays as the literal string, which is fine — dev SW is unregistered.
 const BUILD_VERSION = '__BUILD_TIMESTAMP__';
-const CACHE_NAME = `consubov-v-${BUILD_VERSION}`;
-const SHELL_CACHE = `consubov-shell-v-${BUILD_VERSION}`;
+const CACHE_VERSION = `v-${BUILD_VERSION}`;
+const CACHE_NAME = `consubov-${CACHE_VERSION}`;
+const SHELL_CACHE = `consubov-shell-${CACHE_VERSION}`;
 
 const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
-const NEVER_CACHE = new Set(['/index.html', '/manifest.json', '/sw.js']);
-const STALE_WHILE_REVALIDATE_PATHS = new Set(['/', '/index.html', '/manifest.json']);
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -16,7 +15,7 @@ self.addEventListener('message', (event) => {
 
 async function precacheZxingAssets(cache) {
   try {
-    const res = await fetch('/');
+    const res = await fetch('/', { cache: 'no-store' });
     if (!res.ok) return;
     const html = await res.text();
     const matches = html.match(/\/assets\/[^"'\s]+\.(?:js|wasm)/g) || [];
@@ -34,7 +33,7 @@ async function precacheZxingAssets(cache) {
 }
 
 self.addEventListener('install', (event) => {
-  // New SW takes over immediately on install.
+  console.log('[SW] install', CACHE_VERSION);
   self.skipWaiting();
   event.waitUntil(
     caches
@@ -45,6 +44,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] activate', CACHE_VERSION);
   const validCaches = new Set([CACHE_NAME, SHELL_CACHE]);
   event.waitUntil(
     caches
@@ -70,12 +70,11 @@ function isHashedAsset(url) {
   return HASHED_ASSET_PATTERN.test(url.pathname);
 }
 
-// Stale-While-Revalidate: serve cache immediately, refresh in background.
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(SHELL_CACHE);
   const cached = await cache.match(request);
 
-  const networkPromise = fetch(request)
+  const networkPromise = fetch(request, { cache: 'no-store' })
     .then((response) => {
       if (response && response.status === 200) {
         cache.put(request, response.clone()).catch(() => undefined);
@@ -84,17 +83,13 @@ async function staleWhileRevalidate(request) {
     })
     .catch(() => undefined);
 
-  if (cached) {
-    // Revalidation continues in the background; return cached immediately.
-    return cached;
-  }
+  if (cached) return cached;
 
   const network = await networkPromise;
   if (network) return network;
   return new Response('', { status: 504, statusText: 'Offline' });
 }
 
-// Cache-First for hashed static assets.
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
@@ -111,7 +106,6 @@ async function cacheFirst(request) {
   }
 }
 
-// Network-First for everything else (e.g. Supabase, API).
 async function networkFirst(request, fallbackUrl) {
   try {
     return await fetch(request);
@@ -150,34 +144,31 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // sw.js itself is never cached.
   if (url.pathname === '/sw.js') {
-    event.respondWith(fetch(request));
+    event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
-  // Stale-While-Revalidate for app shell (index.html, manifest.json) and navigations.
-  if (
-    request.mode === 'navigate' ||
-    STALE_WHILE_REVALIDATE_PATHS.has(url.pathname)
-  ) {
-    event.respondWith(staleWhileRevalidate(new Request('/index.html', { credentials: request.credentials })));
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(staleWhileRevalidate('/index.html'));
     return;
   }
 
-  // Supabase / API: network-first, no cached fallback page.
+  if (url.pathname === '/manifest.json') {
+    event.respondWith(staleWhileRevalidate('/manifest.json'));
+    return;
+  }
+
   if (url.hostname.includes('supabase') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/auth/')) {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  // Hashed static assets: cache-first.
   if (url.origin === self.location.origin && isHashedAsset(url)) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  // Default: network-first with cache fallback.
   event.respondWith(networkFirst(request));
 });
 

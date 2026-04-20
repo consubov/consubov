@@ -33,10 +33,6 @@ export function ForcarSyncButton({
     }
     setSending(true);
     try {
-      // Also nudge the local SW to check for a new version — keeps gerente
-      // and capataz devices on the latest build whenever someone hits sync.
-      void maybeUpdateActiveServiceWorker();
-
       const { data: sessionData } = await supabase.auth.getSession();
       const senderId = sessionData?.session?.user?.id ?? null;
 
@@ -64,6 +60,7 @@ export function ForcarSyncButton({
       if (!verify) {
         console.warn("[ForcarSyncButton] insert succeeded but verification failed (likely RLS) — signal still delivered");
       }
+      void maybeUpdateActiveServiceWorker();
       toast.success(`Sinal enviado ✓ — aguardando ${targetName}...`);
     } catch (err: any) {
       console.error("[ForcarSyncButton] error:", err);

@@ -41,6 +41,7 @@ import {
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
+import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -798,6 +799,7 @@ export default function CapatazDashboard() {
 
   const handleSync = async () => {
     setSyncError(null);
+    void maybeUpdateActiveServiceWorker();
     const pendentes = await getLancamentosPendentes();
     const obsPend = await getObservacoesPendentes();
     const fecharPend = await getFecharMesPendente();
