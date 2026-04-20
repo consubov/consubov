@@ -60,38 +60,9 @@ export default function CapatazRoute() {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || window.location.pathname !== "/capataz") return;
-    if (!("serviceWorker" in navigator)) return;
-
-    const onceKey = "consubov-capataz-sw-reregister-v1";
-    if (window.sessionStorage.getItem(onceKey)) return;
-
-    let isPreview = false;
-    try {
-      isPreview =
-        window.self !== window.top ||
-        window.location.hostname.includes("id-preview--") ||
-        window.location.hostname.includes("lovableproject.com");
-    } catch {
-      isPreview = true;
-    }
-
-    if (isPreview) return;
-
-    window.sessionStorage.setItem(onceKey, "1");
-
-    void (async () => {
-      try {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
-        const registration = await navigator.serviceWorker.register("/sw.js");
-        console.log("[CapatazRoute] service worker re-registered:", registration.scope);
-      } catch (error) {
-        console.warn("[CapatazRoute] service worker reset failed:", error);
-      }
-    })();
-  }, []);
+  // NOTE: Do NOT unregister/re-register the SW here. iOS Safari treats every
+  // cold start as a "first load" and would loop: cleanup → re-register →
+  // controllerchange → restart. The SW lifecycle is handled in registerSW().
 
   if (loadError) {
     return <CapatazFallback title="Falha ao abrir o painel" description={loadError} />;
