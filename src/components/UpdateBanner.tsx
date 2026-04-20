@@ -1,27 +1,32 @@
+import { useEffect, useRef } from "react";
 import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, X } from "lucide-react";
-import { useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
+/**
+ * Renders nothing — just listens for SW updates and shows a discreet sonner
+ * toast when a new version is ready. The user clicks "Atualizar" to reload.
+ */
 export function UpdateBanner() {
   const { updateAvailable, applyUpdate } = useSWUpdate();
-  const [dismissed, setDismissed] = useState(false);
+  const shownRef = useRef(false);
 
-  if (!updateAvailable || dismissed) return null;
+  useEffect(() => {
+    if (!updateAvailable || shownRef.current) return;
+    shownRef.current = true;
 
-  return (
-    <div className="bg-secondary text-secondary-foreground px-4 py-2 flex items-center justify-between text-sm font-medium z-50">
-      <span>Nova versão disponível — Toque para atualizar</span>
-      <div className="flex items-center gap-1">
-        <Button size="sm" variant="ghost" onClick={applyUpdate} className="gap-1 text-xs h-7">
-          <RefreshCw className="w-3 h-3" /> Atualizar
-        </Button>
-        <Button size="icon" variant="ghost" onClick={() => setDismissed(true)} className="h-7 w-7">
-          <X className="w-3 h-3" />
-        </Button>
-      </div>
-    </div>
-  );
+    toast("Nova versão disponível", {
+      description: "Toque em Atualizar para carregar a versão mais recente.",
+      duration: Infinity,
+      action: {
+        label: "Atualizar",
+        onClick: () => applyUpdate(),
+      },
+    });
+  }, [updateAvailable, applyUpdate]);
+
+  return null;
 }
 
 export function RefreshButton({ className = "" }: { className?: string }) {
