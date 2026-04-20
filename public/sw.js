@@ -85,9 +85,7 @@ async function staleWhileRevalidate(request) {
     .catch(() => undefined);
 
   if (cached) {
-    // Kick off revalidation but return cached immediately.
-    event => event;
-    networkPromise;
+    // Revalidation continues in the background; return cached immediately.
     return cached;
   }
 
