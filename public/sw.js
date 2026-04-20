@@ -126,6 +126,29 @@ async function networkFirst(request, fallbackUrl) {
   }
 }
 
+// Network-first com timeout curto: tenta sempre buscar a versão mais recente,
+// mas cai no cache do shell se a rede estiver lenta/indisponível. Essencial
+// para garantir que o capataz veja novas versões ao abrir o app, sem perder
+// o modo offline.
+async function networkFirstWithFallback(request, fallbackUrl, timeoutMs = 2500) {
+  const cache = await caches.open(SHELL_CACHE);
+  try {
+    const networkPromise = fetch(request, { cache: 'no-store' });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('network-timeout')), timeoutMs),
+    );
+    const response = await Promise.race([networkPromise, timeoutPromise]);
+    if (response && response.status === 200) {
+      cache.put(fallbackUrl || request, response.clone()).catch(() => undefined);
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(fallbackUrl || request);
+    if (cached) return cached;
+    return new Response('', { status: 504, statusText: 'Offline' });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const rawUrl = request.url || '';
