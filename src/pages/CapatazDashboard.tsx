@@ -1404,6 +1404,77 @@ export default function CapatazDashboard() {
       <header className="bg-primary text-primary-foreground px-4 py-3 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary/80 -ml-2"
+                  aria-label="Abrir menu"
+                >
+                  <Menu className="w-6 h-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="w-[80vw] max-w-sm p-0 flex flex-col"
+              >
+                <SheetHeader className="bg-primary text-primary-foreground p-4 text-left space-y-1">
+                  <SheetTitle className="text-primary-foreground text-base font-bold">
+                    {userName}
+                  </SheetTitle>
+                  {retiro && (
+                    <SheetDescription className="text-primary-foreground/80 text-xs">
+                      {retiro.nome} • {retiro.fazenda_nome}
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+                <Separator />
+                <nav className="flex-1 overflow-y-auto p-2">
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setLancManualOpen(true); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <ClipboardList className="w-5 h-5 text-primary" />
+                        Lançamento Manual
+                      </button>
+                    </li>
+                    {roleData.retiroId && (
+                      <li>
+                        <button
+                          onClick={() => { setMenuOpen(false); navigate(`/mapa/retiro/${roleData.retiroId}`); }}
+                          className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        >
+                          <MapIcon className="w-5 h-5 text-primary" />
+                          Ver Mapa
+                        </button>
+                      </li>
+                    )}
+                    <li><Separator className="my-1" /></li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setScreen('transferencia-retiro'); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <ArrowRightLeft className="w-5 h-5 text-primary" />
+                        Transferência entre Retiros
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setScreen('relatorio-salga'); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <FileText className="w-5 h-5 text-primary" />
+                        Relatório de Salga
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </SheetContent>
+            </Sheet>
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
             <div>
               <h1 className="text-base font-bold leading-tight">Consubov</h1>
