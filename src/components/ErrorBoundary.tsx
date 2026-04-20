@@ -14,37 +14,84 @@ interface Props {
   reloadLabel?: string;
   /** Whether to show the raw error message */
   showErrorDetails?: boolean;
+  /**
+   * If true, automatically resets the boundary when the page becomes visible
+   * again (visibilitychange/pageshow). Useful for iOS background resume where
+   * a transient render error should not be shown to the user.
+   */
+  autoResetOnVisibility?: boolean;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  /** Increments to force a re-mount of children after a reset */
+  resetKey: number;
 }
 
 /**
  * Generic Error Boundary that prevents blank screens on runtime errors.
- * Especially important for routes that read from IndexedDB on Safari iOS,
- * where storage failures or schema mismatches can throw synchronously
- * during render.
  *
- * The fallback UI explicitly tells the user that offline data is preserved
- * and offers a retry button (which re-mounts the children) plus a full
- * reload as a last resort.
+ * Only catches REAL render errors thrown by React. It does not listen to
+ * window 'error' / 'unhandledrejection' — those fire spuriously on iOS
+ * Safari when the app resumes from background and would cause false
+ * "something went wrong" screens.
+ *
+ * When `autoResetOnVisibility` is true, the boundary silently resets
+ * whenever the document becomes visible again (visibilitychange or
+ * pageshow), so background-resume induced transient crashes never reach
+ * the user.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, error: null };
+  state: State = { hasError: false, error: null, resetKey: 0 };
 
-  static getDerivedStateFromError(error: Error): State {
+  private visibilityHandler?: () => void;
+  private pageShowHandler?: () => void;
+
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
+  componentDidMount() {
+    if (!this.props.autoResetOnVisibility) return;
+    if (typeof document === "undefined" || typeof window === "undefined") return;
+
+    this.visibilityHandler = () => {
+      if (document.visibilityState === "visible" && this.state.hasError) {
+        this.silentReset();
+      }
+    };
+    this.pageShowHandler = () => {
+      if (this.state.hasError) this.silentReset();
+    };
+
+    document.addEventListener("visibilitychange", this.visibilityHandler);
+    window.addEventListener("pageshow", this.pageShowHandler);
+  }
+
+  componentWillUnmount() {
+    if (this.visibilityHandler && typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", this.visibilityHandler);
+    }
+    if (this.pageShowHandler && typeof window !== "undefined") {
+      window.removeEventListener("pageshow", this.pageShowHandler);
+    }
+  }
+
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log so it surfaces in Safari Web Inspector / Lovable console
     console.error("[ErrorBoundary] captured:", error, errorInfo);
   }
 
+  private silentReset = () => {
+    this.setState((prev) => ({
+      hasError: false,
+      error: null,
+      resetKey: prev.resetKey + 1,
+    }));
+  };
+
   private handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.silentReset();
   };
 
   private handleReload = () => {
@@ -89,7 +136,8 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    // resetKey forces children to fully re-mount after a silent reset
+    return <div key={this.state.resetKey}>{this.props.children}</div>;
   }
 }
 

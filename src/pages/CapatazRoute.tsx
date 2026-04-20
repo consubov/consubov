@@ -35,20 +35,12 @@ export default function CapatazRoute() {
     let timeoutId: number | null = null;
     let rafId: number | null = null;
 
-    const handleWindowError = (event: ErrorEvent) => {
-      console.error("[CapatazRoute] uncaught error:", event.error ?? event.message);
-      if (!cancelled) {
-        setLoadError("Erro ao carregar. Seus dados estão salvos.");
-      }
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error("[CapatazRoute] unhandled rejection:", event.reason);
-      event.preventDefault?.();
-      if (!cancelled) {
-        setLoadError("Erro ao carregar. Seus dados estão salvos.");
-      }
-    };
+    // NOTE: We intentionally do NOT attach window 'error' / 'unhandledrejection'
+    // listeners here. iOS Safari fires transient unhandled rejections when the
+    // app resumes from background (aborted fetches, IndexedDB timeouts, etc.)
+    // that are NOT fatal. Letting those flip loadError caused the spurious
+    // "Falha ao abrir o painel" screen on resume. Real render crashes are
+    // caught by the ErrorBoundary below; the dynamic import has its own catch.
 
     const loadDashboard = () => {
       timeoutId = browserWindow.setTimeout(async () => {
@@ -67,9 +59,6 @@ export default function CapatazRoute() {
       }, 0);
     };
 
-    browserWindow.addEventListener("error", handleWindowError);
-    browserWindow.addEventListener("unhandledrejection", handleUnhandledRejection);
-
     if ("requestAnimationFrame" in browserWindow) {
       rafId = browserWindow.requestAnimationFrame(loadDashboard);
     } else {
@@ -78,16 +67,10 @@ export default function CapatazRoute() {
 
     return () => {
       cancelled = true;
-      browserWindow.removeEventListener("error", handleWindowError);
-      browserWindow.removeEventListener("unhandledrejection", handleUnhandledRejection);
       if (rafId !== null) browserWindow.cancelAnimationFrame(rafId);
       if (timeoutId !== null) browserWindow.clearTimeout(timeoutId);
     };
   }, []);
-
-  // NOTE: Do NOT unregister/re-register the SW here. iOS Safari treats every
-  // cold start as a "first load" and would loop: cleanup → re-register →
-  // controllerchange → restart. The SW lifecycle is handled in registerSW().
 
   if (loadError) {
     return <CapatazFallback title="Falha ao abrir o painel" description={loadError} />;
@@ -110,6 +93,7 @@ export default function CapatazRoute() {
       message="Seus dados estão salvos."
       retryLabel="Tentar novamente"
       showErrorDetails={false}
+      autoResetOnVisibility
     >
       <Dashboard />
     </ErrorBoundary>
