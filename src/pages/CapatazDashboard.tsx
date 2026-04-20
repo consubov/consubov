@@ -803,7 +803,7 @@ export default function CapatazDashboard() {
 
   const handleSync = async () => {
     setSyncError(null);
-    void maybeUpdateActiveServiceWorker();
+    await maybeUpdateActiveServiceWorker();
     const pendentes = await getLancamentosPendentes();
     const obsPend = await getObservacoesPendentes();
     const fecharPend = await getFecharMesPendente();
