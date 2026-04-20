@@ -1,42 +1,15 @@
-const SW_RESET_KEY = "consubov-sw-reset-v1";
-
-async function unregisterAllServiceWorkers() {
-  if (!("serviceWorker" in navigator)) return false;
-
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations.map((registration) => registration.unregister()));
-
-  return registrations.length > 0;
-}
-
-async function clearAllCaches() {
-  if (!("caches" in window)) return false;
-
-  const keys = await caches.keys();
-  await Promise.all(keys.map((key) => caches.delete(key)));
-
-  return keys.length > 0;
-}
-
-export async function resetServiceWorkerStateOnFirstLoad() {
-  if (typeof window === "undefined") return false;
-  if (sessionStorage.getItem(SW_RESET_KEY) === "done") return false;
-
-  sessionStorage.setItem(SW_RESET_KEY, "done");
-
-  try {
-    const [hadRegistrations, hadCaches] = await Promise.all([
-      unregisterAllServiceWorkers(),
-      clearAllCaches(),
-    ]);
-
-    if (hadRegistrations || hadCaches) {
-      window.location.replace(window.location.href);
-      return true;
-    }
-  } catch (error) {
-    console.warn("SW reset on boot failed:", error);
-  }
-
+/**
+ * One-shot migration helper kept for backward-compat. The aggressive reset
+ * that ran on every new session was breaking offline-first behaviour: each
+ * time the capataz reopened the PWA, sessionStorage was empty and the
+ * function would unregister the SW + nuke all caches, forcing a network
+ * round-trip to render anything. That is exactly the opposite of what an
+ * offline-first PWA needs.
+ *
+ * The function now does NOTHING and always returns false. The export is
+ * preserved so existing call sites in main.tsx keep working without an
+ * extra refactor.
+ */
+export async function resetServiceWorkerStateOnFirstLoad(): Promise<boolean> {
   return false;
 }

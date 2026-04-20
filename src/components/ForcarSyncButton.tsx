@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { toast } from "sonner";
 
 interface ForcarSyncButtonProps {
@@ -32,6 +33,10 @@ export function ForcarSyncButton({
     }
     setSending(true);
     try {
+      // Also nudge the local SW to check for a new version — keeps gerente
+      // and capataz devices on the latest build whenever someone hits sync.
+      void maybeUpdateActiveServiceWorker();
+
       const { data: sessionData } = await supabase.auth.getSession();
       const senderId = sessionData?.session?.user?.id ?? null;
 
