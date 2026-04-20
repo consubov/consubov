@@ -1442,6 +1442,10 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
+        <Button onClick={() => setLancManualOpen(true)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
+          <ClipboardList className="w-5 h-5" />
+          Lançamento Manual
+        </Button>
         {roleData.retiroId && (
           <Button onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)} variant="outline" className="w-full h-12 gap-2 text-sm font-semibold" size="lg">
             <MapIcon className="w-5 h-5" />
