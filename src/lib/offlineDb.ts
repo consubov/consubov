@@ -299,11 +299,13 @@ export async function getPastoByQr(qrUuid: string): Promise<PastoCache | undefin
 
 // Retiro
 export async function cacheRetiro(retiro: RetiroCache) {
-  const db = await getDb();
-  const tx = db.transaction('retiro', 'readwrite');
-  await tx.store.clear();
-  await tx.store.put(retiro);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('retiro', 'readwrite');
+    await tx.store.clear();
+    await tx.store.put(retiro);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedRetiro(): Promise<RetiroCache | undefined> {
@@ -316,11 +318,13 @@ export async function getCachedRetiro(): Promise<RetiroCache | undefined> {
 
 // Ciclos
 export async function cacheCiclos(ciclos: CicloCache[]) {
-  const db = await getDb();
-  const tx = db.transaction('ciclos', 'readwrite');
-  await tx.store.clear();
-  for (const c of ciclos) await tx.store.put(c);
-  await tx.done;
+  return safeRun(async () => {
+    const db = await getDb();
+    const tx = db.transaction('ciclos', 'readwrite');
+    await tx.store.clear();
+    for (const c of ciclos) await tx.store.put(c);
+    await tx.done;
+  }, undefined);
 }
 
 export async function getCachedCiclos(): Promise<CicloCache[]> {
@@ -332,8 +336,10 @@ export async function getCachedCiclos(): Promise<CicloCache[]> {
 
 // Lancamentos
 export async function saveLancamento(lancamento: LancamentoOffline) {
-  const db = await getDb();
-  await db.put('lancamentos', lancamento);
+  return safeRun(async () => {
+    const db = await getDb();
+    await db.put('lancamentos', lancamento);
+  }, undefined);
 }
 
 export async function getLancamentosPendentes(): Promise<LancamentoOffline[]> {
