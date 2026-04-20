@@ -1520,6 +1520,17 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
+        {roleData.retiroId && (
+          <Button
+            onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)}
+            variant="outline"
+            className="h-14 w-full gap-2 text-sm font-semibold"
+            size="lg"
+          >
+            <MapIcon className="w-5 h-5" />
+            Ver Mapa
+          </Button>
+        )}
         {roleData.retiroId && fazendaId && (
           <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
         )}
