@@ -28,6 +28,9 @@ export default function CapatazRoute() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const browserWindow = window;
     let cancelled = false;
     let timeoutId: number | null = null;
     let rafId: number | null = null;
@@ -48,7 +51,7 @@ export default function CapatazRoute() {
     };
 
     const loadDashboard = () => {
-      timeoutId = window.setTimeout(async () => {
+      timeoutId = browserWindow.setTimeout(async () => {
         try {
           void maybeUpdateActiveServiceWorker();
           const module = await import("./CapatazDashboard");
@@ -64,22 +67,21 @@ export default function CapatazRoute() {
       }, 0);
     };
 
-    if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
-      window.addEventListener("error", handleWindowError);
-      window.addEventListener("unhandledrejection", handleUnhandledRejection);
-      rafId = window.requestAnimationFrame(loadDashboard);
+    browserWindow.addEventListener("error", handleWindowError);
+    browserWindow.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    if ("requestAnimationFrame" in browserWindow) {
+      rafId = browserWindow.requestAnimationFrame(loadDashboard);
     } else {
-      window.addEventListener("error", handleWindowError);
-      window.addEventListener("unhandledrejection", handleUnhandledRejection);
       loadDashboard();
     }
 
     return () => {
       cancelled = true;
-      window.removeEventListener("error", handleWindowError);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      browserWindow.removeEventListener("error", handleWindowError);
+      browserWindow.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      if (rafId !== null) browserWindow.cancelAnimationFrame(rafId);
+      if (timeoutId !== null) browserWindow.clearTimeout(timeoutId);
     };
   }, []);
 
