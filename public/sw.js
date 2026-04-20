@@ -126,6 +126,14 @@ async function networkFirst(request, fallbackUrl) {
   }
 }
 
+async function networkOnlyNoStore(request) {
+  try {
+    return await fetch(request, { cache: 'no-store' });
+  } catch {
+    return new Response('', { status: 504, statusText: 'Offline' });
+  }
+}
+
 // Network-first com timeout curto: tenta sempre buscar a versão mais recente,
 // mas cai no cache do shell se a rede estiver lenta/indisponível. Essencial
 // para garantir que o capataz veja novas versões ao abrir o app, sem perder
@@ -184,7 +192,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
-    event.respondWith(networkFirstWithFallback(request, '/index.html'));
+    event.respondWith(networkOnlyNoStore(request));
     return;
   }
 

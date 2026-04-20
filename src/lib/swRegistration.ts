@@ -12,6 +12,17 @@ const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 const VERSION_URL = "/version.json";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 
+function buildReloadUrl(version = lastKnownRemoteVersion) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("__app_version", version);
+  return url.toString();
+}
+
+function hardReloadToLatest(version = lastKnownRemoteVersion) {
+  logSw("Reload após update");
+  window.location.replace(buildReloadUrl(version));
+}
+
 function logSw(message: string, ...args: unknown[]) {
   console.log(`[SW] ${message}`, ...args);
 }
@@ -33,8 +44,7 @@ function bindControllerChangeReload() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
     reloadingForUpdate = true;
-    logSw("Reload após update");
-    window.location.reload();
+    hardReloadToLatest();
   });
 }
 
@@ -108,7 +118,7 @@ async function ensureLatestPublishedVersion() {
 
     if (registration.active && navigator.serviceWorker.controller?.scriptURL !== registration.active.scriptURL) {
       logSw("Atualizando aplicação");
-      window.location.reload();
+      hardReloadToLatest(remoteVersion);
       return true;
     }
   } catch (error) {
@@ -191,6 +201,7 @@ export function registerSW() {
       swRegistration = reg;
       attachRegistrationListeners(reg);
       void reg.update();
+      void maybeUpdateActiveServiceWorker();
       if (reg.waiting && navigator.serviceWorker.controller) {
         void activateWaitingServiceWorker(reg);
       }
