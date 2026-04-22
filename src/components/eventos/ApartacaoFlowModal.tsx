@@ -348,8 +348,9 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         .select("id")
         .single();
 
+      let pesagemPrincipalId: string | null = null;
       if (evento) {
-        await (supabase.from("pesagens") as any).insert({
+        const { data: pesagemRow } = await (supabase.from("pesagens") as any).insert({
           evento_id: evento.id,
           lote_id: pastoId,
           total_pesado: totalPesado,
@@ -358,7 +359,11 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
           peso_medio_aplicado: mediaCalc,
           data_pesagem: nowIso,
           usuario_id: userId,
-        });
+          quantidade_animais: totalPesado,
+        })
+          .select("id")
+          .single();
+        pesagemPrincipalId = pesagemRow?.id || null;
 
         // Replicate this pesagem to each destination so it becomes their latest
         for (const destId of destinosProcessados) {
@@ -382,6 +387,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
               peso_medio_aplicado: mediaCalc,
               data_pesagem: nowIso,
               usuario_id: userId,
+              quantidade_animais: totalPesado,
             });
           }
         }
@@ -392,7 +398,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
 
       // Open export PDF modal
       const hora = new Date(nowIso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      setExportData({ pesagemId: evento?.id || apart.id, animais: animaisArr, dataPesagem: nowIso, hora });
+      setExportData({ pesagemId: pesagemPrincipalId || evento?.id || apart.id, animais: animaisArr, dataPesagem: nowIso, hora });
     } catch (err: any) {
       toast.error("Erro ao salvar apartação: " + (err.message || ""));
     } finally {
