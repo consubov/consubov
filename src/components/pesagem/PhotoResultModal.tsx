@@ -533,23 +533,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               </div>
             )}
 
-            {/* [7] Lote técnico */}
-            <div className="mt-3 px-4">
-              <div
-                className="inline-flex items-center gap-2"
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: 16,
-                  backgroundColor: "rgba(0,0,0,0.5)",
-                }}
-              >
-                <CowIcon size={18} />
-                <span style={{ color: "white", fontSize: sizes.lote, fontWeight: 500 }}>
-                  Lote {nomePasto || "—"}
-                </span>
-              </div>
-            </div>
-
             {/* [8] Insight */}
             {showMetrics && (
               <div className="mt-2 px-4">
