@@ -139,7 +139,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
 
       if (evErr) throw evErr;
 
-      const { error: pesErr } = await (supabase.from("pesagens") as any).insert({
+      const { data: pesagemRow, error: pesErr } = await (supabase.from("pesagens") as any).insert({
         evento_id: evento.id,
         lote_id: pastoId,
         total_pesado: pesos.length,
@@ -148,7 +148,10 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         peso_medio_aplicado: pesoAplicado,
         data_pesagem: now,
         usuario_id: userId,
-      });
+        quantidade_animais: numAnimais,
+      })
+        .select("id")
+        .single();
 
       if (pesErr) throw pesErr;
 
@@ -189,7 +192,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       toast.success(`Pesagem finalizada! ${pesos.length} animais, média ${Math.round(mp * 10) / 10} kg`);
       const animais = buildAnimaisArray(pesos);
       const hora = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      setExportData({ pesagemId: evento.id, animais, dataPesagem: now, hora });
+      setExportData({ pesagemId: pesagemRow?.id || evento.id, animais, dataPesagem: now, hora });
       setStep("inicio");
       onSaved?.();
     } catch (err: any) {
