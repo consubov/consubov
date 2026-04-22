@@ -75,39 +75,148 @@ interface InsightBadgeProps {
   exporting: boolean;
 }
 function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
-  const [index, setIndex] = useState(0);
+  const [idx, setIdx] = useState(0);
+  const [pos, setPos] = useState({ x: 16, y: 0 });
   const [visible, setVisible] = useState(true);
+  const [fading, setFading] = useState(false);
+  const [showHint, setShowHint] = useState(true);
+  const [dragging, setDragging] = useState(false);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const movedRef = useRef(false);
+  const longPressedRef = useRef(false);
 
-  function next() {
-    if (exporting) return;
-    setVisible(false);
-    setTimeout(() => {
-      setIndex((i) => (i + 1) % INSIGHT_FRASES.length);
-      setVisible(true);
-    }, 200);
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  function clearLongPress() {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
   }
 
-  const frase = INSIGHT_FRASES[index];
-  if (!frase) return null;
+  function onTouchStart(e: React.TouchEvent) {
+    if (exporting) return;
+    const t = e.touches[0];
+    movedRef.current = false;
+    longPressedRef.current = false;
+    dragStartRef.current = { x: t.clientX, y: t.clientY, ox: pos.x, oy: pos.y };
+    longPressRef.current = setTimeout(() => {
+      longPressedRef.current = true;
+      setVisible(false);
+    }, 500);
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (exporting || !dragStartRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - dragStartRef.current.x;
+    const dy = t.clientY - dragStartRef.current.y;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      movedRef.current = true;
+      clearLongPress();
+      setDragging(true);
+      // y grows downward in screen, but we use bottom offset → invert dy
+      setPos({
+        x: dragStartRef.current.ox + dx,
+        y: dragStartRef.current.oy - dy,
+      });
+    }
+  }
+
+  function onTouchEnd() {
+    clearLongPress();
+    const wasDrag = movedRef.current;
+    const wasLong = longPressedRef.current;
+    dragStartRef.current = null;
+    setDragging(false);
+    if (exporting) return;
+    if (!wasDrag && !wasLong) {
+      // simple tap → rotate
+      setFading(true);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % INSIGHT_FRASES_TEXT.length);
+        setFading(false);
+      }, 150);
+    }
+  }
+
+  if (!visible) {
+    if (exporting) return null;
+    return (
+      <div
+        style={{
+          position: "absolute",
+          left: pos.x,
+          bottom: 60 + pos.y,
+          opacity: 0.25,
+          fontSize: 10,
+          color: "white",
+          padding: "4px 8px",
+          cursor: "pointer",
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          setVisible(true);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setVisible(true);
+        }}
+      >
+        toque para adicionar frase
+      </div>
+    );
+  }
+
+  const frase = INSIGHT_FRASES_TEXT[idx];
 
   return (
-    <button
-      type="button"
-      onClick={next}
+    <div
       style={{
-        padding: "6px 16px",
-        borderRadius: 999,
-        backgroundColor: "rgba(20, 83, 45, 0.8)",
-        color: "#86efac",
-        fontSize,
-        fontWeight: 600,
-        opacity: visible ? 1 : 0,
-        transition: "opacity 200ms",
-        border: "none",
+        position: "absolute",
+        left: pos.x,
+        bottom: 60 + pos.y,
+        touchAction: "none",
+        userSelect: "none",
       }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
     >
-      {frase}
-    </button>
+      <div
+        style={{
+          padding: "6px 16px",
+          borderRadius: 999,
+          backgroundColor: "rgba(20, 83, 45, 0.8)",
+          color: "#86efac",
+          fontSize,
+          fontWeight: 600,
+          opacity: fading ? 0 : 1,
+          transition: "opacity 150ms",
+          display: "inline-block",
+          boxShadow: dragging ? "0 0 0 1px rgba(255,255,255,0.3)" : "none",
+        }}
+      >
+        {frase}
+      </div>
+      {showHint && !exporting && (
+        <div
+          style={{
+            fontSize: 8,
+            color: "rgba(255,255,255,0.25)",
+            marginTop: 2,
+            textAlign: "center",
+          }}
+        >
+          ↕ arraste • toque p/ mudar • segure p/ ocultar
+        </div>
+      )}
+    </div>
   );
 }
 
