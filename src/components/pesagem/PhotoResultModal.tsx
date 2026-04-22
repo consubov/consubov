@@ -547,43 +547,40 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 </div>
               </div>
 
-              {/* Setas de movimento (apenas Insight por enquanto) */}
+              {/* Setas de movimento (apenas Insight) */}
               {isInsightActive && (
                 <div className="flex items-center justify-center gap-2 pt-2 mt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-                  <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginRight: 4 }}>
-                    Mover:
-                  </span>
                   <button
                     onClick={() => mover("insight", "left")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Esquerda"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "up")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Cima"
                   >
-                    <ArrowUp className="h-4 w-4" />
+                    <ArrowUp style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "down")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Baixo"
                   >
-                    <ArrowDown className="h-4 w-4" />
+                    <ArrowDown style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "right")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Direita"
                   >
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight style={{ width: 20, height: 20 }} />
                   </button>
                 </div>
               )}
