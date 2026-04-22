@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import html2canvas from "html2canvas";
-import { Loader2, RefreshCw, Share2, X } from "lucide-react";
+import { Loader2, Share2, X, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { usePesagemResultado } from "@/hooks/usePesagemResultado";
@@ -15,211 +15,71 @@ interface Props {
 
 const BRAND_GREEN = "#22c55e";
 
-const INSIGHT_FRASES = [
+const INSIGHT_FRASES: (string | null)[] = [
   "⭐ Acima da média da fazenda",
   "🏆 Melhor lote do mês",
   "📈 GMD em alta",
   "💪 Desempenho superior",
   "🎯 Meta atingida",
-  "",
+  null,
 ];
 
-function formatKg(value: number | null | undefined, digits = 0) {
-  if (value == null || Number.isNaN(value)) return "0";
-  return value.toFixed(digits);
-}
+type SizeKey = "gmd" | "fazenda" | "subtitulo" | "badge" | "grafico" | "lote" | "insight" | "rodape";
 
-// ---------- Draggable element ----------
-interface DraggableElementProps {
-  id: string;
-  children: (fontSize: number) => React.ReactNode;
-  initialX: number;
-  initialY: number;
-  initialFontSize?: number;
-  exporting: boolean;
-  selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
-}
+const DEFAULT_SIZES: Record<SizeKey, number> = {
+  gmd: 76,
+  fazenda: 13,
+  subtitulo: 11,
+  badge: 13,
+  grafico: 170,
+  lote: 14,
+  insight: 13,
+  rodape: 10,
+};
 
-function DraggableElement({
-  id,
-  children,
-  initialX,
-  initialY,
-  initialFontSize = 14,
-  exporting,
-  selectedId,
-  setSelectedId,
-}: DraggableElementProps) {
-  const [pos, setPos] = useState({ x: initialX, y: initialY });
-  const [fontSize, setFontSize] = useState(initialFontSize);
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    origX: number;
-    origY: number;
-    moved: boolean;
-  } | null>(null);
-  const hideTimer = useRef<number | null>(null);
+const CHIPS: { label: string; key: SizeKey }[] = [
+  { label: "GMD", key: "gmd" },
+  { label: "Fazenda", key: "fazenda" },
+  { label: "Lote/Animais", key: "subtitulo" },
+  { label: "Dias", key: "badge" },
+  { label: "Gráfico", key: "grafico" },
+  { label: "Rodapé técnico", key: "lote" },
+  { label: "Insight", key: "insight" },
+];
 
-  const isSelected = selectedId === id;
-  const anySelected = selectedId !== null;
-
-  function showControls() {
-    setSelectedId(id);
-    if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    hideTimer.current = window.setTimeout(() => {
-      setSelectedId(null);
-    }, 2000) as unknown as number;
-  }
-
-  function onPointerDown(e: React.PointerEvent) {
-    if (exporting) return;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: pos.x,
-      origY: pos.y,
-      moved: false,
-    };
-  }
-
-  function onPointerMove(e: React.PointerEvent) {
-    if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
-    setPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
-  }
-
-  function onPointerUp() {
-    if (!dragRef.current) return;
-    if (!dragRef.current.moved) {
-      showControls();
-    } else {
-      showControls();
-    }
-    dragRef.current = null;
-  }
-
-  useEffect(() => {
-    return () => {
-      if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    };
-  }, []);
-
-  const showBorder = !exporting && isSelected;
-
-  return (
-    <div
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      style={{
-        position: "absolute",
-        left: pos.x,
-        top: pos.y,
-        touchAction: "none",
-        cursor: exporting ? "default" : "move",
-        userSelect: "none",
-        padding: 4,
-        borderRadius: 8,
-        border: showBorder ? "1px dashed rgba(255,255,255,0.4)" : "1px dashed transparent",
-      }}
-    >
-      {children(fontSize)}
-
-      {!exporting && isSelected && (
-        <div
-          style={{
-            position: "absolute",
-            top: -34,
-            right: 0,
-            display: "flex",
-            gap: 4,
-            zIndex: 5,
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setFontSize((s) => Math.max(8, s - 2));
-              showControls();
-            }}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              color: "white",
-              fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid rgba(255,255,255,0.3)",
-            }}
-          >
-            A-
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setFontSize((s) => Math.min(120, s + 2));
-              showControls();
-            }}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              color: "white",
-              fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid rgba(255,255,255,0.3)",
-            }}
-          >
-            A+
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------- Cow icon ----------
-function CowIcon({ size = 20 }: { size?: number }) {
+function CowIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 32 32"
       fill="none"
       stroke="white"
-      strokeWidth="1.5"
+      strokeWidth="1.8"
       strokeLinecap="round"
-      strokeLinejoin="round"
     >
-      <path d="M4 8c0-2 1.5-4 4-4h8c2.5 0 4 2 4 4v6c0 3-2 5-8 5s-8-2-8-5V8z" />
-      <path d="M8 4L6 2M16 4l2-2" />
-      <circle cx="9" cy="10" r="1" fill="white" />
-      <circle cx="15" cy="10" r="1" fill="white" />
-      <path d="M10 14c.5.7 1 1 2 1s1.5-.3 2-1" />
-      <path d="M2 9c-.5 0-1 .5-1 1.5S2 12 2 12M22 9c.5 0 1 .5 1 1.5S22 12 22 12" />
+      <path d="M6 8 C3 7 1 9 2 12 L5 16" />
+      <path d="M26 8 C29 7 31 9 30 12 L27 16" />
+      <path d="M5 16 C5 23 9 27 16 27 C23 27 27 23 27 16 C27 10 23 6 16 6 C9 6 5 10 5 16Z" />
+      <circle cx="11.5" cy="16" r="1.8" fill="white" stroke="none" />
+      <circle cx="20.5" cy="16" r="1.8" fill="white" stroke="none" />
+      <path d="M12 21.5 Q16 24 20 21.5" strokeWidth="1.5" />
+      <path d="M9 6 C7 3 3 3 2 7" />
+      <path d="M23 6 C25 3 29 3 30 7" />
     </svg>
   );
 }
 
-// ---------- Insight Badge ----------
 interface InsightBadgeProps {
+  fontSize: number;
   exporting: boolean;
 }
-function InsightBadge({ exporting }: InsightBadgeProps) {
+function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
-  function next(e: React.MouseEvent) {
-    e.stopPropagation();
+  function next() {
+    if (exporting) return;
     setVisible(false);
     setTimeout(() => {
       setIndex((i) => (i + 1) % INSIGHT_FRASES.length);
@@ -228,60 +88,49 @@ function InsightBadge({ exporting }: InsightBadgeProps) {
   }
 
   const frase = INSIGHT_FRASES[index];
-  if (!frase) {
-    if (exporting) return null;
-    return (
-      <button
-        onClick={next}
-        style={{
-          padding: "6px 12px",
-          borderRadius: 999,
-          border: "1px dashed rgba(255,255,255,0.3)",
-          backgroundColor: "rgba(0,0,0,0.3)",
-          color: "rgba(255,255,255,0.5)",
-          fontSize: 12,
-        }}
-      >
-        + insight
-      </button>
-    );
-  }
+  if (!frase) return null;
 
   return (
     <button
+      type="button"
       onClick={next}
       style={{
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "8px 14px",
+        padding: "6px 16px",
         borderRadius: 999,
-        backgroundColor: "rgba(34,197,94,0.22)",
-        color: "white",
-        fontSize: 13,
+        backgroundColor: "rgba(20, 83, 45, 0.8)",
+        color: "#86efac",
+        fontSize,
         fontWeight: 600,
         opacity: visible ? 1 : 0,
         transition: "opacity 200ms",
         border: "none",
       }}
     >
-      <span>{frase}</span>
-      {!exporting && (
-        <RefreshCw size={8} style={{ opacity: 0.6, marginLeft: 2 }} />
-      )}
+      {frase}
     </button>
   );
 }
 
-// ---------- Main Modal ----------
 export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }: Props) {
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const resultado = usePesagemResultado(open ? pesagemId : null);
+  const [sizes, setSizes] = useState<Record<SizeKey, number>>({ ...DEFAULT_SIZES });
+  const [activeChip, setActiveChip] = useState<SizeKey>("gmd");
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const { loading, gmd, sinal, dias, pesoAtual, pesoAnterior, qtdAnimais, nomePasto, primeiraPesagem } = resultado;
+  const resultado = usePesagemResultado(open ? pesagemId : null);
+  const {
+    loading,
+    gmd,
+    sinal,
+    dias,
+    pesoAtual,
+    pesoAnterior,
+    qtdAnimais,
+    nomePasto,
+    nomeFazenda,
+    primeiraPesagem,
+  } = resultado;
 
   const chartData = useMemo(() => {
     if (primeiraPesagem || pesoAnterior == null) return [];
@@ -290,16 +139,27 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
       peso: Number(
         (
           pesoAnterior +
-          (pesoAtual - pesoAnterior) * Math.pow(i / 15, 0.8) +
-          Math.sin(i * 2.3) * (pesoAtual - pesoAnterior) * 0.025
+          (pesoAtual - pesoAnterior) * Math.pow(i / 15, 0.75) +
+          Math.sin(i * 1.8) * Math.abs(pesoAtual - pesoAnterior) * 0.03
         ).toFixed(2),
       ),
     }));
   }, [pesoAnterior, pesoAtual, primeiraPesagem]);
 
-  const domainMin = pesoAnterior == null ? 0 : Math.min(pesoAnterior, pesoAtual) - 10;
-  const domainMax = pesoAnterior == null ? pesoAtual + 10 : Math.max(pesoAnterior, pesoAtual) + 10;
+  const domainMin = pesoAnterior == null ? 0 : Math.min(pesoAnterior, pesoAtual) - 8;
+  const domainMax = pesoAnterior == null ? pesoAtual + 10 : Math.max(pesoAnterior, pesoAtual) + 8;
   const gmdDisplay = gmd != null ? `${sinal}${gmd.toFixed(2)}` : "—";
+
+  function adjust(delta: number) {
+    setSizes((prev) => {
+      const cur = prev[activeChip];
+      const step = activeChip === "gmd" || activeChip === "grafico" ? 4 : 1;
+      const min = activeChip === "gmd" ? 30 : activeChip === "grafico" ? 80 : 8;
+      const max = activeChip === "gmd" ? 140 : activeChip === "grafico" ? 280 : 40;
+      const next = Math.max(min, Math.min(max, cur + delta * step));
+      return { ...prev, [activeChip]: next };
+    });
+  }
 
   function baixar(url: string) {
     const a = document.createElement("a");
@@ -309,19 +169,17 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
   }
 
   async function exportar() {
-    const el = document.getElementById("photo-result-final");
+    const el = cardRef.current;
     if (!el) {
       toast.error("Cartão não encontrado.");
       return;
     }
 
-    setSelectedId(null);
     setExporting(true);
     setSharing(true);
 
-    // wait one frame so the controls / borders unmount before capture
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    await new Promise((r) => setTimeout(r, 50));
+    // hide control bar + wait
+    await new Promise((r) => setTimeout(r, 100));
 
     try {
       const scale = el.clientWidth > 0 ? (390 * 2) / el.clientWidth : 2;
@@ -363,16 +221,17 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
   if (!open || !photoUrl) return null;
 
+  const showMetrics = !primeiraPesagem;
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.94)" }}
-      onClick={() => setSelectedId(null)}
     >
       <button
         onClick={onClose}
         className="absolute right-4 top-4 z-[110] flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm"
-        style={{ backgroundColor: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,1)" }}
+        style={{ backgroundColor: "rgba(255,255,255,0.12)", color: "white" }}
         aria-label="Fechar"
       >
         <X className="h-5 w-5" />
@@ -380,311 +239,290 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
       <div className="flex w-full flex-1 items-start justify-center px-2 py-6">
         <div
-          id="photo-result-final"
+          ref={cardRef}
           className="relative overflow-hidden shadow-2xl"
           style={{
             width: "min(390px, calc(100vw - 16px))",
             aspectRatio: "390 / 693",
             borderRadius: 24,
           }}
-          onClick={(e) => e.stopPropagation()}
         >
-          {/* Foto pura, sem filtro brightness */}
+          {/* Foto */}
           <img
             src={photoUrl}
             alt="Foto da pesagem"
             className="absolute inset-0 h-full w-full object-cover"
           />
 
-          {/* Gradiente topo */}
+          {/* Gradiente topo (55%) */}
           <div
             className="pointer-events-none absolute inset-x-0 top-0"
             style={{
-              height: 256,
-              background: "linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%)",
+              height: "55%",
+              background: "linear-gradient(to bottom, rgba(0,0,0,0.80) 0%, transparent 100%)",
             }}
           />
-          {/* Gradiente rodapé */}
+          {/* Gradiente rodapé (25%) */}
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0"
             style={{
-              height: 192,
-              background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)",
+              height: "25%",
+              background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)",
             }}
           />
 
-          {/* Elementos arrastáveis */}
-          <div className="absolute inset-0" style={{ color: "white" }}>
-            {/* CONSUBOV */}
-            <DraggableElement
-              id="brand"
-              initialX={40}
-              initialY={28}
-              initialFontSize={14}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-            >
-              {(fs) => (
-                <div className="flex items-center gap-3" style={{ width: 280 }}>
-                  <div className="h-px flex-1" style={{ backgroundColor: BRAND_GREEN }} />
-                  <span style={{ fontSize: fs, fontWeight: 700, letterSpacing: "0.3em" }}>
-                    CONSUBOV
-                  </span>
-                  <div className="h-px flex-1" style={{ backgroundColor: BRAND_GREEN }} />
-                </div>
-              )}
-            </DraggableElement>
+          {/* Conteúdo vertical */}
+          <div className="absolute inset-0 flex flex-col items-center" style={{ color: "white" }}>
+            {/* [1] CONSUBOV */}
+            <div className="w-full px-6" style={{ marginTop: 28 }}>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1" style={{ backgroundColor: BRAND_GREEN }} />
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.3em" }}>
+                  CONSUBOV
+                </span>
+                <div className="h-px flex-1" style={{ backgroundColor: BRAND_GREEN }} />
+              </div>
+            </div>
 
-            {/* Animais + pasto (topo) */}
-            <DraggableElement
-              id="animais-topo"
-              initialX={70}
-              initialY={62}
-              initialFontSize={12}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
+            {/* [2] Fazenda */}
+            <div
+              className="mt-1 text-center"
+              style={{
+                fontSize: sizes.fazenda,
+                color: "rgba(255,255,255,0.8)",
+                fontWeight: 500,
+              }}
             >
-              {(fs) => (
-                <div
-                  style={{
-                    fontSize: fs,
-                    color: "rgba(255,255,255,0.7)",
-                    width: 220,
-                    textAlign: "center",
-                  }}
-                >
-                  {loading ? "—" : `${qtdAnimais} animais • ${nomePasto || "—"}`}
-                </div>
-              )}
-            </DraggableElement>
+              {loading ? "—" : nomeFazenda || "—"}
+            </div>
 
-            {/* GMD */}
-            <DraggableElement
-              id="gmd"
-              initialX={50}
-              initialY={100}
-              initialFontSize={72}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
+            {/* [3] Animais + Lote */}
+            <div
+              className="text-center"
+              style={{
+                marginTop: 2,
+                fontSize: sizes.subtitulo,
+                color: "rgba(255,255,255,0.6)",
+              }}
             >
-              {(fs) => (
-                <div className="flex items-end gap-2">
-                  <span style={{ fontSize: fs, fontWeight: 800, lineHeight: 1 }}>
+              {loading
+                ? "—"
+                : `${qtdAnimais} animais  •  Lote ${nomePasto || "—"}`}
+            </div>
+
+            {/* [4] GMD */}
+            <div className="mt-4 text-center" style={{ lineHeight: 1 }}>
+              {showMetrics ? (
+                <>
+                  <span style={{ fontSize: sizes.gmd, fontWeight: 900, color: "white" }}>
                     {loading ? "—" : gmdDisplay}
                   </span>
-                  <span style={{ fontSize: fs * 0.32, fontWeight: 600, paddingBottom: fs * 0.04 }}>
+                  <span
+                    style={{
+                      fontSize: sizes.gmd * 0.3,
+                      fontWeight: 300,
+                      color: "white",
+                      marginLeft: 6,
+                    }}
+                  >
                     kg/dia
                   </span>
-                </div>
+                </>
+              ) : (
+                <span style={{ fontSize: sizes.gmd * 0.45, fontWeight: 700, color: "white" }}>
+                  Primeira pesagem • {pesoAtual.toFixed(1)} kg
+                </span>
               )}
-            </DraggableElement>
+            </div>
 
-            {/* Badge dias */}
-            <DraggableElement
-              id="dias"
-              initialX={110}
-              initialY={200}
-              initialFontSize={13}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-            >
-              {(fs) => (
+            {/* [5] Badge */}
+            {showMetrics && (
+              <div className="mt-2">
                 <div
                   style={{
                     padding: "4px 14px",
                     borderRadius: 999,
-                    fontSize: fs,
+                    fontSize: sizes.badge,
                     fontWeight: 600,
-                    border:
-                      primeiraPesagem || loading
-                        ? "1px solid rgba(255,255,255,0.34)"
-                        : `1px solid ${BRAND_GREEN}`,
-                    backgroundColor:
-                      primeiraPesagem || loading ? "rgba(255,255,255,0.12)" : "rgba(34,197,94,0.08)",
-                    color:
-                      primeiraPesagem || loading ? "rgba(255,255,255,0.84)" : BRAND_GREEN,
+                    border: `1px solid ${BRAND_GREEN}`,
+                    color: "#4ade80",
+                    backgroundColor: "rgba(34,197,94,0.08)",
                   }}
                 >
-                  {loading
-                    ? "— dias"
-                    : primeiraPesagem
-                      ? "Primeira pesagem"
-                      : `Últimos ${dias} dias`}
+                  {loading ? "— dias" : `Últimos ${dias} dias`}
                 </div>
-              )}
-            </DraggableElement>
-
-            {/* Gráfico */}
-            {!loading && !primeiraPesagem && chartData.length > 0 && (
-              <DraggableElement
-                id="chart"
-                initialX={10}
-                initialY={260}
-                initialFontSize={12}
-                exporting={exporting}
-                selectedId={selectedId}
-                setSelectedId={setSelectedId}
-              >
-                {(fs) => (
-                  <div style={{ width: 360, height: 200, position: "relative" }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 12, right: 8, bottom: 12, left: 8 }}>
-                        <defs>
-                          <linearGradient id="photo-chart-fill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={BRAND_GREEN} stopOpacity={0.2} />
-                            <stop offset="100%" stopColor={BRAND_GREEN} stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          vertical={false}
-                          stroke="rgba(255,255,255,0.15)"
-                          strokeDasharray="4 4"
-                          horizontalCoordinatesGenerator={({ offset }: any) => {
-                            const top = offset?.top ?? 0;
-                            const height = offset?.height ?? 0;
-                            return Array.from({ length: 4 }, (_, index) => top + (height * (index + 1)) / 4);
-                          }}
-                        />
-                        <XAxis hide dataKey="i" />
-                        <YAxis hide domain={[domainMin, domainMax]} />
-                        <Area
-                          type="monotone"
-                          dataKey="peso"
-                          stroke={BRAND_GREEN}
-                          strokeWidth={2.5}
-                          fill="url(#photo-chart-fill)"
-                          fillOpacity={0.2}
-                          dot={(props: any) => {
-                            if (props.index !== chartData.length - 1)
-                              return <g key={`dot-${props.index}`} />;
-                            return (
-                              <circle
-                                key={`dot-${props.index}`}
-                                cx={props.cx}
-                                cy={props.cy}
-                                r={7}
-                                fill="white"
-                                stroke={BRAND_GREEN}
-                                strokeWidth={2}
-                              />
-                            );
-                          }}
-                          activeDot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 16,
-                        fontSize: fs,
-                        fontWeight: 500,
-                        color: "white",
-                      }}
-                    >
-                      {formatKg(pesoAtual)} kg
-                    </div>
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 4,
-                        left: 16,
-                        fontSize: fs,
-                        color: "rgba(255,255,255,0.5)",
-                      }}
-                    >
-                      {formatKg(pesoAnterior)} kg
-                    </div>
-                  </div>
-                )}
-              </DraggableElement>
+              </div>
             )}
 
-            {/* Lote (rodapé) */}
-            <DraggableElement
-              id="lote"
-              initialX={30}
-              initialY={520}
-              initialFontSize={14}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-            >
-              {(fs) => (
+            {/* [6] Gráfico */}
+            {showMetrics && chartData.length > 0 && (
+              <div
+                className="mt-3 w-full"
+                style={{ height: sizes.grafico, position: "relative" }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 10, right: 50, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid
+                      vertical={false}
+                      stroke="rgba(255,255,255,0.12)"
+                      strokeDasharray="3 3"
+                    />
+                    <XAxis hide dataKey="i" />
+                    <YAxis hide domain={[domainMin, domainMax]} />
+                    <Area
+                      type="monotone"
+                      dataKey="peso"
+                      stroke={BRAND_GREEN}
+                      strokeWidth={2.5}
+                      fill={BRAND_GREEN}
+                      fillOpacity={0.2}
+                      dot={(props: any) => {
+                        if (props.index !== chartData.length - 1)
+                          return <g key={`dot-${props.index}`} />;
+                        return (
+                          <circle
+                            key={`dot-${props.index}`}
+                            cx={props.cx}
+                            cy={props.cy}
+                            r={7}
+                            fill="white"
+                            stroke={BRAND_GREEN}
+                            strokeWidth={2}
+                          />
+                        );
+                      }}
+                      activeDot={false}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
                 <div
                   style={{
-                    padding: "10px 14px",
-                    borderRadius: 16,
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    backdropFilter: "blur(10px)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    color: "white",
-                    fontSize: fs,
+                    position: "absolute",
+                    top: 4,
+                    right: 12,
+                    fontSize: 12,
                     fontWeight: 500,
+                    color: "white",
                   }}
                 >
-                  <CowIcon size={fs + 6} />
-                  <span>{loading ? "Carregando..." : `Lote ${nomePasto || "—"}`}</span>
+                  {pesoAtual.toFixed(1)} kg
                 </div>
-              )}
-            </DraggableElement>
-
-            {/* Insight badge */}
-            <DraggableElement
-              id="insight"
-              initialX={70}
-              initialY={585}
-              initialFontSize={13}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-            >
-              {() => <InsightBadge exporting={exporting} />}
-            </DraggableElement>
-
-            {/* URL */}
-            <DraggableElement
-              id="url"
-              initialX={120}
-              initialY={650}
-              initialFontSize={12}
-              exporting={exporting}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-            >
-              {(fs) => (
                 <div
                   style={{
-                    fontSize: fs,
-                    letterSpacing: "0.2em",
-                    color: BRAND_GREEN,
-                    textAlign: "center",
-                    width: 160,
+                    position: "absolute",
+                    bottom: 4,
+                    left: 12,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.45)",
                   }}
                 >
-                  consubov.com.br
+                  {pesoAnterior != null ? pesoAnterior.toFixed(1) : "—"} kg
                 </div>
-              )}
-            </DraggableElement>
+              </div>
+            )}
+
+            {/* [7] Lote técnico */}
+            <div className="mt-3 px-4">
+              <div
+                className="inline-flex items-center gap-2"
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 16,
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                }}
+              >
+                <CowIcon size={18} />
+                <span style={{ color: "white", fontSize: sizes.lote, fontWeight: 500 }}>
+                  Lote {nomePasto || "—"}
+                </span>
+              </div>
+            </div>
+
+            {/* [8] Insight */}
+            {showMetrics && (
+              <div className="mt-2 px-4">
+                <InsightBadge fontSize={sizes.insight} exporting={exporting} />
+              </div>
+            )}
+          </div>
+
+          {/* [9] Rodapé URL */}
+          <div
+            className="absolute w-full text-center"
+            style={{
+              bottom: 12,
+              fontSize: sizes.rodape,
+              letterSpacing: "0.2em",
+              color: BRAND_GREEN,
+            }}
+          >
+            consubov.com.br
           </div>
         </div>
       </div>
 
-      <div
-        className="w-full max-w-sm px-4 pb-6"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Barra de controle */}
+      {!exporting && (
+        <div className="w-full max-w-md px-3" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="rounded-2xl p-2 mb-2"
+            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+              {CHIPS.map((chip) => (
+                <button
+                  key={chip.key}
+                  onClick={() => setActiveChip(chip.key)}
+                  className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
+                  style={{
+                    backgroundColor:
+                      activeChip === chip.key ? BRAND_GREEN : "rgba(255,255,255,0.10)",
+                    color: activeChip === chip.key ? "black" : "rgba(255,255,255,0.85)",
+                  }}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between gap-3 px-1 pt-1">
+              <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>
+                {CHIPS.find((c) => c.key === activeChip)?.label} · {sizes[activeChip]}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => adjust(-1)}
+                  className="h-8 w-8 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                  aria-label="Diminuir"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => adjust(1)}
+                  className="h-8 w-8 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                  aria-label="Aumentar"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="w-full max-w-sm px-4 pb-6" onClick={(e) => e.stopPropagation()}>
         <div className="space-y-2">
           <Button onClick={exportar} disabled={sharing} className="h-12 w-full">
-            {sharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
+            {sharing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Share2 className="mr-2 h-4 w-4" />
+            )}
             Compartilhar
           </Button>
           <Button onClick={onClose} variant="outline" className="h-12 w-full">
