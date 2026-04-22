@@ -268,7 +268,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
       <div className="w-full max-w-sm px-4 pb-6">
         <div className="space-y-2">
-          <Button onClick={exportar} disabled={sharing || loading} className="h-12 w-full">
+          <Button onClick={exportar} disabled={sharing} className="h-12 w-full">
             {sharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
             Compartilhar
           </Button>
