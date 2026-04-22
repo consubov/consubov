@@ -12,6 +12,7 @@ export interface PesagemResultado {
   ganho: number | null;
   qtdAnimais: number;
   nomePasto: string;
+  nomeFazenda: string;
 }
 
 const EMPTY: PesagemResultado = {
@@ -25,6 +26,7 @@ const EMPTY: PesagemResultado = {
   ganho: null,
   qtdAnimais: 0,
   nomePasto: "",
+  nomeFazenda: "",
 };
 
 export function usePesagemResultado(pesagemId: string | null | undefined) {
@@ -43,7 +45,7 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
     (async () => {
       try {
         const { data: atual, error: e1 } = await (supabase.from("pesagens") as any)
-          .select("*, pastos(nome, num_animais)")
+          .select("*, pastos(nome, num_animais, retiros(fazendas(nome)))")
           .eq("id", pesagemId)
           .maybeSingle();
 
@@ -71,6 +73,7 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
           Number(atual.total_pesado) ||
           0;
         const nomePasto = atual.pastos?.nome || "";
+        const nomeFazenda = atual.pastos?.retiros?.fazendas?.nome || "";
 
         if (!anterior) {
           if (!cancelled) {
@@ -85,6 +88,7 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
               ganho: null,
               qtdAnimais,
               nomePasto,
+              nomeFazenda,
             });
           }
           return;
@@ -114,6 +118,7 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
             ganho,
             qtdAnimais,
             nomePasto,
+            nomeFazenda,
           });
         }
       } catch (err) {
