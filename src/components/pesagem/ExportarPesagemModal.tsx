@@ -1,15 +1,14 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink, Loader2, Camera, Share2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarPdfPesagem, type AnimalPesagem, type PesagemPdfData } from "@/utils/gerarPdfPesagem";
 import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
 import { saveSyncQueueItem } from "@/lib/offlineDb";
-import ConsubovResultCard from "./ConsubovResultCard";
 import { usePesagemResultado } from "@/hooks/usePesagemResultado";
+import PhotoResultModal from "./PhotoResultModal";
 
 interface Props {
   open: boolean;
@@ -31,8 +30,11 @@ export default function ExportarPesagemModal({
 }: Props) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [sharing, setSharing] = useState(false);
+  const [sharingPdf, setSharingPdf] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const pdfBlobRef = useRef<Blob | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
 
   const resultado = usePesagemResultado(open ? pesagemId : null);
@@ -96,161 +98,174 @@ export default function ExportarPesagemModal({
     }
   }
 
-  function baixarImagem(dataUrl: string) {
-    const link = document.createElement("a");
-    link.download = "consubov-resultado.png";
-    link.href = dataUrl;
-    link.click();
-  }
-
-  async function exportarCartao() {
-    const el = document.getElementById("consubov-result-card");
-    if (!el) {
-      toast.error("Cartão não encontrado.");
-      return;
-    }
-    setSharing(true);
+  async function handleCompartilharPdf() {
+    setSharingPdf(true);
     try {
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null,
-        width: 390,
-        height: 693,
-      });
-      const dataUrl = canvas.toDataURL("image/png");
-
-      if (typeof navigator !== "undefined" && (navigator as any).share) {
+      const blob = await ensurePdf();
+      if (!blob) return;
+      const file = new File([blob], `pesagem-${pesagemId}.pdf`, { type: "application/pdf" });
+      if ((navigator as any).share && (navigator as any).canShare?.({ files: [file] })) {
         try {
-          const blob = await (await fetch(dataUrl)).blob();
-          const file = new File([blob], "consubov-resultado.png", { type: "image/png" });
-          if ((navigator as any).canShare?.({ files: [file] })) {
-            await (navigator as any).share({ files: [file], title: "Resultado Consubov" });
-            return;
-          }
+          await (navigator as any).share({ files: [file], title: "Pesagem Consubov" });
+          return;
         } catch {
-          // fallback below
+          // fallback
         }
       }
-      baixarImagem(dataUrl);
-      toast.success("Imagem baixada!");
-    } catch (err) {
-      console.error("Erro ao gerar imagem:", err);
-      toast.error("Erro ao gerar imagem.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pesagem-${pesagemId}.pdf`;
+      a.click();
     } finally {
-      setSharing(false);
+      setSharingPdf(false);
     }
+  }
+
+  function abrirCamera() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoUrl(url);
+    setPhotoModalOpen(true);
+    onClose();
+    // reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function fecharFotoModal() {
+    setPhotoModalOpen(false);
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    setPhotoUrl(null);
   }
 
   function handleClose() {
     setPdfUrl(null);
     pdfBlobRef.current = null;
     setGeneratingPdf(false);
-    setSharing(false);
+    setSharingPdf(false);
     onClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Exportar Pesagem
-          </DialogTitle>
-          <DialogDescription>
-            Gere o relatório em PDF da pesagem realizada.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFotoSelecionada}
+        className="hidden"
+      />
 
-        {/* Summary */}
-        <div className="grid grid-cols-3 gap-3 text-center py-2">
-          <div className="p-3 rounded-lg bg-muted">
-            <p className="text-lg font-bold text-primary">{totalAnimais}</p>
-            <p className="text-xs text-muted-foreground">animais</p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted">
-            <p className="text-lg font-bold text-primary">{pesoMedioKg.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">kg médio</p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted">
-            <p className="text-lg font-bold text-primary">{pesoTotalKg.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">kg total</p>
-          </div>
-        </div>
+      <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Exportar Pesagem
+            </DialogTitle>
+            <DialogDescription>
+              Gere o relatório em PDF da pesagem realizada.
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Preview do cartão */}
-        <div
-          className="mx-auto my-2 overflow-hidden rounded-xl"
-          style={{ width: 390 * 0.45, height: 693 * 0.45 }}
-        >
-          <div style={{ transform: "scale(0.45)", transformOrigin: "top left" }}>
-            {!resultado.loading && <ConsubovResultCard resultado={resultado} />}
-            {resultado.loading && (
-              <div
-                style={{ width: 390, height: 693 }}
-                className="flex items-center justify-center bg-muted"
-              >
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-3 text-center py-2">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-lg font-bold text-primary">{totalAnimais}</p>
+              <p className="text-xs text-muted-foreground">animais</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-lg font-bold text-primary">{pesoMedioKg.toFixed(1)}</p>
+              <p className="text-xs text-muted-foreground">kg médio</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-lg font-bold text-primary">{pesoTotalKg.toFixed(1)}</p>
+              <p className="text-xs text-muted-foreground">kg total</p>
+            </div>
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-2 items-stretch">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleAbrirPdf}
-            disabled={generatingPdf}
+          {/* Actions */}
+          <div className="flex gap-2 pt-2 items-stretch">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleAbrirPdf}
+              disabled={generatingPdf}
+            >
+              {generatingPdf ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ExternalLink className="w-4 h-4 mr-2" />
+              )}
+              Abrir PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={abrirCamera}
+              title="Tirar foto"
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+            <Button
+              className="flex-1 bg-green-900 hover:bg-green-900/90 text-white"
+              onClick={handleCompartilharPdf}
+              disabled={sharingPdf}
+            >
+              {sharingPdf ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Share2 className="w-4 h-4 mr-2" />
+              )}
+              Compartilhar
+            </Button>
+          </div>
+
+          {/* Banner inferior - clicável */}
+          <button
+            type="button"
+            onClick={abrirCamera}
+            className="mt-3 rounded-xl bg-muted p-3 flex items-center gap-3 text-left hover:bg-muted/80 transition-colors w-full"
           >
-            {generatingPdf ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <ExternalLink className="w-4 h-4 mr-2" />
-            )}
-            Abrir PDF
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled
-            className="cursor-not-allowed"
-            title="Em breve"
-          >
-            <Camera className="w-4 h-4" />
-          </Button>
-          <Button
-            className="flex-1 bg-green-900 hover:bg-green-900/90 text-white"
-            onClick={exportarCartao}
-            disabled={sharing || resultado.loading}
-          >
-            {sharing ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Share2 className="w-4 h-4 mr-2" />
-            )}
-            Compartilhar
-          </Button>
-        </div>
+            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center shrink-0">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold leading-tight">
+                Quer compartilhar com ainda mais impacto?
+              </p>
+              <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                Tire uma foto, adicione o filtro de desempenho automaticamente e compartilhe seu resultado!
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          </button>
+        </DialogContent>
+      </Dialog>
 
-        {/* Banner inferior */}
-        <div className="mt-3 rounded-xl bg-muted p-3 flex items-center gap-3 opacity-70">
-          <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center shrink-0">
-            <Camera className="w-5 h-5" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold leading-tight">
-              Quer compartilhar com ainda mais impacto?
-            </p>
-            <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-              Tire uma foto, adicione o filtro de desempenho automaticamente e compartilhe seu resultado!
-            </p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-        </div>
-      </DialogContent>
-    </Dialog>
+      <PhotoResultModal
+        open={photoModalOpen}
+        onClose={fecharFotoModal}
+        photoUrl={photoUrl}
+        data={{
+          gmd: resultado.gmd,
+          sinal: resultado.sinal,
+          dias: resultado.dias,
+          pesoAtual: resultado.pesoAtual,
+          pesoAnterior: resultado.pesoAnterior,
+          qtdAnimais: resultado.qtdAnimais,
+          nomePasto: resultado.nomePasto,
+          primeiraPesagem: resultado.primeiraPesagem,
+          ganho: resultado.ganho,
+          loteId: pesagemId,
+        }}
+      />
+    </>
   );
 }
