@@ -1401,6 +1401,7 @@ export type Database = {
           media_calculada: number | null
           peso_medio_aplicado: number | null
           pesos: Json
+          quantidade_animais: number | null
           total_pesado: number
           usuario_id: string | null
         }
@@ -1412,6 +1413,7 @@ export type Database = {
           media_calculada?: number | null
           peso_medio_aplicado?: number | null
           pesos?: Json
+          quantidade_animais?: number | null
           total_pesado?: number
           usuario_id?: string | null
         }
@@ -1423,6 +1425,7 @@ export type Database = {
           media_calculada?: number | null
           peso_medio_aplicado?: number | null
           pesos?: Json
+          quantidade_animais?: number | null
           total_pesado?: number
           usuario_id?: string | null
         }
