@@ -42,7 +42,6 @@ const CHIPS: { label: string; key: SizeKey }[] = [
   { label: "Lote/Animais", key: "subtitulo" },
   { label: "Dias", key: "badge" },
   { label: "Gráfico", key: "grafico" },
-  { label: "Rodapé técnico", key: "lote" },
   { label: "Insight", key: "insight" },
 ];
 
