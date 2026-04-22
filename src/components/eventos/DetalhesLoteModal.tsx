@@ -53,6 +53,26 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   const [pesagem, setPesagem] = useState<any>(null);
   const [sanitario, setSanitario] = useState<any>(null);
   const [consumoMedio, setConsumoMedio] = useState<number | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleShareClick() {
+    fileInputRef.current?.click();
+  }
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoUrl(url);
+    setPhotoModalOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+  function fecharFotoModal() {
+    setPhotoModalOpen(false);
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    setPhotoUrl(null);
+  }
 
   // Fetch fresh data every time modal opens
   useEffect(() => {
@@ -133,7 +153,18 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
           </h4>
           {pesagem ? (
             <div className="text-sm space-y-0.5">
-              <p>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></p>
+              <p className="flex items-center gap-2 flex-wrap">
+                <span>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></span>
+                <button
+                  type="button"
+                  onClick={handleShareClick}
+                  className="inline-flex items-center gap-1 text-green-600 text-xs hover:underline"
+                  aria-label="Compartilhar resultado"
+                >
+                  <Camera className="w-4 h-4" />
+                  Compartilhar
+                </button>
+              </p>
               <p>Animais pesados: <strong>{pesagem.total_pesado}</strong></p>
               <p>Peso médio calculado: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
             </div>
