@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import html2canvas from "html2canvas";
-import { Loader2, Share2, X, Minus, Plus } from "lucide-react";
+import { Loader2, Share2, X, Minus, Plus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { usePesagemResultado } from "@/hooks/usePesagemResultado";
@@ -24,6 +24,7 @@ const INSIGHT_FRASES_TEXT: string[] = [
 ];
 
 type SizeKey = "gmd" | "fazenda" | "subtitulo" | "badge" | "grafico" | "lote" | "insight" | "rodape";
+type PosKey = "insight";
 
 const DEFAULT_SIZES: Record<SizeKey, number> = {
   gmd: 76,
@@ -45,101 +46,24 @@ const CHIPS: { label: string; key: SizeKey }[] = [
   { label: "Insight", key: "insight" },
 ];
 
-function CowIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      stroke="white"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    >
-      <path d="M6 8 C3 7 1 9 2 12 L5 16" />
-      <path d="M26 8 C29 7 31 9 30 12 L27 16" />
-      <path d="M5 16 C5 23 9 27 16 27 C23 27 27 23 27 16 C27 10 23 6 16 6 C9 6 5 10 5 16Z" />
-      <circle cx="11.5" cy="16" r="1.8" fill="white" stroke="none" />
-      <circle cx="20.5" cy="16" r="1.8" fill="white" stroke="none" />
-      <path d="M12 21.5 Q16 24 20 21.5" strokeWidth="1.5" />
-      <path d="M9 6 C7 3 3 3 2 7" />
-      <path d="M23 6 C25 3 29 3 30 7" />
-    </svg>
-  );
-}
-
 interface InsightBadgeProps {
   fontSize: number;
   exporting: boolean;
+  position: { x: number; y: number };
 }
-function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
+function InsightBadge({ fontSize, exporting, position }: InsightBadgeProps) {
   const [idx, setIdx] = useState(0);
-  const [pos, setPos] = useState({ x: 16, y: 0 });
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
-  const [showHint, setShowHint] = useState(true);
-  const [dragging, setDragging] = useState(false);
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-  const movedRef = useRef(false);
-  const longPressedRef = useRef(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setShowHint(false), 3000);
-    return () => clearTimeout(t);
-  }, []);
-
-  function clearLongPress() {
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
-  }
-
-  function onTouchStart(e: React.TouchEvent) {
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
     if (exporting) return;
-    const t = e.touches[0];
-    movedRef.current = false;
-    longPressedRef.current = false;
-    dragStartRef.current = { x: t.clientX, y: t.clientY, ox: pos.x, oy: pos.y };
-    longPressRef.current = setTimeout(() => {
-      longPressedRef.current = true;
-      setVisible(false);
-    }, 500);
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (exporting || !dragStartRef.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - dragStartRef.current.x;
-    const dy = t.clientY - dragStartRef.current.y;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      movedRef.current = true;
-      clearLongPress();
-      setDragging(true);
-      // y grows downward in screen, but we use bottom offset → invert dy
-      setPos({
-        x: dragStartRef.current.ox + dx,
-        y: dragStartRef.current.oy - dy,
-      });
-    }
-  }
-
-  function onTouchEnd() {
-    clearLongPress();
-    const wasDrag = movedRef.current;
-    const wasLong = longPressedRef.current;
-    dragStartRef.current = null;
-    setDragging(false);
-    if (exporting) return;
-    if (!wasDrag && !wasLong) {
-      // simple tap → rotate
-      setFading(true);
-      setTimeout(() => {
-        setIdx((i) => (i + 1) % INSIGHT_FRASES_TEXT.length);
-        setFading(false);
-      }, 150);
-    }
+    setFading(true);
+    setTimeout(() => {
+      setIdx((i) => (i + 1) % INSIGHT_FRASES_TEXT.length);
+      setFading(false);
+    }, 150);
   }
 
   if (!visible) {
@@ -148,17 +72,14 @@ function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
       <div
         style={{
           position: "absolute",
-          left: pos.x,
-          bottom: 60 + pos.y,
+          left: 16 + position.x,
+          bottom: 60 + position.y,
           opacity: 0.25,
           fontSize: 10,
           color: "white",
           padding: "4px 8px",
           cursor: "pointer",
-        }}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          setVisible(true);
+          transition: "all 0.1s",
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -176,17 +97,18 @@ function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
     <div
       style={{
         position: "absolute",
-        left: pos.x,
-        bottom: 60 + pos.y,
-        touchAction: "none",
+        left: 16 + position.x,
+        bottom: 60 + position.y,
         userSelect: "none",
+        transition: "all 0.1s",
       }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
     >
       <div
+        onClick={handleClick}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (!exporting) setVisible(false);
+        }}
         style={{
           padding: "6px 16px",
           borderRadius: 999,
@@ -197,23 +119,11 @@ function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
           opacity: fading ? 0 : 1,
           transition: "opacity 150ms",
           display: "inline-block",
-          boxShadow: dragging ? "0 0 0 1px rgba(255,255,255,0.3)" : "none",
+          cursor: "pointer",
         }}
       >
         {frase}
       </div>
-      {showHint && !exporting && (
-        <div
-          style={{
-            fontSize: 8,
-            color: "rgba(255,255,255,0.25)",
-            marginTop: 2,
-            textAlign: "center",
-          }}
-        >
-          ↕ arraste • toque p/ mudar • segure p/ ocultar
-        </div>
-      )}
     </div>
   );
 }
@@ -221,9 +131,23 @@ function InsightBadge({ fontSize, exporting }: InsightBadgeProps) {
 export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }: Props) {
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [confirmado, setConfirmado] = useState(false);
   const [sizes, setSizes] = useState<Record<SizeKey, number>>({ ...DEFAULT_SIZES });
   const [activeChip, setActiveChip] = useState<SizeKey>("gmd");
+  const [positions, setPositions] = useState<Record<PosKey, { x: number; y: number }>>({
+    insight: { x: 0, y: 0 },
+  });
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // reset on open
+  useEffect(() => {
+    if (open) {
+      setConfirmado(false);
+      setSizes({ ...DEFAULT_SIZES });
+      setActiveChip("gmd");
+      setPositions({ insight: { x: 0, y: 0 } });
+    }
+  }, [open]);
 
   const resultado = usePesagemResultado(open ? pesagemId : null);
   const {
@@ -268,6 +192,17 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
     });
   }
 
+  function mover(elemento: PosKey, direcao: "up" | "down" | "left" | "right") {
+    const delta = 8;
+    setPositions((prev) => ({
+      ...prev,
+      [elemento]: {
+        x: prev[elemento].x + (direcao === "left" ? -delta : direcao === "right" ? delta : 0),
+        y: prev[elemento].y + (direcao === "up" ? -delta : direcao === "down" ? delta : 0),
+      },
+    }));
+  }
+
   function baixar(url: string) {
     const a = document.createElement("a");
     a.download = "consubov-resultado.png";
@@ -285,7 +220,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
     setExporting(true);
     setSharing(true);
 
-    // hide control bar + wait
     await new Promise((r) => setTimeout(r, 100));
 
     try {
@@ -329,11 +263,15 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
   if (!open || !photoUrl) return null;
 
   const showMetrics = !primeiraPesagem;
+  const isInsightActive = activeChip === "insight";
 
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.94)" }}
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.94)",
+        WebkitOverflowScrolling: "touch",
+      }}
     >
       <button
         onClick={onClose}
@@ -344,7 +282,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
         <X className="h-5 w-5" />
       </button>
 
-      <div className="flex w-full flex-1 items-start justify-center px-2 py-6">
+      <div className="flex w-full items-start justify-center px-2 py-6">
         <div
           ref={cardRef}
           className="relative overflow-hidden shadow-2xl"
@@ -361,7 +299,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
             className="absolute inset-0 h-full w-full object-cover"
           />
 
-          {/* Gradiente topo (55%) */}
+          {/* Gradiente topo */}
           <div
             className="pointer-events-none absolute inset-x-0 top-0"
             style={{
@@ -369,7 +307,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               background: "linear-gradient(to bottom, rgba(0,0,0,0.80) 0%, transparent 100%)",
             }}
           />
-          {/* Gradiente rodapé (25%) */}
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0"
             style={{
@@ -378,9 +315,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
             }}
           />
 
-          {/* Conteúdo vertical */}
           <div className="absolute inset-0 flex flex-col items-center" style={{ color: "white" }}>
-            {/* [1] CONSUBOV */}
             <div className="w-full px-6" style={{ marginTop: 28 }}>
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1" style={{ backgroundColor: BRAND_GREEN }} />
@@ -391,7 +326,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               </div>
             </div>
 
-            {/* [2] Fazenda */}
             <div
               className="mt-1 text-center"
               style={{
@@ -403,7 +337,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               {loading ? "—" : nomeFazenda || "—"}
             </div>
 
-            {/* [3] Animais + Lote */}
             <div
               className="text-center"
               style={{
@@ -417,7 +350,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 : `${qtdAnimais} animais  •  Lote ${nomePasto || "—"}`}
             </div>
 
-            {/* [4] GMD */}
             <div className="mt-4 text-center" style={{ lineHeight: 1 }}>
               {showMetrics ? (
                 <>
@@ -442,7 +374,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               )}
             </div>
 
-            {/* [5] Badge */}
             {showMetrics && (
               <div className="mt-2">
                 <div
@@ -461,7 +392,6 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               </div>
             )}
 
-            {/* [6] Gráfico */}
             {showMetrics && chartData.length > 0 && (
               <div
                 className="mt-3 w-full"
@@ -532,15 +462,15 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               </div>
             )}
 
-            {/* [8] Insight */}
             {showMetrics && (
-              <div className="mt-2 px-4">
-                <InsightBadge fontSize={sizes.insight} exporting={exporting} />
-              </div>
+              <InsightBadge
+                fontSize={sizes.insight}
+                exporting={exporting}
+                position={positions.insight}
+              />
             )}
           </div>
 
-          {/* [9] Rodapé URL */}
           <div
             className="absolute w-full text-center"
             style={{
@@ -555,71 +485,132 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
         </div>
       </div>
 
-      {/* Barra de controle */}
-      {!exporting && (
-        <div className="w-full max-w-md px-3" onClick={(e) => e.stopPropagation()}>
-          <div
-            className="rounded-2xl p-2 mb-2"
-            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-          >
-            <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
-              {CHIPS.map((chip) => (
-                <button
-                  key={chip.key}
-                  onClick={() => setActiveChip(chip.key)}
-                  className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
-                  style={{
-                    backgroundColor:
-                      activeChip === chip.key ? BRAND_GREEN : "rgba(255,255,255,0.10)",
-                    color: activeChip === chip.key ? "black" : "rgba(255,255,255,0.85)",
-                  }}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center justify-between gap-3 px-1 pt-1">
-              <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>
-                {CHIPS.find((c) => c.key === activeChip)?.label} · {sizes[activeChip]}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => adjust(-1)}
-                  className="h-8 w-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
-                  aria-label="Diminuir"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => adjust(1)}
-                  className="h-8 w-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
-                  aria-label="Aumentar"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+      {/* Antes de confirmar: botão "Ficou bom!" */}
+      {!confirmado && !exporting && (
+        <div className="w-full max-w-sm px-4 pb-6" onClick={(e) => e.stopPropagation()}>
+          <div className="space-y-2">
+            <Button
+              onClick={() => setConfirmado(true)}
+              className="h-12 w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+            >
+              <Check className="mr-2 h-5 w-5" />
+              Ficou bom!
+            </Button>
+            <Button onClick={onClose} variant="outline" className="h-12 w-full">
+              Cancelar
+            </Button>
           </div>
         </div>
       )}
 
-      <div className="w-full max-w-sm px-4 pb-6" onClick={(e) => e.stopPropagation()}>
-        <div className="space-y-2">
-          <Button onClick={exportar} disabled={sharing} className="h-12 w-full">
-            {sharing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Share2 className="mr-2 h-4 w-4" />
-            )}
-            Compartilhar
-          </Button>
-          <Button onClick={onClose} variant="outline" className="h-12 w-full">
-            Cancelar
-          </Button>
-        </div>
-      </div>
+      {/* Depois de confirmar: barra de controle + compartilhar */}
+      {confirmado && !exporting && (
+        <>
+          <div className="w-full max-w-md px-3" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="rounded-2xl p-2 mb-2"
+              style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            >
+              <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+                {CHIPS.map((chip) => (
+                  <button
+                    key={chip.key}
+                    onClick={() => setActiveChip(chip.key)}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
+                    style={{
+                      backgroundColor:
+                        activeChip === chip.key ? BRAND_GREEN : "rgba(255,255,255,0.10)",
+                      color: activeChip === chip.key ? "black" : "rgba(255,255,255,0.85)",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between gap-3 px-1 pt-1">
+                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>
+                  {CHIPS.find((c) => c.key === activeChip)?.label} · {sizes[activeChip]}px
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => adjust(-1)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Diminuir"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => adjust(1)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Aumentar"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Setas de movimento (apenas Insight por enquanto) */}
+              {isInsightActive && (
+                <div className="flex items-center justify-center gap-2 pt-2 mt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginRight: 4 }}>
+                    Mover:
+                  </span>
+                  <button
+                    onClick={() => mover("insight", "left")}
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Esquerda"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => mover("insight", "up")}
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Cima"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => mover("insight", "down")}
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Baixo"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => mover("insight", "right")}
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    aria-label="Direita"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="w-full max-w-sm px-4 pb-6" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-2">
+              <Button onClick={exportar} disabled={sharing} className="h-12 w-full">
+                {sharing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Share2 className="mr-2 h-4 w-4" />
+                )}
+                Compartilhar
+              </Button>
+              <Button onClick={onClose} variant="outline" className="h-12 w-full">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
