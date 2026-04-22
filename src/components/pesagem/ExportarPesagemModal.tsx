@@ -1,12 +1,15 @@
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Share2, ExternalLink, Loader2 } from "lucide-react";
+import { FileText, ExternalLink, Loader2, Camera, Share2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarPdfPesagem, type AnimalPesagem, type PesagemPdfData } from "@/utils/gerarPdfPesagem";
 import { useOnlineStatus } from "@/hooks/useOfflinePesagem";
 import { saveSyncQueueItem } from "@/lib/offlineDb";
+import ConsubovResultCard from "./ConsubovResultCard";
+import { usePesagemResultado } from "@/hooks/usePesagemResultado";
 
 interface Props {
   open: boolean;
@@ -27,20 +30,21 @@ export default function ExportarPesagemModal({
   dataPesagem, horaFinalizacao, responsavelNome, animais,
 }: Props) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const pdfBlobRef = useRef<Blob | null>(null);
   const isOnline = useOnlineStatus();
 
-  const totalAnimais = animais.length;
-  const pesoTotalKg = animais.reduce((s, a) => s + a.pesoKg, 0);
-  const pesoMedioKg = totalAnimais > 0 ? pesoTotalKg / totalAnimais : 0;
+  const resultado = usePesagemResultado(open ? pesagemId : null);
 
-  const shareFileName = `Relatório de Pesagem - ${fazendaNome}.pdf`;
+  const totalAnimais = resultado.qtdAnimais || animais.length;
+  const pesoMedioKg = resultado.pesoAtual ||
+    (animais.length > 0 ? animais.reduce((s, a) => s + a.pesoKg, 0) / animais.length : 0);
+  const pesoTotalKg = pesoMedioKg * totalAnimais;
 
-  async function handleGerarPdf() {
-    setGenerating(true);
-    toast.info("Gerando PDF…");
-
+  async function ensurePdf(): Promise<Blob | null> {
+    if (pdfBlobRef.current) return pdfBlobRef.current;
+    setGeneratingPdf(true);
     try {
       const pdfData: PesagemPdfData = {
         pesagemId, fazendaNome, retiroNome, pastoNome,
@@ -50,11 +54,6 @@ export default function ExportarPesagemModal({
       pdfBlobRef.current = blob;
 
       if (!isOnline) {
-        // Offline: local blob URL + queue upload
-        const localUrl = URL.createObjectURL(blob);
-        setPdfUrl(localUrl);
-
-        // Convert blob to base64 for IndexedDB
         const reader = new FileReader();
         reader.onloadend = async () => {
           const blobBase64 = (reader.result as string).split(",")[1];
@@ -66,72 +65,94 @@ export default function ExportarPesagemModal({
           });
         };
         reader.readAsDataURL(blob);
-
-        toast.success("PDF gerado localmente. Será enviado ao servidor quando a conexão for restaurada.");
-        setGenerating(false);
-        return;
+      } else {
+        const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
+        await supabase.storage
+          .from("relatorios")
+          .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
       }
-
-      // Online: upload to Supabase Storage
-      const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("relatorios")
-        .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
-
-      if (uploadErr) throw uploadErr;
 
       const localUrl = URL.createObjectURL(blob);
       setPdfUrl(localUrl);
-      toast.success("PDF gerado com sucesso!");
-    } catch (err: any) {
+      return blob;
+    } catch (err) {
       console.error("Erro ao gerar PDF:", err);
-      toast.error("Erro ao gerar PDF. Tente novamente.");
+      toast.error("Erro ao gerar PDF.");
+      return null;
     } finally {
-      setGenerating(false);
+      setGeneratingPdf(false);
     }
   }
 
-  async function handleShare() {
-    const blob = pdfBlobRef.current;
-    if (!blob) return;
-
-    const file = new File([blob], shareFileName, { type: "application/pdf" });
-
-    // Try sharing the file directly
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: `Relatório de Pesagem - ${fazendaNome}`,
-        });
-        return;
-      } catch {
-        // User cancelled or error — fall through to download
-      }
+  async function handleAbrirPdf() {
+    if (pdfUrl) {
+      window.open(pdfUrl, "_blank");
+      return;
     }
+    const blob = await ensurePdf();
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    }
+  }
 
-    // Fallback: download the file directly
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = shareFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("PDF baixado!");
+  function baixarImagem(dataUrl: string) {
+    const link = document.createElement("a");
+    link.download = "consubov-resultado.png";
+    link.href = dataUrl;
+    link.click();
+  }
+
+  async function exportarCartao() {
+    const el = document.getElementById("consubov-result-card");
+    if (!el) {
+      toast.error("Cartão não encontrado.");
+      return;
+    }
+    setSharing(true);
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        width: 390,
+        height: 693,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], "consubov-resultado.png", { type: "image/png" });
+          if ((navigator as any).canShare?.({ files: [file] })) {
+            await (navigator as any).share({ files: [file], title: "Resultado Consubov" });
+            return;
+          }
+        } catch {
+          // fallback below
+        }
+      }
+      baixarImagem(dataUrl);
+      toast.success("Imagem baixada!");
+    } catch (err) {
+      console.error("Erro ao gerar imagem:", err);
+      toast.error("Erro ao gerar imagem.");
+    } finally {
+      setSharing(false);
+    }
   }
 
   function handleClose() {
     setPdfUrl(null);
     pdfBlobRef.current = null;
-    setGenerating(false);
+    setGeneratingPdf(false);
+    setSharing(false);
     onClose();
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
@@ -158,45 +179,76 @@ export default function ExportarPesagemModal({
           </div>
         </div>
 
+        {/* Preview do cartão */}
+        <div
+          className="mx-auto my-2 overflow-hidden rounded-xl"
+          style={{ width: 390 * 0.45, height: 693 * 0.45 }}
+        >
+          <div style={{ transform: "scale(0.45)", transformOrigin: "top left" }}>
+            {!resultado.loading && <ConsubovResultCard resultado={resultado} />}
+            {resultado.loading && (
+              <div
+                style={{ width: 390, height: 693 }}
+                className="flex items-center justify-center bg-muted"
+              >
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          {!pdfUrl ? (
-            <>
-              <Button variant="outline" className="flex-1" onClick={handleClose}>
-                Fechar
-              </Button>
-              <Button
-                className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
-                onClick={handleGerarPdf}
-                disabled={generating}
-              >
-                {generating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                Gerar PDF
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => window.open(pdfUrl, "_blank")}
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Abrir PDF
-              </Button>
-              <Button
-                className="flex-1 bg-[#1B4332] hover:bg-[#1B4332]/90 text-white"
-                onClick={handleShare}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Compartilhar
-              </Button>
-            </>
-          )}
+        <div className="flex gap-2 pt-2 items-stretch">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleAbrirPdf}
+            disabled={generatingPdf}
+          >
+            {generatingPdf ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <ExternalLink className="w-4 h-4 mr-2" />
+            )}
+            Abrir PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            disabled
+            className="cursor-not-allowed"
+            title="Em breve"
+          >
+            <Camera className="w-4 h-4" />
+          </Button>
+          <Button
+            className="flex-1 bg-green-900 hover:bg-green-900/90 text-white"
+            onClick={exportarCartao}
+            disabled={sharing || resultado.loading}
+          >
+            {sharing ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Share2 className="w-4 h-4 mr-2" />
+            )}
+            Compartilhar
+          </Button>
+        </div>
+
+        {/* Banner inferior */}
+        <div className="mt-3 rounded-xl bg-muted p-3 flex items-center gap-3 opacity-70">
+          <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center shrink-0">
+            <Camera className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold leading-tight">
+              Quer compartilhar com ainda mais impacto?
+            </p>
+            <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+              Tire uma foto, adicione o filtro de desempenho automaticamente e compartilhe seu resultado!
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
         </div>
       </DialogContent>
     </Dialog>
