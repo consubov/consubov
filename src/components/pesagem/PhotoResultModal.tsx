@@ -165,20 +165,16 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
   const chartData = useMemo(() => {
     if (primeiraPesagem || pesoAnterior == null) return [];
+    const ganho = pesoAtual - pesoAnterior;
     return Array.from({ length: 16 }, (_, i) => ({
       i,
-      peso: Number(
-        (
-          pesoAnterior +
-          (pesoAtual - pesoAnterior) * Math.pow(i / 15, 0.75) +
-          Math.sin(i * 1.8) * Math.abs(pesoAtual - pesoAnterior) * 0.03
-        ).toFixed(2),
-      ),
+      peso: Number((pesoAnterior + ganho * Math.pow(i / 15, 0.85)).toFixed(2)),
     }));
   }, [pesoAnterior, pesoAtual, primeiraPesagem]);
 
-  const domainMin = pesoAnterior == null ? 0 : Math.min(pesoAnterior, pesoAtual) - 8;
-  const domainMax = pesoAnterior == null ? pesoAtual + 10 : Math.max(pesoAnterior, pesoAtual) + 8;
+  const ganhoTotal = pesoAnterior == null ? 0 : pesoAtual - pesoAnterior;
+  const domainMin = pesoAnterior == null ? 0 : pesoAnterior - Math.abs(ganhoTotal) * 0.05;
+  const domainMax = pesoAnterior == null ? pesoAtual + 10 : pesoAtual + Math.abs(ganhoTotal) * 0.05;
   const gmdDisplay = gmd != null ? `${sinal}${gmd.toFixed(2)}` : "—";
 
   function adjust(delta: number) {
