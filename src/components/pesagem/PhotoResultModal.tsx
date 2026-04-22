@@ -165,20 +165,16 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
   const chartData = useMemo(() => {
     if (primeiraPesagem || pesoAnterior == null) return [];
+    const ganho = pesoAtual - pesoAnterior;
     return Array.from({ length: 16 }, (_, i) => ({
       i,
-      peso: Number(
-        (
-          pesoAnterior +
-          (pesoAtual - pesoAnterior) * Math.pow(i / 15, 0.75) +
-          Math.sin(i * 1.8) * Math.abs(pesoAtual - pesoAnterior) * 0.03
-        ).toFixed(2),
-      ),
+      peso: Number((pesoAnterior + ganho * Math.pow(i / 15, 0.85)).toFixed(2)),
     }));
   }, [pesoAnterior, pesoAtual, primeiraPesagem]);
 
-  const domainMin = pesoAnterior == null ? 0 : Math.min(pesoAnterior, pesoAtual) - 8;
-  const domainMax = pesoAnterior == null ? pesoAtual + 10 : Math.max(pesoAnterior, pesoAtual) + 8;
+  const ganhoTotal = pesoAnterior == null ? 0 : pesoAtual - pesoAnterior;
+  const domainMin = pesoAnterior == null ? 0 : pesoAnterior - Math.abs(ganhoTotal) * 0.05;
+  const domainMax = pesoAnterior == null ? pesoAtual + 10 : pesoAtual + Math.abs(ganhoTotal) * 0.05;
   const gmdDisplay = gmd != null ? `${sinal}${gmd.toFixed(2)}` : "—";
 
   function adjust(delta: number) {
@@ -193,12 +189,12 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
   }
 
   function mover(elemento: PosKey, direcao: "up" | "down" | "left" | "right") {
-    const delta = 8;
+    const delta = 10;
     setPositions((prev) => ({
       ...prev,
       [elemento]: {
-        x: prev[elemento].x + (direcao === "left" ? -delta : direcao === "right" ? delta : 0),
-        y: prev[elemento].y + (direcao === "up" ? -delta : direcao === "down" ? delta : 0),
+        x: prev[elemento].x + (direcao === "right" ? delta : direcao === "left" ? -delta : 0),
+        y: prev[elemento].y + (direcao === "up" ? delta : direcao === "down" ? -delta : 0),
       },
     }));
   }
@@ -400,7 +396,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={chartData}
-                    margin={{ top: 10, right: 50, left: 10, bottom: 10 }}
+                    margin={{ top: 20, right: 55, left: 10, bottom: 10 }}
                   >
                     <CartesianGrid
                       vertical={false}
@@ -551,43 +547,40 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 </div>
               </div>
 
-              {/* Setas de movimento (apenas Insight por enquanto) */}
+              {/* Setas de movimento (apenas Insight) */}
               {isInsightActive && (
                 <div className="flex items-center justify-center gap-2 pt-2 mt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-                  <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginRight: 4 }}>
-                    Mover:
-                  </span>
                   <button
                     onClick={() => mover("insight", "left")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Esquerda"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "up")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Cima"
                   >
-                    <ArrowUp className="h-4 w-4" />
+                    <ArrowUp style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "down")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Baixo"
                   >
-                    <ArrowDown className="h-4 w-4" />
+                    <ArrowDown style={{ width: 20, height: 20 }} />
                   </button>
                   <button
                     onClick={() => mover("insight", "right")}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
+                    className="rounded-lg flex items-center justify-center"
+                    style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
                     aria-label="Direita"
                   >
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight style={{ width: 20, height: 20 }} />
                   </button>
                 </div>
               )}
