@@ -189,12 +189,12 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
   }
 
   function mover(elemento: PosKey, direcao: "up" | "down" | "left" | "right") {
-    const delta = 8;
+    const delta = 10;
     setPositions((prev) => ({
       ...prev,
       [elemento]: {
-        x: prev[elemento].x + (direcao === "left" ? -delta : direcao === "right" ? delta : 0),
-        y: prev[elemento].y + (direcao === "up" ? -delta : direcao === "down" ? delta : 0),
+        x: prev[elemento].x + (direcao === "right" ? delta : direcao === "left" ? -delta : 0),
+        y: prev[elemento].y + (direcao === "up" ? delta : direcao === "down" ? -delta : 0),
       },
     }));
   }
