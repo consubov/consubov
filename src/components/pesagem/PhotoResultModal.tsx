@@ -15,13 +15,12 @@ interface Props {
 
 const BRAND_GREEN = "#22c55e";
 
-const INSIGHT_FRASES: (string | null)[] = [
+const INSIGHT_FRASES_TEXT: string[] = [
   "⭐ Acima da média da fazenda",
   "🏆 Melhor lote do mês",
   "📈 GMD em alta",
   "💪 Desempenho superior",
   "🎯 Meta atingida",
-  null,
 ];
 
 type SizeKey = "gmd" | "fazenda" | "subtitulo" | "badge" | "grafico" | "lote" | "insight" | "rodape";
