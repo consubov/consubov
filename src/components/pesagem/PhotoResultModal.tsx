@@ -144,7 +144,9 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
 
               <div className="mt-3 text-center">
                 <div className="flex items-end justify-center gap-2">
-                  <span className="text-7xl font-extrabold leading-none">{loading ? "..." : gmdDisplay}</span>
+                  <span className="text-7xl font-extrabold leading-none">
+                    {loading ? "—" : gmdDisplay}
+                  </span>
                   <span className="pb-1 text-2xl font-semibold">kg/dia</span>
                 </div>
               </div>
@@ -153,7 +155,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 <div
                   className="rounded-full px-4 py-1 text-sm font-semibold"
                   style={
-                    primeiraPesagem
+                    primeiraPesagem || loading
                       ? {
                           border: "1px solid rgba(255,255,255,0.34)",
                           backgroundColor: "rgba(255,255,255,0.12)",
@@ -166,103 +168,96 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                         }
                   }
                 >
-                  {primeiraPesagem ? "Primeira pesagem registrada" : `Últimos ${dias} dias`}
+                  {loading
+                    ? "— dias"
+                    : primeiraPesagem
+                      ? "Primeira pesagem registrada"
+                      : `Últimos ${dias} dias`}
                 </div>
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex flex-1 items-center justify-center px-6">
-                <div
-                  className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-medium backdrop-blur-sm"
-                  style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-                >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Carregando resultado da pesagem...
+            {!loading && !primeiraPesagem && chartData.length > 0 && (
+              <div className="relative mt-4 h-[200px] px-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 12, right: 8, bottom: 12, left: 8 }}>
+                    <defs>
+                      <linearGradient id="photo-chart-fill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={BRAND_GREEN} stopOpacity={0.2} />
+                        <stop offset="100%" stopColor={BRAND_GREEN} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      vertical={false}
+                      stroke="rgba(255,255,255,0.15)"
+                      strokeDasharray="4 4"
+                      horizontalCoordinatesGenerator={({ offset }: any) => {
+                        const top = offset?.top ?? 0;
+                        const height = offset?.height ?? 0;
+                        return Array.from({ length: 4 }, (_, index) => top + (height * (index + 1)) / 4);
+                      }}
+                    />
+                    <XAxis hide dataKey="i" />
+                    <YAxis hide domain={[domainMin, domainMax]} />
+                    <Area
+                      type="monotone"
+                      dataKey="peso"
+                      stroke={BRAND_GREEN}
+                      strokeWidth={2.5}
+                      fill="url(#photo-chart-fill)"
+                      fillOpacity={0.2}
+                      dot={(props: any) => {
+                        if (props.index !== chartData.length - 1) return <g key={`dot-${props.index}`} />;
+                        return (
+                          <circle
+                            key={`dot-${props.index}`}
+                            cx={props.cx}
+                            cy={props.cy}
+                            r={7}
+                            fill="white"
+                            stroke={BRAND_GREEN}
+                            strokeWidth={2}
+                          />
+                        );
+                      }}
+                      activeDot={false}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+
+                <div className="absolute right-4 top-1 text-xs font-medium" style={{ color: "rgba(255,255,255,1)" }}>
+                  {formatKg(pesoAtual)} kg
+                </div>
+                <div className="absolute bottom-1 left-4 text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  {formatKg(pesoAnterior)} kg
                 </div>
               </div>
-            ) : (
-              <>
-                {!primeiraPesagem && chartData.length > 0 && (
-                  <div className="relative mt-4 h-[200px] px-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 12, right: 8, bottom: 12, left: 8 }}>
-                        <defs>
-                          <linearGradient id="photo-chart-fill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={BRAND_GREEN} stopOpacity={0.2} />
-                            <stop offset="100%" stopColor={BRAND_GREEN} stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          vertical={false}
-                          stroke="rgba(255,255,255,0.15)"
-                          strokeDasharray="4 4"
-                          horizontalCoordinatesGenerator={({ offset }: any) => {
-                            const top = offset?.top ?? 0;
-                            const height = offset?.height ?? 0;
-                            return Array.from({ length: 4 }, (_, index) => top + (height * (index + 1)) / 4);
-                          }}
-                        />
-                        <XAxis hide dataKey="i" />
-                        <YAxis hide domain={[domainMin, domainMax]} />
-                        <Area
-                          type="monotone"
-                          dataKey="peso"
-                          stroke={BRAND_GREEN}
-                          strokeWidth={2.5}
-                          fill="url(#photo-chart-fill)"
-                          fillOpacity={0.2}
-                          dot={(props: any) => {
-                            if (props.index !== chartData.length - 1) return <g key={`dot-${props.index}`} />;
+            )}
 
-                            return (
-                              <circle
-                                key={`dot-${props.index}`}
-                                cx={props.cx}
-                                cy={props.cy}
-                                r={7}
-                                fill="white"
-                                stroke={BRAND_GREEN}
-                                strokeWidth={2}
-                              />
-                            );
-                          }}
-                          activeDot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-
-                    <div className="absolute right-4 top-1 text-xs font-medium" style={{ color: "rgba(255,255,255,1)" }}>
-                      {formatKg(pesoAtual)} kg
-                    </div>
-                    <div className="absolute bottom-1 left-4 text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-                      {formatKg(pesoAnterior)} kg
-                    </div>
+            <div className="mt-auto px-4 pb-24">
+              <div
+                className="rounded-2xl px-4 py-3"
+                style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)" }}
+              >
+                <div className="flex items-center gap-3 text-sm font-medium" style={{ color: "rgba(255,255,255,1)" }}>
+                  <span className="text-xl leading-none">🐄</span>
+                  <span>
+                    {loading
+                      ? "Carregando dados..."
+                      : `Lote ${nomePasto || "—"}  •  ${qtdAnimais} animais`}
+                  </span>
+                </div>
+                {acimaDaMedia && (
+                  <div
+                    className="mt-2 flex w-full items-center justify-center rounded-full px-3 py-2 text-sm font-semibold"
+                    style={{ backgroundColor: "rgba(34,197,94,0.22)", color: "rgba(255,255,255,1)" }}
+                  >
+                    ⭐ Acima da média da fazenda
                   </div>
                 )}
-
-                <div className="mt-4 px-4 pb-24">
-                  <div
-                    className="rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)" }}
-                  >
-                    <div className="flex items-center gap-3 text-sm font-medium" style={{ color: "rgba(255,255,255,1)" }}>
-                      <span className="text-xl leading-none">🐄</span>
-                      <span>{`Lote ${nomePasto || "—"}  •  ${qtdAnimais} animais`}</span>
-                    </div>
-                    {acimaDaMedia && (
-                      <div
-                        className="mt-2 flex w-full items-center justify-center rounded-full px-3 py-2 text-sm font-semibold"
-                        style={{ backgroundColor: "rgba(34,197,94,0.22)", color: "rgba(255,255,255,1)" }}
-                      >
-                        ⭐ Acima da média da fazenda
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+              </div>
+            </div>
 
             <div className="absolute inset-x-0 bottom-6 text-center text-xs tracking-widest" style={{ color: BRAND_GREEN }}>
               consubov.com.br
