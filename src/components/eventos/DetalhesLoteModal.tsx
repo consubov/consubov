@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Beef, Scale, Syringe, History } from "lucide-react";
+import { Beef, Scale, Syringe, History, Camera } from "lucide-react";
 import CarenciaBadge from "./CarenciaBadge";
 import { supabase } from "@/integrations/supabase/client";
+import PhotoResultModal from "@/components/pesagem/PhotoResultModal";
 
 interface PastoInfo {
   id: string;
