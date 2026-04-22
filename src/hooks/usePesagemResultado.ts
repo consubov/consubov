@@ -32,48 +32,55 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
 
   useEffect(() => {
     let cancelled = false;
+
     if (!pesagemAtualId) {
       setData(EMPTY);
       return;
     }
 
+    setData(EMPTY);
+
     (async () => {
       try {
-        const { data: atual, error } = await (supabase
-          .from("pesagens") as any)
-          .select("id, lote_id, media_calculada, data_pesagem, quantidade_animais, total_pesado")
+        const { data: pesagemAtual, error: pesagemError } = await (supabase.from("pesagens") as any)
+          .select("id, lote_id, media_calculada, data_pesagem, quantidade_animais")
           .eq("id", pesagemAtualId)
           .maybeSingle();
 
-        if (error || !atual) {
+        if (pesagemError || !pesagemAtual) {
           if (!cancelled) setData({ ...EMPTY, loading: false });
           return;
         }
 
-        const { data: pasto } = await (supabase.from("pastos") as any)
+        const { data: pasto, error: pastoError } = await (supabase.from("pastos") as any)
           .select("nome, num_animais")
-          .eq("id", atual.lote_id)
+          .eq("id", pesagemAtual.lote_id)
           .maybeSingle();
 
-        const { data: anteriorArr } = await (supabase.from("pesagens") as any)
+        if (pastoError) {
+          if (!cancelled) setData({ ...EMPTY, loading: false });
+          return;
+        }
+
+        const { data: anteriores, error: anteriorError } = await (supabase.from("pesagens") as any)
           .select("id, media_calculada, data_pesagem")
-          .eq("lote_id", atual.lote_id)
-          .neq("id", pesagemAtualId)
+          .eq("lote_id", pesagemAtual.lote_id)
+          .lt("data_pesagem", pesagemAtual.data_pesagem)
           .order("data_pesagem", { ascending: false })
           .limit(1);
 
-        const anterior = anteriorArr && anteriorArr.length > 0 ? anteriorArr[0] : null;
+        if (anteriorError) {
+          if (!cancelled) setData({ ...EMPTY, loading: false });
+          return;
+        }
 
-        const pesoAtual = Number(atual.media_calculada) || 0;
-        const qtdAnimais =
-          Number(atual.quantidade_animais) ||
-          Number(atual.total_pesado) ||
-          Number(pasto?.num_animais) ||
-          0;
+        const anterior = Array.isArray(anteriores) && anteriores.length > 0 ? anteriores[0] : null;
+        const pesoAtual = Number(pesagemAtual.media_calculada) || 0;
+        const qtdAnimais = Number(pesagemAtual.quantidade_animais) || Number(pasto?.num_animais) || 0;
         const nomePasto = pasto?.nome || "";
 
         if (!anterior) {
-          if (!cancelled)
+          if (!cancelled) {
             setData({
               loading: false,
               primeiraPesagem: true,
@@ -86,6 +93,7 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
               qtdAnimais,
               nomePasto,
             });
+          }
           return;
         }
 
@@ -95,16 +103,14 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
         const dias = Math.max(
           1,
           Math.round(
-            (new Date(atual.data_pesagem).getTime() -
-              new Date(anterior.data_pesagem).getTime()) /
-              msDia,
+            (new Date(pesagemAtual.data_pesagem).getTime() - new Date(anterior.data_pesagem).getTime()) / msDia,
           ),
         );
-        const gmdRaw = ganho / dias;
-        const gmd = Math.round(gmdRaw * 100) / 100;
+        const gmdCalculado = ganho / dias;
+        const gmd = Math.round(gmdCalculado * 100) / 100;
         const sinal: "+" | "-" | "" = gmd > 0 ? "+" : gmd < 0 ? "-" : "";
 
-        if (!cancelled)
+        if (!cancelled) {
           setData({
             loading: false,
             primeiraPesagem: false,
@@ -117,6 +123,7 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
             qtdAnimais,
             nomePasto,
           });
+        }
       } catch {
         if (!cancelled) setData({ ...EMPTY, loading: false });
       }

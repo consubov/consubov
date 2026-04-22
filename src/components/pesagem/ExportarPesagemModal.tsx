@@ -126,14 +126,15 @@ export default function ExportarPesagemModal({
     fileInputRef.current?.click();
   }
 
-  function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFotoCapturada(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const url = URL.createObjectURL(file);
     setPhotoUrl(url);
     setPhotoModalOpen(true);
-    onClose();
-    // reset input
+    handleClose();
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -158,8 +159,8 @@ export default function ExportarPesagemModal({
         type="file"
         accept="image/*"
         capture="environment"
-        onChange={handleFotoSelecionada}
         className="hidden"
+        onChange={handleFotoCapturada}
       />
 
       <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
@@ -253,18 +254,7 @@ export default function ExportarPesagemModal({
         open={photoModalOpen}
         onClose={fecharFotoModal}
         photoUrl={photoUrl}
-        data={{
-          gmd: resultado.gmd,
-          sinal: resultado.sinal,
-          dias: resultado.dias,
-          pesoAtual: resultado.pesoAtual,
-          pesoAnterior: resultado.pesoAnterior,
-          qtdAnimais: resultado.qtdAnimais,
-          nomePasto: resultado.nomePasto,
-          primeiraPesagem: resultado.primeiraPesagem,
-          ganho: resultado.ganho,
-          loteId: pesagemId,
-        }}
+        pesagemId={photoModalOpen ? pesagemId : null}
       />
     </>
   );
