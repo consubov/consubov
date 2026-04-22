@@ -396,7 +396,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={chartData}
-                    margin={{ top: 10, right: 50, left: 10, bottom: 10 }}
+                    margin={{ top: 20, right: 55, left: 10, bottom: 10 }}
                   >
                     <CartesianGrid
                       vertical={false}
