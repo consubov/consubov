@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Beef, Scale, Syringe, History } from "lucide-react";
+import { Beef, Scale, Syringe, History, Camera } from "lucide-react";
 import CarenciaBadge from "./CarenciaBadge";
 import { supabase } from "@/integrations/supabase/client";
+import PhotoResultModal from "@/components/pesagem/PhotoResultModal";
 
 interface PastoInfo {
   id: string;
@@ -52,6 +53,26 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   const [pesagem, setPesagem] = useState<any>(null);
   const [sanitario, setSanitario] = useState<any>(null);
   const [consumoMedio, setConsumoMedio] = useState<number | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleShareClick() {
+    fileInputRef.current?.click();
+  }
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoUrl(url);
+    setPhotoModalOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+  function fecharFotoModal() {
+    setPhotoModalOpen(false);
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    setPhotoUrl(null);
+  }
 
   // Fetch fresh data every time modal opens
   useEffect(() => {
@@ -99,75 +120,102 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   const carenciaDias = sanitario ? calcCarenciaDias(sanitario.data_fim_carencia) : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Beef className="w-4 h-4" />
-            {pasto.nome}
-          </DialogTitle>
-          <DialogDescription>Detalhes do lote</DialogDescription>
-        </DialogHeader>
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Beef className="w-4 h-4" />
+              {pasto.nome}
+            </DialogTitle>
+            <DialogDescription>Detalhes do lote</DialogDescription>
+          </DialogHeader>
 
-        <CarenciaBadge dataFimCarencia={pasto.data_fim_carencia} className="mb-2" />
+          <CarenciaBadge dataFimCarencia={pasto.data_fim_carencia} className="mb-2" />
 
-        {/* Seção 1 — Informações Gerais */}
-        <div className="space-y-1">
-          <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Informações Gerais</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <Item label="Animais" value={String(pasto.num_animais)} />
-            <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
-            <Item label="Consumo médio" value={consumoMedio != null ? `${consumoMedio.toFixed(1).replace(".", ",")} g/cab/dia` : "—"} />
-            <Item label="Categoria" value={pasto.categoria || "—"} />
-            <Item label="Sexo" value={pasto.sexo || "—"} />
-            <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
-            <Item label="Última salga" value={fmtDate(pasto.ultima_salga)} />
+          {/* Seção 1 — Informações Gerais */}
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Informações Gerais</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <Item label="Animais" value={String(pasto.num_animais)} />
+              <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
+              <Item label="Consumo médio" value={consumoMedio != null ? `${consumoMedio.toFixed(1).replace(".", ",")} g/cab/dia` : "—"} />
+              <Item label="Categoria" value={pasto.categoria || "—"} />
+              <Item label="Sexo" value={pasto.sexo || "—"} />
+              <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
+              <Item label="Última salga" value={fmtDate(pasto.ultima_salga)} />
+            </div>
           </div>
-        </div>
 
-        {/* Seção 2 — Pesagem */}
-        <div className="space-y-1 border-t pt-3">
-          <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-            <Scale className="w-3 h-3" /> Pesagem
-          </h4>
-          {pesagem ? (
-            <div className="text-sm space-y-0.5">
-              <p>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></p>
-              <p>Animais pesados: <strong>{pesagem.total_pesado}</strong></p>
-              <p>Peso médio calculado: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma pesagem registrada</p>
-          )}
-        </div>
+          {/* Seção 2 — Pesagem */}
+          <div className="space-y-1 border-t pt-3">
+            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
+              <Scale className="w-3 h-3" /> Pesagem
+            </h4>
+            {pesagem ? (
+              <div className="text-sm space-y-0.5">
+                <p className="flex items-center gap-2 flex-wrap">
+                  <span>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleShareClick}
+                    className="inline-flex items-center gap-1 text-green-600 text-xs hover:underline"
+                    aria-label="Compartilhar resultado"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Compartilhar
+                  </button>
+                </p>
+                <p>Animais pesados: <strong>{pesagem.total_pesado}</strong></p>
+                <p>Peso médio calculado: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma pesagem registrada</p>
+            )}
+          </div>
 
-        {/* Seção 3 — Sanidade */}
-        <div className="space-y-1 border-t pt-3">
-          <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-            <Syringe className="w-3 h-3" /> Sanidade
-          </h4>
-          {sanitario ? (
-            <div className="text-sm space-y-0.5">
-              <p><strong>{catLabels[sanitario.categoria] || sanitario.categoria}</strong>: {sanitario.medicamento}</p>
-              <p className="text-muted-foreground">Dose: {sanitario.dose}</p>
-              <p className="text-muted-foreground">Data: {fmtDate(sanitario.data_aplicacao)}</p>
-              {carenciaDias > 0 && (
-                <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30">
-                  Carência restante: {carenciaDias} dias
-                </span>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum evento sanitário registrado</p>
-          )}
-        </div>
+          {/* Seção 3 — Sanidade */}
+          <div className="space-y-1 border-t pt-3">
+            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
+              <Syringe className="w-3 h-3" /> Sanidade
+            </h4>
+            {sanitario ? (
+              <div className="text-sm space-y-0.5">
+                <p><strong>{catLabels[sanitario.categoria] || sanitario.categoria}</strong>: {sanitario.medicamento}</p>
+                <p className="text-muted-foreground">Dose: {sanitario.dose}</p>
+                <p className="text-muted-foreground">Data: {fmtDate(sanitario.data_aplicacao)}</p>
+                {carenciaDias > 0 && (
+                  <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30">
+                    Carência restante: {carenciaDias} dias
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum evento sanitário registrado</p>
+            )}
+          </div>
 
-        <Button variant="outline" className="w-full mt-2" onClick={onVerHistorico}>
-          <History className="w-4 h-4 mr-2" />
-          Ver histórico completo
-        </Button>
-      </DialogContent>
-    </Dialog>
+          <Button variant="outline" className="w-full mt-2" onClick={onVerHistorico}>
+            <History className="w-4 h-4 mr-2" />
+            Ver histórico completo
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <PhotoResultModal
+        open={photoModalOpen}
+        onClose={fecharFotoModal}
+        photoUrl={photoUrl}
+        pesagemId={photoModalOpen ? pesagem?.id ?? null : null}
+      />
+    </>
   );
 }
 

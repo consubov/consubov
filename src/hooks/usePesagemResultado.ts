@@ -27,13 +27,13 @@ const EMPTY: PesagemResultado = {
   nomePasto: "",
 };
 
-export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
+export function usePesagemResultado(pesagemId: string | null | undefined) {
   const [data, setData] = useState<PesagemResultado>(EMPTY);
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!pesagemAtualId) {
+    if (!pesagemId) {
       setData(EMPTY);
       return;
     }
@@ -42,42 +42,35 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
 
     (async () => {
       try {
-        const { data: pesagemAtual, error: pesagemError } = await (supabase.from("pesagens") as any)
-          .select("id, lote_id, media_calculada, data_pesagem, quantidade_animais")
-          .eq("id", pesagemAtualId)
+        const { data: atual, error: e1 } = await (supabase.from("pesagens") as any)
+          .select("*, pastos(nome, num_animais)")
+          .eq("id", pesagemId)
           .maybeSingle();
 
-        if (pesagemError || !pesagemAtual) {
+        if (e1 || !atual) {
+          console.error("Erro ao buscar pesagem atual:", e1);
           if (!cancelled) setData({ ...EMPTY, loading: false });
           return;
         }
 
-        const { data: pasto, error: pastoError } = await (supabase.from("pastos") as any)
-          .select("nome, num_animais")
-          .eq("id", pesagemAtual.lote_id)
-          .maybeSingle();
-
-        if (pastoError) {
-          if (!cancelled) setData({ ...EMPTY, loading: false });
-          return;
-        }
-
-        const { data: anteriores, error: anteriorError } = await (supabase.from("pesagens") as any)
-          .select("id, media_calculada, data_pesagem")
-          .eq("lote_id", pesagemAtual.lote_id)
-          .lt("data_pesagem", pesagemAtual.data_pesagem)
+        const { data: anteriores, error: e2 } = await (supabase.from("pesagens") as any)
+          .select("media_calculada, data_pesagem")
+          .eq("lote_id", atual.lote_id)
+          .neq("id", pesagemId)
           .order("data_pesagem", { ascending: false })
           .limit(1);
 
-        if (anteriorError) {
-          if (!cancelled) setData({ ...EMPTY, loading: false });
-          return;
-        }
+        if (e2) console.error("Erro ao buscar pesagem anterior:", e2);
 
         const anterior = Array.isArray(anteriores) && anteriores.length > 0 ? anteriores[0] : null;
-        const pesoAtual = Number(pesagemAtual.media_calculada) || 0;
-        const qtdAnimais = Number(pesagemAtual.quantidade_animais) || Number(pasto?.num_animais) || 0;
-        const nomePasto = pasto?.nome || "";
+
+        const pesoAtual = Number(atual.media_calculada) || 0;
+        const qtdAnimais =
+          Number(atual.quantidade_animais) ||
+          Number(atual.pastos?.num_animais) ||
+          Number(atual.total_pesado) ||
+          0;
+        const nomePasto = atual.pastos?.nome || "";
 
         if (!anterior) {
           if (!cancelled) {
@@ -103,18 +96,17 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
         const dias = Math.max(
           1,
           Math.round(
-            (new Date(pesagemAtual.data_pesagem).getTime() - new Date(anterior.data_pesagem).getTime()) / msDia,
+            (new Date(atual.data_pesagem).getTime() - new Date(anterior.data_pesagem).getTime()) / msDia,
           ),
         );
-        const gmdCalculado = ganho / dias;
-        const gmd = Math.round(gmdCalculado * 100) / 100;
-        const sinal: "+" | "-" | "" = gmd > 0 ? "+" : gmd < 0 ? "-" : "";
+        const gmdCalc = Math.round((ganho / dias) * 100) / 100;
+        const sinal: "+" | "-" | "" = gmdCalc > 0 ? "+" : gmdCalc < 0 ? "-" : "";
 
         if (!cancelled) {
           setData({
             loading: false,
             primeiraPesagem: false,
-            gmd: Math.abs(gmd),
+            gmd: Math.abs(gmdCalc),
             sinal,
             dias,
             pesoAtual,
@@ -124,7 +116,8 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
             nomePasto,
           });
         }
-      } catch {
+      } catch (err) {
+        console.error("Erro geral usePesagemResultado:", err);
         if (!cancelled) setData({ ...EMPTY, loading: false });
       }
     })();
@@ -132,7 +125,7 @@ export function usePesagemResultado(pesagemAtualId: string | null | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [pesagemAtualId]);
+  }, [pesagemId]);
 
   return data;
 }
