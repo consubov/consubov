@@ -23,7 +23,7 @@ import heroImg from "@/assets/landing-hero-cinematic.jpg";
 import pecuaristaImg from "@/assets/landing-pecuarista.jpg";
 import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
-import brasilMap from "@/assets/brasil-map.svg";
+import BrasilMap from "@/components/landing/BrasilMap";
 
 const leadSchema = z.object({
   nome: z.string().trim().min(2, "Nome obrigatório").max(100),
