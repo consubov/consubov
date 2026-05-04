@@ -499,6 +499,7 @@ function SectionCard({
 export default function LandingPageConfigPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [savingAll, setSavingAll] = useState(false);
 
   useEffect(() => {
     supabase
@@ -514,6 +515,35 @@ export default function LandingPageConfigPage() {
       });
   }, []);
 
+  const handleSaveAll = async () => {
+    setSavingAll(true);
+    const now = new Date().toISOString();
+    const allKeys = SECTIONS.flatMap((s) => s.fields.map((f) => f.key));
+    const rows = allKeys.map((chave) => ({
+      chave,
+      valor: values[chave] ?? "",
+      atualizado_em: now,
+    }));
+    let okCount = 0;
+    let errCount = 0;
+    for (const row of rows) {
+      const { error } = await supabase
+        .from("landing_page_content")
+        .upsert(row, { onConflict: "chave" });
+      if (error) {
+        errCount++;
+      } else {
+        okCount++;
+      }
+    }
+    setSavingAll(false);
+    if (errCount === 0) {
+      toast.success(`Todas as alterações foram salvas (${okCount} campos).`);
+    } else {
+      toast.error(`Salvos ${okCount}, falharam ${errCount}.`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -523,7 +553,7 @@ export default function LandingPageConfigPage() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-32">
       <div className="flex items-center gap-3">
         <Globe className="w-6 h-6 text-primary" />
         <div>
