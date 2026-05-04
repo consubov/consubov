@@ -546,15 +546,15 @@ export default function LandingPage() {
               />
               <div className="phone-float relative w-full max-w-sm">
                 <img src={phoneImg} alt="App Consubov" className="w-full" loading="lazy" />
-                {/* Overlay real Consubov logo in app header (small, left-aligned) */}
+                {/* Substitui o ícone de touro genérico (embutido no PNG) pela logo real */}
                 <img
                   src={logoConsubov}
                   alt="Consubov"
                   className="absolute rounded-full object-cover"
                   style={{
-                    top: "6.5%",
-                    left: "12%",
-                    width: "9%",
+                    top: "10.8%",
+                    left: "27%",
+                    width: "10%",
                     aspectRatio: "1/1",
                     boxShadow: `0 0 10px ${NEON_DIM}`,
                     border: `1px solid ${NEON_DIM}`,
