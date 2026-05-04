@@ -1,18 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { LogIn, CheckCircle2, QrCode, WifiOff, BarChart3, Brain, Layers, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  QrCode,
+  WifiOff,
+  BarChart3,
+  Brain,
+  Map as MapIcon,
+  FileBarChart,
+  AlertTriangle,
+  EyeOff,
+  Zap,
+  Activity,
+  Sparkles,
+} from "lucide-react";
 
-import heroImg1 from "@/assets/landing-hero-1.jpg";
-import heroImg2 from "@/assets/landing-hero-2.jpg";
-import heroImg3 from "@/assets/landing-hero-3.jpg";
+import heroImg from "@/assets/landing-hero-cinematic.jpg";
+import pecuaristaImg from "@/assets/landing-pecuarista.jpg";
+import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 
 const leadSchema = z.object({
@@ -23,85 +32,195 @@ const leadSchema = z.object({
   mensagem: z.string().trim().max(1000).optional(),
 });
 
-const fallbackHeroes = [heroImg1, heroImg2, heroImg3];
+const NEON = "#22FF88";
+const NEON_DIM = "rgba(34,255,136,0.55)";
+const BG = "#05070A";
+const CARD_BG = "rgba(12,18,16,0.65)";
+const BORDER = "rgba(34,255,136,0.18)";
 
-const diferenciais = [
-  { icon: CheckCircle2, title: "Controle de salgas", desc: "Registro e monitoramento de salgas por pasto em tempo real." },
-  { icon: WifiOff, title: "Funcionamento offline", desc: "Opera sem internet e sincroniza quando conectar." },
-  { icon: QrCode, title: "QR Code no campo", desc: "Identifique pastos com QR Code para lançamentos rápidos." },
-  { icon: BarChart3, title: "Relatórios automáticos", desc: "Relatórios de consumo, custos e desempenho gerados automaticamente." },
-  { icon: Brain, title: "Inteligência nutricional", desc: "Cálculos de consumo esperado vs real por categoria animal." },
-  { icon: Layers, title: "Gestão por pasto e lote", desc: "Organize e monitore cada pasto e lote individualmente." },
-  { icon: LayoutDashboard, title: "Painel administrativo completo", desc: "Visão centralizada de todas as fazendas, retiros e indicadores." },
-];
+/* ---------------- Particle Canvas ---------------- */
+function ParticleField({ density = 60, opacity = 0.6 }: { density?: number; opacity?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-type LandingContent = Record<string, string>;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-function parseImageArray(val: string | undefined): string[] {
-  if (!val) return [];
-  try {
-    const parsed = JSON.parse(val);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return val.startsWith("http") ? [val] : [];
-  }
+    let raf = 0;
+    let w = 0;
+    let h = 0;
+    let particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      w = rect.width;
+      h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const count = Math.min(density, Math.floor((w * h) / 18000));
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        r: Math.random() * 1.6 + 0.4,
+        a: Math.random() * 0.6 + 0.2,
+      }));
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      // links
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const q = particles[j];
+          const dx = p.x - q.x;
+          const dy = p.y - q.y;
+          const d = Math.hypot(dx, dy);
+          if (d < 110) {
+            ctx.strokeStyle = `rgba(34,255,136,${(1 - d / 110) * 0.12 * opacity})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.stroke();
+          }
+        }
+
+        ctx.fillStyle = `rgba(34,255,136,${p.a * opacity})`;
+        ctx.shadowColor = NEON;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      raf = requestAnimationFrame(draw);
+    };
+
+    resize();
+    draw();
+    const onResize = () => resize();
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [density, opacity]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ mixBlendMode: "screen" }}
+    />
+  );
 }
 
+/* ---------------- Animated counter ---------------- */
+function Counter({ to, suffix = "", prefix = "", duration = 2000 }: { to: number; suffix?: string; prefix?: string; duration?: number }) {
+  const [n, setN] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting && !started.current) {
+            started.current = true;
+            const start = performance.now();
+            const tick = (t: number) => {
+              const p = Math.min(1, (t - start) / duration);
+              const eased = 1 - Math.pow(1 - p, 3);
+              setN(Math.floor(to * eased));
+              if (p < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }
+        });
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to, duration]);
+
+  return (
+    <span ref={ref} style={{ color: NEON, textShadow: `0 0 24px ${NEON_DIM}` }}>
+      {prefix}
+      {n.toLocaleString("pt-BR")}
+      {suffix}
+    </span>
+  );
+}
+
+/* ---------------- Reveal on scroll ---------------- */
+function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (es) => es.forEach((e) => e.isIntersecting && setVisible(true)),
+      { threshold: 0.15 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(40px)",
+        transition: `opacity 900ms cubic-bezier(.2,.7,.2,1) ${delay}ms, transform 900ms cubic-bezier(.2,.7,.2,1) ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ---------------- Page ---------------- */
 export default function LandingPage() {
-  const [content, setContent] = useState<LandingContent>({});
-  const [heroIndex, setHeroIndex] = useState(0);
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 30);
+      setScrollY(window.scrollY);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    supabase.from("landing_page_content").select("chave, valor").then(({ data, error }) => {
-      if (error) console.error("Erro ao carregar conteúdo da landing page:", error);
-      if (data) {
-        const map: LandingContent = {};
-        data.forEach((r) => { if (r.valor) map[r.chave] = r.valor; });
-        setContent(map);
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  const heroImages = (() => {
-    const dynamic = parseImageArray(content.img_carrossel);
-    return dynamic.length > 0 ? dynamic : fallbackHeroes;
-  })();
-  const quemSomosImg = (() => {
-    const dynamic = parseImageArray(content.img_quem_somos);
-    return dynamic.length > 0 ? dynamic[0] : heroImg2;
-  })();
-  const diferenciaisImg = (() => {
-    const dynamic = parseImageArray(content.img_diferenciais);
-    return dynamic.length > 0 ? dynamic[0] : null;
-  })();
-  const parceirosLogos = parseImageArray(content.img_parceiros);
-
-  useEffect(() => {
-    if (heroImages.length <= 1) return;
-    const timer = setInterval(() => setHeroIndex((i) => (i + 1) % heroImages.length), 5000);
-    return () => clearInterval(timer);
-  }, [heroImages.length]);
-
-  useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
 
   const handleSubmit = useCallback(async () => {
     const result = leadSchema.safeParse(form);
     if (!result.success) {
       const errs: Record<string, string> = {};
-      result.error.errors.forEach((e) => { errs[e.path[0] as string] = e.message; });
+      result.error.errors.forEach((e) => {
+        errs[e.path[0] as string] = e.message;
+      });
       setErrors(errs);
       return;
     }
@@ -114,318 +233,569 @@ export default function LandingPage() {
       whatsapp: form.whatsapp.trim(),
       mensagem: form.mensagem?.trim() || null,
     });
+    setSubmitting(false);
     if (error) {
+      console.error("Erro ao enviar lead:", error);
       toast.error("Erro ao enviar. Tente novamente.");
-      setSubmitting(false);
       return;
     }
     setSubmitted(true);
-    setSubmitting(false);
     setForm({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
+    setTimeout(() => setSubmitted(false), 6000);
   }, [form]);
 
-  const quemSomosText = content.quem_somos || "O Consubov é uma plataforma tecnológica desenvolvida para transformar a gestão pecuária. Com foco no controle de sal mineral, inteligência nutricional e operação de campo, oferecemos ferramentas que permitem ao pecuarista tomar decisões baseadas em dados reais, direto do pasto.";
-  const diferenciaisText = content.diferenciais || "Tecnologia pensada para o campo. Cada funcionalidade foi criada a partir da realidade do dia a dia da pecuária brasileira.";
-  const formTitle = content.form_titulo || "Ficou interessado?";
-  const formDesc = content.form_descricao || "Preencha o formulário abaixo e nossa equipe entrará em contato.";
-  const formPlaceholder = content.form_placeholder || "Conte um pouco da sua história, nos dizendo como é a sua realidade na fazenda";
-  const formMicrofrase = content.form_microfrase || "Cada fazenda é única, e queremos entender a sua.";
-  const formMsgConfirmacao = content.form_msg_confirmacao || "Essas informações nos ajudam a entender melhor sua realidade.\nNossa equipe irá analisar com atenção, e entrar em contato com você.\n\nEquipe Consubov";
-  const rodapeText = content.rodape || "Consubov — Tecnologia para Pecuária\nTelefone: (63) 99999-0000\nCNPJ: 00.000.000/0001-00\nPalmas - TO, Brasil";
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0D1F0F" }}>
-        <div className="w-12 h-12 rounded-xl overflow-hidden animate-pulse">
-          <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
-        </div>
-      </div>
-    );
-  }
+  const scrollToForm = () =>
+    document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" });
+  const scrollToSolucao = () =>
+    document.getElementById("solucao")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0D1F0F", color: "#F5F0E8" }}>
-      {/* Navbar */}
+    <div className="min-h-screen w-full overflow-x-hidden" style={{ background: BG, color: "#E6F5EC", fontFamily: "Inter, system-ui, sans-serif" }}>
+      {/* Inline keyframes */}
+      <style>{`
+        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px ${NEON_DIM}} 50%{box-shadow:0 0 40px ${NEON}} }
+        @keyframes floatSlow { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(2deg)} }
+        @keyframes scanLine { 0%{transform:translateY(-100%)} 100%{transform:translateY(2000%)} }
+        @keyframes dotPulse { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.6)} }
+        @keyframes gridDrift { 0%{background-position:0 0} 100%{background-position:60px 60px} }
+        @keyframes glitch { 0%,100%{transform:translate(0)} 20%{transform:translate(-2px,1px)} 40%{transform:translate(2px,-1px)} 60%{transform:translate(-1px,-2px)} 80%{transform:translate(1px,2px)} }
+        @keyframes openLeft { 0%{transform:perspective(1200px) rotateY(0)} 100%{transform:perspective(1200px) rotateY(-75deg)} }
+        @keyframes openRight { 0%{transform:perspective(1200px) rotateY(0)} 100%{transform:perspective(1200px) rotateY(75deg)} }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .neon-text { text-shadow: 0 0 12px ${NEON_DIM}, 0 0 32px rgba(34,255,136,0.25); }
+        .grid-bg { background-image: linear-gradient(rgba(34,255,136,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(34,255,136,0.06) 1px,transparent 1px); background-size:60px 60px; animation: gridDrift 25s linear infinite; }
+        .gate-left { transform-origin: left center; animation: openLeft 2.5s cubic-bezier(.6,.05,.2,1) 0.6s forwards; }
+        .gate-right { transform-origin: right center; animation: openRight 2.5s cubic-bezier(.6,.05,.2,1) 0.6s forwards; }
+        .phone-float { animation: floatSlow 6s ease-in-out infinite; }
+        .glow-btn { box-shadow: 0 0 24px ${NEON_DIM}, inset 0 0 20px rgba(34,255,136,0.15); transition: all .3s; }
+        .glow-btn:hover { box-shadow: 0 0 50px ${NEON}, inset 0 0 30px rgba(34,255,136,0.25); transform: translateY(-2px); }
+        .glitch-img { animation: glitch 3s infinite; filter: hue-rotate(80deg) saturate(1.2); }
+        .shimmer { background: linear-gradient(90deg, transparent, rgba(34,255,136,0.15), transparent); background-size: 200% 100%; animation: shimmer 3s linear infinite; }
+      `}</style>
+
+      {/* NAV */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
         style={{
-          background: scrolled ? "rgba(13,31,15,0.92)" : "transparent",
-          backdropFilter: scrolled ? "blur(12px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(46,74,48,0.5)" : "none",
+          background: scrolled ? "rgba(5,7,10,0.85)" : "transparent",
+          backdropFilter: scrolled ? "blur(16px) saturate(180%)" : "none",
+          borderBottom: scrolled ? `1px solid ${BORDER}` : "1px solid transparent",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg overflow-hidden">
+            <div className="w-9 h-9 rounded-lg overflow-hidden ring-1" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-lg tracking-wide" style={{ color: "#F5F0E8" }}>Consubov</span>
+            <div className="flex flex-col leading-none">
+              <span className="font-extrabold tracking-[0.2em] text-sm">CONSUBOV</span>
+              <span className="text-[10px] tracking-[0.3em]" style={{ color: NEON }}>INTELIGÊNCIA NUTRICIONAL</span>
+            </div>
           </div>
-          <Link to="/login">
-            <button
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:brightness-110"
-              style={{ background: "#C9A84C", color: "#0D1F0F" }}
-            >
-              <LogIn className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="hidden sm:block text-sm font-medium opacity-80 hover:opacity-100 transition">
               Entrar
+            </Link>
+            <button
+              onClick={scrollToForm}
+              className="glow-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider"
+              style={{ background: NEON, color: "#03110A" }}
+            >
+              Demonstração <ArrowRight className="w-3.5 h-3.5" />
             </button>
-          </Link>
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative w-full overflow-hidden" style={{ height: "70vh", minHeight: "400px" }}>
-        {heroImages.map((img, i) => (
-          <div
-            key={`${img}-${i}`}
-            className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-            style={{ opacity: heroIndex === i ? 1 : 0 }}
-          >
-            <img
-              src={img}
-              alt={`Hero ${i + 1}`}
-              className="w-full h-full object-cover"
-              width={1920}
-              height={1080}
-              {...(i === 0 ? {} : { loading: "lazy" as const })}
+      {/* ========== HERO ========== */}
+      <section className="relative w-full overflow-hidden" style={{ minHeight: "100vh" }}>
+        {/* Background image with parallax */}
+        <div className="absolute inset-0" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>
+          <img src={heroImg} alt="Fazenda futurista" className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
+          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at center, transparent 0%, ${BG} 75%)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 60%, ${BG} 100%)` }} />
+        </div>
+
+        {/* Grid overlay */}
+        <div className="absolute inset-0 grid-bg opacity-40" />
+
+        {/* Particles */}
+        <ParticleField density={80} opacity={0.9} />
+
+        {/* Portal / Gate animation */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="relative" style={{ width: "min(620px, 90vw)", height: "min(620px, 90vw)" }}>
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: `radial-gradient(circle, rgba(34,255,136,0.18) 0%, transparent 60%)`,
+                animation: "pulseGlow 4s ease-in-out infinite",
+              }}
             />
+            {/* Two "gate" panels opening */}
+            <div
+              className="gate-left absolute top-1/2 left-1/2 -translate-y-1/2"
+              style={{
+                width: "50%",
+                height: "70%",
+                marginLeft: "-50%",
+                background: "linear-gradient(90deg, rgba(5,7,10,0.95), rgba(5,7,10,0.4))",
+                borderRight: `1px solid ${NEON_DIM}`,
+                boxShadow: `inset -20px 0 60px ${NEON_DIM}`,
+              }}
+            />
+            <div
+              className="gate-right absolute top-1/2 left-1/2 -translate-y-1/2"
+              style={{
+                width: "50%",
+                height: "70%",
+                background: "linear-gradient(-90deg, rgba(5,7,10,0.95), rgba(5,7,10,0.4))",
+                borderLeft: `1px solid ${NEON_DIM}`,
+                boxShadow: `inset 20px 0 60px ${NEON_DIM}`,
+              }}
+            />
+            {/* Concentric rings */}
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="absolute rounded-full border"
+                style={{
+                  inset: `${i * 8}%`,
+                  borderColor: NEON_DIM,
+                  opacity: 0.3 / i,
+                  animation: `pulseGlow ${3 + i}s ease-in-out infinite`,
+                }}
+              />
+            ))}
           </div>
-        ))}
-        {/* Dark overlay */}
-        <div className="absolute inset-0" style={{ background: "rgba(13,31,15,0.55)" }} />
-        {/* Gradient bottom fade */}
-        <div className="absolute inset-x-0 bottom-0 h-32" style={{ background: "linear-gradient(to top, #0D1F0F, transparent)" }} />
+        </div>
 
         {/* Hero content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-10">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-wider mb-4" style={{ color: "#F5F0E8" }}>
+        <div className="relative z-10 max-w-5xl mx-auto px-5 pt-32 pb-24 min-h-screen flex flex-col items-center justify-center text-center">
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
+            style={{ background: "rgba(34,255,136,0.08)", border: `1px solid ${BORDER}` }}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: NEON }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: NEON }} />
+            </span>
+            <span className="text-[11px] tracking-[0.3em] font-medium" style={{ color: NEON }}>SISTEMA ATIVO • BR</span>
+          </div>
+
+          <h1
+            className="font-black tracking-[-0.02em] mb-6 neon-text"
+            style={{
+              fontSize: "clamp(3rem, 11vw, 8rem)",
+              lineHeight: 0.95,
+              background: `linear-gradient(180deg, #FFFFFF 0%, ${NEON} 200%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
             CONSUBOV
           </h1>
-          <p className="text-base md:text-xl max-w-2xl leading-relaxed opacity-90" style={{ color: "#F5F0E8" }}>
-            {content.hero_subtitulo || "Gestão pecuária inteligente. Controle, dados e resultados — direto do pasto."}
+
+          <p className="text-xl md:text-3xl font-bold tracking-wide mb-4" style={{ color: "#F5F5F5" }}>
+            O FUTURO DA PECUÁRIA <span style={{ color: NEON }} className="neon-text">CHEGOU.</span>
           </p>
-          <Link to="/login">
+
+          <p className="max-w-2xl text-sm md:text-lg opacity-70 leading-relaxed mb-10 px-4">
+            Tecnologia, inteligência de dados e gestão remota para fazendas de alta performance.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
             <button
-              className="mt-8 px-8 py-3 rounded-lg text-base font-bold uppercase tracking-wide transition-all duration-200 hover:brightness-110 hover:scale-105"
-              style={{ background: "#C9A84C", color: "#0D1F0F" }}
+              onClick={scrollToForm}
+              className="glow-btn px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider flex items-center gap-2"
+              style={{ background: NEON, color: "#03110A" }}
             >
-              {content.cta_texto || "Entrar"}
+              Solicitar Demonstração <ArrowRight className="w-4 h-4" />
             </button>
-          </Link>
-        </div>
-
-        {/* Carousel controls */}
-        {heroImages.length > 1 && (
-          <>
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-              {heroImages.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setHeroIndex(i)}
-                  className="w-2.5 h-2.5 rounded-full transition-all"
-                  style={{
-                    background: heroIndex === i ? "#C9A84C" : "rgba(245,240,232,0.4)",
-                    transform: heroIndex === i ? "scale(1.3)" : "scale(1)",
-                  }}
-                />
-              ))}
-            </div>
-            <button onClick={() => setHeroIndex((i) => (i - 1 + heroImages.length) % heroImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-2 transition-colors z-10" style={{ background: "rgba(13,31,15,0.5)", color: "#F5F0E8" }}>
-              <ChevronLeft className="w-6 h-6" />
+            <button
+              onClick={scrollToSolucao}
+              className="px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
+              style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
+            >
+              Conheça a Plataforma
             </button>
-            <button onClick={() => setHeroIndex((i) => (i + 1) % heroImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-2 transition-colors z-10" style={{ background: "rgba(13,31,15,0.5)", color: "#F5F0E8" }}>
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </>
-        )}
-      </section>
-
-      {/* Quem Somos */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide" style={{ color: "#F5F0E8" }}>
-              Quem Somos
-            </h2>
-            <div className="w-16 h-1 mx-auto mt-3 rounded-full" style={{ background: "#C9A84C" }} />
           </div>
-          <div className="flex flex-col md:flex-row gap-10 items-center">
-            <div className="w-full md:w-1/2 rounded-xl overflow-hidden" style={{ maxHeight: "60vh" }}>
-              <img src={quemSomosImg} alt="Quem somos" className="w-full h-full object-cover" loading="lazy" />
-            </div>
-            <div className="w-full md:w-1/2">
-              <p className="text-base md:text-lg leading-relaxed whitespace-pre-line text-left" style={{ color: "rgba(245,240,232,0.8)" }}>
-                {quemSomosText}
-              </p>
-            </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
+            <span className="text-[10px] tracking-[0.3em]">SCROLL</span>
+            <div className="w-px h-10 bg-gradient-to-b from-transparent via-white to-transparent" />
           </div>
         </div>
       </section>
 
-      {/* Diferenciais */}
-      <section className="py-16 md:py-24 px-4" style={{ background: "#0A1A0C" }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide" style={{ color: "#F5F0E8" }}>
-              Nossos Diferenciais
-            </h2>
-            <div className="w-16 h-1 mx-auto mt-3 rounded-full" style={{ background: "#C9A84C" }} />
-            <p className="mt-4 max-w-2xl mx-auto text-left" style={{ color: "rgba(245,240,232,0.65)" }}>{diferenciaisText}</p>
-          </div>
-
-          {diferenciaisImg && (
-            <div className="mb-12 rounded-xl overflow-hidden max-w-3xl mx-auto" style={{ maxHeight: "60vh" }}>
-              <img src={diferenciaisImg} alt="Nossos diferenciais" className="w-full h-auto object-contain" loading="lazy" />
+      {/* ========== NÚMEROS ========== */}
+      <section className="relative py-24 px-5 overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20" />
+        <div className="max-w-6xl mx-auto relative">
+          <Reveal>
+            <div className="text-center mb-16">
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// IMPACTO REAL</span>
+              <h2 className="text-3xl md:text-5xl font-black mt-3 tracking-tight">
+                Números que <span className="neon-text" style={{ color: NEON }}>movem o setor</span>
+              </h2>
             </div>
-          )}
+          </Reveal>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {diferenciais.map((d) => (
-              <div
-                key={d.title}
-                className="rounded-xl p-4 md:p-6 flex flex-col gap-3 transition-all duration-200 hover:scale-[1.02]"
-                style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(201,168,76,0.15)" }}>
-                    <d.icon className="w-4 h-4 md:w-5 md:h-5" style={{ color: "#C9A84C" }} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { value: 130000, suffix: "+", label: "Animais monitorados", icon: Activity },
+              { value: 12, suffix: " estados", label: "Atendidos no Brasil", icon: MapIcon },
+              { value: 99, suffix: "%", label: "Uptime em tempo real", icon: Zap },
+              { value: 340, suffix: "%", label: "Crescimento anual", icon: BarChart3 },
+            ].map((stat, i) => (
+              <Reveal key={i} delay={i * 100}>
+                <div
+                  className="relative rounded-2xl p-6 md:p-8 h-full overflow-hidden group"
+                  style={{ background: CARD_BG, border: `1px solid ${BORDER}`, backdropFilter: "blur(10px)" }}
+                >
+                  <div
+                    className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-30 blur-3xl group-hover:opacity-60 transition-opacity"
+                    style={{ background: NEON }}
+                  />
+                  <stat.icon className="w-6 h-6 mb-4" style={{ color: NEON }} />
+                  <div className="text-4xl md:text-5xl font-black tracking-tight">
+                    <Counter to={stat.value} suffix={stat.suffix} />
                   </div>
+                  <div className="text-xs md:text-sm mt-2 opacity-70 uppercase tracking-wider">{stat.label}</div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm md:text-base" style={{ color: "#F5F0E8" }}>{d.title}</h3>
-                  <p className="text-xs md:text-sm text-left leading-relaxed mt-1" style={{ color: "rgba(245,240,232,0.65)" }}>{d.desc}</p>
-                </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Parceiros */}
-      <section className="py-16 md:py-24 px-4 overflow-hidden">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide mb-3" style={{ color: "#F5F0E8" }}>
-            Parceiros que Usam
-          </h2>
-          <div className="w-16 h-1 mx-auto mb-6 rounded-full" style={{ background: "#C9A84C" }} />
-          <p className="mb-10" style={{ color: "rgba(245,240,232,0.65)" }}>Fazendas e grupos que confiam no Consubov para sua gestão pecuária.</p>
-          {(() => {
-            const logos = parceirosLogos.length > 0 ? parceirosLogos : [null, null, null];
-            const items = [...logos, ...logos];
-            return (
-              <div
-                className="group relative w-full"
-                style={{ maskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)" }}
-              >
-                <div className="flex items-center gap-10 animate-[marquee_20s_linear_infinite] group-hover:[animation-play-state:paused] w-max">
-                  {items.map((logo, i) => (
-                    <div
-                      key={i}
-                      className="w-24 h-24 shrink-0 rounded-xl flex items-center justify-center overflow-hidden"
-                      style={{ background: "#FFFFFF", border: "1px solid #E0E0E0", padding: "24px" }}
-                    >
-                      {logo ? (
-                        <img src={logo} alt={`Parceiro ${(i % logos.length) + 1}`} style={{ width: "85%", height: "auto", objectFit: "contain" }} loading="lazy" />
-                      ) : (
-                        <span className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>Logo {(i % 3) + 1}</span>
-                      )}
+      {/* ========== PROBLEMA ========== */}
+      <section className="relative py-24 px-5 overflow-hidden" style={{ background: "#02040680" }}>
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <Reveal>
+            <div>
+              <span className="text-xs tracking-[0.4em] font-medium text-red-400">// O PROBLEMA</span>
+              <h2 className="text-3xl md:text-5xl font-black mt-3 mb-6 tracking-tight leading-[1.05]">
+                A pecuária ainda <br />
+                <span className="text-red-400">sofre no escuro.</span>
+              </h2>
+              <ul className="space-y-4 mt-8">
+                {[
+                  "Falta de controle operacional",
+                  "Informações perdidas no campo",
+                  "Gestão distante da realidade",
+                  "Decisões tomadas no escuro",
+                  "Falhas humanas constantes",
+                ].map((p, i) => (
+                  <li key={i} className="flex items-start gap-3 text-base md:text-lg opacity-80">
+                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <div className="relative aspect-square rounded-2xl overflow-hidden glitch-img" style={{ border: `1px solid ${BORDER}`, background: CARD_BG }}>
+              <div className="absolute inset-0 grid-bg opacity-30" />
+              {/* fake "broken dashboard" */}
+              <div className="absolute inset-0 p-6 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] tracking-widest text-red-400">SYSTEM ERROR // 0x4F</span>
+                  <EyeOff className="w-4 h-4 text-red-400" />
+                </div>
+                <div className="h-1 bg-red-500/30 rounded">
+                  <div className="h-full w-1/3 bg-red-500 rounded" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="rounded-lg p-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <div className="h-1.5 w-1/2 bg-red-400/40 rounded mb-2" />
+                      <div className="h-3 w-3/4 bg-red-400/20 rounded" />
                     </div>
                   ))}
                 </div>
+                <div className="mt-auto text-center text-red-400 font-mono text-xs opacity-60">
+                  ▮▮▮▮▮▮▯▯▯▯ DADOS PERDIDOS
+                </div>
               </div>
-            );
-          })()}
-        </div>
-      </section>
-
-      {/* Formulário */}
-      <section id="formulario" className="py-16 md:py-24 px-4" style={{ background: "#0A1A0C" }}>
-        <div className="max-w-lg mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center uppercase tracking-wide mb-2" style={{ color: "#F5F0E8" }}>
-            {formTitle}
-          </h2>
-          <div className="w-16 h-1 mx-auto mt-2 mb-4 rounded-full" style={{ background: "#C9A84C" }} />
-          <p className="text-center mb-8" style={{ color: "rgba(245,240,232,0.65)" }}>{formDesc}</p>
-
-          <Dialog open={submitted} onOpenChange={setSubmitted}>
-            <DialogContent className="text-center max-w-md" style={{ background: "#1A2E1C", color: "#F5F0E8", border: "1px solid #2E4A30" }}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-center gap-2" style={{ color: "#C9A84C" }}>
-                  <CheckCircle2 className="w-6 h-6" />
-                  Mensagem enviada!
-                </DialogTitle>
-              </DialogHeader>
-              <p className="text-sm whitespace-pre-line leading-relaxed mt-2" style={{ color: "rgba(245,240,232,0.8)" }}>
-                {formMsgConfirmacao}
-              </p>
-            </DialogContent>
-          </Dialog>
-
-          <div className="rounded-xl p-6 space-y-4" style={{ background: "#1A2E1C", border: "1px solid #2E4A30" }}>
-            {[
-              { key: "nome", placeholder: "Nome *", type: "text" },
-              { key: "email", placeholder: "E-mail *", type: "email" },
-              { key: "telefone", placeholder: "Telefone *", type: "text" },
-              { key: "whatsapp", placeholder: "WhatsApp *", type: "text" },
-            ].map((field) => (
-              <div key={field.key}>
-                <input
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  value={(form as Record<string, string>)[field.key]}
-                  onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                  maxLength={field.key === "email" ? 255 : field.key === "nome" ? 100 : 20}
-                  className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all focus:ring-2"
-                  style={{
-                    background: "#0D1F0F",
-                    border: "1px solid #2E4A30",
-                    color: "#F5F0E8",
-                  }}
-                />
-                {errors[field.key] && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{errors[field.key]}</p>}
-              </div>
-            ))}
-            <div>
-              <textarea
-                placeholder={formPlaceholder}
-                value={form.mensagem}
-                onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
-                maxLength={1000}
-                rows={4}
-                className="w-full px-4 py-3 rounded-lg text-sm outline-none resize-none transition-all focus:ring-2"
-                style={{ background: "#0D1F0F", border: "1px solid #2E4A30", color: "#F5F0E8" }}
-              />
-              <p className="text-xs mt-1 italic" style={{ color: "rgba(245,240,232,0.45)" }}>{formMicrofrase}</p>
+              {/* scan line */}
+              <div className="absolute left-0 right-0 h-1" style={{ background: "rgba(239,68,68,0.4)", animation: "scanLine 4s linear infinite" }} />
             </div>
-            <button
-              className="w-full py-3 rounded-lg font-semibold text-sm uppercase tracking-wide transition-all duration-200 hover:brightness-110 disabled:opacity-50"
-              style={{ background: "#C9A84C", color: "#0D1F0F" }}
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? "Enviando..." : "Enviar"}
-            </button>
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* Rodapé */}
-      <footer className="py-12 px-4" style={{ background: "#081408", borderTop: "1px solid #2E4A30" }}>
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl overflow-hidden">
+      {/* ========== SOLUÇÃO ========== */}
+      <section id="solucao" className="relative py-24 px-5 overflow-hidden">
+        <ParticleField density={40} opacity={0.5} />
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center relative">
+          <Reveal>
+            <div className="relative flex justify-center">
+              <div
+                className="absolute inset-0 rounded-full blur-3xl"
+                style={{ background: `radial-gradient(circle, ${NEON_DIM}, transparent 70%)`, animation: "pulseGlow 5s ease-in-out infinite" }}
+              />
+              <img src={phoneImg} alt="App Consubov" className="phone-float relative w-full max-w-sm" loading="lazy" />
+            </div>
+          </Reveal>
+
+          <Reveal delay={150}>
+            <div>
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// A SOLUÇÃO</span>
+              <h2 className="text-3xl md:text-5xl font-black mt-3 mb-6 tracking-tight leading-[1.05]">
+                Transformamos rotina de campo em{" "}
+                <span className="neon-text" style={{ color: NEON }}>inteligência gerencial.</span>
+              </h2>
+              <p className="opacity-70 text-base md:text-lg mb-8 leading-relaxed">
+                Uma plataforma viva — opera offline, sincroniza tudo, e entrega decisões em tempo real direto do pasto para a sala de gestão.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: QrCode, label: "Leitura por QR Code" },
+                  { icon: CheckCircle2, label: "Registro de salgas" },
+                  { icon: WifiOff, label: "Funciona offline" },
+                  { icon: BarChart3, label: "Dashboards inteligentes" },
+                  { icon: MapIcon, label: "Mapas da fazenda" },
+                  { icon: FileBarChart, label: "Relatórios automáticos" },
+                ].map((f, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 p-3 rounded-lg text-xs md:text-sm"
+                    style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
+                  >
+                    <f.icon className="w-4 h-4 shrink-0" style={{ color: NEON }} />
+                    <span>{f.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ========== INTELIGÊNCIA DE DADOS / MAPA BRASIL ========== */}
+      <section className="relative py-24 px-5 overflow-hidden" style={{ background: "#02040680" }}>
+        <div className="max-w-6xl mx-auto text-center relative">
+          <Reveal>
+            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// REDE NACIONAL</span>
+            <h2 className="text-3xl md:text-5xl font-black mt-3 mb-4 tracking-tight">
+              Dados reais gerando <span className="neon-text" style={{ color: NEON }}>decisões reais.</span>
+            </h2>
+            <p className="opacity-70 max-w-2xl mx-auto mb-12">
+              Em breve, o maior ecossistema de inteligência nutricional bovina da América Latina.
+            </p>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <div
+              className="relative mx-auto rounded-2xl overflow-hidden"
+              style={{
+                maxWidth: 900,
+                aspectRatio: "16/10",
+                background: "radial-gradient(ellipse at center, rgba(34,255,136,0.08), transparent 70%)",
+                border: `1px solid ${BORDER}`,
+              }}
+            >
+              <div className="absolute inset-0 grid-bg opacity-30" />
+              {/* Stylized Brazil SVG */}
+              <svg viewBox="0 0 500 400" className="absolute inset-0 w-full h-full">
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                {/* Simplified Brazil shape outline */}
+                <path
+                  d="M180 60 L240 50 L290 70 L340 90 L370 130 L400 160 L410 200 L390 240 L380 280 L350 320 L300 350 L240 360 L180 340 L140 300 L120 260 L110 220 L120 180 L140 140 L160 100 Z"
+                  fill="none"
+                  stroke={NEON}
+                  strokeWidth="1.5"
+                  opacity="0.5"
+                  filter="url(#glow)"
+                />
+                {/* Connecting lines */}
+                {[
+                  [200, 120, 280, 180],
+                  [280, 180, 340, 240],
+                  [200, 120, 340, 240],
+                  [340, 240, 250, 310],
+                  [280, 180, 220, 260],
+                  [220, 260, 300, 290],
+                ].map(([x1, y1, x2, y2], i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={NEON} strokeWidth="0.8" opacity="0.4" strokeDasharray="3 4" />
+                ))}
+                {/* Pulsing dots */}
+                {[
+                  [200, 120],
+                  [280, 180],
+                  [340, 240],
+                  [220, 260],
+                  [300, 290],
+                  [250, 310],
+                  [310, 200],
+                  [180, 200],
+                ].map(([cx, cy], i) => (
+                  <g key={i} style={{ animation: `dotPulse 2s ease-in-out infinite ${i * 0.3}s`, transformOrigin: `${cx}px ${cy}px` }}>
+                    <circle cx={cx} cy={cy} r="6" fill={NEON} opacity="0.3" />
+                    <circle cx={cx} cy={cy} r="2.5" fill={NEON} filter="url(#glow)" />
+                  </g>
+                ))}
+              </svg>
+
+              {/* Live ticker */}
+              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 justify-center">
+                {["MT • online", "GO • online", "MS • online", "TO • online", "PA • online", "BA • online"].map((s, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] px-2 py-1 rounded-full font-mono"
+                    style={{ background: "rgba(34,255,136,0.1)", color: NEON, border: `1px solid ${BORDER}` }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ========== IMPACTO EMOCIONAL ========== */}
+      <section className="relative overflow-hidden" style={{ minHeight: "80vh" }}>
+        <div className="absolute inset-0">
+          <img src={pecuaristaImg} alt="Pecuarista visionário" className="w-full h-full object-cover" loading="lazy" />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 70%, ${BG} 100%)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${BG}cc 0%, transparent 50%)` }} />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-5 py-32 md:py-48 flex items-center min-h-[80vh]">
+          <Reveal>
+            <div className="max-w-2xl">
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// MANIFESTO</span>
+              <h2
+                className="font-black mt-4 leading-[0.95] tracking-tight neon-text"
+                style={{ fontSize: "clamp(2.5rem, 7vw, 5.5rem)" }}
+              >
+                Quem lidera o campo,<br />
+                <span style={{ color: NEON }}>lidera o futuro.</span>
+              </h2>
+              <p className="mt-6 text-base md:text-lg opacity-80 max-w-lg leading-relaxed">
+                Não vendemos software. Construímos a infraestrutura digital da pecuária brasileira.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ========== FORMULÁRIO / CTA FINAL ========== */}
+      <section id="formulario" className="relative py-24 px-5 overflow-hidden">
+        <ParticleField density={50} opacity={0.6} />
+        <div
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(ellipse at center, rgba(34,255,136,0.08) 0%, transparent 60%)` }}
+        />
+
+        <div className="max-w-4xl mx-auto relative text-center mb-12">
+          <Reveal>
+            <div
+              className="w-20 h-20 mx-auto rounded-2xl overflow-hidden mb-6"
+              style={{ boxShadow: `0 0 60px ${NEON_DIM}`, border: `1px solid ${BORDER}` }}
+            >
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold" style={{ color: "#F5F0E8" }}>Consubov</span>
-          </div>
-          <div className="flex-1 text-center md:text-left">
-            <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "rgba(245,240,232,0.6)" }}>
-              {rodapeText}
+            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// ESTAMOS CHEGANDO</span>
+            <h2 className="text-4xl md:text-6xl font-black mt-4 mb-4 tracking-tight neon-text">
+              Quero fazer <span style={{ color: NEON }}>parte.</span>
+            </h2>
+            <p className="opacity-70 max-w-xl mx-auto">
+              Preencha abaixo e nossa equipe entrará em contato. Cada fazenda é única — e queremos entender a sua.
             </p>
-          </div>
+          </Reveal>
         </div>
-        <div className="max-w-5xl mx-auto mt-8 pt-6 text-center" style={{ borderTop: "1px solid rgba(46,74,48,0.5)" }}>
-          <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>© {new Date().getFullYear()} Consubov. Todos os direitos reservados.</p>
+
+        <Reveal delay={200}>
+          <div
+            className="max-w-lg mx-auto rounded-2xl p-6 md:p-8 relative"
+            style={{ background: CARD_BG, border: `1px solid ${BORDER}`, backdropFilter: "blur(20px)" }}
+          >
+            <div className="absolute inset-0 rounded-2xl shimmer pointer-events-none opacity-30" />
+            {submitted ? (
+              <div className="text-center py-12 relative">
+                <Sparkles className="w-12 h-12 mx-auto mb-4" style={{ color: NEON }} />
+                <h3 className="text-2xl font-bold mb-2" style={{ color: NEON }}>Mensagem enviada!</h3>
+                <p className="opacity-70 text-sm leading-relaxed">
+                  Nossa equipe irá analisar com atenção e entrar em contato.<br />
+                  <span className="font-semibold mt-2 inline-block">Equipe Consubov</span>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 relative">
+                {[
+                  { key: "nome", placeholder: "Nome completo", type: "text" },
+                  { key: "email", placeholder: "E-mail", type: "email" },
+                  { key: "telefone", placeholder: "Telefone", type: "tel" },
+                  { key: "whatsapp", placeholder: "WhatsApp", type: "tel" },
+                ].map((field) => (
+                  <div key={field.key}>
+                    <input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={(form as Record<string, string>)[field.key]}
+                      onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                      className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all focus:border-[#22FF88]"
+                      style={{
+                        background: "rgba(0,0,0,0.4)",
+                        border: `1px solid ${BORDER}`,
+                        color: "#E6F5EC",
+                      }}
+                    />
+                    {errors[field.key] && <p className="text-xs mt-1 text-red-400">{errors[field.key]}</p>}
+                  </div>
+                ))}
+                <textarea
+                  placeholder="Conte um pouco da sua realidade no campo..."
+                  value={form.mensagem}
+                  onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-3.5 rounded-xl text-sm outline-none resize-none transition-all"
+                  style={{ background: "rgba(0,0,0,0.4)", border: `1px solid ${BORDER}`, color: "#E6F5EC" }}
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="glow-btn w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.2em] disabled:opacity-50 mt-2"
+                  style={{ background: NEON, color: "#03110A" }}
+                >
+                  {submitting ? "Enviando..." : "Quero fazer parte"}
+                </button>
+              </div>
+            )}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* RODAPÉ */}
+      <footer className="relative py-12 px-5" style={{ borderTop: `1px solid ${BORDER}`, background: "#02030580" }}>
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+              <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <div className="font-extrabold tracking-[0.2em] text-sm">CONSUBOV</div>
+              <div className="text-[10px] tracking-[0.3em] opacity-60">INTELIGÊNCIA NUTRICIONAL</div>
+            </div>
+          </div>
+          <div className="text-center md:text-right text-xs opacity-60 leading-relaxed">
+            <p>Palmas — TO, Brasil • (63) 99999-0000</p>
+            <p>© {new Date().getFullYear()} Consubov. Todos os direitos reservados.</p>
+          </div>
         </div>
       </footer>
     </div>
