@@ -23,7 +23,7 @@ import heroImg from "@/assets/landing-hero-cinematic.jpg";
 import pecuaristaImg from "@/assets/landing-pecuarista.jpg";
 import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
-import brasilMap from "@/assets/brasil-map.png";
+import brasilMap from "@/assets/brasil-map.svg";
 
 const leadSchema = z.object({
   nome: z.string().trim().min(2, "Nome obrigatório").max(100),
@@ -294,7 +294,11 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:block text-sm font-medium opacity-80 hover:opacity-100 transition">
+            <Link
+              to="/login"
+              className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
+              style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
+            >
               Entrar
             </Link>
             <button
