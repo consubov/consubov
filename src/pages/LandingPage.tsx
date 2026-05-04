@@ -595,86 +595,107 @@ export default function LandingPage() {
             <div
               className="relative mx-auto rounded-2xl overflow-hidden"
               style={{
-                maxWidth: 900,
+                maxWidth: 760,
                 aspectRatio: "1/1",
-                background: "radial-gradient(ellipse at center, rgba(34,255,136,0.08), transparent 70%)",
+                background: "radial-gradient(ellipse at center, rgba(34,255,136,0.10), transparent 70%)",
                 border: `1px solid ${BORDER}`,
               }}
             >
-              <div className="absolute inset-0 grid-bg opacity-30" />
-              <svg viewBox="0 0 600 600" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <defs>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="3" result="b" />
-                    <feMerge>
-                      <feMergeNode in="b" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                  <linearGradient id="brFill" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="rgba(34,255,136,0.10)" />
-                    <stop offset="100%" stopColor="rgba(34,255,136,0.02)" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M232 78 C 248 70, 268 72, 282 84 C 296 92, 308 90, 322 96 C 338 100, 348 112, 360 118 C 376 122, 388 134, 396 148 C 404 162, 412 172, 426 178 C 440 184, 452 196, 458 212 C 462 226, 468 240, 478 252 C 488 268, 494 286, 488 304 C 482 320, 472 332, 466 348 C 462 366, 458 384, 446 398 C 432 414, 418 426, 410 444 C 402 460, 394 476, 380 488 C 364 500, 348 510, 330 514 C 312 518, 294 514, 278 506 C 264 500, 250 498, 236 494 C 222 488, 208 482, 198 470 C 188 458, 184 442, 178 428 C 170 414, 158 404, 152 388 C 146 372, 148 354, 144 338 C 138 322, 130 308, 128 292 C 126 274, 132 258, 134 240 C 136 224, 132 208, 138 192 C 144 176, 156 164, 162 148 C 168 132, 174 116, 188 104 C 200 92, 216 84, 232 78 Z"
-                  fill="url(#brFill)"
-                  stroke={NEON}
-                  strokeWidth="1.6"
-                  opacity="0.85"
-                  filter="url(#glow)"
-                />
-                {(() => {
-                  const states = [
-                    { id: "PA", x: 240, y: 180 },
-                    { id: "TO", x: 290, y: 245 },
-                    { id: "MT", x: 235, y: 290 },
-                    { id: "GO", x: 305, y: 320 },
-                    { id: "MS", x: 240, y: 365 },
-                    { id: "BA", x: 365, y: 270 },
-                  ];
-                  const links: [number, number][] = [
-                    [0, 1], [1, 2], [1, 3], [1, 5],
-                    [2, 4], [3, 4], [3, 5], [2, 3],
-                  ];
-                  return (
-                    <>
-                      {links.map(([a, b], i) => (
-                        <line
-                          key={`l${i}`}
-                          x1={states[a].x}
-                          y1={states[a].y}
-                          x2={states[b].x}
-                          y2={states[b].y}
-                          stroke={NEON}
-                          strokeWidth="0.9"
-                          opacity="0.45"
-                          strokeDasharray="3 4"
-                          filter="url(#glow)"
-                        />
-                      ))}
-                      {states.map((s, i) => (
-                        <g key={s.id}>
-                          <g style={{ animation: `dotPulse 2.4s ease-in-out infinite ${i * 0.35}s`, transformOrigin: `${s.x}px ${s.y}px` }}>
-                            <circle cx={s.x} cy={s.y} r="10" fill={NEON} opacity="0.25" />
-                            <circle cx={s.x} cy={s.y} r="4" fill={NEON} filter="url(#glow)" />
-                          </g>
-                          <g transform={`translate(${s.x + 12}, ${s.y - 8})`}>
-                            <rect x="0" y="0" rx="4" ry="4" width="78" height="20" fill="rgba(5,7,10,0.85)" stroke={NEON} strokeOpacity="0.4" />
-                            <circle cx="9" cy="10" r="2.6" fill={NEON}>
-                              <animate attributeName="opacity" values="0.4;1;0.4" dur="1.6s" repeatCount="indefinite" />
-                            </circle>
-                            <text x="18" y="14" fontSize="10" fill="#E6F5EC" fontFamily="monospace" letterSpacing="1">
-                              {s.id} • online
-                            </text>
-                          </g>
-                        </g>
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
+              <div className="absolute inset-0 grid-bg opacity-20" />
 
+              {/* Real Brazil map silhouette */}
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <div className="relative w-full h-full">
+                  <img
+                    src={brasilMap}
+                    alt="Mapa do Brasil — Rede Consubov"
+                    loading="lazy"
+                    className="w-full h-full object-contain"
+                    style={{
+                      filter: `brightness(0) saturate(100%) invert(72%) sepia(95%) saturate(2000%) hue-rotate(85deg) brightness(105%) contrast(105%) drop-shadow(0 0 12px ${NEON_DIM}) drop-shadow(0 0 28px ${NEON_DIM})`,
+                      opacity: 0.92,
+                    }}
+                  />
+
+                  {/* SVG overlay for connection lines + pins */}
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none">
+                    {(() => {
+                      const states = [
+                        { id: "PA", x: 38, y: 28 },
+                        { id: "TO", x: 53, y: 42 },
+                        { id: "MT", x: 40, y: 50 },
+                        { id: "GO", x: 52, y: 55 },
+                        { id: "MS", x: 42, y: 66 },
+                        { id: "BA", x: 65, y: 47 },
+                      ];
+                      const links: [number, number][] = [
+                        [0, 1], [1, 2], [1, 3], [1, 5],
+                        [2, 3], [3, 4], [2, 4], [3, 5],
+                      ];
+                      return (
+                        <>
+                          {links.map(([a, b], i) => (
+                            <line
+                              key={`l${i}`}
+                              x1={states[a].x}
+                              y1={states[a].y}
+                              x2={states[b].x}
+                              y2={states[b].y}
+                              stroke={NEON}
+                              strokeWidth="0.25"
+                              opacity="0.6"
+                              strokeDasharray="0.7 0.9"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          ))}
+                          {states.map((s, i) => (
+                            <g key={s.id}>
+                              <circle cx={s.x} cy={s.y} r="2.2" fill={NEON} opacity="0.25">
+                                <animate attributeName="r" values="1.6;3.2;1.6" dur="2.4s" begin={`${i * 0.35}s`} repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.4;0;0.4" dur="2.4s" begin={`${i * 0.35}s`} repeatCount="indefinite" />
+                              </circle>
+                              <circle cx={s.x} cy={s.y} r="0.9" fill={NEON} />
+                            </g>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </svg>
+
+                  {/* HTML labels positioned over map */}
+                  {[
+                    { id: "PA", x: 38, y: 28 },
+                    { id: "TO", x: 53, y: 42 },
+                    { id: "MT", x: 40, y: 50 },
+                    { id: "GO", x: 52, y: 55 },
+                    { id: "MS", x: 42, y: 66 },
+                    { id: "BA", x: 65, y: 47 },
+                  ].map((s) => (
+                    <div
+                      key={s.id}
+                      className="absolute flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[10px] whitespace-nowrap"
+                      style={{
+                        left: `${s.x}%`,
+                        top: `${s.y}%`,
+                        transform: "translate(8px, -50%)",
+                        background: "rgba(5,7,10,0.85)",
+                        border: `1px solid ${NEON_DIM}`,
+                        color: "#E6F5EC",
+                        boxShadow: `0 0 10px rgba(34,255,136,0.25)`,
+                      }}
+                    >
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: NEON }} />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: NEON }} />
+                      </span>
+                      <span style={{ color: NEON }}>{s.id}</span>
+                      <span className="opacity-70">• online</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live ticker */}
               <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 justify-center">
                 {["TO • online", "GO • online", "MT • online", "MS • online", "PA • online", "BA • online"].map((s, i) => (
                   <span
