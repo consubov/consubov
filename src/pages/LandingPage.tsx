@@ -546,18 +546,17 @@ export default function LandingPage() {
               />
               <div className="phone-float relative w-full max-w-sm">
                 <img src={phoneImg} alt="App Consubov" className="w-full" loading="lazy" />
-                {/* Overlay real Consubov logo over generated bull mark */}
+                {/* Overlay real Consubov logo in app header (small, left-aligned) */}
                 <img
                   src={logoConsubov}
                   alt="Consubov"
                   className="absolute rounded-full object-cover"
                   style={{
-                    top: "11%",
-                    left: "50%",
-                    width: "22%",
+                    top: "6.5%",
+                    left: "12%",
+                    width: "9%",
                     aspectRatio: "1/1",
-                    transform: "translateX(-50%)",
-                    boxShadow: `0 0 18px ${NEON_DIM}`,
+                    boxShadow: `0 0 10px ${NEON_DIM}`,
                     border: `1px solid ${NEON_DIM}`,
                     background: "#05070A",
                   }}
