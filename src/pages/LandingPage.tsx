@@ -757,11 +757,12 @@ export default function LandingPage() {
                 .map((p, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-center rounded-2xl px-6 py-3 shrink-0 transition-transform duration-500 ease-out hover:[transform:rotateY(15deg)_scale(1.05)]"
+                    className="flex items-center justify-center shrink-0 transition-transform duration-500 ease-out hover:[transform:rotateY(15deg)_scale(1.05)]"
                     style={{
-                      background: "rgba(255,255,255,0.08)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      width: "180px",
+                      height: "100px",
+                      background: "#ffffff",
+                      borderRadius: "12px",
                       border: "1px solid rgba(255,255,255,0.12)",
                       transformStyle: "preserve-3d",
                     }}
@@ -769,7 +770,7 @@ export default function LandingPage() {
                     <img
                       src={p.url_imagem}
                       alt={p.nome_alt || `Parceiro ${i + 1}`}
-                      style={{ height: "60px", width: "auto", objectFit: "contain" }}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", padding: "12px" }}
                       loading="lazy"
                     />
                   </div>
