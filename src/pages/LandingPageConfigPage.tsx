@@ -572,6 +572,23 @@ export default function LandingPageConfigPage() {
           />
         ))}
       </div>
+
+      {/* Botão flutuante: Salvar todas as alterações */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={handleSaveAll}
+          disabled={savingAll}
+          size="lg"
+          className="gap-2 shadow-2xl bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-6 rounded-full"
+        >
+          {savingAll ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          {savingAll ? "Salvando..." : "💾 Salvar Alterações"}
+        </Button>
+      </div>
     </div>
   );
 }
