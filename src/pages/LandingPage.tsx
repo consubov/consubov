@@ -745,25 +745,36 @@ export default function LandingPage() {
       </section>
 
       {/* ========== PARCEIROS ========== */}
-      {parceiros.length > 0 && (
-        <section className="relative py-16 px-5 overflow-hidden">
-          <div className="max-w-6xl mx-auto">
-            <Reveal>
-              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 opacity-80">
-                {parceiros.map((p, i) =>
-                  p.url_imagem ? (
+      {parceiros.filter((p) => p.url_imagem).length > 0 && (
+        <section className="relative py-16 overflow-hidden">
+          <div
+            className="w-full overflow-hidden"
+            style={{ perspective: "1200px", maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)" }}
+          >
+            <div className="flex w-max animate-marquee gap-6 md:gap-10" style={{ transformStyle: "preserve-3d" }}>
+              {[...parceiros, ...parceiros]
+                .filter((p) => p.url_imagem)
+                .map((p, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-center rounded-2xl px-6 py-3 shrink-0 transition-transform duration-500 ease-out hover:[transform:rotateY(15deg)_scale(1.05)]"
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      transformStyle: "preserve-3d",
+                    }}
+                  >
                     <img
-                      key={i}
                       src={p.url_imagem}
                       alt={p.nome_alt || `Parceiro ${i + 1}`}
-                      className="h-10 md:h-12 object-contain transition-all hover:opacity-100"
-                      style={{ filter: "brightness(0) invert(1)", opacity: 0.7 }}
+                      style={{ height: "60px", width: "auto", objectFit: "contain" }}
                       loading="lazy"
                     />
-                  ) : null
-                )}
-              </div>
-            </Reveal>
+                  </div>
+                ))}
+            </div>
           </div>
         </section>
       )}
