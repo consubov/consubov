@@ -544,7 +544,25 @@ export default function LandingPage() {
                 className="absolute inset-0 rounded-full blur-3xl"
                 style={{ background: `radial-gradient(circle, ${NEON_DIM}, transparent 70%)`, animation: "pulseGlow 5s ease-in-out infinite" }}
               />
-              <img src={phoneImg} alt="App Consubov" className="phone-float relative w-full max-w-sm" loading="lazy" />
+              <div className="phone-float relative w-full max-w-sm">
+                <img src={phoneImg} alt="App Consubov" className="w-full" loading="lazy" />
+                {/* Overlay real Consubov logo over generated bull mark */}
+                <img
+                  src={logoConsubov}
+                  alt="Consubov"
+                  className="absolute rounded-full object-cover"
+                  style={{
+                    top: "11%",
+                    left: "50%",
+                    width: "22%",
+                    aspectRatio: "1/1",
+                    transform: "translateX(-50%)",
+                    boxShadow: `0 0 18px ${NEON_DIM}`,
+                    border: `1px solid ${NEON_DIM}`,
+                    background: "#05070A",
+                  }}
+                />
+              </div>
             </div>
           </Reveal>
 
@@ -607,96 +625,9 @@ export default function LandingPage() {
             >
               <div className="absolute inset-0 grid-bg opacity-20" />
 
-              {/* Real Brazil map silhouette */}
+              {/* Real vector Brazil map (IBGE-derived GeoJSON) */}
               <div className="absolute inset-0 flex items-center justify-center p-6">
-                <div className="relative w-full h-full">
-                  <img
-                    src={brasilMap}
-                    alt="Mapa do Brasil — Rede Consubov"
-                    loading="lazy"
-                    className="w-full h-full object-contain"
-                    style={{
-                      filter: `brightness(0) saturate(100%) invert(72%) sepia(95%) saturate(2000%) hue-rotate(85deg) brightness(105%) contrast(105%) drop-shadow(0 0 12px ${NEON_DIM}) drop-shadow(0 0 28px ${NEON_DIM})`,
-                      opacity: 0.92,
-                    }}
-                  />
-
-                  {/* SVG overlay for connection lines + pins */}
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none">
-                    {(() => {
-                      const states = [
-                        { id: "PA", x: 38, y: 28 },
-                        { id: "TO", x: 53, y: 42 },
-                        { id: "MT", x: 40, y: 50 },
-                        { id: "GO", x: 52, y: 55 },
-                        { id: "MS", x: 42, y: 66 },
-                        { id: "BA", x: 65, y: 47 },
-                      ];
-                      const links: [number, number][] = [
-                        [0, 1], [1, 2], [1, 3], [1, 5],
-                        [2, 3], [3, 4], [2, 4], [3, 5],
-                      ];
-                      return (
-                        <>
-                          {links.map(([a, b], i) => (
-                            <line
-                              key={`l${i}`}
-                              x1={states[a].x}
-                              y1={states[a].y}
-                              x2={states[b].x}
-                              y2={states[b].y}
-                              stroke={NEON}
-                              strokeWidth="0.25"
-                              opacity="0.6"
-                              strokeDasharray="0.7 0.9"
-                              vectorEffect="non-scaling-stroke"
-                            />
-                          ))}
-                          {states.map((s, i) => (
-                            <g key={s.id}>
-                              <circle cx={s.x} cy={s.y} r="2.2" fill={NEON} opacity="0.25">
-                                <animate attributeName="r" values="1.6;3.2;1.6" dur="2.4s" begin={`${i * 0.35}s`} repeatCount="indefinite" />
-                                <animate attributeName="opacity" values="0.4;0;0.4" dur="2.4s" begin={`${i * 0.35}s`} repeatCount="indefinite" />
-                              </circle>
-                              <circle cx={s.x} cy={s.y} r="0.9" fill={NEON} />
-                            </g>
-                          ))}
-                        </>
-                      );
-                    })()}
-                  </svg>
-
-                  {/* HTML labels positioned over map */}
-                  {[
-                    { id: "PA", x: 38, y: 28 },
-                    { id: "TO", x: 53, y: 42 },
-                    { id: "MT", x: 40, y: 50 },
-                    { id: "GO", x: 52, y: 55 },
-                    { id: "MS", x: 42, y: 66 },
-                    { id: "BA", x: 65, y: 47 },
-                  ].map((s) => (
-                    <div
-                      key={s.id}
-                      className="absolute flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[10px] whitespace-nowrap"
-                      style={{
-                        left: `${s.x}%`,
-                        top: `${s.y}%`,
-                        transform: "translate(8px, -50%)",
-                        background: "rgba(5,7,10,0.85)",
-                        border: `1px solid ${NEON_DIM}`,
-                        color: "#E6F5EC",
-                        boxShadow: `0 0 10px rgba(34,255,136,0.25)`,
-                      }}
-                    >
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: NEON }} />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: NEON }} />
-                      </span>
-                      <span style={{ color: NEON }}>{s.id}</span>
-                      <span className="opacity-70">• online</span>
-                    </div>
-                  ))}
-                </div>
+                <BrasilMap />
               </div>
 
               {/* Live ticker */}
