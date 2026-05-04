@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import * as Lucide from "lucide-react";
 import {
   ArrowRight,
   CheckCircle2,
   QrCode,
   WifiOff,
   BarChart3,
-  Brain,
   Map as MapIcon,
   FileBarChart,
   AlertTriangle,
@@ -17,6 +17,7 @@ import {
   Zap,
   Activity,
   Sparkles,
+  Quote,
 } from "lucide-react";
 
 import heroImg from "@/assets/landing-hero-cinematic.jpg";
@@ -24,6 +25,7 @@ import pecuaristaImg from "@/assets/landing-pecuarista.jpg";
 import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import BrasilMap from "@/components/landing/BrasilMap";
+import { useLandingContent } from "@/hooks/useLandingContent";
 
 const leadSchema = z.object({
   nome: z.string().trim().min(2, "Nome obrigatório").max(100),
@@ -38,6 +40,12 @@ const NEON_DIM = "rgba(34,255,136,0.55)";
 const BG = "#05070A";
 const CARD_BG = "rgba(12,18,16,0.65)";
 const BORDER = "rgba(34,255,136,0.18)";
+
+// Resolve a lucide icon name (string) to a component, with fallback
+function LucideIcon({ name, className, style }: { name?: string; className?: string; style?: React.CSSProperties }) {
+  const Comp = (name && (Lucide as any)[name]) || Lucide.Sparkles;
+  return <Comp className={className} style={style} />;
+}
 
 /* ---------------- Particle Canvas ---------------- */
 function ParticleField({ density = 60, opacity = 0.6 }: { density?: number; opacity?: number }) {
@@ -75,14 +83,12 @@ function ParticleField({ density = 60, opacity = 0.6 }: { density?: number; opac
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
-      // links
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0 || p.x > w) p.vx *= -1;
         if (p.y < 0 || p.y > h) p.vy *= -1;
-
         for (let j = i + 1; j < particles.length; j++) {
           const q = particles[j];
           const dx = p.x - q.x;
@@ -97,7 +103,6 @@ function ParticleField({ density = 60, opacity = 0.6 }: { density?: number; opac
             ctx.stroke();
           }
         }
-
         ctx.fillStyle = `rgba(34,255,136,${p.a * opacity})`;
         ctx.shadowColor = NEON;
         ctx.shadowBlur = 8;
@@ -197,9 +202,60 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
+// Default fallbacks
+const DEFAULT_METRICAS = [
+  { icone_lucide: "Activity", numero: "130000+", label: "Animais monitorados" },
+  { icone_lucide: "Map", numero: "12 estados", label: "Atendidos no Brasil" },
+  { icone_lucide: "Zap", numero: "99%", label: "Uptime em tempo real" },
+  { icone_lucide: "BarChart3", numero: "340%", label: "Crescimento anual" },
+];
+
+const DEFAULT_PROBLEMA = [
+  { texto: "Falta de controle operacional" },
+  { texto: "Informações perdidas no campo" },
+  { texto: "Gestão distante da realidade" },
+  { texto: "Decisões tomadas no escuro" },
+  { texto: "Falhas humanas constantes" },
+];
+
+const DEFAULT_FEATURES = [
+  { icone_lucide: "QrCode", texto: "Leitura por QR Code" },
+  { icone_lucide: "CheckCircle2", texto: "Registro de salgas" },
+  { icone_lucide: "WifiOff", texto: "Funciona offline" },
+  { icone_lucide: "BarChart3", texto: "Dashboards inteligentes" },
+  { icone_lucide: "Map", texto: "Mapas da fazenda" },
+  { icone_lucide: "FileBarChart", texto: "Relatórios automáticos" },
+];
+
+const DEFAULT_ESTADOS = [
+  { sigla: "TO", status: "online" },
+  { sigla: "GO", status: "online" },
+  { sigla: "MT", status: "online" },
+  { sigla: "MS", status: "online" },
+  { sigla: "PA", status: "online" },
+  { sigla: "BA", status: "online" },
+];
+
+const DEFAULT_FORM_CAMPOS = [
+  { placeholder: "Nome completo", tipo: "text" },
+  { placeholder: "E-mail", tipo: "email" },
+  { placeholder: "Telefone", tipo: "tel" },
+  { placeholder: "WhatsApp", tipo: "tel" },
+];
+
+// Parse "130000+" or "12 estados" into numeric + suffix for Counter
+function parseMetric(numero: string): { value: number; suffix: string } {
+  const m = String(numero).match(/^(\d[\d.,]*)(.*)$/);
+  if (!m) return { value: 0, suffix: numero };
+  const value = parseInt(m[1].replace(/[^\d]/g, ""), 10) || 0;
+  return { value, suffix: m[2] || "" };
+}
+
 /* ---------------- Page ---------------- */
 export default function LandingPage() {
-  const [form, setForm] = useState({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
+  const { t, arr } = useLandingContent();
+
+  const [form, setForm] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -215,8 +271,20 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const formCampos = arr<{ placeholder: string; tipo: string }>("form_campos", DEFAULT_FORM_CAMPOS);
+
   const handleSubmit = useCallback(async () => {
-    const result = leadSchema.safeParse(form);
+    // Build a payload with the canonical fields used by the leads table.
+    // We map by tipo when possible, otherwise by placeholder keywords.
+    const payload: Record<string, string> = {
+      nome: form.nome || "",
+      email: form.email || "",
+      telefone: form.telefone || "",
+      whatsapp: form.whatsapp || "",
+      mensagem: form.mensagem || "",
+    };
+
+    const result = leadSchema.safeParse(payload);
     if (!result.success) {
       const errs: Record<string, string> = {};
       result.error.errors.forEach((e) => {
@@ -228,11 +296,11 @@ export default function LandingPage() {
     setErrors({});
     setSubmitting(true);
     const { error } = await supabase.from("leads").insert({
-      nome: form.nome.trim(),
-      email: form.email.trim(),
-      telefone: form.telefone.trim(),
-      whatsapp: form.whatsapp.trim(),
-      mensagem: form.mensagem?.trim() || null,
+      nome: payload.nome.trim(),
+      email: payload.email.trim(),
+      telefone: payload.telefone.trim(),
+      whatsapp: payload.whatsapp.trim(),
+      mensagem: payload.mensagem?.trim() || null,
     });
     setSubmitting(false);
     if (error) {
@@ -241,7 +309,7 @@ export default function LandingPage() {
       return;
     }
     setSubmitted(true);
-    setForm({ nome: "", email: "", telefone: "", whatsapp: "", mensagem: "" });
+    setForm({});
     setTimeout(() => setSubmitted(false), 6000);
   }, [form]);
 
@@ -250,9 +318,28 @@ export default function LandingPage() {
   const scrollToSolucao = () =>
     document.getElementById("solucao")?.scrollIntoView({ behavior: "smooth" });
 
+  // Dynamic content
+  const metricas = arr<{ icone_lucide: string; numero: string; label: string }>("impacto_metricas", DEFAULT_METRICAS);
+  const problemaItens = arr<{ texto: string }>("problema_itens", DEFAULT_PROBLEMA);
+  const solucaoFeatures = arr<{ icone_lucide: string; texto: string }>("solucao_features", DEFAULT_FEATURES);
+  const redeEstados = arr<{ sigla: string; status: string }>("rede_estados", DEFAULT_ESTADOS);
+  const parceiros = arr<{ url_imagem: string; nome_alt: string }>("parceiros_logos", []);
+  const depoimentos = arr<{ nome: string; cargo: string; fazenda: string; texto: string; foto_url: string }>("depoimentos", []);
+  const manifestoBg = t("manifesto_imagem_fundo", "");
+
+  // Map field key => guess canonical lead field
+  const mapFieldKey = (placeholder: string, tipo: string, idx: number): string => {
+    const lp = placeholder.toLowerCase();
+    if (tipo === "email" || lp.includes("mail")) return "email";
+    if (lp.includes("whats")) return "whatsapp";
+    if (tipo === "tel" || lp.includes("telef") || lp.includes("celular") || lp.includes("fone")) return "telefone";
+    if (lp.includes("nome")) return "nome";
+    if (tipo === "textarea" || lp.includes("mensag") || lp.includes("relat") || lp.includes("conte")) return "mensagem";
+    return `campo_${idx}`;
+  };
+
   return (
     <div className="min-h-screen w-full overflow-x-hidden" style={{ background: BG, color: "#E6F5EC", fontFamily: "Inter, system-ui, sans-serif" }}>
-      {/* Inline keyframes */}
       <style>{`
         @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px ${NEON_DIM}} 50%{box-shadow:0 0 40px ${NEON}} }
         @keyframes floatSlow { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(2deg)} }
@@ -314,20 +401,14 @@ export default function LandingPage() {
 
       {/* ========== HERO ========== */}
       <section className="relative w-full overflow-hidden" style={{ minHeight: "100vh" }}>
-        {/* Background image with parallax */}
         <div className="absolute inset-0" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>
           <img src={heroImg} alt="Fazenda futurista" className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
           <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at center, transparent 0%, ${BG} 75%)` }} />
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 60%, ${BG} 100%)` }} />
         </div>
-
-        {/* Grid overlay */}
         <div className="absolute inset-0 grid-bg opacity-40" />
-
-        {/* Particles */}
         <ParticleField density={80} opacity={0.9} />
 
-        {/* Portal / Gate animation */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative" style={{ width: "min(620px, 90vw)", height: "min(620px, 90vw)" }}>
             <div
@@ -337,13 +418,10 @@ export default function LandingPage() {
                 animation: "pulseGlow 4s ease-in-out infinite",
               }}
             />
-            {/* Two "gate" panels opening */}
             <div
               className="gate-left absolute top-1/2 left-1/2 -translate-y-1/2"
               style={{
-                width: "50%",
-                height: "70%",
-                marginLeft: "-50%",
+                width: "50%", height: "70%", marginLeft: "-50%",
                 background: "linear-gradient(90deg, rgba(5,7,10,0.95), rgba(5,7,10,0.4))",
                 borderRight: `1px solid ${NEON_DIM}`,
                 boxShadow: `inset -20px 0 60px ${NEON_DIM}`,
@@ -352,14 +430,12 @@ export default function LandingPage() {
             <div
               className="gate-right absolute top-1/2 left-1/2 -translate-y-1/2"
               style={{
-                width: "50%",
-                height: "70%",
+                width: "50%", height: "70%",
                 background: "linear-gradient(-90deg, rgba(5,7,10,0.95), rgba(5,7,10,0.4))",
                 borderLeft: `1px solid ${NEON_DIM}`,
                 boxShadow: `inset 20px 0 60px ${NEON_DIM}`,
               }}
             />
-            {/* Concentric rings */}
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -375,7 +451,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero content */}
         <div className="relative z-10 max-w-5xl mx-auto px-5 pt-32 pb-24 min-h-screen flex flex-col items-center justify-center text-center">
           <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
@@ -385,7 +460,9 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: NEON }} />
               <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: NEON }} />
             </span>
-            <span className="text-[11px] tracking-[0.3em] font-medium" style={{ color: NEON }}>SISTEMA ATIVO • BR</span>
+            <span className="text-[11px] tracking-[0.3em] font-medium" style={{ color: NEON }}>
+              {t("hero_badge", "SISTEMA ATIVO • BR")}
+            </span>
           </div>
 
           <h1
@@ -399,15 +476,16 @@ export default function LandingPage() {
               backgroundClip: "text",
             }}
           >
-            CONSUBOV
+            {t("hero_titulo", "CONSUBOV")}
           </h1>
 
           <p className="text-xl md:text-3xl font-bold tracking-wide mb-4" style={{ color: "#F5F5F5" }}>
-            O FUTURO DA PECUÁRIA <span style={{ color: NEON }} className="neon-text">CHEGOU.</span>
+            {t("hero_subtitulo", "O FUTURO DA PECUÁRIA")}{" "}
+            <span style={{ color: NEON }} className="neon-text">{t("hero_subtitulo_destaque", "CHEGOU.")}</span>
           </p>
 
           <p className="max-w-2xl text-sm md:text-lg opacity-70 leading-relaxed mb-10 px-4">
-            Tecnologia, inteligência de dados e gestão remota para fazendas de alta performance.
+            {t("hero_descricao", "Tecnologia, inteligência de dados e gestão remota para fazendas de alta performance.")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -416,18 +494,17 @@ export default function LandingPage() {
               className="glow-btn px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider flex items-center gap-2"
               style={{ background: NEON, color: "#03110A" }}
             >
-              Solicitar Demonstração <ArrowRight className="w-4 h-4" />
+              {t("hero_cta_primario", "Solicitar Demonstração")} <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={scrollToSolucao}
               className="px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
-              Conheça a Plataforma
+              {t("hero_cta_secundario", "Conheça a Plataforma")}
             </button>
           </div>
 
-          {/* Scroll indicator */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
             <span className="text-[10px] tracking-[0.3em]">SCROLL</span>
             <div className="w-px h-10 bg-gradient-to-b from-transparent via-white to-transparent" />
@@ -435,43 +512,48 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ========== NÚMEROS ========== */}
+      {/* ========== NÚMEROS / IMPACTO ========== */}
       <section className="relative py-24 px-5 overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-20" />
         <div className="max-w-6xl mx-auto relative">
           <Reveal>
             <div className="text-center mb-16">
-              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// IMPACTO REAL</span>
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>
+                // {t("impacto_tag", "IMPACTO REAL")}
+              </span>
               <h2 className="text-3xl md:text-5xl font-black mt-3 tracking-tight">
-                Números que <span className="neon-text" style={{ color: NEON }}>movem o setor</span>
+                {t("impacto_titulo", "Números que")}{" "}
+                <span className="neon-text" style={{ color: NEON }}>
+                  {t("impacto_subtitulo_destaque", "movem o setor")}
+                </span>
               </h2>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { value: 130000, suffix: "+", label: "Animais monitorados", icon: Activity },
-              { value: 12, suffix: " estados", label: "Atendidos no Brasil", icon: MapIcon },
-              { value: 99, suffix: "%", label: "Uptime em tempo real", icon: Zap },
-              { value: 340, suffix: "%", label: "Crescimento anual", icon: BarChart3 },
-            ].map((stat, i) => (
-              <Reveal key={i} delay={i * 100}>
-                <div
-                  className="relative rounded-2xl p-6 md:p-8 h-full overflow-hidden group"
-                  style={{ background: CARD_BG, border: `1px solid ${BORDER}`, backdropFilter: "blur(10px)" }}
-                >
+            {metricas.slice(0, 4).map((stat, i) => {
+              const { value, suffix } = parseMetric(stat.numero);
+              return (
+                <Reveal key={i} delay={i * 100}>
                   <div
-                    className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-30 blur-3xl group-hover:opacity-60 transition-opacity"
-                    style={{ background: NEON }}
-                  />
-                  <stat.icon className="w-6 h-6 mb-4" style={{ color: NEON }} />
-                  <div className="text-4xl md:text-5xl font-black tracking-tight">
-                    <Counter to={stat.value} suffix={stat.suffix} />
+                    className="relative rounded-2xl p-6 md:p-8 h-full overflow-hidden group"
+                    style={{ background: CARD_BG, border: `1px solid ${BORDER}`, backdropFilter: "blur(10px)" }}
+                  >
+                    <div
+                      className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-30 blur-3xl group-hover:opacity-60 transition-opacity"
+                      style={{ background: NEON }}
+                    />
+                    <LucideIcon name={stat.icone_lucide} className="w-6 h-6 mb-4" style={{ color: NEON }} />
+                    <div className="text-4xl md:text-5xl font-black tracking-tight">
+                      {value > 0 ? <Counter to={value} suffix={suffix} /> : (
+                        <span style={{ color: NEON, textShadow: `0 0 24px ${NEON_DIM}` }}>{stat.numero}</span>
+                      )}
+                    </div>
+                    <div className="text-xs md:text-sm mt-2 opacity-70 uppercase tracking-wider">{stat.label}</div>
                   </div>
-                  <div className="text-xs md:text-sm mt-2 opacity-70 uppercase tracking-wider">{stat.label}</div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -481,22 +563,18 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <Reveal>
             <div>
-              <span className="text-xs tracking-[0.4em] font-medium text-red-400">// O PROBLEMA</span>
+              <span className="text-xs tracking-[0.4em] font-medium text-red-400">
+                // {t("problema_tag", "O PROBLEMA")}
+              </span>
               <h2 className="text-3xl md:text-5xl font-black mt-3 mb-6 tracking-tight leading-[1.05]">
-                A pecuária ainda <br />
-                <span className="text-red-400">sofre no escuro.</span>
+                {t("problema_titulo", "A pecuária ainda")} <br />
+                <span className="text-red-400">{t("problema_titulo_destaque", "sofre no escuro.")}</span>
               </h2>
               <ul className="space-y-4 mt-8">
-                {[
-                  "Falta de controle operacional",
-                  "Informações perdidas no campo",
-                  "Gestão distante da realidade",
-                  "Decisões tomadas no escuro",
-                  "Falhas humanas constantes",
-                ].map((p, i) => (
+                {problemaItens.map((p, i) => (
                   <li key={i} className="flex items-start gap-3 text-base md:text-lg opacity-80">
                     <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                    <span>{p}</span>
+                    <span>{p.texto}</span>
                   </li>
                 ))}
               </ul>
@@ -506,7 +584,6 @@ export default function LandingPage() {
           <Reveal delay={200}>
             <div className="relative aspect-square rounded-2xl overflow-hidden glitch-img" style={{ border: `1px solid ${BORDER}`, background: CARD_BG }}>
               <div className="absolute inset-0 grid-bg opacity-30" />
-              {/* fake "broken dashboard" */}
               <div className="absolute inset-0 p-6 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] tracking-widest text-red-400">SYSTEM ERROR // 0x4F</span>
@@ -527,7 +604,6 @@ export default function LandingPage() {
                   ▮▮▮▮▮▮▯▯▯▯ DADOS PERDIDOS
                 </div>
               </div>
-              {/* scan line */}
               <div className="absolute left-0 right-0 h-1" style={{ background: "rgba(239,68,68,0.4)", animation: "scanLine 4s linear infinite" }} />
             </div>
           </Reveal>
@@ -546,15 +622,12 @@ export default function LandingPage() {
               />
               <div className="phone-float relative w-full max-w-sm">
                 <img src={phoneImg} alt="App Consubov" className="w-full" loading="lazy" />
-                {/* Logo real do Consubov no header do app, à esquerda do texto */}
                 <img
                   src={logoConsubov}
                   alt="Consubov"
                   className="absolute rounded-full object-cover"
                   style={{
-                    top: "11.2%",
-                    left: "30%",
-                    width: "7%",
+                    top: "11.2%", left: "30%", width: "7%",
                     aspectRatio: "1/1",
                     boxShadow: `0 0 8px ${NEON_DIM}`,
                     border: `1px solid ${NEON_DIM}`,
@@ -567,30 +640,27 @@ export default function LandingPage() {
 
           <Reveal delay={150}>
             <div>
-              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// A SOLUÇÃO</span>
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>
+                // {t("solucao_tag", "A SOLUÇÃO")}
+              </span>
               <h2 className="text-3xl md:text-5xl font-black mt-3 mb-6 tracking-tight leading-[1.05]">
-                Transformamos rotina de campo em{" "}
-                <span className="neon-text" style={{ color: NEON }}>inteligência gerencial.</span>
+                {t("solucao_titulo", "Transformamos rotina de campo em")}{" "}
+                <span className="neon-text" style={{ color: NEON }}>
+                  {t("solucao_titulo_destaque", "inteligência gerencial.")}
+                </span>
               </h2>
               <p className="opacity-70 text-base md:text-lg mb-8 leading-relaxed">
-                Uma plataforma viva — opera offline, sincroniza tudo, e entrega decisões em tempo real direto do pasto para a sala de gestão.
+                {t("solucao_descricao", "Uma plataforma viva — opera offline, sincroniza tudo, e entrega decisões em tempo real direto do pasto para a sala de gestão.")}
               </p>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { icon: QrCode, label: "Leitura por QR Code" },
-                  { icon: CheckCircle2, label: "Registro de salgas" },
-                  { icon: WifiOff, label: "Funciona offline" },
-                  { icon: BarChart3, label: "Dashboards inteligentes" },
-                  { icon: MapIcon, label: "Mapas da fazenda" },
-                  { icon: FileBarChart, label: "Relatórios automáticos" },
-                ].map((f, i) => (
+                {solucaoFeatures.slice(0, 6).map((f, i) => (
                   <div
                     key={i}
                     className="flex items-center gap-2 p-3 rounded-lg text-xs md:text-sm"
                     style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
                   >
-                    <f.icon className="w-4 h-4 shrink-0" style={{ color: NEON }} />
-                    <span>{f.label}</span>
+                    <LucideIcon name={f.icone_lucide} className="w-4 h-4 shrink-0" style={{ color: NEON }} />
+                    <span>{f.texto}</span>
                   </div>
                 ))}
               </div>
@@ -599,16 +669,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ========== INTELIGÊNCIA DE DADOS / MAPA BRASIL ========== */}
+      {/* ========== REDE NACIONAL ========== */}
       <section className="relative py-24 px-5 overflow-hidden" style={{ background: "#02040680" }}>
         <div className="max-w-6xl mx-auto text-center relative">
           <Reveal>
-            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// REDE NACIONAL</span>
+            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>
+              // {t("rede_tag", "REDE NACIONAL")}
+            </span>
             <h2 className="text-3xl md:text-5xl font-black mt-3 mb-4 tracking-tight">
-              Dados reais gerando <span className="neon-text" style={{ color: NEON }}>decisões reais.</span>
+              {t("rede_titulo", "Dados reais gerando")}{" "}
+              <span className="neon-text" style={{ color: NEON }}>
+                {t("rede_titulo_destaque", "decisões reais.")}
+              </span>
             </h2>
             <p className="opacity-70 max-w-2xl mx-auto mb-12">
-              Em breve, o maior ecossistema de inteligência nutricional bovina da América Latina.
+              {t("rede_descricao", "Em breve, o maior ecossistema de inteligência nutricional bovina da América Latina.")}
             </p>
           </Reveal>
 
@@ -616,28 +691,23 @@ export default function LandingPage() {
             <div
               className="relative mx-auto rounded-2xl overflow-hidden"
               style={{
-                maxWidth: 760,
-                aspectRatio: "1/1",
+                maxWidth: 760, aspectRatio: "1/1",
                 background: "radial-gradient(ellipse at center, rgba(34,255,136,0.10), transparent 70%)",
                 border: `1px solid ${BORDER}`,
               }}
             >
               <div className="absolute inset-0 grid-bg opacity-20" />
-
-              {/* Real vector Brazil map (IBGE-derived GeoJSON) */}
               <div className="absolute inset-0 flex items-center justify-center p-6">
                 <BrasilMap />
               </div>
-
-              {/* Live ticker */}
               <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 justify-center">
-                {["TO • online", "GO • online", "MT • online", "MS • online", "PA • online", "BA • online"].map((s, i) => (
+                {redeEstados.map((s, i) => (
                   <span
                     key={i}
                     className="text-[10px] px-2 py-1 rounded-full font-mono"
                     style={{ background: "rgba(34,255,136,0.1)", color: NEON, border: `1px solid ${BORDER}` }}
                   >
-                    {s}
+                    {s.sigla} • {s.status || "online"}
                   </span>
                 ))}
               </div>
@@ -646,31 +716,99 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ========== IMPACTO EMOCIONAL ========== */}
+      {/* ========== MANIFESTO ========== */}
       <section className="relative overflow-hidden" style={{ minHeight: "80vh" }}>
         <div className="absolute inset-0">
-          <img src={pecuaristaImg} alt="Pecuarista visionário" className="w-full h-full object-cover" loading="lazy" />
+          <img src={manifestoBg || pecuaristaImg} alt="Pecuarista visionário" className="w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 70%, ${BG} 100%)` }} />
           <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${BG}cc 0%, transparent 50%)` }} />
         </div>
         <div className="relative max-w-6xl mx-auto px-5 py-32 md:py-48 flex items-center min-h-[80vh]">
           <Reveal>
             <div className="max-w-2xl">
-              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// MANIFESTO</span>
+              <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>
+                // {t("manifesto_tag", "MANIFESTO")}
+              </span>
               <h2
                 className="font-black mt-4 leading-[0.95] tracking-tight neon-text"
                 style={{ fontSize: "clamp(2.5rem, 7vw, 5.5rem)" }}
               >
-                Quem lidera o campo,<br />
-                <span style={{ color: NEON }}>lidera o futuro.</span>
+                {t("manifesto_titulo", "Quem lidera o campo,")}<br />
+                <span style={{ color: NEON }}>{t("manifesto_titulo_destaque", "lidera o futuro.")}</span>
               </h2>
               <p className="mt-6 text-base md:text-lg opacity-80 max-w-lg leading-relaxed">
-                Não vendemos software. Construímos a infraestrutura digital da pecuária brasileira.
+                {t("manifesto_descricao", "Não vendemos software. Construímos a infraestrutura digital da pecuária brasileira.")}
               </p>
             </div>
           </Reveal>
         </div>
       </section>
+
+      {/* ========== PARCEIROS ========== */}
+      {parceiros.length > 0 && (
+        <section className="relative py-16 px-5 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <Reveal>
+              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 opacity-80">
+                {parceiros.map((p, i) =>
+                  p.url_imagem ? (
+                    <img
+                      key={i}
+                      src={p.url_imagem}
+                      alt={p.nome_alt || `Parceiro ${i + 1}`}
+                      className="h-10 md:h-12 object-contain transition-all hover:opacity-100"
+                      style={{ filter: "brightness(0) invert(1)", opacity: 0.7 }}
+                      loading="lazy"
+                    />
+                  ) : null
+                )}
+              </div>
+            </Reveal>
+          </div>
+        </section>
+      )}
+
+      {/* ========== DEPOIMENTOS ========== */}
+      {depoimentos.length > 0 && (
+        <section className="relative py-24 px-5 overflow-hidden" style={{ background: "#02040680" }}>
+          <div className="max-w-6xl mx-auto">
+            <Reveal>
+              <div className="text-center mb-12">
+                <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// VOZES DO CAMPO</span>
+                <h2 className="text-3xl md:text-5xl font-black mt-3 tracking-tight">
+                  Quem já <span className="neon-text" style={{ color: NEON }}>opera com a Consubov.</span>
+                </h2>
+              </div>
+            </Reveal>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {depoimentos.map((d, i) => (
+                <Reveal key={i} delay={i * 100}>
+                  <div
+                    className="relative rounded-2xl p-6 h-full"
+                    style={{ background: CARD_BG, border: `1px solid ${BORDER}`, backdropFilter: "blur(10px)" }}
+                  >
+                    <Quote className="w-8 h-8 mb-3" style={{ color: NEON, opacity: 0.5 }} />
+                    <p className="text-sm md:text-base opacity-90 leading-relaxed mb-6">"{d.texto}"</p>
+                    <div className="flex items-center gap-3 pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+                      {d.foto_url ? (
+                        <img src={d.foto_url} alt={d.nome} className="w-12 h-12 rounded-full object-cover" style={{ border: `1px solid ${NEON_DIM}` }} />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold" style={{ background: "rgba(34,255,136,0.1)", color: NEON, border: `1px solid ${NEON_DIM}` }}>
+                          {d.nome?.charAt(0) || "?"}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-sm">{d.nome}</div>
+                        <div className="text-xs opacity-70">{d.cargo}{d.fazenda ? ` • ${d.fazenda}` : ""}</div>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ========== FORMULÁRIO / CTA FINAL ========== */}
       <section id="formulario" className="relative py-24 px-5 overflow-hidden">
@@ -688,12 +826,14 @@ export default function LandingPage() {
             >
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// ESTAMOS CHEGANDO</span>
+            <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>
+              // {t("cta_tag", "ESTAMOS CHEGANDO")}
+            </span>
             <h2 className="text-4xl md:text-6xl font-black mt-4 mb-4 tracking-tight neon-text">
-              Quero fazer <span style={{ color: NEON }}>parte.</span>
+              {t("cta_titulo", "Quero fazer")} <span style={{ color: NEON }}>{t("cta_titulo_destaque", "parte.")}</span>
             </h2>
             <p className="opacity-70 max-w-xl mx-auto">
-              Preencha abaixo e nossa equipe entrará em contato. Cada fazenda é única — e queremos entender a sua.
+              {t("cta_descricao", "Preencha abaixo e nossa equipe entrará em contato. Cada fazenda é única — e queremos entender a sua.")}
             </p>
           </Reveal>
         </div>
@@ -715,43 +855,46 @@ export default function LandingPage() {
               </div>
             ) : (
               <div className="space-y-3 relative">
-                {[
-                  { key: "nome", placeholder: "Nome completo", type: "text" },
-                  { key: "email", placeholder: "E-mail", type: "email" },
-                  { key: "telefone", placeholder: "Telefone", type: "tel" },
-                  { key: "whatsapp", placeholder: "WhatsApp", type: "tel" },
-                ].map((field) => (
-                  <div key={field.key}>
-                    <input
-                      type={field.type}
-                      placeholder={field.placeholder}
-                      value={(form as Record<string, string>)[field.key]}
-                      onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                      className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all focus:border-[#22FF88]"
-                      style={{
-                        background: "rgba(0,0,0,0.4)",
-                        border: `1px solid ${BORDER}`,
-                        color: "#E6F5EC",
-                      }}
-                    />
-                    {errors[field.key] && <p className="text-xs mt-1 text-red-400">{errors[field.key]}</p>}
-                  </div>
-                ))}
-                <textarea
-                  placeholder="Conte um pouco da sua realidade no campo..."
-                  value={form.mensagem}
-                  onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3.5 rounded-xl text-sm outline-none resize-none transition-all"
-                  style={{ background: "rgba(0,0,0,0.4)", border: `1px solid ${BORDER}`, color: "#E6F5EC" }}
-                />
+                {formCampos.map((field, idx) => {
+                  const key = mapFieldKey(field.placeholder, field.tipo, idx);
+                  const isTextarea = field.tipo === "textarea";
+                  const commonStyle: React.CSSProperties = {
+                    background: "rgba(0,0,0,0.4)",
+                    border: `1px solid ${BORDER}`,
+                    color: "#E6F5EC",
+                  };
+                  return (
+                    <div key={idx}>
+                      {isTextarea ? (
+                        <textarea
+                          placeholder={field.placeholder}
+                          value={form[key] || ""}
+                          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                          rows={3}
+                          className="w-full px-4 py-3.5 rounded-xl text-sm outline-none resize-none transition-all"
+                          style={commonStyle}
+                        />
+                      ) : (
+                        <input
+                          type={field.tipo}
+                          placeholder={field.placeholder}
+                          value={form[key] || ""}
+                          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                          className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all focus:border-[#22FF88]"
+                          style={commonStyle}
+                        />
+                      )}
+                      {errors[key] && <p className="text-xs mt-1 text-red-400">{errors[key]}</p>}
+                    </div>
+                  );
+                })}
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="glow-btn w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.2em] disabled:opacity-50 mt-2"
                   style={{ background: NEON, color: "#03110A" }}
                 >
-                  {submitting ? "Enviando..." : "Quero fazer parte"}
+                  {submitting ? "Enviando..." : t("form_botao_texto", "Quero fazer parte")}
                 </button>
               </div>
             )}
@@ -772,8 +915,10 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="text-center md:text-right text-xs opacity-60 leading-relaxed">
-            <p>Araguaína — TO, Brasil • (63) 99113-6071</p>
-            <p>© 2026 Consubov. Todos os direitos reservados.</p>
+            <p>
+              {t("footer_cidade", "Araguaína — TO, Brasil")} • {t("footer_telefone", "(63) 99113-6071")}
+            </p>
+            <p>© {t("footer_ano", "2026")} {t("footer_copyright", "Consubov. Todos os direitos reservados.")}</p>
           </div>
         </div>
       </footer>
