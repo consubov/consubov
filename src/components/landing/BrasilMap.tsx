@@ -15,28 +15,25 @@ const LABELS: Record<string, [number, number]> = {
   MS: [-54.5, -20.5],
 };
 
-interface Props {
-  width?: number;
-  height?: number;
-}
-
-export default function BrasilMap({ width = 760, height = 760 }: Props) {
+export default function BrasilMap() {
   const [hover, setHover] = useState<string | null>(null);
+  const hoverName = hover
+    ? (geoData as any).features.find((f: any) => f.properties.sigla === hover)?.properties.name
+    : null;
 
   return (
     <div className="relative w-full h-full">
       <ComposableMap
         projection="geoMercator"
         projectionConfig={{ scale: 700, center: [-54, -15] }}
-        width={width}
-        height={height}
+        width={760}
+        height={760}
         style={{ width: "100%", height: "100%" }}
       >
         <Geographies geography={geoData as any}>
           {({ geographies }) =>
             geographies.map((geo) => {
               const sigla: string = geo.properties.sigla;
-              const name: string = geo.properties.name;
               const isActive = ACTIVE.has(sigla);
               return (
                 <Geography
@@ -65,19 +62,30 @@ export default function BrasilMap({ width = 760, height = 760 }: Props) {
                     },
                     pressed: { fill: NEON, outline: "none" },
                   }}
-                  aria-label={name}
-                >
-                  <title>{name}</title>
-                </Geography>
+                />
               );
             })
           }
         </Geographies>
 
-        <ActiveMarkers />
+        {Object.entries(LABELS).map(([sigla, coords]) => (
+          <Marker key={sigla} coordinates={coords as [number, number]}>
+            <circle r={3.5} fill={NEON} opacity={0.25}>
+              <animate attributeName="r" values="2.5;6;2.5" dur="2.4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.5;0;0.5" dur="2.4s" repeatCount="indefinite" />
+            </circle>
+            <circle r={1.8} fill={NEON} />
+            <g transform="translate(5, 1.2)">
+              <rect x={0} y={-3.5} rx={1.5} ry={1.5} width={22} height={6} fill="rgba(5,7,10,0.9)" stroke={NEON_DIM} strokeWidth={0.25} />
+              <text x={2} y={1} fontSize={4} fontFamily="monospace" fill={NEON}>
+                {sigla} • online
+              </text>
+            </g>
+          </Marker>
+        ))}
       </ComposableMap>
 
-      {hover && (
+      {hoverName && (
         <div
           className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md font-mono text-xs"
           style={{
@@ -87,41 +95,9 @@ export default function BrasilMap({ width = 760, height = 760 }: Props) {
             boxShadow: `0 0 10px ${NEON_DIM}`,
           }}
         >
-          {geoData.features.find((f: any) => f.properties.sigla === hover)?.properties.name}
+          {hoverName}
         </div>
       )}
     </div>
-  );
-}
-
-function ActiveMarkers() {
-  return (
-    <>
-      {Object.entries(LABELS).map(([sigla, coords]) => (
-        <Marker key={sigla} coordinates={coords as [number, number]}>
-          <circle r={3.5} fill={NEON} opacity={0.25}>
-            <animate attributeName="r" values="2.5;6;2.5" dur="2.4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.5;0;0.5" dur="2.4s" repeatCount="indefinite" />
-          </circle>
-          <circle r={1.8} fill={NEON} />
-          <g transform="translate(6, 1.5)">
-            <rect
-              x={0}
-              y={-4}
-              rx={2}
-              ry={2}
-              width={42}
-              height={8}
-              fill="rgba(5,7,10,0.85)"
-              stroke={NEON_DIM}
-              strokeWidth={0.3}
-            />
-            <text x={4} y={1.8} fontSize={5} fontFamily="monospace" fill={NEON}>
-              {sigla} • online
-            </text>
-          </g>
-        </Marker>
-      ))}
-    </>
   );
 }
