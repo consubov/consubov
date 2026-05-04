@@ -793,8 +793,8 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="text-center md:text-right text-xs opacity-60 leading-relaxed">
-            <p>Palmas — TO, Brasil • (63) 99999-0000</p>
-            <p>© {new Date().getFullYear()} Consubov. Todos os direitos reservados.</p>
+            <p>Araguaína — TO, Brasil • (63) 99113-6071</p>
+            <p>© 2026 Consubov. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
