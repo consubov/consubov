@@ -44,6 +44,7 @@ const s = StyleSheet.create({
   },
   card: {
     height: "100%",
+    position: "relative",
     border: "1 solid #D1D5DB",
     borderRadius: 8,
     alignItems: "center",
@@ -51,18 +52,24 @@ const s = StyleSheet.create({
     padding: 20,
     backgroundColor: "#FFFFFF",
   },
+  cardHeader: {
+    position: "absolute",
+    top: 24,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
   cardLogo: {
-    height: 60,
-    width: "auto",
-    objectFit: "contain",
-    marginBottom: 0,
+    width: 130,
+    height: 30,
+    objectFit: "cover",
   },
   cardFazenda: {
     fontSize: 8,
     color: "#555555",
     textAlign: "center",
     marginTop: 2,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   emptySlot: {
     height: "100%",
@@ -70,6 +77,7 @@ const s = StyleSheet.create({
   qrImage: {
     width: 160,
     height: 160,
+    flexShrink: 0,
     marginBottom: 12,
   },
   title: {
@@ -106,8 +114,10 @@ export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePr
 
   const renderCard = (item: QrCodePdfItem) => (
     <View style={s.card}>
-      <Image src={resolvedLogo} style={s.cardLogo} />
-      {fazendaNome ? <Text style={s.cardFazenda}>{fazendaNome}</Text> : null}
+      <View style={s.cardHeader}>
+        <Image src={resolvedLogo} style={s.cardLogo} />
+        {fazendaNome ? <Text style={s.cardFazenda}>{fazendaNome}</Text> : null}
+      </View>
       <Image src={item.qrDataUri} style={s.qrImage} />
       <Text style={s.title}>{item.nome}</Text>
       <Text style={s.subtitle}>{item.retiro_nome || "—"}</Text>
