@@ -429,6 +429,68 @@ export default function QrCodesPage() {
               </section>
             ))}
           </div>
+
+          {/* Mirror oculto em tamanho fixo (820px) usado para gerar o PDF idêntico ao preview */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: "-10000px",
+              top: 0,
+              width: "820px",
+              pointerEvents: "none",
+              opacity: 0,
+            }}
+          >
+            <div className="space-y-6">
+              {qrPages.map((page, pageIndex) => (
+                <section
+                  key={`capture-page-${pageIndex}`}
+                  ref={(el) => {
+                    capturePagesRef.current[pageIndex] = el;
+                  }}
+                  data-qr-capture-page="true"
+                  style={{ width: "820px", height: `${(820 * 297) / 210}px` }}
+                  className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+                >
+                  {[0, 1].map((rowIndex) => {
+                    const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
+                    return (
+                      <div key={`crow-${rowIndex}`} className="flex min-h-0 flex-1 gap-4">
+                        {rowItems.map((pasto, columnIndex) => (
+                          <div key={`cslot-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
+                            {pasto ? (
+                              <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
+                                <div className="flex flex-col items-center">
+                                  <img
+                                    src="/logo-consubov-print.png"
+                                    alt="Consubov"
+                                    className="h-12 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                  />
+                                  {pasto.fazenda_nome && (
+                                    <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
+                                      {pasto.fazenda_nome}
+                                    </p>
+                                  )}
+                                </div>
+                                <QRCodeSVG value={pasto.qr_uuid} size={120} level="H" includeMargin className="h-[120px] w-[120px] shrink-0" />
+                                <div className="flex flex-col items-center">
+                                  <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
+                                  <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-full rounded-xl border border-dashed border-border bg-muted/30" aria-hidden="true" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </section>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
