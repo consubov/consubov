@@ -25,21 +25,26 @@ function isSupported(): boolean {
 /**
  * Registra o usuário para Web Push, sem alterar nada das notificações
  * internas existentes. Faz upsert na tabela push_subscriptions por user_id.
- * É seguro chamar várias vezes — só executa uma vez por sessão por usuário.
  */
 export function usePushNotifications() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const ranForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!session || !user?.id) return;
     if (ranForUserRef.current === user.id) return;
-    if (!isSupported() || !VAPID_PUBLIC_KEY) return;
 
-    // Não pedir permissão dentro de iframes (preview do editor).
-    try {
-      if (window.self !== window.top) return;
-    } catch {
+    console.log("[Push] verificando suporte...");
+    console.log("[Push] VITE_VAPID_PUBLIC_KEY:", VAPID_PUBLIC_KEY ? `${VAPID_PUBLIC_KEY.slice(0, 12)}...` : "NÃO DEFINIDA");
+
+    if (!isSupported()) {
+      console.log("[Push] não suportado neste navegador");
+      return;
+    }
+    console.log("[Push] suporte OK");
+
+    if (!VAPID_PUBLIC_KEY) {
+      console.warn("[Push] VITE_VAPID_PUBLIC_KEY ausente — abortando");
       return;
     }
 
@@ -48,21 +53,30 @@ export function usePushNotifications() {
     (async () => {
       try {
         const registration = await navigator.serviceWorker.ready;
+        console.log("[Push] service worker pronto");
 
         let permission = Notification.permission;
+        console.log("[Push] permissão atual = " + permission);
         if (permission === "default") {
           permission = await Notification.requestPermission();
+          console.log("[Push] permissão após prompt = " + permission);
         }
-        if (permission !== "granted") return;
+        if (permission !== "granted") {
+          console.warn("[Push] permissão não concedida — abortando");
+          return;
+        }
 
         let subscription = await registration.pushManager.getSubscription();
         if (!subscription) {
+          console.log("[Push] criando nova subscription...");
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
           });
         }
+        console.log("[Push] subscription obtida:", subscription.endpoint);
 
+        console.log("[Push] salvando no Supabase...");
         const { error } = await supabase
           .from("push_subscriptions")
           .upsert(
@@ -75,10 +89,14 @@ export function usePushNotifications() {
             { onConflict: "user_id" },
           );
 
-        if (error) console.warn("[push] upsert subscription failed:", error.message);
+        if (error) {
+          console.error("[Push] erro ao salvar no Supabase:", error.message);
+        } else {
+          console.log("[Push] salvo com sucesso");
+        }
       } catch (err) {
-        console.warn("[push] register failed:", err);
+        console.error("[Push] falha no registro:", err);
       }
     })();
-  }, [user?.id]);
+  }, [session, user?.id]);
 }
