@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { pdf } from "@react-pdf/renderer";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDown, QrCode, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
-import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 
 interface Pasto {
   id: string;
