@@ -34,6 +34,8 @@ interface Retiro {
 const PAGE_SIZE = 20;
 const QR_CODES_PER_PAGE = 4;
 const QR_CODES_PER_ROW = 2;
+const QR_LOGO_SRC = "/logo-consubov-print-tight.png";
+const QR_LOGO_FALLBACK_SRC = "/logo-consubov-print.png";
 
 export default function QrCodesPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -402,9 +404,15 @@ export default function QrCodesPage() {
                             <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
-                                  src="/logo-consubov-print.png"
+                                  src={QR_LOGO_SRC}
                                   alt="Consubov"
-                                  className="h-12 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                  loading="eager"
+                                  decoding="sync"
+                                  onError={(event) => {
+                                    event.currentTarget.onerror = null;
+                                    event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
+                                  }}
+                                  className="block h-auto max-h-12 min-h-6 w-full max-w-[192px] shrink-0 object-contain object-center"
                                 />
                                 {pasto.fazenda_nome && (
                                   <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
@@ -463,9 +471,15 @@ export default function QrCodesPage() {
                               <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
                                 <div className="flex flex-col items-center">
                                   <img
-                                    src="/logo-consubov-print.png"
+                                    src={QR_LOGO_SRC}
                                     alt="Consubov"
-                                    className="h-12 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                    loading="eager"
+                                    decoding="sync"
+                                    onError={(event) => {
+                                      event.currentTarget.onerror = null;
+                                      event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
+                                    }}
+                                    className="block h-auto max-h-12 min-h-6 w-full max-w-[192px] shrink-0 object-contain object-center"
                                   />
                                   {pasto.fazenda_nome && (
                                     <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
