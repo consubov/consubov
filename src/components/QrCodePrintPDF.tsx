@@ -61,14 +61,15 @@ const s = StyleSheet.create({
     fontSize: 8,
     color: "#555555",
     textAlign: "center",
+    marginTop: 2,
     marginBottom: 8,
   },
   emptySlot: {
     height: "100%",
   },
   qrImage: {
-    width: 160,
-    height: 160,
+    width: 200,
+    height: 200,
     marginBottom: 12,
   },
   title: {
