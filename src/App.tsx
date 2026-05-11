@@ -161,6 +161,7 @@ const App = () => (
       <BrowserRouter>
         <PainelPeriodoProvider>
           <AuthProvider>
+            <PushNotificationsBootstrap />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
