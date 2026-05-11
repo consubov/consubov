@@ -51,8 +51,10 @@ export default function QrCodesPage() {
   const [searching, setSearching] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const capturePagesRef = useRef<Array<HTMLElement | null>>([]);
 
   const qrPages = buildFixedPages(generatedPastos, QR_CODES_PER_PAGE);
+  capturePagesRef.current = capturePagesRef.current.slice(0, qrPages.length);
 
   useEffect(() => {
     supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
