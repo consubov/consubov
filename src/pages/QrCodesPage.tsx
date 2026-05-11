@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { pdf } from "@react-pdf/renderer";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDown, QrCode, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
-import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 
 interface Pasto {
   id: string;
@@ -52,8 +51,10 @@ export default function QrCodesPage() {
   const [searching, setSearching] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const capturePagesRef = useRef<Array<HTMLElement | null>>([]);
 
   const qrPages = buildFixedPages(generatedPastos, QR_CODES_PER_PAGE);
+  capturePagesRef.current = capturePagesRef.current.slice(0, qrPages.length);
 
   useEffect(() => {
     supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
@@ -217,28 +218,42 @@ export default function QrCodesPage() {
     setExportingPdf(true);
 
     try {
-      const pdfItems: QrCodePdfItem[] = [];
+      // Espera o React renderizar e as imagens carregarem
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await Promise.all(
+        Array.from(document.querySelectorAll<HTMLImageElement>("[data-qr-capture-page] img")).map(
+          (img) =>
+            img.complete && img.naturalWidth > 0
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener("load", () => resolve(), { once: true });
+                  img.addEventListener("error", () => resolve(), { once: true });
+                }),
+        ),
+      );
 
-      for (const pasto of generatedPastos) {
-        const qrDataUri = await createQrCodeDataUri(pasto.qr_uuid);
-        pdfItems.push({
-          id: pasto.id,
-          qrDataUri,
-          nome: pasto.nome,
-          retiro_nome: pasto.retiro_nome,
+      const pdfDoc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidthMm = 210;
+      const pageHeightMm = 297;
+
+      const pageNodes = capturePagesRef.current.filter(
+        (node): node is HTMLElement => node !== null,
+      );
+
+      for (let i = 0; i < pageNodes.length; i++) {
+        const node = pageNodes[i];
+        const canvas = await html2canvas(node, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#FFFFFF",
+          logging: false,
         });
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) pdfDoc.addPage();
+        pdfDoc.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm);
       }
 
-      const fazendaNome = generatedPastos[0]?.fazenda_nome;
-      const blob = await pdf(<QrCodePrintPDF items={pdfItems} fazendaNome={fazendaNome} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      pdfDoc.save(`qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao gerar o PDF dos QR Codes.");
@@ -413,6 +428,68 @@ export default function QrCodesPage() {
                 })}
               </section>
             ))}
+          </div>
+
+          {/* Mirror oculto em tamanho fixo (820px) usado para gerar o PDF idêntico ao preview */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              left: "-10000px",
+              top: 0,
+              width: "820px",
+              pointerEvents: "none",
+              opacity: 0,
+            }}
+          >
+            <div className="space-y-6">
+              {qrPages.map((page, pageIndex) => (
+                <section
+                  key={`capture-page-${pageIndex}`}
+                  ref={(el) => {
+                    capturePagesRef.current[pageIndex] = el;
+                  }}
+                  data-qr-capture-page="true"
+                  style={{ width: "820px", height: `${(820 * 297) / 210}px` }}
+                  className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+                >
+                  {[0, 1].map((rowIndex) => {
+                    const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
+                    return (
+                      <div key={`crow-${rowIndex}`} className="flex min-h-0 flex-1 gap-4">
+                        {rowItems.map((pasto, columnIndex) => (
+                          <div key={`cslot-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
+                            {pasto ? (
+                              <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
+                                <div className="flex flex-col items-center">
+                                  <img
+                                    src="/logo-consubov-print.png"
+                                    alt="Consubov"
+                                    className="h-12 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                  />
+                                  {pasto.fazenda_nome && (
+                                    <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
+                                      {pasto.fazenda_nome}
+                                    </p>
+                                  )}
+                                </div>
+                                <QRCodeSVG value={pasto.qr_uuid} size={120} level="H" includeMargin className="h-[120px] w-[120px] shrink-0" />
+                                <div className="flex flex-col items-center">
+                                  <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
+                                  <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-full rounded-xl border border-dashed border-border bg-muted/30" aria-hidden="true" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </section>
+              ))}
+            </div>
           </div>
         </div>
       )}
