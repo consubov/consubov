@@ -223,7 +223,7 @@ export default function QrCodesPage() {
       // Espera o React renderizar e as imagens carregarem
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       await Promise.all(
-        Array.from(document.querySelectorAll<HTMLImageElement>("[data-qr-capture-page] img")).map(
+        Array.from(document.querySelectorAll<HTMLImageElement>('[aria-label^="Pré-visualização da página"] img')).map(
           (img) =>
             img.complete && img.naturalWidth > 0
               ? Promise.resolve()
@@ -238,8 +238,9 @@ export default function QrCodesPage() {
       const pageWidthMm = 210;
       const pageHeightMm = 297;
 
-      const pageNodes = capturePagesRef.current.filter(
-        (node): node is HTMLElement => node !== null,
+      // Captura as páginas JÁ renderizadas na tela (não regera QR codes)
+      const pageNodes = Array.from(
+        document.querySelectorAll<HTMLElement>('[aria-label^="Pré-visualização da página"]'),
       );
 
       for (let i = 0; i < pageNodes.length; i++) {
