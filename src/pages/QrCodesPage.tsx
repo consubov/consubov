@@ -384,20 +384,24 @@ export default function QrCodesPage() {
                       {rowItems.map((pasto, columnIndex) => (
                         <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-start rounded-xl border bg-card px-4 py-3 text-center shadow-sm">
-                              <img
-                                src="/logo-consubov-print.png"
-                                alt="Consubov"
-                                className="h-6 w-28 shrink-0 object-contain object-center"
-                              />
-                              {pasto.fazenda_nome && (
-                                <p className="mt-0.5 text-[9px] leading-tight" style={{ color: "#555" }}>
-                                  {pasto.fazenda_nome}
-                                </p>
-                              )}
-                              <QRCodeSVG value={pasto.qr_uuid} size={140} level="H" includeMargin className="mt-1 mb-2 h-[140px] w-[140px] shrink-0" />
-                              <p className="break-words text-base font-bold leading-tight text-foreground">{pasto.nome}</p>
-                              <p className="mt-1 break-words text-sm leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
+                            <div className="flex h-full flex-col items-center justify-between overflow-hidden rounded-xl border bg-card px-3 py-2 text-center shadow-sm">
+                              <div className="flex flex-col items-center">
+                                <img
+                                  src="/logo-consubov-print.png"
+                                  alt="Consubov"
+                                  className="h-5 w-24 shrink-0 object-contain object-center"
+                                />
+                                {pasto.fazenda_nome && (
+                                  <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
+                                    {pasto.fazenda_nome}
+                                  </p>
+                                )}
+                              </div>
+                              <QRCodeSVG value={pasto.qr_uuid} size={120} level="H" includeMargin className="h-[120px] w-[120px] shrink-0" />
+                              <div className="flex flex-col items-center">
+                                <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
+                                <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
+                              </div>
                             </div>
                           ) : (
                             <div className="h-full rounded-xl border border-dashed border-border bg-muted/30" aria-hidden="true" />
