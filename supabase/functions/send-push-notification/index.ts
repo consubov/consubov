@@ -54,15 +54,13 @@ Deno.serve(async (req) => {
     const notification = JSON.stringify({ title, body, url });
     const results = await Promise.allSettled(
       (subs ?? []).map(async (s: any) => {
-        const subscription = {
-          endpoint: s.endpoint,
-          keys: { p256dh: s.p256dh, auth: s.auth },
-        };
+        const subscription = typeof s.subscription === "string"
+          ? JSON.parse(s.subscription)
+          : s.subscription;
         try {
           await webpush.sendNotification(subscription, notification);
           return { id: s.id, ok: true };
         } catch (err: any) {
-          // Remove gone subscriptions
           if (err?.statusCode === 404 || err?.statusCode === 410) {
             await supabase.from("push_subscriptions").delete().eq("id", s.id);
           }
