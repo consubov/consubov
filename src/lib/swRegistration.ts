@@ -48,10 +48,18 @@ function bindControllerChangeReload() {
   });
 }
 
+function notifyWaiting(registration: ServiceWorkerRegistration) {
+  if (registration.waiting && navigator.serviceWorker.controller) {
+    logSw("Nova versão em espera — aguardando confirmação do usuário");
+    notifyListeners(true);
+    return true;
+  }
+  return false;
+}
+
 async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
-  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
-  logSw("Novo Service Worker encontrado");
-  logSw("Atualizando aplicação");
+  if (!registration.waiting) return false;
+  logSw("Aplicando atualização (SKIP_WAITING)");
   registration.waiting.postMessage({ type: "SKIP_WAITING" });
   return true;
 }
@@ -60,9 +68,7 @@ function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
   if (observedRegistrations.has(registration)) return;
   observedRegistrations.add(registration);
 
-  if (registration.waiting && navigator.serviceWorker.controller) {
-    void activateWaitingServiceWorker(registration);
-  }
+  notifyWaiting(registration);
 
   registration.addEventListener("updatefound", () => {
     const newWorker = registration.installing;
@@ -72,7 +78,7 @@ function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
 
     newWorker.addEventListener("statechange", () => {
       if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-        void activateWaitingServiceWorker(registration);
+        notifyWaiting(registration);
       }
     });
   });
@@ -113,12 +119,7 @@ async function ensureLatestPublishedVersion() {
     await registration.update();
 
     if (registration.waiting && navigator.serviceWorker.controller) {
-      return await activateWaitingServiceWorker(registration);
-    }
-
-    if (registration.active && navigator.serviceWorker.controller?.scriptURL !== registration.active.scriptURL) {
-      logSw("Atualizando aplicação");
-      hardReloadToLatest(remoteVersion);
+      notifyWaiting(registration);
       return true;
     }
   } catch (error) {
@@ -153,7 +154,8 @@ export async function maybeUpdateActiveServiceWorker() {
     attachRegistrationListeners(registration);
     await registration.update();
     if (registration.waiting && navigator.serviceWorker.controller) {
-      return await activateWaitingServiceWorker(registration);
+      notifyWaiting(registration);
+      return true;
     }
   } catch (err) {
     console.warn("SW update check failed:", err);
@@ -203,7 +205,7 @@ export function registerSW() {
       void reg.update();
       void maybeUpdateActiveServiceWorker();
       if (reg.waiting && navigator.serviceWorker.controller) {
-        void activateWaitingServiceWorker(reg);
+        notifyWaiting(reg);
       }
     })
     .catch((err) => console.warn("SW registration failed:", err));
