@@ -17,6 +17,8 @@ export interface QrCodePdfItem {
 
 interface QrCodePrintPDFProps {
   items: QrCodePdfItem[];
+  fazendaNome?: string;
+  logoUrl?: string;
 }
 
 const PAGE_SIZE = 4;
@@ -48,6 +50,18 @@ const s = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
     backgroundColor: "#FFFFFF",
+  },
+  cardLogo: {
+    height: 32,
+    width: "auto",
+    objectFit: "contain",
+    marginBottom: 4,
+  },
+  cardFazenda: {
+    fontSize: 10,
+    color: "#555555",
+    textAlign: "center",
+    marginBottom: 8,
   },
   emptySlot: {
     height: "100%",
@@ -81,8 +95,23 @@ const s = StyleSheet.create({
   },
 });
 
-export default function QrCodePrintPDF({ items }: QrCodePrintPDFProps) {
+export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePrintPDFProps) {
   const pages = buildFixedPages(items, PAGE_SIZE);
+  const resolvedLogo =
+    logoUrl ||
+    (typeof window !== "undefined"
+      ? `${window.location.origin}/logo-consubov-print.png`
+      : "/logo-consubov-print.png");
+
+  const renderCard = (item: QrCodePdfItem) => (
+    <View style={s.card}>
+      <Image src={resolvedLogo} style={s.cardLogo} />
+      {fazendaNome ? <Text style={s.cardFazenda}>{fazendaNome}</Text> : null}
+      <Image src={item.qrDataUri} style={s.qrImage} />
+      <Text style={s.title}>{item.nome}</Text>
+      <Text style={s.subtitle}>{item.retiro_nome || "—"}</Text>
+    </View>
+  );
 
   return (
     <Document>
@@ -101,30 +130,10 @@ export default function QrCodePrintPDF({ items }: QrCodePrintPDFProps) {
               return (
                 <View key={`row-${rowIndex}`} style={s.row}>
                   <View style={s.slot}>
-                    {first ? (
-                      <View style={s.card}>
-                        <Image src={first.qrDataUri} style={s.qrImage} />
-                        <Text style={s.title}>{first.nome}</Text>
-                        <Text style={s.subtitle}>
-                          {first.retiro_nome || "—"}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={s.emptySlot} />
-                    )}
+                    {first ? renderCard(first) : <View style={s.emptySlot} />}
                   </View>
                   <View style={s.slot}>
-                    {second ? (
-                      <View style={s.card}>
-                        <Image src={second.qrDataUri} style={s.qrImage} />
-                        <Text style={s.title}>{second.nome}</Text>
-                        <Text style={s.subtitle}>
-                          {second.retiro_nome || "—"}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={s.emptySlot} />
-                    )}
+                    {second ? renderCard(second) : <View style={s.emptySlot} />}
                   </View>
                 </View>
               );

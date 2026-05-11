@@ -229,7 +229,8 @@ export default function QrCodesPage() {
         });
       }
 
-      const blob = await pdf(<QrCodePrintPDF items={pdfItems} />).toBlob();
+      const fazendaNome = generatedPastos[0]?.fazenda_nome;
+      const blob = await pdf(<QrCodePrintPDF items={pdfItems} fazendaNome={fazendaNome} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
