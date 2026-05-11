@@ -412,7 +412,7 @@ export default function QrCodesPage() {
                                     event.currentTarget.onerror = null;
                                     event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
                                   }}
-                                  className="block h-auto max-h-12 min-h-6 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                  className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center"
                                 />
                                 {pasto.fazenda_nome && (
                                   <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
@@ -479,7 +479,7 @@ export default function QrCodesPage() {
                                       event.currentTarget.onerror = null;
                                       event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
                                     }}
-                                    className="block h-auto max-h-12 min-h-6 w-full max-w-[192px] shrink-0 object-contain object-center"
+                                    className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center"
                                   />
                                   {pasto.fazenda_nome && (
                                     <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
