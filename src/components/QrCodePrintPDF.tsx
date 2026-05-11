@@ -117,8 +117,10 @@ export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePr
         {fazendaNome ? <Text style={s.cardFazenda}>{fazendaNome}</Text> : null}
       </View>
       <Image src={item.qrDataUri} style={s.qrImage} />
-      <Text style={s.title}>{item.nome}</Text>
-      <Text style={s.subtitle}>{item.retiro_nome || "—"}</Text>
+      <View style={{ alignItems: "center" }}>
+        <Text style={s.title}>{item.nome}</Text>
+        <Text style={s.subtitle}>{item.retiro_nome || "—"}</Text>
+      </View>
     </View>
   );
 
