@@ -37,6 +37,12 @@ import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+
+function PushNotificationsBootstrap() {
+  usePushNotifications();
+  return null;
+}
 
 const queryClient = new QueryClient();
 

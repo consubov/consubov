@@ -59,17 +59,19 @@ export function usePushNotifications() {
         if (!subscription) {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
           });
         }
 
         const { error } = await supabase
           .from("push_subscriptions")
           .upsert(
-            {
-              user_id: user.id,
-              subscription: subscription.toJSON() as unknown as Record<string, unknown>,
-            },
+            [
+              {
+                user_id: user.id,
+                subscription: subscription.toJSON() as unknown as Record<string, unknown>,
+              },
+            ],
             { onConflict: "user_id" },
           );
 
