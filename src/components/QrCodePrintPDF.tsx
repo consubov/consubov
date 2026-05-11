@@ -52,13 +52,13 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   cardLogo: {
-    height: 32,
+    height: 60,
     width: "auto",
     objectFit: "contain",
-    marginBottom: 4,
+    marginBottom: 0,
   },
   cardFazenda: {
-    fontSize: 10,
+    fontSize: 8,
     color: "#555555",
     textAlign: "center",
     marginBottom: 8,
