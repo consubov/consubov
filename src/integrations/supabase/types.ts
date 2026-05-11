@@ -1511,6 +1511,30 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          subscription: Json
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          subscription: Json
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          subscription?: Json
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       retiros: {
         Row: {
           alerta_atraso_enviado: boolean
