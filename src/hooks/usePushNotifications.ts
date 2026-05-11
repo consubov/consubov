@@ -69,7 +69,7 @@ export function usePushNotifications() {
             [
               {
                 user_id: user.id,
-                subscription: subscription.toJSON() as unknown as Record<string, unknown>,
+                subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
               },
             ],
             { onConflict: "user_id" },
