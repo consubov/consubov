@@ -154,7 +154,8 @@ export async function maybeUpdateActiveServiceWorker() {
     attachRegistrationListeners(registration);
     await registration.update();
     if (registration.waiting && navigator.serviceWorker.controller) {
-      return await activateWaitingServiceWorker(registration);
+      notifyWaiting(registration);
+      return true;
     }
   } catch (err) {
     console.warn("SW update check failed:", err);
