@@ -57,15 +57,15 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   cardLogo: {
-    width: 100,
-    height: 22,
+    width: 144,
+    height: 32,
     objectFit: "contain",
   },
   cardFazenda: {
     fontSize: 8,
     color: "#555555",
     textAlign: "center",
-    marginTop: 1,
+    marginTop: 2,
     marginBottom: 0,
   },
   emptySlot: {

@@ -384,7 +384,7 @@ export default function QrCodesPage() {
                       {rowItems.map((pasto, columnIndex) => (
                         <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-between overflow-hidden rounded-xl border bg-card px-3 py-2 text-center shadow-sm">
+                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
                                   src="/logo-consubov-print.png"
