@@ -388,10 +388,10 @@ export default function QrCodesPage() {
                               <img
                                 src="/logo-consubov-print.png"
                                 alt="Consubov"
-                                className="mb-1 h-8 w-auto object-contain"
+                                className="h-16 w-auto object-contain"
                               />
                               {pasto.fazenda_nome && (
-                                <p className="mb-3 text-[11px] leading-tight" style={{ color: "#555" }}>
+                                <p className="mb-3 text-[9px] leading-tight" style={{ color: "#555" }}>
                                   {pasto.fazenda_nome}
                                 </p>
                               )}
