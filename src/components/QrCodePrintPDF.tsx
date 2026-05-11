@@ -68,8 +68,8 @@ const s = StyleSheet.create({
     height: "100%",
   },
   qrImage: {
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
     marginBottom: 12,
   },
   title: {

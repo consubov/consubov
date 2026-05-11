@@ -395,7 +395,7 @@ export default function QrCodesPage() {
                                   {pasto.fazenda_nome}
                                 </p>
                               )}
-                              <QRCodeSVG value={pasto.qr_uuid} size={200} level="H" includeMargin className="mb-4" />
+                              <QRCodeSVG value={pasto.qr_uuid} size={140} level="H" includeMargin className="mb-4" />
                               <p className="break-words text-base font-bold leading-tight text-foreground">{pasto.nome}</p>
                               <p className="mt-1 break-words text-sm leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
                             </div>
