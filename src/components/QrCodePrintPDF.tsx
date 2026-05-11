@@ -130,30 +130,10 @@ export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePr
               return (
                 <View key={`row-${rowIndex}`} style={s.row}>
                   <View style={s.slot}>
-                    {first ? (
-                      <View style={s.card}>
-                        <Image src={first.qrDataUri} style={s.qrImage} />
-                        <Text style={s.title}>{first.nome}</Text>
-                        <Text style={s.subtitle}>
-                          {first.retiro_nome || "—"}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={s.emptySlot} />
-                    )}
+                    {first ? renderCard(first) : <View style={s.emptySlot} />}
                   </View>
                   <View style={s.slot}>
-                    {second ? (
-                      <View style={s.card}>
-                        <Image src={second.qrDataUri} style={s.qrImage} />
-                        <Text style={s.title}>{second.nome}</Text>
-                        <Text style={s.subtitle}>
-                          {second.retiro_nome || "—"}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={s.emptySlot} />
-                    )}
+                    {second ? renderCard(second) : <View style={s.emptySlot} />}
                   </View>
                 </View>
               );
