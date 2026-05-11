@@ -11,6 +11,7 @@ import { Loader2, Send, Clock, CheckCircle2, XCircle, CalendarIcon } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { sendPushToAll } from "@/lib/pushService";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -182,6 +183,11 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       if (itErr) throw itErr;
 
       toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
+      void sendPushToAll(
+        "📝 Lançamento Manual pendente",
+        capatazNome,
+        "/gerente",
+      );
       setEntries({});
       setTab("historico");
       void loadHistorico();

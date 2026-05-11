@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sendPushToAll } from "@/lib/pushService";
 import { z } from "zod";
 import * as Lucide from "lucide-react";
 import {
@@ -309,6 +310,11 @@ export default function LandingPage() {
       return;
     }
     setSubmitted(true);
+    void sendPushToAll(
+      "🆕 Novo interesse no Consubov",
+      `${payload.nome.trim()} — ${payload.email.trim()}`,
+      "/admin",
+    );
     setForm({});
     setTimeout(() => setSubmitted(false), 6000);
   }, [form]);

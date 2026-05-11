@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Upload, X, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sendPushToAll } from "@/lib/pushService";
 import { toast } from "sonner";
 import type { PastoCache } from "@/lib/offlineDb";
 
@@ -143,6 +144,12 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
       if (updateError) throw updateError;
 
       toast.success("✅ Mortalidade registrada");
+      const pastoNome = pastos.find(p => p.id === pastoId)?.nome ?? "pasto";
+      void sendPushToAll(
+        "🐄 Mortalidade registrada",
+        `${capatazNome} — ${pastoNome}`,
+        "/gerente",
+      );
       onPastoUpdated();
       onClose();
     } catch (err: any) {

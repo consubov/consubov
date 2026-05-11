@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { sendPushToAll } from "@/lib/pushService";
 
 // ---------- Types ----------
 interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
@@ -330,6 +331,20 @@ export function useGerenteData(filters?: GerenteFilters) {
         };
       });
   }, [retirosComDados]);
+
+  // Push para alertas de salga atrasada — uma vez por retiro por sessão
+  const pushedAtrasoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    alertasAtraso.forEach(a => {
+      if (pushedAtrasoRef.current.has(a.retiroNome)) return;
+      pushedAtrasoRef.current.add(a.retiroNome);
+      void sendPushToAll(
+        "⚠️ Salga não registrada",
+        `${a.retiroNome} — ${a.capataz}`,
+        "/gerente",
+      );
+    });
+  }, [alertasAtraso]);
 
   // Resolve observacao
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {

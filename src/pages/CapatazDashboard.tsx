@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { sendPushToAll } from "@/lib/pushService";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
@@ -993,6 +994,10 @@ export default function CapatazDashboard() {
         });
         if (error) throw error;
         await markObservacaoSincronizada(obs.id);
+        const resumo = (obs.descricao && obs.descricao.trim().length > 0)
+          ? obs.descricao.trim().slice(0, 80)
+          : `${obs.tipo ?? "Observação"} — ${obs.capataz_nome ?? ""}`;
+        void sendPushToAll("📋 Nova observação", resumo, "/gerente");
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         setSyncError(`Observação ${i + 1}: ${errorMsg}`);
