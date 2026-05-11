@@ -220,12 +220,43 @@ export function useSWUpdate() {
     const handler = (waiting: boolean) => setUpdateAvailable(waiting);
     listeners.add(handler);
 
-    if (swRegistration?.waiting) {
-      setUpdateAvailable(true);
-    }
+    const checkWaiting = async () => {
+      if (swRegistration?.waiting) {
+        setUpdateAvailable(true);
+        return;
+      }
+      if ("serviceWorker" in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            swRegistration = reg;
+            attachRegistrationListeners(reg);
+            if (reg.waiting && navigator.serviceWorker.controller) {
+              setUpdateAvailable(true);
+            }
+          }
+        } catch {
+          /* noop */
+        }
+      }
+    };
+
+    void checkWaiting();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void checkWaiting();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", checkWaiting);
+    window.addEventListener("pageshow", checkWaiting);
 
     return () => {
       listeners.delete(handler);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", checkWaiting);
+      window.removeEventListener("pageshow", checkWaiting);
     };
   }, []);
 
