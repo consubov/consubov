@@ -205,7 +205,7 @@ export function registerSW() {
       void reg.update();
       void maybeUpdateActiveServiceWorker();
       if (reg.waiting && navigator.serviceWorker.controller) {
-        void activateWaitingServiceWorker(reg);
+        notifyWaiting(reg);
       }
     })
     .catch((err) => console.warn("SW registration failed:", err));
