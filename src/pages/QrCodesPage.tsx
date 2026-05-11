@@ -218,28 +218,42 @@ export default function QrCodesPage() {
     setExportingPdf(true);
 
     try {
-      const pdfItems: QrCodePdfItem[] = [];
+      // Espera o React renderizar e as imagens carregarem
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await Promise.all(
+        Array.from(document.querySelectorAll<HTMLImageElement>("[data-qr-capture-page] img")).map(
+          (img) =>
+            img.complete && img.naturalWidth > 0
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener("load", () => resolve(), { once: true });
+                  img.addEventListener("error", () => resolve(), { once: true });
+                }),
+        ),
+      );
 
-      for (const pasto of generatedPastos) {
-        const qrDataUri = await createQrCodeDataUri(pasto.qr_uuid);
-        pdfItems.push({
-          id: pasto.id,
-          qrDataUri,
-          nome: pasto.nome,
-          retiro_nome: pasto.retiro_nome,
+      const pdfDoc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidthMm = 210;
+      const pageHeightMm = 297;
+
+      const pageNodes = capturePagesRef.current.filter(
+        (node): node is HTMLElement => node !== null,
+      );
+
+      for (let i = 0; i < pageNodes.length; i++) {
+        const node = pageNodes[i];
+        const canvas = await html2canvas(node, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#FFFFFF",
+          logging: false,
         });
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) pdfDoc.addPage();
+        pdfDoc.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm);
       }
 
-      const fazendaNome = generatedPastos[0]?.fazenda_nome;
-      const blob = await pdf(<QrCodePrintPDF items={pdfItems} fazendaNome={fazendaNome} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      pdfDoc.save(`qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao gerar o PDF dos QR Codes.");
