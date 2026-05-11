@@ -238,8 +238,9 @@ export default function QrCodesPage() {
       const pageWidthMm = 210;
       const pageHeightMm = 297;
 
-      const pageNodes = capturePagesRef.current.filter(
-        (node): node is HTMLElement => node !== null,
+      // Captura as páginas JÁ renderizadas na tela (não regera QR codes)
+      const pageNodes = Array.from(
+        document.querySelectorAll<HTMLElement>('[aria-label^="Pré-visualização da página"]'),
       );
 
       for (let i = 0; i < pageNodes.length; i++) {
