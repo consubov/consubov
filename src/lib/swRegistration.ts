@@ -119,12 +119,7 @@ async function ensureLatestPublishedVersion() {
     await registration.update();
 
     if (registration.waiting && navigator.serviceWorker.controller) {
-      return await activateWaitingServiceWorker(registration);
-    }
-
-    if (registration.active && navigator.serviceWorker.controller?.scriptURL !== registration.active.scriptURL) {
-      logSw("Atualizando aplicação");
-      hardReloadToLatest(remoteVersion);
+      notifyWaiting(registration);
       return true;
     }
   } catch (error) {
