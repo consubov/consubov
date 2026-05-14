@@ -421,7 +421,9 @@ export default function QrCodesPage() {
                                   </p>
                                 )}
                               </div>
-                              <QRCodeSVG value={pasto.qr_uuid} size={120} level="H" includeMargin className="h-[120px] w-[120px] shrink-0" />
+                              <div className="flex w-full flex-1 items-center justify-center">
+                                <QRCodeSVG value={pasto.qr_uuid} size={512} level="H" includeMargin className="h-auto w-full max-w-[78%]" />
+                              </div>
                               <div className="flex flex-col items-center">
                                 <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
                                 <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
@@ -488,7 +490,9 @@ export default function QrCodesPage() {
                                     </p>
                                   )}
                                 </div>
-                                <QRCodeSVG value={pasto.qr_uuid} size={120} level="H" includeMargin className="h-[120px] w-[120px] shrink-0" />
+                                <div className="flex w-full flex-1 items-center justify-center">
+                                  <QRCodeSVG value={pasto.qr_uuid} size={512} level="H" includeMargin className="h-auto w-full max-w-[78%]" />
+                                </div>
                                 <div className="flex flex-col items-center">
                                   <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
                                   <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
