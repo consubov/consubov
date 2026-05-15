@@ -1877,7 +1877,7 @@ export default function CapatazDashboard() {
       )}
       {/* Evento modals */}
       {eventoPasto && (
-        <>
+        <Suspense fallback={null}>
           <SelecionarEventoModal
             open={eventoSelectorOpen}
             onClose={() => setEventoSelectorOpen(false)}
