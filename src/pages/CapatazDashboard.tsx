@@ -232,9 +232,14 @@ export default function CapatazDashboard() {
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
-    setObsPendentes(pend);
-    setObsHistorico(hist);
-  }, []);
+    const currentRetiroId = roleData.retiroId || "";
+    const currentFazendaId = fazendaId || "";
+    const filterByScope = (o: ObservacaoOffline) =>
+      (!currentRetiroId || o.retiro_id === currentRetiroId) &&
+      (!currentFazendaId || o.fazenda_id === currentFazendaId);
+    setObsPendentes(pend.filter(filterByScope));
+    setObsHistorico(hist.filter(filterByScope));
+  }, [roleData.retiroId, fazendaId]);
 
   const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[] | undefined | null, pendingCountValue: number, cicloId?: string) => {
     const list = Array.isArray(allLancamentos) ? allLancamentos.filter(Boolean) : [];
