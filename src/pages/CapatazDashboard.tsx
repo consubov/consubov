@@ -650,6 +650,18 @@ export default function CapatazDashboard() {
     } catch {
       // offline, use cache
     }
+    // Preload lazy chunks needed for offline scanning + salga flow.
+    // Triggers SW/browser cache so they're available even without network.
+    try {
+      await Promise.all([
+        import("@/components/capataz/QrScanner"),
+        import("@/components/capataz/SalgaForm"),
+        import("@/components/capataz/PastoActionSheet"),
+        import("@zxing/browser"),
+      ]);
+    } catch (err) {
+      console.warn('[CapatazDashboard] preload offline chunks failed:', err);
+    }
     const cached = await getCachedPastos();
     if (cached.length === 0) {
       toast.error("Sem dados de pastos. Conecte-se à internet primeiro.");
@@ -1197,11 +1209,13 @@ export default function CapatazDashboard() {
 
   if (screen === 'scanner') {
     return (
-      <QrScanner
-        onScan={handleQrScan}
-        onManualSelect={handleManualSelect}
-        onBack={() => setScreen('salga')}
-      />
+      <Suspense fallback={<DeferredFallback label="Abrindo câmera..." />}>
+        <QrScanner
+          onScan={handleQrScan}
+          onManualSelect={handleManualSelect}
+          onBack={() => setScreen('salga')}
+        />
+      </Suspense>
     );
   }
 
