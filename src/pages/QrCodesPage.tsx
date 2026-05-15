@@ -247,7 +247,7 @@ export default function QrCodesPage() {
       for (let i = 0; i < pageNodes.length; i++) {
         const node = pageNodes[i];
         const canvas = await html2canvas(node, {
-          scale: 2,
+          scale: 4,
           useCORS: true,
           backgroundColor: "#FFFFFF",
           logging: false,
