@@ -184,16 +184,8 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
 
         if (isAuthErr) {
           toast.error("Faça login novamente para sincronizar");
-        } else if (state.retryAttempt < MAX_RETRY_ATTEMPTS) {
-          // Schedule backoff retry — capped at MAX_RETRY_ATTEMPTS so we
-          // don't spin forever; capataz can re-trigger manually after that.
-          const attempt = Math.min(state.retryAttempt, RETRY_DELAYS_MS.length - 1);
-          const delay = RETRY_DELAYS_MS[attempt];
-          clearRetry();
-          retryTimerRef.current = window.setTimeout(() => {
-            void triggerSync();
-          }, delay);
         }
+        // Sem retry automático: o capataz/gerente precisa disparar manualmente.
       } finally {
         runningRef.current = false;
       }
@@ -202,38 +194,15 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
     [enabled, refreshPendingCount, clearRetry, userId, backupUserInfo]
   );
 
-  // Auto-triggers
+  // Apenas mantém o badge de pendentes atualizado e faz a contagem inicial.
+  // NÃO dispara sync automaticamente (nem ao ficar online, nem ao mount,
+  // nem em visibilitychange). Sync só roda via botão "Sincronizar" do
+  // capataz ou comando forçado pelo gerente.
   useEffect(() => {
     if (!enabled) return;
+    void refreshPendingCount();
+  }, [enabled, refreshPendingCount]);
 
-    const onOnline = () => {
-      void triggerSync();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void triggerSync();
-      }
-    };
-
-    window.addEventListener("online", onOnline);
-    document.addEventListener("visibilitychange", onVisibility);
-
-    // On mount: if online and pending records exist, sync
-    void (async () => {
-      await refreshPendingCount();
-      if (typeof navigator !== "undefined" && navigator.onLine) {
-        void triggerSync();
-      }
-    })();
-
-    return () => {
-      window.removeEventListener("online", onOnline);
-      document.removeEventListener("visibilitychange", onVisibility);
-      clearRetry();
-    };
-  }, [enabled, triggerSync, refreshPendingCount, clearRetry]);
-
-  // Poll pending count occasionally so badge stays fresh after local writes
   useEffect(() => {
     if (!enabled) return;
     const id = window.setInterval(() => {
@@ -244,7 +213,11 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
 
   return {
     ...state,
-    triggerSync: (manual = true) => triggerSync({ manual }),
+    triggerSync: (manual: boolean | { manual?: boolean; force?: boolean } = true) => {
+      if (typeof manual === "boolean") return triggerSync({ manual });
+      return triggerSync(manual);
+    },
     refreshPendingCount,
   };
 }
+
