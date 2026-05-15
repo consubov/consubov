@@ -402,7 +402,7 @@ export default function QrCodesPage() {
                       {rowItems.map((pasto, columnIndex) => (
                         <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
+                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:px-6 md:py-5" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
                                   src={QR_LOGO_SRC}
@@ -413,10 +413,10 @@ export default function QrCodesPage() {
                                     event.currentTarget.onerror = null;
                                     event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
                                   }}
-                                  className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center"
+                                  className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center md:max-h-14 md:max-w-[220px]"
                                 />
                                 {pasto.fazenda_nome && (
-                                  <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
+                                  <p className="mt-0.5 text-[8px] leading-tight md:mt-1 md:text-base" style={{ color: "#555" }}>
                                     {pasto.fazenda_nome}
                                   </p>
                                 )}
@@ -425,8 +425,8 @@ export default function QrCodesPage() {
                                 <QRCodeSVG value={pasto.qr_uuid} size={512} level="H" includeMargin className="h-auto w-full max-w-[78%]" />
                               </div>
                               <div className="flex flex-col items-center">
-                                <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
-                                <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
+                                <p className="break-words text-sm font-bold leading-tight text-foreground md:text-2xl">{pasto.nome}</p>
+                                <p className="break-words text-[11px] leading-tight text-muted-foreground md:text-lg">{pasto.retiro_nome}</p>
                               </div>
                             </div>
                           ) : (
