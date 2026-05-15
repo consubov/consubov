@@ -110,7 +110,11 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {cards.map((c) => (
-            <Card key={c.label} className="hover:shadow-md transition-shadow">
+            <Card
+              key={c.label}
+              onClick={() => navigate(c.to)}
+              className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.98]"
+            >
               <CardHeader className="pb-2 pt-4 px-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">{c.label}</CardTitle>
