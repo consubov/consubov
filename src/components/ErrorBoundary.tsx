@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
@@ -27,6 +27,75 @@ interface State {
   error: Error | null;
   /** Increments to force a re-mount of children after a reset */
   resetKey: number;
+}
+
+interface ErrorFallbackProps {
+  isError: boolean;
+  error: Error | null;
+  title?: string;
+  message?: string;
+  retryLabel?: string;
+  reloadLabel?: string;
+  showErrorDetails?: boolean;
+  onRetry: () => void;
+  onReload: () => void;
+}
+
+function DelayedErrorFallback({
+  isError,
+  error,
+  title,
+  message,
+  retryLabel,
+  reloadLabel,
+  showErrorDetails,
+  onRetry,
+  onReload,
+}: ErrorFallbackProps) {
+  const [showError, setShowError] = useState(false);
+
+  useEffect(() => {
+    if (!isError) {
+      setShowError(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setShowError(true), 500);
+    return () => window.clearTimeout(timeout);
+  }, [isError]);
+
+  if (!showError) return null;
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="max-w-md w-full text-center space-y-4 p-6 rounded-2xl border border-border bg-card">
+        <div className="w-14 h-14 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="w-7 h-7 text-destructive" />
+        </div>
+        <h1 className="text-lg font-semibold text-foreground">
+          {title ?? "Algo deu errado ao carregar a tela"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {message ??
+            "Seus dados offline (salgas, observações e mortalidade) estão preservados no aparelho. Tente novamente."}
+        </p>
+        {showErrorDetails !== false && error?.message && (
+          <p className="text-xs text-muted-foreground/80 break-words">
+            Detalhe: {error.message}
+          </p>
+        )}
+        <div className="flex flex-col gap-2 pt-2">
+          <Button onClick={onRetry} className="w-full" size="lg">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {retryLabel ?? "Tentar novamente"}
+          </Button>
+          <Button onClick={onReload} variant="outline" className="w-full">
+            {reloadLabel ?? "Recarregar página"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -120,34 +189,17 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-6">
-          <div className="max-w-md w-full text-center space-y-4 p-6 rounded-2xl border border-border bg-card">
-            <div className="w-14 h-14 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="w-7 h-7 text-destructive" />
-            </div>
-            <h1 className="text-lg font-semibold text-foreground">
-              {this.props.title ?? "Algo deu errado ao carregar a tela"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {this.props.message ??
-                "Seus dados offline (salgas, observações e mortalidade) estão preservados no aparelho. Tente novamente."}
-            </p>
-            {this.props.showErrorDetails !== false && this.state.error?.message && (
-              <p className="text-xs text-muted-foreground/80 break-words">
-                Detalhe: {this.state.error.message}
-              </p>
-            )}
-            <div className="flex flex-col gap-2 pt-2">
-              <Button onClick={this.handleRetry} className="w-full" size="lg">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                {this.props.retryLabel ?? "Tentar novamente"}
-              </Button>
-              <Button onClick={this.handleReload} variant="outline" className="w-full">
-                {this.props.reloadLabel ?? "Recarregar página"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DelayedErrorFallback
+          isError={this.state.hasError}
+          error={this.state.error}
+          title={this.props.title}
+          message={this.props.message}
+          retryLabel={this.props.retryLabel}
+          reloadLabel={this.props.reloadLabel}
+          showErrorDetails={this.props.showErrorDetails}
+          onRetry={this.handleRetry}
+          onReload={this.handleReload}
+        />
       );
     }
 

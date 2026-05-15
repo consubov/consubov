@@ -92,6 +92,8 @@ export default function EscritorioLayout() {
       return data;
     },
     enabled: !!roleData.roleId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const { data: fazendaNome = "" } = useQuery({
@@ -102,6 +104,8 @@ export default function EscritorioLayout() {
       return data?.nome ?? "";
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   /* mortality unread count */
@@ -118,6 +122,8 @@ export default function EscritorioLayout() {
       return (data || []).filter((n: any) => (n.dados as any)?.fazenda_id === fazendaId).length;
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   /* realtime: mortalidades + notificacoes */
@@ -290,6 +296,8 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
       return (data || []) as Retiro[];
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const retiroIds = useMemo(() => retiros.map((r) => r.id), [retiros]);
@@ -515,6 +523,8 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       return data.map((m) => ({ ...m, pasto_nome: pastoMap.get(m.pasto_id) ?? "—" })) as Mortalidade[];
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const { data: notificacoes = [] } = useQuery({
@@ -532,6 +542,8 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       });
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const marcarLida = async (notifId: string) => {
