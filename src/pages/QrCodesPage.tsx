@@ -238,9 +238,10 @@ export default function QrCodesPage() {
       const pageWidthMm = 210;
       const pageHeightMm = 297;
 
-      // Captura as páginas JÁ renderizadas na tela (não regera QR codes)
+      // Captura o mirror oculto em 820px (layout mobile puro, sem overrides md:)
+      // garantindo que o PDF seja idêntico ao mobile em qualquer dispositivo.
       const pageNodes = Array.from(
-        document.querySelectorAll<HTMLElement>('[aria-label^="Pré-visualização da página"]'),
+        document.querySelectorAll<HTMLElement>('[data-qr-capture-page="true"]'),
       );
 
       for (let i = 0; i < pageNodes.length; i++) {
@@ -392,17 +393,17 @@ export default function QrCodesPage() {
               <section
                 key={`preview-page-${pageIndex}`}
                 aria-label={`Pré-visualização da página ${pageIndex + 1}`}
-                className="mx-auto flex aspect-[210/297] w-full max-w-[820px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm md:aspect-auto"
+                className="mx-auto flex aspect-[210/297] w-full max-w-[420px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
               >
                 {[0, 1].map((rowIndex) => {
                   const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
 
                   return (
-                    <div key={`preview-row-${pageIndex}-${rowIndex}`} className="flex min-h-0 flex-1 gap-4 md:flex-none">
+                    <div key={`preview-row-${pageIndex}-${rowIndex}`} className="flex min-h-0 flex-1 gap-4">
                       {rowItems.map((pasto, columnIndex) => (
-                        <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1 md:h-auto">
+                        <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:h-auto md:justify-center md:gap-2" style={{ overflow: "visible" }}>
+                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
                                   src={QR_LOGO_SRC}
@@ -413,10 +414,10 @@ export default function QrCodesPage() {
                                     event.currentTarget.onerror = null;
                                     event.currentTarget.src = QR_LOGO_FALLBACK_SRC;
                                   }}
-                                  className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center md:max-h-14 md:max-w-[220px]"
+                                  className="block h-auto max-h-8 min-h-4 w-full max-w-[128px] shrink-0 object-contain object-center"
                                 />
                                 {pasto.fazenda_nome && (
-                                  <p className="mt-0.5 text-[8px] leading-tight md:mt-1 md:text-base" style={{ color: "#555" }}>
+                                  <p className="mt-0.5 text-[8px] leading-tight" style={{ color: "#555" }}>
                                     {pasto.fazenda_nome}
                                   </p>
                                 )}
@@ -425,8 +426,8 @@ export default function QrCodesPage() {
                                 <QRCodeSVG value={pasto.qr_uuid} size={512} level="H" includeMargin className="h-auto w-full max-w-[78%]" />
                               </div>
                               <div className="flex flex-col items-center">
-                                <p className="break-words text-sm font-bold leading-tight text-foreground md:text-2xl">{pasto.nome}</p>
-                                <p className="break-words text-[11px] leading-tight text-muted-foreground md:text-lg">{pasto.retiro_nome}</p>
+                                <p className="break-words text-sm font-bold leading-tight text-foreground">{pasto.nome}</p>
+                                <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
                               </div>
                             </div>
                           ) : (
