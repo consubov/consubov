@@ -1964,7 +1964,7 @@ export default function CapatazDashboard() {
             pastoId={eventoPasto.id}
             pastoNome={eventoPasto.nome}
           />
-        </>
+        </Suspense>
       )}
 
       {/* Editar Peso Modal (inline simples) */}
