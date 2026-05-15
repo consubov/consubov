@@ -430,7 +430,6 @@ export default function QrCodesPage() {
                                 <p className="break-words text-[11px] leading-tight text-muted-foreground">{pasto.retiro_nome}</p>
                               </div>
                             </div>
-                            </div>
                           ) : (
                             <div className="h-full rounded-xl border border-dashed border-border bg-muted/30" aria-hidden="true" />
                           )}
