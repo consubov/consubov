@@ -244,16 +244,18 @@ export default function QrCodesPage() {
 
       for (let i = 0; i < pageNodes.length; i++) {
         const node = pageNodes[i];
+        // Scale 4 → ~4K de resolução por página A4 (suficiente para zoom sem perda).
         const canvas = await html2canvas(node, {
-          scale: 2,
+          scale: 4,
           useCORS: true,
           backgroundColor: "#FFFFFF",
           logging: false,
+          imageTimeout: 0,
         });
-        // JPEG é muito mais leve que PNG e acelera drasticamente a inserção no jsPDF.
-        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        // PNG preserva a nitidez do QR Code e da tipografia ao dar zoom no PDF.
+        const imgData = canvas.toDataURL("image/png");
         if (i > 0) pdfDoc.addPage();
-        pdfDoc.addImage(imgData, "JPEG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
+        pdfDoc.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
         // Libera memória do canvas entre páginas
         canvas.width = 0;
         canvas.height = 0;
