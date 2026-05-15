@@ -247,14 +247,20 @@ export default function QrCodesPage() {
       for (let i = 0; i < pageNodes.length; i++) {
         const node = pageNodes[i];
         const canvas = await html2canvas(node, {
-          scale: 4,
+          scale: 2,
           useCORS: true,
           backgroundColor: "#FFFFFF",
           logging: false,
         });
-        const imgData = canvas.toDataURL("image/png");
+        // JPEG é muito mais leve que PNG e acelera drasticamente a inserção no jsPDF.
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
         if (i > 0) pdfDoc.addPage();
-        pdfDoc.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm);
+        pdfDoc.addImage(imgData, "JPEG", 0, 0, pageWidthMm, pageHeightMm, undefined, "FAST");
+        // Libera memória do canvas entre páginas
+        canvas.width = 0;
+        canvas.height = 0;
+        // Cede o thread pra UI não congelar
+        await new Promise((r) => setTimeout(r, 0));
       }
 
       pdfDoc.save(`qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
