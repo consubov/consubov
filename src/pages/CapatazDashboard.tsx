@@ -1143,8 +1143,8 @@ export default function CapatazDashboard() {
     },
   });
 
-  // Listen for remote "Force Sync" commands from Admin/Gerente dashboard
-  useRemoteSyncCommands(user?.id, () => sync.triggerSync(false), backgroundBootReady);
+  // Comando "Force Sync" do Admin/Gerente — único gatilho automático permitido.
+  useRemoteSyncCommands(user?.id, () => sync.triggerSync({ force: true }), backgroundBootReady);
 
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];

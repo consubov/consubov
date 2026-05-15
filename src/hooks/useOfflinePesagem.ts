@@ -79,12 +79,9 @@ export function useOfflinePesagemSync(onSynced?: () => void, enabled = true) {
     }
   }, [enabled, isOnline, onSynced]);
 
-  // Sync when coming online
-  useEffect(() => {
-    if (enabled && isOnline) {
-      syncAll();
-    }
-  }, [enabled, isOnline, syncAll]);
+  // Sync de pesagens offline NÃO roda automaticamente ao ficar online.
+  // Só dispara quando o capataz/gerente acionar manualmente via syncAll().
+
 
   // Initial count
   useEffect(() => {
