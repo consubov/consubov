@@ -62,13 +62,13 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { label: "Fazendas", value: stats.fazendas, icon: Landmark, color: "text-primary" },
-    { label: "Retiros", value: stats.retiros, icon: Map, color: "text-secondary" },
-    { label: "Pastos Ativos", value: stats.pastos, icon: TreePine, color: "text-primary" },
-    { label: "Produtos", value: stats.produtos, icon: Package, color: "text-secondary" },
-    { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary" },
-    { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary" },
-    { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary" },
+    { label: "Fazendas", value: stats.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Retiros", value: stats.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
+    { label: "Pastos Ativos", value: stats.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Produtos", value: stats.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
+    { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
+    { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
   ];
 
   return (
