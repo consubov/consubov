@@ -442,14 +442,14 @@ export default function QrCodesPage() {
             ))}
           </div>
 
-          {/* Mirror oculto em tamanho fixo (820px) usado para gerar o PDF idêntico ao preview */}
+          {/* Mirror oculto em 420px (mesma largura do preview mobile) — garante PDF idêntico ao app */}
           <div
             aria-hidden="true"
             style={{
               position: "fixed",
               left: "-10000px",
               top: 0,
-              width: "820px",
+              width: "420px",
               pointerEvents: "none",
               opacity: 0,
             }}
@@ -462,7 +462,7 @@ export default function QrCodesPage() {
                     capturePagesRef.current[pageIndex] = el;
                   }}
                   data-qr-capture-page="true"
-                  style={{ width: "820px", height: `${(820 * 297) / 210}px` }}
+                  style={{ width: "420px", height: `${(420 * 297) / 210}px` }}
                   className="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
                 >
                   {[0, 1].map((rowIndex) => {
