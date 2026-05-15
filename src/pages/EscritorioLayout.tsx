@@ -92,6 +92,8 @@ export default function EscritorioLayout() {
       return data;
     },
     enabled: !!roleData.roleId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const { data: fazendaNome = "" } = useQuery({
@@ -102,6 +104,8 @@ export default function EscritorioLayout() {
       return data?.nome ?? "";
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   /* mortality unread count */
@@ -118,6 +122,8 @@ export default function EscritorioLayout() {
       return (data || []).filter((n: any) => (n.dados as any)?.fazenda_id === fazendaId).length;
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   /* realtime: mortalidades + notificacoes */
