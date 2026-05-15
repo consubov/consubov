@@ -47,6 +47,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private visibilityHandler?: () => void;
   private pageShowHandler?: () => void;
+  private autoRetryAttempted = false;
+  private autoRetryTimeout?: number;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
@@ -76,10 +78,22 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.pageShowHandler && typeof window !== "undefined") {
       window.removeEventListener("pageshow", this.pageShowHandler);
     }
+    if (this.autoRetryTimeout && typeof window !== "undefined") {
+      window.clearTimeout(this.autoRetryTimeout);
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] captured:", error, errorInfo);
+    // Auto-retry once silently — covers transient first-render failures
+    // (lazy chunk races, hook init order, hydration timing) so the user
+    // never sees a flashed "Erro ao carregar" on a healthy app.
+    if (!this.autoRetryAttempted && typeof window !== "undefined") {
+      this.autoRetryAttempted = true;
+      this.autoRetryTimeout = window.setTimeout(() => {
+        this.silentReset();
+      }, 150);
+    }
   }
 
   private silentReset = () => {
@@ -91,6 +105,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleRetry = () => {
+    this.autoRetryAttempted = false;
     this.silentReset();
   };
 
