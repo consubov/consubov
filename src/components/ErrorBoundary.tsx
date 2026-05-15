@@ -78,6 +78,9 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.pageShowHandler && typeof window !== "undefined") {
       window.removeEventListener("pageshow", this.pageShowHandler);
     }
+    if (this.autoRetryTimeout && typeof window !== "undefined") {
+      window.clearTimeout(this.autoRetryTimeout);
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
