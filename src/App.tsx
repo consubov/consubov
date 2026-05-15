@@ -146,6 +146,9 @@ function RoleRedirect() {
     case "escritorio":
       return <Navigate to="/escritorio" replace />;
     default:
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        return <LoadingScreen />;
+      }
       return (
         <div className="min-h-screen flex items-center justify-center bg-background px-6">
           <div className="text-center space-y-3">
