@@ -47,6 +47,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private visibilityHandler?: () => void;
   private pageShowHandler?: () => void;
+  private autoRetryAttempted = false;
+  private autoRetryTimeout?: number;
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
