@@ -392,17 +392,17 @@ export default function QrCodesPage() {
               <section
                 key={`preview-page-${pageIndex}`}
                 aria-label={`Pré-visualização da página ${pageIndex + 1}`}
-                className="mx-auto flex aspect-[210/297] w-full max-w-[820px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+                className="mx-auto flex aspect-[210/297] w-full max-w-[820px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm md:aspect-auto"
               >
                 {[0, 1].map((rowIndex) => {
                   const rowItems = page.slice(rowIndex * QR_CODES_PER_ROW, rowIndex * QR_CODES_PER_ROW + QR_CODES_PER_ROW);
 
                   return (
-                    <div key={`preview-row-${pageIndex}-${rowIndex}`} className="flex min-h-0 flex-1 gap-4">
+                    <div key={`preview-row-${pageIndex}-${rowIndex}`} className="flex min-h-0 flex-1 gap-4 md:flex-none">
                       {rowItems.map((pasto, columnIndex) => (
-                        <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
+                        <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1 md:h-auto">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:px-6 md:py-5" style={{ overflow: "visible" }}>
+                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:h-auto md:justify-center md:gap-2" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
                                   src={QR_LOGO_SRC}
