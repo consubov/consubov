@@ -44,7 +44,15 @@ function PushNotificationsBootstrap() {
   return null;
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: 1000,
+      staleTime: 30000,
+    },
+  },
+});
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
