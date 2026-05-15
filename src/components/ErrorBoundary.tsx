@@ -82,6 +82,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] captured:", error, errorInfo);
+    // Auto-retry once silently — covers transient first-render failures
+    // (lazy chunk races, hook init order, hydration timing) so the user
+    // never sees a flashed "Erro ao carregar" on a healthy app.
+    if (!this.autoRetryAttempted && typeof window !== "undefined") {
+      this.autoRetryAttempted = true;
+      this.autoRetryTimeout = window.setTimeout(() => {
+        this.silentReset();
+      }, 150);
+    }
   }
 
   private silentReset = () => {
