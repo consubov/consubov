@@ -38,26 +38,31 @@ const SimulationContext = createContext<SimulationOverride | null>(null);
 export { SimulationContext };
 
 const emptyRoleData: RoleData = { role: null, roleId: null, fazendaId: null, retiroId: null };
-const CACHED_CAPATAZ_ROLE_KEY = "consubov:cached-capataz-role";
+const CACHED_ROLE_KEY = "consubov:cached-role";
+// Legacy key kept only for cleanup on first run.
+const LEGACY_CAPATAZ_ROLE_KEY = "consubov:cached-capataz-role";
 
-function clearCachedCapatazRole() {
+function clearCachedRole() {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(CACHED_CAPATAZ_ROLE_KEY);
+    window.localStorage.removeItem(CACHED_ROLE_KEY);
+    window.localStorage.removeItem(LEGACY_CAPATAZ_ROLE_KEY);
   } catch {
     // ignore cache errors
   }
 }
 
-function getCachedCapatazRole(userId: string): RoleData | null {
+function getCachedRole(userId: string): RoleData | null {
   if (typeof window === "undefined") return null;
 
   try {
-    const raw = window.localStorage.getItem(CACHED_CAPATAZ_ROLE_KEY);
+    const raw =
+      window.localStorage.getItem(CACHED_ROLE_KEY) ||
+      window.localStorage.getItem(LEGACY_CAPATAZ_ROLE_KEY);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as RoleData & { userId: string };
-    if (parsed.userId !== userId || parsed.role !== "capataz" || !parsed.retiroId) {
+    if (parsed.userId !== userId || !parsed.role) {
       return null;
     }
 
@@ -72,20 +77,28 @@ function getCachedCapatazRole(userId: string): RoleData | null {
   }
 }
 
-function cacheCapatazRole(userId: string, roleData: RoleData) {
+function cacheRole(userId: string, roleData: RoleData) {
   if (typeof window === "undefined") return;
 
   try {
-    if (roleData.role === "capataz" && roleData.retiroId) {
-      window.localStorage.setItem(CACHED_CAPATAZ_ROLE_KEY, JSON.stringify({ userId, ...roleData }));
+    if (roleData.role) {
+      window.localStorage.setItem(
+        CACHED_ROLE_KEY,
+        JSON.stringify({ userId, ...roleData }),
+      );
       return;
     }
-
-    clearCachedCapatazRole();
+    // Don't clear cache here — when offline detectRole may return empty due
+    // to network failure; preserve the last-known good role.
   } catch {
     // ignore cache errors
   }
 }
+
+// Back-compat aliases (kept so other call sites don't break).
+const getCachedCapatazRole = getCachedRole;
+const cacheCapatazRole = cacheRole;
+const clearCachedCapatazRole = clearCachedRole;
 
 function isCapatazRoute() {
   if (typeof window === "undefined") return false;
