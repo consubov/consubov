@@ -1453,7 +1453,7 @@ export default function CapatazDashboard() {
                   <ul className="space-y-1">
                     <li>
                       <button
-                        onClick={() => { setMenuOpen(false); setLancManualOpen(true); }}
+                        onClick={() => { setMenuOpen(false); setTimeout(() => setLancManualOpen(true), 220); }}
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                       >
                         <ClipboardList className="w-5 h-5 text-primary" />
@@ -1463,7 +1463,7 @@ export default function CapatazDashboard() {
                     {roleData.retiroId && (
                       <li>
                         <button
-                          onClick={() => { setMenuOpen(false); navigate(`/mapa/retiro/${roleData.retiroId}`); }}
+                          onClick={() => { const id = roleData.retiroId; setMenuOpen(false); setTimeout(() => navigate(`/mapa/retiro/${id}`), 220); }}
                           className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                         >
                           <MapIcon className="w-5 h-5 text-primary" />
@@ -1474,7 +1474,7 @@ export default function CapatazDashboard() {
                     <li><Separator className="my-1" /></li>
                     <li>
                       <button
-                        onClick={() => { setMenuOpen(false); setScreen('transferencia-retiro'); }}
+                        onClick={() => { setMenuOpen(false); setTimeout(() => setScreen('transferencia-retiro'), 220); }}
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                       >
                         <ArrowRightLeft className="w-5 h-5 text-primary" />
@@ -1483,7 +1483,7 @@ export default function CapatazDashboard() {
                     </li>
                     <li>
                       <button
-                        onClick={() => { setMenuOpen(false); setScreen('relatorio-salga'); }}
+                        onClick={() => { setMenuOpen(false); setTimeout(() => setScreen('relatorio-salga'), 220); }}
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                       >
                         <FileText className="w-5 h-5 text-primary" />
