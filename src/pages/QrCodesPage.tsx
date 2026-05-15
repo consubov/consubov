@@ -402,7 +402,7 @@ export default function QrCodesPage() {
                       {rowItems.map((pasto, columnIndex) => (
                         <div key={`preview-slot-${pageIndex}-${rowIndex}-${columnIndex}`} className="min-h-0 min-w-0 flex-1">
                           {pasto ? (
-                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:px-6 md:py-5" style={{ overflow: "visible" }}>
+                            <div className="flex h-full flex-col items-center justify-between rounded-xl border bg-card px-3 py-2 text-center shadow-sm md:justify-center md:gap-2 md:px-3 md:py-2" style={{ overflow: "visible" }}>
                               <div className="flex flex-col items-center">
                                 <img
                                   src={QR_LOGO_SRC}
