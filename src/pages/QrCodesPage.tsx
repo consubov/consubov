@@ -238,9 +238,10 @@ export default function QrCodesPage() {
       const pageWidthMm = 210;
       const pageHeightMm = 297;
 
-      // Captura as páginas JÁ renderizadas na tela (não regera QR codes)
+      // Captura o mirror oculto em 820px (layout mobile puro, sem overrides md:)
+      // garantindo que o PDF seja idêntico ao mobile em qualquer dispositivo.
       const pageNodes = Array.from(
-        document.querySelectorAll<HTMLElement>('[aria-label^="Pré-visualização da página"]'),
+        document.querySelectorAll<HTMLElement>('[data-qr-capture-page="true"]'),
       );
 
       for (let i = 0; i < pageNodes.length; i++) {
