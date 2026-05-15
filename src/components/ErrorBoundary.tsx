@@ -105,6 +105,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleRetry = () => {
+    this.autoRetryAttempted = false;
     this.silentReset();
   };
 
