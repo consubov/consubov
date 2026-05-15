@@ -296,6 +296,8 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
       return (data || []) as Retiro[];
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const retiroIds = useMemo(() => retiros.map((r) => r.id), [retiros]);
@@ -521,6 +523,8 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       return data.map((m) => ({ ...m, pasto_nome: pastoMap.get(m.pasto_id) ?? "—" })) as Mortalidade[];
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const { data: notificacoes = [] } = useQuery({
@@ -538,6 +542,8 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       });
     },
     enabled: !!fazendaId,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const marcarLida = async (notifId: string) => {
