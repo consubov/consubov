@@ -1877,7 +1877,7 @@ export default function CapatazDashboard() {
       )}
       {/* Evento modals */}
       {eventoPasto && (
-        <>
+        <Suspense fallback={null}>
           <SelecionarEventoModal
             open={eventoSelectorOpen}
             onClose={() => setEventoSelectorOpen(false)}
@@ -1964,7 +1964,7 @@ export default function CapatazDashboard() {
             pastoId={eventoPasto.id}
             pastoNome={eventoPasto.nome}
           />
-        </>
+        </Suspense>
       )}
 
       {/* Editar Peso Modal (inline simples) */}
