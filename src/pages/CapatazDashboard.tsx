@@ -1209,11 +1209,13 @@ export default function CapatazDashboard() {
 
   if (screen === 'scanner') {
     return (
-      <QrScanner
-        onScan={handleQrScan}
-        onManualSelect={handleManualSelect}
-        onBack={() => setScreen('salga')}
-      />
+      <Suspense fallback={<DeferredFallback label="Abrindo câmera..." />}>
+        <QrScanner
+          onScan={handleQrScan}
+          onManualSelect={handleManualSelect}
+          onBack={() => setScreen('salga')}
+        />
+      </Suspense>
     );
   }
 
