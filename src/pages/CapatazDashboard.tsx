@@ -1766,115 +1766,117 @@ export default function CapatazDashboard() {
         )}
       </main>
 
-      <ObservacaoModal
-        open={observacaoOpen}
-        onClose={() => { setObservacaoOpen(false); setEditingObs(null); }}
-        pastos={pastos}
-        retiroId={roleData.retiroId || ""}
-        fazendaId={fazendaId}
-        capatazNome={userName}
-        editingObs={editingObs}
-        onSave={async (obsData) => {
-          const obs: ObservacaoOffline = {
-            ...obsData,
-            id: editingObs?.id || crypto.randomUUID(),
-            criado_em: editingObs?.criado_em || new Date().toISOString(),
-            status: 'pendente',
-          };
-          await saveObservacaoOffline(obs);
-          await refreshObservacoes();
-          setEditingObs(null);
-        }}
-      />
-
-      <MortalidadeModal
-        open={mortalidadeOpen}
-        onClose={() => setMortalidadeOpen(false)}
-        pastos={pastos}
-        retiroId={roleData.retiroId || ""}
-        fazendaId={fazendaId}
-        capatazNome={userName}
-        onPastoUpdated={() => { loadFromSupabase(); }}
-      />
-
-      <PastoActionSheet
-        open={actionSheetOpen}
-        onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
-        pastoNome={actionSheetPasto?.nome || ""}
-        numAnimais={actionSheetPasto?.num_animais ?? 0}
-        dataFimCarencia={actionSheetPasto ? pastos.find(p => p.id === actionSheetPasto.id)?.data_fim_carencia : undefined}
-        onVerDetalhes={() => {
-          if (actionSheetPasto) {
-            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
-            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
-            setDetalhesLoteOpen(true);
-          }
-        }}
-        onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
-        onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
-        onEntrada={() => {
-          if (actionSheetPasto) {
-            setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
-            setEntradaOpen(true);
-          }
-        }}
-        onEditarPeso={() => {
-          if (actionSheetPasto) {
-            setEditarPesoPasto(actionSheetPasto);
-            setEditarPesoOpen(true);
-          }
-        }}
-        onRegistrarEvento={() => {
-          if (actionSheetPasto) {
-            const p = pastos.find(pp => pp.id === actionSheetPasto.id);
-            setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
-            setEventoSelectorOpen(true);
-          }
-        }}
-      />
-
-      <AbateModal
-        open={abateOpen}
-        onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
-        pasto={abatePasto}
-        fazendaId={fazendaId}
-        retiroId={roleData.retiroId || ""}
-        mesOperacional={mesOperacional}
-        anoOperacional={anoOperacional}
-        onAbateConfirmed={(pastoId, qtd) => {
-          setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
-        }}
-      />
-
-      <TransferenciaModal
-        open={transferOpen}
-        onClose={() => { setTransferOpen(false); setTransferPasto(null); }}
-        pasto={transferPasto}
-        pastos={pastos}
-        fazendaId={fazendaId}
-        retiroId={roleData.retiroId || ""}
-        mesOperacional={mesOperacional}
-        anoOperacional={anoOperacional}
-        onTransferConfirmed={(origemId, destinoId, qtd) => {
-          setPastos(prev => prev.map(p => {
-            if (p.id === origemId) return { ...p, num_animais: p.num_animais - qtd };
-            if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
-            return p;
-          }));
-          loadFromSupabase();
-        }}
-      />
-
-      {entradaPasto && (
-        <EntradaAnimaisModal
-          open={entradaOpen}
-          onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
-          pastoId={entradaPasto.id}
-          pastoNome={entradaPasto.nome}
+      <Suspense fallback={null}>
+        <ObservacaoModal
+          open={observacaoOpen}
+          onClose={() => { setObservacaoOpen(false); setEditingObs(null); }}
+          pastos={pastos}
           retiroId={roleData.retiroId || ""}
+          fazendaId={fazendaId}
+          capatazNome={userName}
+          editingObs={editingObs}
+          onSave={async (obsData) => {
+            const obs: ObservacaoOffline = {
+              ...obsData,
+              id: editingObs?.id || crypto.randomUUID(),
+              criado_em: editingObs?.criado_em || new Date().toISOString(),
+              status: 'pendente',
+            };
+            await saveObservacaoOffline(obs);
+            await refreshObservacoes();
+            setEditingObs(null);
+          }}
+        />
+
+        <MortalidadeModal
+          open={mortalidadeOpen}
+          onClose={() => setMortalidadeOpen(false)}
+          pastos={pastos}
+          retiroId={roleData.retiroId || ""}
+          fazendaId={fazendaId}
+          capatazNome={userName}
           onPastoUpdated={() => { loadFromSupabase(); }}
         />
-      )}
+
+        <PastoActionSheet
+          open={actionSheetOpen}
+          onClose={() => { setActionSheetOpen(false); setActionSheetPasto(null); }}
+          pastoNome={actionSheetPasto?.nome || ""}
+          numAnimais={actionSheetPasto?.num_animais ?? 0}
+          dataFimCarencia={actionSheetPasto ? pastos.find(p => p.id === actionSheetPasto.id)?.data_fim_carencia : undefined}
+          onVerDetalhes={() => {
+            if (actionSheetPasto) {
+              const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+              setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+              setDetalhesLoteOpen(true);
+            }
+          }}
+          onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
+          onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
+          onEntrada={() => {
+            if (actionSheetPasto) {
+              setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
+              setEntradaOpen(true);
+            }
+          }}
+          onEditarPeso={() => {
+            if (actionSheetPasto) {
+              setEditarPesoPasto(actionSheetPasto);
+              setEditarPesoOpen(true);
+            }
+          }}
+          onRegistrarEvento={() => {
+            if (actionSheetPasto) {
+              const p = pastos.find(pp => pp.id === actionSheetPasto.id);
+              setEventoPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome, num_animais: actionSheetPasto.num_animais, peso_medio_kg: p?.peso_medio_kg ?? null });
+              setEventoSelectorOpen(true);
+            }
+          }}
+        />
+
+        <AbateModal
+          open={abateOpen}
+          onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
+          pasto={abatePasto}
+          fazendaId={fazendaId}
+          retiroId={roleData.retiroId || ""}
+          mesOperacional={mesOperacional}
+          anoOperacional={anoOperacional}
+          onAbateConfirmed={(pastoId, qtd) => {
+            setPastos(prev => prev.map(p => p.id === pastoId ? { ...p, num_animais: p.num_animais - qtd } : p));
+          }}
+        />
+
+        <TransferenciaModal
+          open={transferOpen}
+          onClose={() => { setTransferOpen(false); setTransferPasto(null); }}
+          pasto={transferPasto}
+          pastos={pastos}
+          fazendaId={fazendaId}
+          retiroId={roleData.retiroId || ""}
+          mesOperacional={mesOperacional}
+          anoOperacional={anoOperacional}
+          onTransferConfirmed={(origemId, destinoId, qtd) => {
+            setPastos(prev => prev.map(p => {
+              if (p.id === origemId) return { ...p, num_animais: p.num_animais - qtd };
+              if (p.id === destinoId) return { ...p, num_animais: p.num_animais + qtd };
+              return p;
+            }));
+            loadFromSupabase();
+          }}
+        />
+
+        {entradaPasto && (
+          <EntradaAnimaisModal
+            open={entradaOpen}
+            onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
+            pastoId={entradaPasto.id}
+            pastoNome={entradaPasto.nome}
+            retiroId={roleData.retiroId || ""}
+            onPastoUpdated={() => { loadFromSupabase(); }}
+          />
+        )}
+      </Suspense>
       {/* Evento modals */}
       {eventoPasto && (
         <Suspense fallback={null}>
