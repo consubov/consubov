@@ -1,6 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
+import { hasCriticalOperations, onCriticalOperationsDrained } from "./criticalOperations";
 
 declare const __APP_BUILD_VERSION__: string;
+
+let drainedUnsub: (() => void) | null = null;
+
+function schedulePostDrainAction(action: () => void) {
+  if (drainedUnsub) return; // already waiting
+  drainedUnsub = onCriticalOperationsDrained(() => {
+    drainedUnsub?.();
+    drainedUnsub = null;
+    // dá um respiro para a operação concluir efeitos colaterais
+    setTimeout(action, 250);
+  });
+}
 
 let swRegistration: ServiceWorkerRegistration | null = null;
 let controllerChangeBound = false;
@@ -19,6 +32,11 @@ function buildReloadUrl(version = lastKnownRemoteVersion) {
 }
 
 function hardReloadToLatest(version = lastKnownRemoteVersion) {
+  if (hasCriticalOperations()) {
+    logSw("Reload adiado — operação crítica em andamento");
+    schedulePostDrainAction(() => hardReloadToLatest(version));
+    return;
+  }
   logSw("Reload após update");
   window.location.replace(buildReloadUrl(version));
 }
@@ -48,10 +66,25 @@ function bindControllerChangeReload() {
   });
 }
 
+function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
+  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
+  if (hasCriticalOperations()) {
+    logSw("Auto-update adiado — operação crítica em andamento");
+    schedulePostDrainAction(() => {
+      const reg = swRegistration ?? registration;
+      if (reg.waiting) void activateWaitingServiceWorker(reg);
+    });
+    return false;
+  }
+  void activateWaitingServiceWorker(registration);
+  return true;
+}
+
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
-    logSw("Nova versão em espera — aguardando confirmação do usuário");
+    logSw("Nova versão em espera — aplicando automaticamente");
     notifyListeners(true);
+    tryAutoApply(registration);
     return true;
   }
   return false;

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { saveChecklist } from "@/lib/conferenciaOffline";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 import type { DadosConferencia } from "./ConferenciaResultado";
 
 interface Props {
@@ -50,6 +51,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
   const [fotos, setFotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useCriticalOperation(true, "conferencia-checklist");
 
   const handleFotos = async (files: FileList | null) => {
     if (!files) return;

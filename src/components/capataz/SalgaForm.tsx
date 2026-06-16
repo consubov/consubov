@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Plus, Save, X, PackageOpen } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 
 export interface SalgaFormDraft {
   sacos: string;
@@ -58,6 +59,7 @@ export default function SalgaForm({
   const [cochoChecked, setCochoChecked] = useState(initialDraft?.cochoChecked ?? false);
   const [fotoCocho, setFotoCocho] = useState<string | null>(initialDraft?.fotoCocho ?? null);
   const produtoNaoConfigurado = !sugestao && numAnimais > 0;
+  useCriticalOperation(true, "salga-form");
 
   const obsFileRef = useRef<HTMLInputElement>(null);
   const auditFileRef = useRef<HTMLInputElement>(null);
