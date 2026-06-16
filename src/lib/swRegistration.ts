@@ -1,6 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
+import { hasCriticalOperations, onCriticalOperationsDrained } from "./criticalOperations";
 
 declare const __APP_BUILD_VERSION__: string;
+
+let pendingReloadVersion: string | null = null;
+let drainedUnsub: (() => void) | null = null;
+
+function schedulePostDrainAction(action: () => void) {
+  if (drainedUnsub) return; // already waiting
+  drainedUnsub = onCriticalOperationsDrained(() => {
+    drainedUnsub?.();
+    drainedUnsub = null;
+    // dá um respiro para a operação concluir efeitos colaterais
+    setTimeout(action, 250);
+  });
+}
 
 let swRegistration: ServiceWorkerRegistration | null = null;
 let controllerChangeBound = false;
