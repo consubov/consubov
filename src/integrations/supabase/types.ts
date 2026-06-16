@@ -213,6 +213,67 @@ export type Database = {
           },
         ]
       }
+      audit_conferencias: {
+        Row: {
+          created_at: string
+          fazenda_id: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          pasto_id: string | null
+          perfil: string | null
+          qr_code: string
+          retiro_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fazenda_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          pasto_id?: string | null
+          perfil?: string | null
+          qr_code: string
+          retiro_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fazenda_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          pasto_id?: string | null
+          perfil?: string | null
+          qr_code?: string
+          retiro_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_conferencias_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_conferencias_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_conferencias_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_sorteios: {
         Row: {
           bloco: number
@@ -378,6 +439,91 @@ export type Database = {
           usuario_id?: string | null
         }
         Relationships: []
+      }
+      conferencias_checklist: {
+        Row: {
+          cocho_abastecido: boolean
+          cocho_danificado: boolean
+          cocho_parcial: boolean
+          cocho_vazio: boolean
+          created_at: string
+          fazenda_id: string | null
+          fotos: string[]
+          id: string
+          necessita_atencao: boolean
+          observacoes: string | null
+          pasto_id: string | null
+          perfil: string | null
+          placa_qr_danificada: boolean
+          placa_qr_presente: boolean
+          qtd_compativel: boolean
+          qtd_divergente: boolean
+          retiro_id: string | null
+          user_id: string
+        }
+        Insert: {
+          cocho_abastecido?: boolean
+          cocho_danificado?: boolean
+          cocho_parcial?: boolean
+          cocho_vazio?: boolean
+          created_at?: string
+          fazenda_id?: string | null
+          fotos?: string[]
+          id?: string
+          necessita_atencao?: boolean
+          observacoes?: string | null
+          pasto_id?: string | null
+          perfil?: string | null
+          placa_qr_danificada?: boolean
+          placa_qr_presente?: boolean
+          qtd_compativel?: boolean
+          qtd_divergente?: boolean
+          retiro_id?: string | null
+          user_id: string
+        }
+        Update: {
+          cocho_abastecido?: boolean
+          cocho_danificado?: boolean
+          cocho_parcial?: boolean
+          cocho_vazio?: boolean
+          created_at?: string
+          fazenda_id?: string | null
+          fotos?: string[]
+          id?: string
+          necessita_atencao?: boolean
+          observacoes?: string | null
+          pasto_id?: string | null
+          perfil?: string | null
+          placa_qr_danificada?: boolean
+          placa_qr_presente?: boolean
+          qtd_compativel?: boolean
+          qtd_divergente?: boolean
+          retiro_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_checklist_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencias_checklist_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencias_checklist_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       configuracoes_gerais: {
         Row: {
