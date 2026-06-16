@@ -36,6 +36,7 @@ import EscritorioLayout from "./pages/EscritorioLayout";
 import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 import RecuperarDadosPage from "./pages/RecuperarDadosPage";
+import ConferenciaPage from "./pages/ConferenciaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -185,6 +186,7 @@ const App = () => (
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+              <Route path="/conferencia" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><ConferenciaPage /></ProtectedRoute>} />
               <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />
               <Route path="/mapa/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente", "capataz"]}><MapaFazendaPage /></ProtectedRoute>} />
 
