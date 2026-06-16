@@ -33,6 +33,11 @@ function buildReloadUrl(version = lastKnownRemoteVersion) {
 }
 
 function hardReloadToLatest(version = lastKnownRemoteVersion) {
+  if (hasCriticalOperations()) {
+    logSw("Reload adiado — operação crítica em andamento");
+    schedulePostDrainAction(() => hardReloadToLatest(version));
+    return;
+  }
   logSw("Reload após update");
   window.location.replace(buildReloadUrl(version));
 }
@@ -62,10 +67,25 @@ function bindControllerChangeReload() {
   });
 }
 
+function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
+  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
+  if (hasCriticalOperations()) {
+    logSw("Auto-update adiado — operação crítica em andamento");
+    schedulePostDrainAction(() => {
+      const reg = swRegistration ?? registration;
+      if (reg.waiting) void activateWaitingServiceWorker(reg);
+    });
+    return false;
+  }
+  void activateWaitingServiceWorker(registration);
+  return true;
+}
+
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
-    logSw("Nova versão em espera — aguardando confirmação do usuário");
+    logSw("Nova versão em espera — aplicando automaticamente");
     notifyListeners(true);
+    tryAutoApply(registration);
     return true;
   }
   return false;
