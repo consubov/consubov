@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { saveChecklist } from "@/lib/conferenciaOffline";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 import type { DadosConferencia } from "./ConferenciaResultado";
 
 interface Props {

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { sendPushToAll } from "@/lib/pushService";
 import { toast } from "sonner";
 import type { PastoCache } from "@/lib/offlineDb";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 
 interface Props {
   open: boolean;

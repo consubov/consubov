@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Plus, Save, X, PackageOpen } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 
 export interface SalgaFormDraft {
   sacos: string;

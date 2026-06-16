@@ -5,6 +5,7 @@ import { reportSyncLog } from "@/lib/syncLogReporter";
 import { backupPendingToLocalStorage, type PendingBackup } from "@/lib/backupMirror";
 import { toast } from "sonner";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
+import { beginCriticalOperation, endCriticalOperation } from "@/lib/criticalOperations";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "error" | "auth-required";
 
@@ -97,6 +98,7 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
       }
 
       runningRef.current = true;
+      const criticalId = beginCriticalOperation("sync");
       clearRetry();
       setState((s) => ({ ...s, status: "syncing", errorMessage: null }));
 
@@ -194,6 +196,7 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
         }
         // Sem retry automático: o capataz/gerente precisa disparar manualmente.
       } finally {
+        endCriticalOperation(criticalId);
         runningRef.current = false;
       }
     },
