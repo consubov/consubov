@@ -210,7 +210,9 @@ export function registerSW() {
     })
     .catch((err) => console.warn("SW registration failed:", err));
 
-  setInterval(() => void maybeUpdateActiveServiceWorker(), 60 * 60 * 1000);
+  // Verifica atualizações a cada 5 minutos para garantir que usuários
+  // que permanecem horas com o app aberto recebam novas versões.
+  setInterval(() => void maybeUpdateActiveServiceWorker(), 5 * 60 * 1000);
 }
 
 export function useSWUpdate() {
