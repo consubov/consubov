@@ -78,6 +78,12 @@ export function useSyncEngine({ runSync, enabled, onSyncSuccess, userId, backupU
       // ou forçada pelo gerente (force=true via useRemoteSyncCommands).
       // Nunca dispara automaticamente em background.
       if (!opts.manual && !opts.force) return;
+
+      // Aproveita o clique em "Sincronizar" para checar nova versão do app.
+      if (opts.manual) {
+        void maybeUpdateActiveServiceWorker();
+      }
+
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         await refreshPendingCount();
         if (opts.manual) toast.error("Sem conexão. Conecte-se à internet para sincronizar.");
