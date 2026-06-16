@@ -137,13 +137,12 @@ export default function ConferenciaPage() {
       const ano = hoje.getFullYear();
       const inicioMes = new Date(ano, mes - 1, 1).toISOString();
 
-      const [{ count: nLanc }, { count: nMort }, { count: nMov }, { count: nPes }] = await Promise.all([
+      const [{ count: nLanc }, { count: nMort }, { count: nMov }] = await Promise.all([
         supabase.from("lancamentos").select("id", { count: "exact", head: true }).eq("pasto_id", pasto.id).eq("mes_referencia", mes).eq("ano_referencia", ano),
         supabase.from("mortalidades").select("id", { count: "exact", head: true }).eq("pasto_id", pasto.id).eq("mes", mes).eq("ano", ano),
         supabase.from("movimentacoes_animais").select("id", { count: "exact", head: true }).or(`pasto_origem_id.eq.${pasto.id},pasto_destino_id.eq.${pasto.id}`).gte("data", inicioMes),
-        supabase.from("pesagens").select("id", { count: "exact", head: true }).gte("data_pesagem", inicioMes),
       ]);
-      const eventosMes = (nLanc ?? 0) + (nMort ?? 0) + (nMov ?? 0) + (nPes ?? 0);
+      const eventosMes = (nLanc ?? 0) + (nMort ?? 0) + (nMov ?? 0);
 
       // 7) histórico rápido (5 últimos eventos combinados)
       const [lancHist, mortHist, movHist] = await Promise.all([
