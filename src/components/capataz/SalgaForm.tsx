@@ -59,6 +59,7 @@ export default function SalgaForm({
   const [cochoChecked, setCochoChecked] = useState(initialDraft?.cochoChecked ?? false);
   const [fotoCocho, setFotoCocho] = useState<string | null>(initialDraft?.fotoCocho ?? null);
   const produtoNaoConfigurado = !sugestao && numAnimais > 0;
+  useCriticalOperation(true, "salga-form");
 
   const obsFileRef = useRef<HTMLInputElement>(null);
   const auditFileRef = useRef<HTMLInputElement>(null);

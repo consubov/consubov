@@ -101,6 +101,8 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
   const [fotoBrinco, setFotoBrinco] = useState<string | null>(null);
   const [observacao, setObservacao] = useState("");
   const [saving, setSaving] = useState(false);
+  useCriticalOperation(open, "mortalidade");
+
 
   const selectedPasto = pastos.find((p) => p.id === pastoId);
   const animaisAtuais = selectedPasto?.num_animais ?? 0;

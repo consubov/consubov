@@ -51,6 +51,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
   const [fotos, setFotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useCriticalOperation(true, "conferencia-checklist");
 
   const handleFotos = async (files: FileList | null) => {
     if (!files) return;
