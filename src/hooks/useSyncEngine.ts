@@ -4,6 +4,7 @@ import { getTotalPendingCount } from "@/lib/offlineDb";
 import { reportSyncLog } from "@/lib/syncLogReporter";
 import { backupPendingToLocalStorage, type PendingBackup } from "@/lib/backupMirror";
 import { toast } from "sonner";
+import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "error" | "auth-required";
 
