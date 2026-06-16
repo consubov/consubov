@@ -3,7 +3,6 @@ import { hasCriticalOperations, onCriticalOperationsDrained } from "./criticalOp
 
 declare const __APP_BUILD_VERSION__: string;
 
-let pendingReloadVersion: string | null = null;
 let drainedUnsub: (() => void) | null = null;
 
 function schedulePostDrainAction(action: () => void) {
