@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ const menuItems = [
   { title: "Escritórios", url: "/admin/escritorios", icon: Building2 },
   { title: "Produtos", url: "/admin/produtos", icon: Package },
   { title: "QR Codes", url: "/admin/qrcodes", icon: QrCode },
+  { title: "Conferência", url: "/conferencia", icon: ScanLine },
   { title: "Lançamento Manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },
   { title: "Configurações Gerais", url: "/admin/configuracoes", icon: Settings },
   { title: "Notificações", url: "/admin/notificacoes", icon: Bell },
