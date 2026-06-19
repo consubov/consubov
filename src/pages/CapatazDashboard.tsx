@@ -1046,8 +1046,8 @@ export default function CapatazDashboard() {
       }
     }
 
-    // Sync fechar mês
-    if (fecharPend && !syncError) {
+    // Sync fechar mês — só tenta se nenhum lançamento falhou (precisa de base íntegra)
+    if (fecharPend && failedCount === 0) {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
@@ -1073,7 +1073,6 @@ export default function CapatazDashboard() {
           }
         }
 
-        // Fechar ciclo atual com num_dias real + data_fim + duracao_dias
         const { error: errFechar } = await supabase.from("ciclos").update({
           fechado: true,
           fechado_em: dataFim,
@@ -1083,14 +1082,12 @@ export default function CapatazDashboard() {
         } as any).eq("id", fecharPend.ciclo_id);
         if (errFechar) throw errFechar;
 
-        // Buscar ciclo fechado para calcular próximo mês
         const cicloFechado = ciclos.find(c => c.id === fecharPend.ciclo_id);
         if (cicloFechado && fazendaId) {
           let nextMes = cicloFechado.mes + 1;
           let nextAno = cicloFechado.ano;
           if (nextMes > 12) { nextMes = 1; nextAno++; }
 
-          // Verificar se já existe
           const { data: existente } = await supabase.from("ciclos")
             .select("id")
             .eq("fazenda_id", fazendaId)
@@ -1114,20 +1111,26 @@ export default function CapatazDashboard() {
         toast.success("✅ Mês fechado e novo ciclo criado");
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
-        setSyncError(`Fechar mês: ${errorMsg}`);
-        toast.error("Erro ao fechar mês");
+        failedCount++;
+        failedMessages.push(`Fechar mês: ${errorMsg}`);
+        console.warn("[sync] Falha ao fechar mês, continuando:", errorMsg);
       }
     }
 
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
-    if (remaining.length === 0 && !syncError) {
+
+    if (failedCount > 0) {
+      const resumo = failedMessages.slice(0, 3).join(" | ");
+      setSyncError(`${failedCount} item(ns) com falha: ${resumo}`);
+      toast.warning(`${failedCount} item(ns) não sincronizado(s). Tente novamente.`);
+    } else if (remaining.length === 0) {
       toast.success("✅ Todos os dados sincronizados");
     }
+
     setScreen('home');
     await refreshLancamentosState();
     await refreshObservacoes();
-    // Reload ciclos from Supabase
     try { await loadFromSupabase(); } catch {}
   };
 
