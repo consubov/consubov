@@ -833,6 +833,11 @@ export default function CapatazDashboard() {
     setScreen('syncing');
     setSyncProgress({ current: 0, total: totalPending });
     let idx = 0;
+    // Contadores de falhas isoladas — não interrompem o lote.
+    // Sincronizações simultâneas de vários capatazes não devem travar
+    // o aparelho de ninguém por causa de um único registro problemático.
+    let failedCount = 0;
+    const failedMessages: string[] = [];
 
     for (let i = 0; i < pendentes.length; i++) {
       const l = pendentes[i];
