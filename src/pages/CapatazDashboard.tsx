@@ -959,29 +959,44 @@ export default function CapatazDashboard() {
         if (error) throw error;
         await markSincronizado(l.id);
 
-        // Subtrair estoque automaticamente após salga sincronizada
+        // Subtrair estoque automaticamente após salga sincronizada.
+        // Usa o mês/ano CALENDÁRIO da data da salga (não o ciclo), pois o estoque
+        // físico é o que o capataz tem hoje, independente de qual ciclo está aberto.
         if (roleData.retiroId && l.sacos > 0) {
-          const mesEstoque = mesRef;
-          const anoEstoque = anoRef;
-          const { data: estoque } = await supabase
-            .from("estoque_retiro")
-            .select("id, quantidade_atual")
-            .eq("retiro_id", roleData.retiroId)
-            .eq("mes", mesEstoque)
-            .eq("ano", anoEstoque)
+          const dataSalga = new Date(l.data);
+          const mesEstoque = dataSalga.getMonth() + 1;
+          const anoEstoque = dataSalga.getFullYear();
+
+          // Evita dupla baixa: se já existe movimentação para este lançamento, pula.
+          const { data: jaBaixado } = await supabase
+            .from("movimentacoes_estoque")
+            .select("id")
+            .eq("referencia_id", l.id)
+            .eq("origem", "salga")
+            .limit(1)
             .maybeSingle();
-          if (estoque) {
-            const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
-            await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
-            await supabase.from("movimentacoes_estoque").insert({
-              retiro_id: roleData.retiroId,
-              mes: mesEstoque,
-              ano: anoEstoque,
-              tipo: 'saida',
-              quantidade: l.sacos,
-              origem: 'salga',
-              referencia_id: l.id,
-            });
+
+          if (!jaBaixado) {
+            const { data: estoque } = await supabase
+              .from("estoque_retiro")
+              .select("id, quantidade_atual")
+              .eq("retiro_id", roleData.retiroId)
+              .eq("mes", mesEstoque)
+              .eq("ano", anoEstoque)
+              .maybeSingle();
+            if (estoque) {
+              const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
+              await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
+              await supabase.from("movimentacoes_estoque").insert({
+                retiro_id: roleData.retiroId,
+                mes: mesEstoque,
+                ano: anoEstoque,
+                tipo: 'saida',
+                quantidade: l.sacos,
+                origem: 'salga',
+                referencia_id: l.id,
+              });
+            }
           }
         }
       } catch (err: any) {
