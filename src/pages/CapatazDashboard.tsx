@@ -1040,9 +1040,9 @@ export default function CapatazDashboard() {
         void sendPushToAll("📋 Nova observação", resumo, "/gerente");
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
-        setSyncError(`Observação ${i + 1}: ${errorMsg}`);
-        toast.error(`Erro ao sincronizar observação ${i + 1}`);
-        break;
+        failedCount++;
+        failedMessages.push(`Observação ${i + 1}: ${errorMsg}`);
+        console.warn(`[sync] Falha observação ${i + 1}, continuando:`, errorMsg);
       }
     }
 
