@@ -932,10 +932,12 @@ export default function CapatazDashboard() {
           } as any).eq("id", roleData.retiroId);
         }
 
-        // Derive mes/ano from the ciclo, NOT from JS Date
-        const cicloDoLanc = l.ciclo_id ? ciclos.find(c => c.id === l.ciclo_id) : null;
-        const mesRef = cicloDoLanc ? cicloDoLanc.mes : new Date(l.data).getMonth() + 1;
-        const anoRef = cicloDoLanc ? cicloDoLanc.ano : new Date(l.data).getFullYear();
+        // mes/ano de referência = mês/ano CALENDÁRIO da data da salga.
+        // O painel filtra por mês calendário; usar o mês do ciclo desalinha os dados
+        // do painel quando o ciclo está em outro mês.
+        const dataSalgaLanc = new Date(l.data);
+        const mesRef = dataSalgaLanc.getMonth() + 1;
+        const anoRef = dataSalgaLanc.getFullYear();
 
         const insertData: Record<string, any> = {
           id: l.id,
