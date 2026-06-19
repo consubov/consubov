@@ -372,10 +372,14 @@ export function useGerenteData(filters?: GerenteFilters) {
   const obsPendentes = useMemo(() => observacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [observacoes]);
   const obsResolvidas = useMemo(() => observacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [observacoes]);
 
+  const refresh = useCallback(async () => {
+    await Promise.all([loadData(), refreshConsumo()]);
+  }, [loadData, refreshConsumo]);
+
   return {
-    loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
-    obsPendentes, obsResolvidas, resolverObservacao, refresh: loadData,
+    obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,
   };
 }
