@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { calculatePainelMetrics, calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { calculateRetiroMetrics } from "@/lib/painelMetrics";
+import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { sendPushToAll } from "@/lib/pushService";
 
@@ -81,6 +82,13 @@ export interface GerenteFilters {
 export function useGerenteData(filters?: GerenteFilters) {
   const { roleData } = useAuth();
   const fazendaId = roleData.fazendaId;
+  const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
+  const consumoAno = filters?.ano ?? new Date().getFullYear();
+  const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
+    fazendaId: fazendaId ?? "",
+    mes: consumoMes,
+    ano: consumoAno,
+  });
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
@@ -191,7 +199,10 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => { loadData(); }, [loadData]);
 
   // Realtime: auto-refresh when key tables change
-  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], loadData);
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], () => {
+    loadData();
+    refreshConsumo();
+  });
 
   useEffect(() => {
     const handleFocus = () => { void loadData(); };
@@ -220,7 +231,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
-    const calculated = calculatePainelMetrics({ pastos, lancamentos, produtos, retiros });
+    const calculated = aggregateConsumoMineral(consumoData);
     const statusDistribution: StatusDistribution = calculated.statusDist;
 
     return {
@@ -235,7 +246,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio: calculated.gmdMedio,
       statusDistribution,
     };
-  }, [pastos, lancamentos, produtos, retiros]);
+  }, [consumoData]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
