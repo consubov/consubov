@@ -35,6 +35,9 @@ export interface PainelLancamentoSource {
   consumo_g_cab_dia: number | null;
   status_consumo: string | null;
   indice_consumo: number | null;
+  created_at?: string | null;
+  mes_referencia?: number | null;
+  ano_referencia?: number | null;
 }
 
 export interface PainelMetricsAggregate {
@@ -87,7 +90,28 @@ const buildById = <T extends { id: string }>(items: T[]) => new Map(items.map((i
 const getCabDias = (item: PainelLancamentoSource) => {
   const numAnimais = toPositiveNumber(item.num_animais);
   const dias = toPositiveNumber(item.dias_no_pasto);
-  return numAnimais > 0 && dias > 0 ? numAnimais * dias : 0;
+  if (numAnimais <= 0 || dias <= 0) return 0;
+
+  // Clamp the intervalo to the days that fall inside the lançamento's mês_referencia.
+  // Without this clamp, a salga done early in the month with a 60-day "dias_no_pasto"
+  // would credit 60 cab-dias to the current month and dilute the consumo médio.
+  const mes = item.mes_referencia ?? null;
+  const ano = item.ano_referencia ?? null;
+  const createdAtRaw = item.created_at ?? null;
+  if (mes && ano && createdAtRaw) {
+    const createdAt = new Date(createdAtRaw);
+    if (!Number.isNaN(createdAt.getTime())) {
+      const inicio = new Date(ano, mes - 1, 1);
+      const fim = new Date(ano, mes, 0); // last day of month
+      const intervaloFimMs = Math.min(createdAt.getTime(), fim.getTime());
+      const intervaloInicioRaw = createdAt.getTime() - (dias - 1) * 86400000;
+      const intervaloInicioMs = Math.max(intervaloInicioRaw, inicio.getTime());
+      const diasNoMes = Math.floor((intervaloFimMs - intervaloInicioMs) / 86400000) + 1;
+      const diasClamp = Math.max(0, Math.min(dias, diasNoMes));
+      return numAnimais * diasClamp;
+    }
+  }
+  return numAnimais * dias;
 };
 
 const getPastosComLancamento = <T extends PainelPastoSource>(pastos: T[], lancamentos: PainelLancamentoSource[]) => {
