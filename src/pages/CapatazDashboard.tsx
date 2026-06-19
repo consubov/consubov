@@ -1008,9 +1008,10 @@ export default function CapatazDashboard() {
         }
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
-        setSyncError(`Registro ${idx}: ${errorMsg}`);
-        toast.error(`Erro ao sincronizar registro ${idx}`);
-        break;
+        failedCount++;
+        failedMessages.push(`Registro ${idx}: ${errorMsg}`);
+        console.warn(`[sync] Falha registro ${idx}, continuando:`, errorMsg);
+        // Não usamos break: outros registros (e outros capatazes) seguem.
       }
     }
 
