@@ -1,0 +1,1 @@
+ALTER TABLE public.lancamentos DROP CONSTRAINT IF EXISTS lancamentos_manuais_pasto_id_mes_referencia_ano_referencia_key;
