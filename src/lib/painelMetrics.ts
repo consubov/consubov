@@ -35,6 +35,9 @@ export interface PainelLancamentoSource {
   consumo_g_cab_dia: number | null;
   status_consumo: string | null;
   indice_consumo: number | null;
+  created_at?: string | null;
+  mes_referencia?: number | null;
+  ano_referencia?: number | null;
 }
 
 export interface PainelMetricsAggregate {
