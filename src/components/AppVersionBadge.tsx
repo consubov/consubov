@@ -1,18 +1,7 @@
 import { APP_VERSION } from "@/lib/appVersion";
 
-declare const __APP_BUILD_VERSION__: string;
-
-// Sufixo curto derivado do timestamp do build — muda a cada deploy,
-// permitindo conferir visualmente se o usuário está rodando a última versão.
-const BUILD_SUFFIX = (() => {
-  try {
-    return __APP_BUILD_VERSION__.slice(-4);
-  } catch {
-    return "";
-  }
-})();
-
-const FULL_VERSION = BUILD_SUFFIX ? `${APP_VERSION}.${BUILD_SUFFIX}` : APP_VERSION;
+// Exibe somente a versão semântica do app, igual em todas as plataformas.
+const FULL_VERSION = APP_VERSION;
 
 interface AppVersionBadgeProps {
   floating?: boolean;
