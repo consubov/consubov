@@ -182,6 +182,8 @@ export default function EscritorioLayout() {
             }} className="text-primary-foreground hover:bg-primary/80" title="Atualizar dados">
               <RefreshCw className="w-4 h-4" />
             </Button>
+            <UserNotificationToggle />
+            <AppVersionBadge />
             <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-5 h-5" />
             </Button>
