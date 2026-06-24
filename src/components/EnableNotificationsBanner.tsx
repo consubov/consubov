@@ -24,6 +24,30 @@ function isSupported() {
   );
 }
 
+function sameApplicationServerKey(subscription: PushSubscription) {
+  if (!VAPID_PUBLIC_KEY) return true;
+  const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const existing = subscription.options.applicationServerKey;
+  if (!existing) return false;
+  const existingBytes = new Uint8Array(existing);
+  return current.length === existingBytes.length && current.every((value, index) => value === existingBytes[index]);
+}
+
+async function getFreshSubscription(registration: ServiceWorkerRegistration) {
+  let subscription = await registration.pushManager.getSubscription();
+  if (subscription && !sameApplicationServerKey(subscription)) {
+    await subscription.unsubscribe().catch(() => undefined);
+    subscription = null;
+  }
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!) as unknown as BufferSource,
+    });
+  }
+  return subscription;
+}
+
 function isLovablePreview() {
   if (typeof window === "undefined") return false;
   const h = window.location.hostname;
@@ -113,6 +137,10 @@ export function EnableNotificationsBanner() {
               setStatus("needs-enable");
               return;
             }
+            if (!sameApplicationServerKey(sub)) {
+              setStatus("needs-enable");
+              return;
+            }
             const { data } = await supabase
               .from("push_subscriptions")
               .select("id")
@@ -170,13 +198,7 @@ export function EnableNotificationsBanner() {
         return;
       }
       const registration = await navigator.serviceWorker.ready;
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
-        });
-      }
+      const subscription = await getFreshSubscription(registration);
       const upErr = await saveSubscription(user!.id, subscription, true);
       if (upErr) {
         console.error("[Push] upsert error", upErr);
