@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
