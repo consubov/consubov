@@ -98,25 +98,39 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
 
   const waitingVersion = getWaitingServiceWorkerVersion(registration);
+
+  // Dedupe apenas na sessão atual — assim, se o usuário recarregar sem aplicar
+  // a atualização, ele volta a ser notificado em vez de ficar para sempre em
+  // silêncio (problema relatado em Android).
   if (notifiedUpdateVersions.has(waitingVersion)) return;
 
+  let storedVersion: string | null = null;
   try {
-    if (window.localStorage.getItem(UPDATE_NOTIFICATION_STORAGE_KEY) === waitingVersion) {
-      notifiedUpdateVersions.add(waitingVersion);
-      return;
-    }
-    window.localStorage.setItem(UPDATE_NOTIFICATION_STORAGE_KEY, waitingVersion);
+    storedVersion = window.sessionStorage.getItem(UPDATE_NOTIFICATION_STORAGE_KEY);
   } catch {
-    /* localStorage pode falhar em modo privado — usa apenas memória */
+    /* sessionStorage pode falhar em modo privado — usa apenas memória */
+  }
+
+  if (storedVersion === waitingVersion) {
+    notifiedUpdateVersions.add(waitingVersion);
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(UPDATE_NOTIFICATION_STORAGE_KEY, waitingVersion);
+  } catch {
+    /* idem */
   }
 
   notifiedUpdateVersions.add(waitingVersion);
 
+  // Limpa eventual notificação antiga com o mesmo tag para garantir que o
+  // novo alerta apareça (alguns Androids suprimem renotify=false em silêncio).
   try {
-    const existingNotifications = await registration.getNotifications?.({ tag: "consubov-update" });
-    if (existingNotifications && existingNotifications.length > 0) return;
+    const existing = await registration.getNotifications?.({ tag: "consubov-update" });
+    existing?.forEach((n) => n.close());
   } catch {
-    /* ignore — getNotifications não é obrigatório em todos os browsers */
+    /* ignore */
   }
 
   try {
@@ -125,13 +139,14 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
       icon: "/icon-192.png",
       badge: "/icon-96.png",
       tag: "consubov-update",
-      renotify: false,
+      renotify: true,
       data: { url: "/" },
     } as NotificationOptions);
   } catch {
     /* ignore — notificação é best-effort */
   }
 }
+
 
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
