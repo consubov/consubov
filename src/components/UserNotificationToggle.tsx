@@ -163,6 +163,8 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
       : { Icon: BellPlus, bg: "bg-secondary text-secondary-foreground", label: "Ativar notificações" };
 
   const { Icon } = visual;
+  const base =
+    "h-8 w-8 rounded-full shadow-sm flex items-center justify-center border border-border disabled:opacity-60";
 
   return (
     <button
@@ -170,10 +172,14 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
       disabled={busy || state === "unsupported"}
       aria-label={visual.label}
       title={visual.label}
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
-      className={`fixed right-[4.25rem] z-[100] h-9 w-9 rounded-full shadow-md flex items-center justify-center border border-border ${visual.bg} disabled:opacity-60`}
+      style={
+        floating
+          ? { top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }
+          : undefined
+      }
+      className={`${floating ? "fixed right-[4.25rem] z-[100]" : "relative"} ${base} ${visual.bg}`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-3.5 w-3.5" />
     </button>
   );
 }
