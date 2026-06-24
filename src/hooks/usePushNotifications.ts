@@ -22,6 +22,31 @@ function isSupported(): boolean {
   );
 }
 
+function sameApplicationServerKey(subscription: PushSubscription): boolean {
+  if (!VAPID_PUBLIC_KEY) return true;
+  const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const existing = subscription.options.applicationServerKey;
+  if (!existing) return false;
+  const existingBytes = new Uint8Array(existing);
+  return current.length === existingBytes.length && current.every((value, index) => value === existingBytes[index]);
+}
+
+async function getFreshSubscription(registration: ServiceWorkerRegistration): Promise<PushSubscription> {
+  let subscription = await registration.pushManager.getSubscription();
+  if (subscription && !sameApplicationServerKey(subscription)) {
+    await subscription.unsubscribe().catch(() => undefined);
+    subscription = null;
+  }
+  if (!subscription) {
+    console.log("[Push] criando nova subscription...");
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!) as unknown as BufferSource,
+    });
+  }
+  return subscription;
+}
+
 async function saveSubscription(userId: string, subscription: PushSubscription) {
   const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
   const endpoint = subJson.endpoint ?? subscription.endpoint;
@@ -90,14 +115,7 @@ export function usePushNotifications() {
           return;
         }
 
-        let subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          console.log("[Push] criando nova subscription...");
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
-          });
-        }
+        const subscription = await getFreshSubscription(registration);
         console.log("[Push] subscription obtida:", subscription.endpoint);
 
         console.log("[Push] salvando no Supabase...");

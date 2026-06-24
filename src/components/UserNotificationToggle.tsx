@@ -24,6 +24,30 @@ function isSupported() {
   );
 }
 
+function sameApplicationServerKey(subscription: PushSubscription) {
+  if (!VAPID_PUBLIC_KEY) return true;
+  const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const existing = subscription.options.applicationServerKey;
+  if (!existing) return false;
+  const existingBytes = new Uint8Array(existing);
+  return current.length === existingBytes.length && current.every((value, index) => value === existingBytes[index]);
+}
+
+async function getFreshSubscription(reg: ServiceWorkerRegistration) {
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && !sameApplicationServerKey(sub)) {
+    await sub.unsubscribe().catch(() => undefined);
+    sub = null;
+  }
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!) as unknown as BufferSource,
+    });
+  }
+  return sub;
+}
+
 type State = "loading" | "missing" | "denied" | "enabled" | "disabled" | "unsupported";
 
 async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
@@ -89,6 +113,7 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
       const reg = await getReadyRegistration();
       const sub = await reg.pushManager.getSubscription();
       if (!sub) { setState("missing"); return; }
+      if (!sameApplicationServerKey(sub)) { setState("missing"); return; }
       const { data } = await supabase
         .from("push_subscriptions")
         .select("enabled")
@@ -120,13 +145,7 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
         return;
       }
       const reg = await getReadyRegistration();
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
-        });
-      }
+      const sub = await getFreshSubscription(reg);
       const { error } = await saveSubscriptionForUser(user.id, sub);
       if (error) { toast.error("Falha ao salvar: " + error.message); return; }
       toast.success("Notificações ativadas");
