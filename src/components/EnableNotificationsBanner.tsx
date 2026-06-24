@@ -74,47 +74,43 @@ export function EnableNotificationsBanner() {
       continueCheck();
     })();
     function continueCheck() {
+      const perm = Notification.permission;
 
-    const perm = Notification.permission;
-
-    if (perm === "granted") {
-      // already granted — verify subscription exists in DB
-      (async () => {
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          const sub = await reg.pushManager.getSubscription();
-          if (!sub) {
+      if (perm === "granted") {
+        (async () => {
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+              setStatus("needs-enable");
+              return;
+            }
+            const { data } = await supabase
+              .from("push_subscriptions")
+              .select("id")
+              .eq("user_id", user!.id)
+              .maybeSingle();
+            if (!data) {
+              await supabase.from("push_subscriptions").upsert(
+                [{ user_id: user!.id, subscription: JSON.parse(JSON.stringify(sub.toJSON())) }],
+                { onConflict: "user_id" },
+              );
+            }
+            setStatus("hidden");
+          } catch {
             setStatus("needs-enable");
-            return;
           }
-          const { data } = await supabase
-            .from("push_subscriptions")
-            .select("id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          if (!data) {
-            // re-save
-            await supabase.from("push_subscriptions").upsert(
-              [{ user_id: user.id, subscription: JSON.parse(JSON.stringify(sub.toJSON())) }],
-              { onConflict: "user_id" },
-            );
-          }
-          setStatus("hidden");
-        } catch {
-          setStatus("needs-enable");
-        }
-      })();
-      return;
+        })();
+        return;
+      }
+      if (perm === "denied") {
+        setStatus("denied");
+        return;
+      }
+      setStatus("needs-enable");
     }
-    if (perm === "denied") {
-      // Always show denied banner, ignore dismiss
-      setStatus("denied");
-      return;
-    }
-    // Não persistir "Agora não": reinstalar o PWA no Android pode manter o
-    // localStorage do navegador, e isso escondia o pedido de permissão.
-    setStatus("needs-enable");
   }, [dismissedThisSession, session, user?.id]);
+
 
   const dismiss = () => {
     setDismissedThisSession(true);
