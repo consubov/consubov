@@ -183,8 +183,6 @@ const App = () => (
         <PainelPeriodoProvider>
           <AuthProvider>
             <PushNotificationsBootstrap />
-            <AppVersionBadge />
-            <UserNotificationToggle />
             <Routes>
 
               <Route path="/" element={<LandingPage />} />
