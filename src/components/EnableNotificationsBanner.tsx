@@ -111,8 +111,8 @@ export function EnableNotificationsBanner() {
               .from("push_subscriptions")
               .select("id")
               .eq("user_id", user!.id)
-              .maybeSingle();
-            if (!data) {
+              .limit(1);
+            if (!data || data.length === 0) {
               await saveSubscription(user!.id, sub, false);
             }
             setStatus("hidden");
