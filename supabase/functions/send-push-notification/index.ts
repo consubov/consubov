@@ -24,7 +24,43 @@ interface PushPayload {
   url?: string;
   user_id?: string;
   user_ids?: string[];
+  fazenda_id?: string;          // envia para gerentes + admins da fazenda
+  include_admins?: boolean;     // padrão true quando fazenda_id é passado
   all?: boolean;
+}
+
+async function resolveTargetUserIds(payload: PushPayload): Promise<string[]> {
+  const ids = new Set<string>();
+  if (payload.user_id) ids.add(payload.user_id);
+  (payload.user_ids ?? []).forEach((id) => id && ids.add(id));
+
+  if (payload.fazenda_id) {
+    const { data: gerentes } = await supabase
+      .from("gerentes")
+      .select("user_id")
+      .eq("fazenda_id", payload.fazenda_id)
+      .eq("ativo", true);
+    (gerentes ?? []).forEach((g: { user_id: string | null }) => g.user_id && ids.add(g.user_id));
+
+    if (payload.include_admins !== false) {
+      const { data: fazenda } = await supabase
+        .from("fazendas")
+        .select("administrador_id")
+        .eq("id", payload.fazenda_id)
+        .maybeSingle();
+      if (fazenda?.administrador_id) {
+        const { data: admin } = await supabase
+          .from("administradores")
+          .select("user_id")
+          .eq("id", fazenda.administrador_id)
+          .eq("ativo", true)
+          .maybeSingle();
+        if (admin?.user_id) ids.add(admin.user_id);
+      }
+    }
+  }
+
+  return Array.from(ids);
 }
 
 Deno.serve(async (req) => {
@@ -51,26 +87,32 @@ Deno.serve(async (req) => {
     const body = payload.body ?? "";
     const url = payload.url ?? "/";
 
-
     let query = supabase.from("push_subscriptions").select("*").eq("enabled", true);
-    if (payload.user_id) query = query.eq("user_id", payload.user_id);
-    else if (payload.user_ids?.length) query = query.in("user_id", payload.user_ids);
-    else if (!payload.all) {
-      return new Response(
-        JSON.stringify({ error: "Provide user_id, user_ids, or all=true" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+
+    if (payload.all) {
+      // sem filtro
+    } else {
+      const targetIds = await resolveTargetUserIds(payload);
+      if (targetIds.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "Provide user_id, user_ids, fazenda_id, or all=true", resolved: 0 }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      query = query.in("user_id", targetIds);
     }
 
     const { data: subs, error } = await query;
     if (error) throw error;
 
-    const notification = JSON.stringify({ title, body, url });
     const results = await Promise.allSettled(
       (subs ?? []).map(async (s: any) => {
         const subscription = typeof s.subscription === "string"
           ? JSON.parse(s.subscription)
           : s.subscription;
+        // tag único por envio garante que cada notificação apareça
+        const tag = `consubov-${s.id}-${Date.now()}`;
+        const notification = JSON.stringify({ title, body, url, tag });
         try {
           await webpush.sendNotification(subscription, notification);
           return { id: s.id, ok: true };

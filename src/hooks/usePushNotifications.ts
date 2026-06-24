@@ -23,13 +23,25 @@ function isSupported(): boolean {
 }
 
 async function saveSubscription(userId: string, subscription: PushSubscription) {
+  const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
+  const endpoint = subJson.endpoint ?? subscription.endpoint;
+  if (!endpoint) return new Error("subscription sem endpoint");
   const payload = {
     user_id: userId,
-    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+    endpoint,
+    subscription: subJson,
+    enabled: true,
   };
 
   const { error } = await supabase.from("push_subscriptions").insert([payload]);
-  if (!error || error.code === "23505") return null;
+  if (!error) return null;
+  if (error.code === "23505") {
+    const { error: upErr } = await supabase
+      .from("push_subscriptions")
+      .update({ user_id: userId, subscription: subJson, enabled: true })
+      .eq("endpoint", endpoint);
+    return upErr ?? null;
+  }
   return error;
 }
 
