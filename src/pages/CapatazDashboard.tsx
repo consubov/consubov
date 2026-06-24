@@ -1440,6 +1440,7 @@ export default function CapatazDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <UpdateBanner />
+      <EnableNotificationsBanner />
       <div className="px-4 pt-2">
         <SyncStatusBanner
           status={sync.status}
