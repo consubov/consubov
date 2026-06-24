@@ -201,15 +201,15 @@ export default function GerenteDashboard() {
       <EnableNotificationsBanner />
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
-            <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+            <div className="min-w-0">
               <h1 className="text-base font-bold leading-tight">Gerente</h1>
-              <p className="text-xs opacity-80 truncate max-w-[180px]">{gerenteNome}</p>
+              <p className="max-w-full truncate text-xs opacity-80 sm:max-w-[180px]">{gerenteNome}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
             <Button variant="ghost" size="icon" onClick={() => navigate("/conferencia")} className="text-primary-foreground hover:bg-primary/80" title="Conferência">
               <ScanLine className="w-4 h-4" />
             </Button>
