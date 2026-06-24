@@ -14,6 +14,8 @@ import {
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
