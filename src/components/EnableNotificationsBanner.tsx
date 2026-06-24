@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-const DISMISS_KEY = "consubov_push_dismissed_until";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -45,12 +44,14 @@ type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
 export function EnableNotificationsBanner() {
   const { user, session } = useAuth();
   const [status, setStatus] = useState<Status>("hidden");
+  const [dismissedThisSession, setDismissedThisSession] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session || !user?.id) return;
+    if (dismissedThisSession) return;
     if (!isSupported()) {
       setStatus("unsupported");
       return;
@@ -59,7 +60,6 @@ export function EnableNotificationsBanner() {
       setStatus("preview");
       return;
     }
-    const dismissedUntil = Number(localStorage.getItem(DISMISS_KEY) || 0);
     const perm = Notification.permission;
 
     if (perm === "granted") {
@@ -96,12 +96,13 @@ export function EnableNotificationsBanner() {
       setStatus("denied");
       return;
     }
-    if (Date.now() < dismissedUntil) return;
+    // Não persistir "Agora não": reinstalar o PWA no Android pode manter o
+    // localStorage do navegador, e isso escondia o pedido de permissão.
     setStatus("needs-enable");
-  }, [session, user?.id]);
+  }, [dismissedThisSession, session, user?.id]);
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now() + 1000 * 60 * 60 * 24 * 3));
+    setDismissedThisSession(true);
     setStatus("hidden");
   };
 
@@ -128,7 +129,7 @@ export function EnableNotificationsBanner() {
         return;
       }
       if (permission !== "granted") {
-        setError("Permissão não concedida.");
+        setError("Toque em Permitir quando o aparelho solicitar a permissão de notificação.");
         setBusy(false);
         return;
       }

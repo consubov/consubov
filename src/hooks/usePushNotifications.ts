@@ -55,11 +55,12 @@ export function usePushNotifications() {
         const registration = await navigator.serviceWorker.ready;
         console.log("[Push] service worker pronto");
 
-        let permission = Notification.permission;
+        const permission = Notification.permission;
         console.log("[Push] permissão atual = " + permission);
         if (permission === "default") {
-          permission = await Notification.requestPermission();
-          console.log("[Push] permissão após prompt = " + permission);
+          console.log("[Push] aguardando ação do usuário no banner para pedir permissão");
+          ranForUserRef.current = null;
+          return;
         }
         if (permission !== "granted") {
           console.warn("[Push] permissão não concedida — abortando");
