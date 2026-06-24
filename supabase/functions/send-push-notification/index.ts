@@ -33,10 +33,24 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verifica toggle global do admin
+    const { data: cfg } = await supabase
+      .from("configuracoes_gerais")
+      .select("valor")
+      .eq("chave", "notificacoes_globais_ativas")
+      .maybeSingle();
+    if (cfg && Number(cfg.valor) === 0) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "notificacoes_globais_desativadas" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const payload: PushPayload = await req.json().catch(() => ({}));
     const title = payload.title ?? "Consubov";
     const body = payload.body ?? "";
     const url = payload.url ?? "/";
+
 
     let query = supabase.from("push_subscriptions").select("*");
     if (payload.user_id) query = query.eq("user_id", payload.user_id);
