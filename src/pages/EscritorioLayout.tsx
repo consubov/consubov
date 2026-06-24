@@ -14,6 +14,8 @@ import {
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -180,6 +182,8 @@ export default function EscritorioLayout() {
             }} className="text-primary-foreground hover:bg-primary/80" title="Atualizar dados">
               <RefreshCw className="w-4 h-4" />
             </Button>
+            <UserNotificationToggle />
+            <AppVersionBadge />
             <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-5 h-5" />
             </Button>

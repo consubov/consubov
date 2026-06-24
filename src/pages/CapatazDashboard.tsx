@@ -24,6 +24,8 @@ import { sendPushToAll } from "@/lib/pushService";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
@@ -1535,6 +1537,8 @@ export default function CapatazDashboard() {
           </div>
           <div className="flex items-center gap-1">
             <RefreshButton />
+            <UserNotificationToggle />
+            <AppVersionBadge />
             <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-5 h-5" />
             </Button>

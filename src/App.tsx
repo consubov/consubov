@@ -39,8 +39,6 @@ import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { AppVersionBadge } from "@/components/AppVersionBadge";
-import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 
 function PushNotificationsBootstrap() {
   usePushNotifications();
@@ -183,8 +181,6 @@ const App = () => (
         <PainelPeriodoProvider>
           <AuthProvider>
             <PushNotificationsBootstrap />
-            <AppVersionBadge />
-            <UserNotificationToggle />
             <Routes>
 
               <Route path="/" element={<LandingPage />} />

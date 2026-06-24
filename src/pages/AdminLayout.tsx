@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import GerenteDashboard from "./GerenteDashboard";
 import CapatazRoute from "./CapatazRoute";
 import EscritorioLayout from "./EscritorioLayout";
@@ -184,6 +186,8 @@ export default function AdminLayout() {
                   </Button>
                 )}
                 <RefreshButton />
+                <UserNotificationToggle />
+                <AppVersionBadge />
                 <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
                   <LogOut className="w-5 h-5" />
                 </Button>

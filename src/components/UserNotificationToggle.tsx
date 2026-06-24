@@ -60,13 +60,17 @@ async function saveSubscriptionForUser(userId: string, subscription: PushSubscri
   return { error };
 }
 
+interface UserNotificationToggleProps {
+  floating?: boolean;
+}
+
 /**
- * Botão flutuante por usuário, sempre visível quando logado:
+ * Botão de notificações por usuário, sempre visível quando logado:
  *  - missing/denied → ativa (pede permissão e inscreve)
  *  - enabled → desativa (mantém inscrição, só marca enabled=false)
  *  - disabled → reativa
  */
-export function UserNotificationToggle() {
+export function UserNotificationToggle({ floating = false }: UserNotificationToggleProps) {
   const { user, session } = useAuth();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
@@ -149,16 +153,25 @@ export function UserNotificationToggle() {
     if (state === "disabled") return void toggleEnabled(true);
   };
 
-  const visual =
-    state === "enabled"
+  const visual = floating
+    ? state === "enabled"
       ? { Icon: Bell, bg: "bg-primary text-primary-foreground", label: "Notificações ativas (toque para desativar)" }
       : state === "disabled"
       ? { Icon: BellOff, bg: "bg-muted text-muted-foreground", label: "Notificações desativadas (toque para ativar)" }
       : state === "denied"
       ? { Icon: BellOff, bg: "bg-destructive text-destructive-foreground", label: "Bloqueadas — libere nas permissões do app" }
+      : { Icon: BellPlus, bg: "bg-secondary text-secondary-foreground", label: "Ativar notificações" }
+    : state === "enabled"
+      ? { Icon: Bell, bg: "bg-primary-foreground text-primary", label: "Notificações ativas (toque para desativar)" }
+      : state === "disabled"
+      ? { Icon: BellOff, bg: "bg-primary-foreground/20 text-primary-foreground", label: "Notificações desativadas (toque para ativar)" }
+      : state === "denied"
+      ? { Icon: BellOff, bg: "bg-destructive text-destructive-foreground", label: "Bloqueadas — libere nas permissões do app" }
       : { Icon: BellPlus, bg: "bg-secondary text-secondary-foreground", label: "Ativar notificações" };
 
   const { Icon } = visual;
+  const base =
+    "h-8 w-8 rounded-full shadow-sm flex items-center justify-center border border-border disabled:opacity-60";
 
   return (
     <button
@@ -166,10 +179,14 @@ export function UserNotificationToggle() {
       disabled={busy || state === "unsupported"}
       aria-label={visual.label}
       title={visual.label}
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
-      className={`fixed right-[4.25rem] z-[100] h-9 w-9 rounded-full shadow-md flex items-center justify-center border border-border ${visual.bg} disabled:opacity-60`}
+      style={
+        floating
+          ? { top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }
+          : undefined
+      }
+      className={`${floating ? "fixed right-[4.25rem] z-[100]" : "relative"} ${base} ${visual.bg}`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-3.5 w-3.5" />
     </button>
   );
 }
