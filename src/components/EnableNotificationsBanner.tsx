@@ -60,6 +60,21 @@ export function EnableNotificationsBanner() {
       setStatus("preview");
       return;
     }
+    // Verifica se admin desativou notificações globalmente
+    (async () => {
+      const { data: cfg } = await supabase
+        .from("configuracoes_gerais")
+        .select("valor")
+        .eq("chave", "notificacoes_globais_ativas")
+        .maybeSingle();
+      if (cfg && Number(cfg.valor) === 0) {
+        setStatus("hidden");
+        return;
+      }
+      continueCheck();
+    })();
+    function continueCheck() {
+
     const perm = Notification.permission;
 
     if (perm === "granted") {
