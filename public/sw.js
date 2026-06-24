@@ -267,26 +267,22 @@ self.addEventListener('push', (event) => {
     data = { title: 'CONSUBOV', body: event.data ? event.data.text() : '' };
   }
   const title = data.title || 'CONSUBOV';
+  // Tag ÚNICO por notificação para evitar deduplicação acidental:
+  // a versão anterior usava sempre o mesmo tag e suprimia notificações
+  // subsequentes — por isso "só caía a primeira".
+  const uniqueTag = data.tag || `consubov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const options = {
     body: data.body || '',
     icon: data.icon || '/icon-192.png',
     badge: data.badge || '/icon-96.png',
     image: data.image,
-    tag: data.tag || 'consubov-notification',
-    renotify: false,
+    tag: uniqueTag,
+    renotify: true,
     requireInteraction: false,
     vibrate: [200, 100, 200],
     data: { url: data.url || '/' },
   };
-  event.waitUntil(
-    self.registration
-      .getNotifications({ tag: options.tag })
-      .then((existing) => {
-        if (existing && existing.length > 0) return undefined;
-        return self.registration.showNotification(title, options);
-      })
-      .catch(() => self.registration.showNotification(title, options)),
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
