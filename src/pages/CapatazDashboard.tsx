@@ -1537,6 +1537,8 @@ export default function CapatazDashboard() {
           </div>
           <div className="flex items-center gap-1">
             <RefreshButton />
+            <UserNotificationToggle />
+            <AppVersionBadge />
             <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-5 h-5" />
             </Button>
