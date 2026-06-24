@@ -20,7 +20,7 @@ import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
 import { toast } from "sonner";
 
-interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
+interface Fazenda { id: string; nome: string; cidade: string; estado: string; intervalo_padrao_dias: number | null; }
 interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: string | null; }
 interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; gmd_kg_dia: number | null; }
 interface Produto {
@@ -93,7 +93,7 @@ export default function PainelInteligenciaPage() {
   useEffect(() => {
     async function load() {
       const [fRes, rRes, pRes, prRes, lRes] = await Promise.all([
-        supabase.from("fazendas").select("id, nome, cidade, estado").eq("ativo", true),
+        supabase.from("fazendas").select("id, nome, cidade, estado, intervalo_padrao_dias").eq("ativo", true),
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
@@ -257,20 +257,68 @@ export default function PainelInteligenciaPage() {
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
   const statusConsumo = getStatusColor(indiceConsumo);
 
-  // 3. Average interval (dias_no_pasto)
+  // Lancamentos matching all filters EXCEPT mes/ano — used to compute real intervals
+  // between consecutive salgas (intervals naturally span across months).
+  const lancamentosParaIntervalo = useMemo(() => {
+    return lancamentos.filter(l => {
+      const fazenda = getFazendaForLancamento(l);
+      if (!fazenda) return false;
+      if (filtroFazenda !== "all" && fazenda.id !== filtroFazenda) return false;
+      if (filtroEstado !== "all" && fazenda.estado !== filtroEstado) return false;
+      if (filtroCidade !== "all" && fazenda.cidade !== filtroCidade) return false;
+      if (filtroProduto !== "all") {
+        const effectiveProduto = getEffectiveProdutoId(l);
+        if (effectiveProduto !== filtroProduto) return false;
+      }
+      if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
+      if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
+      return true;
+    });
+  }, [lancamentos, filtroFazenda, filtroEstado, filtroCidade, filtroProduto, filtroCategoria, filtroSexo, fazendaById, pastoById, retiroById]);
+
+  // Helper: compute diffs (in days) between consecutive salgas per pasto
+  const computeIntervalDiffs = (lancs: Lancamento[]): number[] => {
+    const byPasto: Record<string, number[]> = {};
+    for (const l of lancs) {
+      const t = new Date(l.created_at).getTime();
+      if (!Number.isFinite(t)) continue;
+      (byPasto[l.pasto_id] ||= []).push(t);
+    }
+    const diffs: number[] = [];
+    for (const times of Object.values(byPasto)) {
+      times.sort((a, b) => a - b);
+      for (let i = 1; i < times.length; i++) {
+        const d = (times[i] - times[i - 1]) / 86400000;
+        if (d > 0 && d <= 365) diffs.push(d);
+      }
+    }
+    return diffs;
+  };
+
+  // 3. Average real interval between consecutive salgas (fallback: fazenda's intervalo_padrao_dias)
   const intervaloMedio = useMemo(() => {
-    const vals = filteredLancamentos.filter(l => l.dias_no_pasto > 0).map(l => l.dias_no_pasto);
-    if (!vals.length) return 0;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  }, [filteredLancamentos]);
+    const diffs = computeIntervalDiffs(lancamentosParaIntervalo);
+    if (diffs.length > 0) {
+      return diffs.reduce((a, b) => a + b, 0) / diffs.length;
+    }
+    // Fallback to configured fazenda interval (averaged across fazendas in scope)
+    const scope = filtroFazenda !== "all"
+      ? [fazendaById[filtroFazenda]].filter(Boolean) as Fazenda[]
+      : fazendas.filter(f =>
+          (filtroEstado === "all" || f.estado === filtroEstado) &&
+          (filtroCidade === "all" || f.cidade === filtroCidade)
+        );
+    const vals = scope.map(f => Number(f.intervalo_padrao_dias ?? 0)).filter(v => v > 0);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  }, [lancamentosParaIntervalo, fazendas, fazendaById, filtroFazenda, filtroEstado, filtroCidade]);
 
   // 4. Ranking by fazenda
   const rankingFazendas = useMemo(() => {
-    const fazMap: Record<string, { nome: string; estado: string; weightedSum: number; totalAnimais: number; intervalos: number[]; count: number }> = {};
+    const fazMap: Record<string, { nome: string; estado: string; weightedSum: number; totalAnimais: number; lancsParaIntervalo: Lancamento[]; count: number; intervaloPadrao: number }> = {};
     consumosPorLanc.forEach(({ lancamento: l }) => {
       const faz = getFazendaForLancamento(l);
       if (!faz) return;
-      if (!fazMap[faz.id]) fazMap[faz.id] = { nome: faz.nome, estado: faz.estado, weightedSum: 0, totalAnimais: 0, intervalos: [], count: 0 };
+      if (!fazMap[faz.id]) fazMap[faz.id] = { nome: faz.nome, estado: faz.estado, weightedSum: 0, totalAnimais: 0, lancsParaIntervalo: [], count: 0, intervaloPadrao: Number(faz.intervalo_padrao_dias ?? 0) };
       const consumo = Number(l.consumo_g_cab_dia ?? 0);
       const animais = Number(l.num_animais ?? 0);
       if (consumo > 0 && animais > 0) {
@@ -278,16 +326,24 @@ export default function PainelInteligenciaPage() {
         fazMap[faz.id].totalAnimais += animais;
         fazMap[faz.id].count += 1;
       }
-      if (l.dias_no_pasto > 0) fazMap[faz.id].intervalos.push(l.dias_no_pasto);
+    });
+    // Collect interval lancamentos per fazenda from the broader (no-period) set
+    lancamentosParaIntervalo.forEach(l => {
+      const faz = getFazendaForLancamento(l);
+      if (!faz || !fazMap[faz.id]) return;
+      fazMap[faz.id].lancsParaIntervalo.push(l);
     });
 
     return Object.entries(fazMap).map(([id, data]) => {
       const avg = data.totalAnimais > 0 ? data.weightedSum / data.totalAnimais : 0;
-      const avgIntervalo = data.intervalos.length ? data.intervalos.reduce((a, b) => a + b, 0) / data.intervalos.length : 0;
+      const diffs = computeIntervalDiffs(data.lancsParaIntervalo);
+      const avgIntervalo = diffs.length
+        ? diffs.reduce((a, b) => a + b, 0) / diffs.length
+        : data.intervaloPadrao;
       const desvio = consumoEsperado > 0 ? Math.abs((avg - consumoEsperado) / consumoEsperado * 100) : 0;
       return { id, nome: data.nome, estado: data.estado, consumoMedio: avg, intervaloMedio: avgIntervalo, desvio, lancamentos: data.count };
     }).sort((a, b) => a.desvio - b.desvio);
-  }, [consumosPorLanc, consumoEsperado, fazendaById]);
+  }, [consumosPorLanc, consumoEsperado, fazendaById, lancamentosParaIntervalo]);
 
   // 5. Consumption trend over time (weighted by cab-dias)
   const tendencia = useMemo(() => {
