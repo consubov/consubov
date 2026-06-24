@@ -60,13 +60,17 @@ async function saveSubscriptionForUser(userId: string, subscription: PushSubscri
   return { error };
 }
 
+interface UserNotificationToggleProps {
+  floating?: boolean;
+}
+
 /**
- * Botão flutuante por usuário, sempre visível quando logado:
+ * Botão de notificações por usuário, sempre visível quando logado:
  *  - missing/denied → ativa (pede permissão e inscreve)
  *  - enabled → desativa (mantém inscrição, só marca enabled=false)
  *  - disabled → reativa
  */
-export function UserNotificationToggle() {
+export function UserNotificationToggle({ floating = false }: UserNotificationToggleProps) {
   const { user, session } = useAuth();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
