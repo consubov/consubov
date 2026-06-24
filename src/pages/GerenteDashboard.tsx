@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
