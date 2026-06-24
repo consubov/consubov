@@ -93,7 +93,7 @@ export default function PainelInteligenciaPage() {
   useEffect(() => {
     async function load() {
       const [fRes, rRes, pRes, prRes, lRes] = await Promise.all([
-        supabase.from("fazendas").select("id, nome, cidade, estado").eq("ativo", true),
+        supabase.from("fazendas").select("id, nome, cidade, estado, intervalo_padrao_dias").eq("ativo", true),
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
