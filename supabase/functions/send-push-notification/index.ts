@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const url = payload.url ?? "/";
 
 
-    let query = supabase.from("push_subscriptions").select("*");
+    let query = supabase.from("push_subscriptions").select("*").eq("enabled", true);
     if (payload.user_id) query = query.eq("user_id", payload.user_id);
     else if (payload.user_ids?.length) query = query.in("user_id", payload.user_ids);
     else if (!payload.all) {
