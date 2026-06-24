@@ -222,6 +222,8 @@ export default function GerenteDashboard() {
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
+            <UserNotificationToggle />
+            <AppVersionBadge />
             <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
               <LogOut className="w-5 h-5" />
             </Button>
