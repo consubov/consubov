@@ -128,6 +128,45 @@ export default function ConfiguracoesGeraisPage() {
   const [newFormula, setNewFormula] = useState({ titulo: "", descricao: "", chave: "", formula: "" });
   const [showNewFormula, setShowNewFormula] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { result: number | null; error?: string }>>({});
+  const [notifAtivas, setNotifAtivas] = useState<boolean>(true);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("configuracoes_gerais")
+        .select("valor")
+        .eq("chave", "notificacoes_globais_ativas")
+        .maybeSingle();
+      if (data) setNotifAtivas(Number(data.valor) !== 0);
+    })();
+  }, []);
+
+  const toggleNotificacoes = async (ativar: boolean) => {
+    setNotifLoading(true);
+    const novo = ativar ? 1 : 0;
+    const { error } = await supabase.from("configuracoes_gerais").upsert(
+      {
+        tipo: "parametro",
+        chave: "notificacoes_globais_ativas",
+        titulo: "Notificações Push (Global)",
+        descricao: "Liga/desliga o envio e a solicitação de notificações para todos os usuários.",
+        valor: novo,
+        ativo: true,
+        atualizado_em: new Date().toISOString(),
+      } as any,
+      { onConflict: "chave" },
+    );
+    setNotifLoading(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    setNotifAtivas(ativar);
+    toast.success(ativar ? "Notificações ativadas para todos" : "Notificações desativadas para todos");
+  };
+
+
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
