@@ -20,7 +20,7 @@ import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
 import { toast } from "sonner";
 
-interface Fazenda { id: string; nome: string; cidade: string; estado: string; }
+interface Fazenda { id: string; nome: string; cidade: string; estado: string; intervalo_padrao_dias: number | null; }
 interface Retiro { id: string; nome: string; fazenda_id: string; produto_id: string | null; }
 interface Pasto { id: string; nome: string; retiro_id: string; num_animais: number; peso_medio_kg: number | null; categoria: string | null; sexo: string | null; produto_id: string | null; gmd_kg_dia: number | null; }
 interface Produto {
