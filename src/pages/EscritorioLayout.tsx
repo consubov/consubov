@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -161,6 +162,7 @@ export default function EscritorioLayout() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
+      <EnableNotificationsBanner />
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">

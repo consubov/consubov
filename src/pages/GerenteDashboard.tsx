@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
@@ -195,6 +196,7 @@ export default function GerenteDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
+      <EnableNotificationsBanner />
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">

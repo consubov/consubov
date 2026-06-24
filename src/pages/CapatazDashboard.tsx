@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { sendPushToAll } from "@/lib/pushService";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
@@ -1439,6 +1440,7 @@ export default function CapatazDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-auto">
       <UpdateBanner />
+      <EnableNotificationsBanner />
       <div className="px-4 pt-2">
         <SyncStatusBanner
           status={sync.status}
