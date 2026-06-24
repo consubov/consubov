@@ -24,13 +24,34 @@ const APP_CACHE_PREFIX = "consubov-";
 const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 const VERSION_URL = "/version.json";
 const UPDATE_NOTIFICATION_STORAGE_KEY = "consubov:update-notified-version";
+const FORCE_RELOAD_STORAGE_KEY = "consubov:forced-reload-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 const notifiedUpdateVersions = new Set<string>();
 
 function buildReloadUrl(version = lastKnownRemoteVersion) {
   const url = new URL(window.location.href);
   url.searchParams.set("__app_version", version);
+  url.searchParams.set("__v", Date.now().toString());
   return url.toString();
+}
+
+function getForcedReloadCount(version: string) {
+  try {
+    const raw = window.sessionStorage.getItem(FORCE_RELOAD_STORAGE_KEY);
+    if (!raw) return 0;
+    const data = JSON.parse(raw) as { version?: string; count?: number };
+    return data.version === version ? data.count ?? 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setForcedReloadCount(version: string, count: number) {
+  try {
+    window.sessionStorage.setItem(FORCE_RELOAD_STORAGE_KEY, JSON.stringify({ version, count }));
+  } catch {
+    /* ignore */
+  }
 }
 
 function hardReloadToLatest(version = lastKnownRemoteVersion) {
@@ -39,7 +60,24 @@ function hardReloadToLatest(version = lastKnownRemoteVersion) {
     schedulePostDrainAction(() => hardReloadToLatest(version));
     return;
   }
-  logSw("Reload após update");
+
+  const reloadCount = getForcedReloadCount(version);
+  if (reloadCount >= 3) {
+    logSw("Reload automático interrompido para evitar loop", version);
+    notifyListeners(true);
+    return;
+  }
+
+  setForcedReloadCount(version, reloadCount + 1);
+  logSw("Reload após update", version);
+
+  // Na 2ª tentativa, limpa caches do app antes de navegar. Isso corrige PWAs
+  // instalados no Android/iOS que ficaram presos em um shell antigo.
+  if (reloadCount >= 1) {
+    void clearAppCaches().finally(() => window.location.replace(buildReloadUrl(version)));
+    return;
+  }
+
   window.location.replace(buildReloadUrl(version));
 }
 
@@ -60,6 +98,13 @@ async function clearAppCaches() {
 function bindControllerChangeReload() {
   if (controllerChangeBound) return;
   controllerChangeBound = true;
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    const data = event.data as { type?: string; version?: string } | undefined;
+    if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
+    if (data.version) lastKnownRemoteVersion = data.version;
+    hardReloadToLatest(data.version || lastKnownRemoteVersion);
+  });
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
@@ -224,6 +269,15 @@ async function ensureLatestPublishedVersion() {
 
     if (registration.waiting && navigator.serviceWorker.controller) {
       notifyWaiting(registration);
+      return true;
+    }
+
+    // Mesmo sem um worker em waiting, se o build publicado é diferente do JS
+    // em execução, força a navegação para o HTML mais recente. É o caso comum
+    // de apps instalados no Android/iOS que reabrem uma sessão antiga.
+    if (remoteVersion !== __APP_BUILD_VERSION__) {
+      notifyListeners(true);
+      hardReloadToLatest(remoteVersion);
       return true;
     }
   } catch (error) {
