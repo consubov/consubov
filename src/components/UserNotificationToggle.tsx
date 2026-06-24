@@ -153,11 +153,18 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
     if (state === "disabled") return void toggleEnabled(true);
   };
 
-  const visual =
-    state === "enabled"
+  const visual = floating
+    ? state === "enabled"
       ? { Icon: Bell, bg: "bg-primary text-primary-foreground", label: "Notificações ativas (toque para desativar)" }
       : state === "disabled"
       ? { Icon: BellOff, bg: "bg-muted text-muted-foreground", label: "Notificações desativadas (toque para ativar)" }
+      : state === "denied"
+      ? { Icon: BellOff, bg: "bg-destructive text-destructive-foreground", label: "Bloqueadas — libere nas permissões do app" }
+      : { Icon: BellPlus, bg: "bg-secondary text-secondary-foreground", label: "Ativar notificações" }
+    : state === "enabled"
+      ? { Icon: Bell, bg: "bg-primary-foreground text-primary", label: "Notificações ativas (toque para desativar)" }
+      : state === "disabled"
+      ? { Icon: BellOff, bg: "bg-primary-foreground/20 text-primary-foreground", label: "Notificações desativadas (toque para ativar)" }
       : state === "denied"
       ? { Icon: BellOff, bg: "bg-destructive text-destructive-foreground", label: "Bloqueadas — libere nas permissões do app" }
       : { Icon: BellPlus, bg: "bg-secondary text-secondary-foreground", label: "Ativar notificações" };
