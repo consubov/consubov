@@ -1037,13 +1037,7 @@ export default function CapatazDashboard() {
         });
         if (error) throw error;
         await markObservacaoSincronizada(obs.id);
-        const resumo = (obs.descricao && obs.descricao.trim().length > 0)
-          ? obs.descricao.trim().slice(0, 80)
-          : `${obs.tipo ?? "Observação"} — ${obs.capataz_nome ?? ""}`;
-        const titulo = `📋 ${obs.capataz_nome ?? "Capataz"} — ${obs.pasto_nome || "observação"}`;
-        if (obs.fazenda_id) {
-          void sendPush(titulo, resumo, "/gerente", { fazendaId: obs.fazenda_id });
-        }
+        // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         failedCount++;
