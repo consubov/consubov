@@ -6,6 +6,16 @@ import { componentTagger } from "lovable-tagger";
 
 const buildTimestamp = Date.now().toString();
 
+function readAppVersion(): string {
+  try {
+    const src = fs.readFileSync(path.resolve(__dirname, "src/lib/appVersion.ts"), "utf-8");
+    const m = src.match(/APP_VERSION\s*=\s*"([^"]+)"/);
+    return m?.[1] ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 // Replaces __BUILD_TIMESTAMP__ in public/sw.js so each deploy invalidates caches.
 function injectSwBuildTimestamp(): Plugin {
   return {
@@ -19,7 +29,7 @@ function injectSwBuildTimestamp(): Plugin {
 
       fs.writeFileSync(
         path.resolve(__dirname, "dist/version.json"),
-        JSON.stringify({ version: buildTimestamp }, null, 2),
+        JSON.stringify({ version: buildTimestamp, appVersion: readAppVersion() }, null, 2),
       );
     },
   };
