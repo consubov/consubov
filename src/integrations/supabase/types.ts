@@ -213,6 +213,24 @@ export type Database = {
           },
         ]
       }
+      app_secrets: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       audit_conferencias: {
         Row: {
           created_at: string
@@ -2360,6 +2378,15 @@ export type Database = {
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
+      send_push_async: {
+        Args: {
+          p_body: string
+          p_fazenda_id: string
+          p_title: string
+          p_url: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
