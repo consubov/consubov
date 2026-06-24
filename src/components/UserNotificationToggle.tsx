@@ -41,9 +41,13 @@ async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
 }
 
 async function saveSubscriptionForUser(userId: string, subscription: PushSubscription) {
+  const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
+  const endpoint = subJson.endpoint ?? subscription.endpoint;
+  if (!endpoint) return { error: new Error("subscription sem endpoint") };
   const payload = {
     user_id: userId,
-    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+    endpoint,
+    subscription: subJson,
     enabled: true,
   };
 
@@ -53,8 +57,8 @@ async function saveSubscriptionForUser(userId: string, subscription: PushSubscri
   if (error.code === "23505") {
     return supabase
       .from("push_subscriptions")
-      .update({ enabled: true, subscription: payload.subscription })
-      .eq("user_id", userId);
+      .update({ enabled: true, user_id: userId, subscription: subJson })
+      .eq("endpoint", endpoint);
   }
 
   return { error };
