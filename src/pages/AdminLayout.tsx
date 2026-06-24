@@ -186,6 +186,8 @@ export default function AdminLayout() {
                   </Button>
                 )}
                 <RefreshButton />
+                <UserNotificationToggle />
+                <AppVersionBadge />
                 <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
                   <LogOut className="w-5 h-5" />
                 </Button>
