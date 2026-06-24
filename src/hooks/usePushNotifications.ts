@@ -22,6 +22,17 @@ function isSupported(): boolean {
   );
 }
 
+async function saveSubscription(userId: string, subscription: PushSubscription) {
+  const payload = {
+    user_id: userId,
+    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+  };
+
+  const { error } = await supabase.from("push_subscriptions").insert([payload]);
+  if (!error || error.code === "23505") return null;
+  return error;
+}
+
 /**
  * Registra o usuário para Web Push, sem alterar nada das notificações
  * internas existentes. Faz upsert na tabela push_subscriptions por user_id.
@@ -78,17 +89,7 @@ export function usePushNotifications() {
         console.log("[Push] subscription obtida:", subscription.endpoint);
 
         console.log("[Push] salvando no Supabase...");
-        const { error } = await supabase
-          .from("push_subscriptions")
-          .upsert(
-            [
-              {
-                user_id: user.id,
-                subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
-              },
-            ],
-            { onConflict: "user_id" },
-          );
+        const error = await saveSubscription(user.id, subscription);
 
         if (error) {
           console.error("[Push] erro ao salvar no Supabase:", error.message);

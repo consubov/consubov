@@ -26,6 +26,40 @@ function isSupported() {
 
 type State = "loading" | "missing" | "denied" | "enabled" | "disabled" | "unsupported";
 
+async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
+  const timeout = new Promise<never>((_, reject) => {
+    window.setTimeout(() => reject(new Error("Service worker não ficou pronto")), 5000);
+  });
+
+  try {
+    return await Promise.race([navigator.serviceWorker.ready, timeout]);
+  } catch {
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (existing) return existing;
+    return navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+  }
+}
+
+async function saveSubscriptionForUser(userId: string, subscription: PushSubscription) {
+  const payload = {
+    user_id: userId,
+    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+    enabled: true,
+  };
+
+  const { error } = await supabase.from("push_subscriptions").insert([payload]);
+  if (!error) return { error: null };
+
+  if (error.code === "23505") {
+    return supabase
+      .from("push_subscriptions")
+      .update({ enabled: true, subscription: payload.subscription })
+      .eq("user_id", userId);
+  }
+
+  return { error };
+}
+
 /**
  * Botão flutuante por usuário, sempre visível quando logado:
  *  - missing/denied → ativa (pede permissão e inscreve)
@@ -41,18 +75,19 @@ export function UserNotificationToggle() {
     if (!session || !user?.id) return;
     if (!isSupported()) { setState("unsupported"); return; }
     if (Notification.permission === "denied") { setState("denied"); return; }
+    setState("missing");
 
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyRegistration();
       const sub = await reg.pushManager.getSubscription();
       if (!sub) { setState("missing"); return; }
       const { data } = await supabase
         .from("push_subscriptions")
         .select("enabled")
         .eq("user_id", user.id)
-        .maybeSingle();
-      if (!data) { setState("missing"); return; }
-      setState((data as { enabled?: boolean }).enabled === false ? "disabled" : "enabled");
+        .limit(20);
+      if (!data || data.length === 0) { setState("missing"); return; }
+      setState(data.some((row) => row.enabled !== false) ? "enabled" : "disabled");
     } catch {
       setState("missing");
     }
@@ -76,7 +111,7 @@ export function UserNotificationToggle() {
         await refresh();
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyRegistration();
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         sub = await reg.pushManager.subscribe({
@@ -84,10 +119,7 @@ export function UserNotificationToggle() {
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
         });
       }
-      const { error } = await supabase.from("push_subscriptions").upsert(
-        [{ user_id: user.id, subscription: JSON.parse(JSON.stringify(sub.toJSON())), enabled: true }],
-        { onConflict: "user_id" },
-      );
+      const { error } = await saveSubscriptionForUser(user.id, sub);
       if (error) { toast.error("Falha ao salvar: " + error.message); return; }
       toast.success("Notificações ativadas");
       setState("enabled");
@@ -134,7 +166,8 @@ export function UserNotificationToggle() {
       disabled={busy || state === "unsupported"}
       aria-label={visual.label}
       title={visual.label}
-      className={`fixed bottom-2 right-14 z-[80] h-9 w-9 rounded-full shadow-md flex items-center justify-center border border-border ${visual.bg} disabled:opacity-60`}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+      className={`fixed right-[4.25rem] z-[100] h-9 w-9 rounded-full shadow-md flex items-center justify-center border border-border ${visual.bg} disabled:opacity-60`}
     >
       <Icon className="h-4 w-4" />
     </button>
