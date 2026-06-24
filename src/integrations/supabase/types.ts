@@ -1661,6 +1661,7 @@ export type Database = {
         Row: {
           created_at: string | null
           enabled: boolean
+          endpoint: string
           id: string
           subscription: Json
           updated_at: string | null
@@ -1669,6 +1670,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           enabled?: boolean
+          endpoint: string
           id?: string
           subscription: Json
           updated_at?: string | null
@@ -1677,6 +1679,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           enabled?: boolean
+          endpoint?: string
           id?: string
           subscription?: Json
           updated_at?: string | null
