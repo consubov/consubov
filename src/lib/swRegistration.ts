@@ -23,7 +23,9 @@ const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
 const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 const VERSION_URL = "/version.json";
+const UPDATE_NOTIFICATION_STORAGE_KEY = "consubov:update-notified-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
+const notifiedUpdateVersions = new Set<string>();
 
 function buildReloadUrl(version = lastKnownRemoteVersion) {
   const url = new URL(window.location.href);
@@ -80,25 +82,64 @@ function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
   return true;
 }
 
+function getWaitingServiceWorkerVersion(registration: ServiceWorkerRegistration) {
+  const scriptUrl = registration.waiting?.scriptURL;
+  if (!scriptUrl) return lastKnownRemoteVersion;
+
+  try {
+    const url = new URL(scriptUrl);
+    return url.searchParams.get("v") || scriptUrl;
+  } catch {
+    return scriptUrl;
+  }
+}
+
+async function showUpdateNotificationOnce(registration: ServiceWorkerRegistration) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+
+  const waitingVersion = getWaitingServiceWorkerVersion(registration);
+  if (notifiedUpdateVersions.has(waitingVersion)) return;
+
+  try {
+    if (window.localStorage.getItem(UPDATE_NOTIFICATION_STORAGE_KEY) === waitingVersion) {
+      notifiedUpdateVersions.add(waitingVersion);
+      return;
+    }
+    window.localStorage.setItem(UPDATE_NOTIFICATION_STORAGE_KEY, waitingVersion);
+  } catch {
+    /* localStorage pode falhar em modo privado — usa apenas memória */
+  }
+
+  notifiedUpdateVersions.add(waitingVersion);
+
+  try {
+    const existingNotifications = await registration.getNotifications?.({ tag: "consubov-update" });
+    if (existingNotifications && existingNotifications.length > 0) return;
+  } catch {
+    /* ignore — getNotifications não é obrigatório em todos os browsers */
+  }
+
+  try {
+    await registration.showNotification("CONSUBOV", {
+      body: "Nova versão disponível — toque para atualizar",
+      icon: "/icon-192.png",
+      badge: "/icon-96.png",
+      tag: "consubov-update",
+      renotify: false,
+      data: { url: "/" },
+    } as NotificationOptions);
+  } catch {
+    /* ignore — notificação é best-effort */
+  }
+}
+
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
     logSw("Nova versão em espera — aplicando automaticamente");
     notifyListeners(true);
     // Notifica o usuário no dispositivo (mesmo com o app aberto/minimizado)
     // que existe uma nova versão. Funciona em Android e iOS PWA.
-    try {
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        registration.showNotification("CONSUBOV", {
-          body: "Nova versão disponível — toque para atualizar",
-          icon: "/icon-192.png",
-          badge: "/icon-96.png",
-          tag: "consubov-update",
-          data: { url: "/" },
-        } as NotificationOptions);
-      }
-    } catch {
-      /* ignore — notificação é best-effort */
-    }
+    void showUpdateNotificationOnce(registration);
     tryAutoApply(registration);
     return true;
   }

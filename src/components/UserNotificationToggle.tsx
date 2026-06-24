@@ -166,7 +166,7 @@ export function UserNotificationToggle() {
       disabled={busy || state === "unsupported"}
       aria-label={visual.label}
       title={visual.label}
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       className={`fixed right-[4.25rem] z-[100] h-9 w-9 rounded-full shadow-md flex items-center justify-center border border-border ${visual.bg} disabled:opacity-60`}
     >
       <Icon className="h-4 w-4" />

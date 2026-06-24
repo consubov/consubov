@@ -234,12 +234,20 @@ self.addEventListener('push', (event) => {
     badge: data.badge || '/icon-96.png',
     image: data.image,
     tag: data.tag || 'consubov-notification',
-    renotify: true,
+    renotify: false,
     requireInteraction: false,
     vibrate: [200, 100, 200],
     data: { url: data.url || '/' },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration
+      .getNotifications({ tag: options.tag })
+      .then((existing) => {
+        if (existing && existing.length > 0) return undefined;
+        return self.registration.showNotification(title, options);
+      })
+      .catch(() => self.registration.showNotification(title, options)),
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {
