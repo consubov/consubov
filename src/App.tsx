@@ -39,11 +39,13 @@ import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
 
 function PushNotificationsBootstrap() {
   usePushNotifications();
   return null;
 }
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -180,7 +182,9 @@ const App = () => (
         <PainelPeriodoProvider>
           <AuthProvider>
             <PushNotificationsBootstrap />
+            <AppVersionBadge />
             <Routes>
+
               <Route path="/" element={<LandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
               <Route path="/index" element={<Navigate to="/" replace />} />

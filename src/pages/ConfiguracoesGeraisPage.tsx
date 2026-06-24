@@ -8,8 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Save, Plus, RotateCcw, History, FlaskConical, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, Plus, RotateCcw, History, FlaskConical, AlertTriangle, CheckCircle2, Bell, BellOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
+
 
 interface Configuracao {
   id: string;
@@ -125,6 +128,45 @@ export default function ConfiguracoesGeraisPage() {
   const [newFormula, setNewFormula] = useState({ titulo: "", descricao: "", chave: "", formula: "" });
   const [showNewFormula, setShowNewFormula] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { result: number | null; error?: string }>>({});
+  const [notifAtivas, setNotifAtivas] = useState<boolean>(true);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("configuracoes_gerais")
+        .select("valor")
+        .eq("chave", "notificacoes_globais_ativas")
+        .maybeSingle();
+      if (data) setNotifAtivas(Number(data.valor) !== 0);
+    })();
+  }, []);
+
+  const toggleNotificacoes = async (ativar: boolean) => {
+    setNotifLoading(true);
+    const novo = ativar ? 1 : 0;
+    const { error } = await supabase.from("configuracoes_gerais").upsert(
+      {
+        tipo: "parametro",
+        chave: "notificacoes_globais_ativas",
+        titulo: "Notificações Push (Global)",
+        descricao: "Liga/desliga o envio e a solicitação de notificações para todos os usuários.",
+        valor: novo,
+        ativo: true,
+        atualizado_em: new Date().toISOString(),
+      } as any,
+      { onConflict: "chave" },
+    );
+    setNotifLoading(false);
+    if (error) {
+      toast.error("Erro ao salvar: " + error.message);
+      return;
+    }
+    setNotifAtivas(ativar);
+    toast.success(ativar ? "Notificações ativadas para todos" : "Notificações desativadas para todos");
+  };
+
+
 
   const seedDefaults = useCallback(async () => {
     const seedData = [
@@ -299,7 +341,10 @@ export default function ConfiguracoesGeraisPage() {
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Configurações Gerais</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Configurações Gerais</h1>
+          <p className="text-xs text-muted-foreground mt-1">Versão do app: <span className="font-mono">v{APP_VERSION}</span></p>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchHistorico}>
             <History className="w-4 h-4 mr-1" /> Histórico
@@ -310,6 +355,32 @@ export default function ConfiguracoesGeraisPage() {
           </Button>
         </div>
       </div>
+
+      {/* Toggle global de notificações */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {notifAtivas ? <Bell className="w-5 h-5 text-primary" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+            Notificações Push (Global)
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Quando desativado, nenhum usuário receberá notificações e o pedido de permissão não será exibido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium">
+            {notifAtivas ? "Ativadas para todos os usuários" : "Desativadas para todos os usuários"}
+          </span>
+          <Switch
+            checked={notifAtivas}
+            disabled={notifLoading}
+            onCheckedChange={toggleNotificacoes}
+            aria-label="Ativar ou desativar notificações para todos os usuários"
+          />
+        </CardContent>
+      </Card>
+
+
 
       {/* Alertas (parameters section) */}
       <Card>
