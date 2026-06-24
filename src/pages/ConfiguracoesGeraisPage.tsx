@@ -8,8 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Save, Plus, RotateCcw, History, FlaskConical, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, Plus, RotateCcw, History, FlaskConical, AlertTriangle, CheckCircle2, Bell, BellOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
+
 
 interface Configuracao {
   id: string;
