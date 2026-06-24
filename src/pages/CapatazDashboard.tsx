@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { sendPushToAll } from "@/lib/pushService";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
