@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, X } from "lucide-react";
+import { Bell, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,8 +25,13 @@ function isSupported() {
   );
 }
 
+function isLovablePreview() {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h.includes("id-preview--") || h.includes("lovableproject.com") || h.includes("lovable.app");
+}
+
 function isIosStandaloneRequired() {
-  // iOS Safari only supports Web Push when installed to Home Screen
   const ua = navigator.userAgent;
   const isIos = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
   const isStandalone =
@@ -35,49 +40,95 @@ function isIosStandaloneRequired() {
   return { isIos, isStandalone };
 }
 
-/**
- * Banner amigável que pede ao usuário para ativar as notificações.
- * Em iOS exige PWA instalado — mostramos instruções se ainda não estiver.
- */
+type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
+
 export function EnableNotificationsBanner() {
   const { user, session } = useAuth();
-  const [show, setShow] = useState(false);
+  const [status, setStatus] = useState<Status>("hidden");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session || !user?.id) return;
-    if (!isSupported()) return;
+    if (!isSupported()) {
+      setStatus("unsupported");
+      return;
+    }
+    if (isLovablePreview()) {
+      setStatus("preview");
+      return;
+    }
     const dismissedUntil = Number(localStorage.getItem(DISMISS_KEY) || 0);
+    const perm = Notification.permission;
+
+    if (perm === "granted") {
+      // already granted — verify subscription exists in DB
+      (async () => {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            setStatus("needs-enable");
+            return;
+          }
+          const { data } = await supabase
+            .from("push_subscriptions")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (!data) {
+            // re-save
+            await supabase.from("push_subscriptions").upsert(
+              [{ user_id: user.id, subscription: JSON.parse(JSON.stringify(sub.toJSON())) }],
+              { onConflict: "user_id" },
+            );
+          }
+          setStatus("hidden");
+        } catch {
+          setStatus("needs-enable");
+        }
+      })();
+      return;
+    }
+    if (perm === "denied") {
+      // Always show denied banner, ignore dismiss
+      setStatus("denied");
+      return;
+    }
     if (Date.now() < dismissedUntil) return;
-    if (Notification.permission === "granted") return;
-    if (Notification.permission === "denied") return;
-    setShow(true);
+    setStatus("needs-enable");
   }, [session, user?.id]);
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, String(Date.now() + 1000 * 60 * 60 * 24 * 3));
-    setShow(false);
+    setStatus("hidden");
   };
 
   const enable = async () => {
     setError(null);
+    setOkMsg(null);
     setBusy(true);
     try {
       const { isIos, isStandalone } = isIosStandaloneRequired();
       if (isIos && !isStandalone) {
-        setError("Para receber notificações no iPhone, adicione o app à Tela de Início (Compartilhar → Adicionar à Tela Inicial) e abra-o pelo ícone.");
+        setError("No iPhone: toque em Compartilhar → Adicionar à Tela de Início e abra pelo ícone.");
         setBusy(false);
         return;
       }
       if (!VAPID_PUBLIC_KEY) {
-        setError("Notificações não configuradas no servidor.");
+        setError("Chave VAPID ausente no servidor.");
         setBusy(false);
         return;
       }
       const permission = await Notification.requestPermission();
+      if (permission === "denied") {
+        setStatus("denied");
+        setBusy(false);
+        return;
+      }
       if (permission !== "granted") {
-        setError("Permissão negada. Ative em Ajustes do navegador.");
+        setError("Permissão não concedida.");
         setBusy(false);
         return;
       }
@@ -89,29 +140,121 @@ export function EnableNotificationsBanner() {
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
         });
       }
-      await supabase
+      const { error: upErr } = await supabase
         .from("push_subscriptions")
         .upsert(
           [{ user_id: user!.id, subscription: JSON.parse(JSON.stringify(subscription.toJSON())) }],
           { onConflict: "user_id" },
         );
-      setShow(false);
+      if (upErr) {
+        console.error("[Push] upsert error", upErr);
+        setError("Falha ao salvar inscrição: " + upErr.message);
+        setBusy(false);
+        return;
+      }
+      // Show local test notification to confirm it works
+      try {
+        await registration.showNotification("CONSUBOV", {
+          body: "Notificações ativadas com sucesso ✓",
+          icon: "/icon-192.png",
+          badge: "/icon-96.png",
+          tag: "consubov-welcome",
+        });
+      } catch {
+        /* ignore */
+      }
+      setOkMsg("Notificações ativadas!");
+      setTimeout(() => setStatus("hidden"), 1500);
     } catch (err) {
       console.error("[Push] enable failed", err);
-      setError("Falha ao ativar notificações. Tente novamente.");
+      setError("Falha: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setBusy(false);
     }
   };
 
-  if (!show) return null;
+  if (status === "hidden") return null;
 
+  const wrapper =
+    "fixed bottom-4 inset-x-3 z-[55] mx-auto max-w-md rounded-2xl bg-card border border-border shadow-xl";
+
+  if (status === "preview") {
+    return (
+      <div className={wrapper}>
+        <div className="flex items-start gap-3 p-3">
+          <div className="shrink-0 h-11 w-11 rounded-xl bg-amber-100 flex items-center justify-center">
+            <AlertCircle className="h-5 w-5 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">Notificações só funcionam no app publicado</p>
+              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Abra <strong>consubov.com.br</strong> no celular para ativar as notificações push do sistema.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "unsupported") {
+    return (
+      <div className={wrapper}>
+        <div className="flex items-start gap-3 p-3">
+          <div className="shrink-0 h-11 w-11 rounded-xl bg-muted flex items-center justify-center">
+            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">Navegador sem suporte a push</p>
+              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Use Chrome, Edge ou Samsung Internet em Android para receber notificações.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "denied") {
+    return (
+      <div className={wrapper}>
+        <div className="flex items-start gap-3 p-3">
+          <div className="shrink-0 h-11 w-11 rounded-xl bg-destructive/10 flex items-center justify-center">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">Notificações bloqueadas</p>
+              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Você bloqueou as notificações. Para reativar no <strong>Android Chrome</strong>:
+            </p>
+            <ol className="text-xs text-muted-foreground mt-1 list-decimal pl-4 space-y-0.5">
+              <li>Toque no <strong>cadeado</strong> ao lado da URL</li>
+              <li>Toque em <strong>Permissões</strong> → <strong>Notificações</strong></li>
+              <li>Selecione <strong>Permitir</strong> e recarregue a página</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // needs-enable
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-4 inset-x-3 z-[55] mx-auto max-w-md rounded-2xl bg-card border border-border shadow-xl"
-    >
+    <div role="status" aria-live="polite" className={wrapper}>
       <div className="flex items-start gap-3 p-3">
         <div className="shrink-0 h-11 w-11 rounded-xl overflow-hidden bg-primary flex items-center justify-center">
           <img src="/icon-192.png" alt="Consubov" className="h-full w-full object-cover" />
@@ -119,24 +262,28 @@ export function EnableNotificationsBanner() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-foreground">Ative as notificações</p>
-            <button
-              onClick={dismiss}
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="Fechar"
-            >
+            <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Receba alertas em tempo real sobre salgas, pesagens e atividades do rebanho — como no WhatsApp.
+            Receba alertas em tempo real, mesmo com o app fechado ou celular bloqueado.
           </p>
           {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
+          {okMsg && <p className="text-xs text-emerald-600 mt-1.5">{okMsg}</p>}
           <div className="mt-2 flex gap-2">
-            <Button size="sm" onClick={enable} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button
+              size="sm"
+              onClick={enable}
+              disabled={busy}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
               <Bell className="h-4 w-4 mr-1.5" />
               {busy ? "Ativando..." : "Ativar notificações"}
             </Button>
-            <Button size="sm" variant="ghost" onClick={dismiss}>Agora não</Button>
+            <Button size="sm" variant="ghost" onClick={dismiss}>
+              Agora não
+            </Button>
           </div>
         </div>
       </div>
