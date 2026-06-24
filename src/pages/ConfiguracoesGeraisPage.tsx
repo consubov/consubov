@@ -341,7 +341,10 @@ export default function ConfiguracoesGeraisPage() {
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Configurações Gerais</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Configurações Gerais</h1>
+          <p className="text-xs text-muted-foreground mt-1">Versão do app: <span className="font-mono">v{APP_VERSION}</span></p>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchHistorico}>
             <History className="w-4 h-4 mr-1" /> Histórico
@@ -352,6 +355,32 @@ export default function ConfiguracoesGeraisPage() {
           </Button>
         </div>
       </div>
+
+      {/* Toggle global de notificações */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {notifAtivas ? <Bell className="w-5 h-5 text-primary" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
+            Notificações Push (Global)
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Quando desativado, nenhum usuário receberá notificações e o pedido de permissão não será exibido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium">
+            {notifAtivas ? "Ativadas para todos os usuários" : "Desativadas para todos os usuários"}
+          </span>
+          <Switch
+            checked={notifAtivas}
+            disabled={notifLoading}
+            onCheckedChange={toggleNotificacoes}
+            aria-label="Ativar ou desativar notificações para todos os usuários"
+          />
+        </CardContent>
+      </Card>
+
+
 
       {/* Alertas (parameters section) */}
       <Card>
