@@ -200,16 +200,17 @@ export default function GerenteDashboard() {
       <UpdateBanner />
       <EnableNotificationsBanner />
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0 space-y-2">
+        {/* Linha 1: identidade + ações principais */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
             <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
             <div className="min-w-0">
               <h1 className="text-base font-bold leading-tight">Gerente</h1>
-              <p className="max-w-full truncate text-xs opacity-80 sm:max-w-[180px]">{gerenteNome}</p>
+              <p className="max-w-[160px] truncate text-xs opacity-80 sm:max-w-[220px]">{gerenteNome}</p>
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
+          <div className="flex items-center gap-1 shrink-0">
             <Button variant="ghost" size="icon" onClick={() => navigate("/conferencia")} className="text-primary-foreground hover:bg-primary/80" title="Conferência">
               <ScanLine className="w-4 h-4" />
             </Button>
@@ -219,19 +220,25 @@ export default function GerenteDashboard() {
             <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80" title="Relatório de Consumo">
               <FileDown className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing}>
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title="Atualizar">
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <UserNotificationToggle />
-            <AppVersionBadge />
-            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80" title="Sair">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1.5 text-xs opacity-90">
-          <MapPin className="w-3 h-3" />
-          <span className="truncate">{fazendaNome}</span>
+
+        {/* Linha 2: fazenda + sino e versão (sem sobrepor) */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs opacity-90 min-w-0">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{fazendaNome}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <UserNotificationToggle />
+            <AppVersionBadge />
+          </div>
         </div>
       </header>
 
