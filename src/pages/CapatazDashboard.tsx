@@ -1040,7 +1040,10 @@ export default function CapatazDashboard() {
         const resumo = (obs.descricao && obs.descricao.trim().length > 0)
           ? obs.descricao.trim().slice(0, 80)
           : `${obs.tipo ?? "Observação"} — ${obs.capataz_nome ?? ""}`;
-        void sendPushToAll("📋 Nova observação", resumo, "/gerente");
+        const titulo = `📋 ${obs.capataz_nome ?? "Capataz"} — ${obs.pasto_nome || "observação"}`;
+        if (obs.fazenda_id) {
+          void sendPush(titulo, resumo, "/gerente", { fazendaId: obs.fazenda_id });
+        }
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         failedCount++;
