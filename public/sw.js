@@ -11,6 +11,44 @@ const SW_VERSION_RESPONSE = new Response(CACHE_VERSION, {
   },
 });
 
+function buildClientReloadUrl(clientUrl) {
+  try {
+    const url = new URL(clientUrl);
+    if (url.origin !== self.location.origin) return null;
+    if (url.searchParams.get('__app_version') === BUILD_VERSION) return null;
+    url.searchParams.set('__app_version', BUILD_VERSION);
+    url.searchParams.set('__v', Date.now().toString());
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function notifyClientsAboutActivatedVersion() {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(
+      clientList.map(async (client) => {
+        try {
+          client.postMessage({ type: 'CONSUBOV_SW_ACTIVATED', version: BUILD_VERSION, cacheVersion: CACHE_VERSION });
+        } catch {
+          /* ignore */
+        }
+
+        // Apps instalados no Android/iOS podem manter o JS antigo em memória.
+        // Ao ativar um SW novo, força uma única navegação com a versão atual
+        // para que todos os dispositivos carreguem o mesmo build publicado.
+        const reloadUrl = buildClientReloadUrl(client.url);
+        if (reloadUrl && 'navigate' in client) {
+          await client.navigate(reloadUrl).catch(() => undefined);
+        }
+      }),
+    );
+  } catch {
+    /* ignore — best-effort */
+  }
+}
+
 const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
 
 self.addEventListener('message', (event) => {
@@ -56,7 +94,8 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => !validCaches.has(key)).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(() => notifyClientsAboutActivatedVersion()),
   );
 });
 
@@ -192,7 +231,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
-    event.respondWith(networkOnlyNoStore(request));
+    event.respondWith(networkFirstWithFallback(request, '/index.html'));
     return;
   }
 
