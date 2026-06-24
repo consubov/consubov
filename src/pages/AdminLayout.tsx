@@ -9,6 +9,7 @@ import { LogOut, ArrowLeft, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
+import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
 import GerenteDashboard from "./GerenteDashboard";
 import CapatazRoute from "./CapatazRoute";
 import EscritorioLayout from "./EscritorioLayout";
