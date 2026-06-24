@@ -177,7 +177,8 @@ async function syncOnePesagem(p: PesagemPendente) {
     if (p.total_pesado >= totalAnimais || !pesoAtual || pesoAtual <= 0) {
       pesoAplicado = Math.round(mp * 10) / 10;
     } else {
-      pesoAplicado = Math.round(((pesoAtual * totalAnimais + mp * p.total_pesado) / totalAnimais) * 10) / 10;
+      const naoPesados = Math.max(0, totalAnimais - p.total_pesado);
+      pesoAplicado = Math.round(((pesoAtual * naoPesados + mp * p.total_pesado) / totalAnimais) * 10) / 10;
     }
   }
 

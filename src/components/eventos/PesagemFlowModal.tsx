@@ -71,7 +71,8 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
     if (pesos.length >= numAnimais || pesoMedioAtual == null || pesoMedioAtual <= 0) {
       return Math.round(mp * 10) / 10;
     }
-    const novo = (pesoMedioAtual * numAnimais + mp * pesos.length) / numAnimais;
+    const naoPesados = Math.max(0, numAnimais - pesos.length);
+    const novo = (pesoMedioAtual * naoPesados + mp * pesos.length) / numAnimais;
     return Math.round(novo * 10) / 10;
   }, [pesos, numAnimais, pesoMedioAtual]);
 
