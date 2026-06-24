@@ -225,16 +225,21 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: 'Consubov', body: event.data ? event.data.text() : '' };
+    data = { title: 'CONSUBOV', body: event.data ? event.data.text() : '' };
   }
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Consubov', {
-      body: data.body || '',
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: data.badge || '/icons/icon-72x72.png',
-      data: { url: data.url || '/' },
-    }),
-  );
+  const title = data.title || 'CONSUBOV';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-96.png',
+    image: data.image,
+    tag: data.tag || 'consubov-notification',
+    renotify: true,
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
