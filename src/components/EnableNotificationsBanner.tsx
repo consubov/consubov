@@ -39,6 +39,28 @@ function isIosStandaloneRequired() {
   return { isIos, isStandalone };
 }
 
+async function saveSubscription(userId: string, subscription: PushSubscription, enabled = false) {
+  const payload = {
+    user_id: userId,
+    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+    enabled,
+  };
+
+  const { error } = await supabase.from("push_subscriptions").insert([payload]);
+  if (!error) return null;
+
+  if (error.code === "23505") {
+    const updatePayload = enabled ? { enabled: true, subscription: payload.subscription } : { subscription: payload.subscription };
+    const { error: updateError } = await supabase
+      .from("push_subscriptions")
+      .update(updatePayload)
+      .eq("user_id", userId);
+    return updateError;
+  }
+
+  return error;
+}
+
 type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
 
 export function EnableNotificationsBanner() {
@@ -89,12 +111,9 @@ export function EnableNotificationsBanner() {
               .from("push_subscriptions")
               .select("id")
               .eq("user_id", user!.id)
-              .maybeSingle();
-            if (!data) {
-              await supabase.from("push_subscriptions").upsert(
-                [{ user_id: user!.id, subscription: JSON.parse(JSON.stringify(sub.toJSON())) }],
-                { onConflict: "user_id" },
-              );
+              .limit(1);
+            if (!data || data.length === 0) {
+              await saveSubscription(user!.id, sub, false);
             }
             setStatus("hidden");
           } catch {
@@ -152,12 +171,7 @@ export function EnableNotificationsBanner() {
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
         });
       }
-      const { error: upErr } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          [{ user_id: user!.id, subscription: JSON.parse(JSON.stringify(subscription.toJSON())) }],
-          { onConflict: "user_id" },
-        );
+      const upErr = await saveSubscription(user!.id, subscription, true);
       if (upErr) {
         console.error("[Push] upsert error", upErr);
         setError("Falha ao salvar inscrição: " + upErr.message);

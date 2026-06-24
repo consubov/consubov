@@ -9,7 +9,8 @@ export function AppVersionBadge() {
   return (
     <div
       aria-label={`Versão do app ${APP_VERSION}`}
-      className="fixed bottom-2 right-2 z-[80] pointer-events-none select-none rounded-full bg-foreground/85 text-background px-2 py-0.5 text-[11px] font-mono font-semibold shadow-md"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+      className="fixed right-3 z-[100] pointer-events-none select-none rounded-full bg-foreground/90 text-background px-2 py-0.5 text-[11px] font-mono font-semibold shadow-md"
     >
       v{APP_VERSION}
     </div>
