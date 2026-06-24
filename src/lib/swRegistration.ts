@@ -84,6 +84,21 @@ function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
     logSw("Nova versão em espera — aplicando automaticamente");
     notifyListeners(true);
+    // Notifica o usuário no dispositivo (mesmo com o app aberto/minimizado)
+    // que existe uma nova versão. Funciona em Android e iOS PWA.
+    try {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        registration.showNotification("CONSUBOV", {
+          body: "Nova versão disponível — toque para atualizar",
+          icon: "/icon-192.png",
+          badge: "/icon-96.png",
+          tag: "consubov-update",
+          data: { url: "/" },
+        } as NotificationOptions);
+      }
+    } catch {
+      /* ignore — notificação é best-effort */
+    }
     tryAutoApply(registration);
     return true;
   }
