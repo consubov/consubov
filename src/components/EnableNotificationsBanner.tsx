@@ -40,9 +40,13 @@ function isIosStandaloneRequired() {
 }
 
 async function saveSubscription(userId: string, subscription: PushSubscription, enabled = false) {
+  const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
+  const endpoint = subJson.endpoint ?? subscription.endpoint;
+  if (!endpoint) return new Error("subscription sem endpoint");
   const payload = {
     user_id: userId,
-    subscription: JSON.parse(JSON.stringify(subscription.toJSON())),
+    endpoint,
+    subscription: subJson,
     enabled,
   };
 
@@ -50,11 +54,13 @@ async function saveSubscription(userId: string, subscription: PushSubscription, 
   if (!error) return null;
 
   if (error.code === "23505") {
-    const updatePayload = enabled ? { enabled: true, subscription: payload.subscription } : { subscription: payload.subscription };
+    const updatePayload = enabled
+      ? { enabled: true, user_id: userId, subscription: subJson }
+      : { user_id: userId, subscription: subJson };
     const { error: updateError } = await supabase
       .from("push_subscriptions")
       .update(updatePayload)
-      .eq("user_id", userId);
+      .eq("endpoint", endpoint);
     return updateError;
   }
 
