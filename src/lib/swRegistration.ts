@@ -93,9 +93,8 @@ function notifyWaiting(registration: ServiceWorkerRegistration) {
           icon: "/icon-192.png",
           badge: "/icon-96.png",
           tag: "consubov-update",
-          renotify: true,
           data: { url: "/" },
-        });
+        } as NotificationOptions);
       }
     } catch {
       /* ignore — notificação é best-effort */
