@@ -114,7 +114,11 @@ Deno.serve(async (req) => {
         const tag = `consubov-${s.id}-${Date.now()}`;
         const notification = JSON.stringify({ title, body, url, tag });
         try {
-          await webpush.sendNotification(subscription, notification);
+          await webpush.sendNotification(subscription, notification, {
+            TTL: 60 * 60 * 24, // 24h — FCM/Android exige TTL para entrega confiável
+            urgency: "high",   // acorda dispositivos Android em Doze mode
+            headers: { Urgency: "high" },
+          });
           return { id: s.id, ok: true };
         } catch (err: any) {
           if (err?.statusCode === 403 || err?.statusCode === 404 || err?.statusCode === 410) {
