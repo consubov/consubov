@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { sendPushToAll } from "@/lib/pushService";
+import { sendPush } from "@/lib/pushService";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
