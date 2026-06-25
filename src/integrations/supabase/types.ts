@@ -2378,6 +2378,24 @@ export type Database = {
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
+      register_push_subscription: {
+        Args: { p_enabled?: boolean; p_endpoint: string; p_subscription: Json }
+        Returns: {
+          created_at: string | null
+          enabled: boolean
+          endpoint: string
+          id: string
+          subscription: Json
+          updated_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "push_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       send_push_async: {
         Args: {
           p_body: string
