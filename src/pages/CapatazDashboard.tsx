@@ -964,14 +964,6 @@ export default function CapatazDashboard() {
           }
         }
 
-        // Update ultima_salga_em on the retiro after sync
-        if (roleData.retiroId) {
-          await supabase.from("retiros").update({
-            ultima_salga_em: l.data,
-            alerta_atraso_enviado: false,
-          } as any).eq("id", roleData.retiroId);
-        }
-
         // mes/ano de referência = mês/ano CALENDÁRIO da data da salga.
         // O painel filtra por mês calendário; usar o mês do ciclo desalinha os dados
         // do painel quando o ciclo está em outro mês.
