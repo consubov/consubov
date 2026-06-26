@@ -856,7 +856,7 @@ export default function CapatazDashboard() {
   const handleSync = async () => {
     setSyncError(null);
     await maybeUpdateActiveServiceWorker();
-    const pendentes = await getLancamentosPendentes();
+    const pendentes = (await getLancamentosPendentes()).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
     const obsPend = await getObservacoesPendentes();
     const fecharPend = await getFecharMesPendente();
     const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
