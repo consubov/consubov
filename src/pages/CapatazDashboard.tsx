@@ -878,6 +878,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
+        await withSyncRetry(async () => {
         // --- Consumption calculation (skip for cocho cheio) ---
         let consumo_esperado_kg: number | null = null;
         let consumo_real_kg: number | null = null;
@@ -1040,6 +1041,7 @@ export default function CapatazDashboard() {
             }
           }
         }
+        }, `registro ${idx}`);
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         failedCount++;
