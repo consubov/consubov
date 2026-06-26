@@ -979,6 +979,10 @@ export default function CapatazDashboard() {
         const mesRef = dataSalgaLanc.getMonth() + 1;
         const anoRef = dataSalgaLanc.getFullYear();
 
+        const fotoCochoSincronizacao = l.foto_cocho_url
+          ? await compressImageDataUrl(l.foto_cocho_url)
+          : null;
+
         const insertData: Record<string, any> = {
           id: l.id,
           fazenda_id: fazendaId,
@@ -995,52 +999,18 @@ export default function CapatazDashboard() {
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
           cocho_cheio: l.cocho_cheio ?? false,
-          foto_cocho_url: l.foto_cocho_url ?? null,
+          foto_cocho_url: fotoCochoSincronizacao ?? null,
+          data_salga: l.data,
         };
-        const { error } = await supabase.from("lancamentos").upsert(insertData as any);
+        const { error } = await supabase.rpc("sync_capataz_lancamento" as any, {
+          p_lancamento: insertData,
+        });
         if (error) throw error;
-        await markSincronizado(l.id);
-
-        // Subtrair estoque automaticamente após salga sincronizada.
-        // Usa o mês/ano CALENDÁRIO da data da salga (não o ciclo), pois o estoque
-        // físico é o que o capataz tem hoje, independente de qual ciclo está aberto.
-        if (roleData.retiroId && l.sacos > 0) {
-          const dataSalga = new Date(l.data);
-          const mesEstoque = dataSalga.getMonth() + 1;
-          const anoEstoque = dataSalga.getFullYear();
-
-          // Evita dupla baixa: se já existe movimentação para este lançamento, pula.
-          const { data: jaBaixado } = await supabase
-            .from("movimentacoes_estoque")
-            .select("id")
-            .eq("referencia_id", l.id)
-            .eq("origem", "salga")
-            .limit(1)
-            .maybeSingle();
-
-          if (!jaBaixado) {
-            const { data: estoque } = await supabase
-              .from("estoque_retiro")
-              .select("id, quantidade_atual")
-              .eq("retiro_id", roleData.retiroId)
-              .eq("mes", mesEstoque)
-              .eq("ano", anoEstoque)
-              .maybeSingle();
-            if (estoque) {
-              const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
-              await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
-              await supabase.from("movimentacoes_estoque").insert({
-                retiro_id: roleData.retiroId,
-                mes: mesEstoque,
-                ano: anoEstoque,
-                tipo: 'saida',
-                quantidade: l.sacos,
-                origem: 'salga',
-                referencia_id: l.id,
-              });
-            }
-          }
+        if (fotoCochoSincronizacao !== l.foto_cocho_url) {
+          await saveLancamento({ ...l, foto_cocho_url: fotoCochoSincronizacao, status: 'pendente' });
         }
+        await markSincronizado(l.id);
+        await clearSyncError(l.id);
         }, `registro ${idx}`);
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
