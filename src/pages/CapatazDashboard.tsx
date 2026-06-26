@@ -1013,9 +1013,10 @@ export default function CapatazDashboard() {
         await clearSyncError(l.id);
         }, `registro ${idx}`);
       } catch (err: any) {
-        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        const errorMsg = getSyncErrorMessage(err);
         failedCount++;
         failedMessages.push(`Registro ${idx}: ${errorMsg}`);
+        await logSyncError({ id: l.id, recordType: 'lancamento', errorMessage: errorMsg });
         console.warn(`[sync] Falha registro ${idx}, continuando:`, errorMsg);
         // Não usamos break: outros registros (e outros capatazes) seguem.
       }
