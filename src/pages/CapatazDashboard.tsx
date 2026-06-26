@@ -44,11 +44,13 @@ import {
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
   cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
+  logSyncError, clearSyncError,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
+import { compressImageDataUrl } from "@/lib/imageCompression";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -87,6 +89,35 @@ const LancamentoManualModal = lazy(() => import("@/components/capataz/Lancamento
 
 function DeferredFallback({ label = "Carregando..." }: { label?: string }) {
   return <p className="text-sm text-muted-foreground text-center py-4">{label}</p>;
+}
+
+const SYNC_RETRY_DELAYS_MS = [1200, 3000, 6000];
+
+const waitForSyncRetry = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function getSyncErrorMessage(err: any): string {
+  if (!err) return "Erro desconhecido";
+  return err?.message || err?.details || err?.hint || String(err);
+}
+
+function isTransientSyncError(err: any): boolean {
+  const msg = getSyncErrorMessage(err);
+  return /load failed|failed to fetch|networkerror|network request failed|timeout|temporarily|connection|offline|abort/i.test(msg);
+}
+
+async function withSyncRetry<T>(operation: () => Promise<T>, label: string, maxAttempts = 4): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientSyncError(err) || attempt >= maxAttempts) break;
+      console.warn(`[sync] ${label}: falha de rede, tentativa ${attempt + 1}/${maxAttempts}`);
+      await waitForSyncRetry(SYNC_RETRY_DELAYS_MS[Math.min(attempt - 1, SYNC_RETRY_DELAYS_MS.length - 1)]);
+    }
+  }
+  throw lastErr;
 }
 
 function isSameLocalDay(dateIso: string, reference = new Date()) {
@@ -825,7 +856,7 @@ export default function CapatazDashboard() {
   const handleSync = async () => {
     setSyncError(null);
     await maybeUpdateActiveServiceWorker();
-    const pendentes = await getLancamentosPendentes();
+    const pendentes = (await getLancamentosPendentes()).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
     const obsPend = await getObservacoesPendentes();
     const fecharPend = await getFecharMesPendente();
     const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
@@ -847,6 +878,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
+        await withSyncRetry(async () => {
         // --- Consumption calculation (skip for cocho cheio) ---
         let consumo_esperado_kg: number | null = null;
         let consumo_real_kg: number | null = null;
@@ -947,6 +979,10 @@ export default function CapatazDashboard() {
         const mesRef = dataSalgaLanc.getMonth() + 1;
         const anoRef = dataSalgaLanc.getFullYear();
 
+        const fotoCochoSincronizacao = l.foto_cocho_url
+          ? await compressImageDataUrl(l.foto_cocho_url)
+          : null;
+
         const insertData: Record<string, any> = {
           id: l.id,
           fazenda_id: fazendaId,
@@ -963,56 +999,24 @@ export default function CapatazDashboard() {
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
           cocho_cheio: l.cocho_cheio ?? false,
-          foto_cocho_url: l.foto_cocho_url ?? null,
+          foto_cocho_url: fotoCochoSincronizacao ?? null,
+          data_salga: l.data,
         };
-        const { error } = await supabase.from("lancamentos").upsert(insertData as any);
+        const { error } = await supabase.rpc("sync_capataz_lancamento" as any, {
+          p_lancamento: insertData,
+        });
         if (error) throw error;
-        await markSincronizado(l.id);
-
-        // Subtrair estoque automaticamente após salga sincronizada.
-        // Usa o mês/ano CALENDÁRIO da data da salga (não o ciclo), pois o estoque
-        // físico é o que o capataz tem hoje, independente de qual ciclo está aberto.
-        if (roleData.retiroId && l.sacos > 0) {
-          const dataSalga = new Date(l.data);
-          const mesEstoque = dataSalga.getMonth() + 1;
-          const anoEstoque = dataSalga.getFullYear();
-
-          // Evita dupla baixa: se já existe movimentação para este lançamento, pula.
-          const { data: jaBaixado } = await supabase
-            .from("movimentacoes_estoque")
-            .select("id")
-            .eq("referencia_id", l.id)
-            .eq("origem", "salga")
-            .limit(1)
-            .maybeSingle();
-
-          if (!jaBaixado) {
-            const { data: estoque } = await supabase
-              .from("estoque_retiro")
-              .select("id, quantidade_atual")
-              .eq("retiro_id", roleData.retiroId)
-              .eq("mes", mesEstoque)
-              .eq("ano", anoEstoque)
-              .maybeSingle();
-            if (estoque) {
-              const novaQtd = Math.max(0, estoque.quantidade_atual - l.sacos);
-              await supabase.from("estoque_retiro").update({ quantidade_atual: novaQtd, updated_at: new Date().toISOString() }).eq("id", estoque.id);
-              await supabase.from("movimentacoes_estoque").insert({
-                retiro_id: roleData.retiroId,
-                mes: mesEstoque,
-                ano: anoEstoque,
-                tipo: 'saida',
-                quantidade: l.sacos,
-                origem: 'salga',
-                referencia_id: l.id,
-              });
-            }
-          }
+        if (fotoCochoSincronizacao !== l.foto_cocho_url) {
+          await saveLancamento({ ...l, foto_cocho_url: fotoCochoSincronizacao, status: 'pendente' });
         }
+        await markSincronizado(l.id);
+        await clearSyncError(l.id);
+        }, `registro ${idx}`);
       } catch (err: any) {
-        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        const errorMsg = getSyncErrorMessage(err);
         failedCount++;
         failedMessages.push(`Registro ${idx}: ${errorMsg}`);
+        await logSyncError({ id: l.id, recordType: 'lancamento', errorMessage: errorMsg });
         console.warn(`[sync] Falha registro ${idx}, continuando:`, errorMsg);
         // Não usamos break: outros registros (e outros capatazes) seguem.
       }
@@ -1024,24 +1028,29 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        const { error } = await supabase.from("observacoes").insert({
-          id: obs.id,
-          pasto_id: obs.pasto_id || null,
-          retiro_id: obs.retiro_id,
-          fazenda_id: obs.fazenda_id,
-          capataz_nome: obs.capataz_nome,
-          tipo: obs.tipo,
-          descricao: obs.descricao,
-          foto_url: obs.foto_url,
-          resolvido: false,
-        });
-        if (error) throw error;
-        await markObservacaoSincronizada(obs.id);
-        // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
+        await withSyncRetry(async () => {
+          const fotoObservacao = obs.foto_url ? await compressImageDataUrl(obs.foto_url) : "";
+          const { error } = await supabase.from("observacoes").upsert({
+            id: obs.id,
+            pasto_id: obs.pasto_id || null,
+            retiro_id: obs.retiro_id,
+            fazenda_id: obs.fazenda_id,
+            capataz_nome: obs.capataz_nome,
+            tipo: obs.tipo,
+            descricao: obs.descricao,
+            foto_url: fotoObservacao || obs.foto_url,
+            resolvido: false,
+          }, { onConflict: 'id' });
+          if (error) throw error;
+          await markObservacaoSincronizada(obs.id);
+          await clearSyncError(obs.id);
+          // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
+        }, `observação ${i + 1}`);
       } catch (err: any) {
-        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        const errorMsg = getSyncErrorMessage(err);
         failedCount++;
         failedMessages.push(`Observação ${i + 1}: ${errorMsg}`);
+        await logSyncError({ id: obs.id, recordType: 'observacao', errorMessage: errorMsg });
         console.warn(`[sync] Falha observação ${i + 1}, continuando:`, errorMsg);
       }
     }

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Camera, X, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { PastoCache, ObservacaoOffline } from "@/lib/offlineDb";
+import { compressImageDataUrl } from "@/lib/imageCompression";
 
 const CATEGORIAS_ESTRUTURA = [
   { value: "porteira", label: "Porteira" },
@@ -65,9 +66,9 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
         const MAX = 1024;
         let w = img.width, h = img.height;
@@ -79,7 +80,10 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
         const compressed = canvas.toDataURL("image/jpeg", 0.7);
-        setFotoBase64(compressed);
+        canvas.width = 0;
+        canvas.height = 0;
+        const finalImage = await compressImageDataUrl(compressed);
+        setFotoBase64(finalImage || compressed);
         setStep('form');
       };
       img.src = reader.result as string;
