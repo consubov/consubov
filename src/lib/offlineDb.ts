@@ -594,7 +594,7 @@ export async function deleteSyncQueueItem(id: string) {
 }
 
 // Sync Errors (for visibility / retry per-record)
-export async function logSyncError(entry: Omit<SyncErrorLog, 'timestamp'> & { timestamp?: string }) {
+export async function logSyncError(entry: Omit<SyncErrorLog, 'timestamp' | 'attemptCount'> & { timestamp?: string }) {
   return safeRun(async () => {
     const db = await getDb();
     const existing = await db.get('syncErrors', entry.id);
