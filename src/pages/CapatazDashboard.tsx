@@ -964,14 +964,6 @@ export default function CapatazDashboard() {
           }
         }
 
-        // Update ultima_salga_em on the retiro after sync
-        if (roleData.retiroId) {
-          await supabase.from("retiros").update({
-            ultima_salga_em: l.data,
-            alerta_atraso_enviado: false,
-          } as any).eq("id", roleData.retiroId);
-        }
-
         // mes/ano de referência = mês/ano CALENDÁRIO da data da salga.
         // O painel filtra por mês calendário; usar o mês do ciclo desalinha os dados
         // do painel quando o ciclo está em outro mês.
@@ -1129,9 +1121,11 @@ export default function CapatazDashboard() {
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
 
+    let syncFailureMessage: string | null = null;
     if (failedCount > 0) {
       const resumo = failedMessages.slice(0, 3).join(" | ");
-      setSyncError(`${failedCount} item(ns) com falha: ${resumo}`);
+      syncFailureMessage = `${failedCount} item(ns) com falha: ${resumo}`;
+      setSyncError(syncFailureMessage);
       toast.warning(`${failedCount} item(ns) não sincronizado(s). Tente novamente.`);
     } else if (remaining.length === 0) {
       toast.success("✅ Todos os dados sincronizados");
@@ -1141,6 +1135,7 @@ export default function CapatazDashboard() {
     await refreshLancamentosState();
     await refreshObservacoes();
     try { await loadFromSupabase(); } catch {}
+    if (syncFailureMessage) throw new Error(syncFailureMessage);
   };
 
   // Sync engine: auto-triggers on online/visibility/mount + retry with backoff.
@@ -1148,11 +1143,7 @@ export default function CapatazDashboard() {
   const runSyncForEngine = useCallback(async () => {
     setSyncError(null);
     await handleSync();
-    // If handleSync surfaced an error via state, propagate it so the engine schedules a retry.
-    if (syncError) {
-      throw new Error(syncError);
-    }
-  }, [handleSync, syncError]);
+  }, [handleSync]);
 
   const sync = useSyncEngine({
     runSync: runSyncForEngine,
@@ -1562,7 +1553,7 @@ export default function CapatazDashboard() {
             <QrCode className="w-5 h-5" />
             Iniciar Salga
           </Button>
-          <Button onClick={handleSync} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
+          <Button onClick={() => sync.triggerSync(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
             Sincronizar
             {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount) > 0 && (
