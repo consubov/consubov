@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Plus, Save, X, PackageOpen } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 import { useCriticalOperation } from "@/lib/criticalOperations";
+import { compressImageDataUrl } from "@/lib/imageCompression";
 
 export interface SalgaFormDraft {
   sacos: string;
@@ -67,13 +68,17 @@ export default function SalgaForm({
 
   const capturePhoto = useCallback((callback: (dataUrl: string) => void, inputRef: React.RefObject<HTMLInputElement>) => {
     if (inputRef.current) {
-      inputRef.current.onchange = (e) => {
+      inputRef.current.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = () => callback(reader.result as string);
+          reader.onload = async () => {
+            const compressed = await compressImageDataUrl(reader.result as string);
+            callback(compressed || (reader.result as string));
+          };
           reader.readAsDataURL(file);
         }
+        (e.target as HTMLInputElement).value = "";
       };
       inputRef.current.click();
     }
