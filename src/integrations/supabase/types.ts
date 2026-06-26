@@ -2405,6 +2405,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      sync_capataz_lancamento: { Args: { p_lancamento: Json }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
