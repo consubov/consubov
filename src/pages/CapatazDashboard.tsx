@@ -44,11 +44,13 @@ import {
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
   cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
+  logSyncError, clearSyncError,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
+import { compressImageDataUrl } from "@/lib/imageCompression";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -87,6 +89,35 @@ const LancamentoManualModal = lazy(() => import("@/components/capataz/Lancamento
 
 function DeferredFallback({ label = "Carregando..." }: { label?: string }) {
   return <p className="text-sm text-muted-foreground text-center py-4">{label}</p>;
+}
+
+const SYNC_RETRY_DELAYS_MS = [1200, 3000, 6000];
+
+const waitForSyncRetry = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function getSyncErrorMessage(err: any): string {
+  if (!err) return "Erro desconhecido";
+  return err?.message || err?.details || err?.hint || String(err);
+}
+
+function isTransientSyncError(err: any): boolean {
+  const msg = getSyncErrorMessage(err);
+  return /load failed|failed to fetch|networkerror|network request failed|timeout|temporarily|connection|offline|abort/i.test(msg);
+}
+
+async function withSyncRetry<T>(operation: () => Promise<T>, label: string, maxAttempts = 4): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientSyncError(err) || attempt >= maxAttempts) break;
+      console.warn(`[sync] ${label}: falha de rede, tentativa ${attempt + 1}/${maxAttempts}`);
+      await waitForSyncRetry(SYNC_RETRY_DELAYS_MS[Math.min(attempt - 1, SYNC_RETRY_DELAYS_MS.length - 1)]);
+    }
+  }
+  throw lastErr;
 }
 
 function isSameLocalDay(dateIso: string, reference = new Date()) {
