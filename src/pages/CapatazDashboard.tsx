@@ -1028,24 +1028,29 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        const { error } = await supabase.from("observacoes").insert({
-          id: obs.id,
-          pasto_id: obs.pasto_id || null,
-          retiro_id: obs.retiro_id,
-          fazenda_id: obs.fazenda_id,
-          capataz_nome: obs.capataz_nome,
-          tipo: obs.tipo,
-          descricao: obs.descricao,
-          foto_url: obs.foto_url,
-          resolvido: false,
-        });
-        if (error) throw error;
-        await markObservacaoSincronizada(obs.id);
-        // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
+        await withSyncRetry(async () => {
+          const fotoObservacao = obs.foto_url ? await compressImageDataUrl(obs.foto_url) : "";
+          const { error } = await supabase.from("observacoes").upsert({
+            id: obs.id,
+            pasto_id: obs.pasto_id || null,
+            retiro_id: obs.retiro_id,
+            fazenda_id: obs.fazenda_id,
+            capataz_nome: obs.capataz_nome,
+            tipo: obs.tipo,
+            descricao: obs.descricao,
+            foto_url: fotoObservacao || obs.foto_url,
+            resolvido: false,
+          }, { onConflict: 'id' });
+          if (error) throw error;
+          await markObservacaoSincronizada(obs.id);
+          await clearSyncError(obs.id);
+          // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
+        }, `observação ${i + 1}`);
       } catch (err: any) {
-        const errorMsg = err?.message || err?.details || JSON.stringify(err);
+        const errorMsg = getSyncErrorMessage(err);
         failedCount++;
         failedMessages.push(`Observação ${i + 1}: ${errorMsg}`);
+        await logSyncError({ id: obs.id, recordType: 'observacao', errorMessage: errorMsg });
         console.warn(`[sync] Falha observação ${i + 1}, continuando:`, errorMsg);
       }
     }
