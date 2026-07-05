@@ -658,6 +658,57 @@ export type Database = {
           },
         ]
       }
+      entradas_materias_primas: {
+        Row: {
+          criado_em: string | null
+          data_entrada: string
+          fabrica_id: string
+          foto_url: string | null
+          id: string
+          materia_prima_id: string
+          observacao: string | null
+          quantidade: number
+          registrado_por: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data_entrada?: string
+          fabrica_id: string
+          foto_url?: string | null
+          id?: string
+          materia_prima_id: string
+          observacao?: string | null
+          quantidade: number
+          registrado_por?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          data_entrada?: string
+          fabrica_id?: string
+          foto_url?: string | null
+          id?: string
+          materia_prima_id?: string
+          observacao?: string | null
+          quantidade?: number
+          registrado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_materias_primas_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_materias_primas_materia_prima_id_fkey"
+            columns: ["materia_prima_id"]
+            isOneToOne: false
+            referencedRelation: "materias_primas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escritorios: {
         Row: {
           ativo: boolean
@@ -840,6 +891,82 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fabrica_destinos: {
+        Row: {
+          criado_em: string | null
+          fabrica_id: string
+          fazenda_id: string | null
+          id: string
+          retiro_id: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          fabrica_id: string
+          fazenda_id?: string | null
+          id?: string
+          retiro_id?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          fabrica_id?: string
+          fazenda_id?: string | null
+          id?: string
+          retiro_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fabrica_destinos_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fabrica_destinos_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fabrica_destinos_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fabricas: {
+        Row: {
+          ativo: boolean | null
+          codigo: string | null
+          criado_em: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          qr_code: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          qr_code?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          qr_code?: string | null
+        }
+        Relationships: []
       }
       fazendas: {
         Row: {
@@ -1173,6 +1300,39 @@ export type Database = {
           },
         ]
       }
+      materias_primas: {
+        Row: {
+          ativo: boolean | null
+          criado_em: string | null
+          estoque_atual: number | null
+          estoque_minimo: number | null
+          id: string
+          nome: string
+          peso_por_saco: number | null
+          unidade: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          estoque_atual?: number | null
+          estoque_minimo?: number | null
+          id?: string
+          nome: string
+          peso_por_saco?: number | null
+          unidade: string
+        }
+        Update: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          estoque_atual?: number | null
+          estoque_minimo?: number | null
+          id?: string
+          nome?: string
+          peso_por_saco?: number | null
+          unidade?: string
+        }
+        Relationships: []
+      }
       mortalidades: {
         Row: {
           ano: number
@@ -1409,6 +1569,47 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operadores_fabrica: {
+        Row: {
+          ativo: boolean | null
+          criado_em: string | null
+          email: string | null
+          fabrica_id: string
+          id: string
+          nome: string
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          email?: string | null
+          fabrica_id: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          email?: string | null
+          fabrica_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operadores_fabrica_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
             referencedColumns: ["id"]
           },
         ]
