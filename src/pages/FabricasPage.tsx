@@ -14,9 +14,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, Factory, QrCode, MapPin, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Factory, QrCode, MapPin, Download, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import jsPDF from "jspdf";
+import QRCode from "qrcode";
 
 interface Fabrica {
   id: string;
@@ -166,6 +168,33 @@ export default function FabricasPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function downloadQrPdf() {
+    if (!qrFabrica) return;
+    try {
+      const value = qrFabrica.qr_code || qrFabrica.id;
+      const dataUrl = await QRCode.toDataURL(value, {
+        width: 800,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#000000", light: "#FFFFFF" },
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(20);
+      pdf.text(`Fábrica — ${qrFabrica.nome}`, pageW / 2, 30, { align: "center" });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(14);
+      pdf.text(`Código: ${qrFabrica.codigo || ""}`, pageW / 2, 42, { align: "center" });
+      const size = 130;
+      pdf.addImage(dataUrl, "PNG", (pageW - size) / 2, 60, size, size);
+      pdf.save(`${qrFabrica.codigo || "fabrica"}.pdf`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar o PDF do QR Code.");
+    }
+  }
+
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -285,9 +314,14 @@ export default function FabricasPage() {
               <div className="bg-white p-4 rounded border">
                 <QRCodeSVG id={`qr-fab-${qrFabrica.id}`} value={qrFabrica.qr_code || qrFabrica.id} size={220} level="H" />
               </div>
-              <Button onClick={downloadQr} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" /> Baixar SVG
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={downloadQr} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" /> Baixar SVG
+                </Button>
+                <Button onClick={downloadQrPdf} size="sm" className="bg-primary hover:bg-primary/90">
+                  <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
