@@ -37,6 +37,7 @@ import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import FabricasPage from "./pages/FabricasPage";
+import FabricaDetailPage from "./pages/FabricaDetailPage";
 import OperadoresFabricaPage from "./pages/OperadoresFabricaPage";
 import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
@@ -222,6 +223,7 @@ const App = () => (
                 <Route path="auditoria" element={<AuditoriaConfigPage />} />
                 <Route path="recuperar" element={<RecuperarDadosPage />} />
                 <Route path="fabricas" element={<FabricasPage />} />
+                <Route path="fabricas/:id" element={<FabricaDetailPage />} />
                 <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />

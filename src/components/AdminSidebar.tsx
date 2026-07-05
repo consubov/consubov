@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Users, Package2, PackagePlus } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -30,10 +30,7 @@ const menuItems = [
   { title: "Inteligência Nutricional", url: "/admin/inteligencia", icon: Brain },
   { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
   { title: "Recuperar Dados", url: "/admin/recuperar", icon: ShieldAlert },
-  { title: "Fábricas", url: "/admin/fabricas", icon: Factory },
-  { title: "Operadores de Fábrica", url: "/admin/operadores-fabrica", icon: Users },
-  { title: "Matérias-Primas", url: "/admin/materias-primas", icon: Package2 },
-  { title: "Entrada de Matérias-Primas", url: "/admin/entrada-materias-primas", icon: PackagePlus },
+  { title: "Fábrica", url: "/admin/fabricas", icon: Factory },
 ];
 
 export function AdminSidebar() {

@@ -1,24 +1,18 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, Factory, QrCode, MapPin, Download, FileDown } from "lucide-react";
+import { Plus, Loader2, Factory, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { QRCodeSVG } from "qrcode.react";
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
 
 interface Fabrica {
   id: string;
@@ -29,28 +23,15 @@ interface Fabrica {
   ativo: boolean | null;
 }
 
-interface Fazenda { id: string; nome: string; }
-interface Retiro { id: string; nome: string; fazenda_id: string; }
-
 const emptyForm = { nome: "", descricao: "", ativo: true };
 
 export default function FabricasPage() {
+  const navigate = useNavigate();
   const [fabricas, setFabricas] = useState<Fabrica[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-
-  const [destinosOpen, setDestinosOpen] = useState(false);
-  const [destinosFabrica, setDestinosFabrica] = useState<Fabrica | null>(null);
-  const [fazendas, setFazendas] = useState<Fazenda[]>([]);
-  const [retiros, setRetiros] = useState<Retiro[]>([]);
-  const [selectedFazendas, setSelectedFazendas] = useState<Set<string>>(new Set());
-  const [selectedRetiros, setSelectedRetiros] = useState<Set<string>>(new Set());
-
-  const [qrOpen, setQrOpen] = useState(false);
-  const [qrFabrica, setQrFabrica] = useState<Fabrica | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -61,138 +42,27 @@ export default function FabricasPage() {
     setLoading(false);
   }
 
-  function openNew() { setEditingId(null); setForm(emptyForm); setDialogOpen(true); }
-  function openEdit(f: Fabrica) {
-    setEditingId(f.id);
-    setForm({ nome: f.nome, descricao: f.descricao || "", ativo: f.ativo ?? true });
-    setDialogOpen(true);
-  }
+  function openNew() { setForm(emptyForm); setDialogOpen(true); }
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("Nome é obrigatório"); return; }
     setSaving(true);
     try {
-      if (editingId) {
-        const { error } = await supabase.from("fabricas").update({
-          nome: form.nome.trim(),
-          descricao: form.descricao.trim() || null,
-          ativo: form.ativo,
-        }).eq("id", editingId);
-        if (error) throw error;
-        toast.success("Fábrica atualizada!");
-      } else {
-        const { data, error } = await supabase.from("fabricas").insert({
-          nome: form.nome.trim(),
-          descricao: form.descricao.trim() || null,
-          ativo: form.ativo,
-        }).select().single();
-        if (error) throw error;
-        // Ensure qr_code is set to id (trigger already does this on insert)
-        if (data && !data.qr_code) {
-          await supabase.from("fabricas").update({ qr_code: data.id }).eq("id", data.id);
-        }
-        toast.success(`Fábrica criada: ${data?.codigo || ""}`);
+      const { data, error } = await supabase.from("fabricas").insert({
+        nome: form.nome.trim(),
+        descricao: form.descricao.trim() || null,
+        ativo: form.ativo,
+      }).select().single();
+      if (error) throw error;
+      if (data && !data.qr_code) {
+        await supabase.from("fabricas").update({ qr_code: data.id }).eq("id", data.id);
       }
+      toast.success(`Fábrica criada: ${data?.codigo || ""}`);
       setDialogOpen(false);
       load();
     } catch (err: any) {
       toast.error("Erro: " + (err?.message || "desconhecido"));
     } finally { setSaving(false); }
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Excluir esta fábrica?")) return;
-    const { error } = await supabase.from("fabricas").delete().eq("id", id);
-    if (error) toast.error("Erro ao excluir: " + error.message);
-    else { toast.success("Fábrica excluída"); load(); }
-  }
-
-  async function openDestinos(f: Fabrica) {
-    setDestinosFabrica(f);
-    setDestinosOpen(true);
-    const [fz, rt, dest] = await Promise.all([
-      supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome"),
-      supabase.from("retiros").select("id, nome, fazenda_id").eq("ativo", true).order("nome"),
-      supabase.from("fabrica_destinos").select("fazenda_id, retiro_id").eq("fabrica_id", f.id),
-    ]);
-    setFazendas((fz.data as Fazenda[]) || []);
-    setRetiros((rt.data as Retiro[]) || []);
-    const sf = new Set<string>();
-    const sr = new Set<string>();
-    (dest.data || []).forEach((d: any) => {
-      if (d.fazenda_id) sf.add(d.fazenda_id);
-      if (d.retiro_id) sr.add(d.retiro_id);
-    });
-    setSelectedFazendas(sf);
-    setSelectedRetiros(sr);
-  }
-
-  async function saveDestinos() {
-    if (!destinosFabrica) return;
-    setSaving(true);
-    try {
-      const { error: delError } = await supabase.from("fabrica_destinos").delete().eq("fabrica_id", destinosFabrica.id);
-      if (delError) throw delError;
-      const rows: any[] = [];
-      selectedFazendas.forEach((fid) => rows.push({ fabrica_id: destinosFabrica.id, fazenda_id: fid }));
-      selectedRetiros.forEach((rid) => rows.push({ fabrica_id: destinosFabrica.id, retiro_id: rid }));
-      if (rows.length > 0) {
-        const { error } = await supabase.from("fabrica_destinos").insert(rows);
-        if (error) throw error;
-      }
-      toast.success("Destinos salvos!");
-      setDestinosOpen(false);
-    } catch (err: any) {
-      toast.error("Erro: " + err.message);
-    } finally { setSaving(false); }
-  }
-
-  function toggleSet(set: Set<string>, id: string, setter: (s: Set<string>) => void) {
-    const ns = new Set(set);
-    if (ns.has(id)) ns.delete(id); else ns.add(id);
-    setter(ns);
-  }
-
-  function downloadQr() {
-    if (!qrFabrica) return;
-    const svg = document.getElementById(`qr-fab-${qrFabrica.id}`);
-    if (!svg) return;
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svg);
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${qrFabrica.codigo || "fabrica"}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function downloadQrPdf() {
-    if (!qrFabrica) return;
-    try {
-      const value = qrFabrica.qr_code || qrFabrica.id;
-      const dataUrl = await QRCode.toDataURL(value, {
-        width: 800,
-        margin: 2,
-        errorCorrectionLevel: "H",
-        color: { dark: "#000000", light: "#FFFFFF" },
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(20);
-      pdf.text(`Fábrica — ${qrFabrica.nome}`, pageW / 2, 30, { align: "center" });
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(14);
-      pdf.text(`Código: ${qrFabrica.codigo || ""}`, pageW / 2, 42, { align: "center" });
-      const size = 130;
-      pdf.addImage(dataUrl, "PNG", (pageW - size) / 2, 60, size, size);
-      pdf.save(`${qrFabrica.codigo || "fabrica"}.pdf`);
-    } catch (e) {
-      console.error(e);
-      toast.error("Erro ao gerar o PDF do QR Code.");
-    }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -201,53 +71,52 @@ export default function FabricasPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Factory className="w-5 h-5" /> Fábricas
+          <Factory className="w-5 h-5" /> Fábrica
         </h1>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" /> Nova Fábrica
         </Button>
       </div>
 
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right w-56">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fabricas.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma fábrica cadastrada</TableCell></TableRow>
-              ) : fabricas.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell className="font-mono text-xs">{f.codigo || "—"}</TableCell>
-                  <TableCell className="font-medium">{f.nome}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{f.descricao || "—"}</TableCell>
-                  <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" title="QR Code" onClick={() => { setQrFabrica(f); setQrOpen(true); }}><QrCode className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Destinos" onClick={() => openDestinos(f)}><MapPin className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(f)}><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+      {fabricas.length === 0 ? (
+        <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhuma fábrica cadastrada.</CardContent></Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {fabricas.map(f => (
+            <button
+              key={f.id}
+              onClick={() => navigate(`/admin/fabricas/${f.id}`)}
+              className="text-left"
+            >
+              <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-md bg-primary/10">
+                        <Factory className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base leading-tight">{f.nome}</CardTitle>
+                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{f.codigo || "—"}</p>
+                      </div>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex items-center justify-between">
+                  <Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge>
+                  {f.descricao && <p className="text-xs text-muted-foreground truncate ml-2 flex-1 text-right">{f.descricao}</p>}
+                </CardContent>
+              </Card>
+            </button>
+          ))}
         </div>
-      </Card>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Fábrica" : "Nova Fábrica"}</DialogTitle>
+            <DialogTitle>Nova Fábrica</DialogTitle>
             <DialogDescription>O código e QR Code são gerados automaticamente.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -261,69 +130,6 @@ export default function FabricasPage() {
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={destinosOpen} onOpenChange={setDestinosOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Destinos autorizados</DialogTitle>
-            <DialogDescription>Selecione fazendas e/ou retiros que serão alimentados por <b>{destinosFabrica?.nome}</b>.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-semibold">Fazendas</Label>
-              <div className="mt-2 space-y-2 border rounded p-3 max-h-48 overflow-y-auto">
-                {fazendas.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma fazenda ativa.</p> : fazendas.map((f) => (
-                  <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={selectedFazendas.has(f.id)} onCheckedChange={() => toggleSet(selectedFazendas, f.id, setSelectedFazendas)} />
-                    {f.nome}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm font-semibold">Retiros</Label>
-              <div className="mt-2 space-y-2 border rounded p-3 max-h-56 overflow-y-auto">
-                {retiros.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum retiro ativo.</p> : retiros.map((r) => (
-                  <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={selectedRetiros.has(r.id)} onCheckedChange={() => toggleSet(selectedRetiros, r.id, setSelectedRetiros)} />
-                    {r.nome}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDestinosOpen(false)}>Cancelar</Button>
-            <Button onClick={saveDestinos} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>QR Code — {qrFabrica?.nome}</DialogTitle>
-            <DialogDescription>Código: <span className="font-mono">{qrFabrica?.codigo}</span></DialogDescription>
-          </DialogHeader>
-          {qrFabrica && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="bg-white p-4 rounded border">
-                <QRCodeSVG id={`qr-fab-${qrFabrica.id}`} value={qrFabrica.qr_code || qrFabrica.id} size={220} level="H" />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={downloadQr} variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" /> Baixar SVG
-                </Button>
-                <Button onClick={downloadQrPdf} size="sm" className="bg-primary hover:bg-primary/90">
-                  <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
-                </Button>
-              </div>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </div>
