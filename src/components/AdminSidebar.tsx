@@ -30,6 +30,10 @@ const menuItems = [
   { title: "Inteligência Nutricional", url: "/admin/inteligencia", icon: Brain },
   { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
   { title: "Recuperar Dados", url: "/admin/recuperar", icon: ShieldAlert },
+  { title: "Fábricas", url: "/admin/fabricas", icon: Factory },
+  { title: "Operadores de Fábrica", url: "/admin/operadores-fabrica", icon: Users },
+  { title: "Matérias-Primas", url: "/admin/materias-primas", icon: Package2 },
+  { title: "Entrada de Matérias-Primas", url: "/admin/entrada-materias-primas", icon: PackagePlus },
 ];
 
 export function AdminSidebar() {
