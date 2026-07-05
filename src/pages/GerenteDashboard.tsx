@@ -112,6 +112,7 @@ export default function GerenteDashboard() {
   const [salgaReportOpen, setSalgaReportOpen] = useState(false);
   const [pdfLoadingByRetiro, setPdfLoadingByRetiro] = useState<Record<string, boolean>>({});
   const [pdfRefreshTick, setPdfRefreshTick] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Realtime: when any capataz syncs (lancamento INSERT into our fazenda),
   // bump a tick so retiro rows re-render the "Baixar PDF" affordance.
