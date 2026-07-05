@@ -216,13 +216,21 @@ const App = () => (
                 <Route path="inteligencia" element={<PainelInteligenciaPage />} />
                 <Route path="auditoria" element={<AuditoriaConfigPage />} />
                 <Route path="recuperar" element={<RecuperarDadosPage />} />
+                <Route path="fabricas" element={<FabricasPage />} />
+                <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
+                <Route path="materias-primas" element={<MateriasPrimasPage />} />
+                <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
+              <Route path="/gerente/materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><MateriasPrimasPage /></ProtectedRoute>} />
+              <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><EntradaMateriasPrimasPage /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazRoute /></ProtectedRoute>} />
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
+              <Route path="/fabrica" element={<ProtectedRoute allowedRoles={["operador_fabrica"]}><FabricaDashboard /></ProtectedRoute>} />
+
 
               <Route path="*" element={<NotFound />} />
             </Routes>
