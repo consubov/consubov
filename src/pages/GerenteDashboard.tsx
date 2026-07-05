@@ -14,13 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -111,6 +112,7 @@ export default function GerenteDashboard() {
   const [salgaReportOpen, setSalgaReportOpen] = useState(false);
   const [pdfLoadingByRetiro, setPdfLoadingByRetiro] = useState<Record<string, boolean>>({});
   const [pdfRefreshTick, setPdfRefreshTick] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Realtime: when any capataz syncs (lancamento INSERT into our fazenda),
   // bump a tick so retiro rows re-render the "Baixar PDF" affordance.
@@ -204,6 +206,77 @@ export default function GerenteDashboard() {
         {/* Linha 1: identidade + ações principais */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary/80 -ml-2"
+                  aria-label="Abrir menu"
+                >
+                  <Menu className="w-6 h-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[80vw] max-w-sm p-0 flex flex-col">
+                <SheetHeader className="bg-primary text-primary-foreground p-4 text-left space-y-1">
+                  <SheetTitle className="text-primary-foreground text-base font-bold">Gerente</SheetTitle>
+                  <SheetDescription className="text-primary-foreground/80 text-xs">
+                    {gerenteNome}
+                  </SheetDescription>
+                </SheetHeader>
+                <Separator />
+                <nav className="flex-1 overflow-y-auto p-2">
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/materias-primas"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <Package className="w-5 h-5 text-primary" />
+                        Matérias-Primas
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/entrada-materias-primas"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <PackagePlus className="w-5 h-5 text-primary" />
+                        Entrada Matéria-Prima
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/conferencia"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <ScanLine className="w-5 h-5 text-primary" />
+                        Conferência
+                      </button>
+                    </li>
+                    <li><Separator className="my-1" /></li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => setSalgaReportOpen(true), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <FileText className="w-5 h-5 text-primary" />
+                        Relatório de Salga
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => setRelatorioOpen(true), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <FileDown className="w-5 h-5 text-primary" />
+                        Relatório de Consumo
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </SheetContent>
+            </Sheet>
             <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
             <div className="min-w-0">
               <h1 className="text-base font-bold leading-tight">Gerente</h1>
@@ -211,21 +284,6 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/gerente/materias-primas")} className="text-primary-foreground hover:bg-primary/80" title="Matérias-Primas">
-              <Package className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigate("/gerente/entrada-materias-primas")} className="text-primary-foreground hover:bg-primary/80" title="Entrada Matéria-Prima">
-              <PackagePlus className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigate("/conferencia")} className="text-primary-foreground hover:bg-primary/80" title="Conferência">
-              <ScanLine className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setSalgaReportOpen(true)} className="text-primary-foreground hover:bg-primary/80" title="Relatório de Salga">
-              <FileText className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setRelatorioOpen(true)} className="text-primary-foreground hover:bg-primary/80" title="Relatório de Consumo">
-              <FileDown className="w-4 h-4" />
-            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title="Atualizar">
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
