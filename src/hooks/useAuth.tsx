@@ -8,13 +8,14 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | null;
 
 interface RoleData {
   role: UserRole;
   roleId: string | null;
   fazendaId: string | null;
   retiroId: string | null;
+  fabricaId?: string | null;
 }
 
 interface AuthContextType {
