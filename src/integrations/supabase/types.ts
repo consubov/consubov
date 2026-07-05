@@ -1306,6 +1306,7 @@ export type Database = {
           criado_em: string | null
           estoque_atual: number | null
           estoque_minimo: number | null
+          fabrica_id: string
           id: string
           nome: string
           peso_por_saco: number | null
@@ -1316,6 +1317,7 @@ export type Database = {
           criado_em?: string | null
           estoque_atual?: number | null
           estoque_minimo?: number | null
+          fabrica_id: string
           id?: string
           nome: string
           peso_por_saco?: number | null
@@ -1326,12 +1328,21 @@ export type Database = {
           criado_em?: string | null
           estoque_atual?: number | null
           estoque_minimo?: number | null
+          fabrica_id?: string
           id?: string
           nome?: string
           peso_por_saco?: number | null
           unidade?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "materias_primas_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mortalidades: {
         Row: {
