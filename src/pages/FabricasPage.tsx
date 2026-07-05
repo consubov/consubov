@@ -14,9 +14,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Loader2, Factory, QrCode, MapPin, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Factory, QrCode, MapPin, Download, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import jsPDF from "jspdf";
+import QRCode from "qrcode";
 
 interface Fabrica {
   id: string;
