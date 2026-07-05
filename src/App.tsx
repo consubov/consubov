@@ -37,6 +37,7 @@ import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 import RecuperarDadosPage from "./pages/RecuperarDadosPage";
 import FabricasPage from "./pages/FabricasPage";
+import FabricaDetailPage from "./pages/FabricaDetailPage";
 import OperadoresFabricaPage from "./pages/OperadoresFabricaPage";
 import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
