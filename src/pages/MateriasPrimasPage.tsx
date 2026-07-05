@@ -80,7 +80,7 @@ export default function MateriasPrimasPage() {
         if (error) throw error;
         toast.success("Matéria-prima atualizada!");
       } else {
-        const { error } = await supabase.from("materias_primas").insert({ ...payload, estoque_atual: 0 });
+        const { error } = await supabase.from("materias_primas").insert(payload as any);
         if (error) throw error;
         toast.success("Matéria-prima criada!");
       }
