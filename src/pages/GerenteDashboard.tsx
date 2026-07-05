@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -211,6 +211,12 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/gerente/materias-primas")} className="text-primary-foreground hover:bg-primary/80" title="Matérias-Primas">
+              <Package className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/gerente/entrada-materias-primas")} className="text-primary-foreground hover:bg-primary/80" title="Entrada Matéria-Prima">
+              <PackagePlus className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => navigate("/conferencia")} className="text-primary-foreground hover:bg-primary/80" title="Conferência">
               <ScanLine className="w-4 h-4" />
             </Button>

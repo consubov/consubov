@@ -2577,8 +2577,10 @@ export type Database = {
         }[]
       }
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
+      get_operador_fabrica_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
+      is_operador_fabrica: { Args: { _user_id: string }; Returns: boolean }
       register_push_subscription: {
         Args: { p_enabled?: boolean; p_endpoint: string; p_subscription: Json }
         Returns: {

@@ -8,13 +8,14 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | null;
 
 interface RoleData {
   role: UserRole;
   roleId: string | null;
   fazendaId: string | null;
   retiroId: string | null;
+  fabricaId?: string | null;
 }
 
 interface AuthContextType {
@@ -124,6 +125,20 @@ function deferNonCritical(task: () => void) {
 }
 
 async function detectRole(userId: string): Promise<RoleData> {
+  // 0. Check operador_fabrica first
+  const { data: operador, error: operadorError } = await supabase
+    .from("operadores_fabrica")
+    .select("id, fabrica_id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (operadorError) throw operadorError;
+
+  if (operador) {
+    return { role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id };
+  }
+
   // 1. Check capataz first (as user requested order)
   const { data: capataz, error: capatazError } = await supabase
     .from("capatazes")

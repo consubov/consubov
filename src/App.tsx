@@ -36,6 +36,11 @@ import EscritorioLayout from "./pages/EscritorioLayout";
 import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
 import RecuperarDadosPage from "./pages/RecuperarDadosPage";
+import FabricasPage from "./pages/FabricasPage";
+import OperadoresFabricaPage from "./pages/OperadoresFabricaPage";
+import MateriasPrimasPage from "./pages/MateriasPrimasPage";
+import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
+import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -147,6 +152,8 @@ function RoleRedirect() {
       return <Navigate to="/capataz" replace />;
     case "escritorio":
       return <Navigate to="/escritorio" replace />;
+    case "operador_fabrica":
+      return <Navigate to="/fabrica" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
@@ -214,13 +221,21 @@ const App = () => (
                 <Route path="inteligencia" element={<PainelInteligenciaPage />} />
                 <Route path="auditoria" element={<AuditoriaConfigPage />} />
                 <Route path="recuperar" element={<RecuperarDadosPage />} />
+                <Route path="fabricas" element={<FabricasPage />} />
+                <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
+                <Route path="materias-primas" element={<MateriasPrimasPage />} />
+                <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
+              <Route path="/gerente/materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><MateriasPrimasPage /></ProtectedRoute>} />
+              <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><EntradaMateriasPrimasPage /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazRoute /></ProtectedRoute>} />
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
+              <Route path="/fabrica" element={<ProtectedRoute allowedRoles={["operador_fabrica"]}><FabricaDashboard /></ProtectedRoute>} />
+
 
               <Route path="*" element={<NotFound />} />
             </Routes>
