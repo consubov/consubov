@@ -223,6 +223,7 @@ const App = () => (
                 <Route path="auditoria" element={<AuditoriaConfigPage />} />
                 <Route path="recuperar" element={<RecuperarDadosPage />} />
                 <Route path="fabricas" element={<FabricasPage />} />
+                <Route path="fabricas/:id" element={<FabricaDetailPage />} />
                 <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
