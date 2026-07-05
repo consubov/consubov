@@ -147,6 +147,8 @@ function RoleRedirect() {
       return <Navigate to="/capataz" replace />;
     case "escritorio":
       return <Navigate to="/escritorio" replace />;
+    case "operador_fabrica":
+      return <Navigate to="/fabrica" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
