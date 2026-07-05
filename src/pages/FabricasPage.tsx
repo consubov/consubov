@@ -314,9 +314,14 @@ export default function FabricasPage() {
               <div className="bg-white p-4 rounded border">
                 <QRCodeSVG id={`qr-fab-${qrFabrica.id}`} value={qrFabrica.qr_code || qrFabrica.id} size={220} level="H" />
               </div>
-              <Button onClick={downloadQr} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" /> Baixar SVG
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={downloadQr} variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" /> Baixar SVG
+                </Button>
+                <Button onClick={downloadQrPdf} size="sm" className="bg-primary hover:bg-primary/90">
+                  <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
