@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Plus, Loader2, Play, CheckCircle2, Camera, X, AlertTriangle,
+  Loader2, Play, CheckCircle2, Camera, X, AlertTriangle,
   TrendingUp, History, Factory, Package, Clock, QrCode,
 } from "lucide-react";
+
 
 
 import { toast } from "sonner";
