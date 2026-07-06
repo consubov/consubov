@@ -22,7 +22,6 @@ import {
   TrendingUp, History, Factory, Package, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 
 const TOLERANCIA_PCT = 5;
 
@@ -79,14 +78,16 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formulaId, setFormulaId] = useState("");
-  const [foto, setFoto] = useState<string | null>(null);
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [batidaFinalizando, setBatidaFinalizando] = useState<Batida | null>(null);
   const [prodFinalizar, setProdFinalizar] = useState<BatidaProd[]>([]);
   const [qtdProduzida, setQtdProduzida] = useState("");
-  const [fotoFim, setFotoFim] = useState<string | null>(null);
+  const [fotoFim, setFotoFim] = useState<File | null>(null);
+  const [fotoFimPreview, setFotoFimPreview] = useState<string | null>(null);
   const [obsFim, setObsFim] = useState("");
 
   useEffect(() => { load(); }, [fabricaId]);
@@ -115,13 +116,38 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const formulaSel = formulas.find(f => f.id === formulaId);
   const ingsDaFormula = ingredientes.filter(i => i.formula_id === formulaId);
 
-  async function handleFoto(e: React.ChangeEvent<HTMLInputElement>, setter: (v: string) => void) {
+  useEffect(() => {
+    return () => {
+      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+      if (fotoFimPreview) URL.revokeObjectURL(fotoFimPreview);
+    };
+  }, [fotoPreview, fotoFimPreview]);
+
+  function setFotoComPreview(
+    file: File | null,
+    setFile: (v: File | null) => void,
+    preview: string | null,
+    setPreview: (v: string | null) => void,
+  ) {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  function handleFoto(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFile: (v: File | null) => void,
+    preview: string | null,
+    setPreview: (v: string | null) => void,
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFileToDataUrl(file, { maxDimension: 960, quality: 0.68, maxBytes: 380_000 });
-      if (!compressed) return;
-      setter(compressed);
+      if (!file.type.startsWith("image/")) {
+        toast.error("Selecione uma imagem válida");
+        return;
+      }
+      setFotoComPreview(file, setFile, preview, setPreview);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível carregar a foto");
     } finally {
@@ -129,17 +155,17 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     }
   }
 
-  async function uploadFoto(dataUrl: string): Promise<string> {
-    const blob = await (await fetch(dataUrl)).blob();
+  async function uploadFoto(file: File): Promise<string> {
     const path = `fabrica/${fabricaId}/batidas/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const { error } = await supabase.storage.from("relatorios").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    const { error } = await supabase.storage.from("relatorios").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
     if (error) throw error;
     const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
     return pub.publicUrl;
   }
 
   function openIniciar() {
-    setFormulaId(""); setFoto(null);
+    setFormulaId("");
+    setFotoComPreview(null, setFoto, fotoPreview, setFotoPreview);
     setDialogOpen(true);
   }
 
@@ -199,7 +225,9 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   async function openFinalizar(b: Batida) {
     setBatidaFinalizando(b);
-    setQtdProduzida(""); setFotoFim(null); setObsFim("");
+    setQtdProduzida("");
+    setFotoComPreview(null, setFotoFim, fotoFimPreview, setFotoFimPreview);
+    setObsFim("");
     const { data } = await supabase.from("batidas_producao").select("*").eq("batida_id", b.id);
     setProdFinalizar((data as BatidaProd[]) || []);
     setFinalizarOpen(true);
@@ -378,12 +406,12 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                   <Camera className="w-4 h-4" />
                   {foto ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFoto)} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFoto, fotoPreview, setFotoPreview)} />
                 </label>
-                {foto && (
+                {fotoPreview && (
                   <div className="relative">
-                    <img src={foto} alt="preview" className="w-16 h-16 rounded object-cover border" />
-                    <button type="button" onClick={() => setFoto(null)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
+                    <img src={fotoPreview} alt="preview" className="w-16 h-16 rounded object-cover border" />
+                    <button type="button" onClick={() => setFotoComPreview(null, setFoto, fotoPreview, setFotoPreview)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -441,12 +469,12 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                   <Camera className="w-4 h-4" />
                   {fotoFim ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFotoFim)} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFotoFim, fotoFimPreview, setFotoFimPreview)} />
                 </label>
-                {fotoFim && (
+                {fotoFimPreview && (
                   <div className="relative">
-                    <img src={fotoFim} alt="preview" className="w-16 h-16 rounded object-cover border" />
-                    <button type="button" onClick={() => setFotoFim(null)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
+                    <img src={fotoFimPreview} alt="preview" className="w-16 h-16 rounded object-cover border" />
+                    <button type="button" onClick={() => setFotoComPreview(null, setFotoFim, fotoFimPreview, setFotoFimPreview)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
