@@ -152,6 +152,10 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
         toast.error("No iPhone, instale na Tela de Início e abra pelo ícone para ativar notificações.");
         return;
       }
+      if (!isSupported()) {
+        toast.error("Este aparelho ou navegador não permite notificações push neste modo.");
+        return;
+      }
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
         toast.error(perm === "denied" ? "Permissão negada nas configurações do aparelho" : "Permissão não concedida");
