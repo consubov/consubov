@@ -108,32 +108,42 @@ export default function FabricasPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {fabricas.map(f => (
-            <button
-              key={f.id}
-              onClick={() => navigate(`/admin/fabricas/${f.id}`)}
-              className="text-left"
-            >
-              <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-md bg-primary/10">
-                        <Factory className="w-5 h-5 text-primary" />
+            <div key={f.id} className="relative">
+              <button
+                onClick={() => navigate(`/admin/fabricas/${f.id}`)}
+                className="text-left w-full"
+              >
+                <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-md bg-primary/10">
+                          <Factory className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base leading-tight">{f.nome}</CardTitle>
+                          <p className="text-xs font-mono text-muted-foreground mt-0.5">{f.codigo || "—"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-base leading-tight">{f.nome}</CardTitle>
-                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{f.codigo || "—"}</p>
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 flex items-center justify-between">
-                  <Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge>
-                  {f.descricao && <p className="text-xs text-muted-foreground truncate ml-2 flex-1 text-right">{f.descricao}</p>}
-                </CardContent>
-              </Card>
-            </button>
+                  </CardHeader>
+                  <CardContent className="pt-0 flex items-center justify-between">
+                    <Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge>
+                    {f.descricao && <p className="text-xs text-muted-foreground truncate ml-2 flex-1 text-right">{f.descricao}</p>}
+                  </CardContent>
+                </Card>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => { e.stopPropagation(); setConfirmDel(f); }}
+                title="Excluir fábrica"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           ))}
         </div>
       )}
