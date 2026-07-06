@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus } from "lucide-react";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus, Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import CriarAdminModal from "@/components/admin/CriarAdminModal";
@@ -15,10 +15,11 @@ interface Stats {
   ciclosAbertos: number;
   lancamentos: number;
   animais: number;
+  fabricas: number;
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0 });
+  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0, fabricas: 0 });
   const [loading, setLoading] = useState(true);
   const [showCriarAdmin, setShowCriarAdmin] = useState(false);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
-      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData] = await Promise.all([
+      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData, fabricas] = await Promise.all([
         supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true),
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
         supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false),
         supabase.from("lancamentos").select("id", { count: "exact", head: true }),
         supabase.from("pastos").select("num_animais").eq("ativo", true),
+        supabase.from("fabricas").select("id", { count: "exact", head: true }).eq("ativo", true),
       ]);
 
       const totalAnimais = (animaisData.data ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
@@ -46,6 +48,7 @@ export default function AdminDashboard() {
         ciclosAbertos: ciclos.count ?? 0,
         lancamentos: lancamentos.count ?? 0,
         animais: totalAnimais,
+        fabricas: fabricas.count ?? 0,
       });
       setLoading(false);
     }
@@ -69,6 +72,7 @@ export default function AdminDashboard() {
     { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
     { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
     { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
+    { label: "Fábricas", value: stats.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
   ];
 
   return (
