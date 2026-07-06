@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
 import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
+import GerenteNotificacoesBell from "@/components/gerente/GerenteNotificacoesBell";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
