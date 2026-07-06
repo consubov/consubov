@@ -225,6 +225,16 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
         },
       });
 
+      // Push notification (WhatsApp-like) para gerente + admin da fazenda destino
+      if (fazendaIdNotif) {
+        await sendPush(
+          `Nova transferência de ${produtoSel?.nome || "produto"}`,
+          `Fábrica enviou ${q} sacos para ${destLabel}. Aguardando recebimento.`,
+          `/gerente/transferencias?transferencia=${tRow.id}`,
+          { fazendaId: fazendaIdNotif },
+        );
+      }
+
       toast.success("Transferência registrada e notificações enviadas");
       reset();
       setOpen(false);
