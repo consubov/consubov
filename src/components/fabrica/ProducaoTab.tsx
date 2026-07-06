@@ -296,7 +296,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       const { data: batida, error: bErr } = await supabase.from("batidas").insert({
         fabrica_id: fabricaId,
         formula_id: formulaId,
-        operador_id: user?.id ?? null,
+        operador_id: operadorId,
         data_inicio: dataInicio,
         hora_inicio: horaInicio,
         status: "iniciada",
