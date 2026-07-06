@@ -114,7 +114,10 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [emAndamento, setEmAndamento] = useState<Batida[]>([]);
+  const [fabricaQr, setFabricaQr] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
 
 
   const [dialogOpen, setDialogOpen] = useState(false);
