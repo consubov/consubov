@@ -19,9 +19,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, Loader2, Play, CheckCircle2, Camera, X, AlertTriangle,
-  TrendingUp, History, Factory, Package, Clock,
+  TrendingUp, History, Factory, Package, Clock, QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
+import QrScanner from "@/components/capataz/QrScanner";
+
 
 const TOLERANCIA_PCT = 5;
 
@@ -112,7 +114,10 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [emAndamento, setEmAndamento] = useState<Batida[]>([]);
+  const [fabricaQr, setFabricaQr] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
 
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -192,7 +197,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   async function load() {
     setLoading(true);
-    const [fm, mp, ba, pr, op] = await Promise.all([
+    const [fm, mp, ba, pr, op, fab] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("materias_primas").select("id, nome, unidade, estoque_atual, peso_por_saco").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).eq("status", "iniciada").order("criado_em", { ascending: false }),
@@ -200,12 +205,15 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       user?.id
         ? supabase.from("operadores_fabrica").select("id").eq("user_id", user.id).eq("fabrica_id", fabricaId).eq("ativo", true).maybeSingle()
         : Promise.resolve({ data: null } as any),
+      supabase.from("fabricas").select("qr_code").eq("id", fabricaId).maybeSingle(),
     ]);
     setFormulas((fm.data as Formula[]) || []);
     setMaterias((mp.data as MateriaPrima[]) || []);
     setEmAndamento((ba.data as Batida[]) || []);
     setProdutos((pr.data as Produto[]) || []);
     setOperadorId(((op as any)?.data?.id as string | undefined) ?? null);
+    setFabricaQr(((fab as any)?.data?.qr_code as string | undefined) ?? null);
+
     if (fm.data && fm.data.length > 0) {
       const ids = (fm.data as Formula[]).map(f => f.id);
       const { data: ing } = await supabase.from("formula_ingredientes").select("formula_id, materia_prima_id, quantidade").in("formula_id", ids);
@@ -273,6 +281,21 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     setFoto(null);
     setDialogOpen(true);
   }
+
+  function handleQrScan(value: string) {
+    const scanned = (value || "").trim();
+    const esperado = (fabricaQr || fabricaId).trim();
+    const alt = fabricaId.trim();
+    if (scanned && (scanned === esperado || scanned === alt)) {
+      setScannerOpen(false);
+      toast.success("Fábrica identificada");
+      openIniciar();
+    } else {
+      setScannerOpen(false);
+      toast.error("QR Code não corresponde à sua fábrica");
+    }
+  }
+
 
   async function iniciarBatida() {
     if (!formulaId) return toast.error("Selecione uma fórmula");
@@ -419,16 +442,22 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="space-y-0">
           <CardTitle className="text-base flex items-center gap-2"><Play className="w-4 h-4" /> Iniciar batida</CardTitle>
-          <Button onClick={openIniciar} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
-            <Plus className="w-4 h-4" /> Nova batida
-          </Button>
         </CardHeader>
-        {formulas.length === 0 && (
-          <CardContent className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</CardContent>
-        )}
+        <CardContent className="space-y-2">
+          <Button onClick={() => setScannerOpen(true)} size="lg" className="w-full gap-2 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
+            <QrCode className="w-5 h-5" /> Escanear QR da fábrica
+          </Button>
+          <Button onClick={openIniciar} size="sm" variant="outline" className="w-full gap-1.5" disabled={formulas.length === 0}>
+            <Plus className="w-4 h-4" /> Iniciar sem QR
+          </Button>
+          {formulas.length === 0 && (
+            <p className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</p>
+          )}
+        </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" /> Em andamento ({emAndamento.length})</CardTitle></CardHeader>
@@ -621,7 +650,16 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {scannerOpen && (
+        <QrScanner
+          onScan={handleQrScan}
+          onManualSelect={() => { setScannerOpen(false); openIniciar(); }}
+          onBack={() => setScannerOpen(false)}
+        />
+      )}
     </div>
+
   );
 }
 
