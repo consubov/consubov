@@ -166,11 +166,10 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
     const q = parseFloat(qtd);
     if (!q || q <= 0) return toast.error("Quantidade inválida");
     if (q > sacosDisp) return toast.error(`Estoque insuficiente (disponível: ${sacosDisp} sc)`);
-    if (!foto) return toast.error("Foto obrigatória");
 
     setSaving(true);
     try {
-      const fotoUrl = await uploadFoto(fabricaId, foto);
+      const fotoUrl = foto ? await uploadFoto(fabricaId, foto) : null;
       const [tipo, destId] = destinoKey.split(":");
       const pesoPorSaco = Number(produtoSel?.peso_saco_kg || 0);
       const kg = q * pesoPorSaco;
@@ -345,7 +344,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} />
             </div>
             <div>
-              <Label>Foto *</Label>
+              <Label>Foto (opcional)</Label>
               <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
               {foto ? (
                 <div className="relative">
@@ -473,11 +472,10 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
     if (!detalhe || !recebimento) return;
     const q = parseFloat(qtdReceb);
     if (!q || q <= 0) return toast.error("Quantidade recebida inválida");
-    if (!fotoReceb) return toast.error("Foto obrigatória");
 
     setSaving(true);
     try {
-      const fotoUrl = await uploadFoto(detalhe.fabrica_id, fotoReceb);
+      const fotoUrl = fotoReceb ? await uploadFoto(detalhe.fabrica_id, fotoReceb) : null;
       const now = new Date();
       const divergSacos = detalhe.quantidade_sacos - q;
       const divergPct = detalhe.quantidade_sacos > 0
@@ -605,7 +603,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                 <Textarea value={obsReceb} onChange={e => setObsReceb(e.target.value)} rows={2} />
               </div>
               <div>
-                <Label>Foto *</Label>
+                <Label>Foto (opcional)</Label>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
                 {fotoReceb ? (
                   <div className="relative">
