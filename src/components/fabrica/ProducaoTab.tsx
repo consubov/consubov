@@ -282,6 +282,21 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     setDialogOpen(true);
   }
 
+  function handleQrScan(value: string) {
+    const scanned = (value || "").trim();
+    const esperado = (fabricaQr || fabricaId).trim();
+    const alt = fabricaId.trim();
+    if (scanned && (scanned === esperado || scanned === alt)) {
+      setScannerOpen(false);
+      toast.success("Fábrica identificada");
+      openIniciar();
+    } else {
+      setScannerOpen(false);
+      toast.error("QR Code não corresponde à sua fábrica");
+    }
+  }
+
+
   async function iniciarBatida() {
     if (!formulaId) return toast.error("Selecione uma fórmula");
     if (!foto) return toast.error("Foto do setup inicial é obrigatória");
