@@ -16,6 +16,7 @@ interface RoleData {
   fazendaId: string | null;
   retiroId: string | null;
   fabricaId?: string | null;
+  consultorId?: string | null;
 }
 
 interface AuthContextType {
