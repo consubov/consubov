@@ -31,6 +31,7 @@ interface Visita {
   id: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
+  pdf_url: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
