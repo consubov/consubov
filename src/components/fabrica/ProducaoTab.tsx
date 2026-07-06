@@ -106,12 +106,14 @@ export default function ProducaoTab({ fabricaId }: { fabricaId: string }) {
 
 function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const { user } = useAuth();
+  const [operadorId, setOperadorId] = useState<string | null>(null);
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [emAndamento, setEmAndamento] = useState<Batida[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formulaId, setFormulaId] = useState("");
