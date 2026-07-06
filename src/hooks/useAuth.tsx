@@ -8,7 +8,7 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | null;
 
 interface RoleData {
   role: UserRole;
@@ -16,6 +16,7 @@ interface RoleData {
   fazendaId: string | null;
   retiroId: string | null;
   fabricaId?: string | null;
+  consultorId?: string | null;
 }
 
 interface AuthContextType {
@@ -125,7 +126,21 @@ function deferNonCritical(task: () => void) {
 }
 
 async function detectRole(userId: string): Promise<RoleData> {
-  // 0. Check operador_fabrica first
+  // 0a. Check consultor first
+  const { data: consultor, error: consultorError } = await supabase
+    .from("consultores")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (consultorError) throw consultorError;
+
+  if (consultor) {
+    return { role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id };
+  }
+
+  // 0b. Check operador_fabrica
   const { data: operador, error: operadorError } = await supabase
     .from("operadores_fabrica")
     .select("id, fabrica_id")

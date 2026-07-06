@@ -334,6 +334,35 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_score: {
+        Row: {
+          id: string
+          nota: number
+          tipo: string
+          visita_pasto_id: string
+        }
+        Insert: {
+          id?: string
+          nota: number
+          tipo: string
+          visita_pasto_id: string
+        }
+        Update: {
+          id?: string
+          nota?: number
+          tipo?: string
+          visita_pasto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_score_visita_pasto_id_fkey"
+            columns: ["visita_pasto_id"]
+            isOneToOne: false
+            referencedRelation: "visita_pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batidas: {
         Row: {
           criado_em: string | null
@@ -731,6 +760,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      consultores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       elementos_mapa: {
         Row: {
@@ -1165,6 +1218,50 @@ export type Database = {
             columns: ["administrador_id"]
             isOneToOne: false
             referencedRelation: "administradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fazendas_consultor: {
+        Row: {
+          consultor_id: string
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          municipio: string | null
+          nome_fazenda: string
+          proprietario: string | null
+          uf: string | null
+        }
+        Insert: {
+          consultor_id: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          municipio?: string | null
+          nome_fazenda: string
+          proprietario?: string | null
+          uf?: string | null
+        }
+        Update: {
+          consultor_id?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          municipio?: string | null
+          nome_fazenda?: string
+          proprietario?: string | null
+          uf?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fazendas_consultor_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "consultores"
             referencedColumns: ["id"]
           },
         ]
@@ -2783,6 +2880,53 @@ export type Database = {
           },
         ]
       }
+      visita_pastos: {
+        Row: {
+          consumo_kg_dia: number | null
+          id: string
+          letra: string
+          num_pasto: string | null
+          observacao: string | null
+          ordem: number
+          percentual_pv: string | null
+          qtd_animais: number | null
+          tipo_produto: string | null
+          visita_id: string
+        }
+        Insert: {
+          consumo_kg_dia?: number | null
+          id?: string
+          letra: string
+          num_pasto?: string | null
+          observacao?: string | null
+          ordem?: number
+          percentual_pv?: string | null
+          qtd_animais?: number | null
+          tipo_produto?: string | null
+          visita_id: string
+        }
+        Update: {
+          consumo_kg_dia?: number | null
+          id?: string
+          letra?: string
+          num_pasto?: string | null
+          observacao?: string | null
+          ordem?: number
+          percentual_pv?: string | null
+          qtd_animais?: number | null
+          tipo_produto?: string | null
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_pastos_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitas: {
         Row: {
           ciclo_id: string | null
@@ -2840,6 +2984,60 @@ export type Database = {
             columns: ["gerente_id"]
             isOneToOne: false
             referencedRelation: "gerentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visitas_tecnicas: {
+        Row: {
+          conclusao: string | null
+          consultor_id: string
+          created_at: string
+          fazenda_consultor_id: string
+          hora_fim: string | null
+          hora_inicio: string
+          id: string
+          observacoes_gerais: string | null
+          status: string
+          tipo: string
+        }
+        Insert: {
+          conclusao?: string | null
+          consultor_id: string
+          created_at?: string
+          fazenda_consultor_id: string
+          hora_fim?: string | null
+          hora_inicio?: string
+          id?: string
+          observacoes_gerais?: string | null
+          status?: string
+          tipo?: string
+        }
+        Update: {
+          conclusao?: string | null
+          consultor_id?: string
+          created_at?: string
+          fazenda_consultor_id?: string
+          hora_fim?: string | null
+          hora_inicio?: string
+          id?: string
+          observacoes_gerais?: string | null
+          status?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitas_tecnicas_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "consultores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitas_tecnicas_fazenda_consultor_id_fkey"
+            columns: ["fazenda_consultor_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas_consultor"
             referencedColumns: ["id"]
           },
         ]
@@ -2998,6 +3196,7 @@ export type Database = {
         Returns: string
       }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
+      get_consultor_id: { Args: { _user_id: string }; Returns: string }
       get_consumo_mineral: {
         Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
         Returns: {
@@ -3024,6 +3223,7 @@ export type Database = {
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       get_operador_fabrica_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
       is_operador_fabrica: { Args: { _user_id: string }; Returns: boolean }
       register_push_subscription: {

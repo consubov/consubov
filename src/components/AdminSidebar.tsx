@@ -1,4 +1,4 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -31,6 +31,7 @@ const menuItems = [
   { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
   { title: "Recuperar Dados", url: "/admin/recuperar", icon: ShieldAlert },
   { title: "Fábrica", url: "/admin/fabricas", icon: Factory },
+  { title: "Consultores", url: "/admin/consultores", icon: Stethoscope },
 ];
 
 export function AdminSidebar() {

@@ -43,6 +43,12 @@ import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
+import ConsultoresPage from "./pages/ConsultoresPage";
+import ConsultorLayout from "./pages/ConsultorLayout";
+import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
+import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
+import VisitaTecnicaPage from "./pages/VisitaTecnicaPage";
+import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -155,6 +161,8 @@ function RoleRedirect() {
       return <Navigate to="/escritorio" replace />;
     case "operador_fabrica":
       return <Navigate to="/fabrica" replace />;
+    case "consultor":
+      return <Navigate to="/consultor" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
@@ -227,6 +235,7 @@ const App = () => (
                 <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
+                <Route path="consultores" element={<ConsultoresPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
@@ -237,6 +246,13 @@ const App = () => (
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
               <Route path="/fabrica" element={<ProtectedRoute allowedRoles={["operador_fabrica"]}><FabricaDashboard /></ProtectedRoute>} />
+
+              <Route path="/consultor" element={<ProtectedRoute allowedRoles={["consultor"]}><ConsultorLayout /></ProtectedRoute>}>
+                <Route index element={<ConsultorFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<ConsultorFazendaDetalhePage />} />
+                <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
+                <Route path="historico" element={<ConsultorHistoricoPage />} />
+              </Route>
 
 
               <Route path="*" element={<NotFound />} />
