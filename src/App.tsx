@@ -235,6 +235,7 @@ const App = () => (
                 <Route path="operadores-fabrica" element={<OperadoresFabricaPage />} />
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
+                <Route path="consultores" element={<ConsultoresPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
