@@ -260,7 +260,8 @@ export default function RevisaoVisitaPage() {
     } catch { /* user cancelou */ }
   }
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (tipoLoaded === "confinamento") return <ConfinamentoRevisaoView visitaId={visitaId!} />;
+  if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
   const readOnly = visita.status === "finalizada";
