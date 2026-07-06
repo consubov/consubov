@@ -43,7 +43,7 @@ interface Pasto {
   signed: Record<string, string>;
 }
 interface Visita {
-  id: string; status: string; hora_inicio: string; hora_fim: string | null;
+  id: string; tipo: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
   pdf_url: string | null;
