@@ -344,7 +344,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} />
             </div>
             <div>
-              <Label>Foto *</Label>
+              <Label>Foto (opcional)</Label>
               <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
               {foto ? (
                 <div className="relative">
