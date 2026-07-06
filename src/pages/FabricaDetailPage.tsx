@@ -677,11 +677,31 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   }
 
   function openNew() {
+    setEditingId(null);
     setMateriaId(""); setQuantidade("");
     setDataEntrada(new Date().toISOString().slice(0, 10));
     setObservacao(""); setFoto(null);
     setDialogOpen(true);
   }
+
+  function openEdit(e: Entrada) {
+    setEditingId(e.id);
+    setMateriaId(e.materia_prima_id);
+    setQuantidade(String(e.quantidade));
+    setDataEntrada(e.data_entrada);
+    setObservacao(e.observacao || "");
+    setFoto(null);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir esta entrada? O estoque será ajustado automaticamente.")) return;
+    const { error } = await supabase.from("entradas_materias_primas").delete().eq("id", id);
+    if (error) return toast.error("Erro: " + error.message);
+    toast.success("Entrada removida. Estoque ajustado.");
+    load();
+  }
+
 
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
