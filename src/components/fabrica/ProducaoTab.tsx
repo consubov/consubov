@@ -713,7 +713,9 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead><TableHead>Fórmula</TableHead>
+                  <TableHead>Início</TableHead>
+                  <TableHead>Fim</TableHead>
+                  <TableHead>Fórmula</TableHead>
                   <TableHead className="text-right">Produzido</TableHead>
                   <TableHead>Divergência</TableHead>
                   <TableHead>Status</TableHead>
@@ -728,8 +730,17 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                   const divAlta = Math.abs(dif) > TOLERANCIA_PCT;
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetalhe(b)}>
-                      <TableCell className="text-xs">
-                        {new Date(b.data_inicio).toLocaleDateString("pt-BR")} {b.hora_inicio?.slice(0, 5)}
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {new Date(b.data_inicio).toLocaleDateString("pt-BR")}<br />
+                        <span className="text-muted-foreground">{b.hora_inicio?.slice(0, 5)}</span>
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {b.data_finalizacao ? (
+                          <>
+                            {new Date(b.data_finalizacao).toLocaleDateString("pt-BR")}<br />
+                            <span className="text-muted-foreground">{b.hora_finalizacao?.slice(0, 5)}</span>
+                          </>
+                        ) : "—"}
                       </TableCell>
                       <TableCell className="font-medium">{f?.nome || "—"}</TableCell>
                       <TableCell className="text-right">{b.quantidade_produzida ?? "—"}</TableCell>
@@ -749,6 +760,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                   );
                 })}
               </TableBody>
+
             </Table>
           </div>
         )}
