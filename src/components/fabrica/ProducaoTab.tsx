@@ -92,14 +92,16 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   async function load() {
     setLoading(true);
-    const [fm, mp, ba] = await Promise.all([
+    const [fm, mp, ba, pr] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("materias_primas").select("id, nome, unidade, estoque_atual").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).eq("status", "iniciada").order("criado_em", { ascending: false }),
+      supabase.from("produtos").select("id, nome, peso_saco_kg").eq("ativo", true),
     ]);
     setFormulas((fm.data as Formula[]) || []);
     setMaterias((mp.data as MateriaPrima[]) || []);
     setEmAndamento((ba.data as Batida[]) || []);
+    setProdutos((pr.data as Produto[]) || []);
     if (fm.data && fm.data.length > 0) {
       const ids = (fm.data as Formula[]).map(f => f.id);
       const { data: ing } = await supabase.from("formula_ingredientes").select("formula_id, materia_prima_id, quantidade").in("formula_id", ids);
