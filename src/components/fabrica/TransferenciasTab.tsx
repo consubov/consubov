@@ -603,7 +603,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                 <Textarea value={obsReceb} onChange={e => setObsReceb(e.target.value)} rows={2} />
               </div>
               <div>
-                <Label>Foto *</Label>
+                <Label>Foto (opcional)</Label>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
                 {fotoReceb ? (
                   <div className="relative">
