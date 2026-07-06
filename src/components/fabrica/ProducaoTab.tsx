@@ -94,7 +94,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     setLoading(true);
     const [fm, mp, ba, pr] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
-      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
+      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual, peso_por_saco").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).eq("status", "iniciada").order("criado_em", { ascending: false }),
       supabase.from("produtos").select("id, nome, peso_saco_kg").eq("ativo", true),
     ]);
