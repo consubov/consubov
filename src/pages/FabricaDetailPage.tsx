@@ -784,17 +784,28 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
                 <TableRow>
                   <TableHead>Data</TableHead><TableHead>Matéria-Prima</TableHead>
                   <TableHead className="text-right">Quantidade</TableHead><TableHead>Observação</TableHead>
+                  <TableHead className="w-24 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entradas.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{mpMap[e.materia_prima_id] || "—"}</TableCell>
                     <TableCell className="text-right font-medium">{e.quantidade}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{e.observacao || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)} title="Editar quantidade">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(e.id)} title="Excluir entrada">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -806,12 +817,13 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova entrada</DialogTitle>
-            <DialogDescription>Vinculada automaticamente a esta fábrica.</DialogDescription>
+            <DialogTitle>{editingId ? "Editar entrada" : "Nova entrada"}</DialogTitle>
+            <DialogDescription>{editingId ? "Alterar a quantidade ajusta o estoque automaticamente." : "Vinculada automaticamente a esta fábrica."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Matéria-Prima *</Label>
+
               <Select value={materiaId} onValueChange={setMateriaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
