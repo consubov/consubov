@@ -1,72 +1,82 @@
+# Módulo Consultor – Fase 1
 
-# Módulo Fábrica – Consubov
+Feature 100% aditiva. Nada existente (Admin/Gerente/Capataz/Fábrica, tabelas atuais, rotas atuais) é alterado ou removido.
 
-Adicionar novo módulo consumindo as tabelas já existentes (`fabricas`, `fabrica_destinos`, `operadores_fabrica`, `materias_primas`, `entradas_materias_primas`). Nada existente será alterado.
+## 1. Banco (uma única migração)
 
-## 1. Banco (mínimo necessário)
+Novas tabelas em `public`, seguindo o padrão do projeto (SEM RLS, controle na aplicação, GRANTs para authenticated/service_role):
 
-Uma única migração para viabilizar o funcionamento sem quebrar o que já existe:
+- `consultores` (id, user_id, nome, ativo, created_at)
+- `fazendas_consultor` (id, consultor_id, nome_fazenda, proprietario, municipio, uf, latitude, longitude, created_at)
+- `visitas_tecnicas` (id, consultor_id, fazenda_consultor_id, tipo `check ('rotina','confinamento')` default `'rotina'`, status `check ('rascunho','finalizada')` default `'rascunho'`, hora_inicio, hora_fim, observacoes_gerais, conclusao, created_at)
+- `visita_pastos` (id, visita_id, letra, num_pasto, qtd_animais, tipo_produto, percentual_pv, consumo_kg_dia, observacao, ordem)
+- `avaliacoes_score` (id, visita_pasto_id, tipo `check ('fezes','corporal','bebedouro')`, nota `check between 1 and 5`)
 
-- Sequência `fabrica_codigo_seq` + trigger para preencher `fabricas.codigo` no formato `FAB-000001` automaticamente na inserção.
-- Trigger em `entradas_materias_primas` (AFTER INSERT) que soma `quantidade` em `materias_primas.estoque_atual`.
-- GRANTs + RLS coerentes com o padrão do projeto:
-  - `fabricas`, `fabrica_destinos`, `materias_primas`, `entradas_materias_primas`, `operadores_fabrica`: leitura/gravação para `authenticated`; policies liberando `is_admin(auth.uid())`. Gerente também pode ler/gravar em `materias_primas` e `entradas_materias_primas`. Operador de fábrica pode ler apenas sua própria fábrica/destinos.
-- Função `is_operador_fabrica(_user_id uuid)` + `get_operador_fabrica_id(_user_id uuid)` (SECURITY DEFINER, padrão dos demais roles).
+Funções auxiliares SECURITY DEFINER, mesmo padrão de `is_admin` / `is_operador_fabrica`:
 
-Nenhuma coluna nova em tabelas já existentes. Nenhuma alteração em tabelas existentes.
+- `is_consultor(_user_id uuid) returns boolean`
+- `get_consultor_id(_user_id uuid) returns uuid`
 
-## 2. Autenticação — novo perfil `operador_fabrica`
+Índices em FKs para performance. Sem triggers extras nesta fase.
 
-- `src/hooks/useAuth.tsx`: adicionar `"operador_fabrica"` ao tipo `UserRole` e novo check no `detectRole` (antes de administrador), consultando `operadores_fabrica` por `user_id + ativo`. `roleData` passa a incluir `fabricaId`.
-- `src/App.tsx`: adicionar rota `/fabrica` protegida por `["operador_fabrica"]`, e `RoleRedirect` passa a mandar operador para `/fabrica`.
-- `src/pages/FabricaDashboard.tsx` (novo): dashboard placeholder mostrando nome/código da fábrica vinculada e botão sair.
+## 2. Autenticação
 
-## 3. Telas Admin (novo menu no `AdminSidebar`)
+- `src/hooks/useAuth.tsx`: adicionar `"consultor"` em `UserRole` e detectar em `detectRole` **antes** de administrador (mesmo padrão do operador_fabrica). `roleData` passa a incluir `consultorId`.
+- `src/App.tsx`: nova rota `/consultor` (e sub-rotas) protegida por `["consultor"]`; `RoleRedirect` direciona consultor para `/consultor`.
 
-Todas seguem o padrão visual/estrutural de `GerentesPage`/`ProdutosPage` (Card + Table + Dialog + shadcn).
+## 3. Admin — cadastro de consultores (mínimo p/ conseguir logar)
 
-- **`/admin/fabricas` — `FabricasPage.tsx`**
-  - Lista fábricas (código, nome, descrição, status).
-  - Modal criar/editar (nome, descrição, ativo). `codigo` e `qr_code` gerados no backend/trigger; após insert, atualiza `qr_code` com o UUID.
-  - Botão "Destinos autorizados" abre modal com checkboxes de fazendas e retiros (grava/deleta em `fabrica_destinos`).
-  - Botão "QR Code" abre preview + download PDF usando o mesmo layout de `QrCodePrintPDF` (1 card = fábrica).
-- **`/admin/operadores-fabrica` — `OperadoresFabricaPage.tsx`**
-  - Lista operadores. Modal criar/editar com nome, telefone, email, senha, fábrica (Select), ativo.
-  - Criação chama a edge function `create-user` (reaproveitando; ela já retorna `user.id` quando não é admin) e depois insere em `operadores_fabrica` com `user_id`.
+Nova página `/admin/consultores` (`ConsultoresPage.tsx`), padrão idêntico ao `OperadoresFabricaPage`/`GerentesPage`:
 
-Novos itens no `AdminSidebar`:
-- 🏭 Fábricas → `/admin/fabricas`
-- 👥 Operadores de Fábrica → `/admin/operadores-fabrica`
-- 📦 Matérias-Primas → `/admin/materias-primas`
-- ⬇️ Entrada de Matérias-Primas → `/admin/entrada-materias-primas`
+- Lista + modal criar/editar (nome, email, senha, ativo)
+- Usa a edge function `create-user` já existente e insere em `consultores` com o `user_id` retornado.
+- Novo item no `AdminSidebar`: 🧑‍🌾 Consultores → `/admin/consultores`.
 
-## 4. Matérias-primas (Admin + Gerente)
+## 4. UI do Consultor (novas telas isoladas)
 
-- **`/admin/materias-primas` — `MateriasPrimasPage.tsx`**
-  - Lista (nome, unidade, peso_por_saco, estoque_atual, estoque_minimo, ativo).
-  - Modal criar/editar (nome, unidade, peso_por_saco, estoque_minimo, ativo). `estoque_atual` somente leitura.
-- **`/admin/entrada-materias-primas` — `EntradaMateriasPrimasPage.tsx`**
-  - Formulário: matéria-prima (Select), fábrica (Select), quantidade, data, observação, foto opcional (upload no bucket `mapas` reaproveitado ou string base64 comprimida via `imageCompression.ts`).
-  - Salva em `entradas_materias_primas` com `registrado_por = auth.uid()`. Trigger cuida do estoque.
-  - Lista abaixo com últimas entradas.
+Layout dedicado `ConsultorLayout.tsx` com header padrão Consubov (logo, sino, refresh, versão, logout) — reaproveitando os componentes que já existem no dashboard atual.
 
-Ambas telas também expostas ao gerente através do próprio painel do gerente (adicionar dois botões/atalhos no `GerenteDashboard` que apontam para as mesmas rotas; as rotas são protegidas por `["administrador","gerente"]`).
+Rotas dentro de `/consultor`:
 
-## 5. Não mexer
+- `/consultor` → **Minhas Fazendas** (`ConsultorFazendasPage.tsx`)
+  - Lista `fazendas_consultor` do consultor logado.
+  - Botão "+ Nova Fazenda" → modal com nome, proprietário, município, UF, lat/long opcionais.
+  - Clicar numa fazenda → `/consultor/fazendas/:id`.
 
-- Nenhuma alteração em: Admin/Gerente/Capataz atuais, Pastos, Pesagens, Salga, tabelas existentes, fluxo de login atual.
-- `QrCodesPage` (pastos) permanece intacta; o QR da fábrica usa um novo componente derivado que compartilha o mesmo estilo.
+- `/consultor/fazendas/:id` → **Detalhe da Fazenda** (`ConsultorFazendaDetalhePage.tsx`)
+  - Cabeçalho com dados + botão "Iniciar Visita".
+  - Modal escolher tipo: **Rotina** (ativo) / **Confinamento** (desabilitado, "em breve").
+  - Ao confirmar Rotina → cria `visitas_tecnicas` (`status='rascunho'`, `hora_inicio=now()`) e navega para `/consultor/visitas/:visitaId`.
+  - Lista de visitas anteriores desta fazenda (link para leitura).
 
-## Notas técnicas
+- `/consultor/visitas/:visitaId` → **Visita em Andamento** (`VisitaTecnicaPage.tsx`)
+  - Header fixo: fazenda + hora de início.
+  - Lista de pastos ordenada por `ordem` (A, B, C...). Cada card mostra letra, num pasto, produto, notas.
+  - Botão "+ Adicionar Pasto" abre `PastoVisitaModal.tsx`:
+    - Campos: letra (sugerida próxima livre, editável), num pasto, qtd animais, tipo_produto (select com opções fixas), %PV, consumo kg/dia, observação.
+    - 3 seletores 1–5 (Fezes, Corporal, Bebedouro) — cinco botões redondos.
+    - Salvar → insert em `visita_pastos` + 3 `avaliacoes_score` (upsert quando editar).
+    - Reabrir card = mesmo modal em modo edição.
+  - Botão "Finalizar Visita" → modal com `observacoes_gerais` + `conclusao`. Confirmar → update `status='finalizada'`, `hora_fim=now()`. Depois a página fica só-leitura (edição plena virá na Fase 2).
 
-- Novo role no `useAuth` deve ser detectado **antes** de admin/gerente para que um operador nunca acabe caindo em outro perfil.
-- `create-user` edge function não precisa alterar: já suporta criar somente o usuário no Auth (`role = "usuario"`) e devolve `user.id`.
-- Bucket para foto de entrada de matéria-prima: reutilizar `mapas` (já público) com prefixo `materias-primas/`. Sem novo bucket.
-- Tudo em PT-BR, cores do design system (primary `#1B4332`, secondary `#D4A017`), mobile-first.
+- `/consultor/historico` → **Histórico** (`ConsultorHistoricoPage.tsx`)
+  - Lista de visitas do consultor, mais recentes primeiro (fazenda, tipo, data, status). Clicar abre a visita em modo leitura (mesma `VisitaTecnicaPage`).
+
+Navegação interna via barra inferior/lateral simples (Fazendas / Histórico) dentro do `ConsultorLayout`.
+
+## 5. Fora do escopo (Fase 2+)
+
+Não implementar agora: fotos, preview editável, PDF, gráficos, fluxo Confinamento, avaliação de fábrica, notificações push específicas do consultor.
 
 ## Ordem de execução
 
-1. Migração SQL (sequência, triggers, RLS, funções de role).
-2. Atualizar `useAuth` + `App.tsx` + `AdminSidebar` + `GerenteDashboard` atalhos.
-3. Criar as 5 páginas novas + `FabricaDashboard`.
-4. Verificar build.
+1. Migração SQL (tabelas + funções `is_consultor` / `get_consultor_id` + GRANTs).
+2. `useAuth` + `App.tsx` + `AdminSidebar` (novo item) + página admin `ConsultoresPage`.
+3. `ConsultorLayout` + 4 páginas + `PastoVisitaModal`.
+4. Bump `APP_VERSION`.
+
+## Notas técnicas
+
+- Padrão RLS: seguir o resto do projeto (RLS off, filtro por `consultor_id = get_consultor_id(auth.uid())` na aplicação).
+- GRANT SELECT/INSERT/UPDATE/DELETE para `authenticated`, GRANT ALL para `service_role` em todas as 5 tabelas.
+- Nenhuma alteração em tabelas/edge functions existentes.
