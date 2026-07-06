@@ -301,6 +301,7 @@ export default function GerenteDashboard() {
             <span className="truncate">{fazendaNome}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {roleData.fazendaId && <GerenteNotificacoesBell fazendaId={roleData.fazendaId} />}
             <UserNotificationToggle />
             <AppVersionBadge />
           </div>
