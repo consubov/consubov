@@ -654,12 +654,14 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [materiaId, setMateriaId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
   const [observacao, setObservacao] = useState("");
   const [foto, setFoto] = useState<string | null>(null);
+
 
   useEffect(() => { load(); }, [fabricaId]);
 
