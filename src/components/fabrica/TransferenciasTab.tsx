@@ -432,6 +432,15 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
     setDetalhe(t); setBloqueado(false); setRecebimento(null);
     setQtdReceb(""); setObsReceb(""); setFotoReceb(null);
 
+    // Operador de fábrica NÃO pode confirmar recebimento — apenas visualizar
+    if (!podeReceber) {
+      const { data: existente } = await supabase.from("recebimentos_transferencia")
+        .select("*").eq("transferencia_id", t.id).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+      setRecebimento((existente as Recebimento) || null);
+      setBloqueado(true);
+      return;
+    }
+
     // "Primeiro que abre assume": tentar transitar em_transito -> em_recebimento atomicamente
     if (t.status === "em_transito") {
       const { data: upd, error } = await supabase.from("transferencias_fabrica")
