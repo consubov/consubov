@@ -43,6 +43,12 @@ import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
+import ConsultoresPage from "./pages/ConsultoresPage";
+import ConsultorLayout from "./pages/ConsultorLayout";
+import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
+import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
+import VisitaTecnicaPage from "./pages/VisitaTecnicaPage";
+import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
