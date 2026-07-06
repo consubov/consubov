@@ -731,19 +731,33 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
         const { data: pub } = supabase.storage.from("mapas").getPublicUrl(path);
         fotoUrl = pub.publicUrl;
       }
-      const { error } = await supabase.from("entradas_materias_primas").insert({
-        materia_prima_id: materiaId,
-        fabrica_id: fabricaId,
-        quantidade: qtd,
-        data_entrada: dataEntrada,
-        observacao: observacao.trim() || null,
-        foto_url: fotoUrl,
-        registrado_por: user?.id ?? null,
-      });
-      if (error) throw error;
-      toast.success("Entrada registrada! Estoque atualizado.");
+      if (editingId) {
+        const patch: any = {
+          materia_prima_id: materiaId,
+          quantidade: qtd,
+          data_entrada: dataEntrada,
+          observacao: observacao.trim() || null,
+        };
+        if (fotoUrl) patch.foto_url = fotoUrl;
+        const { error } = await supabase.from("entradas_materias_primas").update(patch).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Entrada atualizada! Estoque ajustado.");
+      } else {
+        const { error } = await supabase.from("entradas_materias_primas").insert({
+          materia_prima_id: materiaId,
+          fabrica_id: fabricaId,
+          quantidade: qtd,
+          data_entrada: dataEntrada,
+          observacao: observacao.trim() || null,
+          foto_url: fotoUrl,
+          registrado_por: user?.id ?? null,
+        });
+        if (error) throw error;
+        toast.success("Entrada registrada! Estoque atualizado.");
+      }
       setDialogOpen(false);
       load();
+
     } catch (err: any) { toast.error("Erro: " + (err?.message || "desconhecido")); }
     finally { setSaving(false); }
   }
