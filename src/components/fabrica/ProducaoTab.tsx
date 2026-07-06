@@ -232,27 +232,33 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       }).eq("id", batidaFinalizando.id);
       if (error) throw error;
 
-      // Atualizar estoque_produto_acabado
+      // Atualizar estoque_produto_acabado (por PRODUTO, não por fórmula)
       const formula = formulas.find(f => f.id === batidaFinalizando.formula_id);
-      const pesoPorSaco = formula?.peso_por_saco ?? 0;
-      const kg = qtd * pesoPorSaco;
-
-      const { data: existing } = await supabase.from("estoque_produto_acabado")
-        .select("id, quantidade_sacos, quantidade_kg")
-        .eq("fabrica_id", fabricaId).eq("formula_id", batidaFinalizando.formula_id).maybeSingle();
-
-      if (existing) {
-        await supabase.from("estoque_produto_acabado").update({
-          quantidade_sacos: Number(existing.quantidade_sacos || 0) + qtd,
-          quantidade_kg: Number(existing.quantidade_kg || 0) + kg,
-        }).eq("id", existing.id);
+      const produto = produtos.find(p => p.id === formula?.produto_id);
+      if (!formula?.produto_id) {
+        toast.warning("Fórmula sem produto vinculado — estoque de produto acabado NÃO foi atualizado. Edite a fórmula.");
       } else {
-        await supabase.from("estoque_produto_acabado").insert({
-          fabrica_id: fabricaId,
-          formula_id: batidaFinalizando.formula_id,
-          quantidade_sacos: qtd,
-          quantidade_kg: kg,
-        });
+        // Preferir peso_saco_kg do produto; fallback para peso_por_saco da fórmula
+        const pesoPorSaco = Number(produto?.peso_saco_kg ?? formula.peso_por_saco ?? 0);
+        const kg = qtd * pesoPorSaco;
+
+        const { data: existing } = await supabase.from("estoque_produto_acabado")
+          .select("id, quantidade_sacos, quantidade_kg")
+          .eq("fabrica_id", fabricaId).eq("produto_id", formula.produto_id).maybeSingle();
+
+        if (existing) {
+          await supabase.from("estoque_produto_acabado").update({
+            quantidade_sacos: Number(existing.quantidade_sacos || 0) + qtd,
+            quantidade_kg: Number(existing.quantidade_kg || 0) + kg,
+          }).eq("id", existing.id);
+        } else {
+          await supabase.from("estoque_produto_acabado").insert({
+            fabrica_id: fabricaId,
+            produto_id: formula.produto_id,
+            quantidade_sacos: qtd,
+            quantidade_kg: kg,
+          });
+        }
       }
 
       // Calcular divergência
