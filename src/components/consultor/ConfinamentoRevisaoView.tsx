@@ -173,6 +173,64 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     } finally { setConfirmando(false); }
   }
 
+  async function gerarPdf() {
+    if (!visita || !fazenda || !consultor) return;
+    setGerandoPdf(true);
+    const t = toast.loading("Gerando PDF...");
+    try {
+      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+      const { blob, fileName } = await generateConfinamentoPdf({
+        visitaId: visita.id,
+        fazenda: {
+          nome_fazenda: fazenda.nome_fazenda,
+          proprietario: fazenda.proprietario,
+          municipio: fazenda.municipio,
+          uf: fazenda.uf,
+        },
+        consultor: { nome: consultor.nome },
+        hora_inicio: visita.hora_inicio,
+        hora_fim: visita.hora_fim || new Date().toISOString(),
+        observacoes_gerais: obsGerais,
+        conclusao,
+        currais: currais.map(c => ({
+          id: c.id, num_curral: c.num_curral,
+          organizacao_fabrica_nota: c.organizacao_fabrica_nota,
+          organizacao_insumos_nota: c.organizacao_insumos_nota,
+          scores: c.scores, fotos: c.fotos,
+        })),
+      });
+      const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
+      const { error } = await supabase.from("visitas_tecnicas").update({
+        pdf_url: pdfUrl,
+        status: "finalizada",
+        hora_fim: visita.hora_fim || new Date().toISOString(),
+      }).eq("id", visita.id);
+      if (error) throw error;
+      toast.dismiss(t);
+      toast.success("PDF gerado e visita finalizada!");
+      await load();
+    } catch (err: any) {
+      toast.dismiss(t);
+      toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
+    } finally { setGerandoPdf(false); }
+  }
+
+  async function compartilhar() {
+    if (!visita?.pdf_url) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Visita – ${fazenda?.nome_fazenda || ""}`,
+          text: "Relatório de visita técnica Consubov",
+          url: visita.pdf_url,
+        });
+      } else {
+        await navigator.clipboard.writeText(visita.pdf_url);
+        toast.success("Link copiado!");
+      }
+    } catch { /* user cancelou */ }
+  }
+
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
