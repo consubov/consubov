@@ -4,11 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
