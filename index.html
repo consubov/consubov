@@ -32,6 +32,55 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Guardião de versão: roda antes do bundle. Se detectar um build publicado
+      // diferente do último visto por este dispositivo, força unregister do SW,
+      // limpa caches do app e recarrega. Resiliente a bundles antigos travados
+      // (Android/iOS PWA presos em versões anteriores).
+      (function () {
+        try {
+          var host = location.hostname;
+          if (host.indexOf('id-preview--') !== -1 || host.indexOf('lovableproject.com') !== -1) return;
+          var LS_KEY = 'consubov:last-seen-build';
+          var GUARD_KEY = 'consubov:guard-reload';
+          fetch('/version.json?t=' + Date.now(), { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+              if (!data || !data.version) return;
+              var remote = String(data.version);
+              var stored = null;
+              try { stored = localStorage.getItem(LS_KEY); } catch (e) {}
+              if (stored === remote) return;
+              // Primeira visita nesta versão — evita loop guardando marca antes.
+              var guard = null;
+              try { guard = sessionStorage.getItem(GUARD_KEY); } catch (e) {}
+              try { localStorage.setItem(LS_KEY, remote); } catch (e) {}
+              if (guard === remote) return; // já recarregou nesta sessão
+              if (!stored) return; // primeira execução — só grava, não recarrega
+              try { sessionStorage.setItem(GUARD_KEY, remote); } catch (e) {}
+              var done = function () {
+                var url = new URL(location.href);
+                url.searchParams.set('__app_version', remote);
+                url.searchParams.set('__v', Date.now().toString());
+                location.replace(url.toString());
+              };
+              var unregSW = ('serviceWorker' in navigator)
+                ? navigator.serviceWorker.getRegistrations().then(function (regs) {
+                    return Promise.all(regs.map(function (r) { return r.unregister().catch(function () {}); }));
+                  }).catch(function () {})
+                : Promise.resolve();
+              var clearCaches = ('caches' in window)
+                ? caches.keys().then(function (keys) {
+                    return Promise.all(keys.filter(function (k) { return k.indexOf('consubov-') === 0; })
+                      .map(function (k) { return caches.delete(k).catch(function () {}); }));
+                  }).catch(function () {})
+                : Promise.resolve();
+              Promise.all([unregSW, clearCaches]).then(done, done);
+            })
+            .catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
