@@ -655,10 +655,10 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       {scannerOpen && (
         <QrScanner
           onScan={handleQrScan}
-          onManualSelect={() => { setScannerOpen(false); openIniciar(); }}
           onBack={() => setScannerOpen(false)}
         />
       )}
+
     </div>
 
   );
