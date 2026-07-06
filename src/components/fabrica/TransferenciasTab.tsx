@@ -279,10 +279,17 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               <Select value={produtoId} onValueChange={setFormulaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {produtos.map(f => {
-                    const est = estoqueMap[f.id];
-                    return <SelectItem key={f.id} value={f.id}>{f.nome} ({Number(est?.quantidade_sacos || 0)} sc)</SelectItem>;
-                  })}
+                  {produtos.filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0).length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhum produto disponível para transferência</div>
+                  ) : (
+                    produtos
+                      .filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0)
+                      .map(f => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.nome} ({Number(estoqueMap[f.id]?.quantidade_sacos || 0)} sacos)
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
               {produtoId && (
