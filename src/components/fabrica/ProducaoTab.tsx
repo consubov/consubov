@@ -29,9 +29,11 @@ const TOLERANCIA_PCT = 5;
 interface MateriaPrima {
   id: string; nome: string; unidade: string; estoque_atual: number | null;
 }
+interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface Formula {
   id: string; nome: string; peso_batida: number | null;
   peso_por_saco: number | null; producao_esperada: number | null; ativo: boolean | null;
+  produto_id: string | null;
 }
 interface Ingrediente {
   formula_id: string; materia_prima_id: string; quantidade: number;
