@@ -30,7 +30,7 @@ export default function ConsultorHistoricoPage() {
     setLoading(true);
     const { data } = await supabase
       .from("visitas_tecnicas")
-      .select("id, tipo, status, hora_inicio, fazenda_consultor_id, fazendas_consultor(nome_fazenda)")
+      .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
       .eq("consultor_id", roleData.consultorId!)
       .order("hora_inicio", { ascending: false });
     setVisitas((data as any as VisitaItem[]) || []);
