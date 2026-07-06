@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Loader2, Flag, Clock, FileCheck } from "lucide-react";
 import { toast } from "sonner";
+import { ArrowLeft, Plus, Loader2, Flag, Clock, FileCheck, FileText, Download, Share2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
