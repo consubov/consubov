@@ -41,9 +41,9 @@ export function getIosStandaloneRequirement() {
 
 export function getStoredPushEnabledPreference() {
   try {
-    return window.localStorage.getItem(PUSH_ENABLED_PREF_KEY) === "1";
+    return window.localStorage.getItem(PUSH_ENABLED_PREF_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
