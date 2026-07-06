@@ -6,9 +6,10 @@ import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 
 interface QrScannerProps {
   onScan: (qrUuid: string) => void;
-  onManualSelect: () => void;
+  onManualSelect?: () => void;
   onBack: () => void;
 }
+
 
 // Declare BarcodeDetector for TypeScript
 declare global {
