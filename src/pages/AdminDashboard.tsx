@@ -19,7 +19,7 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0 });
+  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0, fabricas: 0 });
   const [loading, setLoading] = useState(true);
   const [showCriarAdmin, setShowCriarAdmin] = useState(false);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
@@ -27,7 +27,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
-      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData] = await Promise.all([
+      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData, fabricas] = await Promise.all([
         supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true),
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
         supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false),
         supabase.from("lancamentos").select("id", { count: "exact", head: true }),
         supabase.from("pastos").select("num_animais").eq("ativo", true),
+        supabase.from("fabricas").select("id", { count: "exact", head: true }).eq("ativo", true),
       ]);
 
       const totalAnimais = (animaisData.data ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
         ciclosAbertos: ciclos.count ?? 0,
         lancamentos: lancamentos.count ?? 0,
         animais: totalAnimais,
+        fabricas: fabricas.count ?? 0,
       });
       setLoading(false);
     }
