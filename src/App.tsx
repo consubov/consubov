@@ -246,6 +246,13 @@ const App = () => (
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
               <Route path="/fabrica" element={<ProtectedRoute allowedRoles={["operador_fabrica"]}><FabricaDashboard /></ProtectedRoute>} />
 
+              <Route path="/consultor" element={<ProtectedRoute allowedRoles={["consultor"]}><ConsultorLayout /></ProtectedRoute>}>
+                <Route index element={<ConsultorFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<ConsultorFazendaDetalhePage />} />
+                <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
+                <Route path="historico" element={<ConsultorHistoricoPage />} />
+              </Route>
+
 
               <Route path="*" element={<NotFound />} />
             </Routes>
