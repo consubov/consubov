@@ -378,9 +378,11 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
               <p className="text-destructive font-semibold text-sm">
                 🔴 QR Code não lido após {failCount} tentativas
               </p>
-              <Button onClick={onManualSelect} className="w-full" variant="secondary">
-                Selecionar pasto manualmente
-              </Button>
+              {onManualSelect && (
+                <Button onClick={onManualSelect} className="w-full" variant="secondary">
+                  Selecionar pasto manualmente
+                </Button>
+              )}
               <Button
                 onClick={() => { setFailCount(0); setError(null); }}
                 variant="outline"
@@ -392,6 +394,7 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           </Card>
         </main>
       )}
+
     </div>
   );
 }
