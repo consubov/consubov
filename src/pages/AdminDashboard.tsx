@@ -72,6 +72,7 @@ export default function AdminDashboard() {
     { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
     { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
     { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
+    { label: "Fábricas", value: stats.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
   ];
 
   return (
