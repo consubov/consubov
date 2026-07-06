@@ -26,7 +26,7 @@ import { toast } from "sonner";
 const TOLERANCIA_PCT = 5;
 
 interface MateriaPrima {
-  id: string; nome: string; unidade: string; estoque_atual: number | null;
+  id: string; nome: string; unidade: string; estoque_atual: number | null; peso_por_saco: number | null;
 }
 interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface Formula {
