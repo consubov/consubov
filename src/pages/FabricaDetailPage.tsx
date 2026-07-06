@@ -92,11 +92,13 @@ export default function FabricaDetailPage() {
       </div>
 
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="info"><Factory className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Informações</span></TabsTrigger>
-          <TabsTrigger value="operadores"><Users className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Operadores</span></TabsTrigger>
-          <TabsTrigger value="materias"><Package2 className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Matérias-Primas</span></TabsTrigger>
-          <TabsTrigger value="entradas"><PackagePlus className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Entradas</span></TabsTrigger>
+        <TabsList className="grid grid-cols-6 w-full">
+          <TabsTrigger value="info"><Factory className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Info</span></TabsTrigger>
+          <TabsTrigger value="operadores"><Users className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Operadores</span></TabsTrigger>
+          <TabsTrigger value="materias"><Package2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Matérias</span></TabsTrigger>
+          <TabsTrigger value="entradas"><PackagePlus className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Entradas</span></TabsTrigger>
+          <TabsTrigger value="formulas"><FlaskConical className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Fórmulas</span></TabsTrigger>
+          <TabsTrigger value="producao"><Play className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Produção</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -111,8 +113,15 @@ export default function FabricaDetailPage() {
         <TabsContent value="entradas" className="mt-4">
           <EntradasTab fabricaId={fabrica.id} />
         </TabsContent>
+        <TabsContent value="formulas" className="mt-4">
+          <FormulasTab fabricaId={fabrica.id} />
+        </TabsContent>
+        <TabsContent value="producao" className="mt-4">
+          <ProducaoTab fabricaId={fabrica.id} />
+        </TabsContent>
       </Tabs>
     </div>
+
   );
 }
 
