@@ -31,6 +31,7 @@ const menuItems = [
   { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
   { title: "Recuperar Dados", url: "/admin/recuperar", icon: ShieldAlert },
   { title: "Fábrica", url: "/admin/fabricas", icon: Factory },
+  { title: "Consultores", url: "/admin/consultores", icon: Stethoscope },
 ];
 
 export function AdminSidebar() {
