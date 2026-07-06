@@ -202,38 +202,8 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
         }).eq("id", estoqueDisp.id);
       }
 
-      // Notificação (escopo fazenda — Gerente/Capataz da fazenda destino recebem)
-      const destLabel = destinoLabel(
-        { fazenda_destino_id: tipo === "faz" ? destId : null, retiro_destino_id: tipo === "ret" ? destId : null },
-        fazendas, retiros,
-      );
-      await supabase.from("notificacoes").insert({
-        tipo: "transferencia_fabrica",
-        titulo: `Nova transferência de ${produtoSel?.nome || "produto"}`,
-        mensagem: `Fábrica enviou ${q} sacos para ${destLabel}. Aguardando recebimento.`,
-        fazenda_id: fazendaIdNotif,
-        dados: {
-          transferencia_id: tRow.id,
-          fabrica_id: fabricaId,
-          produto_id: produtoId,
-          produto_nome: produtoSel?.nome || null,
-          quantidade_sacos: q,
-          quantidade_kg: kg,
-          fazenda_destino_id: tipo === "faz" ? destId : null,
-          retiro_destino_id: tipo === "ret" ? destId : null,
-          rota: `/admin/fabricas/${fabricaId}?tab=transferencias&sub=transito`,
-        },
-      });
-
-      // Push notification (WhatsApp-like) para gerente + admin da fazenda destino
-      if (fazendaIdNotif) {
-        await sendPush(
-          `Nova transferência de ${produtoSel?.nome || "produto"}`,
-          `Fábrica enviou ${q} sacos para ${destLabel}. Aguardando recebimento.`,
-          `/gerente/transferencias?transferencia=${tRow.id}`,
-          { fazendaId: fazendaIdNotif },
-        );
-      }
+      // Notificação in-app + push são disparados pelo trigger
+      // trg_notificar_transferencia_fabrica no banco (mesmo padrão de observações de pasto).
 
       toast.success("Transferência registrada e notificações enviadas");
       reset();
