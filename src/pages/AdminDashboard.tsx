@@ -15,6 +15,7 @@ interface Stats {
   ciclosAbertos: number;
   lancamentos: number;
   animais: number;
+  fabricas: number;
 }
 
 export default function AdminDashboard() {
