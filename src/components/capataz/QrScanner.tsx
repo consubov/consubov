@@ -63,12 +63,13 @@ function getCameraErrorMessage(error: unknown) {
     }
 
     if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
-      return "Não encontramos uma câmera compatível com este dispositivo. Tente novamente ou selecione o pasto manualmente.";
+      return "Não encontramos uma câmera compatível com este dispositivo. Tente novamente.";
     }
   }
 
-  return "Não foi possível abrir a câmera neste dispositivo. Tente novamente ou selecione o pasto manualmente.";
+  return "Não foi possível abrir a câmera neste dispositivo. Tente novamente.";
 }
+
 
 function waitForVideoReadyState(video: HTMLVideoElement, minimumReadyState: number) {
   return new Promise<void>((resolve) => {
