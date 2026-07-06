@@ -2154,6 +2154,59 @@ export type Database = {
         }
         Relationships: []
       }
+      recebimentos_transferencia: {
+        Row: {
+          criado_em: string | null
+          data_recebimento: string | null
+          divergencia_percentual: number | null
+          divergencia_sacos: number | null
+          foto_url: string | null
+          hora_recebimento: string | null
+          id: string
+          observacao: string | null
+          quantidade_recebida: number
+          recebido_por: string | null
+          status: string | null
+          transferencia_id: string
+        }
+        Insert: {
+          criado_em?: string | null
+          data_recebimento?: string | null
+          divergencia_percentual?: number | null
+          divergencia_sacos?: number | null
+          foto_url?: string | null
+          hora_recebimento?: string | null
+          id?: string
+          observacao?: string | null
+          quantidade_recebida: number
+          recebido_por?: string | null
+          status?: string | null
+          transferencia_id: string
+        }
+        Update: {
+          criado_em?: string | null
+          data_recebimento?: string | null
+          divergencia_percentual?: number | null
+          divergencia_sacos?: number | null
+          foto_url?: string | null
+          hora_recebimento?: string | null
+          id?: string
+          observacao?: string | null
+          quantidade_recebida?: number
+          recebido_por?: string | null
+          status?: string | null
+          transferencia_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recebimentos_transferencia_transferencia_id_fkey"
+            columns: ["transferencia_id"]
+            isOneToOne: false
+            referencedRelation: "transferencias_fabrica"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retiros: {
         Row: {
           alerta_atraso_enviado: boolean
@@ -2510,6 +2563,80 @@ export type Database = {
           {
             foreignKeyName: "transferencias_estoque_retiro_origem_id_fkey"
             columns: ["retiro_origem_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transferencias_fabrica: {
+        Row: {
+          criado_em: string | null
+          fabrica_id: string
+          fazenda_destino_id: string | null
+          formula_id: string
+          foto_url: string | null
+          id: string
+          observacao: string | null
+          quantidade_kg: number
+          quantidade_sacos: number
+          registrado_por: string | null
+          retiro_destino_id: string | null
+          status: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          fabrica_id: string
+          fazenda_destino_id?: string | null
+          formula_id: string
+          foto_url?: string | null
+          id?: string
+          observacao?: string | null
+          quantidade_kg: number
+          quantidade_sacos: number
+          registrado_por?: string | null
+          retiro_destino_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          fabrica_id?: string
+          fazenda_destino_id?: string | null
+          formula_id?: string
+          foto_url?: string | null
+          id?: string
+          observacao?: string | null
+          quantidade_kg?: number
+          quantidade_sacos?: number
+          registrado_por?: string | null
+          retiro_destino_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_fabrica_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_fabrica_fazenda_destino_id_fkey"
+            columns: ["fazenda_destino_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_fabrica_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas_fabrica"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_fabrica_retiro_destino_id_fkey"
+            columns: ["retiro_destino_id"]
             isOneToOne: false
             referencedRelation: "retiros"
             referencedColumns: ["id"]
