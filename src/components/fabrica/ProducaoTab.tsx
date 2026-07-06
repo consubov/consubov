@@ -456,9 +456,8 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
             <p className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</p>
           )}
         </CardContent>
-
-        )}
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" /> Em andamento ({emAndamento.length})</CardTitle></CardHeader>
