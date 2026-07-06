@@ -3,92 +3,22 @@ import { Bell, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const output = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
-  return output;
-}
-
-function isSupported() {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
-}
-
-function sameApplicationServerKey(subscription: PushSubscription) {
-  if (!VAPID_PUBLIC_KEY) return true;
-  const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-  const existing = subscription.options.applicationServerKey;
-  if (!existing) return false;
-  const existingBytes = new Uint8Array(existing);
-  return current.length === existingBytes.length && current.every((value, index) => value === existingBytes[index]);
-}
-
-async function getFreshSubscription(registration: ServiceWorkerRegistration) {
-  let subscription = await registration.pushManager.getSubscription();
-  if (subscription && !sameApplicationServerKey(subscription)) {
-    await subscription.unsubscribe().catch(() => undefined);
-    subscription = null;
-  }
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!) as unknown as BufferSource,
-    });
-  }
-  return subscription;
-}
+import {
+  activatePushNotifications,
+  getCurrentPushSubscription,
+  getIosStandaloneRequirement,
+  getReadyRegistration,
+  getStoredPushEnabledPreference,
+  isPushSupported,
+  requestPushPermission,
+  savePushSubscription,
+  VAPID_PUBLIC_KEY,
+} from "@/lib/pushNotifications";
 
 function isLovablePreview() {
   if (typeof window === "undefined") return false;
   const h = window.location.hostname;
   return h.includes("id-preview--") || h.includes("lovableproject.com") || h.includes("lovable.app");
-}
-
-function isIosStandaloneRequired() {
-  const ua = navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
-  const isStandalone =
-    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-    (navigator as unknown as { standalone?: boolean }).standalone === true;
-  return { isIos, isStandalone };
-}
-
-async function saveSubscription(userId: string, subscription: PushSubscription, enabled = false) {
-  const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
-  const endpoint = subJson.endpoint ?? subscription.endpoint;
-  if (!endpoint) return new Error("subscription sem endpoint");
-  const payload = {
-    user_id: userId,
-    endpoint,
-    subscription: subJson,
-    enabled,
-  };
-
-  const { error } = await supabase.from("push_subscriptions").insert([payload]);
-  if (!error) return null;
-
-  if (error.code === "23505") {
-    const updatePayload = enabled
-      ? { enabled: true, user_id: userId, subscription: subJson }
-      : { user_id: userId, subscription: subJson };
-    const { error: updateError } = await supabase
-      .from("push_subscriptions")
-      .update(updatePayload)
-      .eq("endpoint", endpoint);
-    return updateError;
-  }
-
-  return error;
 }
 
 type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
@@ -104,7 +34,7 @@ export function EnableNotificationsBanner() {
   useEffect(() => {
     if (!session || !user?.id) return;
     if (dismissedThisSession) return;
-    if (!isSupported()) {
+    if (!isPushSupported()) {
       setStatus("unsupported");
       return;
     }
@@ -131,23 +61,26 @@ export function EnableNotificationsBanner() {
       if (perm === "granted") {
         (async () => {
           try {
-            const reg = await navigator.serviceWorker.ready;
-            const sub = await reg.pushManager.getSubscription();
+            const reg = await getReadyRegistration();
+            const sub = await getCurrentPushSubscription(reg);
             if (!sub) {
-              setStatus("needs-enable");
-              return;
-            }
-            if (!sameApplicationServerKey(sub)) {
               setStatus("needs-enable");
               return;
             }
             const { data } = await supabase
               .from("push_subscriptions")
-              .select("id")
+              .select("id, enabled")
               .eq("user_id", user!.id)
-              .limit(1);
-            if (!data || data.length === 0) {
-              await saveSubscription(user!.id, sub, false);
+              .eq("endpoint", sub.endpoint)
+              .maybeSingle();
+            if (!data) {
+              await savePushSubscription(user!.id, sub, getStoredPushEnabledPreference());
+              setStatus(getStoredPushEnabledPreference() ? "hidden" : "needs-enable");
+              return;
+            }
+            if (data.enabled === false) {
+              setStatus("needs-enable");
+              return;
             }
             setStatus("hidden");
           } catch {
@@ -175,7 +108,7 @@ export function EnableNotificationsBanner() {
     setOkMsg(null);
     setBusy(true);
     try {
-      const { isIos, isStandalone } = isIosStandaloneRequired();
+      const { isIos, isStandalone } = getIosStandaloneRequirement();
       if (isIos && !isStandalone) {
         setError("No iPhone: toque em Compartilhar → Adicionar à Tela de Início e abra pelo ícone.");
         setBusy(false);
@@ -186,7 +119,7 @@ export function EnableNotificationsBanner() {
         setBusy(false);
         return;
       }
-      const permission = await Notification.requestPermission();
+      const permission = await requestPushPermission();
       if (permission === "denied") {
         setStatus("denied");
         setBusy(false);
@@ -197,22 +130,14 @@ export function EnableNotificationsBanner() {
         setBusy(false);
         return;
       }
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await getFreshSubscription(registration);
-      const upErr = await saveSubscription(user!.id, subscription, true);
-      if (upErr) {
-        console.error("[Push] upsert error", upErr);
-        setError("Falha ao salvar inscrição: " + upErr.message);
-        setBusy(false);
-        return;
-      }
+      const { registration } = await activatePushNotifications(user!.id);
       // Show local test notification to confirm it works
       try {
         await registration.showNotification("CONSUBOV", {
           body: "Notificações ativadas com sucesso ✓",
           icon: "/icon-192.png",
           badge: "/icon-96.png",
-          tag: "consubov-welcome",
+          tag: `consubov-welcome-${Date.now()}`,
         });
       } catch {
         /* ignore */

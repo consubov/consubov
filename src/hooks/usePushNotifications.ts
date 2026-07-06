@@ -1,74 +1,13 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const output = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
-  return output;
-}
-
-function isSupported(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
-}
-
-function sameApplicationServerKey(subscription: PushSubscription): boolean {
-  if (!VAPID_PUBLIC_KEY) return true;
-  const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-  const existing = subscription.options.applicationServerKey;
-  if (!existing) return false;
-  const existingBytes = new Uint8Array(existing);
-  return current.length === existingBytes.length && current.every((value, index) => value === existingBytes[index]);
-}
-
-async function getFreshSubscription(registration: ServiceWorkerRegistration): Promise<PushSubscription> {
-  let subscription = await registration.pushManager.getSubscription();
-  if (subscription && !sameApplicationServerKey(subscription)) {
-    await subscription.unsubscribe().catch(() => undefined);
-    subscription = null;
-  }
-  if (!subscription) {
-    console.log("[Push] criando nova subscription...");
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!) as unknown as BufferSource,
-    });
-  }
-  return subscription;
-}
-
-async function saveSubscription(userId: string, subscription: PushSubscription) {
-  const subJson = JSON.parse(JSON.stringify(subscription.toJSON())) as { endpoint?: string };
-  const endpoint = subJson.endpoint ?? subscription.endpoint;
-  if (!endpoint) return new Error("subscription sem endpoint");
-  const payload = {
-    user_id: userId,
-    endpoint,
-    subscription: subJson,
-    enabled: true,
-  };
-
-  const { error } = await supabase.from("push_subscriptions").insert([payload]);
-  if (!error) return null;
-  if (error.code === "23505") {
-    const { error: upErr } = await supabase
-      .from("push_subscriptions")
-      .update({ user_id: userId, subscription: subJson, enabled: true })
-      .eq("endpoint", endpoint);
-    return upErr ?? null;
-  }
-  return error;
-}
+import {
+  getCurrentPushSubscription,
+  getReadyRegistration,
+  getStoredPushEnabledPreference,
+  isPushSupported,
+  savePushSubscription,
+  VAPID_PUBLIC_KEY,
+} from "@/lib/pushNotifications";
 
 /**
  * Registra o usuário para Web Push, sem alterar nada das notificações
@@ -82,14 +21,9 @@ export function usePushNotifications() {
     if (!session || !user?.id) return;
     if (ranForUserRef.current === user.id) return;
 
-    console.log("[Push] verificando suporte...");
-    console.log("[Push] VITE_VAPID_PUBLIC_KEY:", VAPID_PUBLIC_KEY ? `${VAPID_PUBLIC_KEY.slice(0, 12)}...` : "NÃO DEFINIDA");
-
-    if (!isSupported()) {
-      console.log("[Push] não suportado neste navegador");
+    if (!isPushSupported()) {
       return;
     }
-    console.log("[Push] suporte OK");
 
     if (!VAPID_PUBLIC_KEY) {
       console.warn("[Push] VITE_VAPID_PUBLIC_KEY ausente — abortando");
@@ -100,13 +34,10 @@ export function usePushNotifications() {
 
     (async () => {
       try {
-        const registration = await navigator.serviceWorker.ready;
-        console.log("[Push] service worker pronto");
+        const registration = await getReadyRegistration();
 
         const permission = Notification.permission;
-        console.log("[Push] permissão atual = " + permission);
         if (permission === "default") {
-          console.log("[Push] aguardando ação do usuário no banner para pedir permissão");
           ranForUserRef.current = null;
           return;
         }
@@ -115,16 +46,16 @@ export function usePushNotifications() {
           return;
         }
 
-        const subscription = await getFreshSubscription(registration);
-        console.log("[Push] subscription obtida:", subscription.endpoint);
+        const subscription = await getCurrentPushSubscription(registration);
+        if (!subscription) {
+          ranForUserRef.current = null;
+          return;
+        }
 
-        console.log("[Push] salvando no Supabase...");
-        const error = await saveSubscription(user.id, subscription);
+        const error = await savePushSubscription(user.id, subscription, getStoredPushEnabledPreference());
 
         if (error) {
           console.error("[Push] erro ao salvar no Supabase:", error.message);
-        } else {
-          console.log("[Push] salvo com sucesso");
         }
       } catch (err) {
         console.error("[Push] falha no registro:", err);
