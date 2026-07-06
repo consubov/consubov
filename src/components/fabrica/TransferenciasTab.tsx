@@ -166,11 +166,10 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
     const q = parseFloat(qtd);
     if (!q || q <= 0) return toast.error("Quantidade inválida");
     if (q > sacosDisp) return toast.error(`Estoque insuficiente (disponível: ${sacosDisp} sc)`);
-    if (!foto) return toast.error("Foto obrigatória");
 
     setSaving(true);
     try {
-      const fotoUrl = await uploadFoto(fabricaId, foto);
+      const fotoUrl = foto ? await uploadFoto(fabricaId, foto) : null;
       const [tipo, destId] = destinoKey.split(":");
       const pesoPorSaco = Number(produtoSel?.peso_saco_kg || 0);
       const kg = q * pesoPorSaco;
