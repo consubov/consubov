@@ -5,17 +5,20 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const BUCKET = "visitas-consultor-fotos";
-const MAX = 5;
+const DEFAULT_MAX = 5;
 
 export interface FotoRow {
   id: string;
-  visita_pasto_id: string;
+  visita_pasto_id: string | null;
+  visita_curral_id: string | null;
   url: string; // storage path
   ordem: number;
 }
 
 interface Props {
-  visitaPastoId: string | null; // null = not yet saved
+  visitaPastoId?: string | null;
+  visitaCurralId?: string | null;
+  max?: number;
   disabled?: boolean;
   className?: string;
 }
@@ -25,43 +28,60 @@ async function getSignedUrl(path: string) {
   return data?.signedUrl || "";
 }
 
-export default function PhotoGrid({ visitaPastoId, disabled, className }: Props) {
+export default function PhotoGrid({
+  visitaPastoId = null,
+  visitaCurralId = null,
+  max = DEFAULT_MAX,
+  disabled,
+  className,
+}: Props) {
   const [fotos, setFotos] = useState<FotoRow[]>([]);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<number>(1);
 
+  const targetId = visitaCurralId || visitaPastoId || null;
+  const targetKind: "pasto" | "curral" | null =
+    visitaCurralId ? "curral" : visitaPastoId ? "pasto" : null;
+
   useEffect(() => {
-    if (!visitaPastoId) { setFotos([]); return; }
+    if (!targetId || !targetKind) { setFotos([]); return; }
     (async () => {
+      const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
       const { data } = await supabase.from("visita_fotos")
-        .select("*").eq("visita_pasto_id", visitaPastoId).order("ordem");
+        .select("*").eq(col, targetId).order("ordem");
       const rows = (data as FotoRow[]) || [];
       setFotos(rows);
       const map: Record<string, string> = {};
       await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
       setSigned(map);
     })();
-  }, [visitaPastoId]);
+  }, [targetId, targetKind]);
 
-  const slots = Array.from({ length: MAX }, (_, i) => {
+  const slots = Array.from({ length: max }, (_, i) => {
     const ordem = i + 1;
     return { ordem, foto: fotos.find(f => f.ordem === ordem) };
   });
 
   async function handleUpload(file: File) {
-    if (!visitaPastoId) { toast.error("Salve o pasto antes de anexar fotos"); return; }
+    if (!targetId || !targetKind) {
+      toast.error(targetKind === null ? "Salve antes de anexar fotos" : "Referência ausente");
+      return;
+    }
     const ordem = slotRef.current;
     setUploadingSlot(ordem);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${visitaPastoId}/${ordem}-${Date.now()}.${ext}`;
+      const folder = targetKind === "curral" ? "currais" : "pastos";
+      const path = `${folder}/${targetId}/${ordem}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (error) throw error;
+      const insertPayload: any = { url: path, ordem };
+      if (targetKind === "curral") insertPayload.visita_curral_id = targetId;
+      else insertPayload.visita_pasto_id = targetId;
       const { data, error: insErr } = await supabase.from("visita_fotos")
-        .insert({ visita_pasto_id: visitaPastoId, url: path, ordem })
-        .select().single();
+        .insert(insertPayload).select().single();
       if (insErr) throw insErr;
       const row = data as FotoRow;
       const url = await getSignedUrl(row.url);
@@ -85,10 +105,12 @@ export default function PhotoGrid({ visitaPastoId, disabled, className }: Props)
     }
   }
 
+  const gridCols = max >= 10 ? "grid-cols-5" : "grid-cols-5";
+
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="text-xs font-semibold text-muted-foreground">Fotos ({fotos.length}/{MAX})</div>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="text-xs font-semibold text-muted-foreground">Fotos ({fotos.length}/{max})</div>
+      <div className={cn("grid gap-1.5", gridCols)}>
         {slots.map(({ ordem, foto }) => (
           <div key={ordem} className="aspect-square rounded-md border border-dashed border-border bg-muted/40 relative overflow-hidden">
             {foto ? (
@@ -106,10 +128,10 @@ export default function PhotoGrid({ visitaPastoId, disabled, className }: Props)
             ) : (
               <button
                 type="button"
-                disabled={disabled || uploadingSlot !== null || !visitaPastoId}
+                disabled={disabled || uploadingSlot !== null || !targetId}
                 onClick={() => { slotRef.current = ordem; inputRef.current?.click(); }}
                 className="w-full h-full flex items-center justify-center text-muted-foreground disabled:opacity-40"
-                title={visitaPastoId ? "Adicionar foto" : "Salve o pasto primeiro"}
+                title={targetId ? "Adicionar foto" : "Salve antes"}
               >
                 {uploadingSlot === ordem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </button>
