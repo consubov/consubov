@@ -869,24 +869,24 @@ export type Database = {
         Row: {
           criado_em: string | null
           fabrica_id: string
-          formula_id: string
           id: string
+          produto_id: string
           quantidade_kg: number | null
           quantidade_sacos: number | null
         }
         Insert: {
           criado_em?: string | null
           fabrica_id: string
-          formula_id: string
           id?: string
+          produto_id: string
           quantidade_kg?: number | null
           quantidade_sacos?: number | null
         }
         Update: {
           criado_em?: string | null
           fabrica_id?: string
-          formula_id?: string
           id?: string
+          produto_id?: string
           quantidade_kg?: number | null
           quantidade_sacos?: number | null
         }
@@ -899,10 +899,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "estoque_produto_acabado_formula_id_fkey"
-            columns: ["formula_id"]
+            foreignKeyName: "estoque_produto_acabado_produto_id_fkey"
+            columns: ["produto_id"]
             isOneToOne: false
-            referencedRelation: "formulas_fabrica"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -1218,6 +1218,7 @@ export type Database = {
           peso_batida: number
           peso_por_saco: number
           producao_esperada: number
+          produto_id: string | null
         }
         Insert: {
           ativo?: boolean | null
@@ -1228,6 +1229,7 @@ export type Database = {
           peso_batida: number
           peso_por_saco: number
           producao_esperada: number
+          produto_id?: string | null
         }
         Update: {
           ativo?: boolean | null
@@ -1238,6 +1240,7 @@ export type Database = {
           peso_batida?: number
           peso_por_saco?: number
           producao_esperada?: number
+          produto_id?: string | null
         }
         Relationships: [
           {
@@ -1245,6 +1248,13 @@ export type Database = {
             columns: ["fabrica_id"]
             isOneToOne: false
             referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formulas_fabrica_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
         ]
@@ -1296,6 +1306,66 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventarios_fabrica: {
+        Row: {
+          criado_em: string | null
+          data_inventario: string
+          divergencia_percentual: number | null
+          divergencia_sacos: number | null
+          estoque_real_sacos: number
+          estoque_teorico_sacos: number
+          fabrica_id: string
+          formula_id: string
+          foto_url: string | null
+          id: string
+          observacao: string | null
+          realizado_por: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data_inventario?: string
+          divergencia_percentual?: number | null
+          divergencia_sacos?: number | null
+          estoque_real_sacos: number
+          estoque_teorico_sacos: number
+          fabrica_id: string
+          formula_id: string
+          foto_url?: string | null
+          id?: string
+          observacao?: string | null
+          realizado_por?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          data_inventario?: string
+          divergencia_percentual?: number | null
+          divergencia_sacos?: number | null
+          estoque_real_sacos?: number
+          estoque_teorico_sacos?: number
+          fabrica_id?: string
+          formula_id?: string
+          foto_url?: string | null
+          id?: string
+          observacao?: string | null
+          realizado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventarios_fabrica_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventarios_fabrica_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas_fabrica"
             referencedColumns: ["id"]
           },
         ]
@@ -2574,10 +2644,10 @@ export type Database = {
           criado_em: string | null
           fabrica_id: string
           fazenda_destino_id: string | null
-          formula_id: string
           foto_url: string | null
           id: string
           observacao: string | null
+          produto_id: string
           quantidade_kg: number
           quantidade_sacos: number
           registrado_por: string | null
@@ -2588,10 +2658,10 @@ export type Database = {
           criado_em?: string | null
           fabrica_id: string
           fazenda_destino_id?: string | null
-          formula_id: string
           foto_url?: string | null
           id?: string
           observacao?: string | null
+          produto_id: string
           quantidade_kg: number
           quantidade_sacos: number
           registrado_por?: string | null
@@ -2602,10 +2672,10 @@ export type Database = {
           criado_em?: string | null
           fabrica_id?: string
           fazenda_destino_id?: string | null
-          formula_id?: string
           foto_url?: string | null
           id?: string
           observacao?: string | null
+          produto_id?: string
           quantidade_kg?: number
           quantidade_sacos?: number
           registrado_por?: string | null
@@ -2628,10 +2698,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "transferencias_fabrica_formula_id_fkey"
-            columns: ["formula_id"]
+            foreignKeyName: "transferencias_fabrica_produto_id_fkey"
+            columns: ["produto_id"]
             isOneToOne: false
-            referencedRelation: "formulas_fabrica"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
           {
