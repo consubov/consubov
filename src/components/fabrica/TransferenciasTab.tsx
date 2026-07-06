@@ -286,8 +286,9 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
                       .filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0)
                       .map(f => (
                         <SelectItem key={f.id} value={f.id}>
-                          {f.nome} ({Number(estoqueMap[f.id]?.quantidade_sacos || 0)} sacos)
+                          {f.nome}
                         </SelectItem>
+
                       ))
                   )}
                 </SelectContent>
@@ -317,7 +318,22 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
             </div>
             <div>
               <Label>Quantidade de Sacos *</Label>
-              <Input type="number" step="1" value={qtd} onChange={e => setQtd(e.target.value)} />
+              <Input
+                type="number"
+                step="1"
+                min="1"
+                max={sacosDisp || undefined}
+                value={qtd}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (v === "") return setQtd("");
+                  const n = parseInt(v, 10);
+                  if (isNaN(n)) return;
+                  if (sacosDisp > 0 && n > sacosDisp) return setQtd(String(sacosDisp));
+                  setQtd(String(Math.max(0, n)));
+                }}
+              />
+
               {produtoId && qtd && parseFloat(qtd) > sacosDisp && (
                 <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> Excede estoque disponível
