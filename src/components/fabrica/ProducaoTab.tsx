@@ -29,9 +29,11 @@ const TOLERANCIA_PCT = 5;
 interface MateriaPrima {
   id: string; nome: string; unidade: string; estoque_atual: number | null;
 }
+interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface Formula {
   id: string; nome: string; peso_batida: number | null;
   peso_por_saco: number | null; producao_esperada: number | null; ativo: boolean | null;
+  produto_id: string | null;
 }
 interface Ingrediente {
   formula_id: string; materia_prima_id: string; quantidade: number;
@@ -70,6 +72,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const { user } = useAuth();
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [emAndamento, setEmAndamento] = useState<Batida[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,14 +93,16 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   async function load() {
     setLoading(true);
-    const [fm, mp, ba] = await Promise.all([
+    const [fm, mp, ba, pr] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("materias_primas").select("id, nome, unidade, estoque_atual").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).eq("status", "iniciada").order("criado_em", { ascending: false }),
+      supabase.from("produtos").select("id, nome, peso_saco_kg").eq("ativo", true),
     ]);
     setFormulas((fm.data as Formula[]) || []);
     setMaterias((mp.data as MateriaPrima[]) || []);
     setEmAndamento((ba.data as Batida[]) || []);
+    setProdutos((pr.data as Produto[]) || []);
     if (fm.data && fm.data.length > 0) {
       const ids = (fm.data as Formula[]).map(f => f.id);
       const { data: ing } = await supabase.from("formula_ingredientes").select("formula_id, materia_prima_id, quantidade").in("formula_id", ids);
@@ -227,27 +232,33 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       }).eq("id", batidaFinalizando.id);
       if (error) throw error;
 
-      // Atualizar estoque_produto_acabado
+      // Atualizar estoque_produto_acabado (por PRODUTO, não por fórmula)
       const formula = formulas.find(f => f.id === batidaFinalizando.formula_id);
-      const pesoPorSaco = formula?.peso_por_saco ?? 0;
-      const kg = qtd * pesoPorSaco;
-
-      const { data: existing } = await supabase.from("estoque_produto_acabado")
-        .select("id, quantidade_sacos, quantidade_kg")
-        .eq("fabrica_id", fabricaId).eq("formula_id", batidaFinalizando.formula_id).maybeSingle();
-
-      if (existing) {
-        await supabase.from("estoque_produto_acabado").update({
-          quantidade_sacos: Number(existing.quantidade_sacos || 0) + qtd,
-          quantidade_kg: Number(existing.quantidade_kg || 0) + kg,
-        }).eq("id", existing.id);
+      const produto = produtos.find(p => p.id === formula?.produto_id);
+      if (!formula?.produto_id) {
+        toast.warning("Fórmula sem produto vinculado — estoque de produto acabado NÃO foi atualizado. Edite a fórmula.");
       } else {
-        await supabase.from("estoque_produto_acabado").insert({
-          fabrica_id: fabricaId,
-          formula_id: batidaFinalizando.formula_id,
-          quantidade_sacos: qtd,
-          quantidade_kg: kg,
-        });
+        // Preferir peso_saco_kg do produto; fallback para peso_por_saco da fórmula
+        const pesoPorSaco = Number(produto?.peso_saco_kg ?? formula.peso_por_saco ?? 0);
+        const kg = qtd * pesoPorSaco;
+
+        const { data: existing } = await supabase.from("estoque_produto_acabado")
+          .select("id, quantidade_sacos, quantidade_kg")
+          .eq("fabrica_id", fabricaId).eq("produto_id", formula.produto_id).maybeSingle();
+
+        if (existing) {
+          await supabase.from("estoque_produto_acabado").update({
+            quantidade_sacos: Number(existing.quantidade_sacos || 0) + qtd,
+            quantidade_kg: Number(existing.quantidade_kg || 0) + kg,
+          }).eq("id", existing.id);
+        } else {
+          await supabase.from("estoque_produto_acabado").insert({
+            fabrica_id: fabricaId,
+            produto_id: formula.produto_id,
+            quantidade_sacos: qtd,
+            quantidade_kg: kg,
+          });
+        }
       }
 
       // Calcular divergência

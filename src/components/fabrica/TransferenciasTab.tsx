@@ -24,9 +24,9 @@ import {
 import { toast } from "sonner";
 import { compressImageDataUrl } from "@/lib/imageCompression";
 
-interface Formula { id: string; nome: string; peso_por_saco: number | null; }
+interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface EstoqueProd {
-  id: string; formula_id: string; quantidade_sacos: number | null; quantidade_kg: number | null;
+  id: string; produto_id: string; quantidade_sacos: number | null; quantidade_kg: number | null;
 }
 interface Destino {
   id: string; fabrica_id: string; fazenda_id: string | null; retiro_id: string | null;
@@ -34,7 +34,7 @@ interface Destino {
 interface Fazenda { id: string; nome: string; }
 interface Retiro { id: string; nome: string; fazenda_id: string; }
 interface Transferencia {
-  id: string; fabrica_id: string; formula_id: string;
+  id: string; fabrica_id: string; produto_id: string;
   fazenda_destino_id: string | null; retiro_destino_id: string | null;
   quantidade_sacos: number; quantidade_kg: number; status: string | null;
   registrado_por: string | null; observacao: string | null; foto_url: string | null;
@@ -116,13 +116,13 @@ function destinoLabel(t: { fazenda_destino_id: string | null; retiro_destino_id:
 function NovaSection({ fabricaId }: { fabricaId: string }) {
   const { user } = useAuth();
   const { destinos, fazendas, retiros } = useDestinos(fabricaId);
-  const [formulas, setFormulas] = useState<Formula[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [estoques, setEstoques] = useState<EstoqueProd[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [formulaId, setFormulaId] = useState("");
+  const [produtoId, setFormulaId] = useState("");
   const [destinoKey, setDestinoKey] = useState(""); // "faz:UUID" | "ret:UUID"
   const [qtd, setQtd] = useState("");
   const [obs, setObs] = useState("");
@@ -134,16 +134,16 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
     setLoading(true);
     const [{ data: eq }, { data: fx }] = await Promise.all([
       supabase.from("estoque_produto_acabado").select("*").eq("fabrica_id", fabricaId),
-      supabase.from("formulas_fabrica").select("id,nome,peso_por_saco").eq("fabrica_id", fabricaId).eq("ativo", true),
+      supabase.from("produtos").select("id,nome,peso_saco_kg").eq("ativo", true),
     ]);
     setEstoques((eq as EstoqueProd[]) || []);
-    setFormulas((fx as Formula[]) || []);
+    setProdutos((fx as Produto[]) || []);
     setLoading(false);
   }
 
-  const estoqueMap = useMemo(() => Object.fromEntries(estoques.map(e => [e.formula_id, e])), [estoques]);
-  const formulaSel = formulas.find(f => f.id === formulaId);
-  const estoqueDisp = formulaId ? estoqueMap[formulaId] : null;
+  const estoqueMap = useMemo(() => Object.fromEntries(estoques.map(e => [e.produto_id, e])), [estoques]);
+  const produtoSel = produtos.find(f => f.id === produtoId);
+  const estoqueDisp = produtoId ? estoqueMap[produtoId] : null;
   const sacosDisp = Number(estoqueDisp?.quantidade_sacos || 0);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -161,7 +161,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
   }
 
   async function confirmar() {
-    if (!formulaId) return toast.error("Selecione uma fórmula");
+    if (!produtoId) return toast.error("Selecione um produto");
     if (!destinoKey) return toast.error("Selecione um destino");
     const q = parseFloat(qtd);
     if (!q || q <= 0) return toast.error("Quantidade inválida");
@@ -172,7 +172,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
     try {
       const fotoUrl = await uploadFoto(fabricaId, foto);
       const [tipo, destId] = destinoKey.split(":");
-      const pesoPorSaco = Number(formulaSel?.peso_por_saco || 0);
+      const pesoPorSaco = Number(produtoSel?.peso_saco_kg || 0);
       const kg = q * pesoPorSaco;
 
       // Fazenda_id para a notificação
@@ -182,7 +182,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
 
       const { data: tRow, error: tErr } = await supabase.from("transferencias_fabrica").insert({
         fabrica_id: fabricaId,
-        formula_id: formulaId,
+        produto_id: produtoId,
         fazenda_destino_id: tipo === "faz" ? destId : null,
         retiro_destino_id: tipo === "ret" ? destId : null,
         quantidade_sacos: q,
@@ -209,14 +209,14 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
       );
       await supabase.from("notificacoes").insert({
         tipo: "transferencia_fabrica",
-        titulo: `Nova transferência de ${formulaSel?.nome || "produto"}`,
+        titulo: `Nova transferência de ${produtoSel?.nome || "produto"}`,
         mensagem: `Fábrica enviou ${q} sacos para ${destLabel}. Aguardando recebimento.`,
         fazenda_id: fazendaIdNotif,
         dados: {
           transferencia_id: tRow.id,
           fabrica_id: fabricaId,
-          formula_id: formulaId,
-          formula_nome: formulaSel?.nome || null,
+          produto_id: produtoId,
+          produto_nome: produtoSel?.nome || null,
           quantidade_sacos: q,
           quantidade_kg: kg,
           fazenda_destino_id: tipo === "faz" ? destId : null,
@@ -252,11 +252,11 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
             <p className="text-sm text-muted-foreground">Nenhum produto em estoque.</p>
           ) : (
             <Table>
-              <TableHeader><TableRow><TableHead>Fórmula</TableHead><TableHead className="text-right">Sacos</TableHead><TableHead className="text-right">Kg</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Produto</TableHead><TableHead className="text-right">Sacos</TableHead><TableHead className="text-right">Kg</TableHead></TableRow></TableHeader>
               <TableBody>
                 {estoques.map(e => (
                   <TableRow key={e.id}>
-                    <TableCell>{formulas.find(f => f.id === e.formula_id)?.nome || "—"}</TableCell>
+                    <TableCell>{produtos.find(f => f.id === e.produto_id)?.nome || "—"}</TableCell>
                     <TableCell className="text-right">{Number(e.quantidade_sacos || 0)}</TableCell>
                     <TableCell className="text-right">{Number(e.quantidade_kg || 0).toFixed(1)}</TableCell>
                   </TableRow>
@@ -275,17 +275,17 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Fórmula *</Label>
-              <Select value={formulaId} onValueChange={setFormulaId}>
+              <Label>Produto *</Label>
+              <Select value={produtoId} onValueChange={setFormulaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {formulas.map(f => {
+                  {produtos.map(f => {
                     const est = estoqueMap[f.id];
                     return <SelectItem key={f.id} value={f.id}>{f.nome} ({Number(est?.quantidade_sacos || 0)} sc)</SelectItem>;
                   })}
                 </SelectContent>
               </Select>
-              {formulaId && (
+              {produtoId && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Disponível: {sacosDisp} sacos • {Number(estoqueDisp?.quantidade_kg || 0).toFixed(1)} kg
                 </p>
@@ -311,7 +311,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label>Quantidade de Sacos *</Label>
               <Input type="number" step="1" value={qtd} onChange={e => setQtd(e.target.value)} />
-              {formulaId && qtd && parseFloat(qtd) > sacosDisp && (
+              {produtoId && qtd && parseFloat(qtd) > sacosDisp && (
                 <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> Excede estoque disponível
                 </p>
@@ -355,7 +355,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
   const { user } = useAuth();
   const { fazendas, retiros } = useDestinos(fabricaId);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
-  const [formulas, setFormulas] = useState<Record<string, Formula>>({});
+  const [produtos, setProdutos] = useState<Record<string, Produto>>({});
   const [loading, setLoading] = useState(true);
 
   const [detalhe, setDetalhe] = useState<Transferencia | null>(null);
@@ -386,10 +386,10 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
       .order("criado_em", { ascending: false });
     const list = (t as Transferencia[]) || [];
     setTransferencias(list);
-    const fIds = Array.from(new Set(list.map(x => x.formula_id)));
+    const fIds = Array.from(new Set(list.map(x => x.produto_id)));
     if (fIds.length) {
-      const { data: fs } = await supabase.from("formulas_fabrica").select("id,nome,peso_por_saco").in("id", fIds);
-      setFormulas(Object.fromEntries(((fs as Formula[]) || []).map(f => [f.id, f])));
+      const { data: fs } = await supabase.from("produtos").select("id,nome,peso_saco_kg").in("id", fIds);
+      setProdutos(Object.fromEntries(((fs as Produto[]) || []).map(f => [f.id, f])));
     }
     setLoading(false);
   }
@@ -525,7 +525,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                 <Truck className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium truncate">{formulas[t.formula_id]?.nome || "—"}</p>
+                <p className="font-medium truncate">{produtos[t.produto_id]?.nome || "—"}</p>
                 <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> {destinoLabel(t, fazendas, retiros)}
                 </p>
@@ -546,7 +546,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
           <DialogHeader>
             <DialogTitle>Receber Transferência</DialogTitle>
             <DialogDescription>
-              {detalhe && `${formulas[detalhe.formula_id]?.nome || "—"} • ${destinoLabel(detalhe, fazendas, retiros)}`}
+              {detalhe && `${produtos[detalhe.produto_id]?.nome || "—"} • ${destinoLabel(detalhe, fazendas, retiros)}`}
             </DialogDescription>
           </DialogHeader>
           {bloqueado ? (
@@ -618,7 +618,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
 function HistoricoSection({ fabricaId }: { fabricaId: string }) {
   const { fazendas, retiros } = useDestinos(fabricaId);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
-  const [formulas, setFormulas] = useState<Record<string, Formula>>({});
+  const [produtos, setProdutos] = useState<Record<string, Produto>>({});
   const [loading, setLoading] = useState(true);
   const [detalhe, setDetalhe] = useState<Transferencia | null>(null);
   const [recebimento, setRecebimento] = useState<Recebimento | null>(null);
@@ -630,10 +630,10 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
       .select("*").eq("fabrica_id", fabricaId).order("criado_em", { ascending: false });
     const list = (t as Transferencia[]) || [];
     setTransferencias(list);
-    const fIds = Array.from(new Set(list.map(x => x.formula_id)));
+    const fIds = Array.from(new Set(list.map(x => x.produto_id)));
     if (fIds.length) {
-      const { data: fs } = await supabase.from("formulas_fabrica").select("id,nome,peso_por_saco").in("id", fIds);
-      setFormulas(Object.fromEntries(((fs as Formula[]) || []).map(f => [f.id, f])));
+      const { data: fs } = await supabase.from("produtos").select("id,nome,peso_saco_kg").in("id", fIds);
+      setProdutos(Object.fromEntries(((fs as Produto[]) || []).map(f => [f.id, f])));
     }
     setLoading(false);
   }
@@ -665,7 +665,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Data</TableHead><TableHead>Fórmula</TableHead>
+                <TableHead>Data</TableHead><TableHead>Produto</TableHead>
                 <TableHead>Destino</TableHead><TableHead className="text-right">Sacos</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow></TableHeader>
@@ -673,7 +673,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                 {transferencias.map(t => (
                   <TableRow key={t.id} className="cursor-pointer" onClick={() => abrir(t)}>
                     <TableCell className="text-xs">{t.criado_em ? new Date(t.criado_em).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                    <TableCell className="text-sm">{formulas[t.formula_id]?.nome || "—"}</TableCell>
+                    <TableCell className="text-sm">{produtos[t.produto_id]?.nome || "—"}</TableCell>
                     <TableCell className="text-xs">{destinoLabel(t, fazendas, retiros)}</TableCell>
                     <TableCell className="text-right">{t.quantidade_sacos}</TableCell>
                     <TableCell>{statusBadge(t.status)}</TableCell>
@@ -691,7 +691,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
           {detalhe && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">Fórmula:</span> {formulas[detalhe.formula_id]?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Produto:</span> {produtos[detalhe.produto_id]?.nome || "—"}</div>
                 <div><span className="text-muted-foreground">Status:</span> {statusBadge(detalhe.status)}</div>
                 <div><span className="text-muted-foreground">Destino:</span> {destinoLabel(detalhe, fazendas, retiros)}</div>
                 <div><span className="text-muted-foreground">Enviado:</span> {detalhe.quantidade_sacos} sc / {Number(detalhe.quantidade_kg).toFixed(1)} kg</div>

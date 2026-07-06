@@ -19,9 +19,11 @@ import { Plus, Pencil, Trash2, Loader2, FlaskConical, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface MateriaPrima { id: string; nome: string; unidade: string; }
+interface Produto { id: string; nome: string; }
 interface Formula {
   id: string; nome: string; peso_batida: number | null;
   peso_por_saco: number | null; producao_esperada: number | null; ativo: boolean | null;
+  produto_id: string | null;
 }
 interface Ingrediente {
   id?: string; materia_prima_id: string; quantidade: string;
@@ -30,13 +32,14 @@ interface Ingrediente {
 export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
   const [items, setItems] = useState<Formula[]>([]);
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    nome: "", peso_batida: "", peso_por_saco: "", producao_esperada: "", ativo: true,
+    nome: "", peso_batida: "", peso_por_saco: "", producao_esperada: "", ativo: true, produto_id: "",
   });
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
 
@@ -44,18 +47,20 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
 
   async function load() {
     setLoading(true);
-    const [fm, mp] = await Promise.all([
+    const [fm, mp, pr] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).order("nome"),
       supabase.from("materias_primas").select("id, nome, unidade").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
+      supabase.from("produtos").select("id, nome").eq("ativo", true).order("nome"),
     ]);
     setItems((fm.data as Formula[]) || []);
     setMaterias((mp.data as MateriaPrima[]) || []);
+    setProdutos((pr.data as Produto[]) || []);
     setLoading(false);
   }
 
   function openNew() {
     setEditingId(null);
-    setForm({ nome: "", peso_batida: "", peso_por_saco: "", producao_esperada: "", ativo: true });
+    setForm({ nome: "", peso_batida: "", peso_por_saco: "", producao_esperada: "", ativo: true, produto_id: "" });
     setIngredientes([]);
     setDialogOpen(true);
   }
@@ -68,6 +73,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
       peso_por_saco: f.peso_por_saco?.toString() ?? "",
       producao_esperada: f.producao_esperada?.toString() ?? "",
       ativo: f.ativo ?? true,
+      produto_id: f.produto_id ?? "",
     });
     const { data } = await supabase.from("formula_ingredientes").select("*").eq("formula_id", f.id);
     setIngredientes(((data as any[]) || []).map(i => ({
@@ -92,6 +98,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
 
   async function handleSave() {
     if (!form.nome.trim()) return toast.error("Nome é obrigatório");
+    if (!form.produto_id) return toast.error("Selecione o produto produzido");
     const validIngs = ingredientes.filter(i => i.materia_prima_id && parseFloat(i.quantidade) > 0);
     if (validIngs.length === 0) return toast.error("Adicione pelo menos um ingrediente");
 
@@ -104,6 +111,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
         peso_por_saco: parseFloat(form.peso_por_saco) || null,
         producao_esperada: parseFloat(form.producao_esperada) || null,
         ativo: form.ativo,
+        produto_id: form.produto_id,
       };
 
       let formulaId = editingId;
@@ -142,13 +150,13 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
     else { toast.success("Excluída"); load(); }
   }
 
-  const mpMap = Object.fromEntries(materias.map(m => [m.id, m]));
+  const prodMap = Object.fromEntries(produtos.map(p => [p.id, p]));
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base flex items-center gap-2"><FlaskConical className="w-4 h-4" /> Fórmulas</CardTitle>
-        <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={materias.length === 0}>
+        <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={materias.length === 0 || produtos.length === 0}>
           <Plus className="w-4 h-4" /> Nova
         </Button>
       </CardHeader>
@@ -157,12 +165,15 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
           <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : materias.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">Cadastre matérias-primas antes de criar fórmulas.</div>
+        ) : produtos.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">Cadastre produtos no catálogo global antes de criar fórmulas.</div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Produto</TableHead>
                   <TableHead>Peso batida (kg)</TableHead>
                   <TableHead>Produção esperada (sc)</TableHead>
                   <TableHead>Status</TableHead>
@@ -171,10 +182,11 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma fórmula cadastrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Nenhuma fórmula cadastrada.</TableCell></TableRow>
                 ) : items.map(f => (
                   <TableRow key={f.id}>
                     <TableCell className="font-medium">{f.nome}</TableCell>
+                    <TableCell className="text-sm">{f.produto_id ? (prodMap[f.produto_id]?.nome ?? "—") : <span className="text-destructive text-xs">sem produto</span>}</TableCell>
                     <TableCell>{f.peso_batida ?? "—"}</TableCell>
                     <TableCell>{f.producao_esperada ?? "—"}</TableCell>
                     <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
@@ -196,10 +208,22 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Fórmula" : "Nova Fórmula"}</DialogTitle>
-            <DialogDescription>Defina os ingredientes e a produção esperada.</DialogDescription>
+            <DialogDescription>Defina o produto produzido, os ingredientes e a produção esperada.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+
+            <div>
+              <Label>Produto Produzido *</Label>
+              <Select value={form.produto_id} onValueChange={v => setForm(f => ({ ...f, produto_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o produto que esta fórmula fabrica" /></SelectTrigger>
+                <SelectContent>
+                  {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Cada batida desta fórmula gerará estoque deste produto.</p>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Peso batida (kg)</Label><Input type="number" step="0.01" value={form.peso_batida} onChange={e => setForm(f => ({ ...f, peso_batida: e.target.value }))} /></div>
               <div><Label>Peso/saco (kg)</Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
