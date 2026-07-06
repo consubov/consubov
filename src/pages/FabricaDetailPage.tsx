@@ -23,9 +23,10 @@ import {
 import {
   ArrowLeft, Factory, QrCode, MapPin, Pencil, Trash2, Plus, Loader2,
   Users, Package2, PackagePlus, Download, FileDown, Save, Camera, X, AlertTriangle,
-  FlaskConical, Play,
+  FlaskConical, Play, Truck,
 } from "lucide-react";
 import FormulasTab from "@/components/fabrica/FormulasTab";
+import TransferenciasTab from "@/components/fabrica/TransferenciasTab";
 import ProducaoTab from "@/components/fabrica/ProducaoTab";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -95,13 +96,14 @@ export default function FabricaDetailPage() {
       </div>
 
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-7 w-full">
           <TabsTrigger value="info"><Factory className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Info</span></TabsTrigger>
           <TabsTrigger value="operadores"><Users className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Operadores</span></TabsTrigger>
           <TabsTrigger value="materias"><Package2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Matérias</span></TabsTrigger>
           <TabsTrigger value="entradas"><PackagePlus className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Entradas</span></TabsTrigger>
           <TabsTrigger value="formulas"><FlaskConical className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Fórmulas</span></TabsTrigger>
           <TabsTrigger value="producao"><Play className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Produção</span></TabsTrigger>
+          <TabsTrigger value="transferencias"><Truck className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Transf.</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -122,8 +124,12 @@ export default function FabricaDetailPage() {
         <TabsContent value="producao" className="mt-4">
           <ProducaoTab fabricaId={fabrica.id} />
         </TabsContent>
+        <TabsContent value="transferencias" className="mt-4">
+          <TransferenciasTab fabricaId={fabrica.id} />
+        </TabsContent>
       </Tabs>
     </div>
+
 
   );
 }
