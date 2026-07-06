@@ -2880,6 +2880,38 @@ export type Database = {
           },
         ]
       }
+      visita_fotos: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          url: string
+          visita_pasto_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          url: string
+          visita_pasto_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          url?: string
+          visita_pasto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_fotos_visita_pasto_id_fkey"
+            columns: ["visita_pasto_id"]
+            isOneToOne: false
+            referencedRelation: "visita_pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visita_pastos: {
         Row: {
           consumo_kg_dia: number | null
