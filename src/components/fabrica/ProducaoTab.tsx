@@ -26,7 +26,7 @@ import { toast } from "sonner";
 const TOLERANCIA_PCT = 5;
 
 interface MateriaPrima {
-  id: string; nome: string; unidade: string; estoque_atual: number | null;
+  id: string; nome: string; unidade: string; estoque_atual: number | null; peso_por_saco: number | null;
 }
 interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface Formula {
@@ -94,7 +94,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     setLoading(true);
     const [fm, mp, ba, pr] = await Promise.all([
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
-      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
+      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual, peso_por_saco").eq("fabrica_id", fabricaId).eq("ativo", true).order("nome"),
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).eq("status", "iniciada").order("criado_em", { ascending: false }),
       supabase.from("produtos").select("id, nome, peso_saco_kg").eq("ativo", true),
     ]);
@@ -363,14 +363,19 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <p className="text-xs font-semibold text-muted-foreground">Ingredientes necessários</p>
                 {ingsDaFormula.map((i, idx) => {
                   const mp = mpMap[i.materia_prima_id];
-                  const estoque = mp?.estoque_atual ?? 0;
-                  const falta = estoque < i.quantidade;
+                  const estoqueRaw = Number(mp?.estoque_atual ?? 0);
+                  const peso = Number(mp?.peso_por_saco ?? 0);
+                  const emSaco = mp?.unidade === "saco" && peso > 0;
+                  const qtdExibida = emSaco ? Math.ceil(Number(i.quantidade) / peso) : Number(i.quantidade);
+                  const estExibido = emSaco ? Math.floor(estoqueRaw / peso) : estoqueRaw;
+                  const unidadeExib = emSaco ? "sacos" : (mp?.unidade || "");
+                  const falta = estExibido < qtdExibida;
                   return (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{mp?.nome || "?"}</span>
                       <span className={falta ? "text-destructive font-semibold flex items-center gap-1" : ""}>
                         {falta && <AlertTriangle className="w-3.5 h-3.5" />}
-                        {i.quantidade} {mp?.unidade} <span className="text-muted-foreground">(est: {estoque})</span>
+                        {qtdExibida} {unidadeExib} <span className="text-muted-foreground">(est: {estExibido})</span>
                       </span>
                     </div>
                   );
