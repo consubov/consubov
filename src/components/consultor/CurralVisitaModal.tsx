@@ -9,6 +9,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import PhotoGrid from "./PhotoGrid";
 
 export interface VisitaCurralRow {
   id: string;
@@ -160,6 +161,13 @@ export default function CurralVisitaModal({
             <div className="text-sm font-semibold text-foreground">Organização (1–5)</div>
             <ScoreSelector label="Organização de Fábrica" value={orgFabrica} onChange={setOrgFabrica} disabled={readOnly} />
             <ScoreSelector label="Organização de Insumos" value={orgInsumos} onChange={setOrgInsumos} disabled={readOnly} />
+          </div>
+
+          <div className="pt-2 border-t">
+            <PhotoGrid visitaCurralId={curral?.id ?? null} max={10} disabled={readOnly} />
+            {!curral && (
+              <p className="text-[11px] text-muted-foreground mt-1">Salve o curral para habilitar o envio de fotos.</p>
+            )}
           </div>
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">

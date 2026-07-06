@@ -2934,23 +2934,33 @@ export type Database = {
           id: string
           ordem: number
           url: string
-          visita_pasto_id: string
+          visita_curral_id: string | null
+          visita_pasto_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           ordem?: number
           url: string
-          visita_pasto_id: string
+          visita_curral_id?: string | null
+          visita_pasto_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           ordem?: number
           url?: string
-          visita_pasto_id?: string
+          visita_curral_id?: string | null
+          visita_pasto_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "visita_fotos_visita_curral_id_fkey"
+            columns: ["visita_curral_id"]
+            isOneToOne: false
+            referencedRelation: "visita_currais"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "visita_fotos_visita_pasto_id_fkey"
             columns: ["visita_pasto_id"]

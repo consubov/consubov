@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -42,7 +43,7 @@ interface Pasto {
   signed: Record<string, string>;
 }
 interface Visita {
-  id: string; status: string; hora_inicio: string; hora_fim: string | null;
+  id: string; tipo: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
   pdf_url: string | null;
@@ -57,6 +58,7 @@ export default function RevisaoVisitaPage() {
   const { visitaId } = useParams<{ visitaId: string }>();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
+  const [tipoLoaded, setTipoLoaded] = useState<string | null>(null);
   const [fazenda, setFazenda] = useState<any>(null);
   const [consultor, setConsultor] = useState<any>(null);
   const [pastos, setPastos] = useState<Pasto[]>([]);
@@ -66,7 +68,15 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  useEffect(() => { if (visitaId) load(); }, [visitaId]);
+  useEffect(() => {
+    if (!visitaId) return;
+    (async () => {
+      const { data } = await supabase.from("visitas_tecnicas").select("tipo").eq("id", visitaId).maybeSingle();
+      setTipoLoaded((data?.tipo as string) || "rotina");
+    })();
+  }, [visitaId]);
+
+  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(); }, [visitaId, tipoLoaded]);
 
   async function load() {
     setLoading(true);
@@ -250,7 +260,8 @@ export default function RevisaoVisitaPage() {
     } catch { /* user cancelou */ }
   }
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (tipoLoaded === "confinamento") return <ConfinamentoRevisaoView visitaId={visitaId!} />;
+  if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
   const readOnly = visita.status === "finalizada";
