@@ -71,6 +71,25 @@ export default function FabricasPage() {
     } finally { setSaving(false); }
   }
 
+  async function handleDelete() {
+    if (!confirmDel) return;
+    setDeleting(true);
+    try {
+      const fabricaId = confirmDel.id;
+      // Apaga operadores vinculados
+      const { error: opErr } = await supabase.from("operadores_fabrica").delete().eq("fabrica_id", fabricaId);
+      if (opErr) throw opErr;
+      // Apaga a fábrica
+      const { error } = await supabase.from("fabricas").delete().eq("id", fabricaId);
+      if (error) throw error;
+      toast.success("Fábrica e operadores removidos.");
+      setConfirmDel(null);
+      load();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
+    } finally { setDeleting(false); }
+  }
+
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
