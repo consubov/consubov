@@ -252,6 +252,7 @@ const App = () => (
                 <Route index element={<ConsultorFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<ConsultorFazendaDetalhePage />} />
                 <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
+                <Route path="visitas/:visitaId/revisao" element={<RevisaoVisitaPage />} />
                 <Route path="historico" element={<ConsultorHistoricoPage />} />
               </Route>
 
