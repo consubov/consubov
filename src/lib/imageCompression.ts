@@ -74,3 +74,89 @@ export async function compressImageDataUrl(
     return dataUrl;
   }
 }
+
+function blobToImage(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível processar a foto'));
+    };
+    img.src = url;
+  });
+}
+
+export async function compressImageFileToDataUrl(
+  file: File | null | undefined,
+  options: ImageCompressionOptions = {},
+): Promise<string | null> {
+  if (!file) return null;
+  if (!file.type.startsWith('image/')) throw new Error('Selecione uma imagem válida');
+
+  const maxBytes = options.maxBytes ?? 380_000;
+  const baseMaxDimension = options.maxDimension ?? 960;
+  const baseQuality = options.quality ?? 0.68;
+
+  let bitmap: ImageBitmap | null = null;
+
+  try {
+    let sourceWidth = 0;
+    let sourceHeight = 0;
+    let drawSource: CanvasImageSource;
+
+    if ('createImageBitmap' in window) {
+      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      sourceWidth = bitmap.width;
+      sourceHeight = bitmap.height;
+      drawSource = bitmap;
+    } else {
+      const img = await blobToImage(file);
+      sourceWidth = img.naturalWidth || img.width;
+      sourceHeight = img.naturalHeight || img.height;
+      drawSource = img;
+    }
+
+    let maxDimension = baseMaxDimension;
+    let quality = baseQuality;
+    let best: string | null = null;
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      let width = sourceWidth;
+      let height = sourceHeight;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, width);
+      canvas.height = Math.max(1, height);
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) throw new Error('Não foi possível preparar a foto');
+      ctx.drawImage(drawSource, 0, 0, canvas.width, canvas.height);
+
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      best = compressed;
+      canvas.width = 0;
+      canvas.height = 0;
+
+      if (dataUrlByteSize(compressed) <= maxBytes) return compressed;
+      maxDimension = Math.max(420, Math.floor(maxDimension * 0.78));
+      quality = Math.max(0.42, quality - 0.08);
+    }
+
+    return best;
+  } finally {
+    bitmap?.close();
+  }
+}

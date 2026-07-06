@@ -22,7 +22,7 @@ import {
   TrendingUp, History, Factory, Package, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { compressImageDataUrl } from "@/lib/imageCompression";
+import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 
 const TOLERANCIA_PCT = 5;
 
@@ -118,12 +118,15 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>, setter: (v: string) => void) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const compressed = await compressImageDataUrl(reader.result as string);
+    try {
+      const compressed = await compressImageFileToDataUrl(file, { maxDimension: 960, quality: 0.68, maxBytes: 380_000 });
+      if (!compressed) return;
       setter(compressed);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível carregar a foto");
+    } finally {
+      e.target.value = "";
+    }
   }
 
   async function uploadFoto(dataUrl: string): Promise<string> {

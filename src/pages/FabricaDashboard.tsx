@@ -11,11 +11,11 @@ import {
   Warehouse, AlertTriangle,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
-import { APP_VERSION } from "@/lib/appVersion";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import ProducaoTab from "@/components/fabrica/ProducaoTab";
 import TransferenciasTab from "@/components/fabrica/TransferenciasTab";
 import DadosTab from "@/components/fabrica/DadosTab";
-import FabricaNotificacoesBell from "@/components/fabrica/FabricaNotificacoesBell";
 
 interface Fabrica { id: string; codigo: string | null; nome: string; descricao: string | null; }
 interface Operador { id: string; nome: string; fabrica_id: string; }
@@ -33,6 +33,7 @@ export default function FabricaDashboard() {
   const [fabrica, setFabrica] = useState<Fabrica | null>(null);
   const [operador, setOperador] = useState<Operador | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<TabKey>("producao");
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -58,6 +59,15 @@ export default function FabricaDashboard() {
     setOperador(oRes.data as Operador | null);
     await loadStats(fabricaId);
     setLoading(false);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await loadAll();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function loadStats(fabricaId: string) {
@@ -127,10 +137,9 @@ export default function FabricaDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* HEADER */}
-      <header className="bg-primary text-primary-foreground px-3 py-2 border-b border-primary/20 shrink-0">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
-          {/* Left: menu + logo */}
-          <div className="flex items-center gap-2 min-w-0">
+      <header className="bg-primary text-primary-foreground px-4 py-3 border-b border-primary/20 shrink-0 space-y-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary/80">
@@ -163,31 +172,31 @@ export default function FabricaDashboard() {
               </SheetContent>
             </Sheet>
 
-            <button onClick={() => setTab("producao")} className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
-                <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-sm font-bold hidden sm:inline">CONSUBOV</span>
-            </button>
+            <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+            <div className="min-w-0">
+              <h1 className="text-base font-bold leading-tight">Operador de Fábrica</h1>
+              <p className="max-w-[170px] truncate text-xs opacity-80 sm:max-w-[240px]">{nomeOperador}</p>
+            </div>
           </div>
 
-          {/* Center: identity */}
-          <div className="flex-1 text-center min-w-0 px-2">
-            <div className="text-[10px] uppercase tracking-wide opacity-80 leading-none">Operador de Fábrica</div>
-            <div className="text-sm font-semibold truncate leading-tight">{nomeOperador}</div>
-            <div className="text-[11px] opacity-90 truncate leading-tight">{fabrica.nome}</div>
-          </div>
-
-          {/* Right: bell / refresh / version / logout */}
           <div className="flex items-center gap-1 shrink-0">
-            <FabricaNotificacoesBell fabricaId={fabricaId} />
-            <Button variant="ghost" size="icon" onClick={() => window.location.reload()} className="text-primary-foreground hover:bg-primary/80">
-              <RefreshCw className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title="Atualizar">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <span className="text-[10px] font-mono opacity-80 hidden sm:inline px-1">v{APP_VERSION}</span>
-            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80" title="Sair">
               <LogOut className="w-5 h-5" />
             </Button>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+          <button onClick={() => setTab("producao")} className="flex items-center gap-2 text-xs opacity-90 min-w-0">
+            <Factory className="w-3 h-3 shrink-0" />
+            <span className="truncate">{fabrica.nome}</span>
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <UserNotificationToggle />
+            <AppVersionBadge />
           </div>
         </div>
       </header>
@@ -206,7 +215,6 @@ export default function FabricaDashboard() {
         {tab === "transferencias" && <TransferenciasTab fabricaId={fabricaId} />}
         {tab === "dados" && <DadosTab fabricaId={fabricaId} />}
 
-        <div className="text-center text-[10px] text-muted-foreground sm:hidden">v{APP_VERSION}</div>
       </main>
     </div>
   );
