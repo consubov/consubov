@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
 import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
+import GerenteNotificacoesBell from "@/components/gerente/GerenteNotificacoesBell";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -300,6 +301,7 @@ export default function GerenteDashboard() {
             <span className="truncate">{fazendaNome}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {roleData.fazendaId && <GerenteNotificacoesBell fazendaId={roleData.fazendaId} />}
             <UserNotificationToggle />
             <AppVersionBadge />
           </div>

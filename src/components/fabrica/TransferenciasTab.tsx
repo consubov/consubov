@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { compressImageDataUrl } from "@/lib/imageCompression";
+import { sendPush } from "@/lib/pushService";
 
 interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface EstoqueProd {
@@ -223,6 +224,16 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
           rota: `/admin/fabricas/${fabricaId}?tab=transferencias&sub=transito`,
         },
       });
+
+      // Push notification (WhatsApp-like) para gerente + admin da fazenda destino
+      if (fazendaIdNotif) {
+        await sendPush(
+          `Nova transferência de ${produtoSel?.nome || "produto"}`,
+          `Fábrica enviou ${q} sacos para ${destLabel}. Aguardando recebimento.`,
+          `/gerente/transferencias?transferencia=${tRow.id}`,
+          { fazendaId: fazendaIdNotif },
+        );
+      }
 
       toast.success("Transferência registrada e notificações enviadas");
       reset();
