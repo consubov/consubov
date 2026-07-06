@@ -594,7 +594,11 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
           {bloqueado ? (
             <div className="p-4 rounded border border-yellow-300 bg-yellow-50 text-yellow-800 text-sm flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <div>Recebimento em andamento por outro responsável.</div>
+              <div>
+                {!podeReceber
+                  ? "Apenas usuários da fazenda de destino (gerente, capataz ou administrador) podem confirmar o recebimento."
+                  : "Recebimento em andamento por outro responsável."}
+              </div>
             </div>
           ) : detalhe && (
             <div className="space-y-3">
