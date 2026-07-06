@@ -162,6 +162,13 @@ export default function CurralVisitaModal({
             <ScoreSelector label="Organização de Fábrica" value={orgFabrica} onChange={setOrgFabrica} disabled={readOnly} />
             <ScoreSelector label="Organização de Insumos" value={orgInsumos} onChange={setOrgInsumos} disabled={readOnly} />
           </div>
+
+          <div className="pt-2 border-t">
+            <PhotoGrid visitaCurralId={curral?.id ?? null} max={10} disabled={readOnly} />
+            {!curral && (
+              <p className="text-[11px] text-muted-foreground mt-1">Salve o curral para habilitar o envio de fotos.</p>
+            )}
+          </div>
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
