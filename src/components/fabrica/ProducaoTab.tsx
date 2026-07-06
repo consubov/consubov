@@ -72,10 +72,19 @@ function formatMateriaQuantidade(quantidadeKg: number | null | undefined, mp?: M
 function formatMateriaEstoque(estoqueKg: number | null | undefined, mp?: MateriaPrima) {
   const raw = Number(estoqueKg ?? 0);
   if (isMateriaEmSaco(mp)) {
-    const peso = Number(mp?.peso_por_saco ?? 0);
-    return `${formatNumber(Math.floor(raw / peso))} sacos`;
+    return `${formatNumber(raw)} sacos`;
   }
   return `${formatNumber(raw)} ${mp?.unidade || ""}`.trim();
+}
+
+function getMateriaQuantidadeEmEstoque(quantidadeKg: number, mp?: MateriaPrima) {
+  if (!isMateriaEmSaco(mp)) return quantidadeKg;
+  return Math.ceil(quantidadeKg / Number(mp?.peso_por_saco ?? 1));
+}
+
+function hasEstoqueSuficiente(quantidadeKg: number, mp?: MateriaPrima) {
+  const estoque = Number(mp?.estoque_atual ?? 0);
+  return estoque >= getMateriaQuantidadeEmEstoque(quantidadeKg, mp);
 }
 
 export default function ProducaoTab({ fabricaId }: { fabricaId: string }) {
@@ -264,7 +273,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     if (ingsDaFormula.length === 0) return toast.error("Fórmula sem ingredientes");
 
     // Checar estoque
-    const faltando = ingsDaFormula.filter(i => (mpMap[i.materia_prima_id]?.estoque_atual ?? 0) < i.quantidade);
+    const faltando = ingsDaFormula.filter(i => !hasEstoqueSuficiente(Number(i.quantidade), mpMap[i.materia_prima_id]));
     if (faltando.length > 0) {
       const nomes = faltando.map(i => mpMap[i.materia_prima_id]?.nome || "?").join(", ");
       if (!confirm(`Estoque insuficiente para: ${nomes}. Continuar mesmo assim?`)) return;
@@ -299,8 +308,9 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
       // Baixar estoque
       for (const i of ingsDaFormula) {
-        const atual = mpMap[i.materia_prima_id]?.estoque_atual ?? 0;
-        const novo = Math.max(0, atual - i.quantidade);
+        const mp = mpMap[i.materia_prima_id];
+        const atual = Number(mp?.estoque_atual ?? 0);
+        const novo = Math.max(0, atual - getMateriaQuantidadeEmEstoque(Number(i.quantidade), mp));
         await supabase.from("materias_primas").update({ estoque_atual: novo }).eq("id", i.materia_prima_id);
       }
 
@@ -476,9 +486,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                   const mp = mpMap[i.materia_prima_id];
                   const qtdExibida = formatMateriaQuantidade(i.quantidade, mp);
                   const estExibido = formatMateriaEstoque(mp?.estoque_atual, mp);
-                  const qtdComparacao = isMateriaEmSaco(mp) ? Math.ceil(Number(i.quantidade) / Number(mp?.peso_por_saco ?? 1)) : Number(i.quantidade);
-                  const estComparacao = isMateriaEmSaco(mp) ? Math.floor(Number(mp?.estoque_atual ?? 0) / Number(mp?.peso_por_saco ?? 1)) : Number(mp?.estoque_atual ?? 0);
-                  const falta = estComparacao < qtdComparacao;
+                  const falta = !hasEstoqueSuficiente(Number(i.quantidade), mp);
                   return (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{mp?.nome || "?"}</span>
@@ -536,7 +544,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 {prodFinalizar.map(p => (
                   <div key={p.id} className="flex justify-between text-sm">
                     <span>{mpMap[p.materia_prima_id]?.nome || "?"}</span>
-                  <span>{formatMateriaQuantidade(p.quantidade_esperada, mpMap[p.materia_prima_id])}</span>
+                    <span>{formatMateriaQuantidade(p.quantidade_esperada, mpMap[p.materia_prima_id])}</span>
                   </div>
                 ))}
               </div>
@@ -628,7 +636,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
     const [b, f, m] = await Promise.all([
       supabase.from("batidas").select("*").eq("fabrica_id", fabricaId).order("data_inicio", { ascending: false }).order("hora_inicio", { ascending: false }).limit(100),
       supabase.from("formulas_fabrica").select("*").eq("fabrica_id", fabricaId),
-      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual").eq("fabrica_id", fabricaId),
+      supabase.from("materias_primas").select("id, nome, unidade, estoque_atual, peso_por_saco").eq("fabrica_id", fabricaId),
     ]);
     setItems((b.data as Batida[]) || []);
     setFormulas((f.data as Formula[]) || []);
@@ -741,7 +749,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                     {detProd.map(p => (
                       <div key={p.id} className="flex justify-between text-xs py-0.5">
                         <span>{materias[p.materia_prima_id]?.nome || "?"}</span>
-                        <span>{p.quantidade_utilizada ?? p.quantidade_esperada} {materias[p.materia_prima_id]?.unidade}</span>
+                        <span>{formatMateriaQuantidade(p.quantidade_utilizada ?? p.quantidade_esperada, materias[p.materia_prima_id])}</span>
                       </div>
                     ))}
                   </div>
