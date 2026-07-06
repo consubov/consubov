@@ -11,7 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Factory, ChevronRight } from "lucide-react";
+import { Plus, Loader2, Factory, ChevronRight, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 interface Fabrica {
@@ -32,6 +36,8 @@ export default function FabricasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<Fabrica | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -65,6 +71,25 @@ export default function FabricasPage() {
     } finally { setSaving(false); }
   }
 
+  async function handleDelete() {
+    if (!confirmDel) return;
+    setDeleting(true);
+    try {
+      const fabricaId = confirmDel.id;
+      // Apaga operadores vinculados
+      const { error: opErr } = await supabase.from("operadores_fabrica").delete().eq("fabrica_id", fabricaId);
+      if (opErr) throw opErr;
+      // Apaga a fábrica
+      const { error } = await supabase.from("fabricas").delete().eq("id", fabricaId);
+      if (error) throw error;
+      toast.success("Fábrica e operadores removidos.");
+      setConfirmDel(null);
+      load();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
+    } finally { setDeleting(false); }
+  }
+
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -83,32 +108,42 @@ export default function FabricasPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {fabricas.map(f => (
-            <button
-              key={f.id}
-              onClick={() => navigate(`/admin/fabricas/${f.id}`)}
-              className="text-left"
-            >
-              <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-md bg-primary/10">
-                        <Factory className="w-5 h-5 text-primary" />
+            <div key={f.id} className="relative">
+              <button
+                onClick={() => navigate(`/admin/fabricas/${f.id}`)}
+                className="text-left w-full"
+              >
+                <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-md bg-primary/10">
+                          <Factory className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base leading-tight">{f.nome}</CardTitle>
+                          <p className="text-xs font-mono text-muted-foreground mt-0.5">{f.codigo || "—"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-base leading-tight">{f.nome}</CardTitle>
-                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{f.codigo || "—"}</p>
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 flex items-center justify-between">
-                  <Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge>
-                  {f.descricao && <p className="text-xs text-muted-foreground truncate ml-2 flex-1 text-right">{f.descricao}</p>}
-                </CardContent>
-              </Card>
-            </button>
+                  </CardHeader>
+                  <CardContent className="pt-0 flex items-center justify-between">
+                    <Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge>
+                    {f.descricao && <p className="text-xs text-muted-foreground truncate ml-2 flex-1 text-right">{f.descricao}</p>}
+                  </CardContent>
+                </Card>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => { e.stopPropagation(); setConfirmDel(f); }}
+                title="Excluir fábrica"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           ))}
         </div>
       )}
@@ -132,6 +167,24 @@ export default function FabricasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir fábrica?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isto vai apagar permanentemente a fábrica <strong>{confirmDel?.nome}</strong> e todos os operadores vinculados. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
