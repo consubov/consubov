@@ -212,6 +212,13 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
             <ScoreSelector label="Escore Corporal" value={corporal} onChange={setCorporal} disabled={readOnly} />
             <ScoreSelector label="Bebedouro" value={bebedouro} onChange={setBebedouro} disabled={readOnly} />
           </div>
+
+          <div className="pt-2 border-t">
+            <PhotoGrid visitaPastoId={pasto?.id ?? null} disabled={readOnly} />
+            {!pasto && (
+              <p className="text-[11px] text-muted-foreground mt-1">Salve o pasto para habilitar o envio de fotos.</p>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{readOnly ? "Fechar" : "Cancelar"}</Button>
