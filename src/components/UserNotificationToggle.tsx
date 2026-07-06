@@ -24,6 +24,15 @@ function isSupported() {
   );
 }
 
+function getIosStandaloneRequirement() {
+  const ua = navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
+  const isStandalone =
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return { isIos, isStandalone };
+}
+
 function sameApplicationServerKey(subscription: PushSubscription) {
   if (!VAPID_PUBLIC_KEY) return true;
   const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
@@ -138,6 +147,11 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
     if (!VAPID_PUBLIC_KEY) { toast.error("VAPID ausente no servidor"); return; }
     setBusy(true);
     try {
+      const { isIos, isStandalone } = getIosStandaloneRequirement();
+      if (isIos && !isStandalone) {
+        toast.error("No iPhone, instale na Tela de Início e abra pelo ícone para ativar notificações.");
+        return;
+      }
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
         toast.error(perm === "denied" ? "Permissão negada nas configurações do aparelho" : "Permissão não concedida");
