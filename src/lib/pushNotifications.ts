@@ -107,7 +107,7 @@ export async function getReadyRegistration(): Promise<ServiceWorkerRegistration>
     return await waitForReadyServiceWorker(5000);
   } catch {
     const existing = await navigator.serviceWorker.getRegistration();
-    const registration = existing ?? await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+    const registration = existing ?? (await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }));
     if (registration.active) return registration;
 
     try {
