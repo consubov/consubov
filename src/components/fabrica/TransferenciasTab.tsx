@@ -385,7 +385,8 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
 
 /* ============================ TRÂNSITO / RECEBIMENTO ============================ */
 function TransitoSection({ fabricaId }: { fabricaId: string }) {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
+  const podeReceber = roleData.role !== "operador_fabrica";
   const { fazendas, retiros } = useDestinos(fabricaId);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
   const [produtos, setProdutos] = useState<Record<string, Produto>>({});
