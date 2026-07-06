@@ -472,11 +472,10 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
     if (!detalhe || !recebimento) return;
     const q = parseFloat(qtdReceb);
     if (!q || q <= 0) return toast.error("Quantidade recebida inválida");
-    if (!fotoReceb) return toast.error("Foto obrigatória");
 
     setSaving(true);
     try {
-      const fotoUrl = await uploadFoto(detalhe.fabrica_id, fotoReceb);
+      const fotoUrl = fotoReceb ? await uploadFoto(detalhe.fabrica_id, fotoReceb) : null;
       const now = new Date();
       const divergSacos = detalhe.quantidade_sacos - q;
       const divergPct = detalhe.quantidade_sacos > 0
