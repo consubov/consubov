@@ -385,7 +385,8 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
 
 /* ============================ TRÂNSITO / RECEBIMENTO ============================ */
 function TransitoSection({ fabricaId }: { fabricaId: string }) {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
+  const podeReceber = roleData.role !== "operador_fabrica";
   const { fazendas, retiros } = useDestinos(fabricaId);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
   const [produtos, setProdutos] = useState<Record<string, Produto>>({});
@@ -430,6 +431,15 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
   async function abrirDetalhe(t: Transferencia) {
     setDetalhe(t); setBloqueado(false); setRecebimento(null);
     setQtdReceb(""); setObsReceb(""); setFotoReceb(null);
+
+    // Operador de fábrica NÃO pode confirmar recebimento — apenas visualizar
+    if (!podeReceber) {
+      const { data: existente } = await supabase.from("recebimentos_transferencia")
+        .select("*").eq("transferencia_id", t.id).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+      setRecebimento((existente as Recebimento) || null);
+      setBloqueado(true);
+      return;
+    }
 
     // "Primeiro que abre assume": tentar transitar em_transito -> em_recebimento atomicamente
     if (t.status === "em_transito") {
@@ -584,7 +594,11 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
           {bloqueado ? (
             <div className="p-4 rounded border border-yellow-300 bg-yellow-50 text-yellow-800 text-sm flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <div>Recebimento em andamento por outro responsável.</div>
+              <div>
+                {!podeReceber
+                  ? "Apenas usuários da fazenda de destino (gerente, capataz ou administrador) podem confirmar o recebimento."
+                  : "Recebimento em andamento por outro responsável."}
+              </div>
             </div>
           ) : detalhe && (
             <div className="space-y-3">
