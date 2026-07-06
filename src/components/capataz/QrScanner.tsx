@@ -340,11 +340,14 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           {failCount > 0 && failCount < 3 && (
             <p className="text-muted-foreground text-xs">Tentativa {failCount}/3</p>
           )}
-          <Button variant="link" onClick={onManualSelect} className="text-muted-foreground text-xs">
-            Selecionar pasto manualmente
-          </Button>
+          {onManualSelect && (
+            <Button variant="link" onClick={onManualSelect} className="text-muted-foreground text-xs">
+              Selecionar pasto manualmente
+            </Button>
+          )}
         </main>
       )}
+
 
       {scanning && (
         <main className="flex-1 flex flex-col relative bg-black">
