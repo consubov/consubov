@@ -405,10 +405,10 @@ export default function RevisaoVisitaPage() {
         </div>
       </div>
 
-      {/* Botão fixo */}
-      {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
-          <div className="max-w-md mx-auto">
+      {/* Botão fixo por status */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
+        <div className="max-w-md mx-auto flex gap-2">
+          {visita.status === "rascunho" && (
             <Button
               onClick={confirmarRevisao}
               disabled={confirmando}
@@ -418,9 +418,37 @@ export default function RevisaoVisitaPage() {
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Confirmar Revisão
             </Button>
-          </div>
+          )}
+          {visita.status === "revisao" && (
+            <Button
+              onClick={gerarPdf}
+              disabled={gerandoPdf}
+              className="w-full gap-2"
+              style={{ background: "#14432B", color: "white" }}
+            >
+              {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              Gerar PDF
+            </Button>
+          )}
+          {visita.status === "finalizada" && visita.pdf_url && (
+            <>
+              <Button asChild variant="outline" className="flex-1 gap-1.5">
+                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
+                  <FileText className="w-4 h-4" /> Ver
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="flex-1 gap-1.5">
+                <a href={visita.pdf_url} download>
+                  <Download className="w-4 h-4" /> Baixar
+                </a>
+              </Button>
+              <Button onClick={compartilhar} className="flex-1 gap-1.5" style={{ background: "#1F7A4D", color: "white" }}>
+                <Share2 className="w-4 h-4" /> Enviar
+              </Button>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
