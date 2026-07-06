@@ -442,14 +442,21 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="space-y-0">
           <CardTitle className="text-base flex items-center gap-2"><Play className="w-4 h-4" /> Iniciar batida</CardTitle>
-          <Button onClick={openIniciar} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
-            <Plus className="w-4 h-4" /> Nova batida
-          </Button>
         </CardHeader>
-        {formulas.length === 0 && (
-          <CardContent className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</CardContent>
+        <CardContent className="space-y-2">
+          <Button onClick={() => setScannerOpen(true)} size="lg" className="w-full gap-2 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
+            <QrCode className="w-5 h-5" /> Escanear QR da fábrica
+          </Button>
+          <Button onClick={openIniciar} size="sm" variant="outline" className="w-full gap-1.5" disabled={formulas.length === 0}>
+            <Plus className="w-4 h-4" /> Iniciar sem QR
+          </Button>
+          {formulas.length === 0 && (
+            <p className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</p>
+          )}
+        </CardContent>
+
         )}
       </Card>
 
