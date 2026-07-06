@@ -64,6 +64,7 @@ export default function RevisaoVisitaPage() {
   const [conclusao, setConclusao] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
