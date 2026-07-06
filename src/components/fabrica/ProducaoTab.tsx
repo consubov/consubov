@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,34 @@ interface BatidaProd {
   id: string; batida_id: string; materia_prima_id: string;
   quantidade_esperada: number | null; quantidade_utilizada: number | null;
 }
+type FotoBatida = { blob: Blob; fileName: string; type: string; size: number };
+
+function isMateriaEmSaco(mp?: MateriaPrima) {
+  return mp?.unidade === "saco" && Number(mp.peso_por_saco ?? 0) > 0;
+}
+
+function formatNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
+
+function formatMateriaQuantidade(quantidadeKg: number | null | undefined, mp?: MateriaPrima, arredondarSacos = true) {
+  const raw = Number(quantidadeKg ?? 0);
+  if (isMateriaEmSaco(mp)) {
+    const peso = Number(mp?.peso_por_saco ?? 0);
+    const sacos = raw / peso;
+    return `${formatNumber(arredondarSacos ? Math.ceil(sacos) : sacos)} sacos`;
+  }
+  return `${formatNumber(raw)} ${mp?.unidade || ""}`.trim();
+}
+
+function formatMateriaEstoque(estoqueKg: number | null | undefined, mp?: MateriaPrima) {
+  const raw = Number(estoqueKg ?? 0);
+  if (isMateriaEmSaco(mp)) {
+    const peso = Number(mp?.peso_por_saco ?? 0);
+    return `${formatNumber(Math.floor(raw / peso))} sacos`;
+  }
+  return `${formatNumber(raw)} ${mp?.unidade || ""}`.trim();
+}
 
 export default function ProducaoTab({ fabricaId }: { fabricaId: string }) {
   return (
@@ -78,17 +106,78 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formulaId, setFormulaId] = useState("");
-  const [foto, setFoto] = useState<File | null>(null);
+  const [foto, setFoto] = useState<FotoBatida | null>(null);
   const [saving, setSaving] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<"inicio" | "fim" | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [batidaFinalizando, setBatidaFinalizando] = useState<Batida | null>(null);
   const [prodFinalizar, setProdFinalizar] = useState<BatidaProd[]>([]);
   const [qtdProduzida, setQtdProduzida] = useState("");
-  const [fotoFim, setFotoFim] = useState<File | null>(null);
+  const [fotoFim, setFotoFim] = useState<FotoBatida | null>(null);
   const [obsFim, setObsFim] = useState("");
 
   useEffect(() => { load(); }, [fabricaId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    function stopStream() {
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+    }
+
+    async function startCamera() {
+      if (!cameraTarget) {
+        stopStream();
+        return;
+      }
+
+      setCameraLoading(true);
+      setCameraError("");
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Câmera indisponível neste navegador");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 960, max: 1280 },
+            height: { ideal: 720, max: 960 },
+          },
+        });
+
+        if (cancelled) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+      } catch (err) {
+        setCameraError(err instanceof Error ? err.message : "Não foi possível abrir a câmera");
+      } finally {
+        if (!cancelled) setCameraLoading(false);
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      cancelled = true;
+      stopStream();
+    };
+  }, [cameraTarget]);
 
   async function load() {
     setLoading(true);
@@ -114,28 +203,50 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const formulaSel = formulas.find(f => f.id === formulaId);
   const ingsDaFormula = ingredientes.filter(i => i.formula_id === formulaId);
 
-  function handleFoto(
-    e: React.ChangeEvent<HTMLInputElement>,
-    setFile: (v: File | null) => void,
-  ) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function capturarFotoDaCamera() {
+    if (!cameraTarget || !videoRef.current) return;
+    const video = videoRef.current;
+    const videoWidth = video.videoWidth || 960;
+    const videoHeight = video.videoHeight || 720;
+    if (videoWidth <= 0 || videoHeight <= 0) {
+      toast.error("A câmera ainda não está pronta");
+      return;
+    }
+
     try {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Selecione uma imagem válida");
-        return;
-      }
-      setFile(file);
+      const scale = Math.min(1, 960 / videoWidth);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(videoWidth * scale);
+      canvas.height = Math.round(videoHeight * scale);
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) throw new Error("Não foi possível capturar a foto");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(result => {
+          if (result) resolve(result);
+          else reject(new Error("Não foi possível salvar a foto"));
+        }, "image/jpeg", 0.68);
+      });
+      const fotoCapturada: FotoBatida = {
+        blob,
+        fileName: `batida-${cameraTarget}-${Date.now()}.jpg`,
+        type: "image/jpeg",
+        size: blob.size,
+      };
+
+      if (cameraTarget === "inicio") setFoto(fotoCapturada);
+      else setFotoFim(fotoCapturada);
+      setCameraTarget(null);
+      toast.success("Foto capturada");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível carregar a foto");
-    } finally {
-      e.target.value = "";
+      toast.error(err instanceof Error ? err.message : "Não foi possível capturar a foto");
     }
   }
 
-  async function uploadFoto(file: File): Promise<string> {
-    const path = `fabrica/${fabricaId}/batidas/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const { error } = await supabase.storage.from("relatorios").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+  async function uploadFoto(file: FotoBatida): Promise<string> {
+    const path = `fabrica/${fabricaId}/batidas/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.fileName}`;
+    const { error } = await supabase.storage.from("relatorios").upload(path, file.blob, { contentType: file.type || "image/jpeg", upsert: false });
     if (error) throw error;
     const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
     return pub.publicUrl;
@@ -363,19 +474,17 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <p className="text-xs font-semibold text-muted-foreground">Ingredientes necessários</p>
                 {ingsDaFormula.map((i, idx) => {
                   const mp = mpMap[i.materia_prima_id];
-                  const estoqueRaw = Number(mp?.estoque_atual ?? 0);
-                  const peso = Number(mp?.peso_por_saco ?? 0);
-                  const emSaco = mp?.unidade === "saco" && peso > 0;
-                  const qtdExibida = emSaco ? Math.ceil(Number(i.quantidade) / peso) : Number(i.quantidade);
-                  const estExibido = emSaco ? Math.floor(estoqueRaw / peso) : estoqueRaw;
-                  const unidadeExib = emSaco ? "sacos" : (mp?.unidade || "");
-                  const falta = estExibido < qtdExibida;
+                  const qtdExibida = formatMateriaQuantidade(i.quantidade, mp);
+                  const estExibido = formatMateriaEstoque(mp?.estoque_atual, mp);
+                  const qtdComparacao = isMateriaEmSaco(mp) ? Math.ceil(Number(i.quantidade) / Number(mp?.peso_por_saco ?? 1)) : Number(i.quantidade);
+                  const estComparacao = isMateriaEmSaco(mp) ? Math.floor(Number(mp?.estoque_atual ?? 0) / Number(mp?.peso_por_saco ?? 1)) : Number(mp?.estoque_atual ?? 0);
+                  const falta = estComparacao < qtdComparacao;
                   return (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{mp?.nome || "?"}</span>
                       <span className={falta ? "text-destructive font-semibold flex items-center gap-1" : ""}>
                         {falta && <AlertTriangle className="w-3.5 h-3.5" />}
-                        {qtdExibida} {unidadeExib} <span className="text-muted-foreground">(est: {estExibido})</span>
+                        {qtdExibida} <span className="text-muted-foreground">(est: {estExibido})</span>
                       </span>
                     </div>
                   );
@@ -386,14 +495,13 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label>Foto do setup inicial *</Label>
               <div className="mt-2 flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setCameraTarget("inicio")}>
                   <Camera className="w-4 h-4" />
                   {foto ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFoto)} />
-                </label>
+                </Button>
                 {foto && (
                   <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                    <span>Foto selecionada</span>
+                  <span>Foto capturada</span>
                     <button type="button" onClick={() => setFoto(null)} className="rounded-full bg-destructive p-0.5 text-destructive-foreground">
                       <X className="w-3 h-3" />
                     </button>
@@ -428,7 +536,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 {prodFinalizar.map(p => (
                   <div key={p.id} className="flex justify-between text-sm">
                     <span>{mpMap[p.materia_prima_id]?.nome || "?"}</span>
-                    <span>{p.quantidade_esperada} {mpMap[p.materia_prima_id]?.unidade}</span>
+                  <span>{formatMateriaQuantidade(p.quantidade_esperada, mpMap[p.materia_prima_id])}</span>
                   </div>
                 ))}
               </div>
@@ -449,14 +557,13 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label>Foto final *</Label>
               <div className="mt-2 flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setCameraTarget("fim")}>
                   <Camera className="w-4 h-4" />
                   {fotoFim ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFotoFim)} />
-                </label>
+                </Button>
                 {fotoFim && (
                   <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                    <span>Foto selecionada</span>
+                    <span>Foto capturada</span>
                     <button type="button" onClick={() => setFotoFim(null)} className="rounded-full bg-destructive p-0.5 text-destructive-foreground">
                       <X className="w-3 h-3" />
                     </button>
@@ -470,6 +577,31 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
             <Button onClick={finalizarBatida} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
               Finalizar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!cameraTarget} onOpenChange={open => !open && setCameraTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{cameraTarget === "fim" ? "Foto final" : "Foto do setup inicial"}</DialogTitle>
+            <DialogDescription>Capture a foto dentro do aplicativo para evitar reinício do aparelho.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative overflow-hidden rounded-md border bg-muted aspect-[4/3] flex items-center justify-center">
+              {cameraLoading && <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />}
+              {cameraError ? (
+                <div className="p-4 text-center text-sm text-destructive">{cameraError}</div>
+              ) : (
+                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCameraTarget(null)}>Cancelar</Button>
+            <Button onClick={capturarFotoDaCamera} disabled={cameraLoading || !!cameraError} className="bg-primary hover:bg-primary/90">
+              <Camera className="w-4 h-4 mr-2" /> Capturar
             </Button>
           </DialogFooter>
         </DialogContent>
