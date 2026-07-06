@@ -3030,6 +3030,7 @@ export type Database = {
           hora_inicio: string
           id: string
           observacoes_gerais: string | null
+          pdf_url: string | null
           status: string
           tipo: string
         }
@@ -3042,6 +3043,7 @@ export type Database = {
           hora_inicio?: string
           id?: string
           observacoes_gerais?: string | null
+          pdf_url?: string | null
           status?: string
           tipo?: string
         }
@@ -3054,6 +3056,7 @@ export type Database = {
           hora_inicio?: string
           id?: string
           observacoes_gerais?: string | null
+          pdf_url?: string | null
           status?: string
           tipo?: string
         }

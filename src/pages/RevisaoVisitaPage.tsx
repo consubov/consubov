@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -44,6 +45,7 @@ interface Visita {
   id: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
+  pdf_url: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
@@ -62,6 +64,7 @@ export default function RevisaoVisitaPage() {
   const [conclusao, setConclusao] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
@@ -181,8 +184,70 @@ export default function RevisaoVisitaPage() {
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada. Pronta para gerar o PDF.");
-      navigate(`/consultor/visitas/${visitaId}`);
+      await load();
     } finally { setConfirmando(false); }
+  }
+
+  async function gerarPdf() {
+    if (!visita || !fazenda || !consultor) return;
+    setGerandoPdf(true);
+    const t = toast.loading("Gerando PDF...");
+    try {
+      // Salva últimas edições antes
+      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+
+      const { blob, fileName } = await generateVisitaPdf({
+        visitaId: visita.id,
+        fazenda: {
+          nome_fazenda: fazenda.nome_fazenda,
+          proprietario: fazenda.proprietario,
+          municipio: fazenda.municipio,
+          uf: fazenda.uf,
+        },
+        consultor: { nome: consultor.nome },
+        hora_inicio: visita.hora_inicio,
+        hora_fim: visita.hora_fim || new Date().toISOString(),
+        observacoes_gerais: obsGerais,
+        conclusao,
+        pastos: pastos.map(p => ({
+          id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
+          tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
+          consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
+          scores: p.scores, fotos: p.fotos,
+        })),
+      });
+
+      const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visita.id);
+      const { error } = await supabase.from("visitas_tecnicas").update({
+        pdf_url: pdfUrl,
+        status: "finalizada",
+        hora_fim: visita.hora_fim || new Date().toISOString(),
+      }).eq("id", visita.id);
+      if (error) throw error;
+
+      toast.dismiss(t);
+      toast.success("PDF gerado e visita finalizada!");
+      await load();
+    } catch (err: any) {
+      toast.dismiss(t);
+      toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
+    } finally { setGerandoPdf(false); }
+  }
+
+  async function compartilhar() {
+    if (!visita?.pdf_url) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Visita – ${fazenda?.nome_fazenda || ""}`,
+          text: "Relatório de visita técnica Consubov",
+          url: visita.pdf_url,
+        });
+      } else {
+        await navigator.clipboard.writeText(visita.pdf_url);
+        toast.success("Link copiado!");
+      }
+    } catch { /* user cancelou */ }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -340,10 +405,10 @@ export default function RevisaoVisitaPage() {
         </div>
       </div>
 
-      {/* Botão fixo */}
-      {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
-          <div className="max-w-md mx-auto">
+      {/* Botão fixo por status */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
+        <div className="max-w-md mx-auto flex gap-2">
+          {visita.status === "rascunho" && (
             <Button
               onClick={confirmarRevisao}
               disabled={confirmando}
@@ -353,9 +418,37 @@ export default function RevisaoVisitaPage() {
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Confirmar Revisão
             </Button>
-          </div>
+          )}
+          {visita.status === "revisao" && (
+            <Button
+              onClick={gerarPdf}
+              disabled={gerandoPdf}
+              className="w-full gap-2"
+              style={{ background: "#14432B", color: "white" }}
+            >
+              {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              Gerar PDF
+            </Button>
+          )}
+          {visita.status === "finalizada" && visita.pdf_url && (
+            <>
+              <Button asChild variant="outline" className="flex-1 gap-1.5">
+                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
+                  <FileText className="w-4 h-4" /> Ver
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="flex-1 gap-1.5">
+                <a href={visita.pdf_url} download>
+                  <Download className="w-4 h-4" /> Baixar
+                </a>
+              </Button>
+              <Button onClick={compartilhar} className="flex-1 gap-1.5" style={{ background: "#1F7A4D", color: "white" }}>
+                <Share2 className="w-4 h-4" /> Enviar
+              </Button>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ChevronRight, History } from "lucide-react";
+import { Loader2, ChevronRight, History, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -14,6 +14,7 @@ interface VisitaItem {
   status: string;
   hora_inicio: string;
   fazenda_consultor_id: string;
+  pdf_url: string | null;
   fazendas_consultor: { nome_fazenda: string } | null;
 }
 
@@ -29,7 +30,7 @@ export default function ConsultorHistoricoPage() {
     setLoading(true);
     const { data } = await supabase
       .from("visitas_tecnicas")
-      .select("id, tipo, status, hora_inicio, fazenda_consultor_id, fazendas_consultor(nome_fazenda)")
+      .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
       .eq("consultor_id", roleData.consultorId!)
       .order("hora_inicio", { ascending: false });
     setVisitas((data as any as VisitaItem[]) || []);
@@ -65,6 +66,18 @@ export default function ConsultorHistoricoPage() {
               <Badge variant={v.status === "finalizada" ? "default" : "secondary"} className="capitalize shrink-0">
                 {v.status}
               </Badge>
+              {v.pdf_url && (
+                <a
+                  href={v.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20"
+                  title="Abrir PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                </a>
+              )}
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </Card>
           ))}

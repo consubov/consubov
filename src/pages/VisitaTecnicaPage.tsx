@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Loader2, Flag, Clock, FileCheck } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,6 +24,7 @@ interface Visita {
   observacoes_gerais: string | null;
   conclusao: string | null;
   fazenda_consultor_id: string;
+  pdf_url: string | null;
 }
 interface Fazenda { id: string; nome_fazenda: string; }
 
@@ -177,21 +178,53 @@ export default function VisitaTecnicaPage() {
         <div className="sticky bottom-16 pt-2 space-y-2">
           <Button
             onClick={() => navigate(`/consultor/visitas/${visitaId}/revisao`)}
-            variant="outline"
-            className="w-full gap-2 border-primary text-primary hover:bg-primary/5"
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
             disabled={pastos.length === 0}
           >
-            <FileCheck className="w-4 h-4" /> Revisar Visita
-          </Button>
-          <Button
-            onClick={() => setFinalizarOpen(true)}
-            className="w-full gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90"
-            disabled={pastos.length === 0}
-          >
-            <Flag className="w-4 h-4" /> Finalizar Visita
+            {visita.status === "revisao"
+              ? <><FileText className="w-4 h-4" /> Continuar Revisão / Gerar PDF</>
+              : <><FileCheck className="w-4 h-4" /> Revisar Visita</>}
           </Button>
         </div>
       )}
+
+
+      {readOnly && visita.pdf_url && (
+        <Card className="p-3 space-y-2">
+          <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" /> Relatório em PDF disponível
+          </div>
+          <div className="flex gap-2">
+            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
+              <a href={visita.pdf_url} target="_blank" rel="noreferrer">
+                <FileText className="w-4 h-4" /> Ver
+              </a>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
+              <a href={visita.pdf_url} download>
+                <Download className="w-4 h-4" /> Baixar
+              </a>
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5 bg-primary hover:bg-primary/90"
+              onClick={async () => {
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: "Visita técnica Consubov", url: visita.pdf_url! });
+                  } else {
+                    await navigator.clipboard.writeText(visita.pdf_url!);
+                    toast.success("Link copiado!");
+                  }
+                } catch { /* cancel */ }
+              }}
+            >
+              <Share2 className="w-4 h-4" /> Enviar
+            </Button>
+          </div>
+        </Card>
+      )}
+
 
       {readOnly && (visita.observacoes_gerais || visita.conclusao) && (
         <Card className="p-3 space-y-2">
