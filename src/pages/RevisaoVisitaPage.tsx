@@ -58,6 +58,7 @@ export default function RevisaoVisitaPage() {
   const { visitaId } = useParams<{ visitaId: string }>();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
+  const [tipoLoaded, setTipoLoaded] = useState<string | null>(null);
   const [fazenda, setFazenda] = useState<any>(null);
   const [consultor, setConsultor] = useState<any>(null);
   const [pastos, setPastos] = useState<Pasto[]>([]);
@@ -67,7 +68,15 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  useEffect(() => { if (visitaId) load(); }, [visitaId]);
+  useEffect(() => {
+    if (!visitaId) return;
+    (async () => {
+      const { data } = await supabase.from("visitas_tecnicas").select("tipo").eq("id", visitaId).maybeSingle();
+      setTipoLoaded((data?.tipo as string) || "rotina");
+    })();
+  }, [visitaId]);
+
+  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(); }, [visitaId, tipoLoaded]);
 
   async function load() {
     setLoading(true);
