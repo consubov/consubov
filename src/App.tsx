@@ -161,6 +161,8 @@ function RoleRedirect() {
       return <Navigate to="/escritorio" replace />;
     case "operador_fabrica":
       return <Navigate to="/fabrica" replace />;
+    case "consultor":
+      return <Navigate to="/consultor" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
