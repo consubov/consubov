@@ -79,7 +79,6 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formulaId, setFormulaId] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [finalizarOpen, setFinalizarOpen] = useState(false);
@@ -87,7 +86,6 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const [prodFinalizar, setProdFinalizar] = useState<BatidaProd[]>([]);
   const [qtdProduzida, setQtdProduzida] = useState("");
   const [fotoFim, setFotoFim] = useState<File | null>(null);
-  const [fotoFimPreview, setFotoFimPreview] = useState<string | null>(null);
   const [obsFim, setObsFim] = useState("");
 
   useEffect(() => { load(); }, [fabricaId]);
@@ -116,29 +114,9 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   const formulaSel = formulas.find(f => f.id === formulaId);
   const ingsDaFormula = ingredientes.filter(i => i.formula_id === formulaId);
 
-  useEffect(() => {
-    return () => {
-      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
-      if (fotoFimPreview) URL.revokeObjectURL(fotoFimPreview);
-    };
-  }, [fotoPreview, fotoFimPreview]);
-
-  function setFotoComPreview(
-    file: File | null,
-    setFile: (v: File | null) => void,
-    preview: string | null,
-    setPreview: (v: string | null) => void,
-  ) {
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(file);
-    setPreview(file ? URL.createObjectURL(file) : null);
-  }
-
   function handleFoto(
     e: React.ChangeEvent<HTMLInputElement>,
     setFile: (v: File | null) => void,
-    preview: string | null,
-    setPreview: (v: string | null) => void,
   ) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -147,7 +125,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
         toast.error("Selecione uma imagem válida");
         return;
       }
-      setFotoComPreview(file, setFile, preview, setPreview);
+      setFile(file);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível carregar a foto");
     } finally {
@@ -165,7 +143,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 
   function openIniciar() {
     setFormulaId("");
-    setFotoComPreview(null, setFoto, fotoPreview, setFotoPreview);
+    setFoto(null);
     setDialogOpen(true);
   }
 
@@ -226,7 +204,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   async function openFinalizar(b: Batida) {
     setBatidaFinalizando(b);
     setQtdProduzida("");
-    setFotoComPreview(null, setFotoFim, fotoFimPreview, setFotoFimPreview);
+    setFotoFim(null);
     setObsFim("");
     const { data } = await supabase.from("batidas_producao").select("*").eq("batida_id", b.id);
     setProdFinalizar((data as BatidaProd[]) || []);
@@ -406,12 +384,12 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                   <Camera className="w-4 h-4" />
                   {foto ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFoto, fotoPreview, setFotoPreview)} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFoto)} />
                 </label>
-                {fotoPreview && (
-                  <div className="relative">
-                    <img src={fotoPreview} alt="preview" className="w-16 h-16 rounded object-cover border" />
-                    <button type="button" onClick={() => setFotoComPreview(null, setFoto, fotoPreview, setFotoPreview)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
+                {foto && (
+                  <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                    <span>Foto selecionada</span>
+                    <button type="button" onClick={() => setFoto(null)} className="rounded-full bg-destructive p-0.5 text-destructive-foreground">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -469,12 +447,12 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                   <Camera className="w-4 h-4" />
                   {fotoFim ? "Trocar foto" : "Tirar foto"}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFotoFim, fotoFimPreview, setFotoFimPreview)} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFoto(e, setFotoFim)} />
                 </label>
-                {fotoFimPreview && (
-                  <div className="relative">
-                    <img src={fotoFimPreview} alt="preview" className="w-16 h-16 rounded object-cover border" />
-                    <button type="button" onClick={() => setFotoComPreview(null, setFotoFim, fotoFimPreview, setFotoFimPreview)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
+                {fotoFim && (
+                  <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                    <span>Foto selecionada</span>
+                    <button type="button" onClick={() => setFotoFim(null)} className="rounded-full bg-destructive p-0.5 text-destructive-foreground">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
