@@ -48,6 +48,7 @@ import ConsultorLayout from "./pages/ConsultorLayout";
 import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
 import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
 import VisitaTecnicaPage from "./pages/VisitaTecnicaPage";
+import RevisaoVisitaPage from "./pages/RevisaoVisitaPage";
 import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -251,6 +252,7 @@ const App = () => (
                 <Route index element={<ConsultorFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<ConsultorFazendaDetalhePage />} />
                 <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
+                <Route path="visitas/:visitaId/revisao" element={<RevisaoVisitaPage />} />
                 <Route path="historico" element={<ConsultorHistoricoPage />} />
               </Route>
 

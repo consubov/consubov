@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import PhotoGrid from "./PhotoGrid";
 import { cn } from "@/lib/utils";
 
 export interface VisitaPastoRow {
@@ -210,6 +211,13 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
             <ScoreSelector label="Fezes" value={fezes} onChange={setFezes} disabled={readOnly} />
             <ScoreSelector label="Escore Corporal" value={corporal} onChange={setCorporal} disabled={readOnly} />
             <ScoreSelector label="Bebedouro" value={bebedouro} onChange={setBebedouro} disabled={readOnly} />
+          </div>
+
+          <div className="pt-2 border-t">
+            <PhotoGrid visitaPastoId={pasto?.id ?? null} disabled={readOnly} />
+            {!pasto && (
+              <p className="text-[11px] text-muted-foreground mt-1">Salve o pasto para habilitar o envio de fotos.</p>
+            )}
           </div>
         </div>
         <DialogFooter>
