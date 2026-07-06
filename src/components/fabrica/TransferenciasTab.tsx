@@ -150,7 +150,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
     const f = e.target.files?.[0]; if (!f) return;
     const reader = new FileReader();
     reader.onload = async () => {
-      const compressed = await compressImageDataUrl(reader.result as string, 1280, 0.75);
+      const compressed = await compressImageDataUrl(reader.result as string, { maxDimension: 1280, quality: 0.75 });
       setFoto(compressed);
     };
     reader.readAsDataURL(f);
@@ -440,7 +440,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
     const f = e.target.files?.[0]; if (!f) return;
     const reader = new FileReader();
     reader.onload = async () => {
-      const compressed = await compressImageDataUrl(reader.result as string, 1280, 0.75);
+      const compressed = await compressImageDataUrl(reader.result as string, { maxDimension: 1280, quality: 0.75 });
       setFotoReceb(compressed);
     };
     reader.readAsDataURL(f);
