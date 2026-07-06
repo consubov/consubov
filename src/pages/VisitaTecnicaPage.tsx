@@ -109,6 +109,11 @@ export default function VisitaTecnicaPage() {
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center text-muted-foreground py-12">Visita não encontrada</div>;
 
+  if (visita.tipo === "confinamento") {
+    return <ConfinamentoVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
+  }
+
+
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
