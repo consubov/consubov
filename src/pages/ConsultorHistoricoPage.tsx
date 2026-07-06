@@ -66,6 +66,18 @@ export default function ConsultorHistoricoPage() {
               <Badge variant={v.status === "finalizada" ? "default" : "secondary"} className="capitalize shrink-0">
                 {v.status}
               </Badge>
+              {v.pdf_url && (
+                <a
+                  href={v.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20"
+                  title="Abrir PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                </a>
+              )}
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </Card>
           ))}
