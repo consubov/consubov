@@ -175,13 +175,22 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       )}
 
       {!readOnly && (
-        <div className="sticky bottom-16 pt-2">
+        <div className="sticky bottom-16 pt-2 space-y-2">
           <Button
-            onClick={() => setFinalizarOpen(true)}
+            onClick={() => navigate(`/consultor/visitas/${visitaId}/revisao`)}
             className="w-full gap-2 bg-primary hover:bg-primary/90"
             disabled={currais.length === 0}
           >
-            <FileCheck className="w-4 h-4" /> Finalizar Visita
+            <FileCheck className="w-4 h-4" />
+            {visita.status === "revisao" ? "Continuar Revisão" : "Revisar Visita"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setFinalizarOpen(true)}
+            className="w-full gap-2"
+            disabled={currais.length === 0}
+          >
+            Salvar observações e conclusão
           </Button>
         </div>
       )}
