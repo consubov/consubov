@@ -334,6 +334,121 @@ export type Database = {
           },
         ]
       }
+      batidas: {
+        Row: {
+          criado_em: string | null
+          data_finalizacao: string | null
+          data_inicio: string
+          fabrica_id: string
+          formula_id: string
+          foto_finalizacao_url: string | null
+          foto_inicio_url: string | null
+          hora_finalizacao: string | null
+          hora_inicio: string | null
+          id: string
+          observacao: string | null
+          operador_id: string | null
+          quantidade_produzida: number | null
+          status: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          data_finalizacao?: string | null
+          data_inicio: string
+          fabrica_id: string
+          formula_id: string
+          foto_finalizacao_url?: string | null
+          foto_inicio_url?: string | null
+          hora_finalizacao?: string | null
+          hora_inicio?: string | null
+          id?: string
+          observacao?: string | null
+          operador_id?: string | null
+          quantidade_produzida?: number | null
+          status?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          data_finalizacao?: string | null
+          data_inicio?: string
+          fabrica_id?: string
+          formula_id?: string
+          foto_finalizacao_url?: string | null
+          foto_inicio_url?: string | null
+          hora_finalizacao?: string | null
+          hora_inicio?: string | null
+          id?: string
+          observacao?: string | null
+          operador_id?: string | null
+          quantidade_produzida?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batidas_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batidas_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas_fabrica"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batidas_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores_fabrica"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batidas_producao: {
+        Row: {
+          batida_id: string
+          criado_em: string | null
+          id: string
+          materia_prima_id: string
+          quantidade_esperada: number
+          quantidade_utilizada: number | null
+        }
+        Insert: {
+          batida_id: string
+          criado_em?: string | null
+          id?: string
+          materia_prima_id: string
+          quantidade_esperada: number
+          quantidade_utilizada?: number | null
+        }
+        Update: {
+          batida_id?: string
+          criado_em?: string | null
+          id?: string
+          materia_prima_id?: string
+          quantidade_esperada?: number
+          quantidade_utilizada?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batidas_producao_batida_id_fkey"
+            columns: ["batida_id"]
+            isOneToOne: false
+            referencedRelation: "batidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batidas_producao_materia_prima_id_fkey"
+            columns: ["materia_prima_id"]
+            isOneToOne: false
+            referencedRelation: "materias_primas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capatazes: {
         Row: {
           ativo: boolean | null
@@ -750,6 +865,48 @@ export type Database = {
           },
         ]
       }
+      estoque_produto_acabado: {
+        Row: {
+          criado_em: string | null
+          fabrica_id: string
+          formula_id: string
+          id: string
+          quantidade_kg: number | null
+          quantidade_sacos: number | null
+        }
+        Insert: {
+          criado_em?: string | null
+          fabrica_id: string
+          formula_id: string
+          id?: string
+          quantidade_kg?: number | null
+          quantidade_sacos?: number | null
+        }
+        Update: {
+          criado_em?: string | null
+          fabrica_id?: string
+          formula_id?: string
+          id?: string
+          quantidade_kg?: number | null
+          quantidade_sacos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_produto_acabado_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_produto_acabado_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas_fabrica"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque_retiro: {
         Row: {
           ano: number
@@ -1008,6 +1165,86 @@ export type Database = {
             columns: ["administrador_id"]
             isOneToOne: false
             referencedRelation: "administradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formula_ingredientes: {
+        Row: {
+          criado_em: string | null
+          formula_id: string
+          id: string
+          materia_prima_id: string
+          quantidade: number
+        }
+        Insert: {
+          criado_em?: string | null
+          formula_id: string
+          id?: string
+          materia_prima_id: string
+          quantidade: number
+        }
+        Update: {
+          criado_em?: string | null
+          formula_id?: string
+          id?: string
+          materia_prima_id?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formula_ingredientes_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas_fabrica"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formula_ingredientes_materia_prima_id_fkey"
+            columns: ["materia_prima_id"]
+            isOneToOne: false
+            referencedRelation: "materias_primas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formulas_fabrica: {
+        Row: {
+          ativo: boolean | null
+          criado_em: string | null
+          fabrica_id: string
+          id: string
+          nome: string
+          peso_batida: number
+          peso_por_saco: number
+          producao_esperada: number
+        }
+        Insert: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          fabrica_id: string
+          id?: string
+          nome: string
+          peso_batida: number
+          peso_por_saco: number
+          producao_esperada: number
+        }
+        Update: {
+          ativo?: boolean | null
+          criado_em?: string | null
+          fabrica_id?: string
+          id?: string
+          nome?: string
+          peso_batida?: number
+          peso_por_saco?: number
+          producao_esperada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formulas_fabrica_fabrica_id_fkey"
+            columns: ["fabrica_id"]
+            isOneToOne: false
+            referencedRelation: "fabricas"
             referencedColumns: ["id"]
           },
         ]
