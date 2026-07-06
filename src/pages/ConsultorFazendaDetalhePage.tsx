@@ -149,13 +149,12 @@ export default function ConsultorFazendaDetalhePage() {
             </Button>
             <Button
               variant="outline"
-              className="h-auto py-4 justify-start flex-col items-start opacity-50"
-              disabled
+              className="h-auto py-4 justify-start flex-col items-start"
+              onClick={() => iniciarVisita("confinamento")}
+              disabled={creating}
             >
-              <div className="font-semibold text-base flex items-center gap-2">
-                Confinamento <Badge variant="secondary" className="text-[10px]">em breve</Badge>
-              </div>
-              <div className="text-xs text-muted-foreground font-normal">Avaliação de currais e tratos</div>
+              <div className="font-semibold text-base">Confinamento</div>
+              <div className="text-xs text-muted-foreground font-normal">Avaliação sequencial de currais</div>
             </Button>
           </div>
         </DialogContent>
