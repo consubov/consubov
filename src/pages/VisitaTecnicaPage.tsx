@@ -174,7 +174,15 @@ export default function VisitaTecnicaPage() {
       )}
 
       {!readOnly && (
-        <div className="sticky bottom-16 pt-2">
+        <div className="sticky bottom-16 pt-2 space-y-2">
+          <Button
+            onClick={() => navigate(`/consultor/visitas/${visitaId}/revisao`)}
+            variant="outline"
+            className="w-full gap-2 border-primary text-primary hover:bg-primary/5"
+            disabled={pastos.length === 0}
+          >
+            <FileCheck className="w-4 h-4" /> Revisar Visita
+          </Button>
           <Button
             onClick={() => setFinalizarOpen(true)}
             className="w-full gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90"
