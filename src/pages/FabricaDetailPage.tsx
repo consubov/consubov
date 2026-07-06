@@ -23,7 +23,10 @@ import {
 import {
   ArrowLeft, Factory, QrCode, MapPin, Pencil, Trash2, Plus, Loader2,
   Users, Package2, PackagePlus, Download, FileDown, Save, Camera, X, AlertTriangle,
+  FlaskConical, Play,
 } from "lucide-react";
+import FormulasTab from "@/components/fabrica/FormulasTab";
+import ProducaoTab from "@/components/fabrica/ProducaoTab";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import jsPDF from "jspdf";
