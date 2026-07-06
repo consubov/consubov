@@ -339,21 +339,31 @@ export type Database = {
           id: string
           nota: number
           tipo: string
-          visita_pasto_id: string
+          visita_curral_id: string | null
+          visita_pasto_id: string | null
         }
         Insert: {
           id?: string
           nota: number
           tipo: string
-          visita_pasto_id: string
+          visita_curral_id?: string | null
+          visita_pasto_id?: string | null
         }
         Update: {
           id?: string
           nota?: number
           tipo?: string
-          visita_pasto_id?: string
+          visita_curral_id?: string | null
+          visita_pasto_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "avaliacoes_score_visita_curral_id_fkey"
+            columns: ["visita_curral_id"]
+            isOneToOne: false
+            referencedRelation: "visita_currais"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "avaliacoes_score_visita_pasto_id_fkey"
             columns: ["visita_pasto_id"]
@@ -2876,6 +2886,44 @@ export type Database = {
             columns: ["retiro_origem_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visita_currais: {
+        Row: {
+          created_at: string
+          id: string
+          num_curral: string
+          ordem: number
+          organizacao_fabrica_nota: number | null
+          organizacao_insumos_nota: number | null
+          visita_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          num_curral: string
+          ordem?: number
+          organizacao_fabrica_nota?: number | null
+          organizacao_insumos_nota?: number | null
+          visita_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          num_curral?: string
+          ordem?: number
+          organizacao_fabrica_nota?: number | null
+          organizacao_insumos_nota?: number | null
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_currais_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
             referencedColumns: ["id"]
           },
         ]
