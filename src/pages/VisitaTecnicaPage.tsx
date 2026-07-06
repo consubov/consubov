@@ -194,6 +194,43 @@ export default function VisitaTecnicaPage() {
         </div>
       )}
 
+      {readOnly && visita.pdf_url && (
+        <Card className="p-3 space-y-2">
+          <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" /> Relatório em PDF disponível
+          </div>
+          <div className="flex gap-2">
+            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
+              <a href={visita.pdf_url} target="_blank" rel="noreferrer">
+                <FileText className="w-4 h-4" /> Ver
+              </a>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
+              <a href={visita.pdf_url} download>
+                <Download className="w-4 h-4" /> Baixar
+              </a>
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5 bg-primary hover:bg-primary/90"
+              onClick={async () => {
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: "Visita técnica Consubov", url: visita.pdf_url! });
+                  } else {
+                    await navigator.clipboard.writeText(visita.pdf_url!);
+                    toast.success("Link copiado!");
+                  }
+                } catch { /* cancel */ }
+              }}
+            >
+              <Share2 className="w-4 h-4" /> Enviar
+            </Button>
+          </div>
+        </Card>
+      )}
+
+
       {readOnly && (visita.observacoes_gerais || visita.conclusao) && (
         <Card className="p-3 space-y-2">
           {visita.observacoes_gerais && (
