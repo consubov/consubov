@@ -654,12 +654,14 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [materiaId, setMateriaId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
   const [observacao, setObservacao] = useState("");
   const [foto, setFoto] = useState<string | null>(null);
+
 
   useEffect(() => { load(); }, [fabricaId]);
 
@@ -675,11 +677,31 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   }
 
   function openNew() {
+    setEditingId(null);
     setMateriaId(""); setQuantidade("");
     setDataEntrada(new Date().toISOString().slice(0, 10));
     setObservacao(""); setFoto(null);
     setDialogOpen(true);
   }
+
+  function openEdit(e: Entrada) {
+    setEditingId(e.id);
+    setMateriaId(e.materia_prima_id);
+    setQuantidade(String(e.quantidade));
+    setDataEntrada(e.data_entrada);
+    setObservacao(e.observacao || "");
+    setFoto(null);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir esta entrada? O estoque será ajustado automaticamente.")) return;
+    const { error } = await supabase.from("entradas_materias_primas").delete().eq("id", id);
+    if (error) return toast.error("Erro: " + error.message);
+    toast.success("Entrada removida. Estoque ajustado.");
+    load();
+  }
+
 
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -709,19 +731,33 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
         const { data: pub } = supabase.storage.from("mapas").getPublicUrl(path);
         fotoUrl = pub.publicUrl;
       }
-      const { error } = await supabase.from("entradas_materias_primas").insert({
-        materia_prima_id: materiaId,
-        fabrica_id: fabricaId,
-        quantidade: qtd,
-        data_entrada: dataEntrada,
-        observacao: observacao.trim() || null,
-        foto_url: fotoUrl,
-        registrado_por: user?.id ?? null,
-      });
-      if (error) throw error;
-      toast.success("Entrada registrada! Estoque atualizado.");
+      if (editingId) {
+        const patch: any = {
+          materia_prima_id: materiaId,
+          quantidade: qtd,
+          data_entrada: dataEntrada,
+          observacao: observacao.trim() || null,
+        };
+        if (fotoUrl) patch.foto_url = fotoUrl;
+        const { error } = await supabase.from("entradas_materias_primas").update(patch).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Entrada atualizada! Estoque ajustado.");
+      } else {
+        const { error } = await supabase.from("entradas_materias_primas").insert({
+          materia_prima_id: materiaId,
+          fabrica_id: fabricaId,
+          quantidade: qtd,
+          data_entrada: dataEntrada,
+          observacao: observacao.trim() || null,
+          foto_url: fotoUrl,
+          registrado_por: user?.id ?? null,
+        });
+        if (error) throw error;
+        toast.success("Entrada registrada! Estoque atualizado.");
+      }
       setDialogOpen(false);
       load();
+
     } catch (err: any) { toast.error("Erro: " + (err?.message || "desconhecido")); }
     finally { setSaving(false); }
   }
@@ -748,17 +784,28 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
                 <TableRow>
                   <TableHead>Data</TableHead><TableHead>Matéria-Prima</TableHead>
                   <TableHead className="text-right">Quantidade</TableHead><TableHead>Observação</TableHead>
+                  <TableHead className="w-24 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entradas.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{mpMap[e.materia_prima_id] || "—"}</TableCell>
                     <TableCell className="text-right font-medium">{e.quantidade}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{e.observacao || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)} title="Editar quantidade">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(e.id)} title="Excluir entrada">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -770,12 +817,13 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova entrada</DialogTitle>
-            <DialogDescription>Vinculada automaticamente a esta fábrica.</DialogDescription>
+            <DialogTitle>{editingId ? "Editar entrada" : "Nova entrada"}</DialogTitle>
+            <DialogDescription>{editingId ? "Alterar a quantidade ajusta o estoque automaticamente." : "Vinculada automaticamente a esta fábrica."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Matéria-Prima *</Label>
+
               <Select value={materiaId} onValueChange={setMateriaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
