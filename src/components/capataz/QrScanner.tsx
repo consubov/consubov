@@ -6,9 +6,10 @@ import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 
 interface QrScannerProps {
   onScan: (qrUuid: string) => void;
-  onManualSelect: () => void;
+  onManualSelect?: () => void;
   onBack: () => void;
 }
+
 
 // Declare BarcodeDetector for TypeScript
 declare global {
@@ -62,12 +63,13 @@ function getCameraErrorMessage(error: unknown) {
     }
 
     if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
-      return "Não encontramos uma câmera compatível com este dispositivo. Tente novamente ou selecione o pasto manualmente.";
+      return "Não encontramos uma câmera compatível com este dispositivo. Tente novamente.";
     }
   }
 
-  return "Não foi possível abrir a câmera neste dispositivo. Tente novamente ou selecione o pasto manualmente.";
+  return "Não foi possível abrir a câmera neste dispositivo. Tente novamente.";
 }
+
 
 function waitForVideoReadyState(video: HTMLVideoElement, minimumReadyState: number) {
   return new Promise<void>((resolve) => {
@@ -339,11 +341,14 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           {failCount > 0 && failCount < 3 && (
             <p className="text-muted-foreground text-xs">Tentativa {failCount}/3</p>
           )}
-          <Button variant="link" onClick={onManualSelect} className="text-muted-foreground text-xs">
-            Selecionar pasto manualmente
-          </Button>
+          {onManualSelect && (
+            <Button variant="link" onClick={onManualSelect} className="text-muted-foreground text-xs">
+              Selecionar pasto manualmente
+            </Button>
+          )}
         </main>
       )}
+
 
       {scanning && (
         <main className="flex-1 flex flex-col relative bg-black">
@@ -374,9 +379,11 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
               <p className="text-destructive font-semibold text-sm">
                 🔴 QR Code não lido após {failCount} tentativas
               </p>
-              <Button onClick={onManualSelect} className="w-full" variant="secondary">
-                Selecionar pasto manualmente
-              </Button>
+              {onManualSelect && (
+                <Button onClick={onManualSelect} className="w-full" variant="secondary">
+                  Selecionar pasto manualmente
+                </Button>
+              )}
               <Button
                 onClick={() => { setFailCount(0); setError(null); }}
                 variant="outline"
@@ -388,6 +395,7 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           </Card>
         </main>
       )}
+
     </div>
   );
 }

@@ -18,9 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Plus, Loader2, Play, CheckCircle2, Camera, X, AlertTriangle,
+  Loader2, Play, CheckCircle2, Camera, X, AlertTriangle,
   TrendingUp, History, Factory, Package, Clock, QrCode,
 } from "lucide-react";
+
+
+
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
 
@@ -449,9 +452,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
           <Button onClick={() => setScannerOpen(true)} size="lg" className="w-full gap-2 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
             <QrCode className="w-5 h-5" /> Escanear QR da fábrica
           </Button>
-          <Button onClick={openIniciar} size="sm" variant="outline" className="w-full gap-1.5" disabled={formulas.length === 0}>
-            <Plus className="w-4 h-4" /> Iniciar sem QR
-          </Button>
+
           {formulas.length === 0 && (
             <p className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</p>
           )}
@@ -654,10 +655,10 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       {scannerOpen && (
         <QrScanner
           onScan={handleQrScan}
-          onManualSelect={() => { setScannerOpen(false); openIniciar(); }}
           onBack={() => setScannerOpen(false)}
         />
       )}
+
     </div>
 
   );
