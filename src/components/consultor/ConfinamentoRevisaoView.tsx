@@ -49,6 +49,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [conclusao, setConclusao] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => { load(); }, [visitaId]);
 
