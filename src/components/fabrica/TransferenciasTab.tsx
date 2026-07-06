@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { compressImageDataUrl } from "@/lib/imageCompression";
+import { sendPush } from "@/lib/pushService";
 
 interface Produto { id: string; nome: string; peso_saco_kg: number | null; }
 interface EstoqueProd {
