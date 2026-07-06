@@ -24,6 +24,7 @@ interface Visita {
   observacoes_gerais: string | null;
   conclusao: string | null;
   fazenda_consultor_id: string;
+  pdf_url: string | null;
 }
 interface Fazenda { id: string; nome_fazenda: string; }
 
