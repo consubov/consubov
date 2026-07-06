@@ -286,8 +286,9 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
                       .filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0)
                       .map(f => (
                         <SelectItem key={f.id} value={f.id}>
-                          {f.nome} ({Number(estoqueMap[f.id]?.quantidade_sacos || 0)} sacos)
+                          {f.nome}
                         </SelectItem>
+
                       ))
                   )}
                 </SelectContent>
