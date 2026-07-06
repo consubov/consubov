@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ChevronRight, History } from "lucide-react";
+import { Loader2, ChevronRight, History, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -14,6 +14,7 @@ interface VisitaItem {
   status: string;
   hora_inicio: string;
   fazenda_consultor_id: string;
+  pdf_url: string | null;
   fazendas_consultor: { nome_fazenda: string } | null;
 }
 
