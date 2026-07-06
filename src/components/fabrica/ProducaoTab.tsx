@@ -451,9 +451,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
           <Button onClick={() => setScannerOpen(true)} size="lg" className="w-full gap-2 bg-primary hover:bg-primary/90" disabled={formulas.length === 0}>
             <QrCode className="w-5 h-5" /> Escanear QR da fábrica
           </Button>
-          <Button onClick={openIniciar} size="sm" variant="outline" className="w-full gap-1.5" disabled={formulas.length === 0}>
-            <Plus className="w-4 h-4" /> Iniciar sem QR
-          </Button>
+
           {formulas.length === 0 && (
             <p className="text-sm text-muted-foreground">Cadastre uma fórmula antes de iniciar batidas.</p>
           )}
