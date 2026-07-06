@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 
 const BUCKET = "visitas-consultor-fotos";
 
