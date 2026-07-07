@@ -317,6 +317,14 @@ export default function RevisaoVisitaPage() {
         value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
       }));
 
+      const topicosForPdf = await Promise.all(topicos.map(async t => {
+        const fotos = await Promise.all(t.fotos.map(async f => {
+          const { data } = await supabase.storage.from(BUCKET).createSignedUrl(f.url, 60 * 60);
+          return { id: f.id, url: f.url, ordem: f.ordem, signedUrl: data?.signedUrl || "" };
+        }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos };
+      }));
+
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
@@ -334,6 +342,7 @@ export default function RevisaoVisitaPage() {
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
+        topicos: topicosForPdf,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -350,6 +359,7 @@ export default function RevisaoVisitaPage() {
           fotos: p.fotos,
         })),
       });
+
 
       const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visita.id);
       const { error } = await supabase.from("visitas_tecnicas").update({
