@@ -31,8 +31,8 @@ export default function ConsultorLayout() {
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-md object-cover" />
             <div className="text-left">
               <div className="text-sm font-bold leading-tight">Consubov</div>
-              <div className="text-[10px] uppercase tracking-wider opacity-80 flex items-center gap-1">
-                <Stethoscope className="w-3 h-3" /> Consultor
+              <div className="text-[10px] uppercase tracking-wider opacity-80">
+                Consultor
               </div>
             </div>
           </button>
