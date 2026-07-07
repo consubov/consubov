@@ -409,13 +409,50 @@ export default function RevisaoVisitaPage() {
                   disabled={readOnly}
                 />
               </div>
-              <FieldInline
-                label="Consumo (kg/dia)"
-                type="number"
-                value={p.consumo_kg_dia?.toString() || ""}
-                onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_kg_dia: n }); autosavePasto(p.id, { consumo_kg_dia: n }); }}
-                disabled={readOnly}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <FieldInline
+                  label="Consumo Esperado (kg/dia)"
+                  type="number"
+                  value={p.consumo_esperado_kg?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_esperado_kg: n }); autosavePasto(p.id, { consumo_esperado_kg: n }); }}
+                  disabled={readOnly}
+                />
+                <FieldInline
+                  label="Consumo Real (kg/dia)"
+                  type="number"
+                  value={(p.consumo_real_kg ?? p.consumo_kg_dia)?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); autosavePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); }}
+                  disabled={readOnly}
+                />
+              </div>
+
+              {/* Resumo calculado (read-only) */}
+              {(() => {
+                const real = p.consumo_real_kg ?? p.consumo_kg_dia ?? 0;
+                const esp = p.consumo_esperado_kg ?? 0;
+                const pvt = (p.qtd_animais || 0) * (p.peso_medio_kg || 0);
+                const ind = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+                return (
+                  <div className="rounded-md border p-2 bg-muted/40 grid grid-cols-4 gap-2 text-[10px]" style={{ borderColor: "#E7E3D6" }}>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">PV total</div>
+                      <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString("pt-BR")} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Esperado</div>
+                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Real</div>
+                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
+                      <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Scores — múltiplas amostras */}
               <div className="space-y-4 pt-1">
