@@ -37,6 +37,10 @@ interface Pasto {
   tipo_produto: string | null;
   percentual_pv: string | null;
   consumo_kg_dia: number | null;
+  categoria: string | null;
+  peso_medio_kg: number | null;
+  consumo_esperado_kg: number | null;
+  consumo_real_kg: number | null;
   observacao: string | null;
   ordem: number;
   samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
