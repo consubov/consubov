@@ -28,6 +28,58 @@ const PRODUTOS = [
   { value: "outro", label: "Outro" },
 ];
 
+const PRODUTO_LABEL_MAP: Record<string, string> = Object.fromEntries(PRODUTOS.map(p => [p.value, p.label]));
+
+export type IndicadorKey =
+  | "lotes_avaliados" | "animais_avaliados" | "peso_medio_rebanho"
+  | "estrategias_nutricionais" | "score_corporal" | "score_fezes"
+  | "condicao_bebedouros" | "qualidade_pastagens";
+
+export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
+
+export function computeIndicadoresAuto(pastos: {
+  qtd_animais: number | null;
+  peso_medio_kg: number | null;
+  tipo_produto: string | null;
+  samples: { fezes: { nota: number }[]; corporal: { nota: number }[]; bebedouro: { nota: number }[] };
+}[]): Record<IndicadorKey, string> {
+  const lotes = pastos.length;
+  const animais = pastos.reduce((s, p) => s + (p.qtd_animais || 0), 0);
+  const somaPeso = pastos.reduce((s, p) => s + (p.qtd_animais || 0) * (p.peso_medio_kg || 0), 0);
+  const somaAnimComPeso = pastos.reduce((s, p) => s + ((p.peso_medio_kg || 0) > 0 ? (p.qtd_animais || 0) : 0), 0);
+  const pesoMedio = somaAnimComPeso > 0 ? Math.round(somaPeso / somaAnimComPeso) : 0;
+  const produtos = Array.from(new Set(pastos.map(p => p.tipo_produto).filter(Boolean) as string[]))
+    .map(v => PRODUTO_LABEL_MAP[v] || v);
+  const estrategias = produtos.join(" + ");
+  const avgAll = (arr: number[]) => arr.length ? (arr.reduce((a,b) => a+b, 0) / arr.length) : 0;
+  const fezes = avgAll(pastos.flatMap(p => p.samples.fezes.map(s => s.nota)));
+  const corp = avgAll(pastos.flatMap(p => p.samples.corporal.map(s => s.nota)));
+  const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
+  const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
+  return {
+    lotes_avaliados: lotes ? String(lotes) : "—",
+    animais_avaliados: animais ? animais.toLocaleString("pt-BR") : "—",
+    peso_medio_rebanho: pesoMedio ? `${pesoMedio} kg` : "—",
+    estrategias_nutricionais: estrategias || "—",
+    score_corporal: fmtScore(corp),
+    score_fezes: fmtScore(fezes),
+    condicao_bebedouros: fmtScore(beb),
+    qualidade_pastagens: "—",
+  };
+}
+
+export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
+  { key: "lotes_avaliados", label: "Lotes avaliados" },
+  { key: "animais_avaliados", label: "Animais avaliados" },
+  { key: "peso_medio_rebanho", label: "Peso médio do rebanho avaliado" },
+  { key: "estrategias_nutricionais", label: "Estratégias nutricionais" },
+  { key: "score_corporal", label: "Score corporal médio" },
+  { key: "score_fezes", label: "Score de fezes" },
+  { key: "condicao_bebedouros", label: "Condição média dos bebedouros" },
+  { key: "qualidade_pastagens", label: "Qualidade das pastagens" },
+];
+
+
 interface Foto { id: string; url: string; ordem: number; }
 interface Pasto {
   id: string;
@@ -75,6 +127,7 @@ export default function RevisaoVisitaPage() {
   const [objetivo, setObjetivo] = useState("");
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
+  const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -99,6 +152,7 @@ export default function RevisaoVisitaPage() {
     setObjetivo((v as any).objetivo_visita || "");
     setResumo((v as any).resumo_executivo || "");
     setIndicadores((v as any).indicadores_gerais || "");
+    setIndicadoresTabela(((v as any).indicadores_tabela as Record<string,string>) || {});
 
     const [{ data: fz }, { data: cs }, { data: ps }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
@@ -252,7 +306,14 @@ export default function RevisaoVisitaPage() {
         objetivo_visita: objetivo || null,
         resumo_executivo: resumo || null,
         indicadores_gerais: indicadores || null,
-      }).eq("id", visita.id);
+        indicadores_tabela: indicadoresTabela as any,
+      } as any).eq("id", visita.id);
+
+      const autoInd = computeIndicadoresAuto(pastos);
+      const tabelaFinal: IndicadorRow[] = INDICADOR_LABELS.map(({ key, label }) => ({
+        key, label,
+        value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
+      }));
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
@@ -270,6 +331,7 @@ export default function RevisaoVisitaPage() {
         objetivo_visita: objetivo,
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
+        indicadores_tabela: tabelaFinal,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -512,6 +574,35 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
+      {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Indicadores Gerais da Fazenda
+        </div>
+        <div className="text-[10px]" style={{ color: "#767066" }}>
+          Valores calculados automaticamente. Edite qualquer campo para sobrescrever.
+        </div>
+        {(() => {
+          const auto = computeIndicadoresAuto(pastos);
+          return INDICADOR_LABELS.map(({ key, label }) => {
+            const override = indicadoresTabela[key] ?? "";
+            const placeholder = auto[key];
+            return (
+              <div key={key} className="grid grid-cols-2 gap-2 items-center">
+                <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
+                <Input
+                  value={override}
+                  placeholder={placeholder}
+                  onChange={e => setIndicadoresTabela(prev => ({ ...prev, [key]: e.target.value }))}
+                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela } as any)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            );
+          });
+        })()}
+      </div>
+
       {/* Observações gerais & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
@@ -663,7 +754,7 @@ function PhotoManager({ pasto, readOnly, onAdd, onDelete, onMove }: {
           <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"
             style={{ borderColor: "#E7E3D6" }}>
             <Camera className="w-4 h-4 text-muted-foreground" />
-            <input id={inputId} type="file" accept="image/*" capture="environment" className="hidden"
+            <input id={inputId} type="file" accept="image/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) onAdd(f); e.target.value = ""; }} />
           </label>
         )}
