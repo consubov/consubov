@@ -570,7 +570,7 @@ export default function RevisaoVisitaPage() {
         </div>
         <VisitaTopicosSection
           visitaId={visitaId!}
-          seedFrom={{ objetivo: visita.objetivo_visita, resumo: visita.resumo_executivo, indicadores: visita.indicadores_gerais }}
+          seedFrom={{ objetivo: visita.objetivo_visita, resumo: visita.resumo_executivo, indicadores: visita.indicadores_gerais, observacoes: visita.observacoes_gerais, conclusao: visita.conclusao }}
           onNotifyEdit={notifyEdit}
           onChange={setTopicos}
         />
