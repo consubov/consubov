@@ -51,6 +51,7 @@ export interface VisitaPdfData {
   objetivo_visita?: string | null;
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
+  indicadores_tabela?: { key: string; label: string; value: string }[];
   pastos: VisitaPdfPasto[];
 }
 
@@ -371,6 +372,38 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     if (y > pageH - 60) { doc.addPage(); y = 20; }
     y = drawIntroBlock(doc, title, t, y);
   }
+
+  // Tabela Indicadores Gerais da Fazenda
+  const tabela = (data.indicadores_tabela || []).filter(r => (r.value || "").trim() && r.value !== "—");
+  if (tabela.length) {
+    if (y > pageH - (14 + tabela.length * 7)) { doc.addPage(); y = 20; }
+    doc.setFillColor(GREEN_DARK);
+    doc.rect(15, y, 2.5, 6, "F");
+    doc.setTextColor(GREEN_DARK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("INDICADORES GERAIS DA FAZENDA", 20, y + 4.5);
+    y += 10;
+    const wTable = pageW - 30;
+    const labelW = wTable * 0.55;
+    const rowH = 7;
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.3);
+    tabela.forEach((r, i) => {
+      if (i % 2 === 0) { doc.setFillColor("#FAF8F0"); doc.rect(15, y, wTable, rowH, "F"); }
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(r.label, 18, y + 4.8);
+      doc.setFont("helvetica", "bold");
+      const lines = doc.splitTextToSize(r.value, wTable - labelW - 6);
+      doc.text(lines[0] || "—", 15 + labelW, y + 4.8);
+      doc.line(15, y + rowH, 15 + wTable, y + rowH);
+      y += rowH;
+    });
+    y += 6;
+  }
+
 
   // PAGES: 2 pastos por página — cabeçalho enxuto só com nome da fazenda
   const pastosPorPagina = 2;
