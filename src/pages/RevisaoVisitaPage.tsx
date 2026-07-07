@@ -243,7 +243,12 @@ export default function RevisaoVisitaPage() {
     const t = toast.loading("Gerando PDF...");
     try {
       // Salva últimas edições antes
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+      await supabase.from("visitas_tecnicas").update({
+        observacoes_gerais: obsGerais, conclusao,
+        objetivo_visita: objetivo || null,
+        resumo_executivo: resumo || null,
+        indicadores_gerais: indicadores || null,
+      }).eq("id", visita.id);
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
@@ -258,6 +263,9 @@ export default function RevisaoVisitaPage() {
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        objetivo_visita: objetivo,
+        resumo_executivo: resumo,
+        indicadores_gerais: indicadores,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -281,7 +289,7 @@ export default function RevisaoVisitaPage() {
 
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
-      await load();
+      navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
@@ -308,10 +316,10 @@ export default function RevisaoVisitaPage() {
   if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
-  const readOnly = visita.status === "finalizada";
+  const readOnly = false;
 
   return (
-    <div className="space-y-4 pb-24" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
         <ArrowLeft className="w-4 h-4" /> Voltar
       </Button>
