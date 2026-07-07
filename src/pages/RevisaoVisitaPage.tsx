@@ -574,6 +574,35 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
+      {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Indicadores Gerais da Fazenda
+        </div>
+        <div className="text-[10px]" style={{ color: "#767066" }}>
+          Valores calculados automaticamente. Edite qualquer campo para sobrescrever.
+        </div>
+        {(() => {
+          const auto = computeIndicadoresAuto(pastos);
+          return INDICADOR_LABELS.map(({ key, label }) => {
+            const override = indicadoresTabela[key] ?? "";
+            const placeholder = auto[key];
+            return (
+              <div key={key} className="grid grid-cols-2 gap-2 items-center">
+                <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
+                <Input
+                  value={override}
+                  placeholder={placeholder}
+                  onChange={e => setIndicadoresTabela(prev => ({ ...prev, [key]: e.target.value }))}
+                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela } as any)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            );
+          });
+        })()}
+      </div>
+
       {/* Observações gerais & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
