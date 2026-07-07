@@ -306,7 +306,14 @@ export default function RevisaoVisitaPage() {
         objetivo_visita: objetivo || null,
         resumo_executivo: resumo || null,
         indicadores_gerais: indicadores || null,
-      }).eq("id", visita.id);
+        indicadores_tabela: indicadoresTabela as any,
+      } as any).eq("id", visita.id);
+
+      const autoInd = computeIndicadoresAuto(pastos);
+      const tabelaFinal: IndicadorRow[] = INDICADOR_LABELS.map(({ key, label }) => ({
+        key, label,
+        value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
+      }));
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
@@ -324,6 +331,7 @@ export default function RevisaoVisitaPage() {
         objetivo_visita: objetivo,
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
+        indicadores_tabela: tabelaFinal,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
