@@ -354,7 +354,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita de Confinamento");
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento");
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
