@@ -240,7 +240,12 @@ export default function RevisaoVisitaPage() {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
           consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
-          scores: p.scores, fotos: p.fotos,
+          scores: {
+            fezes: averageOf(p.samples.fezes),
+            corporal: averageOf(p.samples.corporal),
+            bebedouro: averageOf(p.samples.bebedouro),
+          },
+          fotos: p.fotos,
         })),
       });
 
