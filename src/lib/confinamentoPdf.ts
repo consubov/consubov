@@ -2,13 +2,12 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
 
-// Palette (same as rotina)
 const GREEN_DARK = "#14432B";
-const GREEN_MED = "#1F7A4D";
 const GOLD = "#C9A84C";
 const INK = "#1C1C1A";
 const INK_SOFT = "#767066";
@@ -17,9 +16,9 @@ const LINE = "#E7E3D6";
 export interface ConfinamentoPdfCurral {
   id: string;
   num_curral: string;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number }; // médias
+  scores: { fezes?: number; corporal?: number; bebedouro?: number };
   sampleCounts?: { fezes: number; corporal: number; bebedouro: number };
-  fotos: { id: string; url: string; ordem: number }[]; // url = storage path
+  fotos: { id: string; url: string; ordem: number }[];
 }
 
 export interface ConfinamentoPdfData {
@@ -30,6 +29,9 @@ export interface ConfinamentoPdfData {
   hora_fim: string | null;
   observacoes_gerais: string | null;
   conclusao: string | null;
+  objetivo_visita?: string | null;
+  resumo_executivo?: string | null;
+  indicadores_gerais?: string | null;
   avaliacaoFabrica?: {
     organizacao_fabrica_nota: number | null;
     organizacao_insumos_nota: number | null;
@@ -42,6 +44,19 @@ async function fetchFotoDataUrl(path: string): Promise<string | null> {
     const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60);
     if (!data?.signedUrl) return null;
     const res = await fetch(data.signedUrl);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function fetchAssetDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
@@ -65,36 +80,47 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 6, { align: "right" });
 }
 
-function drawHeaderPage1(doc: jsPDF, data: ConfinamentoPdfData) {
+function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string) {
   const w = doc.internal.pageSize.getWidth();
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(0, 0, w, 60, "F");
+  const logoH = 16;
+  const logoW = 44;
+  const logoX = 15;
+  const logoY = 10;
+  if (logoDataUrl) {
+    try { doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
+  }
+  const dividerX = logoX + logoW + 6;
+  doc.setDrawColor(GREEN_DARK);
+  doc.setLineWidth(0.8);
+  doc.line(dividerX, logoY, dividerX, logoY + logoH);
 
-  doc.setFillColor(GOLD);
-  doc.roundedRect(15, 15, 14, 14, 2, 2, "F");
-  doc.setTextColor(GREEN_DARK);
+  doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("C", 22, 25, { align: "center" });
-
-  doc.setTextColor("#FFFFFF");
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("RELATÓRIO DE VISITA · CONFINAMENTO", 34, 20);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("Consubov Consultoria", 34, 27);
-
-  doc.setFontSize(20);
-  doc.text(data.fazenda.nome_fazenda || "—", 15, 48);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor("#E7E3D6");
-  const loc = [data.fazenda.proprietario, data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join(" · ");
-  if (loc) doc.text(loc, 15, 55);
-
+  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + 6);
   doc.setTextColor(INK);
-  const y = 75;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(13);
+  doc.text(subtitle, dividerX + 4, logoY + 14);
+
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.4);
+  doc.line(15, 36, w - 15, 36);
+}
+
+function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number {
+  const w = doc.internal.pageSize.getWidth();
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(data.fazenda.nome_fazenda || "—", 15, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(INK_SOFT);
+  const loc = [data.fazenda.proprietario, data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join(" · ");
+  if (loc) doc.text(loc, 15, y + 6);
+
+  const boxY = y + 12;
   const boxW = (w - 30 - 10) / 3;
   const boxes = [
     { label: "CONSULTOR", value: data.consultor.nome || "—" },
@@ -105,25 +131,37 @@ function drawHeaderPage1(doc: jsPDF, data: ConfinamentoPdfData) {
     const x = 15 + i * (boxW + 5);
     doc.setDrawColor(LINE);
     doc.setLineWidth(0.4);
-    doc.roundedRect(x, y, boxW, 18, 2, 2, "S");
+    doc.roundedRect(x, boxY, boxW, 18, 2, 2, "S");
     doc.setFontSize(7);
     doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.text(b.label, x + 3, y + 6);
+    doc.text(b.label, x + 3, boxY + 6);
     doc.setFontSize(10);
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
-    doc.text(b.value, x + 3, y + 13);
+    doc.text(b.value, x + 3, boxY + 13);
   });
+  return boxY + 24;
+}
 
-  doc.setFontSize(9);
-  doc.setTextColor(INK_SOFT);
+function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): number {
+  const w = doc.internal.pageSize.getWidth() - 30;
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, y, 2.5, 6, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(title.toUpperCase(), 20, y + 4.5);
+  doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
-  doc.text(`Total de currais avaliados: ${data.currais.length}`, 15, y + 30);
+  doc.setFontSize(9.5);
+  const lines = doc.splitTextToSize(text, w);
+  doc.text(lines, 15, y + 11);
+  return y + 11 + lines.length * 4.6 + 4;
 }
 
 function drawScoreRow(
-  doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number, cellW: number,
+  doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number,
 ) {
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "bold");
@@ -147,16 +185,13 @@ function drawScoreRow(
 }
 
 async function drawCurralBlock(
-  doc: jsPDF,
-  c: ConfinamentoPdfCurral,
-  fotosCache: Record<string, string | null>,
+  doc: jsPDF, c: ConfinamentoPdfCurral, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
 ) {
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.roundedRect(x, y, width, height, 2, 2, "S");
 
-  // Badge with number
   const badgeW = 20;
   doc.setFillColor(GREEN_DARK);
   doc.roundedRect(x + 4, y + 4, badgeW, 12, 2, 2, "F");
@@ -177,17 +212,15 @@ async function drawCurralBlock(
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 20, x + width - 3, y + 20);
 
-  // Scores: fezes / corporal / bebedouro (média das amostras). Dot uses rounded int.
   const rowY1 = y + 26;
   const cellW = (width - 6) / 3;
   const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
   const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
   const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
-  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
-  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
-  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
+  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1);
+  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1);
+  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1);
 
-  // Fotos grid
   const fotosStartY = y + 54;
   const fotoAreaH = height - (fotosStartY - y) - 4;
   const cols = 5;
@@ -221,20 +254,18 @@ async function drawCurralBlock(
 
 function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
   const pageW = doc.internal.pageSize.getWidth();
-
-  // Section bar
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(0, 0, pageW, 18, "F");
-  doc.setTextColor("#FFFFFF");
+  doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Médias por Classificação", 15, 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor("#E7E3D6");
-  doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
+  doc.setFontSize(10);
+  doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+  doc.setDrawColor(LINE);
+  doc.line(15, 16, pageW - 15, 16);
 
-  // Compute averages (média dos currais para fezes/corporal/bebedouro; visita-única para fábrica/insumos)
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Médias por Classificação", 15, 26);
+
   const totals = { fezes: 0, corporal: 0, bebedouro: 0 };
   const counts = { fezes: 0, corporal: 0, bebedouro: 0 };
   for (const c of data.currais) {
@@ -252,15 +283,13 @@ function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
     { label: "Org. Insumos", value: insumosNota || 0 },
   ];
 
-  // Chart area
   const chartX = 25;
-  const chartY = 40;
+  const chartY = 45;
   const chartW = pageW - 50;
   const chartH = 130;
 
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.3);
-  // Y grid lines at 1..5
   for (let n = 0; n <= 5; n++) {
     const gy = chartY + chartH - (chartH * n) / 5;
     doc.line(chartX, gy, chartX + chartW, gy);
@@ -270,7 +299,6 @@ function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
     doc.text(String(n), chartX - 3, gy + 1, { align: "right" });
   }
 
-  // Bars
   const gap = 6;
   const barW = (chartW - gap * (bars.length + 1)) / bars.length;
   bars.forEach((b, i) => {
@@ -279,19 +307,16 @@ function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
     const by = chartY + chartH - bh;
     doc.setFillColor(GOLD);
     doc.rect(bx, by, barW, bh, "F");
-    // Value on top
     doc.setFontSize(9);
     doc.setTextColor(GREEN_DARK);
     doc.setFont("helvetica", "bold");
     doc.text(b.value ? b.value.toFixed(1) : "—", bx + barW / 2, by - 2, { align: "center" });
-    // Label under axis
     doc.setFontSize(8);
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
     doc.text(b.label, bx + barW / 2, chartY + chartH + 6, { align: "center" });
   });
 
-  // Legend note
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "normal");
@@ -323,36 +348,46 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Preload photos (first 5 per curral in PDF grid)
+  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
-  // Page 1
-  drawHeaderPage1(doc, data);
+  // PAGE 1 — cover claro
+  drawCoverHeader(doc, logoDataUrl, "Visita de Confinamento");
+  let y = drawFarmBlock(doc, data, 50);
 
-  // Curral pages: 2 per page
+  const intros: [string, string | null | undefined][] = [
+    ["Objetivo da Visita", data.objetivo_visita],
+    ["Resumo Executivo", data.resumo_executivo],
+    ["Indicadores Gerais", data.indicadores_gerais],
+  ];
+  for (const [title, txt] of intros) {
+    const t = (txt || "").trim();
+    if (!t) continue;
+    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    y = drawIntroBlock(doc, title, t, y);
+  }
+
+  // Curral pages: 2 per page, cabeçalho enxuto
   const perPage = 2;
   const blockH = 100;
   const gap = 8;
   for (let i = 0; i < data.currais.length; i += perPage) {
     doc.addPage();
     const pair = data.currais.slice(i, i + perPage);
-    doc.setFillColor(GREEN_DARK);
-    doc.rect(0, 0, pageW, 18, "F");
-    doc.setTextColor("#FFFFFF");
+    doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(`Currais (${i + 1}–${i + pair.length} de ${data.currais.length})`, 15, 12);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor("#E7E3D6");
-    doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
 
-    let y = 26;
+    let cy = 24;
     for (const c of pair) {
-      await drawCurralBlock(doc, c, fotosCache, 15, y, pageW - 30, blockH);
-      y += blockH + gap;
+      await drawCurralBlock(doc, c, fotosCache, 15, cy, pageW - 30, blockH);
+      cy += blockH + gap;
     }
   }
 
@@ -360,23 +395,19 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.addPage();
   drawChartPage(doc, data);
 
-  // Final page: obs + conclusão
+  // Final page
   doc.addPage();
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(0, 0, pageW, 18, "F");
-  doc.setTextColor("#FFFFFF");
+  doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Considerações Finais", 15, 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor("#E7E3D6");
-  doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
+  doc.setFontSize(10);
+  doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+  doc.setDrawColor(LINE);
+  doc.line(15, 16, pageW - 15, 16);
 
-  let y = 30;
-  y = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", y);
-  y = Math.max(y + 8, 130);
-  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", y);
+  let fy = 26;
+  fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
+  fy = Math.max(fy + 8, 130);
+  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
 
   const sigY = pageH - 40;
   doc.setDrawColor(INK_SOFT);
@@ -387,9 +418,8 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.setFont("helvetica", "normal");
   doc.text(data.consultor.nome || "Consultor", pageW / 2, sigY + 5, { align: "center" });
   doc.setFontSize(8);
-  doc.text("Consultor Técnico – Consubov", pageW / 2, sigY + 10, { align: "center" });
+  doc.text("Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
 
-  // Footers
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
