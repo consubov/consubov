@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, Landmark, History, Stethoscope } from "lucide-react";
+import { LogOut, RefreshCw, Landmark, History } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
