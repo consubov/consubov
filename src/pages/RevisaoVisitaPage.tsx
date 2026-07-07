@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
+import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 
 const BUCKET = "visitas-consultor-fotos";
 
