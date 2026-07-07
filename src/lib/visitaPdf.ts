@@ -318,14 +318,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  const [logoDataUrl] = await Promise.all([fetchAssetDataUrl(logoAsset.url)]);
+  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
-  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchAssetDataUrl(
-    (await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(f.url, 60 * 60)).data?.signedUrl || ""
-  ); }));
-  // Actually preserve original behaviour for fotos:
-  await Promise.all(allFotos.map(async f => { if (!fotosCache[f.id]) fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
   drawCoverHeader(doc, logoDataUrl, "Visita de Rotina");
