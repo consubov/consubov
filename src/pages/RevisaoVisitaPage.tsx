@@ -39,7 +39,7 @@ interface Pasto {
   consumo_kg_dia: number | null;
   observacao: string | null;
   ordem: number;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
   fotos: Foto[];
   signed: Record<string, string>;
 }
