@@ -115,10 +115,10 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 
   async function addTopico() {
     onNotifyEdit?.();
-    const nextOrdem = Math.max(4, ...topicos.map(t => t.ordem)) + 1;
-    const startOrdem = nextOrdem < 5 ? 5 : nextOrdem;
+    const customs = topicos.filter(t => t.ordem >= 5 && t.ordem <= 1000);
+    const nextOrdem = customs.length ? Math.max(...customs.map(t => t.ordem)) + 1 : 5;
     const { data, error } = await (supabase as any).from("visita_topicos")
-      .insert({ visita_id: visitaId, titulo: "", texto: null, ordem: startOrdem })
+      .insert({ visita_id: visitaId, titulo: "", texto: null, ordem: nextOrdem })
       .select().single();
     if (error) { toast.error("Erro ao criar tópico"); return; }
     setTopicos(prev => [...prev, { ...(data as any), fotos: [], signed: {} }].sort((a,b)=>a.ordem-b.ordem));
