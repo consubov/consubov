@@ -17,9 +17,8 @@ const LINE = "#E7E3D6";
 export interface ConfinamentoPdfCurral {
   id: string;
   num_curral: string;
-  organizacao_fabrica_nota: number | null;
-  organizacao_insumos_nota: number | null;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  scores: { fezes?: number; corporal?: number; bebedouro?: number }; // médias
+  sampleCounts?: { fezes: number; corporal: number; bebedouro: number };
   fotos: { id: string; url: string; ordem: number }[]; // url = storage path
 }
 
@@ -31,6 +30,10 @@ export interface ConfinamentoPdfData {
   hora_fim: string | null;
   observacoes_gerais: string | null;
   conclusao: string | null;
+  avaliacaoFabrica?: {
+    organizacao_fabrica_nota: number | null;
+    organizacao_insumos_nota: number | null;
+  };
   currais: ConfinamentoPdfCurral[];
 }
 
