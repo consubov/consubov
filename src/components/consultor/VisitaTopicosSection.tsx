@@ -36,7 +36,10 @@ function letterFor(ordem: number): string {
 
 interface Props {
   visitaId: string;
-  seedFrom?: { objetivo?: string | null; resumo?: string | null; indicadores?: string | null };
+  seedFrom?: {
+    objetivo?: string | null; resumo?: string | null; indicadores?: string | null;
+    observacoes?: string | null; conclusao?: string | null;
+  };
   onNotifyEdit?: () => void;
   onChange?: (topicos: Topico[]) => void;
 }
@@ -56,16 +59,25 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       .select("*").eq("visita_id", visitaId).order("ordem");
     let rows = (data as any[]) || [];
 
-    if (rows.length === 0 && !seededRef.current) {
+    // Seed defaults: 3 header (1-3) + 2 footer (1001-1002). Insert only missing ordens.
+    if (!seededRef.current) {
       seededRef.current = true;
-      const seeds = [
+      const defaults: { ordem: number; titulo: string; texto: string | null }[] = [
         { ordem: 1, titulo: DEFAULT_TITLES[0], texto: seedFrom?.objetivo || null },
         { ordem: 2, titulo: DEFAULT_TITLES[1], texto: seedFrom?.resumo || null },
         { ordem: 3, titulo: DEFAULT_TITLES[2], texto: seedFrom?.indicadores || null },
-      ].map(s => ({ ...s, visita_id: visitaId }));
-      const { data: ins } = await (supabase as any).from("visita_topicos")
-        .insert(seeds).select();
-      rows = (ins as any[]) || [];
+        { ordem: 1001, titulo: "Observações Gerais", texto: seedFrom?.observacoes || null },
+        { ordem: 1002, titulo: "Conclusão", texto: seedFrom?.conclusao || null },
+      ];
+      const existingOrdens = new Set(rows.map(r => r.ordem));
+      const toInsert = defaults
+        .filter(d => !existingOrdens.has(d.ordem))
+        .map(d => ({ ...d, visita_id: visitaId }));
+      if (toInsert.length) {
+        const { data: ins } = await (supabase as any).from("visita_topicos")
+          .insert(toInsert).select();
+        rows = [...rows, ...((ins as any[]) || [])];
+      }
     }
 
     const ids = rows.map(r => r.id);
@@ -103,30 +115,28 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 
   async function addTopico() {
     onNotifyEdit?.();
-    const nextOrdem = Math.max(4, ...topicos.map(t => t.ordem)) + 1;
-    const startOrdem = nextOrdem < 5 ? 5 : nextOrdem;
+    const customs = topicos.filter(t => t.ordem >= 5 && t.ordem <= 1000);
+    const nextOrdem = customs.length ? Math.max(...customs.map(t => t.ordem)) + 1 : 5;
     const { data, error } = await (supabase as any).from("visita_topicos")
-      .insert({ visita_id: visitaId, titulo: "", texto: null, ordem: startOrdem })
+      .insert({ visita_id: visitaId, titulo: "", texto: null, ordem: nextOrdem })
       .select().single();
     if (error) { toast.error("Erro ao criar tópico"); return; }
     setTopicos(prev => [...prev, { ...(data as any), fotos: [], signed: {} }].sort((a,b)=>a.ordem-b.ordem));
   }
 
   async function deleteTopico(t: Topico) {
-    if (t.ordem <= 3) return;
+    if (t.ordem <= 3 || t.ordem >= 1001) return;
     if (!confirm("Remover este tópico?")) return;
     onNotifyEdit?.();
-    // remove foto files
     if (t.fotos.length) {
       await supabase.storage.from(BUCKET).remove(t.fotos.map(f => f.url));
     }
     await (supabase as any).from("visita_topicos").delete().eq("id", t.id);
     const remaining = topicos.filter(x => x.id !== t.id);
-    // renumerar customs (ordem >= 5)
-    const fixos = remaining.filter(x => x.ordem <= 3);
-    const customs = remaining.filter(x => x.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+    const others = remaining.filter(x => x.ordem <= 3 || x.ordem >= 1001);
+    const customs = remaining.filter(x => x.ordem >= 5 && x.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
     const renum = customs.map((c, i) => ({ ...c, ordem: 5 + i }));
-    setTopicos([...fixos, ...renum]);
+    setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
     await Promise.all(renum.map((c, i) => {
       if (c.ordem === customs[i]?.ordem) return Promise.resolve();
       return (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id);
@@ -134,8 +144,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   }
 
   async function move(t: Topico, dir: -1 | 1) {
-    if (t.ordem <= 3) return;
-    const customs = topicos.filter(x => x.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+    if (t.ordem < 5 || t.ordem > 1000) return;
+    const customs = topicos.filter(x => x.ordem >= 5 && x.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
     const idx = customs.findIndex(c => c.id === t.id);
     const j = idx + dir;
     if (j < 0 || j >= customs.length) return;
@@ -143,8 +153,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     const arr = [...customs];
     [arr[idx], arr[j]] = [arr[j], arr[idx]];
     const renum = arr.map((c, i) => ({ ...c, ordem: 5 + i }));
-    const fixos = topicos.filter(x => x.ordem <= 3);
-    setTopicos([...fixos, ...renum]);
+    const others = topicos.filter(x => x.ordem <= 3 || x.ordem >= 1001);
+    setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
     await Promise.all(renum.map(c =>
       (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id)
     ));
@@ -187,7 +197,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   }
 
   const fixos = topicos.filter(t => t.ordem <= 3).sort((a,b)=>a.ordem-b.ordem);
-  const customs = topicos.filter(t => t.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+  const customs = topicos.filter(t => t.ordem >= 5 && t.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
+  const footer = topicos.filter(t => t.ordem >= 1001).sort((a,b)=>a.ordem-b.ordem);
 
   return (
     <div className="space-y-3">
@@ -207,6 +218,18 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       <Button type="button" onClick={addTopico} variant="outline" className="w-full gap-1.5">
         <Plus className="w-4 h-4" /> Mais
       </Button>
+      {footer.length > 0 && (
+        <div className="pt-3 space-y-3 border-t" style={{ borderColor: "#E7E3D6" }}>
+          <div className="text-[11px] uppercase tracking-wide font-bold px-1" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+            Encerramento do Relatório
+          </div>
+          {footer.map(t => (
+            <TopicoCard key={t.id} topico={t} letter=""
+              onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
+              uploading={uploading===t.id} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
