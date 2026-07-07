@@ -324,7 +324,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDataUrl, "Visita de Rotina");
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina");
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
