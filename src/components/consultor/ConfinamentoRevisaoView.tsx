@@ -581,7 +581,7 @@ function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
           <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"
             style={{ borderColor: "#E7E3D6" }}>
             <Camera className="w-4 h-4 text-muted-foreground" />
-            <input id={inputId} type="file" accept="image/*" capture="environment" className="hidden"
+            <input id={inputId} type="file" accept="image/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) onAdd(f); e.target.value = ""; }} />
           </label>
         )}
