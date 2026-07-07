@@ -117,12 +117,20 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setCurrais(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
   }
 
+  async function notifyEdit() {
+    if (!visita || visita.status !== "finalizada") return;
+    await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visita.id);
+    setVisita(prev => prev ? { ...prev, pdf_url: null, status: "revisao" } : prev);
+  }
+
   async function autosaveCurralNum(curralId: string, num_curral: string) {
+    await notifyEdit();
     const { error } = await supabase.from("visita_currais").update({ num_curral }).eq("id", curralId);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function addSample(curralId: string, tipo: ScoreKey, nota: number) {
+    await notifyEdit();
     const { data, error } = await supabase.from("avaliacoes_score")
       .insert({ visita_curral_id: curralId, tipo, nota }).select("id").single();
     if (error) { toast.error("Erro ao adicionar amostra"); return; }
@@ -132,6 +140,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function removeSample(curralId: string, tipo: ScoreKey, index: number) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     const s = c.samples[tipo][index]; if (!s?.id) return;
     await supabase.from("avaliacoes_score").delete().eq("id", s.id);
@@ -141,11 +150,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
+    await notifyEdit();
     const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
+    await notifyEdit();
     const next = {
       organizacao_fabrica_nota: patch.organizacao_fabrica_nota !== undefined ? patch.organizacao_fabrica_nota : fabricaNota,
       organizacao_insumos_nota: patch.organizacao_insumos_nota !== undefined ? patch.organizacao_insumos_nota : insumosNota,
@@ -158,6 +169,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function addFoto(curralId: string, file: File) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     if (c.fotos.length >= MAX_FOTOS) { toast.error(`Máx. ${MAX_FOTOS} fotos`); return; }
     const usadas = new Set(c.fotos.map(f => f.ordem));
@@ -182,6 +194,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function delFoto(curralId: string, f: Foto) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     await supabase.storage.from(BUCKET).remove([f.url]);
     await supabase.from("visita_fotos").delete().eq("id", f.id);
@@ -189,6 +202,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function moveFoto(curralId: string, index: number, dir: -1 | 1) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     const arr = [...c.fotos];
     const j = index + dir;
