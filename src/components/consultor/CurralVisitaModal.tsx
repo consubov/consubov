@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import PhotoGrid from "./PhotoGrid";
+import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
 
 export interface VisitaCurralRow {
   id: string;
@@ -17,7 +17,7 @@ export interface VisitaCurralRow {
   organizacao_fabrica_nota: number | null;
   organizacao_insumos_nota: number | null;
   ordem: number;
-  scores?: { fezes?: number; corporal?: number; bebedouro?: number };
+  scores?: { fezes?: number; corporal?: number; bebedouro?: number }; // averages (legacy shape)
 }
 
 interface Props {
@@ -30,163 +30,178 @@ interface Props {
   readOnly?: boolean;
 }
 
-function ScoreSelector({
-  label, value, onChange, disabled,
-}: { label: string; value?: number | null; onChange: (v: number) => void; disabled?: boolean }) {
-  return (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <div className="flex gap-1.5 mt-1">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button
-            key={n}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(n)}
-            className={cn(
-              "w-10 h-10 rounded-full border-2 text-sm font-semibold transition-colors",
-              value === n
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50",
-              disabled && "opacity-60 cursor-not-allowed",
-            )}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+type SamplesState = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
+const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
 
 export default function CurralVisitaModal({
   open, onOpenChange, visitaId, curral, proximaOrdem, onSaved, readOnly,
 }: Props) {
   const [numCurral, setNumCurral] = useState("");
-  const [fezes, setFezes] = useState<number | undefined>();
-  const [corporal, setCorporal] = useState<number | undefined>();
-  const [bebedouro, setBebedouro] = useState<number | undefined>();
-  const [orgFabrica, setOrgFabrica] = useState<number | undefined>();
-  const [orgInsumos, setOrgInsumos] = useState<number | undefined>();
+  const [curralIdLocal, setCurralIdLocal] = useState<string | null>(null);
+  const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
+  const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (curral) {
+      setCurralIdLocal(curral.id);
       setNumCurral(curral.num_curral);
-      setFezes(curral.scores?.fezes);
-      setCorporal(curral.scores?.corporal);
-      setBebedouro(curral.scores?.bebedouro);
-      setOrgFabrica(curral.organizacao_fabrica_nota ?? undefined);
-      setOrgInsumos(curral.organizacao_insumos_nota ?? undefined);
+      // load samples
+      supabase.from("avaliacoes_score")
+        .select("id, tipo, nota")
+        .eq("visita_curral_id", curral.id)
+        .then(({ data }) => {
+          const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
+          (data || []).forEach((s: any) => {
+            if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
+          });
+          setSamples(next);
+        });
     } else {
+      setCurralIdLocal(null);
       setNumCurral("");
-      setFezes(undefined); setCorporal(undefined); setBebedouro(undefined);
-      setOrgFabrica(undefined); setOrgInsumos(undefined);
+      setSamples(EMPTY_SAMPLES);
     }
   }, [open, curral]);
+
+  const ensureCurral = useCallback(async (): Promise<string | null> => {
+    if (curralIdLocal) return curralIdLocal;
+    if (!numCurral.trim()) return null;
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.from("visita_currais")
+        .insert({ visita_id: visitaId, num_curral: numCurral.trim(), ordem: proximaOrdem })
+        .select("id").single();
+      if (error) throw error;
+      setCurralIdLocal(data.id);
+      return data.id;
+    } catch (err: any) {
+      toast.error("Erro ao criar curral: " + (err?.message || ""));
+      return null;
+    } finally {
+      setCreating(false);
+    }
+  }, [curralIdLocal, numCurral, visitaId, proximaOrdem]);
+
+  async function handleNumBlur() {
+    if (readOnly) return;
+    if (!curralIdLocal && numCurral.trim()) {
+      await ensureCurral();
+    } else if (curralIdLocal && numCurral.trim() && curral && numCurral.trim() !== curral.num_curral) {
+      await supabase.from("visita_currais").update({ num_curral: numCurral.trim() }).eq("id", curralIdLocal);
+    }
+  }
+
+  async function addSample(tipo: keyof SamplesState, nota: number) {
+    const id = await ensureCurral();
+    if (!id) { toast.error("Informe o número do curral primeiro"); return; }
+    const { data, error } = await supabase.from("avaliacoes_score")
+      .insert({ visita_curral_id: id, tipo, nota }).select("id").single();
+    if (error) { toast.error("Erro: " + error.message); return; }
+    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: data.id, nota }] }));
+  }
+
+  async function removeSample(tipo: keyof SamplesState, index: number) {
+    const s = samples[tipo][index];
+    if (!s?.id) return;
+    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    setSamples(prev => ({ ...prev, [tipo]: prev[tipo].filter((_, i) => i !== index) }));
+  }
 
   async function persist(continueSequential: boolean) {
     if (!numCurral.trim()) return toast.error("Número do curral é obrigatório");
     setSaving(true);
     try {
-      let curralId: string;
-      const payload = {
-        visita_id: visitaId,
-        num_curral: numCurral.trim(),
-        organizacao_fabrica_nota: orgFabrica ?? null,
-        organizacao_insumos_nota: orgInsumos ?? null,
-      };
-      if (curral) {
-        const { error } = await supabase.from("visita_currais").update(payload).eq("id", curral.id);
-        if (error) throw error;
-        curralId = curral.id;
-      } else {
-        const { data, error } = await supabase.from("visita_currais")
-          .insert({ ...payload, ordem: proximaOrdem })
-          .select("id").single();
-        if (error) throw error;
-        curralId = data.id;
-      }
-
-      // Upsert scores (delete + insert)
-      await supabase.from("avaliacoes_score").delete().eq("visita_curral_id", curralId);
-      const scoreEntries: Array<{ tipo: "fezes" | "corporal" | "bebedouro"; nota?: number }> = [
-        { tipo: "fezes", nota: fezes },
-        { tipo: "corporal", nota: corporal },
-        { tipo: "bebedouro", nota: bebedouro },
-      ];
-      const toInsert = scoreEntries
-        .filter(s => s.nota !== undefined)
-        .map(s => ({ visita_curral_id: curralId, tipo: s.tipo, nota: s.nota! }));
-      if (toInsert.length > 0) {
-        const { error } = await supabase.from("avaliacoes_score").insert(toInsert);
-        if (error) throw error;
-      }
-
-      toast.success(curral ? "Curral atualizado" : "Curral adicionado");
+      const id = await ensureCurral();
+      if (!id) return;
+      // ensure num_curral persisted
+      await supabase.from("visita_currais").update({ num_curral: numCurral.trim() }).eq("id", id);
+      toast.success(curral || curralIdLocal ? "Curral salvo" : "Curral adicionado");
       onSaved({ continueSequential });
     } catch (err: any) {
       toast.error("Erro: " + (err?.message || "desconhecido"));
     } finally { setSaving(false); }
   }
 
+  const isNew = !curral;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{curral ? `Curral ${curral.num_curral}` : "Adicionar Curral"}</DialogTitle>
-          <DialogDescription>Informe o número do curral e as avaliações.</DialogDescription>
+          <DialogDescription>Informe o número do curral e registre as amostras.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label>Número do Curral *</Label>
-            <Input
-              value={numCurral}
-              onChange={e => setNumCurral(e.target.value)}
+            <div className="relative">
+              <Input
+                value={numCurral}
+                onChange={e => setNumCurral(e.target.value)}
+                onBlur={handleNumBlur}
+                disabled={readOnly}
+                placeholder="ex: 12"
+                autoFocus={isNew}
+              />
+              {creating && (
+                <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t space-y-4">
+            <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
+            <ScoreSamplesInput
+              label="Fezes"
+              samples={samples.fezes}
+              onAdd={n => addSample("fezes", n)}
+              onRemove={i => removeSample("fezes", i)}
               disabled={readOnly}
-              placeholder="ex: 12"
-              autoFocus={!curral}
+            />
+            <ScoreSamplesInput
+              label="Escore Corporal"
+              samples={samples.corporal}
+              onAdd={n => addSample("corporal", n)}
+              onRemove={i => removeSample("corporal", i)}
+              disabled={readOnly}
+            />
+            <ScoreSamplesInput
+              label="Bebedouro"
+              samples={samples.bebedouro}
+              onAdd={n => addSample("bebedouro", n)}
+              onRemove={i => removeSample("bebedouro", i)}
+              disabled={readOnly}
             />
           </div>
 
-          <div className="pt-2 border-t space-y-3">
-            <div className="text-sm font-semibold text-foreground">Avaliações (1–5)</div>
-            <ScoreSelector label="Fezes" value={fezes} onChange={setFezes} disabled={readOnly} />
-            <ScoreSelector label="Escore Corporal" value={corporal} onChange={setCorporal} disabled={readOnly} />
-            <ScoreSelector label="Bebedouro" value={bebedouro} onChange={setBebedouro} disabled={readOnly} />
-          </div>
-
-          <div className="pt-2 border-t space-y-3">
-            <div className="text-sm font-semibold text-foreground">Organização (1–5)</div>
-            <ScoreSelector label="Organização de Fábrica" value={orgFabrica} onChange={setOrgFabrica} disabled={readOnly} />
-            <ScoreSelector label="Organização de Insumos" value={orgInsumos} onChange={setOrgInsumos} disabled={readOnly} />
-          </div>
-
           <div className="pt-2 border-t">
-            <PhotoGrid visitaCurralId={curral?.id ?? null} max={10} disabled={readOnly} />
-            {!curral && (
-              <p className="text-[11px] text-muted-foreground mt-1">Salve o curral para habilitar o envio de fotos.</p>
+            <PhotoGrid visitaCurralId={curralIdLocal} max={10} disabled={readOnly} />
+            {!curralIdLocal && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Informe o número do curral para habilitar o envio de fotos.
+              </p>
             )}
           </div>
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            {readOnly ? "Fechar" : "Cancelar"}
+            {readOnly ? "Fechar" : "Fechar"}
           </Button>
           {!readOnly && (
             <>
               <Button
                 variant="secondary"
                 onClick={() => persist(false)}
-                disabled={saving}
+                disabled={saving || !numCurral.trim()}
               >
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
               </Button>
-              {!curral && (
+              {isNew && (
                 <Button
                   onClick={() => persist(true)}
-                  disabled={saving}
+                  disabled={saving || !numCurral.trim()}
                   className="bg-primary hover:bg-primary/90"
                 >
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar e próximo
