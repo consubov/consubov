@@ -57,18 +57,38 @@ export interface VisitaPdfData {
   pastos: VisitaPdfPasto[];
 }
 
+async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Promise<string> {
+  const bitmapUrl = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = bitmapUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no ctx");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(bitmapUrl);
+  }
+}
+
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
   try {
     const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60);
     if (!data?.signedUrl) return null;
     const res = await fetch(data.signedUrl);
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
+    return await compressImageBlob(blob);
   } catch { return null; }
 }
 
