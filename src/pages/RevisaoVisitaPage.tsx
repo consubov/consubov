@@ -332,8 +332,7 @@ export default function RevisaoVisitaPage() {
         <div className="flex items-center gap-2 mb-2">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center font-extrabold text-lg" style={{ background: "#C9A84C", color: "#14432B" }}>C</div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest opacity-80">Relatório de Visita</div>
-            <div className="text-sm font-bold">Consubov Consultoria</div>
+            <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Rotina</div>
           </div>
         </div>
         <div className="text-lg font-extrabold leading-tight">{fazenda?.nome_fazenda || "—"}</div>
