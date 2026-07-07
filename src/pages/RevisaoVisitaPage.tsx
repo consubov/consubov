@@ -75,6 +75,7 @@ export default function RevisaoVisitaPage() {
   const [objetivo, setObjetivo] = useState("");
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
+  const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
