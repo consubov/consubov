@@ -202,17 +202,27 @@ async function drawPastoBlock(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text(`${pasto.qtd_animais ?? "—"} animais`, x + 20, y + 13);
+  const sub = [
+    pasto.categoria || null,
+    `${pasto.qtd_animais ?? "—"} animais`,
+    pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg/cab` : null,
+  ].filter(Boolean).join(" · ");
+  doc.text(sub, x + 20, y + 13);
 
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 18, x + width - 3, y + 18);
+
+  const real = pasto.consumo_real_kg ?? pasto.consumo_kg_dia ?? 0;
+  const esp = pasto.consumo_esperado_kg ?? 0;
+  const indice = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+  const pesoVivoTotal = (pasto.qtd_animais || 0) * (pasto.peso_medio_kg || 0);
 
   const lineY = y + 24;
   const cellW = (width - 6) / 3;
   const cells = [
     { label: "PRODUTO", value: pasto.tipo_produto ? (PRODUTO_LABEL[pasto.tipo_produto] || pasto.tipo_produto) : "—" },
     { label: "% PV", value: pasto.percentual_pv || "—" },
-    { label: "CONSUMO", value: pasto.consumo_kg_dia ? `${pasto.consumo_kg_dia} kg/dia` : "—" },
+    { label: "PESO VIVO TOTAL", value: pesoVivoTotal > 0 ? `${pesoVivoTotal.toLocaleString("pt-BR")} kg` : "—" },
   ];
   cells.forEach((c, i) => {
     const cx = x + 3 + i * cellW;
@@ -224,6 +234,24 @@ async function drawPastoBlock(
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
     doc.text(c.value, cx, lineY + 5);
+  });
+
+  const lineY2 = y + 34;
+  const cells2 = [
+    { label: "CONSUMO ESPERADO", value: esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—" },
+    { label: "CONSUMO REAL", value: real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—" },
+    { label: "ÍNDICE / META", value: indice > 0 ? `${indice.toFixed(1)}%` : "—" },
+  ];
+  cells2.forEach((c, i) => {
+    const cx = x + 3 + i * cellW;
+    doc.setFontSize(6.5);
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.text(c.label, cx, lineY2);
+    doc.setFontSize(9);
+    doc.setTextColor(INK);
+    doc.setFont("helvetica", "bold");
+    doc.text(c.value, cx, lineY2 + 5);
   });
 
   const scoreY = y + 36;
