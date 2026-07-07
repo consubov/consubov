@@ -229,7 +229,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+      await supabase.from("visitas_tecnicas").update({
+        observacoes_gerais: obsGerais, conclusao,
+        objetivo_visita: objetivo || null,
+        resumo_executivo: resumo || null,
+        indicadores_gerais: indicadores || null,
+      }).eq("id", visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {
@@ -243,6 +248,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        objetivo_visita: objetivo,
+        resumo_executivo: resumo,
+        indicadores_gerais: indicadores,
         avaliacaoFabrica: {
           organizacao_fabrica_nota: fabricaNota,
           organizacao_insumos_nota: insumosNota,
@@ -272,7 +280,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       if (error) throw error;
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
-      await load();
+      navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
