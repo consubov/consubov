@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import { ArrowLeft, Plus, Loader2, Clock, FileCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
+import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 
 interface Visita {
   id: string;
@@ -27,12 +29,16 @@ interface Visita {
 }
 interface Fazenda { id: string; nome_fazenda: string; }
 
+interface CurralComAmostras extends VisitaCurralRow {
+  samples: { fezes: number[]; corporal: number[]; bebedouro: number[] };
+}
+
 interface Props { visitaId: string; visita: Visita; fazenda: Fazenda | null; }
 
 export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita, fazenda }: Props) {
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita>(initialVisita);
-  const [currais, setCurrais] = useState<VisitaCurralRow[]>([]);
+  const [currais, setCurrais] = useState<CurralComAmostras[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VisitaCurralRow | null>(null);
@@ -41,27 +47,51 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [conclusao, setConclusao] = useState(initialVisita.conclusao || "");
   const [finalizando, setFinalizando] = useState(false);
 
+  // Avaliação da fábrica (por visita)
+  const [fabricaNota, setFabricaNota] = useState<number | null>(null);
+  const [insumosNota, setInsumosNota] = useState<number | null>(null);
+
   const readOnly = visita.status === "finalizada";
 
   useEffect(() => { load(); }, [visitaId]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const cRes = await supabase.from("visita_currais")
       .select("*").eq("visita_id", visitaId).order("ordem");
     const curraisData = (cRes.data as any[]) || [];
     const ids = curraisData.map(c => c.id);
-    const scoresByCurral: Record<string, VisitaCurralRow["scores"]> = {};
+    const samplesByCurral: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
     if (ids.length > 0) {
       const { data: scoresData } = await supabase.from("avaliacoes_score")
         .select("visita_curral_id, tipo, nota")
         .in("visita_curral_id", ids);
       (scoresData || []).forEach((s: any) => {
-        scoresByCurral[s.visita_curral_id] = { ...(scoresByCurral[s.visita_curral_id] || {}), [s.tipo]: s.nota };
+        const bucket = samplesByCurral[s.visita_curral_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+        if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
       });
     }
-    setCurrais(curraisData.map(c => ({ ...c, scores: scoresByCurral[c.id] || {} })));
-    // Refresh visita meta too in case obs/conclusao changed
+    setCurrais(curraisData.map(c => {
+      const samples = samplesByCurral[c.id] || { fezes: [], corporal: [], bebedouro: [] };
+      return {
+        ...c,
+        samples,
+        scores: {
+          fezes: averageOf(samples.fezes),
+          corporal: averageOf(samples.corporal),
+          bebedouro: averageOf(samples.bebedouro),
+        },
+      };
+    }));
+
+    // load avaliacao fabrica
+    const { data: af } = await (supabase as any).from("avaliacao_fabrica_visita")
+      .select("organizacao_fabrica_nota, organizacao_insumos_nota")
+      .eq("visita_id", visitaId).maybeSingle();
+    setFabricaNota(af?.organizacao_fabrica_nota ?? null);
+    setInsumosNota(af?.organizacao_insumos_nota ?? null);
+
+    // refresh visita
     const vRes = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle();
     if (vRes.data) {
       const v = vRes.data as Visita;
@@ -70,27 +100,32 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       setConclusao(v.conclusao || "");
     }
     setLoading(false);
-  }
+  }, [visitaId]);
 
   const nextOrdem = useMemo(
     () => (currais.length > 0 ? Math.max(...currais.map(c => c.ordem)) + 1 : 0),
     [currais],
   );
 
-  function openNew() {
-    setEditing(null);
-    setModalOpen(true);
+  async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
+    const next = {
+      organizacao_fabrica_nota: patch.organizacao_fabrica_nota !== undefined ? patch.organizacao_fabrica_nota : fabricaNota,
+      organizacao_insumos_nota: patch.organizacao_insumos_nota !== undefined ? patch.organizacao_insumos_nota : insumosNota,
+    };
+    if (patch.organizacao_fabrica_nota !== undefined) setFabricaNota(patch.organizacao_fabrica_nota);
+    if (patch.organizacao_insumos_nota !== undefined) setInsumosNota(patch.organizacao_insumos_nota);
+    const { error } = await (supabase as any).from("avaliacao_fabrica_visita")
+      .upsert({ visita_id: visitaId, ...next }, { onConflict: "visita_id" });
+    if (error) toast.error("Erro ao salvar avaliação da fábrica: " + error.message);
   }
+
+  function openNew() { setEditing(null); setModalOpen(true); }
 
   async function handleSavedFromModal({ continueSequential }: { continueSequential: boolean }) {
     setModalOpen(false);
     await load();
     if (continueSequential && !readOnly) {
-      // Open again immediately for next curral
-      setTimeout(() => {
-        setEditing(null);
-        setModalOpen(true);
-      }, 150);
+      setTimeout(() => { setEditing(null); setModalOpen(true); }, 150);
     }
   }
 
@@ -133,6 +168,16 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         </div>
       </Card>
 
+      {/* Avaliação da Fábrica (única por visita) */}
+      <Card className="p-3 space-y-3">
+        <div className="text-sm font-semibold text-foreground">Avaliação da Fábrica</div>
+        <div className="text-[11px] text-muted-foreground -mt-2">
+          Avaliada uma única vez por visita
+        </div>
+        <FabricaScore label="Organização de Fábrica" value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
+        <FabricaScore label="Organização de Insumos" value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
+      </Card>
+
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Currais avaliados ({currais.length})</h2>
         {!readOnly && (
@@ -161,11 +206,9 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="text-sm font-medium text-foreground">Curral {c.num_curral}</div>
                   <div className="flex gap-1.5 flex-wrap text-[10px]">
-                    <ScorePill label="F" nota={c.scores?.fezes} />
-                    <ScorePill label="C" nota={c.scores?.corporal} />
-                    <ScorePill label="B" nota={c.scores?.bebedouro} />
-                    <ScorePill label="OF" nota={c.organizacao_fabrica_nota ?? undefined} />
-                    <ScorePill label="OI" nota={c.organizacao_insumos_nota ?? undefined} />
+                    <ScorePill label="F" avg={c.scores?.fezes} n={c.samples.fezes.length} />
+                    <ScorePill label="C" avg={c.scores?.corporal} n={c.samples.corporal.length} />
+                    <ScorePill label="B" avg={c.scores?.bebedouro} n={c.samples.bebedouro.length} />
                   </div>
                 </div>
               </div>
@@ -250,10 +293,38 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   );
 }
 
-function ScorePill({ label, nota }: { label: string; nota?: number }) {
+function FabricaScore({ label, value, onChange, disabled }: {
+  label: string; value: number | null; onChange: (n: number) => void; disabled?: boolean;
+}) {
   return (
-    <span className={`px-1.5 py-0.5 rounded font-semibold ${nota ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-      {label}: {nota ?? "—"}
+    <div>
+      <div className="text-xs font-medium mb-1">{label}</div>
+      <div className="flex gap-1.5">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            className={cn(
+              "w-9 h-9 rounded-full border-2 text-sm font-semibold transition-colors",
+              value === n
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50",
+              disabled && "opacity-60 cursor-not-allowed",
+            )}
+          >{n}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ScorePill({ label, avg, n }: { label: string; avg?: number; n: number }) {
+  return (
+    <span className={`px-1.5 py-0.5 rounded font-semibold ${n > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+      {label}: {formatAvg(avg)}
+      {n > 1 && <span className="opacity-60"> ({n})</span>}
     </span>
   );
 }
