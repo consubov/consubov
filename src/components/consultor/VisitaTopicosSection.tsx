@@ -27,12 +27,6 @@ async function signPath(path: string): Promise<string> {
   return data?.signedUrl || "";
 }
 
-function letterFor(ordem: number): string {
-  // ordem 5 -> E, 6 -> F, ...
-  const idx = ordem - 5;
-  if (idx < 0) return "";
-  return String.fromCharCode(65 + idx);
-}
 
 interface Props {
   visitaId: string;
@@ -207,7 +201,7 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
         ⬇ Tabela "Indicadores Gerais da Fazenda" abaixo (posição 4) ⬇
       </div>
       {customs.map((t, i) => (
-        <TopicoCard key={t.id} topico={t} letter={letterFor(t.ordem)}
+        <TopicoCard key={t.id} topico={t} letter=""
           onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
           uploading={uploading===t.id}
           onMoveUp={i > 0 ? () => move(t, -1) : undefined}
