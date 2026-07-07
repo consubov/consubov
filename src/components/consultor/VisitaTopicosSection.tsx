@@ -125,20 +125,18 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   }
 
   async function deleteTopico(t: Topico) {
-    if (t.ordem <= 3) return;
+    if (t.ordem <= 3 || t.ordem >= 1001) return;
     if (!confirm("Remover este tópico?")) return;
     onNotifyEdit?.();
-    // remove foto files
     if (t.fotos.length) {
       await supabase.storage.from(BUCKET).remove(t.fotos.map(f => f.url));
     }
     await (supabase as any).from("visita_topicos").delete().eq("id", t.id);
     const remaining = topicos.filter(x => x.id !== t.id);
-    // renumerar customs (ordem >= 5)
-    const fixos = remaining.filter(x => x.ordem <= 3);
-    const customs = remaining.filter(x => x.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+    const others = remaining.filter(x => x.ordem <= 3 || x.ordem >= 1001);
+    const customs = remaining.filter(x => x.ordem >= 5 && x.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
     const renum = customs.map((c, i) => ({ ...c, ordem: 5 + i }));
-    setTopicos([...fixos, ...renum]);
+    setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
     await Promise.all(renum.map((c, i) => {
       if (c.ordem === customs[i]?.ordem) return Promise.resolve();
       return (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id);
@@ -146,8 +144,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   }
 
   async function move(t: Topico, dir: -1 | 1) {
-    if (t.ordem <= 3) return;
-    const customs = topicos.filter(x => x.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+    if (t.ordem < 5 || t.ordem > 1000) return;
+    const customs = topicos.filter(x => x.ordem >= 5 && x.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
     const idx = customs.findIndex(c => c.id === t.id);
     const j = idx + dir;
     if (j < 0 || j >= customs.length) return;
@@ -155,8 +153,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     const arr = [...customs];
     [arr[idx], arr[j]] = [arr[j], arr[idx]];
     const renum = arr.map((c, i) => ({ ...c, ordem: 5 + i }));
-    const fixos = topicos.filter(x => x.ordem <= 3);
-    setTopicos([...fixos, ...renum]);
+    const others = topicos.filter(x => x.ordem <= 3 || x.ordem >= 1001);
+    setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
     await Promise.all(renum.map(c =>
       (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id)
     ));
