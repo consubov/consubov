@@ -3135,6 +3135,7 @@ export type Database = {
           hora_inicio: string
           id: string
           indicadores_gerais: string | null
+          indicadores_tabela: Json | null
           objetivo_visita: string | null
           observacoes_gerais: string | null
           pdf_url: string | null
@@ -3151,6 +3152,7 @@ export type Database = {
           hora_inicio?: string
           id?: string
           indicadores_gerais?: string | null
+          indicadores_tabela?: Json | null
           objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null
@@ -3167,6 +3169,7 @@ export type Database = {
           hora_inicio?: string
           id?: string
           indicadores_gerais?: string | null
+          indicadores_tabela?: Json | null
           objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null

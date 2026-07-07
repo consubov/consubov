@@ -1,0 +1,1 @@
+ALTER TABLE public.visitas_tecnicas ADD COLUMN IF NOT EXISTS indicadores_tabela jsonb;
