@@ -52,6 +52,8 @@ export interface VisitaPdfData {
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
   indicadores_tabela?: { key: string; label: string; value: string }[];
+  topicos?: { id: string; titulo: string; texto: string | null; ordem: number;
+    fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
 }
 
