@@ -380,11 +380,14 @@ export default function RevisaoVisitaPage() {
                 disabled={readOnly}
               />
 
-              {/* Scores */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <ScoreBlock label="Fezes" value={p.scores.fezes} onChange={n => setScore(p.id, "fezes", n)} disabled={readOnly} />
-                <ScoreBlock label="Corporal" value={p.scores.corporal} onChange={n => setScore(p.id, "corporal", n)} disabled={readOnly} />
-                <ScoreBlock label="Bebedouro" value={p.scores.bebedouro} onChange={n => setScore(p.id, "bebedouro", n)} disabled={readOnly} />
+              {/* Scores — múltiplas amostras */}
+              <div className="space-y-4 pt-1">
+                <ScoreSamplesInput label="Fezes" samples={p.samples.fezes}
+                  onAdd={n => addSample(p.id, "fezes", n)} onRemove={i => removeSample(p.id, "fezes", i)} disabled={readOnly} />
+                <ScoreSamplesInput label="Escore Corporal" samples={p.samples.corporal}
+                  onAdd={n => addSample(p.id, "corporal", n)} onRemove={i => removeSample(p.id, "corporal", i)} disabled={readOnly} />
+                <ScoreSamplesInput label="Bebedouro" samples={p.samples.bebedouro}
+                  onAdd={n => addSample(p.id, "bebedouro", n)} onRemove={i => removeSample(p.id, "bebedouro", i)} disabled={readOnly} />
               </div>
 
               {/* Observação */}
