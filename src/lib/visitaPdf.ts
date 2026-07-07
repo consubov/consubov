@@ -31,6 +31,10 @@ export interface VisitaPdfPasto {
   tipo_produto: string | null;
   percentual_pv: string | null;
   consumo_kg_dia: number | null;
+  categoria?: string | null;
+  peso_medio_kg?: number | null;
+  consumo_esperado_kg?: number | null;
+  consumo_real_kg?: number | null;
   observacao: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   fotos: { id: string; url: string; ordem: number }[];
