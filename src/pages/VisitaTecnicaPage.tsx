@@ -304,7 +304,7 @@ export default function VisitaTecnicaPage() {
 function ScorePill({ label, nota }: { label: string; nota?: number }) {
   return (
     <span className={`px-1.5 py-0.5 rounded font-semibold ${nota ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-      {label}: {nota ?? "—"}
+      {label}: {formatAvg(nota)}
     </span>
   );
 }
