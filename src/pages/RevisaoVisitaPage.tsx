@@ -606,29 +606,6 @@ export default function RevisaoVisitaPage() {
         })()}
       </div>
 
-      {/* Observações gerais & Conclusão */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Observações gerais</div>
-          <Textarea
-            value={obsGerais}
-            onChange={e => setObsGerais(e.target.value)}
-            onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3}
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Conclusão</div>
-          <Textarea
-            value={conclusao}
-            onChange={e => setConclusao(e.target.value)}
-            onBlur={() => autosaveVisita({ conclusao })}
-            rows={3}
-            className="mt-1"
-          />
-        </div>
-      </div>
 
       {/* Botão fixo por status — acima da nav */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
