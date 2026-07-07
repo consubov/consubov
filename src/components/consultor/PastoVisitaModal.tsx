@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
 
@@ -23,9 +24,13 @@ export interface VisitaPastoRow {
   tipo_produto: string | null;
   percentual_pv: string | null;
   consumo_kg_dia: number | null;
+  consumo_real_kg: number | null;
+  consumo_esperado_kg: number | null;
+  peso_medio_kg: number | null;
+  categoria: string | null;
   observacao: string | null;
   ordem: number;
-  scores?: { fezes?: number; corporal?: number; bebedouro?: number }; // averages
+  scores?: { fezes?: number; corporal?: number; bebedouro?: number };
 }
 
 interface Props {
@@ -49,8 +54,30 @@ const PRODUTOS = [
   { value: "outro", label: "Outro" },
 ];
 
+const CATEGORIAS = ["Vaca", "Bezerro(a)", "Recria 1", "Recria 2", "Terminação"];
+
 type SamplesState = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
 const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
+
+/** Extract percent from product code like "proteinado_0.3" -> "0,3%". Returns null when none. */
+function extractPercentFromProduto(code: string): string | null {
+  const m = /^proteinado_([0-9]+(?:\.[0-9]+)?)/.exec(code);
+  if (!m) return null;
+  return m[1].replace(".", ",") + "%";
+}
+
+/** Parse pt-BR percent string like "0,3%" or "0.3" to number. */
+function parsePercent(v: string | null | undefined): number {
+  if (!v) return 0;
+  const cleaned = String(v).replace("%", "").replace(",", ".").trim();
+  const n = Number(cleaned);
+  return isFinite(n) ? n : 0;
+}
+
+function fmt(n: number, dec = 1): string {
+  if (!isFinite(n) || n === 0) return "—";
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
 
 export default function PastoVisitaModal({
   open, onOpenChange, visitaId, pasto, proximaLetra, proximaOrdem, onSaved, readOnly,
@@ -59,9 +86,12 @@ export default function PastoVisitaModal({
   const [letra, setLetra] = useState("");
   const [numPasto, setNumPasto] = useState("");
   const [qtdAnimais, setQtdAnimais] = useState("");
+  const [categoria, setCategoria] = useState<string>("");
+  const [pesoMedio, setPesoMedio] = useState("");
   const [tipoProduto, setTipoProduto] = useState("");
   const [percentualPv, setPercentualPv] = useState("");
-  const [consumo, setConsumo] = useState("");
+  const [consumoEsperado, setConsumoEsperado] = useState("");
+  const [consumoReal, setConsumoReal] = useState("");
   const [obs, setObs] = useState("");
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
   const [creating, setCreating] = useState(false);
@@ -74,9 +104,12 @@ export default function PastoVisitaModal({
       setLetra(pasto.letra);
       setNumPasto(pasto.num_pasto || "");
       setQtdAnimais(pasto.qtd_animais?.toString() || "");
+      setCategoria(pasto.categoria || "");
+      setPesoMedio(pasto.peso_medio_kg?.toString() || "");
       setTipoProduto(pasto.tipo_produto || "");
       setPercentualPv(pasto.percentual_pv || "");
-      setConsumo(pasto.consumo_kg_dia?.toString() || "");
+      setConsumoEsperado(pasto.consumo_esperado_kg?.toString() || "");
+      setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
       supabase.from("avaliacoes_score")
         .select("id, tipo, nota")
@@ -91,10 +124,50 @@ export default function PastoVisitaModal({
     } else {
       setPastoIdLocal(null);
       setLetra(proximaLetra);
-      setNumPasto(""); setQtdAnimais(""); setTipoProduto(""); setPercentualPv("");
-      setConsumo(""); setObs(""); setSamples(EMPTY_SAMPLES);
+      setNumPasto(""); setQtdAnimais(""); setCategoria(""); setPesoMedio("");
+      setTipoProduto(""); setPercentualPv("");
+      setConsumoEsperado(""); setConsumoReal("");
+      setObs(""); setSamples(EMPTY_SAMPLES);
     }
   }, [open, pasto, proximaLetra]);
+
+  // Auto-calc peso vivo total & consumo esperado (only suggests; user can override)
+  const pesoVivoTotal = useMemo(() => {
+    const a = Number(qtdAnimais) || 0;
+    const p = Number(pesoMedio) || 0;
+    return a * p;
+  }, [qtdAnimais, pesoMedio]);
+
+  const consumoEsperadoCalc = useMemo(() => {
+    const pct = parsePercent(percentualPv);
+    if (pesoVivoTotal <= 0 || pct <= 0) return 0;
+    return (pesoVivoTotal * pct) / 100;
+  }, [pesoVivoTotal, percentualPv]);
+
+  // Sync suggested esperado into input when calc changes and user hasn't manually diverged too far
+  useEffect(() => {
+    if (consumoEsperadoCalc > 0) {
+      setConsumoEsperado(prev => {
+        // If empty or previous equals a previous auto-calc, refresh
+        const prevN = Number(prev);
+        if (!prev || !isFinite(prevN) || prevN === 0) return String(Number(consumoEsperadoCalc.toFixed(2)));
+        return prev; // preserva edição manual
+      });
+    }
+  }, [consumoEsperadoCalc]);
+
+  const indiceMeta = useMemo(() => {
+    const real = Number(consumoReal) || 0;
+    const esp = Number(consumoEsperado) || 0;
+    if (esp <= 0 || real <= 0) return 0;
+    return (real / esp) * 100;
+  }, [consumoReal, consumoEsperado]);
+
+  function handleTipoProdutoChange(v: string) {
+    setTipoProduto(v);
+    const pct = extractPercentFromProduto(v);
+    if (pct) setPercentualPv(pct);
+  }
 
   const ensurePasto = useCallback(async (): Promise<string | null> => {
     if (pastoIdLocal) return pastoIdLocal;
@@ -150,13 +223,18 @@ export default function PastoVisitaModal({
     try {
       const id = await ensurePasto();
       if (!id) return;
+      const realN = consumoReal ? Number(consumoReal) : null;
       const payload = {
         letra: letra.trim().toUpperCase(),
         num_pasto: numPasto.trim() || null,
         qtd_animais: qtdAnimais ? Number(qtdAnimais) : null,
+        categoria: categoria || null,
+        peso_medio_kg: pesoMedio ? Number(pesoMedio) : null,
         tipo_produto: tipoProduto || null,
         percentual_pv: percentualPv.trim() || null,
-        consumo_kg_dia: consumo ? Number(consumo) : null,
+        consumo_esperado_kg: consumoEsperado ? Number(consumoEsperado) : null,
+        consumo_real_kg: realN,
+        consumo_kg_dia: realN, // manter em sync p/ compatibilidade
         observacao: obs.trim() || null,
       };
       const { error } = await supabase.from("visita_pastos").update(payload).eq("id", id);
@@ -199,29 +277,89 @@ export default function PastoVisitaModal({
               <Input value={numPasto} onChange={e => setNumPasto(e.target.value)} disabled={readOnly} />
             </div>
           </div>
+
+          {/* Categoria - chips */}
+          <div>
+            <Label>Categoria</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {CATEGORIAS.map(c => {
+                const active = categoria === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setCategoria(active ? "" : c)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground border-transparent hover:bg-muted/70",
+                      readOnly && "opacity-60 cursor-not-allowed"
+                    )}
+                  >{c}</button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Qtd. Animais</Label>
-              <Input type="number" value={qtdAnimais} onChange={e => setQtdAnimais(e.target.value)} disabled={readOnly} />
+              <Input type="number" inputMode="numeric" value={qtdAnimais} onChange={e => setQtdAnimais(e.target.value)} disabled={readOnly} />
             </div>
             <div>
-              <Label>% Peso Vivo</Label>
-              <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,1%" disabled={readOnly} />
+              <Label>Peso Médio (kg)</Label>
+              <Input type="number" inputMode="decimal" step="any" value={pesoMedio} onChange={e => setPesoMedio(e.target.value)} disabled={readOnly} />
             </div>
           </div>
+
           <div>
             <Label>Tipo de Produto</Label>
-            <Select value={tipoProduto} onValueChange={setTipoProduto} disabled={readOnly}>
+            <Select value={tipoProduto} onValueChange={handleTipoProdutoChange} disabled={readOnly}>
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
                 {PRODUTOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Consumo (kg/dia)</Label>
-            <Input type="number" step="any" value={consumo} onChange={e => setConsumo(e.target.value)} disabled={readOnly} />
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>% Peso Vivo</Label>
+              <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
+            </div>
+            <div>
+              <Label>Consumo Esperado (kg/dia)</Label>
+              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => setConsumoEsperado(e.target.value)} disabled={readOnly} />
+            </div>
           </div>
+
+          <div>
+            <Label>Consumo Real (kg/dia)</Label>
+            <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
+          </div>
+
+          {/* Resumo calculado */}
+          <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
+              <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+              <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+              <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
+              <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
+            </div>
+          </div>
+
           <div>
             <Label>Observação</Label>
             <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} disabled={readOnly} />
