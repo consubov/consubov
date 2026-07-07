@@ -445,6 +445,29 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
+      {/* Blocos introdutórios (opcionais) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório (opcional)
+        </div>
+        {[
+          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
+          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
+          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
+        ].map(f => (
+          <div key={f.key}>
+            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
+            <Textarea
+              value={f.val}
+              onChange={e => f.set(e.target.value)}
+              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
+              rows={2}
+              className="mt-1 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+
       {/* Observações gerais & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
@@ -454,7 +477,6 @@ export default function RevisaoVisitaPage() {
             onChange={e => setObsGerais(e.target.value)}
             onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
             rows={3}
-            disabled={readOnly}
             className="mt-1"
           />
         </div>
@@ -465,16 +487,15 @@ export default function RevisaoVisitaPage() {
             onChange={e => setConclusao(e.target.value)}
             onBlur={() => autosaveVisita({ conclusao })}
             rows={3}
-            disabled={readOnly}
             className="mt-1"
           />
         </div>
       </div>
 
-      {/* Botão fixo por status */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
+      {/* Botão fixo por status — acima da nav */}
+      <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
         <div className="max-w-md mx-auto flex gap-2">
-          {visita.status === "rascunho" && (
+          {(visita.status === "rascunho") && (
             <Button
               onClick={confirmarRevisao}
               disabled={confirmando}
@@ -485,24 +506,19 @@ export default function RevisaoVisitaPage() {
               Confirmar Revisão
             </Button>
           )}
-          {visita.status === "revisao" && (
+          {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
               disabled={gerandoPdf}
-              className="w-full gap-2"
+              className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Gerar PDF
+              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
             <>
-              <Button asChild variant="outline" className="flex-1 gap-1.5">
-                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
-                  <FileText className="w-4 h-4" /> Ver
-                </a>
-              </Button>
               <Button asChild variant="outline" className="flex-1 gap-1.5">
                 <a href={visita.pdf_url} download>
                   <Download className="w-4 h-4" /> Baixar
