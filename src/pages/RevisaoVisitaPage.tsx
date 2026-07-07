@@ -134,7 +134,14 @@ export default function RevisaoVisitaPage() {
     setLoading(false);
   }
 
+  async function notifyEdit() {
+    if (!visita || visita.status !== "finalizada") return;
+    await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visita.id);
+    setVisita(prev => prev ? { ...prev, pdf_url: null, status: "revisao" } : prev);
+  }
+
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
+    await notifyEdit();
     const dbPatch: any = {};
     ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
