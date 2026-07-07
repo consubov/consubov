@@ -36,7 +36,10 @@ function letterFor(ordem: number): string {
 
 interface Props {
   visitaId: string;
-  seedFrom?: { objetivo?: string | null; resumo?: string | null; indicadores?: string | null };
+  seedFrom?: {
+    objetivo?: string | null; resumo?: string | null; indicadores?: string | null;
+    observacoes?: string | null; conclusao?: string | null;
+  };
   onNotifyEdit?: () => void;
   onChange?: (topicos: Topico[]) => void;
 }
