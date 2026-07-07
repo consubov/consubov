@@ -59,16 +59,25 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       .select("*").eq("visita_id", visitaId).order("ordem");
     let rows = (data as any[]) || [];
 
-    if (rows.length === 0 && !seededRef.current) {
+    // Seed defaults: 3 header (1-3) + 2 footer (1001-1002). Insert only missing ordens.
+    if (!seededRef.current) {
       seededRef.current = true;
-      const seeds = [
+      const defaults: { ordem: number; titulo: string; texto: string | null }[] = [
         { ordem: 1, titulo: DEFAULT_TITLES[0], texto: seedFrom?.objetivo || null },
         { ordem: 2, titulo: DEFAULT_TITLES[1], texto: seedFrom?.resumo || null },
         { ordem: 3, titulo: DEFAULT_TITLES[2], texto: seedFrom?.indicadores || null },
-      ].map(s => ({ ...s, visita_id: visitaId }));
-      const { data: ins } = await (supabase as any).from("visita_topicos")
-        .insert(seeds).select();
-      rows = (ins as any[]) || [];
+        { ordem: 1001, titulo: "Observações Gerais", texto: seedFrom?.observacoes || null },
+        { ordem: 1002, titulo: "Conclusão", texto: seedFrom?.conclusao || null },
+      ];
+      const existingOrdens = new Set(rows.map(r => r.ordem));
+      const toInsert = defaults
+        .filter(d => !existingOrdens.has(d.ordem))
+        .map(d => ({ ...d, visita_id: visitaId }));
+      if (toInsert.length) {
+        const { data: ins } = await (supabase as any).from("visita_topicos")
+          .insert(toInsert).select();
+        rows = [...rows, ...((ins as any[]) || [])];
+      }
     }
 
     const ids = rows.map(r => r.id);
