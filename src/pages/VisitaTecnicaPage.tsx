@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
+import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 
 interface Visita {
   id: string;
