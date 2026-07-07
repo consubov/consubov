@@ -469,24 +469,19 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               Confirmar Revisão
             </Button>
           )}
-          {visita.status === "revisao" && (
+          {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
               disabled={gerandoPdf}
-              className="w-full gap-2"
+              className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Gerar PDF
+              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
             <>
-              <Button asChild variant="outline" className="flex-1 gap-1.5">
-                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
-                  <FileText className="w-4 h-4" /> Ver
-                </a>
-              </Button>
               <Button asChild variant="outline" className="flex-1 gap-1.5">
                 <a href={visita.pdf_url} download>
                   <Download className="w-4 h-4" /> Baixar
