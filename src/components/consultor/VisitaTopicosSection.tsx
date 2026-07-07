@@ -197,7 +197,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   }
 
   const fixos = topicos.filter(t => t.ordem <= 3).sort((a,b)=>a.ordem-b.ordem);
-  const customs = topicos.filter(t => t.ordem >= 5).sort((a,b)=>a.ordem-b.ordem);
+  const customs = topicos.filter(t => t.ordem >= 5 && t.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
+  const footer = topicos.filter(t => t.ordem >= 1001).sort((a,b)=>a.ordem-b.ordem);
 
   return (
     <div className="space-y-3">
@@ -217,6 +218,18 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       <Button type="button" onClick={addTopico} variant="outline" className="w-full gap-1.5">
         <Plus className="w-4 h-4" /> Mais
       </Button>
+      {footer.length > 0 && (
+        <div className="pt-3 space-y-3 border-t" style={{ borderColor: "#E7E3D6" }}>
+          <div className="text-[11px] uppercase tracking-wide font-bold px-1" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+            Encerramento do Relatório
+          </div>
+          {footer.map(t => (
+            <TopicoCard key={t.id} topico={t} letter=""
+              onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
+              uploading={uploading===t.id} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
