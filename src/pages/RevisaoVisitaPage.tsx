@@ -132,6 +132,7 @@ export default function RevisaoVisitaPage() {
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
 
   useEffect(() => {
     if (!visitaId) return;
