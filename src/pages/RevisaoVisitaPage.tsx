@@ -147,7 +147,7 @@ export default function RevisaoVisitaPage() {
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
     const dbPatch: any = {};
-    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","observacao"].forEach(k => {
+    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
