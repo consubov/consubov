@@ -254,7 +254,7 @@ async function drawPastoBlock(
     doc.text(c.value, cx, lineY2 + 5);
   });
 
-  const scoreY = y + 36;
+  const scoreY = y + 46;
   const scoreCellW = (width - 6) / 3;
   const scores: [string, number | undefined][] = [
     ["Fezes", pasto.scores.fezes],
