@@ -207,7 +207,7 @@ async function drawCurralBlock(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text("Avaliação sanitária e organizacional", x + badgeW + 8, y + 14);
+  doc.text("Avaliação", x + badgeW + 8, y + 14);
 
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 20, x + width - 3, y + 20);
@@ -354,7 +354,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita de Confinamento");
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento");
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [

@@ -37,6 +37,10 @@ interface Pasto {
   tipo_produto: string | null;
   percentual_pv: string | null;
   consumo_kg_dia: number | null;
+  categoria: string | null;
+  peso_medio_kg: number | null;
+  consumo_esperado_kg: number | null;
+  consumo_real_kg: number | null;
   observacao: string | null;
   ordem: number;
   samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -143,7 +147,7 @@ export default function RevisaoVisitaPage() {
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
     const dbPatch: any = {};
-    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","observacao"].forEach(k => {
+    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
@@ -270,6 +274,10 @@ export default function RevisaoVisitaPage() {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
           consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
+          categoria: p.categoria,
+          peso_medio_kg: p.peso_medio_kg,
+          consumo_esperado_kg: p.consumo_esperado_kg,
+          consumo_real_kg: p.consumo_real_kg,
           scores: {
             fezes: averageOf(p.samples.fezes),
             corporal: averageOf(p.samples.corporal),
@@ -332,8 +340,7 @@ export default function RevisaoVisitaPage() {
         <div className="flex items-center gap-2 mb-2">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center font-extrabold text-lg" style={{ background: "#C9A84C", color: "#14432B" }}>C</div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest opacity-80">Relatório de Visita</div>
-            <div className="text-sm font-bold">Consubov Consultoria</div>
+            <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Rotina</div>
           </div>
         </div>
         <div className="text-lg font-extrabold leading-tight">{fazenda?.nome_fazenda || "—"}</div>
@@ -402,13 +409,50 @@ export default function RevisaoVisitaPage() {
                   disabled={readOnly}
                 />
               </div>
-              <FieldInline
-                label="Consumo (kg/dia)"
-                type="number"
-                value={p.consumo_kg_dia?.toString() || ""}
-                onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_kg_dia: n }); autosavePasto(p.id, { consumo_kg_dia: n }); }}
-                disabled={readOnly}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <FieldInline
+                  label="Consumo Esperado (kg/dia)"
+                  type="number"
+                  value={p.consumo_esperado_kg?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_esperado_kg: n }); autosavePasto(p.id, { consumo_esperado_kg: n }); }}
+                  disabled={readOnly}
+                />
+                <FieldInline
+                  label="Consumo Real (kg/dia)"
+                  type="number"
+                  value={(p.consumo_real_kg ?? p.consumo_kg_dia)?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); autosavePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); }}
+                  disabled={readOnly}
+                />
+              </div>
+
+              {/* Resumo calculado (read-only) */}
+              {(() => {
+                const real = p.consumo_real_kg ?? p.consumo_kg_dia ?? 0;
+                const esp = p.consumo_esperado_kg ?? 0;
+                const pvt = (p.qtd_animais || 0) * (p.peso_medio_kg || 0);
+                const ind = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+                return (
+                  <div className="rounded-md border p-2 bg-muted/40 grid grid-cols-4 gap-2 text-[10px]" style={{ borderColor: "#E7E3D6" }}>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">PV total</div>
+                      <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString("pt-BR")} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Esperado</div>
+                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Real</div>
+                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
+                      <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Scores — múltiplas amostras */}
               <div className="space-y-4 pt-1">

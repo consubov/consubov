@@ -3007,37 +3007,49 @@ export type Database = {
       }
       visita_pastos: {
         Row: {
+          categoria: string | null
+          consumo_esperado_kg: number | null
           consumo_kg_dia: number | null
+          consumo_real_kg: number | null
           id: string
           letra: string
           num_pasto: string | null
           observacao: string | null
           ordem: number
           percentual_pv: string | null
+          peso_medio_kg: number | null
           qtd_animais: number | null
           tipo_produto: string | null
           visita_id: string
         }
         Insert: {
+          categoria?: string | null
+          consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null
+          consumo_real_kg?: number | null
           id?: string
           letra: string
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
           percentual_pv?: string | null
+          peso_medio_kg?: number | null
           qtd_animais?: number | null
           tipo_produto?: string | null
           visita_id: string
         }
         Update: {
+          categoria?: string | null
+          consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null
+          consumo_real_kg?: number | null
           id?: string
           letra?: string
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
           percentual_pv?: string | null
+          peso_medio_kg?: number | null
           qtd_animais?: number | null
           tipo_produto?: string | null
           visita_id?: string
