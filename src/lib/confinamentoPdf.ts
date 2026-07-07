@@ -177,18 +177,15 @@ async function drawCurralBlock(
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 20, x + width - 3, y + 20);
 
-  // Scores row 1: fezes / corporal / bebedouro
+  // Scores: fezes / corporal / bebedouro (média das amostras). Dot uses rounded int.
   const rowY1 = y + 26;
   const cellW = (width - 6) / 3;
-  drawScoreRow(doc, "Fezes", c.scores.fezes, x + 3, rowY1, cellW);
-  drawScoreRow(doc, "Corporal", c.scores.corporal, x + 3 + cellW, rowY1, cellW);
-  drawScoreRow(doc, "Bebedouro", c.scores.bebedouro, x + 3 + 2 * cellW, rowY1, cellW);
-
-  // Row 2: org. fábrica / org. insumos
-  const rowY2 = y + 40;
-  const half = (width - 6) / 2;
-  drawScoreRow(doc, "Org. Fábrica", c.organizacao_fabrica_nota, x + 3, rowY2, half);
-  drawScoreRow(doc, "Org. Insumos", c.organizacao_insumos_nota, x + 3 + half, rowY2, half);
+  const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
+  const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
+  const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
+  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
+  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
+  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
 
   // Fotos grid
   const fotosStartY = y + 54;
