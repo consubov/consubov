@@ -289,15 +289,15 @@ async function drawPastoBlock(
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
-    doc.text("OBSERVAÇÃO", x + 3, y + 50);
+    doc.text("OBSERVAÇÃO", x + 3, y + 58);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK);
     const lines = doc.splitTextToSize(pasto.observacao, width - 6);
-    doc.text(lines.slice(0, 2), x + 3, y + 55);
+    doc.text(lines.slice(0, 2), x + 3, y + 63);
   }
 
-  const fotosStartY = y + 66;
+  const fotosStartY = y + 72;
   const fotoAreaH = height - (fotosStartY - y) - 4;
   const cols = 5;
   const gap = 2;
