@@ -17,9 +17,8 @@ const LINE = "#E7E3D6";
 export interface ConfinamentoPdfCurral {
   id: string;
   num_curral: string;
-  organizacao_fabrica_nota: number | null;
-  organizacao_insumos_nota: number | null;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  scores: { fezes?: number; corporal?: number; bebedouro?: number }; // médias
+  sampleCounts?: { fezes: number; corporal: number; bebedouro: number };
   fotos: { id: string; url: string; ordem: number }[]; // url = storage path
 }
 
@@ -31,6 +30,10 @@ export interface ConfinamentoPdfData {
   hora_fim: string | null;
   observacoes_gerais: string | null;
   conclusao: string | null;
+  avaliacaoFabrica?: {
+    organizacao_fabrica_nota: number | null;
+    organizacao_insumos_nota: number | null;
+  };
   currais: ConfinamentoPdfCurral[];
 }
 
@@ -174,18 +177,15 @@ async function drawCurralBlock(
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 20, x + width - 3, y + 20);
 
-  // Scores row 1: fezes / corporal / bebedouro
+  // Scores: fezes / corporal / bebedouro (média das amostras). Dot uses rounded int.
   const rowY1 = y + 26;
   const cellW = (width - 6) / 3;
-  drawScoreRow(doc, "Fezes", c.scores.fezes, x + 3, rowY1, cellW);
-  drawScoreRow(doc, "Corporal", c.scores.corporal, x + 3 + cellW, rowY1, cellW);
-  drawScoreRow(doc, "Bebedouro", c.scores.bebedouro, x + 3 + 2 * cellW, rowY1, cellW);
-
-  // Row 2: org. fábrica / org. insumos
-  const rowY2 = y + 40;
-  const half = (width - 6) / 2;
-  drawScoreRow(doc, "Org. Fábrica", c.organizacao_fabrica_nota, x + 3, rowY2, half);
-  drawScoreRow(doc, "Org. Insumos", c.organizacao_insumos_nota, x + 3 + half, rowY2, half);
+  const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
+  const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
+  const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
+  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
+  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
+  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
 
   // Fotos grid
   const fotosStartY = y + 54;
@@ -234,22 +234,22 @@ function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
   doc.setTextColor("#E7E3D6");
   doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
 
-  // Compute averages
-  const totals = { fezes: 0, corporal: 0, bebedouro: 0, fabrica: 0, insumos: 0 };
-  const counts = { fezes: 0, corporal: 0, bebedouro: 0, fabrica: 0, insumos: 0 };
+  // Compute averages (média dos currais para fezes/corporal/bebedouro; visita-única para fábrica/insumos)
+  const totals = { fezes: 0, corporal: 0, bebedouro: 0 };
+  const counts = { fezes: 0, corporal: 0, bebedouro: 0 };
   for (const c of data.currais) {
     if (c.scores.fezes) { totals.fezes += c.scores.fezes; counts.fezes++; }
     if (c.scores.corporal) { totals.corporal += c.scores.corporal; counts.corporal++; }
     if (c.scores.bebedouro) { totals.bebedouro += c.scores.bebedouro; counts.bebedouro++; }
-    if (c.organizacao_fabrica_nota) { totals.fabrica += c.organizacao_fabrica_nota; counts.fabrica++; }
-    if (c.organizacao_insumos_nota) { totals.insumos += c.organizacao_insumos_nota; counts.insumos++; }
   }
+  const fabricaNota = data.avaliacaoFabrica?.organizacao_fabrica_nota ?? 0;
+  const insumosNota = data.avaliacaoFabrica?.organizacao_insumos_nota ?? 0;
   const bars: { label: string; value: number }[] = [
     { label: "Fezes", value: counts.fezes ? totals.fezes / counts.fezes : 0 },
     { label: "Corporal", value: counts.corporal ? totals.corporal / counts.corporal : 0 },
     { label: "Bebedouro", value: counts.bebedouro ? totals.bebedouro / counts.bebedouro : 0 },
-    { label: "Org. Fábrica", value: counts.fabrica ? totals.fabrica / counts.fabrica : 0 },
-    { label: "Org. Insumos", value: counts.insumos ? totals.insumos / counts.insumos : 0 },
+    { label: "Org. Fábrica", value: fabricaNota || 0 },
+    { label: "Org. Insumos", value: insumosNota || 0 },
   ];
 
   // Chart area

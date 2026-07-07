@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
+import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -38,7 +39,7 @@ interface Pasto {
   consumo_kg_dia: number | null;
   observacao: string | null;
   ordem: number;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
   fotos: Foto[];
   signed: Record<string, string>;
 }
@@ -95,15 +96,16 @@ export default function RevisaoVisitaPage() {
 
     const pastoRows = (ps as any[]) || [];
     const ids = pastoRows.map(p => p.id);
-    let scoresByPasto: Record<string, any> = {};
-    let fotosByPasto: Record<string, Foto[]> = {};
+    const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
+    const fotosByPasto: Record<string, Foto[]> = {};
     if (ids.length) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
-        supabase.from("avaliacoes_score").select("visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
+        supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
       ]);
       (sc || []).forEach((s: any) => {
-        scoresByPasto[s.visita_pasto_id] = { ...(scoresByPasto[s.visita_pasto_id] || {}), [s.tipo]: s.nota };
+        const bucket = samplesByPasto[s.visita_pasto_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+        if (s.tipo in bucket) bucket[s.tipo as "fezes"|"corporal"|"bebedouro"].push({ id: s.id, nota: s.nota });
       });
       (ft || []).forEach((f: any) => {
         fotosByPasto[f.visita_pasto_id] = [...(fotosByPasto[f.visita_pasto_id] || []), f];
@@ -113,7 +115,11 @@ export default function RevisaoVisitaPage() {
       const fotos = fotosByPasto[p.id] || [];
       const signed: Record<string, string> = {};
       await Promise.all(fotos.map(async f => { signed[f.id] = await signPath(f.url); }));
-      return { ...p, scores: scoresByPasto[p.id] || {}, fotos, signed } as Pasto;
+      return {
+        ...p,
+        samples: samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] },
+        fotos, signed,
+      } as Pasto;
     }));
     setPastos(built);
     setLoading(false);
@@ -133,11 +139,22 @@ export default function RevisaoVisitaPage() {
     setPastos(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
   }
 
-  async function setScore(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
-    updatePasto(pastoId, { scores: { ...pastos.find(p => p.id === pastoId)!.scores, [tipo]: nota } });
-    await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", pastoId).eq("tipo", tipo);
-    const { error } = await supabase.from("avaliacoes_score").insert({ visita_pasto_id: pastoId, tipo, nota });
-    if (error) toast.error("Erro ao salvar nota");
+  async function addSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
+    const { data, error } = await supabase.from("avaliacoes_score")
+      .insert({ visita_pasto_id: pastoId, tipo, nota }).select("id").single();
+    if (error) { toast.error("Erro ao adicionar amostra"); return; }
+    setPastos(prev => prev.map(p => p.id === pastoId
+      ? { ...p, samples: { ...p.samples, [tipo]: [...p.samples[tipo], { id: data.id, nota }] } }
+      : p));
+  }
+
+  async function removeSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", index: number) {
+    const p = pastos.find(x => x.id === pastoId); if (!p) return;
+    const s = p.samples[tipo][index]; if (!s?.id) return;
+    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    setPastos(prev => prev.map(x => x.id === pastoId
+      ? { ...x, samples: { ...x.samples, [tipo]: x.samples[tipo].filter((_, i) => i !== index) } }
+      : x));
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
@@ -223,7 +240,12 @@ export default function RevisaoVisitaPage() {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
           consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
-          scores: p.scores, fotos: p.fotos,
+          scores: {
+            fezes: averageOf(p.samples.fezes),
+            corporal: averageOf(p.samples.corporal),
+            bebedouro: averageOf(p.samples.bebedouro),
+          },
+          fotos: p.fotos,
         })),
       });
 
@@ -358,11 +380,14 @@ export default function RevisaoVisitaPage() {
                 disabled={readOnly}
               />
 
-              {/* Scores */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <ScoreBlock label="Fezes" value={p.scores.fezes} onChange={n => setScore(p.id, "fezes", n)} disabled={readOnly} />
-                <ScoreBlock label="Corporal" value={p.scores.corporal} onChange={n => setScore(p.id, "corporal", n)} disabled={readOnly} />
-                <ScoreBlock label="Bebedouro" value={p.scores.bebedouro} onChange={n => setScore(p.id, "bebedouro", n)} disabled={readOnly} />
+              {/* Scores — múltiplas amostras */}
+              <div className="space-y-4 pt-1">
+                <ScoreSamplesInput label="Fezes" samples={p.samples.fezes}
+                  onAdd={n => addSample(p.id, "fezes", n)} onRemove={i => removeSample(p.id, "fezes", i)} disabled={readOnly} />
+                <ScoreSamplesInput label="Escore Corporal" samples={p.samples.corporal}
+                  onAdd={n => addSample(p.id, "corporal", n)} onRemove={i => removeSample(p.id, "corporal", i)} disabled={readOnly} />
+                <ScoreSamplesInput label="Bebedouro" samples={p.samples.bebedouro}
+                  onAdd={n => addSample(p.id, "bebedouro", n)} onRemove={i => removeSample(p.id, "bebedouro", i)} disabled={readOnly} />
               </div>
 
               {/* Observação */}

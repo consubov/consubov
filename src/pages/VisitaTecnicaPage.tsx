@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
+import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 
 interface Visita {
   id: string;
@@ -71,16 +72,28 @@ export default function VisitaTecnicaPage() {
       setFazenda(fRes.data as Fazenda | null);
       const pastosData = (pRes.data as any[]) || [];
       const ids = pastosData.map(p => p.id);
-      let scoresByPasto: Record<string, VisitaPastoRow["scores"]> = {};
+      const samplesByPasto: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
       if (ids.length > 0) {
         const { data: scoresData } = await supabase.from("avaliacoes_score")
           .select("visita_pasto_id, tipo, nota")
           .in("visita_pasto_id", ids);
         (scoresData || []).forEach((s: any) => {
-          scoresByPasto[s.visita_pasto_id] = { ...(scoresByPasto[s.visita_pasto_id] || {}), [s.tipo]: s.nota };
+          const bucket = samplesByPasto[s.visita_pasto_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+          if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
         });
       }
-      setPastos(pastosData.map(p => ({ ...p, scores: scoresByPasto[p.id] || {} })));
+      setPastos(pastosData.map(p => {
+        const samples = samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] };
+        return {
+          ...p,
+          scores: {
+            fezes: averageOf(samples.fezes),
+            corporal: averageOf(samples.corporal),
+            bebedouro: averageOf(samples.bebedouro),
+          },
+          _sampleCounts: samples,
+        } as any;
+      }));
     }
     setLoading(false);
   }
@@ -291,7 +304,7 @@ export default function VisitaTecnicaPage() {
 function ScorePill({ label, nota }: { label: string; nota?: number }) {
   return (
     <span className={`px-1.5 py-0.5 rounded font-semibold ${nota ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-      {label}: {nota ?? "—"}
+      {label}: {formatAvg(nota)}
     </span>
   );
 }

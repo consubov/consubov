@@ -334,6 +334,41 @@ export type Database = {
           },
         ]
       }
+      avaliacao_fabrica_visita: {
+        Row: {
+          created_at: string
+          id: string
+          organizacao_fabrica_nota: number | null
+          organizacao_insumos_nota: number | null
+          updated_at: string
+          visita_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organizacao_fabrica_nota?: number | null
+          organizacao_insumos_nota?: number | null
+          updated_at?: string
+          visita_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organizacao_fabrica_nota?: number | null
+          organizacao_insumos_nota?: number | null
+          updated_at?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacao_fabrica_visita_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: true
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliacoes_score: {
         Row: {
           id: string

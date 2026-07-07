@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
-import { cn } from "@/lib/utils";
+import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
 
 export interface VisitaPastoRow {
   id: string;
@@ -25,14 +25,14 @@ export interface VisitaPastoRow {
   consumo_kg_dia: number | null;
   observacao: string | null;
   ordem: number;
-  scores?: { fezes?: number; corporal?: number; bebedouro?: number };
+  scores?: { fezes?: number; corporal?: number; bebedouro?: number }; // averages
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   visitaId: string;
-  pasto: VisitaPastoRow | null; // null = new
+  pasto: VisitaPastoRow | null;
   proximaLetra: string;
   proximaOrdem: number;
   onSaved: () => void;
@@ -49,34 +49,13 @@ const PRODUTOS = [
   { value: "outro", label: "Outro" },
 ];
 
-function ScoreSelector({ label, value, onChange, disabled }: { label: string; value?: number; onChange: (v: number) => void; disabled?: boolean }) {
-  return (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <div className="flex gap-1.5 mt-1">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button
-            key={n}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(n)}
-            className={cn(
-              "w-10 h-10 rounded-full border-2 text-sm font-semibold transition-colors",
-              value === n
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50",
-              disabled && "opacity-60 cursor-not-allowed",
-            )}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+type SamplesState = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
+const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
 
-export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, proximaLetra, proximaOrdem, onSaved, readOnly }: Props) {
+export default function PastoVisitaModal({
+  open, onOpenChange, visitaId, pasto, proximaLetra, proximaOrdem, onSaved, readOnly,
+}: Props) {
+  const [pastoIdLocal, setPastoIdLocal] = useState<string | null>(null);
   const [letra, setLetra] = useState("");
   const [numPasto, setNumPasto] = useState("");
   const [qtdAnimais, setQtdAnimais] = useState("");
@@ -84,14 +63,14 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
   const [percentualPv, setPercentualPv] = useState("");
   const [consumo, setConsumo] = useState("");
   const [obs, setObs] = useState("");
-  const [fezes, setFezes] = useState<number | undefined>();
-  const [corporal, setCorporal] = useState<number | undefined>();
-  const [bebedouro, setBebedouro] = useState<number | undefined>();
+  const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
+  const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (pasto) {
+      setPastoIdLocal(pasto.id);
       setLetra(pasto.letra);
       setNumPasto(pasto.num_pasto || "");
       setQtdAnimais(pasto.qtd_animais?.toString() || "");
@@ -99,23 +78,79 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
       setPercentualPv(pasto.percentual_pv || "");
       setConsumo(pasto.consumo_kg_dia?.toString() || "");
       setObs(pasto.observacao || "");
-      setFezes(pasto.scores?.fezes);
-      setCorporal(pasto.scores?.corporal);
-      setBebedouro(pasto.scores?.bebedouro);
+      supabase.from("avaliacoes_score")
+        .select("id, tipo, nota")
+        .eq("visita_pasto_id", pasto.id)
+        .then(({ data }) => {
+          const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
+          (data || []).forEach((s: any) => {
+            if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
+          });
+          setSamples(next);
+        });
     } else {
+      setPastoIdLocal(null);
       setLetra(proximaLetra);
       setNumPasto(""); setQtdAnimais(""); setTipoProduto(""); setPercentualPv("");
-      setConsumo(""); setObs(""); setFezes(undefined); setCorporal(undefined); setBebedouro(undefined);
+      setConsumo(""); setObs(""); setSamples(EMPTY_SAMPLES);
     }
   }, [open, pasto, proximaLetra]);
+
+  const ensurePasto = useCallback(async (): Promise<string | null> => {
+    if (pastoIdLocal) return pastoIdLocal;
+    if (!letra.trim()) return null;
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.from("visita_pastos")
+        .insert({
+          visita_id: visitaId,
+          letra: letra.trim().toUpperCase(),
+          ordem: proximaOrdem,
+        })
+        .select("id").single();
+      if (error) throw error;
+      setPastoIdLocal(data.id);
+      return data.id;
+    } catch (err: any) {
+      toast.error("Erro ao criar pasto: " + (err?.message || ""));
+      return null;
+    } finally {
+      setCreating(false);
+    }
+  }, [pastoIdLocal, letra, visitaId, proximaOrdem]);
+
+  async function handleLetraBlur() {
+    if (readOnly) return;
+    if (!pastoIdLocal && letra.trim()) {
+      await ensurePasto();
+    } else if (pastoIdLocal && letra.trim()) {
+      await supabase.from("visita_pastos").update({ letra: letra.trim().toUpperCase() }).eq("id", pastoIdLocal);
+    }
+  }
+
+  async function addSample(tipo: keyof SamplesState, nota: number) {
+    const id = await ensurePasto();
+    if (!id) { toast.error("Informe a letra do pasto primeiro"); return; }
+    const { data, error } = await supabase.from("avaliacoes_score")
+      .insert({ visita_pasto_id: id, tipo, nota }).select("id").single();
+    if (error) { toast.error("Erro: " + error.message); return; }
+    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: data.id, nota }] }));
+  }
+
+  async function removeSample(tipo: keyof SamplesState, index: number) {
+    const s = samples[tipo][index];
+    if (!s?.id) return;
+    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    setSamples(prev => ({ ...prev, [tipo]: prev[tipo].filter((_, i) => i !== index) }));
+  }
 
   async function handleSave() {
     if (!letra.trim()) return toast.error("Letra é obrigatória");
     setSaving(true);
     try {
-      let pastoId: string;
+      const id = await ensurePasto();
+      if (!id) return;
       const payload = {
-        visita_id: visitaId,
         letra: letra.trim().toUpperCase(),
         num_pasto: numPasto.trim() || null,
         qtd_animais: qtdAnimais ? Number(qtdAnimais) : null,
@@ -124,34 +159,8 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
         consumo_kg_dia: consumo ? Number(consumo) : null,
         observacao: obs.trim() || null,
       };
-      if (pasto) {
-        const { error } = await supabase.from("visita_pastos").update(payload).eq("id", pasto.id);
-        if (error) throw error;
-        pastoId = pasto.id;
-      } else {
-        const { data, error } = await supabase.from("visita_pastos")
-          .insert({ ...payload, ordem: proximaOrdem })
-          .select("id").single();
-        if (error) throw error;
-        pastoId = data.id;
-      }
-
-      // Upsert scores
-      const scoreEntries: Array<{ tipo: "fezes" | "corporal" | "bebedouro"; nota?: number }> = [
-        { tipo: "fezes", nota: fezes },
-        { tipo: "corporal", nota: corporal },
-        { tipo: "bebedouro", nota: bebedouro },
-      ];
-      // delete existing then insert those with values (simplest)
-      await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", pastoId);
-      const toInsert = scoreEntries
-        .filter(s => s.nota !== undefined)
-        .map(s => ({ visita_pasto_id: pastoId, tipo: s.tipo, nota: s.nota! }));
-      if (toInsert.length > 0) {
-        const { error } = await supabase.from("avaliacoes_score").insert(toInsert);
-        if (error) throw error;
-      }
-
+      const { error } = await supabase.from("visita_pastos").update(payload).eq("id", id);
+      if (error) throw error;
       toast.success(pasto ? "Pasto atualizado" : "Pasto adicionado");
       onOpenChange(false);
       onSaved();
@@ -171,7 +180,19 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label>Letra *</Label>
-              <Input value={letra} onChange={e => setLetra(e.target.value)} maxLength={2} disabled={readOnly} />
+              <div className="relative">
+                <Input
+                  value={letra}
+                  onChange={e => setLetra(e.target.value)}
+                  onBlur={handleLetraBlur}
+                  maxLength={2}
+                  disabled={readOnly}
+                  autoFocus={!pasto}
+                />
+                {creating && (
+                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
             <div className="col-span-2">
               <Label>Nº Pasto</Label>
@@ -206,24 +227,33 @@ export default function PastoVisitaModal({ open, onOpenChange, visitaId, pasto, 
             <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} disabled={readOnly} />
           </div>
 
-          <div className="pt-2 border-t space-y-3">
-            <div className="text-sm font-semibold text-foreground">Avaliações (1–5)</div>
-            <ScoreSelector label="Fezes" value={fezes} onChange={setFezes} disabled={readOnly} />
-            <ScoreSelector label="Escore Corporal" value={corporal} onChange={setCorporal} disabled={readOnly} />
-            <ScoreSelector label="Bebedouro" value={bebedouro} onChange={setBebedouro} disabled={readOnly} />
+          <div className="pt-2 border-t space-y-4">
+            <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
+            <ScoreSamplesInput
+              label="Fezes" samples={samples.fezes}
+              onAdd={n => addSample("fezes", n)} onRemove={i => removeSample("fezes", i)} disabled={readOnly}
+            />
+            <ScoreSamplesInput
+              label="Escore Corporal" samples={samples.corporal}
+              onAdd={n => addSample("corporal", n)} onRemove={i => removeSample("corporal", i)} disabled={readOnly}
+            />
+            <ScoreSamplesInput
+              label="Bebedouro" samples={samples.bebedouro}
+              onAdd={n => addSample("bebedouro", n)} onRemove={i => removeSample("bebedouro", i)} disabled={readOnly}
+            />
           </div>
 
           <div className="pt-2 border-t">
-            <PhotoGrid visitaPastoId={pasto?.id ?? null} disabled={readOnly} />
-            {!pasto && (
-              <p className="text-[11px] text-muted-foreground mt-1">Salve o pasto para habilitar o envio de fotos.</p>
+            <PhotoGrid visitaPastoId={pastoIdLocal} disabled={readOnly} />
+            {!pastoIdLocal && (
+              <p className="text-[11px] text-muted-foreground mt-1">Informe a letra do pasto para habilitar o envio de fotos.</p>
             )}
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{readOnly ? "Fechar" : "Cancelar"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{readOnly ? "Fechar" : "Fechar"}</Button>
           {!readOnly && (
-            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+            <Button onClick={handleSave} disabled={saving || !letra.trim()} className="bg-primary hover:bg-primary/90">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
             </Button>
           )}
