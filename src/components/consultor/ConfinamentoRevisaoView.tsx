@@ -30,6 +30,9 @@ interface Visita {
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
   pdf_url: string | null;
+  objetivo_visita: string | null;
+  resumo_executivo: string | null;
+  indicadores_gerais: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
@@ -47,6 +50,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [conclusao, setConclusao] = useState("");
   const [fabricaNota, setFabricaNota] = useState<number | null>(null);
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
+  const [objetivo, setObjetivo] = useState("");
+  const [resumo, setResumo] = useState("");
+  const [indicadores, setIndicadores] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -58,6 +64,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setVisita(v as any);
     setObsGerais(v.observacoes_gerais || "");
     setConclusao(v.conclusao || "");
+    setObjetivo((v as any).objetivo_visita || "");
+    setResumo((v as any).resumo_executivo || "");
+    setIndicadores((v as any).indicadores_gerais || "");
 
     const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
