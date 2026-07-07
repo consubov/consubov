@@ -100,6 +100,7 @@ export default function RevisaoVisitaPage() {
     setObjetivo((v as any).objetivo_visita || "");
     setResumo((v as any).resumo_executivo || "");
     setIndicadores((v as any).indicadores_gerais || "");
+    setIndicadoresTabela(((v as any).indicadores_tabela as Record<string,string>) || {});
 
     const [{ data: fz }, { data: cs }, { data: ps }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
