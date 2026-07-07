@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,20 +10,18 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
+import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
-
 type ScoreKey = "fezes" | "corporal" | "bebedouro";
 
 interface Foto { id: string; url: string; ordem: number; }
 interface Curral {
   id: string;
   num_curral: string;
-  organizacao_fabrica_nota: number | null;
-  organizacao_insumos_nota: number | null;
   ordem: number;
-  scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  samples: Record<ScoreKey, ScoreSample[]>;
   fotos: Foto[];
   signed: Record<string, string>;
 }
@@ -47,13 +45,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [currais, setCurrais] = useState<Curral[]>([]);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
+  const [fabricaNota, setFabricaNota] = useState<number | null>(null);
+  const [insumosNota, setInsumosNota] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  useEffect(() => { load(); }, [visitaId]);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data: v } = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle();
     if (!v) { setLoading(false); return; }
@@ -61,24 +59,30 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setObsGerais(v.observacoes_gerais || "");
     setConclusao(v.conclusao || "");
 
-    const [{ data: fz }, { data: cs }, { data: cr }] = await Promise.all([
+    const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
       supabase.from("consultores").select("*").eq("id", v.consultor_id).maybeSingle(),
       supabase.from("visita_currais").select("*").eq("visita_id", visitaId).order("ordem"),
+      (supabase as any).from("avaliacao_fabrica_visita")
+        .select("organizacao_fabrica_nota, organizacao_insumos_nota")
+        .eq("visita_id", visitaId).maybeSingle(),
     ]);
     setFazenda(fz); setConsultor(cs);
+    setFabricaNota(af?.organizacao_fabrica_nota ?? null);
+    setInsumosNota(af?.organizacao_insumos_nota ?? null);
 
     const rows = (cr as any[]) || [];
     const ids = rows.map(r => r.id);
-    const scoresBy: Record<string, any> = {};
+    const samplesBy: Record<string, Record<ScoreKey, ScoreSample[]>> = {};
     const fotosBy: Record<string, Foto[]> = {};
     if (ids.length) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
-        supabase.from("avaliacoes_score").select("visita_curral_id, tipo, nota").in("visita_curral_id", ids),
+        supabase.from("avaliacoes_score").select("id, visita_curral_id, tipo, nota").in("visita_curral_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_curral_id", ids).order("ordem"),
       ]);
       (sc || []).forEach((s: any) => {
-        scoresBy[s.visita_curral_id] = { ...(scoresBy[s.visita_curral_id] || {}), [s.tipo]: s.nota };
+        const bucket = samplesBy[s.visita_curral_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+        if (s.tipo in bucket) bucket[s.tipo as ScoreKey].push({ id: s.id, nota: s.nota });
       });
       (ft || []).forEach((f: any) => {
         fotosBy[f.visita_curral_id] = [...(fotosBy[f.visita_curral_id] || []), f];
@@ -88,36 +92,60 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       const fotos = fotosBy[r.id] || [];
       const signed: Record<string, string> = {};
       await Promise.all(fotos.map(async f => { signed[f.id] = await signPath(f.url); }));
-      return { ...r, scores: scoresBy[r.id] || {}, fotos, signed } as Curral;
+      return {
+        id: r.id, num_curral: r.num_curral, ordem: r.ordem,
+        samples: samplesBy[r.id] || { fezes: [], corporal: [], bebedouro: [] },
+        fotos, signed,
+      };
     }));
     setCurrais(built);
     setLoading(false);
-  }
+  }, [visitaId]);
+
+  useEffect(() => { load(); }, [load]);
 
   function updateCurral(id: string, patch: Partial<Curral>) {
     setCurrais(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
   }
 
-  async function autosaveCurral(curralId: string, patch: Partial<Curral>) {
-    const db: any = {};
-    ["num_curral", "organizacao_fabrica_nota", "organizacao_insumos_nota"].forEach(k => {
-      if (k in patch) db[k] = (patch as any)[k];
-    });
-    if (Object.keys(db).length === 0) return;
-    const { error } = await supabase.from("visita_currais").update(db).eq("id", curralId);
+  async function autosaveCurralNum(curralId: string, num_curral: string) {
+    const { error } = await supabase.from("visita_currais").update({ num_curral }).eq("id", curralId);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
-  async function setScore(curralId: string, tipo: ScoreKey, nota: number) {
-    updateCurral(curralId, { scores: { ...currais.find(c => c.id === curralId)!.scores, [tipo]: nota } });
-    await supabase.from("avaliacoes_score").delete().eq("visita_curral_id", curralId).eq("tipo", tipo);
-    const { error } = await supabase.from("avaliacoes_score").insert({ visita_curral_id: curralId, tipo, nota });
-    if (error) toast.error("Erro ao salvar nota");
+  async function addSample(curralId: string, tipo: ScoreKey, nota: number) {
+    const { data, error } = await supabase.from("avaliacoes_score")
+      .insert({ visita_curral_id: curralId, tipo, nota }).select("id").single();
+    if (error) { toast.error("Erro ao adicionar amostra"); return; }
+    setCurrais(prev => prev.map(c => c.id === curralId
+      ? { ...c, samples: { ...c.samples, [tipo]: [...c.samples[tipo], { id: data.id, nota }] } }
+      : c));
+  }
+
+  async function removeSample(curralId: string, tipo: ScoreKey, index: number) {
+    const c = currais.find(x => x.id === curralId); if (!c) return;
+    const s = c.samples[tipo][index]; if (!s?.id) return;
+    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    setCurrais(prev => prev.map(x => x.id === curralId
+      ? { ...x, samples: { ...x.samples, [tipo]: x.samples[tipo].filter((_, i) => i !== index) } }
+      : x));
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
     const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId);
     if (error) toast.error("Erro ao salvar: " + error.message);
+  }
+
+  async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
+    const next = {
+      organizacao_fabrica_nota: patch.organizacao_fabrica_nota !== undefined ? patch.organizacao_fabrica_nota : fabricaNota,
+      organizacao_insumos_nota: patch.organizacao_insumos_nota !== undefined ? patch.organizacao_insumos_nota : insumosNota,
+    };
+    if (patch.organizacao_fabrica_nota !== undefined) setFabricaNota(patch.organizacao_fabrica_nota);
+    if (patch.organizacao_insumos_nota !== undefined) setInsumosNota(patch.organizacao_insumos_nota);
+    const { error } = await (supabase as any).from("avaliacao_fabrica_visita")
+      .upsert({ visita_id: visitaId, ...next }, { onConflict: "visita_id" });
+    if (error) toast.error("Erro ao salvar avaliação da fábrica: " + error.message);
   }
 
   async function addFoto(curralId: string, file: File) {
@@ -192,11 +220,24 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        avaliacaoFabrica: {
+          organizacao_fabrica_nota: fabricaNota,
+          organizacao_insumos_nota: insumosNota,
+        },
         currais: currais.map(c => ({
-          id: c.id, num_curral: c.num_curral,
-          organizacao_fabrica_nota: c.organizacao_fabrica_nota,
-          organizacao_insumos_nota: c.organizacao_insumos_nota,
-          scores: c.scores, fotos: c.fotos,
+          id: c.id,
+          num_curral: c.num_curral,
+          scores: {
+            fezes: averageOf(c.samples.fezes),
+            corporal: averageOf(c.samples.corporal),
+            bebedouro: averageOf(c.samples.bebedouro),
+          },
+          sampleCounts: {
+            fezes: c.samples.fezes.length,
+            corporal: c.samples.corporal.length,
+            bebedouro: c.samples.bebedouro.length,
+          },
+          fotos: c.fotos,
         })),
       });
       const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
@@ -228,7 +269,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         await navigator.clipboard.writeText(visita.pdf_url);
         toast.success("Link copiado!");
       }
-    } catch { /* user cancelou */ }
+    } catch { /* cancel */ }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -237,7 +278,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const readOnly = visita.status === "finalizada";
 
   return (
-    <div className="space-y-4 pb-24" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
         <ArrowLeft className="w-4 h-4" /> Voltar
       </Button>
@@ -270,6 +311,17 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         </div>
       </div>
 
+      {/* Avaliação da Fábrica (única por visita) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Avaliação da Fábrica (única na visita)
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <ScoreBlock label="Org. Fábrica" value={fabricaNota ?? undefined} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
+          <ScoreBlock label="Org. Insumos" value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
+        </div>
+      </div>
+
       {/* Blocos de curral */}
       <div className="space-y-3">
         {currais.map(c => (
@@ -288,36 +340,33 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
                   onSave={v => {
                     if (!v.trim()) return;
                     updateCurral(c.id, { num_curral: v });
-                    autosaveCurral(c.id, { num_curral: v });
+                    autosaveCurralNum(c.id, v);
                   }}
                   disabled={readOnly}
                 />
               </div>
             </div>
 
-            <div className="p-3 space-y-3">
-              {/* Scores 1-5 */}
-              <div className="grid grid-cols-3 gap-2">
-                <ScoreBlock label="Fezes" value={c.scores.fezes} onChange={n => setScore(c.id, "fezes", n)} disabled={readOnly} />
-                <ScoreBlock label="Corporal" value={c.scores.corporal} onChange={n => setScore(c.id, "corporal", n)} disabled={readOnly} />
-                <ScoreBlock label="Bebedouro" value={c.scores.bebedouro} onChange={n => setScore(c.id, "bebedouro", n)} disabled={readOnly} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <ScoreBlock
-                  label="Org. Fábrica"
-                  value={c.organizacao_fabrica_nota ?? undefined}
-                  onChange={n => { updateCurral(c.id, { organizacao_fabrica_nota: n }); autosaveCurral(c.id, { organizacao_fabrica_nota: n }); }}
-                  disabled={readOnly}
-                />
-                <ScoreBlock
-                  label="Org. Insumos"
-                  value={c.organizacao_insumos_nota ?? undefined}
-                  onChange={n => { updateCurral(c.id, { organizacao_insumos_nota: n }); autosaveCurral(c.id, { organizacao_insumos_nota: n }); }}
-                  disabled={readOnly}
-                />
-              </div>
+            <div className="p-3 space-y-4">
+              <ScoreSamplesInput
+                label="Fezes" samples={c.samples.fezes}
+                onAdd={n => addSample(c.id, "fezes", n)}
+                onRemove={i => removeSample(c.id, "fezes", i)}
+                disabled={readOnly}
+              />
+              <ScoreSamplesInput
+                label="Escore Corporal" samples={c.samples.corporal}
+                onAdd={n => addSample(c.id, "corporal", n)}
+                onRemove={i => removeSample(c.id, "corporal", i)}
+                disabled={readOnly}
+              />
+              <ScoreSamplesInput
+                label="Bebedouro" samples={c.samples.bebedouro}
+                onAdd={n => addSample(c.id, "bebedouro", n)}
+                onRemove={i => removeSample(c.id, "bebedouro", i)}
+                disabled={readOnly}
+              />
 
-              {/* Fotos */}
               <PhotoManager
                 curral={c}
                 readOnly={readOnly}
@@ -338,9 +387,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={obsGerais}
             onChange={e => setObsGerais(e.target.value)}
             onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3}
-            disabled={readOnly}
-            className="mt-1"
+            rows={3} disabled={readOnly} className="mt-1"
           />
         </div>
         <div>
@@ -349,15 +396,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={conclusao}
             onChange={e => setConclusao(e.target.value)}
             onBlur={() => autosaveVisita({ conclusao })}
-            rows={3}
-            disabled={readOnly}
-            className="mt-1"
+            rows={3} disabled={readOnly} className="mt-1"
           />
         </div>
       </div>
 
-      {/* Botão fixo */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
+      {/* Botão fixo — acima da nav */}
+      <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
         <div className="max-w-md mx-auto flex gap-2">
           {visita.status === "rascunho" && (
             <Button
@@ -429,7 +474,7 @@ function ScoreBlock({ label, value, onChange, disabled }: { label: string; value
     <div className="rounded-md border p-2" style={{ borderColor: "#E7E3D6" }}>
       <div className="text-[10px] uppercase tracking-wide font-semibold text-center" style={{ color: "#767066" }}>{label}</div>
       <div className="flex justify-center gap-0.5 mt-1">
-        {[1,2,3,4,5].map(n => (
+        {[1, 2, 3, 4, 5].map(n => (
           <button
             key={n}
             type="button"
@@ -496,3 +541,6 @@ function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
     </div>
   );
 }
+
+// Suppress unused import warning
+void formatAvg;
