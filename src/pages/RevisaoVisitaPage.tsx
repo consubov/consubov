@@ -156,6 +156,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function addSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
+    await notifyEdit();
     const { data, error } = await supabase.from("avaliacoes_score")
       .insert({ visita_pasto_id: pastoId, tipo, nota }).select("id").single();
     if (error) { toast.error("Erro ao adicionar amostra"); return; }
@@ -165,6 +166,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function removeSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", index: number) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     const s = p.samples[tipo][index]; if (!s?.id) return;
     await supabase.from("avaliacoes_score").delete().eq("id", s.id);
@@ -174,11 +176,13 @@ export default function RevisaoVisitaPage() {
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
+    await notifyEdit();
     const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId!);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function addFoto(pastoId: string, file: File) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     if (p.fotos.length >= 5) { toast.error("Máx. 5 fotos"); return; }
     const usadas = new Set(p.fotos.map(f => f.ordem));
@@ -203,6 +207,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function delFoto(pastoId: string, f: Foto) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     await supabase.storage.from(BUCKET).remove([f.url]);
     await supabase.from("visita_fotos").delete().eq("id", f.id);
@@ -210,6 +215,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function moveFoto(pastoId: string, index: number, dir: -1 | 1) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     const arr = [...p.fotos];
     const j = index + dir;
