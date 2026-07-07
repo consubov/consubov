@@ -553,28 +553,19 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
-      {/* Blocos introdutórios (opcionais) */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Introdução do Relatório (opcional)
+      {/* Introdução do Relatório — tópicos editáveis */}
+      <div className="space-y-2">
+        <div className="text-[11px] uppercase tracking-wide font-bold px-1" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório
         </div>
-        {[
-          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
-          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
-          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
-        ].map(f => (
-          <div key={f.key}>
-            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
-            <Textarea
-              value={f.val}
-              onChange={e => f.set(e.target.value)}
-              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
-              rows={2}
-              className="mt-1 text-sm"
-            />
-          </div>
-        ))}
+        <VisitaTopicosSection
+          visitaId={visitaId!}
+          seedFrom={{ objetivo: visita.objetivo_visita, resumo: visita.resumo_executivo, indicadores: visita.indicadores_gerais }}
+          onNotifyEdit={notifyEdit}
+          onChange={setTopicos}
+        />
       </div>
+
 
       {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
