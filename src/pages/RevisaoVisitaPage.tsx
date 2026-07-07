@@ -96,15 +96,16 @@ export default function RevisaoVisitaPage() {
 
     const pastoRows = (ps as any[]) || [];
     const ids = pastoRows.map(p => p.id);
-    let scoresByPasto: Record<string, any> = {};
-    let fotosByPasto: Record<string, Foto[]> = {};
+    const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
+    const fotosByPasto: Record<string, Foto[]> = {};
     if (ids.length) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
-        supabase.from("avaliacoes_score").select("visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
+        supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
       ]);
       (sc || []).forEach((s: any) => {
-        scoresByPasto[s.visita_pasto_id] = { ...(scoresByPasto[s.visita_pasto_id] || {}), [s.tipo]: s.nota };
+        const bucket = samplesByPasto[s.visita_pasto_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+        if (s.tipo in bucket) bucket[s.tipo as "fezes"|"corporal"|"bebedouro"].push({ id: s.id, nota: s.nota });
       });
       (ft || []).forEach((f: any) => {
         fotosByPasto[f.visita_pasto_id] = [...(fotosByPasto[f.visita_pasto_id] || []), f];
@@ -114,7 +115,11 @@ export default function RevisaoVisitaPage() {
       const fotos = fotosByPasto[p.id] || [];
       const signed: Record<string, string> = {};
       await Promise.all(fotos.map(async f => { signed[f.id] = await signPath(f.url); }));
-      return { ...p, scores: scoresByPasto[p.id] || {}, fotos, signed } as Pasto;
+      return {
+        ...p,
+        samples: samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] },
+        fotos, signed,
+      } as Pasto;
     }));
     setPastos(built);
     setLoading(false);
@@ -134,11 +139,22 @@ export default function RevisaoVisitaPage() {
     setPastos(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
   }
 
-  async function setScore(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
-    updatePasto(pastoId, { scores: { ...pastos.find(p => p.id === pastoId)!.scores, [tipo]: nota } });
-    await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", pastoId).eq("tipo", tipo);
-    const { error } = await supabase.from("avaliacoes_score").insert({ visita_pasto_id: pastoId, tipo, nota });
-    if (error) toast.error("Erro ao salvar nota");
+  async function addSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
+    const { data, error } = await supabase.from("avaliacoes_score")
+      .insert({ visita_pasto_id: pastoId, tipo, nota }).select("id").single();
+    if (error) { toast.error("Erro ao adicionar amostra"); return; }
+    setPastos(prev => prev.map(p => p.id === pastoId
+      ? { ...p, samples: { ...p.samples, [tipo]: [...p.samples[tipo], { id: data.id, nota }] } }
+      : p));
+  }
+
+  async function removeSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", index: number) {
+    const p = pastos.find(x => x.id === pastoId); if (!p) return;
+    const s = p.samples[tipo][index]; if (!s?.id) return;
+    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    setPastos(prev => prev.map(x => x.id === pastoId
+      ? { ...x, samples: { ...x.samples, [tipo]: x.samples[tipo].filter((_, i) => i !== index) } }
+      : x));
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
