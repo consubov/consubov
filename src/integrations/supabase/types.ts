@@ -3064,6 +3064,73 @@ export type Database = {
           },
         ]
       }
+      visita_topico_fotos: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          url: string
+          visita_topico_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          url: string
+          visita_topico_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          url?: string
+          visita_topico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_topico_fotos_visita_topico_id_fkey"
+            columns: ["visita_topico_id"]
+            isOneToOne: false
+            referencedRelation: "visita_topicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visita_topicos: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          texto: string | null
+          titulo: string
+          visita_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          texto?: string | null
+          titulo?: string
+          visita_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          texto?: string | null
+          titulo?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_topicos_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitas: {
         Row: {
           ciclo_id: string | null

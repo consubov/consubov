@@ -52,6 +52,8 @@ export interface VisitaPdfData {
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
   indicadores_tabela?: { key: string; label: string; value: string }[];
+  topicos?: { id: string; titulo: string; texto: string | null; ordem: number;
+    fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
 }
 
@@ -354,28 +356,19 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
-  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+  const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
+  await Promise.all([
+    ...allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }),
+    ...allTopicoFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }),
+  ]);
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
   drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina");
   let y = drawFarmBlock(doc, data, 50);
 
-  const intros: [string, string | null | undefined][] = [
-    ["Objetivo da Visita", data.objetivo_visita],
-    ["Resumo Executivo", data.resumo_executivo],
-    ["Indicadores Gerais", data.indicadores_gerais],
-  ];
-  for (const [title, txt] of intros) {
-    const t = (txt || "").trim();
-    if (!t) continue;
-    // page break if perto do rodapé
-    if (y > pageH - 60) { doc.addPage(); y = 20; }
-    y = drawIntroBlock(doc, title, t, y);
-  }
-
-  // Tabela Indicadores Gerais da Fazenda
-  const tabela = (data.indicadores_tabela || []).filter(r => (r.value || "").trim() && r.value !== "—");
-  if (tabela.length) {
+  const drawTabela = () => {
+    const tabela = (data.indicadores_tabela || []).filter(r => (r.value || "").trim() && r.value !== "—");
+    if (!tabela.length) return;
     if (y > pageH - (14 + tabela.length * 7)) { doc.addPage(); y = 20; }
     doc.setFillColor(GREEN_DARK);
     doc.rect(15, y, 2.5, 6, "F");
@@ -402,7 +395,65 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       y += rowH;
     });
     y += 6;
+  };
+
+  const drawTopico = (titulo: string, texto: string | null, fotos: { id: string; ordem: number }[]) => {
+    const t = (texto || "").trim();
+    if (!titulo.trim() && !t && fotos.length === 0) return;
+    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    if (titulo.trim() || t) {
+      y = drawIntroBlock(doc, titulo || "—", t || "—", y);
+    }
+    if (fotos.length > 0) {
+      const wArea = pageW - 30;
+      const cols = 5;
+      const gap = 2;
+      const fw = (wArea - (cols - 1) * gap) / cols;
+      const fh = fw;
+      if (y + fh > pageH - 20) { doc.addPage(); y = 20; }
+      for (let i = 0; i < Math.min(fotos.length, cols); i++) {
+        const fx = 15 + i * (fw + gap);
+        const foto = fotos[i];
+        const dataUrl = fotosCache[foto.id];
+        if (dataUrl) {
+          try {
+            const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+            doc.addImage(dataUrl, fmt, fx, y, fw, fh, undefined, "FAST");
+          } catch {
+            doc.setDrawColor(LINE); doc.rect(fx, y, fw, fh);
+          }
+        } else {
+          doc.setFillColor("#F3F1E8"); doc.rect(fx, y, fw, fh, "F");
+        }
+      }
+      y += fh + 6;
+    } else {
+      y += 2;
+    }
+  };
+
+  if (data.topicos && data.topicos.length > 0) {
+    const sorted = [...data.topicos].sort((a, b) => a.ordem - b.ordem);
+    const fixos = sorted.filter(t => t.ordem <= 3);
+    const customs = sorted.filter(t => t.ordem >= 5);
+    for (const t of fixos) drawTopico(t.titulo, t.texto, t.fotos);
+    drawTabela();
+    for (const t of customs) drawTopico(t.titulo, t.texto, t.fotos);
+  } else {
+    const intros: [string, string | null | undefined][] = [
+      ["Objetivo da Visita", data.objetivo_visita],
+      ["Resumo Executivo", data.resumo_executivo],
+      ["Indicadores Gerais", data.indicadores_gerais],
+    ];
+    for (const [title, txt] of intros) {
+      const t = (txt || "").trim();
+      if (!t) continue;
+      if (y > pageH - 60) { doc.addPage(); y = 20; }
+      y = drawIntroBlock(doc, title, t, y);
+    }
+    drawTabela();
   }
+
 
 
   // PAGES: 2 pastos por página — cabeçalho enxuto só com nome da fazenda

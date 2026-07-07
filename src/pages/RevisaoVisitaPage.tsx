@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
+import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -131,6 +132,7 @@ export default function RevisaoVisitaPage() {
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
 
   useEffect(() => {
     if (!visitaId) return;
@@ -315,6 +317,14 @@ export default function RevisaoVisitaPage() {
         value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
       }));
 
+      const topicosForPdf = await Promise.all(topicos.map(async t => {
+        const fotos = await Promise.all(t.fotos.map(async f => {
+          const { data } = await supabase.storage.from(BUCKET).createSignedUrl(f.url, 60 * 60);
+          return { id: f.id, url: f.url, ordem: f.ordem, signedUrl: data?.signedUrl || "" };
+        }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos };
+      }));
+
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
@@ -332,6 +342,7 @@ export default function RevisaoVisitaPage() {
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
+        topicos: topicosForPdf,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -348,6 +359,7 @@ export default function RevisaoVisitaPage() {
           fotos: p.fotos,
         })),
       });
+
 
       const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visita.id);
       const { error } = await supabase.from("visitas_tecnicas").update({
@@ -551,28 +563,19 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
-      {/* Blocos introdutórios (opcionais) */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Introdução do Relatório (opcional)
+      {/* Introdução do Relatório — tópicos editáveis */}
+      <div className="space-y-2">
+        <div className="text-[11px] uppercase tracking-wide font-bold px-1" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório
         </div>
-        {[
-          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
-          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
-          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
-        ].map(f => (
-          <div key={f.key}>
-            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
-            <Textarea
-              value={f.val}
-              onChange={e => f.set(e.target.value)}
-              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
-              rows={2}
-              className="mt-1 text-sm"
-            />
-          </div>
-        ))}
+        <VisitaTopicosSection
+          visitaId={visitaId!}
+          seedFrom={{ objetivo: visita.objetivo_visita, resumo: visita.resumo_executivo, indicadores: visita.indicadores_gerais }}
+          onNotifyEdit={notifyEdit}
+          onChange={setTopicos}
+        />
       </div>
+
 
       {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
