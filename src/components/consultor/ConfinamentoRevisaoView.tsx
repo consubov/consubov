@@ -306,7 +306,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
-  const readOnly = visita.status === "finalizada";
+  const readOnly = false;
 
   return (
     <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -410,6 +410,29 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         ))}
       </div>
 
+      {/* Blocos introdutórios (opcionais) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório (opcional)
+        </div>
+        {[
+          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
+          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
+          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
+        ].map(f => (
+          <div key={f.key}>
+            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
+            <Textarea
+              value={f.val}
+              onChange={e => f.set(e.target.value)}
+              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
+              rows={2}
+              className="mt-1 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+
       {/* Observações & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
@@ -418,7 +441,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={obsGerais}
             onChange={e => setObsGerais(e.target.value)}
             onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3} disabled={readOnly} className="mt-1"
+            rows={3} className="mt-1"
           />
         </div>
         <div>
@@ -427,7 +450,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={conclusao}
             onChange={e => setConclusao(e.target.value)}
             onBlur={() => autosaveVisita({ conclusao })}
-            rows={3} disabled={readOnly} className="mt-1"
+            rows={3} className="mt-1"
           />
         </div>
       </div>
