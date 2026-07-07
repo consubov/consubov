@@ -30,6 +30,9 @@ interface Visita {
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
   pdf_url: string | null;
+  objetivo_visita: string | null;
+  resumo_executivo: string | null;
+  indicadores_gerais: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
@@ -47,6 +50,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [conclusao, setConclusao] = useState("");
   const [fabricaNota, setFabricaNota] = useState<number | null>(null);
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
+  const [objetivo, setObjetivo] = useState("");
+  const [resumo, setResumo] = useState("");
+  const [indicadores, setIndicadores] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -58,6 +64,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setVisita(v as any);
     setObsGerais(v.observacoes_gerais || "");
     setConclusao(v.conclusao || "");
+    setObjetivo((v as any).objetivo_visita || "");
+    setResumo((v as any).resumo_executivo || "");
+    setIndicadores((v as any).indicadores_gerais || "");
 
     const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
@@ -108,12 +117,20 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setCurrais(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
   }
 
+  async function notifyEdit() {
+    if (!visita || visita.status !== "finalizada") return;
+    await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visita.id);
+    setVisita(prev => prev ? { ...prev, pdf_url: null, status: "revisao" } : prev);
+  }
+
   async function autosaveCurralNum(curralId: string, num_curral: string) {
+    await notifyEdit();
     const { error } = await supabase.from("visita_currais").update({ num_curral }).eq("id", curralId);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function addSample(curralId: string, tipo: ScoreKey, nota: number) {
+    await notifyEdit();
     const { data, error } = await supabase.from("avaliacoes_score")
       .insert({ visita_curral_id: curralId, tipo, nota }).select("id").single();
     if (error) { toast.error("Erro ao adicionar amostra"); return; }
@@ -123,6 +140,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function removeSample(curralId: string, tipo: ScoreKey, index: number) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     const s = c.samples[tipo][index]; if (!s?.id) return;
     await supabase.from("avaliacoes_score").delete().eq("id", s.id);
@@ -132,11 +150,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
+    await notifyEdit();
     const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
+    await notifyEdit();
     const next = {
       organizacao_fabrica_nota: patch.organizacao_fabrica_nota !== undefined ? patch.organizacao_fabrica_nota : fabricaNota,
       organizacao_insumos_nota: patch.organizacao_insumos_nota !== undefined ? patch.organizacao_insumos_nota : insumosNota,
@@ -149,6 +169,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function addFoto(curralId: string, file: File) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     if (c.fotos.length >= MAX_FOTOS) { toast.error(`Máx. ${MAX_FOTOS} fotos`); return; }
     const usadas = new Set(c.fotos.map(f => f.ordem));
@@ -173,6 +194,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function delFoto(curralId: string, f: Foto) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     await supabase.storage.from(BUCKET).remove([f.url]);
     await supabase.from("visita_fotos").delete().eq("id", f.id);
@@ -180,6 +202,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   async function moveFoto(curralId: string, index: number, dir: -1 | 1) {
+    await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
     const arr = [...c.fotos];
     const j = index + dir;
@@ -206,7 +229,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+      await supabase.from("visitas_tecnicas").update({
+        observacoes_gerais: obsGerais, conclusao,
+        objetivo_visita: objetivo || null,
+        resumo_executivo: resumo || null,
+        indicadores_gerais: indicadores || null,
+      }).eq("id", visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {
@@ -220,6 +248,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        objetivo_visita: objetivo,
+        resumo_executivo: resumo,
+        indicadores_gerais: indicadores,
         avaliacaoFabrica: {
           organizacao_fabrica_nota: fabricaNota,
           organizacao_insumos_nota: insumosNota,
@@ -249,7 +280,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       if (error) throw error;
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
-      await load();
+      navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
@@ -275,7 +306,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
-  const readOnly = visita.status === "finalizada";
+  const readOnly = false;
 
   return (
     <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -379,6 +410,29 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         ))}
       </div>
 
+      {/* Blocos introdutórios (opcionais) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório (opcional)
+        </div>
+        {[
+          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
+          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
+          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
+        ].map(f => (
+          <div key={f.key}>
+            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
+            <Textarea
+              value={f.val}
+              onChange={e => f.set(e.target.value)}
+              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
+              rows={2}
+              className="mt-1 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+
       {/* Observações & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
@@ -387,7 +441,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={obsGerais}
             onChange={e => setObsGerais(e.target.value)}
             onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3} disabled={readOnly} className="mt-1"
+            rows={3} className="mt-1"
           />
         </div>
         <div>
@@ -396,7 +450,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             value={conclusao}
             onChange={e => setConclusao(e.target.value)}
             onBlur={() => autosaveVisita({ conclusao })}
-            rows={3} disabled={readOnly} className="mt-1"
+            rows={3} className="mt-1"
           />
         </div>
       </div>
@@ -415,24 +469,19 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               Confirmar Revisão
             </Button>
           )}
-          {visita.status === "revisao" && (
+          {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
               disabled={gerandoPdf}
-              className="w-full gap-2"
+              className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Gerar PDF
+              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
             <>
-              <Button asChild variant="outline" className="flex-1 gap-1.5">
-                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
-                  <FileText className="w-4 h-4" /> Ver
-                </a>
-              </Button>
               <Button asChild variant="outline" className="flex-1 gap-1.5">
                 <a href={visita.pdf_url} download>
                   <Download className="w-4 h-4" /> Baixar

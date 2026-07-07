@@ -3122,8 +3122,11 @@ export type Database = {
           hora_fim: string | null
           hora_inicio: string
           id: string
+          indicadores_gerais: string | null
+          objetivo_visita: string | null
           observacoes_gerais: string | null
           pdf_url: string | null
+          resumo_executivo: string | null
           status: string
           tipo: string
         }
@@ -3135,8 +3138,11 @@ export type Database = {
           hora_fim?: string | null
           hora_inicio?: string
           id?: string
+          indicadores_gerais?: string | null
+          objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null
+          resumo_executivo?: string | null
           status?: string
           tipo?: string
         }
@@ -3148,8 +3154,11 @@ export type Database = {
           hora_fim?: string | null
           hora_inicio?: string
           id?: string
+          indicadores_gerais?: string | null
+          objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null
+          resumo_executivo?: string | null
           status?: string
           tipo?: string
         }

@@ -4,9 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ChevronRight, History, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, ChevronRight, History, Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface VisitaItem {
   id: string;
@@ -23,6 +29,8 @@ export default function ConsultorHistoricoPage() {
   const navigate = useNavigate();
   const [visitas, setVisitas] = useState<VisitaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toDelete, setToDelete] = useState<VisitaItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (roleData?.consultorId) load(); }, [roleData?.consultorId]);
 
@@ -35,6 +43,20 @@ export default function ConsultorHistoricoPage() {
       .order("hora_inicio", { ascending: false });
     setVisitas((data as any as VisitaItem[]) || []);
     setLoading(false);
+  }
+
+  async function handleDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", toDelete.id);
+      if (error) throw error;
+      toast.success("Visita excluída.");
+      setToDelete(null);
+      await load();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
+    } finally { setDeleting(false); }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -52,37 +74,65 @@ export default function ConsultorHistoricoPage() {
       ) : (
         <div className="space-y-2">
           {visitas.map(v => (
-            <Card
-              key={v.id}
-              className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => navigate(`/consultor/visitas/${v.id}`)}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-foreground truncate">{v.fazendas_consultor?.nome_fazenda || "—"}</div>
-                <div className="text-xs text-muted-foreground capitalize">
-                  {v.tipo} · {format(new Date(v.hora_inicio), "dd 'de' MMM yyyy · HH:mm", { locale: ptBR })}
+            <Card key={v.id} className="p-3 space-y-2">
+              <div
+                className="flex items-center gap-3 cursor-pointer"
+                onClick={() => navigate(`/consultor/visitas/${v.id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground truncate">{v.fazendas_consultor?.nome_fazenda || "—"}</div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {v.tipo} · {format(new Date(v.hora_inicio), "dd 'de' MMM yyyy · HH:mm", { locale: ptBR })}
+                  </div>
                 </div>
+                <Badge variant={v.status === "finalizada" ? "default" : "secondary"} className="capitalize shrink-0">
+                  {v.status}
+                </Badge>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
-              <Badge variant={v.status === "finalizada" ? "default" : "secondary"} className="capitalize shrink-0">
-                {v.status}
-              </Badge>
-              {v.pdf_url && (
-                <a
-                  href={v.pdf_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20"
-                  title="Abrir PDF"
+
+              <div className="flex gap-2">
+                {v.status === "finalizada" && v.pdf_url && (
+                  <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
+                    <a href={v.pdf_url} target="_blank" rel="noreferrer">
+                      <Download className="w-4 h-4" /> Baixar PDF
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setToDelete(v)}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
                 >
-                  <FileText className="w-4 h-4" />
-                </a>
-              )}
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <Trash2 className="w-4 h-4" /> Excluir
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={o => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir visita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Essa ação não pode ser desfeita. Todos os dados desta visita (pastos/currais, notas, fotos, PDF) serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

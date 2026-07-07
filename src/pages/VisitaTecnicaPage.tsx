@@ -55,7 +55,7 @@ export default function VisitaTecnicaPage() {
 
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
-  const readOnly = visita?.status === "finalizada";
+  const readOnly = false;
 
   async function load() {
     setLoading(true);

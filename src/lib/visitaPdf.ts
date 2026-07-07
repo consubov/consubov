@@ -2,13 +2,12 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
 
-// Palette
 const GREEN_DARK = "#14432B";
-const GREEN_MED = "#1F7A4D";
 const GOLD = "#C9A84C";
 const INK = "#1C1C1A";
 const INK_SOFT = "#767066";
@@ -34,7 +33,7 @@ export interface VisitaPdfPasto {
   consumo_kg_dia: number | null;
   observacao: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
-  fotos: { id: string; url: string; ordem: number }[]; // url = storage path
+  fotos: { id: string; url: string; ordem: number }[];
 }
 
 export interface VisitaPdfData {
@@ -45,9 +44,10 @@ export interface VisitaPdfData {
   hora_fim: string | null;
   observacoes_gerais: string | null;
   conclusao: string | null;
+  objetivo_visita?: string | null;
+  resumo_executivo?: string | null;
+  indicadores_gerais?: string | null;
   pastos: VisitaPdfPasto[];
-  fazendaId?: string; // for storage path
-  consultorId?: string;
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
@@ -55,6 +55,19 @@ async function fetchFotoDataUrl(path: string): Promise<string | null> {
     const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60);
     if (!data?.signedUrl) return null;
     const res = await fetch(data.signedUrl);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function fetchAssetDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
@@ -78,41 +91,52 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 6, { align: "right" });
 }
 
-function drawHeaderPage1(doc: jsPDF, data: VisitaPdfData) {
+function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string) {
   const w = doc.internal.pageSize.getWidth();
-  // banner
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(0, 0, w, 60, "F");
+  // fundo branco (padrão), sem retângulo verde
+  const headerH = 32;
+  const logoH = 16;
+  const logoW = 44; // proporção ~2.8:1 da logo consubov
+  const logoX = 15;
+  const logoY = 10;
+  if (logoDataUrl) {
+    try { doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
+  }
+  // Linha vertical fina verde
+  const dividerX = logoX + logoW + 6;
+  doc.setDrawColor(GREEN_DARK);
+  doc.setLineWidth(0.8);
+  doc.line(dividerX, logoY, dividerX, logoY + logoH);
 
-  // Logo mark
-  doc.setFillColor(GOLD);
-  doc.roundedRect(15, 15, 14, 14, 2, 2, "F");
-  doc.setTextColor(GREEN_DARK);
+  // eyebrow + título
+  doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("C", 22, 25, { align: "center" });
-
-  // Title
-  doc.setTextColor("#FFFFFF");
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("RELATÓRIO DE VISITA TÉCNICA", 34, 20);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("Consubov Consultoria", 34, 27);
-
-  // Farm block
-  doc.setFontSize(20);
-  doc.text(data.fazenda.nome_fazenda || "—", 15, 48);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor("#E7E3D6");
-  const loc = [data.fazenda.proprietario, data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join(" · ");
-  if (loc) doc.text(loc, 15, 55);
-
-  // Info grid
+  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + 6);
   doc.setTextColor(INK);
-  const y = 75;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(13);
+  doc.text(subtitle, dividerX + 4, logoY + 14);
+
+  // linha divisória abaixo do header
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.4);
+  doc.line(15, headerH + 4, w - 15, headerH + 4);
+}
+
+function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
+  const w = doc.internal.pageSize.getWidth();
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(data.fazenda.nome_fazenda || "—", 15, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(INK_SOFT);
+  const loc = [data.fazenda.proprietario, data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join(" · ");
+  if (loc) doc.text(loc, 15, y + 6);
+
+  const boxY = y + 12;
   const boxW = (w - 30 - 10) / 3;
   const boxes = [
     { label: "CONSULTOR", value: data.consultor.nome || "—" },
@@ -123,43 +147,43 @@ function drawHeaderPage1(doc: jsPDF, data: VisitaPdfData) {
     const x = 15 + i * (boxW + 5);
     doc.setDrawColor(LINE);
     doc.setLineWidth(0.4);
-    doc.roundedRect(x, y, boxW, 18, 2, 2, "S");
+    doc.roundedRect(x, boxY, boxW, 18, 2, 2, "S");
     doc.setFontSize(7);
     doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.text(b.label, x + 3, y + 6);
+    doc.text(b.label, x + 3, boxY + 6);
     doc.setFontSize(10);
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
-    doc.text(b.value, x + 3, y + 13);
+    doc.text(b.value, x + 3, boxY + 13);
   });
+  return boxY + 24;
+}
 
-  // Summary
-  doc.setFontSize(9);
-  doc.setTextColor(INK_SOFT);
+function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): number {
+  const w = doc.internal.pageSize.getWidth() - 30;
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, y, 2.5, 6, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(title.toUpperCase(), 20, y + 4.5);
+  doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
-  doc.text(
-    `Total de pastos avaliados: ${data.pastos.length}`,
-    15,
-    y + 30,
-  );
+  doc.setFontSize(9.5);
+  const lines = doc.splitTextToSize(text, w);
+  doc.text(lines, 15, y + 11);
+  return y + 11 + lines.length * 4.6 + 4;
 }
 
 async function drawPastoBlock(
-  doc: jsPDF,
-  pasto: VisitaPdfPasto,
-  fotosCache: Record<string, string | null>,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
+  doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
+  x: number, y: number, width: number, height: number,
 ) {
-  // Card border
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.roundedRect(x, y, width, height, 2, 2, "S");
 
-  // Letter badge
   doc.setFillColor(GREEN_DARK);
   doc.circle(x + 10, y + 10, 6, "F");
   doc.setTextColor(GOLD);
@@ -167,7 +191,6 @@ async function drawPastoBlock(
   doc.setFontSize(12);
   doc.text(pasto.letra || "?", x + 10, y + 12, { align: "center" });
 
-  // Title (num pasto + animais)
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -177,11 +200,9 @@ async function drawPastoBlock(
   doc.setTextColor(INK_SOFT);
   doc.text(`${pasto.qtd_animais ?? "—"} animais`, x + 20, y + 13);
 
-  // Divider
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 18, x + width - 3, y + 18);
 
-  // Produto / % PV / Consumo
   const lineY = y + 24;
   const cellW = (width - 6) / 3;
   const cells = [
@@ -201,7 +222,6 @@ async function drawPastoBlock(
     doc.text(c.value, cx, lineY + 5);
   });
 
-  // Scores (dots)
   const scoreY = y + 36;
   const scoreCellW = (width - 6) / 3;
   const scores: [string, number | undefined][] = [
@@ -215,13 +235,13 @@ async function drawPastoBlock(
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
     doc.text(label.toUpperCase(), cx, scoreY);
-    // 5 dots
     const dotY = scoreY + 4;
     const dotR = 1.6;
     const gap = 4.5;
+    const notaInt = nota ? Math.round(nota) : null;
     for (let n = 1; n <= 5; n++) {
       const dx = cx + 2 + (n - 1) * gap;
-      if (nota && n <= nota) doc.setFillColor(GOLD);
+      if (notaInt && n <= notaInt) doc.setFillColor(GOLD);
       else doc.setFillColor("#E7E3D6");
       doc.circle(dx, dotY, dotR, "F");
     }
@@ -229,11 +249,10 @@ async function drawPastoBlock(
       doc.setFontSize(7);
       doc.setTextColor(GREEN_DARK);
       doc.setFont("helvetica", "bold");
-      doc.text(`${nota}/5`, cx + 2 + 5 * gap + 2, dotY + 1.2);
+      doc.text(nota.toFixed(1), cx + 2 + 5 * gap + 2, dotY + 1.2);
     }
   });
 
-  // Observação
   if (pasto.observacao) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
@@ -246,7 +265,6 @@ async function drawPastoBlock(
     doc.text(lines.slice(0, 2), x + 3, y + 55);
   }
 
-  // Fotos grid (bottom)
   const fotosStartY = y + 66;
   const fotoAreaH = height - (fotosStartY - y) - 4;
   const cols = 5;
@@ -280,7 +298,6 @@ async function drawPastoBlock(
 
 function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 15): number {
   const w = doc.internal.pageSize.getWidth() - 30;
-  // Title bar
   doc.setFillColor(GREEN_DARK);
   doc.rect(x, y, 3, 8, "F");
   doc.setTextColor(GREEN_DARK);
@@ -288,7 +305,6 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
   doc.setFontSize(12);
   doc.text(title.toUpperCase(), x + 6, y + 6);
 
-  // Body
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -302,60 +318,65 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Preload photos as data URLs
+  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
-  // PAGE 1: header
-  drawHeaderPage1(doc, data);
+  // PAGE 1 — cover header claro + fazenda + intro blocks
+  drawCoverHeader(doc, logoDataUrl, "Visita de Rotina");
+  let y = drawFarmBlock(doc, data, 50);
 
-  // PAGES: 2 pastos por página
+  const intros: [string, string | null | undefined][] = [
+    ["Objetivo da Visita", data.objetivo_visita],
+    ["Resumo Executivo", data.resumo_executivo],
+    ["Indicadores Gerais", data.indicadores_gerais],
+  ];
+  for (const [title, txt] of intros) {
+    const t = (txt || "").trim();
+    if (!t) continue;
+    // page break if perto do rodapé
+    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    y = drawIntroBlock(doc, title, t, y);
+  }
+
+  // PAGES: 2 pastos por página — cabeçalho enxuto só com nome da fazenda
   const pastosPorPagina = 2;
-  const blockHeight = 100; // mm
+  const blockHeight = 100;
   const gap = 8;
 
   for (let i = 0; i < data.pastos.length; i += pastosPorPagina) {
     doc.addPage();
     const pair = data.pastos.slice(i, i + pastosPorPagina);
-    // Section header
-    doc.setFillColor(GREEN_DARK);
-    doc.rect(0, 0, pageW, 18, "F");
-    doc.setTextColor("#FFFFFF");
+    doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(`Avaliação de Pastos (${i + 1}–${i + pair.length} de ${data.pastos.length})`, 15, 12);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor("#E7E3D6");
-    doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
 
-    let y = 26;
+    let py = 24;
     for (const p of pair) {
-      await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight);
-      y += blockHeight + gap;
+      await drawPastoBlock(doc, p, fotosCache, 15, py, pageW - 30, blockHeight);
+      py += blockHeight + gap;
     }
   }
 
-  // ÚLTIMA PÁGINA: observações + conclusão
+  // ÚLTIMA PÁGINA: observações + conclusão + assinatura
   doc.addPage();
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(0, 0, pageW, 18, "F");
-  doc.setTextColor("#FFFFFF");
+  doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Considerações Finais", 15, 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor("#E7E3D6");
-  doc.text(data.fazenda.nome_fazenda, pageW - 15, 12, { align: "right" });
+  doc.setFontSize(10);
+  doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+  doc.setDrawColor(LINE);
+  doc.line(15, 16, pageW - 15, 16);
 
-  let y = 30;
-  y = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", y);
-  y = Math.max(y + 8, 130);
-  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", y);
+  let fy = 26;
+  fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
+  fy = Math.max(fy + 8, 130);
+  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
 
-  // Signature line
   const sigY = pageH - 40;
   doc.setDrawColor(INK_SOFT);
   doc.setLineWidth(0.3);
@@ -365,9 +386,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   doc.setFont("helvetica", "normal");
   doc.text(data.consultor.nome || "Consultor", pageW / 2, sigY + 5, { align: "center" });
   doc.setFontSize(8);
-  doc.text("Consultor Técnico – Consubov", pageW / 2, sigY + 10, { align: "center" });
+  doc.text("Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
 
-  // Footers em todas as páginas
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
@@ -382,10 +402,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 }
 
 export async function uploadVisitaPdf(
-  blob: Blob,
-  fileName: string,
-  consultorId: string,
-  visitaId: string,
+  blob: Blob, fileName: string, consultorId: string, visitaId: string,
 ): Promise<string> {
   const path = `visitas-consultor/${consultorId}/${visitaId}/${fileName}`;
   const { error } = await supabase.storage

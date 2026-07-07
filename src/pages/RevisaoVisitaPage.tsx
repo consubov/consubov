@@ -48,6 +48,9 @@ interface Visita {
   observacoes_gerais: string | null; conclusao: string | null;
   fazenda_consultor_id: string; consultor_id: string;
   pdf_url: string | null;
+  objetivo_visita: string | null;
+  resumo_executivo: string | null;
+  indicadores_gerais: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
@@ -65,6 +68,9 @@ export default function RevisaoVisitaPage() {
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
+  const [objetivo, setObjetivo] = useState("");
+  const [resumo, setResumo] = useState("");
+  const [indicadores, setIndicadores] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -86,6 +92,9 @@ export default function RevisaoVisitaPage() {
     setVisita(v as any);
     setObsGerais(v.observacoes_gerais || "");
     setConclusao(v.conclusao || "");
+    setObjetivo((v as any).objetivo_visita || "");
+    setResumo((v as any).resumo_executivo || "");
+    setIndicadores((v as any).indicadores_gerais || "");
 
     const [{ data: fz }, { data: cs }, { data: ps }] = await Promise.all([
       supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
@@ -125,7 +134,14 @@ export default function RevisaoVisitaPage() {
     setLoading(false);
   }
 
+  async function notifyEdit() {
+    if (!visita || visita.status !== "finalizada") return;
+    await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visita.id);
+    setVisita(prev => prev ? { ...prev, pdf_url: null, status: "revisao" } : prev);
+  }
+
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
+    await notifyEdit();
     const dbPatch: any = {};
     ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
@@ -140,6 +156,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function addSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
+    await notifyEdit();
     const { data, error } = await supabase.from("avaliacoes_score")
       .insert({ visita_pasto_id: pastoId, tipo, nota }).select("id").single();
     if (error) { toast.error("Erro ao adicionar amostra"); return; }
@@ -149,6 +166,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function removeSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", index: number) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     const s = p.samples[tipo][index]; if (!s?.id) return;
     await supabase.from("avaliacoes_score").delete().eq("id", s.id);
@@ -158,11 +176,13 @@ export default function RevisaoVisitaPage() {
   }
 
   async function autosaveVisita(patch: Partial<Visita>) {
+    await notifyEdit();
     const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId!);
     if (error) toast.error("Erro ao salvar: " + error.message);
   }
 
   async function addFoto(pastoId: string, file: File) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     if (p.fotos.length >= 5) { toast.error("Máx. 5 fotos"); return; }
     const usadas = new Set(p.fotos.map(f => f.ordem));
@@ -187,6 +207,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function delFoto(pastoId: string, f: Foto) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     await supabase.storage.from(BUCKET).remove([f.url]);
     await supabase.from("visita_fotos").delete().eq("id", f.id);
@@ -194,6 +215,7 @@ export default function RevisaoVisitaPage() {
   }
 
   async function moveFoto(pastoId: string, index: number, dir: -1 | 1) {
+    await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     const arr = [...p.fotos];
     const j = index + dir;
@@ -221,7 +243,12 @@ export default function RevisaoVisitaPage() {
     const t = toast.loading("Gerando PDF...");
     try {
       // Salva últimas edições antes
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao });
+      await supabase.from("visitas_tecnicas").update({
+        observacoes_gerais: obsGerais, conclusao,
+        objetivo_visita: objetivo || null,
+        resumo_executivo: resumo || null,
+        indicadores_gerais: indicadores || null,
+      }).eq("id", visita.id);
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
@@ -236,6 +263,9 @@ export default function RevisaoVisitaPage() {
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        objetivo_visita: objetivo,
+        resumo_executivo: resumo,
+        indicadores_gerais: indicadores,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -259,7 +289,7 @@ export default function RevisaoVisitaPage() {
 
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
-      await load();
+      navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
@@ -286,10 +316,10 @@ export default function RevisaoVisitaPage() {
   if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
 
-  const readOnly = visita.status === "finalizada";
+  const readOnly = false;
 
   return (
-    <div className="space-y-4 pb-24" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
         <ArrowLeft className="w-4 h-4" /> Voltar
       </Button>
@@ -415,6 +445,29 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
+      {/* Blocos introdutórios (opcionais) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
+          Introdução do Relatório (opcional)
+        </div>
+        {[
+          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
+          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
+          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
+        ].map(f => (
+          <div key={f.key}>
+            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
+            <Textarea
+              value={f.val}
+              onChange={e => f.set(e.target.value)}
+              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
+              rows={2}
+              className="mt-1 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+
       {/* Observações gerais & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
@@ -424,7 +477,6 @@ export default function RevisaoVisitaPage() {
             onChange={e => setObsGerais(e.target.value)}
             onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
             rows={3}
-            disabled={readOnly}
             className="mt-1"
           />
         </div>
@@ -435,16 +487,15 @@ export default function RevisaoVisitaPage() {
             onChange={e => setConclusao(e.target.value)}
             onBlur={() => autosaveVisita({ conclusao })}
             rows={3}
-            disabled={readOnly}
             className="mt-1"
           />
         </div>
       </div>
 
-      {/* Botão fixo por status */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t z-10">
+      {/* Botão fixo por status — acima da nav */}
+      <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
         <div className="max-w-md mx-auto flex gap-2">
-          {visita.status === "rascunho" && (
+          {(visita.status === "rascunho") && (
             <Button
               onClick={confirmarRevisao}
               disabled={confirmando}
@@ -455,24 +506,19 @@ export default function RevisaoVisitaPage() {
               Confirmar Revisão
             </Button>
           )}
-          {visita.status === "revisao" && (
+          {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
               disabled={gerandoPdf}
-              className="w-full gap-2"
+              className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Gerar PDF
+              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
             <>
-              <Button asChild variant="outline" className="flex-1 gap-1.5">
-                <a href={visita.pdf_url} target="_blank" rel="noreferrer">
-                  <FileText className="w-4 h-4" /> Ver
-                </a>
-              </Button>
               <Button asChild variant="outline" className="flex-1 gap-1.5">
                 <a href={visita.pdf_url} download>
                   <Download className="w-4 h-4" /> Baixar
