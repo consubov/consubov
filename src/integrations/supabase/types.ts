@@ -3473,6 +3473,7 @@ export type Database = {
         Returns: undefined
       }
       sync_capataz_lancamento: { Args: { p_lancamento: Json }; Returns: Json }
+      verificar_salgas_atrasadas: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
