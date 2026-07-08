@@ -344,19 +344,10 @@ export function useGerenteData(filters?: GerenteFilters) {
       });
   }, [retirosComDados]);
 
-  // Push para alertas de salga atrasada — uma vez por retiro por sessão
-  const pushedAtrasoRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    alertasAtraso.forEach(a => {
-      if (pushedAtrasoRef.current.has(a.retiroNome)) return;
-      pushedAtrasoRef.current.add(a.retiroNome);
-      void sendPushToAll(
-        "⚠️ Salga não registrada",
-        `${a.retiroNome} — ${a.capataz}`,
-        "/gerente",
-      );
-    });
-  }, [alertasAtraso]);
+  // Push de salga atrasada é disparado pelo cron server-side
+  // (public.verificar_salgas_atrasadas), escopado à fazenda do gerente.
+  // Removido o envio client-side para evitar duplicação e evitar
+  // enviar alerta a gerentes de outras fazendas.
 
   // Resolve observacao
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
