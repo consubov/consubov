@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { calculateRetiroMetrics } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { sendPushToAll } from "@/lib/pushService";
+// Push de salga atrasada agora é disparado pelo cron server-side
+// (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
 // ---------- Types ----------
 interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
