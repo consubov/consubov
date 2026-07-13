@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, Landmark, History } from "lucide-react";
+import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
@@ -55,7 +55,7 @@ export default function ConsultorLayout() {
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
-        <div className="max-w-5xl mx-auto grid grid-cols-2">
+        <div className="max-w-5xl mx-auto grid grid-cols-4">
           <NavLink
             to="/consultor"
             end
@@ -67,6 +67,28 @@ export default function ConsultorLayout() {
             }
           >
             <Landmark className="w-5 h-5" /> Fazendas
+          </NavLink>
+          <NavLink
+            to="/consultor/painel"
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
+                isActive ? "text-primary" : "text-muted-foreground",
+              )
+            }
+          >
+            <BarChart3 className="w-5 h-5" /> Painel
+          </NavLink>
+          <NavLink
+            to="/consultor/despesas"
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
+                isActive ? "text-primary" : "text-muted-foreground",
+              )
+            }
+          >
+            <Receipt className="w-5 h-5" /> Despesas
           </NavLink>
           <NavLink
             to="/consultor/historico"

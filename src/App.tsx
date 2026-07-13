@@ -50,6 +50,8 @@ import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
 import VisitaTecnicaPage from "./pages/VisitaTecnicaPage";
 import RevisaoVisitaPage from "./pages/RevisaoVisitaPage";
 import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
+import ConsultorPainelPage from "./pages/ConsultorPainelPage";
+import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -254,6 +256,8 @@ const App = () => (
                 <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
                 <Route path="visitas/:visitaId/revisao" element={<RevisaoVisitaPage />} />
                 <Route path="historico" element={<ConsultorHistoricoPage />} />
+                <Route path="painel" element={<ConsultorPainelPage />} />
+                <Route path="despesas" element={<ConsultorDespesasPage />} />
               </Route>
 
 
