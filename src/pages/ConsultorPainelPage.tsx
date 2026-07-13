@@ -54,8 +54,8 @@ export default function ConsultorPainelPage() {
       const consultorId = cons?.id;
       if (!consultorId) { setLoading(false); return; }
 
-      const { data: vinc } = await supabase.from("fazendas_consultor").select("fazenda_id, fazendas(id,nome)").eq("consultor_id", consultorId);
-      const listaFaz = (vinc ?? []).map((v: any) => v.fazendas).filter(Boolean);
+      const { data: vinc } = await supabase.from("fazendas_consultor").select("id, nome_fazenda").eq("consultor_id", consultorId);
+      const listaFaz = vinc ?? [];
       setFazendas(listaFaz);
 
       const iniISO = format(dataInicio, "yyyy-MM-dd");
@@ -63,10 +63,10 @@ export default function ConsultorPainelPage() {
 
       const { data: vs } = await supabase
         .from("visitas_tecnicas")
-        .select("id, fazenda_id, data_visita, status, tipo")
+        .select("id, fazenda_consultor_id, hora_inicio, status, tipo")
         .eq("consultor_id", consultorId)
-        .gte("data_visita", iniISO)
-        .lte("data_visita", fimISO + "T23:59:59");
+        .gte("hora_inicio", iniISO)
+        .lte("hora_inicio", fimISO + "T23:59:59");
       setVisitas(vs ?? []);
 
       // Scores medios
