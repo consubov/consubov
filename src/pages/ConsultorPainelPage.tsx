@@ -102,7 +102,7 @@ export default function ConsultorPainelPage() {
         const { data: sc } = await supabase.from("avaliacoes_score").select("nota").in("visita_pasto_id", ids);
         const arr = (sc ?? []).map((x: any) => Number(x.nota)).filter((n) => n > 0);
         if (arr.length) evo.push({
-          data: format(new Date(v.data_visita), "dd/MM"),
+          data: format(new Date(v.hora_inicio), "dd/MM"),
           score: arr.reduce((a, b) => a + b, 0) / arr.length,
         });
       }
@@ -120,17 +120,17 @@ export default function ConsultorPainelPage() {
 
   const visitasSemana = useMemo(() =>
     visitas.filter((v) => {
-      const d = new Date(v.data_visita);
+      const d = new Date(v.hora_inicio);
       return d >= semanaIni && d <= semanaFim;
     }).length, [visitas, semanaIni, semanaFim]);
 
   const visitasMes = useMemo(() =>
     visitas.filter((v) => {
-      const d = new Date(v.data_visita);
+      const d = new Date(v.hora_inicio);
       return d >= mesIni && d <= mesFim;
     }).length, [visitas, mesIni, mesFim]);
 
-  const fazendasVisitadas = useMemo(() => new Set(visitas.map((v) => v.fazenda_id)), [visitas]);
+  const fazendasVisitadas = useMemo(() => new Set(visitas.map((v) => v.fazenda_consultor_id)), [visitas]);
   const semVisita = Math.max(0, fazendas.length - fazendasVisitadas.size);
 
   const donutFazendas = [
