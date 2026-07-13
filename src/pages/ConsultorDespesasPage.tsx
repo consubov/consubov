@@ -158,6 +158,24 @@ export default function ConsultorDespesasPage() {
     await loadDespesas(consultorId);
   }
 
+  async function handleDeleteRelatorio() {
+    if (!toDeleteRel || !consultorId) return;
+    try {
+      const path = extractRelatorioPath(toDeleteRel.pdf_url);
+      if (path) {
+        await supabase.storage.from("relatorios").remove([path]);
+      }
+      const { error } = await supabase.from("relatorios_despesas").delete().eq("id", toDeleteRel.id);
+      if (error) throw error;
+      toast.success("Relatório excluído");
+      setToDeleteRel(null);
+      await loadRelatorios(consultorId);
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao excluir relatório");
+    }
+  }
+
+
   function autoRange(t: TipoPeriodo) {
     const now = new Date();
     if (t === "semanal") return { ini: format(subDays(now, 7), "yyyy-MM-dd"), fim: format(now, "yyyy-MM-dd") };
