@@ -344,11 +344,16 @@ export default function ConsultorDespesasPage() {
                   </div>
                   <div className="text-sm font-bold text-primary">{Number(r.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                 </div>
-                {r.pdf_url && (
-                  <Button size="sm" variant="outline" onClick={() => window.open(r.pdf_url!, "_blank")}>
-                    <Download className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  {r.pdf_url && (
+                    <Button size="sm" variant="outline" onClick={() => window.open(r.pdf_url!, "_blank")}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => setToDeleteRel(r)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                )}
+                </div>
               </Card>
             ))}
           </div>
