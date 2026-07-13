@@ -69,6 +69,7 @@ export default function ConsultorDespesasPage() {
 
   // Delete
   const [toDelete, setToDelete] = useState<Despesa | null>(null);
+  const [toDeleteRel, setToDeleteRel] = useState<Relatorio | null>(null);
 
   useEffect(() => { if (user) void init(); }, [user]);
 
