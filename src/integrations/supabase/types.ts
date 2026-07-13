@@ -830,6 +830,51 @@ export type Database = {
         }
         Relationships: []
       }
+      despesas_combustivel: {
+        Row: {
+          consultor_id: string
+          created_at: string
+          data_despesa: string
+          foto_cupom_url: string
+          id: string
+          relatorio_despesa_id: string | null
+          valor: number
+        }
+        Insert: {
+          consultor_id: string
+          created_at?: string
+          data_despesa?: string
+          foto_cupom_url: string
+          id?: string
+          relatorio_despesa_id?: string | null
+          valor?: number
+        }
+        Update: {
+          consultor_id?: string
+          created_at?: string
+          data_despesa?: string
+          foto_cupom_url?: string
+          id?: string
+          relatorio_despesa_id?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despesas_combustivel_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "consultores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "despesas_combustivel_relatorio_despesa_id_fkey"
+            columns: ["relatorio_despesa_id"]
+            isOneToOne: false
+            referencedRelation: "relatorios_despesas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       elementos_mapa: {
         Row: {
           criado_em: string | null
@@ -2415,6 +2460,47 @@ export type Database = {
             columns: ["transferencia_id"]
             isOneToOne: false
             referencedRelation: "transferencias_fabrica"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relatorios_despesas: {
+        Row: {
+          consultor_id: string
+          data_fim: string
+          data_inicio: string
+          gerado_em: string
+          id: string
+          pdf_url: string | null
+          tipo_periodo: string
+          valor_total: number
+        }
+        Insert: {
+          consultor_id: string
+          data_fim: string
+          data_inicio: string
+          gerado_em?: string
+          id?: string
+          pdf_url?: string | null
+          tipo_periodo: string
+          valor_total?: number
+        }
+        Update: {
+          consultor_id?: string
+          data_fim?: string
+          data_inicio?: string
+          gerado_em?: string
+          id?: string
+          pdf_url?: string | null
+          tipo_periodo?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relatorios_despesas_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "consultores"
             referencedColumns: ["id"]
           },
         ]
