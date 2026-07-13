@@ -36,6 +36,13 @@ interface Relatorio {
 }
 
 type TipoPeriodo = "semanal" | "quinzenal" | "mensal" | "personalizado";
+
+function extractRelatorioPath(url: string | null): string | null {
+  if (!url) return null;
+  const marker = "/relatorios/";
+  const idx = url.indexOf(marker);
+  return idx >= 0 ? url.slice(idx + marker.length).split("?")[0] : null;
+}
 const WEEK_COLORS = ["#1F7A4D", "#C9A84C", "#B91C1C", "#0EA5E9", "#7C3AED", "#F97316"];
 
 export default function ConsultorDespesasPage() {
@@ -62,6 +69,7 @@ export default function ConsultorDespesasPage() {
 
   // Delete
   const [toDelete, setToDelete] = useState<Despesa | null>(null);
+  const [toDeleteRel, setToDeleteRel] = useState<Relatorio | null>(null);
 
   useEffect(() => { if (user) void init(); }, [user]);
 
@@ -149,6 +157,24 @@ export default function ConsultorDespesasPage() {
     setToDelete(null);
     await loadDespesas(consultorId);
   }
+
+  async function handleDeleteRelatorio() {
+    if (!toDeleteRel || !consultorId) return;
+    try {
+      const path = extractRelatorioPath(toDeleteRel.pdf_url);
+      if (path) {
+        await supabase.storage.from("relatorios").remove([path]);
+      }
+      const { error } = await supabase.from("relatorios_despesas").delete().eq("id", toDeleteRel.id);
+      if (error) throw error;
+      toast.success("Relatório excluído");
+      setToDeleteRel(null);
+      await loadRelatorios(consultorId);
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao excluir relatório");
+    }
+  }
+
 
   function autoRange(t: TipoPeriodo) {
     const now = new Date();
@@ -336,11 +362,16 @@ export default function ConsultorDespesasPage() {
                   </div>
                   <div className="text-sm font-bold text-primary">{Number(r.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                 </div>
-                {r.pdf_url && (
-                  <Button size="sm" variant="outline" onClick={() => window.open(r.pdf_url!, "_blank")}>
-                    <Download className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  {r.pdf_url && (
+                    <Button size="sm" variant="outline" onClick={() => window.open(r.pdf_url!, "_blank")}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => setToDeleteRel(r)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                )}
+                </div>
               </Card>
             ))}
           </div>
@@ -410,6 +441,21 @@ export default function ConsultorDespesasPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!toDeleteRel} onOpenChange={(o) => !o && setToDeleteRel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir relatório?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Essa ação não pode ser desfeita. Os cupons vinculados continuarão marcados como já reportados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRelatorio}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
