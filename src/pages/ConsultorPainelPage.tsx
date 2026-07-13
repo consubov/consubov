@@ -95,7 +95,7 @@ export default function ConsultorPainelPage() {
 
       // Evolução: pontos por visita ordenados
       const evo: { data: string; score: number }[] = [];
-      for (const v of (vs ?? []).sort((a: any, b: any) => new Date(a.data_visita).getTime() - new Date(b.data_visita).getTime())) {
+      for (const v of (vs ?? []).sort((a: any, b: any) => new Date(a.hora_inicio).getTime() - new Date(b.hora_inicio).getTime())) {
         const { data: p } = await supabase.from("visita_pastos").select("id").eq("visita_id", v.id);
         const ids = (p ?? []).map((x: any) => x.id);
         if (!ids.length) continue;
