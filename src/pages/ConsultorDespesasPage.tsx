@@ -36,6 +36,13 @@ interface Relatorio {
 }
 
 type TipoPeriodo = "semanal" | "quinzenal" | "mensal" | "personalizado";
+
+function extractRelatorioPath(url: string | null): string | null {
+  if (!url) return null;
+  const marker = "/relatorios/";
+  const idx = url.indexOf(marker);
+  return idx >= 0 ? url.slice(idx + marker.length).split("?")[0] : null;
+}
 const WEEK_COLORS = ["#1F7A4D", "#C9A84C", "#B91C1C", "#0EA5E9", "#7C3AED", "#F97316"];
 
 export default function ConsultorDespesasPage() {
