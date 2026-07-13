@@ -256,6 +256,8 @@ const App = () => (
                 <Route path="visitas/:visitaId" element={<VisitaTecnicaPage />} />
                 <Route path="visitas/:visitaId/revisao" element={<RevisaoVisitaPage />} />
                 <Route path="historico" element={<ConsultorHistoricoPage />} />
+                <Route path="painel" element={<ConsultorPainelPage />} />
+                <Route path="despesas" element={<ConsultorDespesasPage />} />
               </Route>
 
 
