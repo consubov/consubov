@@ -156,13 +156,10 @@ export default function ExportarRelatorioModal({
         // garantir que ambos operem sobre o mesmo conjunto de lançamentos.
         const rLanc = lancamentos.filter(l => l.retiro_id === ret.id && rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-        // Total Animais = soma de MAX(num_animais) por pasto entre os
-        // lançamentos do mês/ano — mesma regra do Painel do Retiro.
-        const totalAnimais = pastosNoPeriodo.reduce((sum, p) => {
-          const pLancs = rLanc.filter(l => l.pasto_id === p.id);
-          const maxA = pLancs.length ? Math.max(...pLancs.map(l => Number(l.num_animais) || 0)) : 0;
-          return sum + maxA;
-        }, 0);
+        // Total Animais = rebanho REAL do retiro (fonte única = pastos.num_animais
+        // ativos), mesma contagem que aparece no mapa do Capataz. Não filtra por
+        // mês nem deriva de lançamentos de consumo.
+        const totalAnimais = rPastos.reduce((sum, p) => sum + (Number(p.num_animais) || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
