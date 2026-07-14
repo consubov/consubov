@@ -163,7 +163,12 @@ export default function ExportarRelatorioModal({
         const rPastoIds = new Set(rPastos.map(p => p.id));
         const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-        const totalAnimais = pastosNoPeriodo.reduce((s, p) => s + (p.num_animais || 0), 0);
+        const rpcRow = rpcByRetiro.get(ret.id);
+        // Total Animais alinhado à mesma fonte usada no Total Animais da fazenda
+        // (RPC get_consumo_mineral). Fallback: soma dos pastos ativos do retiro.
+        const totalAnimais = rpcRow
+          ? rpcRow.total_animais
+          : rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
