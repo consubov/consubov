@@ -196,18 +196,8 @@ export default function ExportarRelatorioModal({
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
           const pSacos = pLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-          // Weighted average consumption by num_animais
-          let pWeightedSum = 0;
-          let pTotalAnimais = 0;
-          pLanc.forEach(l => {
-            const consumo = Number(l.consumo_g_cab_dia ?? 0);
-            const animais = Number(l.num_animais ?? 0);
-            if (consumo > 0 && animais > 0) {
-              pWeightedSum += consumo * animais;
-              pTotalAnimais += animais;
-            }
-          });
-          const pConsumo = pTotalAnimais > 0 ? pWeightedSum / pTotalAnimais : 0;
+          // Consumo por pasto: mesma fórmula canônica (weighted por num_animais).
+          const pConsumo = computeConsumoMedioPonderado(pLanc);
 
           // Reclassifica pelo indice_consumo do último lançamento usando formulas_sistema
           const sortedPLanc = [...pLanc].sort((a, b) =>
