@@ -298,10 +298,12 @@ export default function AdminRetiroPainelPage() {
               }
               consumoGCabDia = totalAnimaisConsumo > 0 ? consumoGCabDia / totalAnimaisConsumo : 0;
 
-              // Status from latest lancamento (pre-calculated by DB trigger)
+              // Reclassifica pelo indice_consumo usando a fórmula da tabela formulas_sistema.
               const latestConsumo = consumoList.length > 0 ? consumoList[consumoList.length - 1] : null;
-              const statusConsumo = latestConsumo?.status_consumo;
               const indiceConsumo = latestConsumo?.indice_consumo;
+              const statusConsumo = indiceConsumo != null && Number(indiceConsumo) > 0
+                ? formulas.classificacao.classify(Number(indiceConsumo))
+                : latestConsumo?.status_consumo ?? null;
 
               return (
                 <Card key={p.id}>
