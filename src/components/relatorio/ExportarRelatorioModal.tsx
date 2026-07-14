@@ -169,18 +169,9 @@ export default function ExportarRelatorioModal({
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
 
-        // Weighted average consumption by num_animais
-        let weightedSum = 0;
-        let totalAnimaisConsumo = 0;
-        rLanc.forEach(l => {
-          const consumo = Number(l.consumo_g_cab_dia ?? 0);
-          const animais = Number(l.num_animais ?? 0);
-          if (consumo > 0 && animais > 0) {
-            weightedSum += consumo * animais;
-            totalAnimaisConsumo += animais;
-          }
-        });
-        const consumoMedio = totalAnimaisConsumo > 0 ? weightedSum / totalAnimaisConsumo : 0;
+        // Consumo Médio: fórmula canônica compartilhada com o Painel do Retiro
+        // (mesma lista rLanc, mesmo filtro por retiro_id + pastos ativos do mês/ano).
+        const consumoMedio = computeConsumoMedioPonderado(rLanc);
 
         const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
