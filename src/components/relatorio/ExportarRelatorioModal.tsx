@@ -269,7 +269,14 @@ export default function ExportarRelatorioModal({
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: rpcRow && rpcRow.avg_indice > 0 ? formulas.eficiencia.compute(rpcRow.avg_indice) : 0,
+          eficiencia: (() => {
+            let effSum = 0, effCount = 0;
+            for (const l of rLanc) {
+              const idx = Number(l.indice_consumo ?? 0);
+              if (idx > 0) { effSum += formulas.eficiencia.compute(idx); effCount++; }
+            }
+            return effCount > 0 ? effSum / effCount : 0;
+          })(),
           custoDiario,
           score: Number(score.toFixed(1)),
           scoreMeta: Number(consumoScore.toFixed(1)),
