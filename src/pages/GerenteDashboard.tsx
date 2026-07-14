@@ -702,8 +702,12 @@ function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
             (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
           );
           const latestLanc = sortedLanc[sortedLanc.length - 1];
-          const statusConsumo = latestLanc?.status_consumo;
           const indiceConsumo = latestLanc?.indice_consumo;
+          // Reclassifica pelo indice_consumo usando a fórmula da tabela formulas_sistema.
+          const statusConsumo = indiceConsumo != null && Number(indiceConsumo) > 0
+            ? formulas.classificacao.classify(Number(indiceConsumo))
+            : latestLanc?.status_consumo ?? null;
+
 
           const statusClassName = statusConsumo === 'Baixo'
             ? 'bg-destructive text-destructive-foreground'
