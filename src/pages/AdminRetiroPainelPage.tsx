@@ -167,7 +167,7 @@ export default function AdminRetiroPainelPage() {
       .map(p => Number(p.gmd_kg_dia));
     const gmdMedio = gmdVals.length ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
-    let wSum = 0, wCount = 0, effSum = 0, effCount = 0, pastosNaMeta = 0;
+    let effSum = 0, effCount = 0, pastosNaMeta = 0;
     let baixo = 0, ideal = 0, alto = 0;
     // Consumo Médio: mesma fonte/filtro do PDF (Seção 6).
     // Achata todos os lançamentos dos pastos ATIVOS do retiro no mês/ano
@@ -177,10 +177,6 @@ export default function AdminRetiroPainelPage() {
       const list = retiroData.pastosConsumo.get(p.id) ?? [];
       for (const c of list) {
         flatLanc.push({ consumo_g_cab_dia: c.consumo_g_cab_dia, num_animais: c.num_animais });
-        if (c.consumo_g_cab_dia > 0 && c.num_animais > 0) {
-          wSum += c.consumo_g_cab_dia * c.num_animais;
-          wCount += c.num_animais;
-        }
         if (c.indice_consumo != null && Number(c.indice_consumo) > 0) {
           effSum += formulas.eficiencia.compute(Number(c.indice_consumo));
           effCount++;
