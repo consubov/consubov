@@ -276,7 +276,7 @@ export default function ExportarRelatorioModal({
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: 0,
+          eficiencia: rpcRow && rpcRow.avg_indice > 0 ? formulas.eficiencia.compute(rpcRow.avg_indice) : 0,
           custoDiario,
           score: Number(score.toFixed(1)),
           scoreMeta: Number(consumoScore.toFixed(1)),
