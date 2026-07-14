@@ -151,13 +151,12 @@ export default function AdminRetiroPainelPage() {
   const metricsPeriodo = useMemo(() => {
     if (!retiroData) return metrics;
     const pastosComLanc = retiroData.pastos.filter(p => (retiroData.pastosConsumo.get(p.id)?.length ?? 0) > 0);
-    const totalPastos = pastosComLanc.length;
-
-    const totalAnimais = pastosComLanc.reduce((s, p) => {
-      const list = retiroData.pastosConsumo.get(p.id) ?? [];
-      const maxAnim = list.length > 0 ? Math.max(...list.map(l => l.num_animais)) : p.num_animais;
-      return s + maxAnim;
-    }, 0);
+    // Denominador de "Pastos na Meta" e "Total Animais" seguem a MESMA regra do
+    // Total Animais da fazenda (RPC get_consumo_mineral) — ou seja, todos os
+    // pastos ativos do retiro. Consumo/Eficiência/GMD continuam restritos aos
+    // pastos com lançamento no período (regra do PDF).
+    const totalPastos = retiroData.pastos.length;
+    const totalAnimais = retiroData.totalAnimais;
 
     const gmdVals = pastosComLanc
       .filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
