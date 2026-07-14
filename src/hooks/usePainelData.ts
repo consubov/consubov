@@ -229,7 +229,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
         id: r.id,
         nome: r.nome,
         capataz: r.capataz,
-        totalAnimais: rpcRow ? Number(rpcRow.total_animais) : rPastos.reduce((s, p) => s + p.num_animais, 0),
+        totalAnimais: rPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
         sacosUtilizados: rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + l.num_sacos, 0),
         consumoMedio: rpcRow ? Number(rpcRow.consumo_medio_g) : 0,
         gmd: rpcRow ? Number(rpcRow.gmd_medio) : 0,
