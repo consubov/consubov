@@ -95,13 +95,22 @@ export default function AdminDashboard() {
             <Brain className="w-5 h-5 mr-2" />
             Inteligência Nutricional
           </Button>
-          <Button
-            onClick={() => navigate("/admin/qrcodes")}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md"
-          >
-            <QrCode className="w-5 h-5 mr-2" />
-            Gerar QR Codes
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => navigate("/admin/qrcodes")}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
+            >
+              <QrCode className="w-5 h-5 mr-2" />
+              Gerar QR Codes
+            </Button>
+            <Button
+              onClick={() => navigate("/admin/formulas-sistema")}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
+            >
+              <FunctionSquare className="w-5 h-5 mr-2" />
+              Fórmulas do Sistema
+            </Button>
+          </div>
         </div>
       </div>
 
