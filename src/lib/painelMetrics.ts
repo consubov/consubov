@@ -40,6 +40,33 @@ export interface PainelLancamentoSource {
   ano_referencia?: number | null;
 }
 
+/**
+ * Weighted average consumption (g/cab/dia) over a list of lançamentos,
+ * ponderada pelo número de animais de cada lançamento.
+ *
+ * Fórmula única e canônica usada por Painel do Retiro e PDF do Relatório
+ * de Consumo (Seção 6). Ambos DEVEM chamar esta função para evitar drift.
+ *
+ *   consumoMedio = Σ(consumo_g_cab_dia * num_animais) / Σ(num_animais)
+ *
+ * Ignora lançamentos com consumo ou animais <= 0/null.
+ */
+export function computeConsumoMedioPonderado(
+  lancamentos: Array<{ consumo_g_cab_dia: number | null; num_animais: number | null }>,
+): number {
+  let wSum = 0;
+  let wCount = 0;
+  for (const l of lancamentos) {
+    const consumo = Number(l.consumo_g_cab_dia ?? 0);
+    const animais = Number(l.num_animais ?? 0);
+    if (consumo > 0 && animais > 0) {
+      wSum += consumo * animais;
+      wCount += animais;
+    }
+  }
+  return wCount > 0 ? wSum / wCount : 0;
+}
+
 export interface PainelMetricsAggregate {
   totalAnimais: number;
   sacosUtilizados: number;
