@@ -88,20 +88,10 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
-      // Busca métricas oficiais (RPC) para alinhar Total Animais / Eficiência
-      // ao Painel/fazenda. Só disponível para período mensal.
-      const rpcByRetiro = new Map<string, { total_animais: number; avg_indice: number }>();
-      if (periodoSelecionado === "mensal") {
-        const { data: rpcData } = await supabase.rpc("get_consumo_mineral", {
-          p_fazenda_id: fazendaId, p_mes: mes, p_ano: ano,
-        });
-        for (const row of (rpcData ?? []) as any[]) {
-          rpcByRetiro.set(row.retiro_id, {
-            total_animais: Number(row.total_animais) || 0,
-            avg_indice: Number(row.eficiencia) > 0 ? Number(row.eficiencia) / 100 : 0,
-          });
-        }
-      }
+      // Total Animais, Consumo Médio e Eficiência do retiro passam a ser
+      // derivados diretamente dos lançamentos do mês/ano (mesma fonte do Painel),
+      // garantindo consistência entre painel e PDF. RPC não é mais usada aqui.
+
 
       const { data: pastosData } = await supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
@@ -161,14 +151,17 @@ export default function ExportarRelatorioModal({
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
         const rPastos = pastos.filter(p => p.retiro_id === ret.id);
         const rPastoIds = new Set(rPastos.map(p => p.id));
-        const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+        // Filtro por retiro_id da view (mesma regra do Painel do Retiro), para
+        // garantir que ambos operem sobre o mesmo conjunto de lançamentos.
+        const rLanc = lancamentos.filter(l => l.retiro_id === ret.id && rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-        const rpcRow = rpcByRetiro.get(ret.id);
-        // Total Animais alinhado à mesma fonte usada no Total Animais da fazenda
-        // (RPC get_consumo_mineral). Fallback: soma dos pastos ativos do retiro.
-        const totalAnimais = rpcRow
-          ? rpcRow.total_animais
-          : rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+        // Total Animais = soma de MAX(num_animais) por pasto entre os
+        // lançamentos do mês/ano — mesma regra do Painel do Retiro.
+        const totalAnimais = pastosNoPeriodo.reduce((sum, p) => {
+          const pLancs = rLanc.filter(l => l.pasto_id === p.id);
+          const maxA = pLancs.length ? Math.max(...pLancs.map(l => Number(l.num_animais) || 0)) : 0;
+          return sum + maxA;
+        }, 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
@@ -276,7 +269,14 @@ export default function ExportarRelatorioModal({
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: rpcRow && rpcRow.avg_indice > 0 ? formulas.eficiencia.compute(rpcRow.avg_indice) : 0,
+          eficiencia: (() => {
+            let effSum = 0, effCount = 0;
+            for (const l of rLanc) {
+              const idx = Number(l.indice_consumo ?? 0);
+              if (idx > 0) { effSum += formulas.eficiencia.compute(idx); effCount++; }
+            }
+            return effCount > 0 ? effSum / effCount : 0;
+          })(),
           custoDiario,
           score: Number(score.toFixed(1)),
           scoreMeta: Number(consumoScore.toFixed(1)),
