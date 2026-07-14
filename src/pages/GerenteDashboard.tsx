@@ -655,6 +655,7 @@ export default function GerenteDashboard() {
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   const navRetiro = useNavigate();
+  const formulas = useFormulasSistema();
   return (
     <>
       <SheetHeader className="mb-4">
