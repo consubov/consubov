@@ -88,6 +88,21 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
+      // Busca métricas oficiais (RPC) para alinhar Total Animais / Eficiência
+      // ao Painel/fazenda. Só disponível para período mensal.
+      const rpcByRetiro = new Map<string, { total_animais: number; avg_indice: number }>();
+      if (periodoSelecionado === "mensal") {
+        const { data: rpcData } = await supabase.rpc("get_consumo_mineral", {
+          p_fazenda_id: fazendaId, p_mes: mes, p_ano: ano,
+        });
+        for (const row of (rpcData ?? []) as any[]) {
+          rpcByRetiro.set(row.retiro_id, {
+            total_animais: Number(row.total_animais) || 0,
+            avg_indice: Number(row.eficiencia) > 0 ? Number(row.eficiencia) / 100 : 0,
+          });
+        }
+      }
+
       const { data: pastosData } = await supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
         .in("retiro_id", retiroIds).eq("ativo", true);
