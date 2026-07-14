@@ -79,8 +79,10 @@ const emptyMetrics: PainelMetrics = {
   statusDist: { baixo: 0, ideal: 0, alto: 0, baixoPct: 0, idealPct: 0, altoPct: 0 },
 };
 
-export function usePainelData(filters: PainelFilters) {
+export function usePainelData(filters: PainelFilters, options?: { useFormulasSistema?: boolean }) {
   const { fazendaId, retiroId, mes, ano } = filters;
+  const formulas = useFormulasSistema();
+  const applyFormulas = options?.useFormulasSistema === true;
   const [fazendaNome, setFazendaNome] = useState("");
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
