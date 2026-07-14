@@ -240,6 +240,7 @@ const App = () => (
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
                 <Route path="consultores" element={<ConsultoresPage />} />
+                <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
