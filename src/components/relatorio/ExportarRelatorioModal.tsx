@@ -88,6 +88,21 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
+      // Busca métricas oficiais (RPC) para alinhar Total Animais / Eficiência
+      // ao Painel/fazenda. Só disponível para período mensal.
+      const rpcByRetiro = new Map<string, { total_animais: number; avg_indice: number }>();
+      if (periodoSelecionado === "mensal") {
+        const { data: rpcData } = await supabase.rpc("get_consumo_mineral", {
+          p_fazenda_id: fazendaId, p_mes: mes, p_ano: ano,
+        });
+        for (const row of (rpcData ?? []) as any[]) {
+          rpcByRetiro.set(row.retiro_id, {
+            total_animais: Number(row.total_animais) || 0,
+            avg_indice: Number(row.eficiencia) > 0 ? Number(row.eficiencia) / 100 : 0,
+          });
+        }
+      }
+
       const { data: pastosData } = await supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
         .in("retiro_id", retiroIds).eq("ativo", true);
@@ -148,7 +163,12 @@ export default function ExportarRelatorioModal({
         const rPastoIds = new Set(rPastos.map(p => p.id));
         const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-        const totalAnimais = pastosNoPeriodo.reduce((s, p) => s + (p.num_animais || 0), 0);
+        const rpcRow = rpcByRetiro.get(ret.id);
+        // Total Animais alinhado à mesma fonte usada no Total Animais da fazenda
+        // (RPC get_consumo_mineral). Fallback: soma dos pastos ativos do retiro.
+        const totalAnimais = rpcRow
+          ? rpcRow.total_animais
+          : rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
@@ -256,7 +276,7 @@ export default function ExportarRelatorioModal({
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: 0,
+          eficiencia: rpcRow && rpcRow.avg_indice > 0 ? formulas.eficiencia.compute(rpcRow.avg_indice) : 0,
           custoDiario,
           score: Number(score.toFixed(1)),
           scoreMeta: Number(consumoScore.toFixed(1)),
