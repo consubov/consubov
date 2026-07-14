@@ -140,6 +140,7 @@ export default function AdminRetiroPainelPage() {
   }), [activeFazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
+  const formulas = useFormulasSistema();
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
