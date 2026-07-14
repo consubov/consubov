@@ -146,6 +146,66 @@ export default function AdminRetiroPainelPage() {
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
 
+  // Restringe métricas do painel apenas aos pastos com lançamento no mês/ano
+  // selecionado — mesma regra usada no PDF do Relatório de Consumo.
+  const metricsPeriodo = useMemo(() => {
+    if (!retiroData) return metrics;
+    const pastosComLanc = retiroData.pastos.filter(p => (retiroData.pastosConsumo.get(p.id)?.length ?? 0) > 0);
+    const totalPastos = pastosComLanc.length;
+
+    const totalAnimais = pastosComLanc.reduce((s, p) => {
+      const list = retiroData.pastosConsumo.get(p.id) ?? [];
+      const maxAnim = list.length > 0 ? Math.max(...list.map(l => l.num_animais)) : p.num_animais;
+      return s + maxAnim;
+    }, 0);
+
+    const gmdVals = pastosComLanc
+      .filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
+      .map(p => Number(p.gmd_kg_dia));
+    const gmdMedio = gmdVals.length ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
+
+    let wSum = 0, wCount = 0, effSum = 0, effCount = 0, pastosNaMeta = 0;
+    let baixo = 0, ideal = 0, alto = 0;
+    for (const p of pastosComLanc) {
+      const list = retiroData.pastosConsumo.get(p.id) ?? [];
+      for (const c of list) {
+        if (c.consumo_g_cab_dia > 0 && c.num_animais > 0) {
+          wSum += c.consumo_g_cab_dia * c.num_animais;
+          wCount += c.num_animais;
+        }
+        if (c.indice_consumo != null && Number(c.indice_consumo) > 0) {
+          effSum += formulas.eficiencia.compute(Number(c.indice_consumo));
+          effCount++;
+        }
+      }
+      const latest = list[list.length - 1];
+      const idx = latest?.indice_consumo;
+      const status = idx != null && Number(idx) > 0
+        ? formulas.classificacao.classify(Number(idx))
+        : latest?.status_consumo ?? null;
+      if (status === "Ideal") { pastosNaMeta++; ideal++; }
+      else if (status === "Baixo") baixo++;
+      else if (status === "Alto") alto++;
+    }
+    const totalStatus = baixo + ideal + alto;
+
+    return {
+      ...metrics,
+      totalAnimais,
+      totalPastos,
+      pastosNaMeta,
+      consumoMedio: wCount > 0 ? wSum / wCount : 0,
+      eficiencia: effCount > 0 ? effSum / effCount : 0,
+      gmdMedio,
+      statusDist: {
+        baixo, ideal, alto,
+        baixoPct: totalStatus > 0 ? (baixo / totalStatus) * 100 : 0,
+        idealPct: totalStatus > 0 ? (ideal / totalStatus) * 100 : 0,
+        altoPct: totalStatus > 0 ? (alto / totalStatus) * 100 : 0,
+      },
+    };
+  }, [retiroData, metrics, formulas]);
+
   const handleBack = () => {
     if (isGerente) {
       navigate("/gerente");
