@@ -43,7 +43,7 @@ export interface ConsumoMineralAggregate {
 /** Aggregate an array of per-retiro results into fazenda-level metrics */
 export function aggregateConsumoMineral(
   rows: ConsumoMineralRetiro[],
-  formulas: FormulaConfig = FORMULAS_FALLBACK,
+  formulas?: FormulaConfig,
 ): ConsumoMineralAggregate {
   let totalAnimais = 0, sacosUtilizados = 0, totalKg = 0, totalCabDias = 0;
   let totalCusto = 0, pastosNaMeta = 0, totalPastos = 0, totalSalgas = 0;
@@ -64,11 +64,17 @@ export function aggregateConsumoMineral(
     statusBaixo += Number(r.status_baixo) || 0;
     statusIdeal += Number(r.status_ideal) || 0;
     statusAlto += Number(r.status_alto) || 0;
-    // r.eficiencia é retornado pelo RPC como (avg_indice * 100).
-    // Reconstruímos o indice médio do retiro para reaplicar a fórmula da tabela formulas_sistema.
-    const indiceMedioRetiro = (Number(r.eficiencia) || 0) / 100;
-    if (indiceMedioRetiro > 0) {
-      eficienciaSum += formulas.eficiencia.compute(indiceMedioRetiro);
+    const efRaw = Number(r.eficiencia) || 0;
+    if (formulas) {
+      // r.eficiencia é retornado pelo RPC como (avg_indice * 100). Reconstruímos
+      // o índice médio do retiro para reaplicar a fórmula da tabela formulas_sistema.
+      const indiceMedioRetiro = efRaw / 100;
+      if (indiceMedioRetiro > 0) {
+        eficienciaSum += formulas.eficiencia.compute(indiceMedioRetiro);
+        eficienciaCount++;
+      }
+    } else if (efRaw > 0) {
+      eficienciaSum += efRaw;
       eficienciaCount++;
     }
     const gmd = Number(r.gmd_medio) || 0;
