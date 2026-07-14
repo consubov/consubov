@@ -302,33 +302,33 @@ export default function AdminRetiroPainelPage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metrics.totalAnimais)} />
-        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metrics.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={Target} label="Pastos na Meta" value={`${metrics.pastosNaMeta}/${metrics.totalPastos}`}
-          sub={metrics.totalPastos > 0 ? `${fmtNum((metrics.pastosNaMeta / metrics.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
-        <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metrics.sacosUtilizados)} />
-        <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metrics.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
-        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metrics.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
-        <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
+        <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metricsPeriodo.totalAnimais)} />
+        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metricsPeriodo.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={Target} label="Pastos na Meta" value={`${metricsPeriodo.pastosNaMeta}/${metricsPeriodo.totalPastos}`}
+          sub={metricsPeriodo.totalPastos > 0 ? `${fmtNum((metricsPeriodo.pastosNaMeta / metricsPeriodo.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metricsPeriodo.sacosUtilizados)} />
+        <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metricsPeriodo.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metricsPeriodo.custoMensal)} />
+        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metricsPeriodo.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+        <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metricsPeriodo.gmdMedio, 3)} sub="kg/dia" />
         <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
 
-      {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
+      {(metricsPeriodo.statusDist.baixo + metricsPeriodo.statusDist.ideal + metricsPeriodo.statusDist.alto) > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-              {metrics.statusDist.baixoPct > 0 && <div className="bg-destructive transition-all" style={{ width: `${metrics.statusDist.baixoPct}%` }} />}
-              {metrics.statusDist.idealPct > 0 && <div className="bg-primary transition-all" style={{ width: `${metrics.statusDist.idealPct}%` }} />}
-              {metrics.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metrics.statusDist.altoPct}%` }} />}
+              {metricsPeriodo.statusDist.baixoPct > 0 && <div className="bg-destructive transition-all" style={{ width: `${metricsPeriodo.statusDist.baixoPct}%` }} />}
+              {metricsPeriodo.statusDist.idealPct > 0 && <div className="bg-primary transition-all" style={{ width: `${metricsPeriodo.statusDist.idealPct}%` }} />}
+              {metricsPeriodo.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metricsPeriodo.statusDist.altoPct}%` }} />}
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-destructive font-medium">Baixo {fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
-              <span className="text-primary font-medium">Ideal {fmtNum(metrics.statusDist.idealPct, 0)}%</span>
-              <span className="text-secondary font-medium">Alto {fmtNum(metrics.statusDist.altoPct, 0)}%</span>
+              <span className="text-destructive font-medium">Baixo {fmtNum(metricsPeriodo.statusDist.baixoPct, 0)}%</span>
+              <span className="text-primary font-medium">Ideal {fmtNum(metricsPeriodo.statusDist.idealPct, 0)}%</span>
+              <span className="text-secondary font-medium">Alto {fmtNum(metricsPeriodo.statusDist.altoPct, 0)}%</span>
             </div>
           </CardContent>
         </Card>
