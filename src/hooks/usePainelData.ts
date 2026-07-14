@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
@@ -78,8 +79,10 @@ const emptyMetrics: PainelMetrics = {
   statusDist: { baixo: 0, ideal: 0, alto: 0, baixoPct: 0, idealPct: 0, altoPct: 0 },
 };
 
-export function usePainelData(filters: PainelFilters) {
+export function usePainelData(filters: PainelFilters, options?: { useFormulasSistema?: boolean }) {
   const { fazendaId, retiroId, mes, ano } = filters;
+  const formulas = useFormulasSistema();
+  const applyFormulas = options?.useFormulasSistema === true;
   const [fazendaNome, setFazendaNome] = useState("");
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
@@ -174,7 +177,7 @@ export function usePainelData(filters: PainelFilters) {
   // ---------- Metrics: from centralized RPC ----------
   const metrics = useMemo<PainelMetrics>(() => {
     if (consumoData.length === 0) return emptyMetrics;
-    const agg = aggregateConsumoMineral(consumoData);
+    const agg = aggregateConsumoMineral(consumoData, applyFormulas ? formulas : undefined);
     return {
       totalAnimais: agg.totalAnimais,
       sacosUtilizados: agg.sacosUtilizados,
@@ -188,7 +191,7 @@ export function usePainelData(filters: PainelFilters) {
       totalSalgas: agg.totalSalgas,
       statusDist: agg.statusDist,
     };
-  }, [consumoData]);
+  }, [consumoData, applyFormulas, formulas]);
 
   // ---------- Retiros resumo (using RPC data + pastos/lancamentos for detail) ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {

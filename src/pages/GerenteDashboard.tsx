@@ -6,6 +6,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
@@ -653,6 +654,7 @@ export default function GerenteDashboard() {
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   const navRetiro = useNavigate();
+  const formulas = useFormulasSistema();
   return (
     <>
       <SheetHeader className="mb-4">
@@ -700,8 +702,12 @@ function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
             (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
           );
           const latestLanc = sortedLanc[sortedLanc.length - 1];
-          const statusConsumo = latestLanc?.status_consumo;
           const indiceConsumo = latestLanc?.indice_consumo;
+          // Reclassifica pelo indice_consumo usando a fórmula da tabela formulas_sistema.
+          const statusConsumo = indiceConsumo != null && Number(indiceConsumo) > 0
+            ? formulas.classificacao.classify(Number(indiceConsumo))
+            : latestLanc?.status_consumo ?? null;
+
 
           const statusClassName = statusConsumo === 'Baixo'
             ? 'bg-destructive text-destructive-foreground'

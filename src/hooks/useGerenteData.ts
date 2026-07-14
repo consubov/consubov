@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { calculateRetiroMetrics } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
@@ -90,6 +91,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     mes: consumoMes,
     ano: consumoAno,
   });
+  const formulas = useFormulasSistema();
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
@@ -232,7 +234,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
-    const calculated = aggregateConsumoMineral(consumoData);
+    const calculated = aggregateConsumoMineral(consumoData, formulas);
     const statusDistribution: StatusDistribution = calculated.statusDist;
 
     return {
@@ -247,7 +249,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio: calculated.gmdMedio,
       statusDistribution,
     };
-  }, [consumoData]);
+  }, [consumoData, formulas]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
