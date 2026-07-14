@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { FORMULAS_FALLBACK, type FormulaConfig } from "@/lib/formulasSistema";
 
 export interface ConsumoMineralRetiro {
   retiro_id: string;
