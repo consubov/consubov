@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus, Factory } from "lucide-react";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus, Factory, FunctionSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import CriarAdminModal from "@/components/admin/CriarAdminModal";
@@ -95,13 +95,22 @@ export default function AdminDashboard() {
             <Brain className="w-5 h-5 mr-2" />
             Inteligência Nutricional
           </Button>
-          <Button
-            onClick={() => navigate("/admin/qrcodes")}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md"
-          >
-            <QrCode className="w-5 h-5 mr-2" />
-            Gerar QR Codes
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => navigate("/admin/qrcodes")}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
+            >
+              <QrCode className="w-5 h-5 mr-2" />
+              Gerar QR Codes
+            </Button>
+            <Button
+              onClick={() => navigate("/admin/formulas-sistema")}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
+            >
+              <FunctionSquare className="w-5 h-5 mr-2" />
+              Fórmulas do Sistema
+            </Button>
+          </div>
         </div>
       </div>
 

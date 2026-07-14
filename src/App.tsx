@@ -52,6 +52,7 @@ import RevisaoVisitaPage from "./pages/RevisaoVisitaPage";
 import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import ConsultorPainelPage from "./pages/ConsultorPainelPage";
 import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
+import FormulasSistemaPage from "./pages/FormulasSistemaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -239,6 +240,7 @@ const App = () => (
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
                 <Route path="consultores" element={<ConsultoresPage />} />
+                <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />

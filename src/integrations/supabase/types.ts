@@ -1446,6 +1446,51 @@ export type Database = {
           },
         ]
       }
+      formulas_sistema: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          atualizado_por: string | null
+          categoria: string
+          chave: string
+          criado_em: string
+          descricao: string | null
+          formula: string
+          id: string
+          nome: string
+          parametros: Json | null
+          variaveis: string[]
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          categoria: string
+          chave: string
+          criado_em?: string
+          descricao?: string | null
+          formula: string
+          id?: string
+          nome: string
+          parametros?: Json | null
+          variaveis?: string[]
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          categoria?: string
+          chave?: string
+          criado_em?: string
+          descricao?: string | null
+          formula?: string
+          id?: string
+          nome?: string
+          parametros?: Json | null
+          variaveis?: string[]
+        }
+        Relationships: []
+      }
       gerentes: {
         Row: {
           ativo: boolean | null
