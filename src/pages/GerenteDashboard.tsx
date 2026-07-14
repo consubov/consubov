@@ -98,7 +98,6 @@ export default function GerenteDashboard() {
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
-  const formulas = useFormulasSistema();
 
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
