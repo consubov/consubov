@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
