@@ -202,7 +202,7 @@ export default function AdminRetiroPainelPage() {
       totalAnimais,
       totalPastos,
       pastosNaMeta,
-      consumoMedio: wCount > 0 ? wSum / wCount : 0,
+      consumoMedio: computeConsumoMedioPonderado(flatLanc),
       eficiencia: effCount > 0 ? effSum / effCount : 0,
       gmdMedio,
       statusDist: {
