@@ -151,14 +151,17 @@ export default function ExportarRelatorioModal({
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
         const rPastos = pastos.filter(p => p.retiro_id === ret.id);
         const rPastoIds = new Set(rPastos.map(p => p.id));
-        const rLanc = lancamentos.filter(l => rPastoIds.has(l.pasto_id));
+        // Filtro por retiro_id da view (mesma regra do Painel do Retiro), para
+        // garantir que ambos operem sobre o mesmo conjunto de lançamentos.
+        const rLanc = lancamentos.filter(l => l.retiro_id === ret.id && rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
-        const rpcRow = rpcByRetiro.get(ret.id);
-        // Total Animais alinhado à mesma fonte usada no Total Animais da fazenda
-        // (RPC get_consumo_mineral). Fallback: soma dos pastos ativos do retiro.
-        const totalAnimais = rpcRow
-          ? rpcRow.total_animais
-          : rPastos.reduce((s, p) => s + (p.num_animais || 0), 0);
+        // Total Animais = soma de MAX(num_animais) por pasto entre os
+        // lançamentos do mês/ano — mesma regra do Painel do Retiro.
+        const totalAnimais = pastosNoPeriodo.reduce((sum, p) => {
+          const pLancs = rLanc.filter(l => l.pasto_id === p.id);
+          const maxA = pLancs.length ? Math.max(...pLancs.map(l => Number(l.num_animais) || 0)) : 0;
+          return sum + maxA;
+        }, 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
