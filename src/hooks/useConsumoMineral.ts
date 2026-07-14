@@ -41,7 +41,10 @@ export interface ConsumoMineralAggregate {
 }
 
 /** Aggregate an array of per-retiro results into fazenda-level metrics */
-export function aggregateConsumoMineral(rows: ConsumoMineralRetiro[]): ConsumoMineralAggregate {
+export function aggregateConsumoMineral(
+  rows: ConsumoMineralRetiro[],
+  formulas: FormulaConfig = FORMULAS_FALLBACK,
+): ConsumoMineralAggregate {
   let totalAnimais = 0, sacosUtilizados = 0, totalKg = 0, totalCabDias = 0;
   let totalCusto = 0, pastosNaMeta = 0, totalPastos = 0, totalSalgas = 0;
   let statusBaixo = 0, statusIdeal = 0, statusAlto = 0;
