@@ -153,14 +153,12 @@ export default function AdminRetiroPainelPage() {
     if (!retiroData) return metrics;
     const pastosComLanc = retiroData.pastos.filter(p => (retiroData.pastosConsumo.get(p.id)?.length ?? 0) > 0);
     // "Pastos na Meta" mantém denominador = total de pastos ativos do retiro
-    // (mesmo do rodapé). "Total Animais" volta a considerar apenas pastos com
-    // lançamento no mês/ano (max num_animais por pasto), mesma regra usada pelo PDF.
+    // (mesmo do rodapé). "Total Animais" é o rebanho REAL do retiro — fonte
+    // única: SUM(pastos.num_animais) dos pastos ativos, a mesma contagem
+    // usada pelo mapa do Capataz. Independe do mês selecionado e não deriva
+    // de lançamentos de consumo.
     const totalPastos = retiroData.pastos.length;
-    const totalAnimais = pastosComLanc.reduce((sum, p) => {
-      const list = retiroData.pastosConsumo.get(p.id) ?? [];
-      const maxA = list.length ? Math.max(...list.map(c => c.num_animais)) : 0;
-      return sum + maxA;
-    }, 0);
+    const totalAnimais = retiroData.pastos.reduce((sum, p) => sum + (p.num_animais || 0), 0);
 
     const gmdVals = pastosComLanc
       .filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
