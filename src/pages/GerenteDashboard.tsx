@@ -6,6 +6,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
