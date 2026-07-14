@@ -146,6 +146,66 @@ export default function AdminRetiroPainelPage() {
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
 
+  // Restringe métricas do painel apenas aos pastos com lançamento no mês/ano
+  // selecionado — mesma regra usada no PDF do Relatório de Consumo.
+  const metricsPeriodo = useMemo(() => {
+    if (!retiroData) return metrics;
+    const pastosComLanc = retiroData.pastos.filter(p => (retiroData.pastosConsumo.get(p.id)?.length ?? 0) > 0);
+    const totalPastos = pastosComLanc.length;
+
+    const totalAnimais = pastosComLanc.reduce((s, p) => {
+      const list = retiroData.pastosConsumo.get(p.id) ?? [];
+      const maxAnim = list.length > 0 ? Math.max(...list.map(l => l.num_animais)) : p.num_animais;
+      return s + maxAnim;
+    }, 0);
+
+    const gmdVals = pastosComLanc
+      .filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
+      .map(p => Number(p.gmd_kg_dia));
+    const gmdMedio = gmdVals.length ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
+
+    let wSum = 0, wCount = 0, effSum = 0, effCount = 0, pastosNaMeta = 0;
+    let baixo = 0, ideal = 0, alto = 0;
+    for (const p of pastosComLanc) {
+      const list = retiroData.pastosConsumo.get(p.id) ?? [];
+      for (const c of list) {
+        if (c.consumo_g_cab_dia > 0 && c.num_animais > 0) {
+          wSum += c.consumo_g_cab_dia * c.num_animais;
+          wCount += c.num_animais;
+        }
+        if (c.indice_consumo != null && Number(c.indice_consumo) > 0) {
+          effSum += formulas.eficiencia.compute(Number(c.indice_consumo));
+          effCount++;
+        }
+      }
+      const latest = list[list.length - 1];
+      const idx = latest?.indice_consumo;
+      const status = idx != null && Number(idx) > 0
+        ? formulas.classificacao.classify(Number(idx))
+        : latest?.status_consumo ?? null;
+      if (status === "Ideal") { pastosNaMeta++; ideal++; }
+      else if (status === "Baixo") baixo++;
+      else if (status === "Alto") alto++;
+    }
+    const totalStatus = baixo + ideal + alto;
+
+    return {
+      ...metrics,
+      totalAnimais,
+      totalPastos,
+      pastosNaMeta,
+      consumoMedio: wCount > 0 ? wSum / wCount : 0,
+      eficiencia: effCount > 0 ? effSum / effCount : 0,
+      gmdMedio,
+      statusDist: {
+        baixo, ideal, alto,
+        baixoPct: totalStatus > 0 ? (baixo / totalStatus) * 100 : 0,
+        idealPct: totalStatus > 0 ? (ideal / totalStatus) * 100 : 0,
+        altoPct: totalStatus > 0 ? (alto / totalStatus) * 100 : 0,
+      },
+    };
+  }, [retiroData, metrics, formulas]);
+
   const handleBack = () => {
     if (isGerente) {
       navigate("/gerente");
@@ -242,33 +302,33 @@ export default function AdminRetiroPainelPage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metrics.totalAnimais)} />
-        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metrics.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={Target} label="Pastos na Meta" value={`${metrics.pastosNaMeta}/${metrics.totalPastos}`}
-          sub={metrics.totalPastos > 0 ? `${fmtNum((metrics.pastosNaMeta / metrics.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
-        <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metrics.sacosUtilizados)} />
-        <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metrics.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
-        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metrics.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
-        <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
+        <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metricsPeriodo.totalAnimais)} />
+        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metricsPeriodo.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={Target} label="Pastos na Meta" value={`${metricsPeriodo.pastosNaMeta}/${metricsPeriodo.totalPastos}`}
+          sub={metricsPeriodo.totalPastos > 0 ? `${fmtNum((metricsPeriodo.pastosNaMeta / metricsPeriodo.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metricsPeriodo.sacosUtilizados)} />
+        <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metricsPeriodo.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metricsPeriodo.custoMensal)} />
+        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metricsPeriodo.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+        <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metricsPeriodo.gmdMedio, 3)} sub="kg/dia" />
         <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
 
-      {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
+      {(metricsPeriodo.statusDist.baixo + metricsPeriodo.statusDist.ideal + metricsPeriodo.statusDist.alto) > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-              {metrics.statusDist.baixoPct > 0 && <div className="bg-destructive transition-all" style={{ width: `${metrics.statusDist.baixoPct}%` }} />}
-              {metrics.statusDist.idealPct > 0 && <div className="bg-primary transition-all" style={{ width: `${metrics.statusDist.idealPct}%` }} />}
-              {metrics.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metrics.statusDist.altoPct}%` }} />}
+              {metricsPeriodo.statusDist.baixoPct > 0 && <div className="bg-destructive transition-all" style={{ width: `${metricsPeriodo.statusDist.baixoPct}%` }} />}
+              {metricsPeriodo.statusDist.idealPct > 0 && <div className="bg-primary transition-all" style={{ width: `${metricsPeriodo.statusDist.idealPct}%` }} />}
+              {metricsPeriodo.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metricsPeriodo.statusDist.altoPct}%` }} />}
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-destructive font-medium">Baixo {fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
-              <span className="text-primary font-medium">Ideal {fmtNum(metrics.statusDist.idealPct, 0)}%</span>
-              <span className="text-secondary font-medium">Alto {fmtNum(metrics.statusDist.altoPct, 0)}%</span>
+              <span className="text-destructive font-medium">Baixo {fmtNum(metricsPeriodo.statusDist.baixoPct, 0)}%</span>
+              <span className="text-primary font-medium">Ideal {fmtNum(metricsPeriodo.statusDist.idealPct, 0)}%</span>
+              <span className="text-secondary font-medium">Alto {fmtNum(metricsPeriodo.statusDist.altoPct, 0)}%</span>
             </div>
           </CardContent>
         </Card>
