@@ -64,8 +64,13 @@ export function aggregateConsumoMineral(
     statusBaixo += Number(r.status_baixo) || 0;
     statusIdeal += Number(r.status_ideal) || 0;
     statusAlto += Number(r.status_alto) || 0;
-    const ef = Number(r.eficiencia) || 0;
-    if (ef > 0) { eficienciaSum += ef; eficienciaCount++; }
+    // r.eficiencia é retornado pelo RPC como (avg_indice * 100).
+    // Reconstruímos o indice médio do retiro para reaplicar a fórmula da tabela formulas_sistema.
+    const indiceMedioRetiro = (Number(r.eficiencia) || 0) / 100;
+    if (indiceMedioRetiro > 0) {
+      eficienciaSum += formulas.eficiencia.compute(indiceMedioRetiro);
+      eficienciaCount++;
+    }
     const gmd = Number(r.gmd_medio) || 0;
     if (gmd > 0) { gmdSum += gmd; gmdCount++; }
   }
