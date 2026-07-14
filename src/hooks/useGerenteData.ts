@@ -91,6 +91,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     mes: consumoMes,
     ano: consumoAno,
   });
+  const formulas = useFormulasSistema();
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
