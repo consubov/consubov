@@ -68,6 +68,7 @@ export default function ExportarRelatorioModal({
   async function handleExportar() {
     setLoading(true);
     try {
+      const formulas = await fetchFormulasConfig();
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const { start, end, label } = getDateRange(periodoSelecionado);
