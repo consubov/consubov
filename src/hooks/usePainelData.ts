@@ -177,7 +177,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   // ---------- Metrics: from centralized RPC ----------
   const metrics = useMemo<PainelMetrics>(() => {
     if (consumoData.length === 0) return emptyMetrics;
-    const agg = aggregateConsumoMineral(consumoData);
+    const agg = aggregateConsumoMineral(consumoData, applyFormulas ? formulas : undefined);
     return {
       totalAnimais: agg.totalAnimais,
       sacosUtilizados: agg.sacosUtilizados,
@@ -191,7 +191,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
       totalSalgas: agg.totalSalgas,
       statusDist: agg.statusDist,
     };
-  }, [consumoData]);
+  }, [consumoData, applyFormulas, formulas]);
 
   // ---------- Retiros resumo (using RPC data + pastos/lancamentos for detail) ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {
