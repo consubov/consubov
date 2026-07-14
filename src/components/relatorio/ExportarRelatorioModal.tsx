@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
+import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -67,6 +68,7 @@ export default function ExportarRelatorioModal({
   async function handleExportar() {
     setLoading(true);
     try {
+      const formulas = await fetchFormulasConfig();
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const { start, end, label } = getDateRange(periodoSelecionado);
@@ -202,8 +204,15 @@ export default function ExportarRelatorioModal({
           });
           const pConsumo = pTotalAnimais > 0 ? pWeightedSum / pTotalAnimais : 0;
 
-          const statusLancs = pLanc.map(l => l.status_consumo).filter(Boolean);
-          const pStatus = statusLancs.length > 0 ? statusLancs[statusLancs.length - 1] : "—";
+          // Reclassifica pelo indice_consumo do último lançamento usando formulas_sistema
+          const sortedPLanc = [...pLanc].sort((a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+          );
+          const lastP = sortedPLanc[0];
+          const idx = lastP ? Number(lastP.indice_consumo ?? 0) : 0;
+          const pStatus = idx > 0
+            ? formulas.classificacao.classify(idx)
+            : (lastP?.status_consumo ?? "—");
 
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);

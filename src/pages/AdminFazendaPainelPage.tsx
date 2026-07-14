@@ -71,7 +71,7 @@ export default function AdminFazendaPainelPage() {
     ano,
   }), [fazendaId, mes, ano]);
 
-  const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters);
+  const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(fazendaId, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(fazendaId, ano);
 
