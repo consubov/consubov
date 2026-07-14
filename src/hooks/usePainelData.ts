@@ -178,8 +178,11 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   const metrics = useMemo<PainelMetrics>(() => {
     if (consumoData.length === 0) return emptyMetrics;
     const agg = aggregateConsumoMineral(consumoData, applyFormulas ? formulas : undefined);
+    // Total Animais = rebanho REAL (fonte única = pastos.num_animais ativos),
+    // mesma contagem do mapa do Capataz. Não deriva de lançamentos.
+    const totalAnimaisReal = pastos.reduce((s, p) => s + (p.num_animais || 0), 0);
     return {
-      totalAnimais: agg.totalAnimais,
+      totalAnimais: totalAnimaisReal,
       sacosUtilizados: agg.sacosUtilizados,
       consumoMedio: agg.consumoMedio,
       pastosNaMeta: agg.pastosNaMeta,
@@ -191,7 +194,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
       totalSalgas: agg.totalSalgas,
       statusDist: agg.statusDist,
     };
-  }, [consumoData, applyFormulas, formulas]);
+  }, [consumoData, applyFormulas, formulas, pastos]);
 
   // ---------- Retiros resumo (using RPC data + pastos/lancamentos for detail) ----------
   const retirosResumo = useMemo<RetiroResumo[]>(() => {
