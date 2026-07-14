@@ -234,7 +234,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
-    const calculated = aggregateConsumoMineral(consumoData);
+    const calculated = aggregateConsumoMineral(consumoData, formulas);
     const statusDistribution: StatusDistribution = calculated.statusDist;
 
     return {
@@ -249,7 +249,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio: calculated.gmdMedio,
       statusDistribution,
     };
-  }, [consumoData]);
+  }, [consumoData, formulas]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
