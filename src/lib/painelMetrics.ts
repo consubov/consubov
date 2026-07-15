@@ -67,6 +67,67 @@ export function computeConsumoMedioPonderado(
   return wCount > 0 ? wSum / wCount : 0;
 }
 
+/**
+ * Ajuste dinâmico em tempo real para "período aberto".
+ *
+ * Quando estamos visualizando o mês/ano correntes e o último lançamento de
+ * cada pasto ainda não teve uma salga seguinte (dias_decorridos > dias_no_pasto
+ * armazenado), reescala consumo_g_cab_dia e indice_consumo por
+ * (dias_stored / dias_decorridos), e atualiza dias_no_pasto para o real
+ * decorrido. Retorna uma NOVA lista (não muta a original).
+ *
+ * Deve ser aplicado ANTES de calcular métricas / gerar PDFs para garantir
+ * que Painel do Retiro, Aba Retiros e PDFs mostrem exatamente os mesmos
+ * números no mesmo instante.
+ */
+export function applyOpenPeriodAdjustment<
+  T extends {
+    pasto_id: string;
+    num_sacos: number;
+    num_animais: number;
+    dias_no_pasto: number;
+    consumo_g_cab_dia: number | null;
+    indice_consumo: number | null;
+    created_at?: string | null;
+  },
+>(lancamentos: T[], mes: number, ano: number, now: Date = new Date()): T[] {
+  const viewingCurrentPeriod =
+    mes === now.getMonth() + 1 && ano === now.getFullYear();
+  if (!viewingCurrentPeriod) return lancamentos.map((l) => ({ ...l }));
+
+  // Group latest lancamento per pasto (by created_at DESC)
+  const latestByPasto = new Map<string, T>();
+  for (const l of lancamentos) {
+    const existing = latestByPasto.get(l.pasto_id);
+    if (!existing) { latestByPasto.set(l.pasto_id, l); continue; }
+    const ta = l.created_at ? new Date(l.created_at).getTime() : 0;
+    const tb = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+    if (ta > tb) latestByPasto.set(l.pasto_id, l);
+  }
+
+  return lancamentos.map((l) => {
+    const isLatest = latestByPasto.get(l.pasto_id) === l;
+    if (!isLatest || !l.created_at) return { ...l };
+    const created = new Date(l.created_at);
+    const diasDecorridos = Math.floor(
+      (now.getTime() - created.getTime()) / 86400000,
+    );
+    const diasStored = Math.max(1, l.dias_no_pasto || 1);
+    const consumo = Number(l.consumo_g_cab_dia ?? 0);
+    if (diasDecorridos > diasStored && consumo > 0) {
+      const factor = diasStored / diasDecorridos;
+      return {
+        ...l,
+        dias_no_pasto: diasDecorridos,
+        consumo_g_cab_dia: consumo * factor,
+        indice_consumo:
+          l.indice_consumo != null ? Number(l.indice_consumo) * factor : l.indice_consumo,
+      };
+    }
+    return { ...l };
+  });
+}
+
 export interface PainelMetricsAggregate {
   totalAnimais: number;
   sacosUtilizados: number;
