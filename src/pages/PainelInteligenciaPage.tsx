@@ -97,7 +97,7 @@ export default function PainelInteligenciaPage() {
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
-        supabase.from("view_consumo_consolidado" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("view_consumo_tempo_real" as any).select("*").order("created_at", { ascending: false }),
       ]);
       setFazendas(fRes.data ?? []);
       setRetiros(rRes.data ?? []);
