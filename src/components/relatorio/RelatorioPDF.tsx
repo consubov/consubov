@@ -49,8 +49,14 @@ export interface RetiroReportData {
   custoDiario: number;
   score: number;
   scoreMeta: number;
-  scoreCocho: number;
+  scoreCocho: number | null;
   scoreSalga: number;
+  pesoMeta: number;
+  pesoSalga: number;
+  pesoCocho: number;
+  detalheMeta: string;
+  detalheSalga: string;
+  detalheCocho: string;
   pastos: PastoReportData[];
   consumoIdeal?: number;
   consumoMaximo?: number;
