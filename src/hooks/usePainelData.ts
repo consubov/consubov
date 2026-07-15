@@ -272,13 +272,23 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
       }
 
 
+      // Consumo Médio do retiro = fórmula canônica sobre pastosConsumo (já
+      // com recálculo dinâmico do período aberto aplicado acima). Isso garante
+      // que a Aba Retiros (lista) e o Painel de Detalhe mostrem exatamente o
+      // mesmo número no mesmo instante.
+      const flatConsumo: { consumo_g_cab_dia: number | null; num_animais: number | null }[] = [];
+      for (const list of pastosConsumo.values()) {
+        for (const c of list) flatConsumo.push({ consumo_g_cab_dia: c.consumo_g_cab_dia, num_animais: c.num_animais });
+      }
+      const consumoMedioDinamico = computeConsumoMedioPonderado(flatConsumo);
+
       return {
         id: r.id,
         nome: r.nome,
         capataz: r.capataz,
         totalAnimais: rPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
         sacosUtilizados: rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + l.num_sacos, 0),
-        consumoMedio: rpcRow ? Number(rpcRow.consumo_medio_g) : 0,
+        consumoMedio: consumoMedioDinamico,
         gmd: rpcRow ? Number(rpcRow.gmd_medio) : 0,
         diasSemSalga,
         lancamentos: rLanc,
