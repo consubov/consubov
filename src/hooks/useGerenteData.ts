@@ -160,8 +160,8 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        let lancQuery = supabase.from("lancamentos")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
