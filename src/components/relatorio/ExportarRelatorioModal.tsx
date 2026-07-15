@@ -143,11 +143,9 @@ export default function ExportarRelatorioModal({
         lancamentos = lancData ?? [];
       }
 
-      // Recálculo dinâmico do período aberto (mesma função usada no Painel do
-      // Retiro). Faz o PDF refletir o consumo do momento em que é gerado.
-      if (periodoSelecionado === "mensal") {
-        lancamentos = applyOpenPeriodAdjustment(lancamentos, mes, ano);
-      }
+      // Consumo/índice/dias já vêm ajustados dinamicamente pela view
+      // `view_consumo_tempo_real` — fonte única de verdade no banco.
+
 
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
