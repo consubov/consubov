@@ -193,18 +193,32 @@ export default function ExportarRelatorioModal({
         const custoTotal = sacosUtilizados * pesoSacoKg * precoKg;
         const custoDiario = totalAnimais > 0 && numDias > 0 ? custoTotal / numDias / totalAnimais : 0;
 
-        const consumoScore = 0;
-        const expected = pastosNoPeriodo.length * (numDias / 3);
-        const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-        const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
-        let intScore = 0;
-        if (dates.length >= 2) {
-          const intervals: number[] = [];
-          for (let i = 1; i < dates.length; i++) intervals.push((dates[i] - dates[i - 1]) / 86400000);
-          const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-          intScore = avg <= 4 ? 2.5 : Math.max(0, 2.5 - (avg - 4) * 0.25);
+        // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
+        // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
+        let pastosNaMeta = 0;
+        for (const p of pastosNoPeriodo) {
+          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
+          const sorted = [...pLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+          const last = sorted[0];
+          const idx = last ? Number(last.indice_consumo ?? 0) : 0;
+          const st = idx > 0 ? formulas.classificacao.classify(idx) : (last?.status_consumo ?? null);
+          if (st === "Ideal") pastosNaMeta++;
         }
-        const score = Math.min(10, consumoScore + regScore + intScore);
+
+        const atrasoMedioDias = computeAtrasoMedioSalga(
+          rLanc.map(l => ({ pasto_id: l.pasto_id as string, created_at: l.created_at ?? null })),
+          diasIntervalo,
+        );
+
+        const scoreCalc = computeScoreCapataz({
+          pastosNaMeta,
+          totalPastosComLanc: pastosNoPeriodo.length,
+          atrasoMedioDias,
+          diasIntervalo,
+          notaMediaVisita: cochoData?.nota ?? null,
+          notaEscalaMax: 5,
+          dataVisita: cochoData?.dataVisita ?? null,
+        }, scoreWeights);
 
         const pastoReport: PastoReportData[] = pastosNoPeriodo.map(p => {
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
