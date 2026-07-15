@@ -255,13 +255,24 @@ export function useGerenteData(filters?: GerenteFilters) {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
     const now = new Date();
 
+    // Aplica recálculo dinâmico do período aberto ANTES de agregar métricas,
+    // para que a Aba Retiros mostre os mesmos números que o Painel de Detalhe.
+    const mesRef = filters?.mes ?? (ciclo?.mes ?? now.getMonth() + 1);
+    const anoRef = filters?.ano ?? (ciclo?.ano ?? now.getFullYear());
+    const lancamentosAjustados = applyOpenPeriodAdjustment(
+      lancamentos as any[],
+      mesRef,
+      anoRef,
+      now,
+    ) as Lancamento[];
+
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
+      const rLanc = lancamentosAjustados.filter(l => l.retiro_id === r.id);
       const resumo = calculateRetiroMetrics({
         retiroId: r.id,
         pastos,
-        lancamentos,
+        lancamentos: lancamentosAjustados,
         produtos,
         retiros,
       });
@@ -284,22 +295,31 @@ export function useGerenteData(filters?: GerenteFilters) {
       const horaAtual = now.getHours();
       const alertaAtraso = diasSemSalga != null && diasSemSalga >= intervaloDefinido + 1 && horaAtual >= 6;
 
+      // "Intervalo real" exibido na Aba Retiros = MAX(média histórica, dias
+      // decorridos desde a última salga). Assim, quando o retiro está com
+      // período aberto (sem próxima salga), o campo reflete os dias reais
+      // decorridos, e não uma média antiga.
+      const intervaloRealExibido = Math.max(intervaloRealMedio ?? 0, diasSemSalga ?? 0) || null;
+
       return {
         ...r,
-        totalAnimais: resumo.totalAnimais,
+        // Total de Animais = rebanho REAL (fonte única = pastos.num_animais
+        // ativos), mesma contagem que aparece no Painel de Detalhe do Retiro
+        // e no mapa do Capataz. Não deriva de lançamentos.
+        totalAnimais: rPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
         sacosUtilizados: resumo.sacosUtilizados,
         consumoMedio: resumo.consumoMedio,
         gmd: resumo.gmd,
         pastos: rPastos,
         lancamentos: rLanc,
         intervaloDefinido,
-        intervaloRealMedio,
+        intervaloRealMedio: intervaloRealExibido,
         diasSemSalga,
         alertaAtraso,
         ultimaSalga,
       };
     });
-  }, [retiros, pastos, lancamentos, produtos, fazendaData]);
+  }, [retiros, pastos, lancamentos, produtos, fazendaData, filters?.mes, filters?.ano, ciclo]);
 
   // Computed: capataz scores
   const capatazScores = useMemo<CapatazScore[]>(() => {
