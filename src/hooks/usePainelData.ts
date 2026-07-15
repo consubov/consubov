@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
+import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
