@@ -80,6 +80,17 @@ export default function ExportarRelatorioModal({
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const { start, end, label } = getDateRange(periodoSelecionado);
 
+      const scoreWeights = await fetchScoreWeights();
+      const { data: fazendaRow } = await supabase
+        .from("fazendas")
+        .select("intervalo_padrao_dias")
+        .eq("id", fazendaId)
+        .maybeSingle();
+      const diasIntervalo = Number(fazendaRow?.intervalo_padrao_dias ?? 3);
+
+      // Nota de cocho da visita técnica do Consultor (mês/ano ou range selecionado)
+      const cochoData = await fetchNotaCochoConsultor(fazendaNome, start, end);
+
       let retQuery = supabase.from("retiros")
         .select("id, nome, capataz, produto_id, ultima_salga_em")
         .eq("fazenda_id", fazendaId).eq("ativo", true);
