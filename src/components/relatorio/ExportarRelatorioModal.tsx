@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
-import { computeConsumoMedioPonderado, applyOpenPeriodAdjustment } from "@/lib/painelMetrics";
+import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import {
   fetchScoreWeights,
   computeScoreCapataz,
@@ -119,7 +119,7 @@ export default function ExportarRelatorioModal({
 
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
-        let lQuery = supabase.from("view_consumo_consolidado" as any)
+        let lQuery = supabase.from("view_consumo_tempo_real" as any)
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia")
           .in("pasto_id", pastoIds);
 
@@ -143,11 +143,9 @@ export default function ExportarRelatorioModal({
         lancamentos = lancData ?? [];
       }
 
-      // Recálculo dinâmico do período aberto (mesma função usada no Painel do
-      // Retiro). Faz o PDF refletir o consumo do momento em que é gerado.
-      if (periodoSelecionado === "mensal") {
-        lancamentos = applyOpenPeriodAdjustment(lancamentos, mes, ano);
-      }
+      // Consumo/índice/dias já vêm ajustados dinamicamente pela view
+      // `view_consumo_tempo_real` — fonte única de verdade no banco.
+
 
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),

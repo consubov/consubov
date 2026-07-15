@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { calculateRetiroMetrics, applyOpenPeriodAdjustment } from "@/lib/painelMetrics";
+import { calculateRetiroMetrics } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -160,8 +160,8 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         setPastos(pastosList);
 
-        let lancQuery = supabase.from("lancamentos")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, origem, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
@@ -174,7 +174,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = (lancRes.data ?? []) as Lancamento[];
+        const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
         setLancamentos(lancList);
 
         console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
@@ -255,24 +255,15 @@ export function useGerenteData(filters?: GerenteFilters) {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
     const now = new Date();
 
-    // Aplica recálculo dinâmico do período aberto ANTES de agregar métricas,
-    // para que a Aba Retiros mostre os mesmos números que o Painel de Detalhe.
-    const mesRef = filters?.mes ?? (ciclo?.mes ?? now.getMonth() + 1);
-    const anoRef = filters?.ano ?? (ciclo?.ano ?? now.getFullYear());
-    const lancamentosAjustados = applyOpenPeriodAdjustment(
-      lancamentos as any[],
-      mesRef,
-      anoRef,
-      now,
-    ) as Lancamento[];
-
+    // Consumo/índice/dias já vêm ajustados dinamicamente pela view
+    // `view_consumo_tempo_real` (fonte única de verdade no banco).
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rLanc = lancamentosAjustados.filter(l => l.retiro_id === r.id);
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const resumo = calculateRetiroMetrics({
         retiroId: r.id,
         pastos,
-        lancamentos: lancamentosAjustados,
+        lancamentos,
         produtos,
         retiros,
       });

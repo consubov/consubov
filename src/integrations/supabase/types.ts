@@ -3539,6 +3539,58 @@ export type Database = {
           },
         ]
       }
+      view_consumo_tempo_real: {
+        Row: {
+          ano_referencia: number | null
+          categoria: string | null
+          ciclo_id: string | null
+          consumo_g_cab_dia: number | null
+          created_at: string | null
+          dias_no_pasto: number | null
+          fazenda_id: string | null
+          id: string | null
+          indice_consumo: number | null
+          is_open_period: boolean | null
+          mes_referencia: number | null
+          num_animais: number | null
+          num_sacos: number | null
+          pasto_id: string | null
+          peso_medio_kg: number | null
+          retiro_id: string | null
+          sexo: string | null
+          status_consumo: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       ensure_ciclo: {
