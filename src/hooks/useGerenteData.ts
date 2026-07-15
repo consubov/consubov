@@ -234,22 +234,35 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData]);
 
   const painelData = useMemo<PainelData>(() => {
-    const calculated = aggregateConsumoMineral(consumoData, formulas);
-    const statusDistribution: StatusDistribution = calculated.statusDist;
+    // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
+    // Consumo Médio e Eficiência são computados aqui com a mesma fórmula
+    // canônica usada no Painel de Detalhe do Retiro, PDF e Painel de
+    // Inteligência Nutricional — garantindo que os 6 pontos convirjam.
+    const consumoAgg = aggregateConsumoMineral(consumoData, formulas);
+    const consumoMedio = computeConsumoMedioPonderado(
+      lancamentos.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
+    );
+    const indices = lancamentos
+      .map(l => Number(l.indice_consumo ?? 0))
+      .filter(v => v > 0);
+    const indiceMedio = indices.length > 0 ? indices.reduce((a, b) => a + b, 0) / indices.length : 0;
+    const eficiencia = indiceMedio > 0
+      ? (formulas ? formulas.eficiencia.compute(indiceMedio) : indiceMedio * 100)
+      : 0;
 
     return {
-      totalAnimais: calculated.totalAnimais,
-      consumoMedio: calculated.consumoMedio,
-      pastosNaMeta: calculated.pastosNaMeta,
-      totalPastos: calculated.totalPastos,
-      sacosUtilizados: calculated.sacosUtilizados,
-      custoDiario: calculated.custoDiario,
-      custoMensal: calculated.custoMensal,
-      eficiencia: calculated.eficiencia,
-      gmdMedio: calculated.gmdMedio,
-      statusDistribution,
+      totalAnimais: consumoAgg.totalAnimais,
+      consumoMedio,
+      pastosNaMeta: consumoAgg.pastosNaMeta,
+      totalPastos: consumoAgg.totalPastos,
+      sacosUtilizados: consumoAgg.sacosUtilizados,
+      custoDiario: consumoAgg.custoDiario,
+      custoMensal: consumoAgg.custoMensal,
+      eficiencia,
+      gmdMedio: consumoAgg.gmdMedio,
+      statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas]);
+  }, [consumoData, formulas, lancamentos]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
@@ -257,16 +270,18 @@ export function useGerenteData(filters?: GerenteFilters) {
 
     // Consumo/índice/dias já vêm ajustados dinamicamente pela view
     // `view_consumo_tempo_real` (fonte única de verdade no banco).
+    // Consumo Médio do retiro = fórmula ponderada canônica sobre os
+    // lançamentos da view — idêntica ao Painel de Detalhe.
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
-      const resumo = calculateRetiroMetrics({
-        retiroId: r.id,
-        pastos,
-        lancamentos,
-        produtos,
-        retiros,
-      });
+      const rpcRow = consumoData.find(c => c.retiro_id === r.id);
+
+      const consumoMedio = computeConsumoMedioPonderado(
+        rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
+      );
+      const sacosUtilizados = rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
+      const gmd = rpcRow ? Number(rpcRow.gmd_medio) : 0;
 
       const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
       const validIntervals = sortedRLanc
@@ -286,21 +301,15 @@ export function useGerenteData(filters?: GerenteFilters) {
       const horaAtual = now.getHours();
       const alertaAtraso = diasSemSalga != null && diasSemSalga >= intervaloDefinido + 1 && horaAtual >= 6;
 
-      // "Intervalo real" exibido na Aba Retiros = MAX(média histórica, dias
-      // decorridos desde a última salga). Assim, quando o retiro está com
-      // período aberto (sem próxima salga), o campo reflete os dias reais
-      // decorridos, e não uma média antiga.
       const intervaloRealExibido = Math.max(intervaloRealMedio ?? 0, diasSemSalga ?? 0) || null;
 
       return {
         ...r,
-        // Total de Animais = rebanho REAL (fonte única = pastos.num_animais
-        // ativos), mesma contagem que aparece no Painel de Detalhe do Retiro
-        // e no mapa do Capataz. Não deriva de lançamentos.
+        // Total de Animais = rebanho REAL (pastos.num_animais ativos).
         totalAnimais: rPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
-        sacosUtilizados: resumo.sacosUtilizados,
-        consumoMedio: resumo.consumoMedio,
-        gmd: resumo.gmd,
+        sacosUtilizados,
+        consumoMedio,
+        gmd,
         pastos: rPastos,
         lancamentos: rLanc,
         intervaloDefinido,
@@ -310,7 +319,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         ultimaSalga,
       };
     });
-  }, [retiros, pastos, lancamentos, produtos, fazendaData, filters?.mes, filters?.ano, ciclo]);
+  }, [retiros, pastos, lancamentos, consumoData, fazendaData]);
 
   // Computed: capataz scores
   const capatazScores = useMemo<CapatazScore[]>(() => {
