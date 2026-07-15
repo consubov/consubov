@@ -174,7 +174,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = (lancRes.data ?? []) as Lancamento[];
+        const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
         setLancamentos(lancList);
 
         console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
