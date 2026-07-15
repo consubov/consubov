@@ -529,11 +529,13 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const alto = r.pastos.filter(p => p.status === "Alto");
 
   const cols = [
-    { label: "Pasto", width: "22%" },
-    { label: "Animais", width: "14%" },
-    { label: "Sacos", width: "12%" },
-    { label: "Consumo (g/cab/dia)", width: "26%" },
-    { label: "Status", width: "26%" },
+    { label: "Pasto", width: "18%" },
+    { label: "Animais", width: "10%" },
+    { label: "Peso Médio (kg)", width: "14%" },
+    { label: "Sacos", width: "9%" },
+    { label: "Consumo (g/cab/dia)", width: "19%" },
+    { label: "Dias Considerados", width: "14%" },
+    { label: "Status", width: "16%" },
   ];
 
   return (
@@ -577,9 +579,11 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
               <Text style={[s.tableCell, { width: cols[0].width }]}>{p.nome}</Text>
               <Text style={[s.tableCell, { width: cols[1].width }]}>{p.numAnimais}</Text>
-              <Text style={[s.tableCell, { width: cols[2].width }]}>{p.numSacos}</Text>
-              <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(p.consumoGCabDia, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[4].width, color: sc.color, fontFamily: "Helvetica-Bold" }]}>{st}</Text>
+              <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
+              <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
+              <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(p.consumoGCabDia, 1)}</Text>
+              <Text style={[s.tableCell, { width: cols[5].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { width: cols[6].width, color: sc.color, fontFamily: "Helvetica-Bold" }]}>{st}</Text>
             </View>
           );
         })}
