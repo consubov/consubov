@@ -255,24 +255,15 @@ export function useGerenteData(filters?: GerenteFilters) {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
     const now = new Date();
 
-    // Aplica recálculo dinâmico do período aberto ANTES de agregar métricas,
-    // para que a Aba Retiros mostre os mesmos números que o Painel de Detalhe.
-    const mesRef = filters?.mes ?? (ciclo?.mes ?? now.getMonth() + 1);
-    const anoRef = filters?.ano ?? (ciclo?.ano ?? now.getFullYear());
-    const lancamentosAjustados = applyOpenPeriodAdjustment(
-      lancamentos as any[],
-      mesRef,
-      anoRef,
-      now,
-    ) as Lancamento[];
-
+    // Consumo/índice/dias já vêm ajustados dinamicamente pela view
+    // `view_consumo_tempo_real` (fonte única de verdade no banco).
     return retiros.map(r => {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
-      const rLanc = lancamentosAjustados.filter(l => l.retiro_id === r.id);
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const resumo = calculateRetiroMetrics({
         retiroId: r.id,
         pastos,
-        lancamentos: lancamentosAjustados,
+        lancamentos,
         produtos,
         retiros,
       });
