@@ -227,11 +227,49 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
           consumo_g_cab_dia: Number(l.consumo_g_cab_dia) || 0,
           status_consumo: l.status_consumo,
           indice_consumo: l.indice_consumo,
+          created_at: l.created_at,
         };
         const list = pastosConsumo.get(l.pasto_id) ?? [];
         list.push(entry);
         pastosConsumo.set(l.pasto_id, list);
       }
+
+      // ---------- Dynamic real-time recalculation for OPEN periods ----------
+      // For each pasto, if we're viewing the current month/year and the latest
+      // lancamento has been "open" longer than its stored dias_no_pasto (i.e.
+      // no next salga has been registered yet), scale down consumo/índice by
+      // (dias_stored / dias_decorridos). Same sacos ÷ mais dias = menor g/cab/dia.
+      const today = new Date();
+      const viewingCurrentPeriod =
+        mes === today.getMonth() + 1 && ano === today.getFullYear();
+      if (viewingCurrentPeriod) {
+        for (const [pastoId, list] of pastosConsumo) {
+          if (list.length === 0) continue;
+          // Sort by created_at ASC and take the last one as the current-open salga.
+          list.sort((a, b) => {
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return ta - tb;
+          });
+          const latest = list[list.length - 1];
+          if (!latest.created_at) continue;
+          const created = new Date(latest.created_at);
+          const diasDecorridos = Math.floor(
+            (today.getTime() - created.getTime()) / 86400000
+          );
+          const diasStored = Math.max(1, latest.dias_no_pasto || 1);
+          if (diasDecorridos > diasStored && latest.consumo_g_cab_dia > 0) {
+            const factor = diasStored / diasDecorridos;
+            latest.consumo_g_cab_dia = latest.consumo_g_cab_dia * factor;
+            if (latest.indice_consumo != null) {
+              latest.indice_consumo = Number(latest.indice_consumo) * factor;
+            }
+            latest.dias_no_pasto = diasDecorridos;
+            latest.is_open_period = true;
+          }
+        }
+      }
+
 
       return {
         id: r.id,
