@@ -33,6 +33,7 @@ export interface PastoReportData {
   gmdKgDia: number;
   pesoAbateMetaKg: number;
   categoria?: string;
+  diasConsiderados?: number;
 }
 
 export interface RetiroReportData {
