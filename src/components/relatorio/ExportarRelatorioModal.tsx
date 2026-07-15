@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
-import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
+import { computeConsumoMedioPonderado, applyOpenPeriodAdjustment } from "@/lib/painelMetrics";
 import {
   fetchScoreWeights,
   computeScoreCapataz,
