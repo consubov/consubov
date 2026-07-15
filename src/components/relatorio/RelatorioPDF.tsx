@@ -181,31 +181,58 @@ function ResumoGeral({ retiros }: { retiros: RetiroReportData[] }) {
 
 function ScoreEficiencia({ retiros }: { retiros: RetiroReportData[] }) {
   const sorted = [...retiros].sort((a, b) => b.score - a.score);
-  const cols = [
-    { label: "#", width: "5%" },
-    { label: "Retiro", width: "20%" },
-    { label: "Capataz", width: "20%" },
-    { label: "Score", width: "15%" },
-    { label: "Meta", width: "13%" },
-    { label: "Cocho", width: "13%" },
-    { label: "Salga", width: "14%" },
-  ];
   return (
     <View>
       <Text style={s.sectionTitle}>SEÇÃO 2 — SCORE DE EFICIÊNCIA</Text>
-      <View style={s.table}>
-        <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
-        </View>
+      <View>
         {sorted.map((r, i) => (
-          <View key={r.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-            <Text style={[s.tableCell, { width: cols[0].width }]}>{i + 1}</Text>
-            <Text style={[s.tableCell, { width: cols[1].width }]}>{r.nome}</Text>
-            <Text style={[s.tableCell, { width: cols[2].width }]}>{r.capataz}</Text>
-            <Text style={[s.tableCell, { width: cols[3].width, fontFamily: "Helvetica-Bold" }]}>{fmtNum(r.score, 1)}</Text>
-            <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(r.scoreMeta, 1)}</Text>
-            <Text style={[s.tableCell, { width: cols[5].width }]}>{fmtNum(r.scoreCocho, 1)}</Text>
-            <Text style={[s.tableCell, { width: cols[6].width }]}>{fmtNum(r.scoreSalga, 1)}</Text>
+          <View
+            key={r.nome}
+            style={{
+              flexDirection: "row",
+              padding: 6,
+              marginBottom: 4,
+              backgroundColor: i % 2 === 0 ? "#f9f9f9" : "#fff",
+              border: "0.5 solid #ddd",
+              borderRadius: 3,
+            }}
+            wrap={false}
+          >
+            <View style={{ width: "38%" }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: green }}>
+                {i + 1}. {r.nome}
+              </Text>
+              <Text style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
+                Capataz: {r.capataz}
+              </Text>
+              <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: green, marginTop: 4 }}>
+                {fmtNum(r.score, 1)}
+                <Text style={{ fontSize: 8, color: "#888" }}> / 10</Text>
+              </Text>
+            </View>
+            <View style={{ width: "62%", paddingLeft: 6 }}>
+              <View style={{ marginBottom: 3 }}>
+                <Text style={{ fontSize: 7, color: "#333" }}>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Meta: </Text>
+                  {fmtNum(r.scoreMeta, 1)} / {fmtNum(r.pesoMeta, 0)}
+                </Text>
+                <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheMeta}</Text>
+              </View>
+              <View style={{ marginBottom: 3 }}>
+                <Text style={{ fontSize: 7, color: "#333" }}>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Salga: </Text>
+                  {fmtNum(r.scoreSalga, 1)} / {fmtNum(r.pesoSalga, 0)}
+                </Text>
+                <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheSalga}</Text>
+              </View>
+              <View>
+                <Text style={{ fontSize: 7, color: "#333" }}>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Cocho: </Text>
+                  {r.scoreCocho != null ? `${fmtNum(r.scoreCocho, 1)} / ${fmtNum(r.pesoCocho, 0)}` : `— / ${fmtNum(r.pesoCocho, 0)}`}
+                </Text>
+                <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheCocho}</Text>
+              </View>
+            </View>
           </View>
         ))}
       </View>
