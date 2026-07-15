@@ -243,6 +243,7 @@ export default function ExportarRelatorioModal({
 
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);
+          const diasConsiderados = lastP ? Number(lastP.dias_no_pasto ?? 0) : 0;
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
@@ -253,6 +254,7 @@ export default function ExportarRelatorioModal({
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
+            diasConsiderados,
           };
         });
 
