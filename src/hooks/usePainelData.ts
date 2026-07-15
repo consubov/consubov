@@ -31,10 +31,15 @@ export interface LancamentoConsumo {
   num_animais: number;
   num_sacos: number;
   dias_no_pasto: number;
-  consumo_g_cab_dia: number; // read directly from DB
+  consumo_g_cab_dia: number; // read directly from DB (may be dynamically recalculated for open periods)
   status_consumo: string | null;
   indice_consumo: number | null;
+  /** created_at ISO of the lancamento (used for real-time open-period recalculation). */
+  created_at: string | null;
+  /** True when consumo/índice were recalculated dynamically for an open (awaiting next salga) period. */
+  is_open_period?: boolean;
 }
+
 
 export interface RetiroResumo {
   id: string; nome: string; capataz: string;
