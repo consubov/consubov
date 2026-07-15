@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
-import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
+import { computeConsumoMedioPonderado, applyOpenPeriodAdjustment } from "@/lib/painelMetrics";
 import {
   fetchScoreWeights,
   computeScoreCapataz,
@@ -141,6 +141,12 @@ export default function ExportarRelatorioModal({
           return;
         }
         lancamentos = lancData ?? [];
+      }
+
+      // Recálculo dinâmico do período aberto (mesma função usada no Painel do
+      // Retiro). Faz o PDF refletir o consumo do momento em que é gerado.
+      if (periodoSelecionado === "mensal") {
+        lancamentos = applyOpenPeriodAdjustment(lancamentos, mes, ano);
       }
 
       const produtoIds = [...new Set([
