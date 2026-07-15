@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
+import {
+  fetchScoreWeights,
+  computeScoreCapataz,
+  computeAtrasoMedioSalga,
+  fetchNotaCochoConsultor,
+} from "@/lib/scoreCapataz";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -73,6 +79,17 @@ export default function ExportarRelatorioModal({
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const { start, end, label } = getDateRange(periodoSelecionado);
+
+      const scoreWeights = await fetchScoreWeights();
+      const { data: fazendaRow } = await supabase
+        .from("fazendas")
+        .select("intervalo_padrao_dias")
+        .eq("id", fazendaId)
+        .maybeSingle();
+      const diasIntervalo = Number(fazendaRow?.intervalo_padrao_dias ?? 3);
+
+      // Nota de cocho da visita técnica do Consultor (mês/ano ou range selecionado)
+      const cochoData = await fetchNotaCochoConsultor(fazendaNome, start, end);
 
       let retQuery = supabase.from("retiros")
         .select("id, nome, capataz, produto_id, ultima_salga_em")
@@ -176,18 +193,32 @@ export default function ExportarRelatorioModal({
         const custoTotal = sacosUtilizados * pesoSacoKg * precoKg;
         const custoDiario = totalAnimais > 0 && numDias > 0 ? custoTotal / numDias / totalAnimais : 0;
 
-        const consumoScore = 0;
-        const expected = pastosNoPeriodo.length * (numDias / 3);
-        const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-        const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
-        let intScore = 0;
-        if (dates.length >= 2) {
-          const intervals: number[] = [];
-          for (let i = 1; i < dates.length; i++) intervals.push((dates[i] - dates[i - 1]) / 86400000);
-          const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-          intScore = avg <= 4 ? 2.5 : Math.max(0, 2.5 - (avg - 4) * 0.25);
+        // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
+        // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
+        let pastosNaMeta = 0;
+        for (const p of pastosNoPeriodo) {
+          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
+          const sorted = [...pLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+          const last = sorted[0];
+          const idx = last ? Number(last.indice_consumo ?? 0) : 0;
+          const st = idx > 0 ? formulas.classificacao.classify(idx) : (last?.status_consumo ?? null);
+          if (st === "Ideal") pastosNaMeta++;
         }
-        const score = Math.min(10, consumoScore + regScore + intScore);
+
+        const atrasoMedioDias = computeAtrasoMedioSalga(
+          rLanc.map(l => ({ pasto_id: l.pasto_id as string, created_at: l.created_at ?? null })),
+          diasIntervalo,
+        );
+
+        const scoreCalc = computeScoreCapataz({
+          pastosNaMeta,
+          totalPastosComLanc: pastosNoPeriodo.length,
+          atrasoMedioDias,
+          diasIntervalo,
+          notaMediaVisita: cochoData?.nota ?? null,
+          notaEscalaMax: 5,
+          dataVisita: cochoData?.dataVisita ?? null,
+        }, scoreWeights);
 
         const pastoReport: PastoReportData[] = pastosNoPeriodo.map(p => {
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
@@ -257,10 +288,16 @@ export default function ExportarRelatorioModal({
             return effCount > 0 ? effSum / effCount : 0;
           })(),
           custoDiario,
-          score: Number(score.toFixed(1)),
-          scoreMeta: Number(consumoScore.toFixed(1)),
-          scoreCocho: Number(regScore.toFixed(1)),
-          scoreSalga: Number(intScore.toFixed(1)),
+          score: Number(scoreCalc.scoreTotal.toFixed(1)),
+          scoreMeta: Number(scoreCalc.scoreMeta.toFixed(1)),
+          scoreCocho: scoreCalc.scoreCocho != null ? Number(scoreCalc.scoreCocho.toFixed(1)) : null,
+          scoreSalga: Number(scoreCalc.scoreSalga.toFixed(1)),
+          pesoMeta: scoreCalc.pesoMeta,
+          pesoSalga: scoreCalc.pesoSalga,
+          pesoCocho: scoreCalc.pesoCocho,
+          detalheMeta: scoreCalc.detalheMeta,
+          detalheSalga: scoreCalc.detalheSalga,
+          detalheCocho: scoreCalc.detalheCocho,
           pastos: pastoReport,
           consumoIdeal: Math.round(consumoIdeal),
           consumoMaximo: Math.round(consumoMaximo),
