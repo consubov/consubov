@@ -305,6 +305,12 @@ function TopicoCard({
                 {topico.signed[f.id]
                   ? <img src={topico.signed[f.id]} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
+                {numeroMap?.[f.id] != null && (
+                  <div className="absolute top-0.5 left-0.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-extrabold shadow"
+                    style={{ background: "#14432B", color: "#C9A84C" }}>
+                    {numeroMap[f.id]}
+                  </div>
+                )}
                 <button type="button" onClick={() => onDelFoto(topico, f)}
                   className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
                   <X className="w-3 h-3 text-destructive-foreground" />
