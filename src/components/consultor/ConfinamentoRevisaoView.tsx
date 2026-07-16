@@ -270,6 +270,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           },
           fotos: c.fotos,
         })),
+        logoOverride: (consultor as any)?.logo_modo && (consultor as any).logo_modo !== 'padrao'
+          ? { modo: (consultor as any).logo_modo, path: (consultor as any).logo_personalizada_url || null }
+          : null,
       });
       const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
       const { error } = await supabase.from("visitas_tecnicas").update({

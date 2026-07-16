@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MapPin, ChevronRight, Landmark } from "lucide-react";
+import { Plus, Loader2, MapPin, ChevronRight, Landmark, Image as ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Fazenda {
@@ -41,6 +41,7 @@ export default function ConsultorFazendasPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -89,9 +90,20 @@ export default function ConsultorFazendasPage() {
         <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
           <Landmark className="w-5 h-5" /> Minhas Fazendas
         </h1>
-        <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setLogoDialogOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            title="Personalizar logo do relatório"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" /> Nova
+          </Button>
+        </div>
       </div>
 
       {fazendas.length === 0 ? (
@@ -155,6 +167,179 @@ export default function ConsultorFazendasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PersonalizarLogoModal
+        open={logoDialogOpen}
+        onOpenChange={setLogoDialogOpen}
+        consultorId={roleData?.consultorId || null}
+      />
     </div>
+  );
+}
+
+// ============================================================================
+// Modal — Personalizar Logo do Relatório
+// ============================================================================
+type LogoModo = 'padrao' | 'substituir' | 'adicionar';
+
+function PersonalizarLogoModal({
+  open, onOpenChange, consultorId,
+}: { open: boolean; onOpenChange: (v: boolean) => void; consultorId: string | null }) {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [modo, setModo] = useState<LogoModo>('padrao');
+  const [logoPath, setLogoPath] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!open || !consultorId) return;
+    setLoading(true);
+    (async () => {
+      const { data } = await supabase.from("consultores").select("logo_modo, logo_personalizada_url" as any).eq("id", consultorId).maybeSingle();
+      const c = data as any;
+      setModo((c?.logo_modo as LogoModo) || 'padrao');
+      setLogoPath(c?.logo_personalizada_url || null);
+      if (c?.logo_personalizada_url) {
+        const { data: signed } = await supabase.storage.from("logos-consultor").createSignedUrl(c.logo_personalizada_url, 60 * 60);
+        setPreviewUrl(signed?.signedUrl || null);
+      } else {
+        setPreviewUrl(null);
+      }
+      setFile(null);
+      setLoading(false);
+    })();
+  }, [open, consultorId]);
+
+  function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) {
+      toast.error("Envie um arquivo de imagem (PNG, JPG, WebP ou SVG)");
+      return;
+    }
+    setFile(f);
+    setPreviewUrl(URL.createObjectURL(f));
+  }
+
+  async function handleSave() {
+    if (!consultorId) return;
+    setSaving(true);
+    try {
+      let newPath = logoPath;
+      if ((modo === 'substituir' || modo === 'adicionar') && file) {
+        const ext = file.name.split(".").pop() || "png";
+        const path = `${consultorId}/logo-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("logos-consultor").upload(path, file, { upsert: true, contentType: file.type });
+        if (upErr) throw upErr;
+        newPath = path;
+      }
+      if (modo === 'padrao') {
+        // opcional: manter path para reutilização futura — só zera modo
+      } else if (!newPath) {
+        toast.error("Envie uma imagem para essa opção");
+        setSaving(false);
+        return;
+      }
+      const { error } = await supabase
+        .from("consultores")
+        .update({ logo_modo: modo, logo_personalizada_url: newPath } as any)
+        .eq("id", consultorId);
+      if (error) throw error;
+      toast.success("Preferência de logo salva!");
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove() {
+    if (!consultorId || !logoPath) return;
+    setSaving(true);
+    try {
+      await supabase.storage.from("logos-consultor").remove([logoPath]);
+      const { error } = await supabase
+        .from("consultores")
+        .update({ logo_modo: 'padrao', logo_personalizada_url: null } as any)
+        .eq("id", consultorId);
+      if (error) throw error;
+      setLogoPath(null);
+      setPreviewUrl(null);
+      setFile(null);
+      setModo('padrao');
+      toast.success("Logo removida");
+    } catch (err: any) {
+      toast.error("Erro ao remover: " + (err?.message || "desconhecido"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Personalizar Logo do Relatório</DialogTitle>
+          <DialogDescription>Escolha como a logo aparece no cabeçalho dos PDFs de visita.</DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {[
+                { v: 'padrao' as LogoModo, t: "Padrão", d: "Apenas a logo Consubov" },
+                { v: 'substituir' as LogoModo, t: "Substituir", d: "Sua logo no lugar da Consubov" },
+                { v: 'adicionar' as LogoModo, t: "Adicionar", d: "Consubov à esquerda + sua logo à direita" },
+              ].map(opt => (
+                <label
+                  key={opt.v}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${modo === opt.v ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                >
+                  <input
+                    type="radio"
+                    name="logo-modo"
+                    checked={modo === opt.v}
+                    onChange={() => setModo(opt.v)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm">{opt.t}</div>
+                    <div className="text-xs text-muted-foreground">{opt.d}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {(modo === 'substituir' || modo === 'adicionar') && (
+              <div className="space-y-2 pt-2 border-t">
+                <Label>Sua logo (PNG, JPG, WebP ou SVG)</Label>
+                <Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onSelectFile} />
+                {previewUrl && (
+                  <div className="flex items-center gap-3 pt-2">
+                    <img src={previewUrl} alt="Prévia" className="h-16 w-auto object-contain bg-muted rounded border p-1" />
+                    {logoPath && !file && (
+                      <Button variant="ghost" size="sm" onClick={handleRemove} className="text-destructive gap-1">
+                        <Trash2 className="w-4 h-4" /> Remover
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving || loading} className="bg-primary hover:bg-primary/90">
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

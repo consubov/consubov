@@ -37,6 +37,7 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
+  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
@@ -44,6 +45,28 @@ async function fetchFotoDataUrl(path: string): Promise<string | null> {
     const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60);
     if (!data?.signedUrl) return null;
     const res = await fetch(data.signedUrl);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+const BUCKET_LOGOS = "logos-consultor";
+async function fetchLogoDataUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  try {
+    let res: Response;
+    if (/^https?:\/\//i.test(path)) {
+      res = await fetch(path);
+    } else {
+      const { data } = await supabase.storage.from(BUCKET_LOGOS).createSignedUrl(path, 60 * 60);
+      if (!data?.signedUrl) return null;
+      res = await fetch(data.signedUrl);
+    }
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
@@ -76,19 +99,34 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "normal");
-  doc.text("Gerado por Consubov", 15, h - 6);
+  doc.text("Gerado por Consubov.com.br", 15, h - 6);
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 6, { align: "right" });
 }
 
-function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string) {
+function drawCoverHeader(
+  doc: jsPDF,
+  logoDataUrl: string | null,
+  subtitle: string,
+  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; dataUrl: string | null } | null,
+) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
   const logoW = 44;
   const logoX = 15;
   const logoY = 10;
-  if (logoDataUrl) {
-    try { doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
+
+  const modo = logoOverride?.modo ?? 'padrao';
+  const customUrl = logoOverride?.dataUrl ?? null;
+
+  const leftLogo = modo === 'substituir' && customUrl ? customUrl : logoDataUrl;
+  if (leftLogo) {
+    try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
+  if (modo === 'adicionar' && customUrl) {
+    const rightX = w - 15 - logoW;
+    try { doc.addImage(customUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+  }
+
   const dividerX = logoX + logoW + 6;
   doc.setDrawColor(GREEN_DARK);
   doc.setLineWidth(0.8);
@@ -349,12 +387,18 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageH = doc.internal.pageSize.getHeight();
 
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
+  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
+    ? await fetchLogoDataUrl(data.logoOverride.path)
+    : null;
+  const logoOverride = data.logoOverride
+    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
+    : null;
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento");
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logoOverride);
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
