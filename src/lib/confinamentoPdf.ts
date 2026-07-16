@@ -462,6 +462,12 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     doc.setLineWidth(0.4);
     doc.line(15, 16, pageW - 15, 16);
 
+    // Escala uma única vez por página de currais.
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(INK_SOFT);
+    doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+
     let cy = 24;
     for (const c of pair) {
       await drawCurralBlock(doc, c, fotosCache, 15, cy, pageW - 30, blockH);
