@@ -19,6 +19,7 @@ export interface FotoRow {
 }
 
 interface Props {
+  visitaId?: string | null;
   visitaPastoId?: string | null;
   visitaCurralId?: string | null;
   max?: number;
