@@ -89,9 +89,20 @@ export default function ConsultorFazendasPage() {
         <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
           <Landmark className="w-5 h-5" /> Minhas Fazendas
         </h1>
-        <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setLogoDialogOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            title="Personalizar logo do relatório"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" /> Nova
+          </Button>
+        </div>
       </div>
 
       {fazendas.length === 0 ? (
