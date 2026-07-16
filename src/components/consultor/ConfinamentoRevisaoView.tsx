@@ -270,8 +270,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           },
           fotos: c.fotos,
         })),
-        logoOverride: consultor?.logo_modo && consultor.logo_modo !== 'padrao'
-          ? { modo: consultor.logo_modo, path: consultor.logo_personalizada_url || null }
+        logoOverride: (consultor as any)?.logo_modo && (consultor as any).logo_modo !== 'padrao'
+          ? { modo: (consultor as any).logo_modo, path: (consultor as any).logo_personalizada_url || null }
           : null,
       });
       const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
