@@ -53,6 +53,19 @@ export default function FabricaVisitaView({
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [salvandoOffline, setSalvandoOffline] = useState(false);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
 
   useEffect(() => { loadDados(); }, [visitaId]);
