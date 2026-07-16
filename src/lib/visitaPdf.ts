@@ -43,7 +43,7 @@ export interface VisitaPdfPasto {
 
 export interface VisitaPdfData {
   visitaId: string;
-  fazenda: { nome_fazenda: string; proprietario?: string | null; municipio?: string | null; uf?: string | null };
+  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null };
   consultor: { nome: string };
   hora_inicio: string;
   hora_fim: string | null;
