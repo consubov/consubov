@@ -24,7 +24,8 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
 }
 
 async function refresh() {
-  cachedPending = await countAllMutations();
+  await purgeDeadMutations();
+  cachedPending = await countPendingMutations();
   emit();
 }
 
@@ -40,7 +41,7 @@ export function subscribeMutationStatus(listener: Listener) {
 }
 
 export async function getPendingMutationCount() {
-  return countAllMutations();
+  return countPendingMutations();
 }
 
 /**
