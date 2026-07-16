@@ -226,15 +226,14 @@ function drawParagraphText(
     const trimmed = para.trim();
     if (!trimmed) { y += lineHeight; continue; }
     const lines = doc.splitTextToSize(trimmed, maxWidth) as string[];
-    for (let i = 0; i < lines.length; i++) {
-      const isLast = i === lines.length - 1;
-      if (isLast) {
-        doc.text(lines[i], x, y);
-      } else {
-        doc.text(lines[i], x, y, { align: "justify", maxWidth });
-      }
-      y += lineHeight;
+    if (lines.length > 1) {
+      const middle = lines.slice(0, -1);
+      doc.text(middle, x, y, { align: "justify", maxWidth });
+      y += lineHeight * middle.length;
     }
+    const last = lines[lines.length - 1];
+    doc.text(last, x, y);
+    y += lineHeight;
   }
   return y;
 }
