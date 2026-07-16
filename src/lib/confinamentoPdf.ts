@@ -222,18 +222,40 @@ function drawParagraphText(
 ): number {
   const raw = String(text ?? "");
   const paragraphs = raw.split(/\r?\n/);
+
+  const drawJustifiedLine = (line: string, lineY: number) => {
+    const clean = line.trim().replace(/\s+/g, " ");
+    const words = clean.split(" ").filter(Boolean);
+    const lineWidth = doc.getTextWidth(clean);
+
+    if (words.length < 4 || lineWidth < maxWidth * 0.82 || lineWidth >= maxWidth) {
+      doc.text(clean, x, lineY);
+      return;
+    }
+
+    const totalWordsWidth = words.reduce((sum, word) => sum + doc.getTextWidth(word), 0);
+    const gap = (maxWidth - totalWordsWidth) / (words.length - 1);
+    if (!Number.isFinite(gap) || gap <= 0 || gap > 4) {
+      doc.text(clean, x, lineY);
+      return;
+    }
+
+    let cursorX = x;
+    words.forEach((word, index) => {
+      doc.text(word, cursorX, lineY);
+      cursorX += doc.getTextWidth(word) + (index < words.length - 1 ? gap : 0);
+    });
+  };
+
   for (const para of paragraphs) {
     const trimmed = para.trim();
     if (!trimmed) { y += lineHeight; continue; }
-    const lines = doc.splitTextToSize(trimmed, maxWidth) as string[];
-    if (lines.length > 1) {
-      const middle = lines.slice(0, -1);
-      doc.text(middle, x, y, { align: "justify", maxWidth });
-      y += lineHeight * middle.length;
-    }
-    const last = lines[lines.length - 1];
-    doc.text(last, x, y);
-    y += lineHeight;
+    const lines = doc.splitTextToSize(trimmed.replace(/\s+/g, " "), maxWidth) as string[];
+    lines.forEach((line, index) => {
+      if (index < lines.length - 1) drawJustifiedLine(line, y);
+      else doc.text(line.trim().replace(/\s+/g, " "), x, y);
+      y += lineHeight;
+    });
   }
   return y;
 }
