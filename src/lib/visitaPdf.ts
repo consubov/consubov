@@ -435,12 +435,13 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
-    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
-    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  const logoDefaultDataUrl = await fetchAssetDataUrl(logoAsset.url);
+  const [logoDefault, esquerda, direita] = await Promise.all([
+    toLogoAsset(logoDefaultDataUrl),
+    fetchLogoAsset(data.logoOverride?.esquerdaPath || null),
+    fetchLogoAsset(data.logoOverride?.direitaPath || null),
   ]);
-  const logos = { esquerdaDataUrl, direitaDataUrl };
+  const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
   const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
@@ -450,7 +451,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   ]);
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina", logos);
+  drawCoverHeader(doc, logoDefault, "Visita Técnica - Rotina", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const drawTabela = () => {
