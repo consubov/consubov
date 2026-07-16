@@ -77,7 +77,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       .upload(path, item.blob, { upsert: true, contentType: item.mime });
     if (upErr) throw upErr;
 
-    const insertPayload: Record<string, unknown> = { url: path, ordem: item.ordem };
+    const insertPayload: any = { url: path, ordem: item.ordem };
     if (item.parentKind === "curral") insertPayload.visita_curral_id = item.parentId;
     else insertPayload.visita_pasto_id = item.parentId;
 
