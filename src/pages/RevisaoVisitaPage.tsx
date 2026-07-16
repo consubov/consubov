@@ -16,7 +16,7 @@ import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
-import SyncBadge from "@/components/consultor/SyncBadge";
+
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
@@ -346,6 +346,7 @@ export default function RevisaoVisitaPage() {
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
           proprietario: fazenda.proprietario,
+          responsavel: (fazenda as any).responsavel ?? null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
         },
@@ -630,7 +631,7 @@ export default function RevisaoVisitaPage() {
       {/* Botão fixo por status — acima da nav */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
         <div className="max-w-md mx-auto space-y-2">
-          <SyncBadge compact />
+          
           <div className="flex gap-2">
           {(visita.status === "rascunho") && (
             <Button

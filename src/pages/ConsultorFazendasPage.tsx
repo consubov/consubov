@@ -12,6 +12,7 @@ import {
 import { Plus, Loader2, MapPin, ChevronRight, Landmark, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import SyncBadge from "@/components/consultor/SyncBadge";
 
 interface Fazenda {
   id: string;
@@ -106,6 +107,8 @@ export default function ConsultorFazendasPage() {
           </Button>
         </div>
       </div>
+
+      <SyncBadge />
 
       {fazendas.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">

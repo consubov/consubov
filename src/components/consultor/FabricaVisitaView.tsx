@@ -12,7 +12,7 @@ import VisitaTopicosSection, { type Topico } from "@/components/consultor/Visita
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
-import SyncBadge from "./SyncBadge";
+
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 
 interface Visita {
@@ -24,6 +24,7 @@ interface Visita {
 interface Fazenda {
   id: string; nome_fazenda: string;
   proprietario?: string | null;
+  responsavel?: string | null;
   municipio?: string | null; uf?: string | null;
 }
 interface Consultor { id: string; nome: string; }
@@ -89,6 +90,7 @@ export default function FabricaVisitaView({
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
           proprietario: fazenda.proprietario,
+          responsavel: fazenda.responsavel ?? null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
         },
@@ -214,7 +216,7 @@ export default function FabricaVisitaView({
       />
 
       <div className="sticky bottom-16 pt-2 space-y-2">
-        <SyncBadge compact />
+        
         <Button
           onClick={gerarPdf}
           disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0}

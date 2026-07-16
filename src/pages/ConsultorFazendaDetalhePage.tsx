@@ -38,6 +38,7 @@ export default function ConsultorFazendaDetalhePage() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [loading, setLoading] = useState(true);
   const [tipoModal, setTipoModal] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => { if (fazendaId) load(); }, [fazendaId]);
@@ -53,6 +54,27 @@ export default function ConsultorFazendaDetalhePage() {
     setFazenda(fRes.data as Fazenda | null);
     setVisitas((vRes.data as Visita[]) || []);
     setLoading(false);
+  }
+
+  async function prepararOffline() {
+    setPreparing(true);
+    try {
+      // Pré-carrega dados do consultor (logo, preferências) para uso offline
+      if (roleData?.consultorId) {
+        await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
+      }
+      // Pré-carrega detalhes da fazenda
+      if (fazendaId) {
+        await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
+      }
+      // Pequena espera para dar feedback visual mesmo em conexões rápidas
+      await new Promise((r) => setTimeout(r, 700));
+    } catch {
+      /* segue mesmo se offline */
+    } finally {
+      setPreparing(false);
+      setTipoModal(true);
+    }
   }
 
   async function iniciarVisita(tipo: "rotina" | "confinamento" | "fabrica") {
@@ -100,8 +122,9 @@ export default function ConsultorFazendaDetalhePage() {
             )}
           </div>
         </div>
-        <Button onClick={() => setTipoModal(true)} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
-          <Play className="w-4 h-4" /> Iniciar Visita
+        <Button onClick={prepararOffline} disabled={preparing} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
+          {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          {preparing ? "Preparando para uso off-line..." : "Iniciar Visita"}
         </Button>
       </Card>
 

@@ -24,7 +24,7 @@ export interface ConfinamentoPdfCurral {
 
 export interface ConfinamentoPdfData {
   visitaId: string;
-  fazenda: { nome_fazenda: string; proprietario?: string | null; municipio?: string | null; uf?: string | null };
+  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null };
   consultor: { nome: string };
   hora_inicio: string;
   hora_fim: string | null;
@@ -186,10 +186,16 @@ function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(INK_SOFT);
-  const loc = [data.fazenda.proprietario, data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join(" · ");
-  if (loc) doc.text(loc, 15, y + 6);
 
-  const boxY = y + 12;
+  let metaY = y + 6;
+  const locStr = [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
+  const line1parts: string[] = [];
+  if (data.fazenda.proprietario) line1parts.push(`Proprietário: ${data.fazenda.proprietario}`);
+  if (locStr) line1parts.push(locStr);
+  if (line1parts.length) { doc.text(line1parts.join("  ·  "), 15, metaY); metaY += 5; }
+  if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
+
+  const boxY = Math.max(y + 12, metaY + 2);
   const boxW = (w - 30 - 10) / 3;
   const boxes = [
     { label: "CONSULTOR", value: data.consultor.nome || "—" },
