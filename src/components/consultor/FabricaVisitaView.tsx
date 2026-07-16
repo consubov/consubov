@@ -19,8 +19,9 @@ interface Visita {
   consultor_id: string;
 }
 interface Fazenda {
-  id: string; nome_fazenda: string; proprietario: string | null;
-  municipio: string | null; uf: string | null;
+  id: string; nome_fazenda: string;
+  proprietario?: string | null;
+  municipio?: string | null; uf?: string | null;
 }
 interface Consultor { id: string; nome: string; }
 
