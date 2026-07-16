@@ -1,9 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
-  countAllMutations,
+  countPendingMutations,
   deleteMutation,
   listAllMutations,
   putMutation,
+  purgeDeadMutations,
   type TextMutation,
 } from "./db";
 
