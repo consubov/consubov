@@ -656,6 +656,7 @@ export default function RevisaoVisitaPage() {
               </Button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>
