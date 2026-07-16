@@ -213,15 +213,19 @@ export default function FabricaVisitaView({
         numeroMap={numeroMap}
       />
 
-      <div className="sticky bottom-16 pt-2">
+      <div className="sticky bottom-16 pt-2 space-y-2">
+        <SyncBadge compact />
         <Button
           onClick={gerarPdf}
-          disabled={gerandoPdf || quantidadeAvaliadas === 0}
+          disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0}
           className="w-full gap-2 bg-primary hover:bg-primary/90"
+          title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
         >
           {gerandoPdf
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
-            : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
+            : pendingUploads > 0
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Aguardando {pendingUploads} foto{pendingUploads === 1 ? "" : "s"}…</>
+              : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
         </Button>
       </div>
 
