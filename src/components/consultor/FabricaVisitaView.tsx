@@ -47,6 +47,8 @@ export default function FabricaVisitaView({
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const { pending: pendingUploads } = useSyncStatus();
+
 
   useEffect(() => { loadAvaliacoes(); loadConsultor(); }, [visitaId]);
 
