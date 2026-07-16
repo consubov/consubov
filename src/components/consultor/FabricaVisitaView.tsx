@@ -216,7 +216,7 @@ export default function FabricaVisitaView({
       />
 
       <div className="sticky bottom-16 pt-2 space-y-2">
-        <SyncBadge compact />
+        
         <Button
           onClick={gerarPdf}
           disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0}
