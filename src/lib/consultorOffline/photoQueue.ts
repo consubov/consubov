@@ -18,6 +18,16 @@ const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
+    Promise.resolve(promise).then(
+      (value) => { window.clearTimeout(t); resolve(value); },
+      (error) => { window.clearTimeout(t); reject(error); },
+    );
+  });
+}
+
 async function refreshPendingCount() {
   cachedPending = await countAllFotos();
   emit();
@@ -74,10 +84,10 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     emit();
 
     const folder = item.parentKind === "curral" ? "currais" : item.parentKind === "topico" ? "topicos" : "pastos";
-    const path = `${folder}/${item.parentId}/${item.ordem}-${Date.now()}.jpg`;
-    const { error: upErr } = await supabase.storage
+    const path = `${folder}/${item.parentId}/${item.ordem}-${item.localId}.jpg`;
+    const { error: upErr } = await withTimeout(supabase.storage
       .from(BUCKET)
-      .upload(path, item.blob, { upsert: true, contentType: item.mime });
+      .upload(path, item.blob, { upsert: true, contentType: item.mime }), 20000);
     if (upErr) throw upErr;
 
     const insertPayload: any = { url: path, ordem: item.ordem };
@@ -86,11 +96,22 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     else insertPayload.visita_pasto_id = item.parentId;
 
     const table = item.parentKind === "topico" ? "visita_topico_fotos" : "visita_fotos";
-    const { data: inserted, error: insErr } = await (supabase as any)
+    const existingRes = await withTimeout((supabase as any)
       .from(table)
-      .insert(insertPayload)
       .select("*")
-      .single();
+      .eq("url", path)
+      .maybeSingle(), 10000);
+    let inserted = existingRes.data;
+    let insErr = existingRes.error;
+    if (!inserted && !insErr) {
+      const insertRes = await withTimeout((supabase as any)
+        .from(table)
+        .insert(insertPayload)
+        .select("*")
+        .single(), 10000);
+      inserted = insertRes.data;
+      insErr = insertRes.error;
+    }
     if (insErr) throw insErr;
 
     await deleteFoto(item.localId);

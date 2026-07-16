@@ -2,6 +2,16 @@ import { getSnapshot, listFotosByVisita, listMutationsByVisita, putSnapshot } fr
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMutation } from "./mutationQueue";
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 8000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
+    Promise.resolve(promise).then(
+      (value) => { window.clearTimeout(t); resolve(value); },
+      (error) => { window.clearTimeout(t); reject(error); },
+    );
+  });
+}
+
 /**
  * Full offline snapshot of a visita — everything needed to render the
  * revisão screens without a network connection.
@@ -98,10 +108,10 @@ export async function offlineUpdate(params: {
 
   // 3. Tenta gravar online
   try {
-    const { error } = await (supabase as any)
+    const { error } = await withTimeout((supabase as any)
       .from(params.table)
       .update(params.patch)
-      .eq("id", params.rowId);
+      .eq("id", params.rowId));
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (err) {
@@ -149,9 +159,9 @@ export async function offlineUpsert(params: {
   }
 
   try {
-    const { error } = await (supabase as any)
+    const { error } = await withTimeout((supabase as any)
       .from(params.table)
-      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id" });
+      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id" }));
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (err) {
@@ -195,7 +205,7 @@ export async function offlineDelete(params: {
   }
 
   try {
-    const { error } = await (supabase as any).from(params.table).delete().eq("id", params.rowId);
+    const { error } = await withTimeout((supabase as any).from(params.table).delete().eq("id", params.rowId));
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (err) {

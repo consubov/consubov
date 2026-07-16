@@ -12,6 +12,16 @@ const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
+    Promise.resolve(promise).then(
+      (value) => { window.clearTimeout(t); resolve(value); },
+      (error) => { window.clearTimeout(t); reject(error); },
+    );
+  });
+}
+
 async function refresh() {
   cachedPending = await countAllMutations();
   emit();
@@ -83,18 +93,18 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     const operation = m.operation ?? "update";
     let error: any = null;
     if (operation === "upsert") {
-      const res = await (supabase as any)
+      const res = await withTimeout((supabase as any)
         .from(m.table)
-        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" });
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" }));
       error = res.error;
     } else if (operation === "insert") {
-      const res = await (supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch });
+      const res = await withTimeout((supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch }));
       error = res.error;
     } else if (operation === "delete") {
-      const res = await (supabase as any).from(m.table).delete().eq("id", m.rowId);
+      const res = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
       error = res.error;
     } else {
-      const res = await (supabase as any).from(m.table).update(m.patch).eq("id", m.rowId);
+      const res = await withTimeout((supabase as any).from(m.table).update(m.patch).eq("id", m.rowId));
       error = res.error;
     }
     if (error) throw error;
