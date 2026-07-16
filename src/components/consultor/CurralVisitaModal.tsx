@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
-import { offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaCurralRow {
   id: string;
@@ -49,12 +49,29 @@ export default function CurralVisitaModal({
       setCurralIdLocal(curral.id);
       setNumCurral(curral.num_curral);
       // load samples
-      supabase.from("avaliacoes_score")
-        .select("id, tipo, nota")
-        .eq("visita_curral_id", curral.id)
-        .then(({ data }) => {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const source = online
+        ? supabase.from("avaliacoes_score")
+            .select("id, tipo, nota")
+            .eq("visita_curral_id", curral.id)
+        : Promise.resolve({ data: [] });
+      source.then(async ({ data }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
-          (data || []).forEach((s: any) => {
+          let rows = (data as any[]) || [];
+          if (rows.length === 0) {
+            const snap = await loadSnapshot(visitaId);
+            const snapCurral = (snap?.currais || []).find((c: any) => c.id === curral.id) as any;
+            if (snapCurral?.samples) {
+              setSamples({
+                fezes: snapCurral.samples.fezes || [],
+                corporal: snapCurral.samples.corporal || [],
+                bebedouro: snapCurral.samples.bebedouro || [],
+              });
+              return;
+            }
+            rows = ((snap?.avaliacoes_score as any[]) || []).filter((s: any) => s.visita_curral_id === curral.id);
+          }
+          rows.forEach((s: any) => {
             if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
           });
           setSamples(next);
@@ -125,6 +142,9 @@ export default function CurralVisitaModal({
       applyToSnapshot: (curr, payload) => ({
         ...curr,
         avaliacoes_score: [...(curr.avaliacoes_score || []), { id: scoreId, ...payload }],
+        currais: (curr.currais || []).map((c: any) => c.id === id
+          ? { ...c, samples: { ...(c.samples || EMPTY_SAMPLES), [tipo]: [...((c.samples || EMPTY_SAMPLES)[tipo] || []), { id: scoreId, nota }] } }
+          : c),
       }),
     });
     if (res.queued) toast.info("Amostra salva off-line.");
@@ -133,7 +153,18 @@ export default function CurralVisitaModal({
   async function removeSample(tipo: keyof SamplesState, index: number) {
     const s = samples[tipo][index];
     if (!s?.id) return;
-    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    await offlineDelete({
+      visitaId,
+      table: "avaliacoes_score",
+      rowId: s.id,
+      applyToSnapshot: (curr) => ({
+        ...curr,
+        avaliacoes_score: ((curr.avaliacoes_score as any[]) || []).filter((x: any) => x.id !== s.id),
+        currais: (curr.currais || []).map((c: any) => c.id === (curralIdLocal || curral?.id)
+          ? { ...c, samples: { ...(c.samples || EMPTY_SAMPLES), [tipo]: ((c.samples || EMPTY_SAMPLES)[tipo] || []).filter((x: any) => x.id !== s.id) } }
+          : c),
+      }),
+    });
     setSamples(prev => ({ ...prev, [tipo]: prev[tipo].filter((_, i) => i !== index) }));
   }
 

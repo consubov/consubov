@@ -18,7 +18,7 @@ import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consulto
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
@@ -141,6 +141,7 @@ export default function RevisaoVisitaPage() {
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
+  const [pendingThisVisit, setPendingThisVisit] = useState(false);
 
   useEffect(() => {
     if (!visitaId) return;
@@ -168,7 +169,10 @@ export default function RevisaoVisitaPage() {
   async function load() {
     setLoading(true);
     const snap = visitaId ? await loadSnapshot(visitaId) : null;
-    const { data: v } = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle();
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const { data: v } = online
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
+      : { data: null };
     const visitaRow = (v as any) || snap?.visita;
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
@@ -179,11 +183,13 @@ export default function RevisaoVisitaPage() {
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
 
-    const [{ data: fz }, { data: cs }, { data: ps }] = await Promise.all([
-      supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
-      supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
-      supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
-    ]);
+    const [{ data: fz }, { data: cs }, { data: ps }] = online
+      ? await Promise.all([
+          supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
+          supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
+          supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
+        ])
+      : [{ data: null }, { data: null }, { data: null }];
     const fazendaRow = fz || snap?.fazenda;
     const consultorRow = cs || snap?.consultor;
     setFazenda(fazendaRow); setConsultor(consultorRow);
@@ -193,7 +199,7 @@ export default function RevisaoVisitaPage() {
     const ids = pastoRows.map(p => p.id);
     const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
     const fotosByPasto: Record<string, Foto[]> = {};
-    if (ids.length) {
+    if (ids.length && online) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
@@ -209,10 +215,12 @@ export default function RevisaoVisitaPage() {
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
       const snapPasto = (snap?.pastos || []).find((x: any) => x.id === p.id) as any;
       const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : (snapPasto?.fotos || []);
-      const fotos = fotosByPasto[p.id]?.length ? fotosByPasto[p.id] : fallbackFotos;
+      const remoteFotos = fotosByPasto[p.id] || [];
+      const queuedFotos = fallbackFotos.filter((f: any) => String(f.url || "").startsWith("queued:"));
+      const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((r: any) => r.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
@@ -221,6 +229,7 @@ export default function RevisaoVisitaPage() {
       } as Pasto;
     }));
     setPastos(built);
+    setPendingThisVisit(await hasPendingLocalChanges(visitaId!));
     // Snapshot local — permite reabrir a visita offline com dados pré-carregados
     void saveSnapshot(visitaId!, {
       visita: visitaRow,
@@ -395,6 +404,15 @@ export default function RevisaoVisitaPage() {
 
   async function gerarPdf() {
     if (!visita || !fazenda || !consultor) return;
+    if ((await hasPendingLocalChanges(visita.id)) || pendingUploads > 0) {
+      setPendingThisVisit(true);
+      toast.error("Sincronize os dados pendentes em Minhas Fazendas antes de gerar o PDF.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
+      return;
+    }
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
@@ -727,14 +745,14 @@ export default function RevisaoVisitaPage() {
           {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
-              disabled={gerandoPdf || pendingUploads > 0}
+              disabled={gerandoPdf || pendingUploads > 0 || pendingThisVisit}
               className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
               title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              {pendingUploads > 0
-                ? `Aguardando ${pendingUploads} foto${pendingUploads === 1 ? "" : "s"}…`
+              {pendingUploads > 0 || pendingThisVisit
+                ? `Sincronize ${pendingUploads || 1} pendente${(pendingUploads || 1) === 1 ? "" : "s"}`
                 : visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}

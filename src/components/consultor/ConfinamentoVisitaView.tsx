@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import { loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -27,7 +28,7 @@ interface Visita {
   conclusao: string | null;
   fazenda_consultor_id: string;
 }
-interface Fazenda { id: string; nome_fazenda: string; }
+interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
 
 interface CurralComAmostras extends VisitaCurralRow {
   samples: { fezes: number[]; corporal: number[]; bebedouro: number[] };
@@ -51,18 +52,22 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [fabricaNota, setFabricaNota] = useState<number | null>(null);
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
 
-  const readOnly = visita.status === "finalizada";
+  const readOnly = false;
 
   useEffect(() => { load(); }, [visitaId]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const cRes = await supabase.from("visita_currais")
-      .select("*").eq("visita_id", visitaId).order("ordem");
-    const curraisData = (cRes.data as any[]) || [];
+    const snap = await loadSnapshot(visitaId);
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const cRes = online
+      ? await supabase.from("visita_currais").select("*").eq("visita_id", visitaId).order("ordem")
+      : { data: null };
+    let curraisData = (cRes.data as any[]) || [];
+    if (curraisData.length === 0 && snap?.currais?.length) curraisData = snap.currais as any[];
     const ids = curraisData.map(c => c.id);
     const samplesByCurral: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
-    if (ids.length > 0) {
+    if (ids.length > 0 && online) {
       const { data: scoresData } = await supabase.from("avaliacoes_score")
         .select("visita_curral_id, tipo, nota")
         .in("visita_curral_id", ids);
@@ -71,8 +76,13 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
       });
     }
-    setCurrais(curraisData.map(c => {
-      const samples = samplesByCurral[c.id] || { fezes: [], corporal: [], bebedouro: [] };
+    const built = curraisData.map(c => {
+      const snapSamples = (c as any).samples || {};
+      const samples = samplesByCurral[c.id] || {
+        fezes: (snapSamples.fezes || []).map((s: any) => s.nota ?? s),
+        corporal: (snapSamples.corporal || []).map((s: any) => s.nota ?? s),
+        bebedouro: (snapSamples.bebedouro || []).map((s: any) => s.nota ?? s),
+      };
       return {
         ...c,
         samples,
@@ -82,25 +92,38 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
           bebedouro: averageOf(samples.bebedouro),
         },
       };
-    }));
+    });
+    setCurrais(built);
 
     // load avaliacao fabrica
-    const { data: af } = await (supabase as any).from("avaliacao_fabrica_visita")
-      .select("organizacao_fabrica_nota, organizacao_insumos_nota")
-      .eq("visita_id", visitaId).maybeSingle();
-    setFabricaNota(af?.organizacao_fabrica_nota ?? null);
-    setInsumosNota(af?.organizacao_insumos_nota ?? null);
+    const { data: af } = online
+      ? await (supabase as any).from("avaliacao_fabrica_visita")
+          .select("id, organizacao_fabrica_nota, organizacao_insumos_nota")
+          .eq("visita_id", visitaId).maybeSingle()
+      : { data: null };
+    const afRow = af || snap?.avaliacao_fabrica_visita || null;
+    setFabricaNota(afRow?.organizacao_fabrica_nota ?? null);
+    setInsumosNota(afRow?.organizacao_insumos_nota ?? null);
 
     // refresh visita
-    const vRes = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle();
+    const vRes = online
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle()
+      : { data: null };
     if (vRes.data) {
       const v = vRes.data as Visita;
       setVisita(v);
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");
     }
+    void saveSnapshot(visitaId, {
+      ...(snap || {}),
+      visita: vRes.data || snap?.visita || initialVisita,
+      fazenda: fazenda || snap?.fazenda,
+      currais: built,
+      avaliacao_fabrica_visita: afRow,
+    }).catch(() => {});
     setLoading(false);
-  }, [visitaId]);
+  }, [visitaId, fazenda, initialVisita]);
 
   const nextOrdem = useMemo(
     () => (currais.length > 0 ? Math.max(...currais.map(c => c.ordem)) + 1 : 0),
@@ -114,9 +137,16 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     };
     if (patch.organizacao_fabrica_nota !== undefined) setFabricaNota(patch.organizacao_fabrica_nota);
     if (patch.organizacao_insumos_nota !== undefined) setInsumosNota(patch.organizacao_insumos_nota);
-    const { error } = await (supabase as any).from("avaliacao_fabrica_visita")
-      .upsert({ visita_id: visitaId, ...next }, { onConflict: "visita_id" });
-    if (error) toast.error("Erro ao salvar avaliação da fábrica: " + error.message);
+    const rowId = (await loadSnapshot(visitaId))?.avaliacao_fabrica_visita?.id || crypto.randomUUID();
+    const res = await offlineUpsert({
+      visitaId,
+      table: "avaliacao_fabrica_visita",
+      rowId,
+      payload: { visita_id: visitaId, ...next },
+      onConflict: "visita_id",
+      applyToSnapshot: (curr, payload) => ({ ...curr, avaliacao_fabrica_visita: { id: rowId, ...payload } }),
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar avaliação da fábrica");
   }
 
   function openNew() { setEditing(null); setModalOpen(true); }
@@ -132,13 +162,17 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   async function handleFinalizar() {
     setFinalizando(true);
     try {
-      const { error } = await supabase.from("visitas_tecnicas").update({
+      const { queued } = await offlineUpdate({
+        visitaId,
+        table: "visitas_tecnicas",
+        rowId: visitaId,
+        patch: {
         observacoes_gerais: obsGerais.trim() || null,
         conclusao: conclusao.trim() || null,
         status: "rascunho",
-      }).eq("id", visitaId);
-      if (error) throw error;
-      toast.success("Visita salva!");
+        },
+      });
+      toast.success(queued ? "Visita salva off-line." : "Visita salva!");
       setFinalizarOpen(false);
       load();
     } catch (err: any) {

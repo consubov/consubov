@@ -73,6 +73,8 @@ function getCachedRole(userId: string): RoleData | null {
       roleId: parsed.roleId ?? null,
       fazendaId: parsed.fazendaId ?? null,
       retiroId: parsed.retiroId ?? null,
+      fabricaId: parsed.fabricaId ?? null,
+      consultorId: parsed.consultorId ?? null,
     };
   } catch {
     return null;

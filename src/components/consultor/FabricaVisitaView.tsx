@@ -14,7 +14,7 @@ import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string; tipo: string; status: string;
@@ -52,6 +52,7 @@ export default function FabricaVisitaView({
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
+  const [pendingThisVisit, setPendingThisVisit] = useState(false);
 
 
   useEffect(() => { loadDados(); }, [visitaId]);
@@ -59,10 +60,13 @@ export default function FabricaVisitaView({
   async function loadDados() {
     const snap = await loadSnapshot(visitaId);
     setFazendaAtual(fazenda || (snap?.fazenda as Fazenda | undefined) || null);
-    const [{ data: consultorData }, { data }] = await Promise.all([
-      supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle(),
-      (supabase as any).from("avaliacoes_fabrica_quesito").select("id, quesito, nota").eq("visita_id", visitaId),
-    ]);
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const [{ data: consultorData }, { data }] = online
+      ? await Promise.all([
+          supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle(),
+          (supabase as any).from("avaliacoes_fabrica_quesito").select("id, quesito, nota").eq("visita_id", visitaId),
+        ])
+      : [{ data: null }, { data: null }];
     const consultorRow = (consultorData as Consultor | null) || (snap?.consultor as Consultor | undefined) || null;
     setConsultor(consultorRow);
     const rows = ((data as any[])?.length ? data as any[] : (snap?.avaliacoes_fabrica as any[]) || []);
@@ -71,6 +75,7 @@ export default function FabricaVisitaView({
     rows.forEach(r => { map[r.quesito] = r.nota; if (r.id) ids[r.quesito] = r.id; });
     setNotas(map);
     setNotaIds(ids);
+    setPendingThisVisit(await hasPendingLocalChanges(visitaId));
     void saveSnapshot(visitaId, {
       ...(snap || {}),
       visita,
@@ -110,6 +115,15 @@ export default function FabricaVisitaView({
 
   async function gerarPdf() {
     if (!fazendaAtual || !consultor) { toast.error("Dados insuficientes"); return; }
+    if ((await hasPendingLocalChanges(visitaId)) || pendingUploads > 0) {
+      setPendingThisVisit(true);
+      toast.error("Sincronize os dados pendentes em Minhas Fazendas antes de gerar o PDF.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
+      return;
+    }
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
@@ -247,14 +261,14 @@ export default function FabricaVisitaView({
         
         <Button
           onClick={gerarPdf}
-          disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0}
+          disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0 || pendingThisVisit}
           className="w-full gap-2 bg-primary hover:bg-primary/90"
           title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
         >
           {gerandoPdf
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
-            : pendingUploads > 0
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Aguardando {pendingUploads} foto{pendingUploads === 1 ? "" : "s"}…</>
+            : pendingUploads > 0 || pendingThisVisit
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronize {pendingUploads || 1} pendente{(pendingUploads || 1) === 1 ? "" : "s"}</>
               : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
         </Button>
       </div>

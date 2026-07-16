@@ -12,6 +12,16 @@ const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
+    Promise.resolve(promise).then(
+      (value) => { window.clearTimeout(t); resolve(value); },
+      (error) => { window.clearTimeout(t); reject(error); },
+    );
+  });
+}
+
 async function refresh() {
   cachedPending = await countAllMutations();
   emit();
@@ -76,24 +86,25 @@ export async function enqueueMutation(params: {
 
 async function flushOne(m: TextMutation): Promise<boolean> {
   try {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
     m.status = "flushing";
     await putMutation(m);
     emit();
     const operation = m.operation ?? "update";
     let error: any = null;
     if (operation === "upsert") {
-      const res = await (supabase as any)
+      const res: any = await withTimeout((supabase as any)
         .from(m.table)
-        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" });
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" }));
       error = res.error;
     } else if (operation === "insert") {
-      const res = await (supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch });
+      const res: any = await withTimeout((supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch }));
       error = res.error;
     } else if (operation === "delete") {
-      const res = await (supabase as any).from(m.table).delete().eq("id", m.rowId);
+      const res: any = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
       error = res.error;
     } else {
-      const res = await (supabase as any).from(m.table).update(m.patch).eq("id", m.rowId);
+      const res: any = await withTimeout((supabase as any).from(m.table).update(m.patch).eq("id", m.rowId));
       error = res.error;
     }
     if (error) throw error;
@@ -122,10 +133,13 @@ export async function drainMutations(): Promise<void> {
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllMutations();
-        const target = items.find((i) => i.status !== "error" || i.tries < 3);
+        const target = items.find((i) => i.status !== "error" || (i.tries ?? 0) < 3);
         if (!target) break;
         const ok = await flushOne(target);
-        if (!ok && target.tries >= 3) break;
+        if (!ok) {
+          if ((target.tries ?? 0) >= 3) break;
+          if (typeof navigator !== "undefined" && !navigator.onLine) break;
+        }
         attempts++;
       }
     } finally {
@@ -143,7 +157,7 @@ export async function drainMutations(): Promise<void> {
 export async function retryFailedMutations() {
   const items = await listAllMutations();
   for (const it of items) {
-    if (it.status === "error") {
+    if (it.status === "error" || it.status === "flushing") {
       it.status = "pending";
       it.tries = 0;
       it.lastError = undefined;

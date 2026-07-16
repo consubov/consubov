@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
-import { offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaPastoRow {
   id: string;
@@ -112,12 +112,29 @@ export default function PastoVisitaModal({
       setConsumoEsperado(pasto.consumo_esperado_kg?.toString() || "");
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
-      supabase.from("avaliacoes_score")
-        .select("id, tipo, nota")
-        .eq("visita_pasto_id", pasto.id)
-        .then(({ data }) => {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const source = online
+        ? supabase.from("avaliacoes_score")
+            .select("id, tipo, nota")
+            .eq("visita_pasto_id", pasto.id)
+        : Promise.resolve({ data: [] });
+      source.then(async ({ data }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
-          (data || []).forEach((s: any) => {
+          let rows = (data as any[]) || [];
+          if (rows.length === 0) {
+            const snap = await loadSnapshot(visitaId);
+            const snapPasto = (snap?.pastos || []).find((p: any) => p.id === pasto.id) as any;
+            if (snapPasto?.samples) {
+              setSamples({
+                fezes: snapPasto.samples.fezes || [],
+                corporal: snapPasto.samples.corporal || [],
+                bebedouro: snapPasto.samples.bebedouro || [],
+              });
+              return;
+            }
+            rows = ((snap?.avaliacoes_score as any[]) || []).filter((s: any) => s.visita_pasto_id === pasto.id);
+          }
+          rows.forEach((s: any) => {
             if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
           });
           setSamples(next);
@@ -234,6 +251,9 @@ export default function PastoVisitaModal({
       applyToSnapshot: (curr, payload) => ({
         ...curr,
         avaliacoes_score: [...(curr.avaliacoes_score || []), { id: scoreId, ...payload }],
+        pastos: (curr.pastos || []).map((p: any) => p.id === id
+          ? { ...p, samples: { ...(p.samples || EMPTY_SAMPLES), [tipo]: [...((p.samples || EMPTY_SAMPLES)[tipo] || []), item] } }
+          : p),
       }),
     });
     if (res.queued) toast.info("Amostra salva off-line.");
@@ -242,7 +262,18 @@ export default function PastoVisitaModal({
   async function removeSample(tipo: keyof SamplesState, index: number) {
     const s = samples[tipo][index];
     if (!s?.id) return;
-    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    await offlineDelete({
+      visitaId,
+      table: "avaliacoes_score",
+      rowId: s.id,
+      applyToSnapshot: (curr) => ({
+        ...curr,
+        avaliacoes_score: ((curr.avaliacoes_score as any[]) || []).filter((x: any) => x.id !== s.id),
+        pastos: (curr.pastos || []).map((p: any) => p.id === (pastoIdLocal || pasto?.id)
+          ? { ...p, samples: { ...(p.samples || EMPTY_SAMPLES), [tipo]: ((p.samples || EMPTY_SAMPLES)[tipo] || []).filter((x: any) => x.id !== s.id) } }
+          : p),
+      }),
+    });
     setSamples(prev => ({ ...prev, [tipo]: prev[tipo].filter((_, i) => i !== index) }));
   }
 

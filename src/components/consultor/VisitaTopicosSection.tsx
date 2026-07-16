@@ -78,8 +78,11 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   async function load() {
     setLoading(true);
     const snap = await loadSnapshot(visitaId);
-    const { data } = await (supabase as any).from("visita_topicos")
-      .select("*").eq("visita_id", visitaId).order("ordem");
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const { data } = online
+      ? await (supabase as any).from("visita_topicos")
+          .select("*").eq("visita_id", visitaId).order("ordem")
+      : { data: null };
     let rows = (data as any[]) || [];
     if (rows.length === 0 && snap?.topicos?.length) rows = snap.topicos as any[];
 
@@ -127,7 +130,7 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 
     const ids = rows.map(r => r.id);
     const fotosByTopico: Record<string, TopicoFoto[]> = {};
-    if (ids.length) {
+    if (ids.length && online) {
       const { data: ft } = await (supabase as any).from("visita_topico_fotos")
         .select("*").in("visita_topico_id", ids).order("ordem");
       (ft as any[] || []).forEach(f => {
@@ -137,10 +140,12 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     const built: Topico[] = await Promise.all(rows.map(async r => {
       const snapTopico = (snap?.topicos || []).find((x: any) => x.id === r.id) as any;
       const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : (snapTopico?.fotos || []);
-      const fotos = fotosByTopico[r.id]?.length ? fotosByTopico[r.id] : fallbackFotos;
+      const remoteFotos = fotosByTopico[r.id] || [];
+      const queuedFotos = fallbackFotos.filter((f: any) => String(f.url || "").startsWith("queued:"));
+      const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((rf: any) => rf.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapTopico?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return { ...r, fotos, signed } as Topico;
     }));

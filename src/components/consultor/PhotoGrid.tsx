@@ -71,6 +71,11 @@ export default function PhotoGrid({
 
   const reloadFotos = async () => {
     if (!targetId || !targetKind) { setFotos([]); return; }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setFotos([]);
+      setSigned({});
+      return;
+    }
     const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
     const { data } = await supabase.from("visita_fotos")
       .select("*").eq(col, targetId).order("ordem");

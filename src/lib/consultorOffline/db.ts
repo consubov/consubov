@@ -101,6 +101,11 @@ export async function listAllFotos() {
   const db = await getDb();
   return db.getAll("foto_queue");
 }
+export async function listFotosByVisita(visitaId: string) {
+  const db = await getDb();
+  const items = await db.getAll("foto_queue");
+  return items.filter((item) => item.visitaId === visitaId);
+}
 export async function countAllFotos() {
   const db = await getDb();
   return db.count("foto_queue");
