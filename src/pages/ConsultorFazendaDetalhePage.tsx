@@ -187,14 +187,45 @@ export default function ConsultorFazendaDetalhePage() {
             )}
           </div>
         </div>
-        <Button onClick={prepararOffline} disabled={preparing} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
-          {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          {preparing ? "Preparando para uso off-line..." : "Iniciar Visita"}
+        <Button onClick={prepararOffline} disabled={preparing || offlineReady} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
+          <Play className="w-4 h-4" />
+          Iniciar Visita
         </Button>
-        {offlineReady && (
-          <div className="text-xs font-medium text-primary text-center">Pronto para uso off-line ✅</div>
-        )}
       </Card>
+
+      {/* Modal Preparando → Pronto */}
+      <Dialog open={preparing || offlineReady} onOpenChange={() => { /* controlado */ }}>
+        <DialogContent className="max-w-xs" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {offlineReady ? "Pronto para uso off-line" : "Preparando para uso off-line"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {offlineReady
+                ? "Você já pode registrar a visita mesmo sem internet."
+                : "Baixando dados da fazenda e do consultor…"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            {offlineReady ? (
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-primary" />
+              </div>
+            ) : (
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            )}
+          </div>
+          {offlineReady && (
+            <Button
+              onClick={() => { setOfflineReady(false); setTipoModal(true); }}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              Começar
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-2">Visitas anteriores</h2>
