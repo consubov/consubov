@@ -71,7 +71,7 @@ export async function enqueueMutation(params: {
     await putMutation(m);
   }
   await refresh();
-  void drainMutations();
+  if (typeof navigator === "undefined" || navigator.onLine) void drainMutations();
 }
 
 async function flushOne(m: TextMutation): Promise<boolean> {
@@ -118,6 +118,7 @@ export async function drainMutations(): Promise<void> {
     syncing = true;
     emit();
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllMutations();
@@ -153,6 +154,6 @@ export async function retryFailedMutations() {
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => void drainMutations());
-  void drainMutations();
+  window.addEventListener("online", () => void retryFailedMutations());
+  if (navigator.onLine) void drainMutations();
 }

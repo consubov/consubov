@@ -88,7 +88,7 @@ export default function ConsultorFazendaDetalhePage() {
       setPreparing(false);
       setOfflineReady(true);
       toast.success("Pronto para uso off-line ✅");
-      setTipoModal(true);
+      window.setTimeout(() => setTipoModal(true), 800);
     }
   }
 

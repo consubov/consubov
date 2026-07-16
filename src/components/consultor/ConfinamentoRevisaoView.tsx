@@ -86,7 +86,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
       supabase.from("visita_currais").select("*").eq("visita_id", visitaId).order("ordem"),
       (supabase as any).from("avaliacao_fabrica_visita")
-        .select("organizacao_fabrica_nota, organizacao_insumos_nota")
+        .select("id, organizacao_fabrica_nota, organizacao_insumos_nota")
         .eq("visita_id", visitaId).maybeSingle(),
     ]);
     const fazendaRow = fz || snap?.fazenda;
