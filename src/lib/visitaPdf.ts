@@ -144,9 +144,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  logoDataUrl: string | null,
+  defaultLogoDataUrl: string | null,
   subtitle: string,
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; dataUrl: string | null } | null,
+  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const headerH = 32;
@@ -155,19 +155,17 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  const modo = logoOverride?.modo ?? 'padrao';
-  const customUrl = logoOverride?.dataUrl ?? null;
-
-  // Left logo
-  const leftLogo = modo === 'substituir' && customUrl ? customUrl : logoDataUrl;
+  // Left logo: custom se enviada, senão Consubov padrão
+  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
   if (leftLogo) {
     try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
 
-  // Right logo (only 'adicionar')
-  if (modo === 'adicionar' && customUrl) {
+  // Right logo: apenas se enviada
+  const hasRight = !!logos?.direitaDataUrl;
+  if (hasRight) {
     const rightX = w - 15 - logoW;
-    try { doc.addImage(customUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+    try { doc.addImage(logos!.direitaDataUrl!, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
 
   // Linha vertical fina verde
@@ -176,7 +174,7 @@ function drawCoverHeader(
   doc.setLineWidth(0.8);
   doc.line(dividerX, logoY, dividerX, logoY + logoH);
 
-  // eyebrow + título
+  // eyebrow + título (não sobrepõe logo direita — texto vai até ~x=140, logo direita começa em ~x=151)
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
