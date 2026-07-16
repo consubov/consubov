@@ -108,6 +108,8 @@ export default function ConsultorFazendasPage() {
         </div>
       </div>
 
+      <SyncBadge />
+
       {fazendas.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">
           Nenhuma fazenda cadastrada ainda.<br />Toque em "Nova" para começar.
