@@ -73,8 +73,8 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
               { ordem: 1002, titulo: "Conclusão", texto: seedFrom?.conclusao || null },
             ];
       const existingOrdens = new Set(rows.map(r => r.ordem));
-      // Só semear se não houver NENHUM tópico ainda (evita re-semear em visita existente que já teve tópicos apagados)
-      const shouldSeed = rows.length === 0;
+      // Fábrica: só semeia se não houver NENHUM tópico ainda. Rotina: insere apenas os fixos que faltam.
+      const shouldSeed = mode === "fabrica" ? rows.length === 0 : true;
       if (shouldSeed) {
         const toInsert = defaults
           .filter(d => !existingOrdens.has(d.ordem))
