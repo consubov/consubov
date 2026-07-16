@@ -369,6 +369,41 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_fabrica_quesito: {
+        Row: {
+          created_at: string
+          id: string
+          nota: number
+          quesito: string
+          updated_at: string
+          visita_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nota: number
+          quesito: string
+          updated_at?: string
+          visita_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nota?: number
+          quesito?: string
+          updated_at?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_fabrica_quesito_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliacoes_score: {
         Row: {
           id: string

@@ -581,3 +581,171 @@ export async function uploadVisitaPdf(
   const { data } = supabase.storage.from(BUCKET_RELATORIOS).getPublicUrl(path);
   return data.publicUrl;
 }
+
+// ============================================================================
+// FÁBRICA — template isolado (Round 8, PDF novo)
+// ============================================================================
+
+export interface VisitaFabricaPdfData {
+  visitaId: string;
+  fazenda: { nome_fazenda: string; proprietario?: string | null; municipio?: string | null; uf?: string | null };
+  consultor: { nome: string };
+  hora_inicio: string;
+  hora_fim: string | null;
+  quesitos: { chave: string; rotulo: string; nota: number | null }[];
+  topicos: { id: string; titulo: string; texto: string | null; ordem: number;
+    fotos: { id: string; url: string; ordem: number }[] }[];
+  numeroMap?: Record<string, number>;
+}
+
+function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
+  const r = 3.4;
+  doc.setFillColor(GREEN_DARK);
+  doc.circle(x + r, y + r, r, "F");
+  doc.setTextColor(GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.text(String(n), x + r, y + r + 2.2, { align: "center" });
+}
+
+export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ blob: Blob; fileName: string }> {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
+
+  const fotosCache: Record<string, string | null> = {};
+  const allFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
+  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+
+  // PAGE 1
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica");
+  let y = drawFarmBlock(doc, {
+    fazenda: data.fazenda, consultor: data.consultor,
+    hora_inicio: data.hora_inicio, hora_fim: data.hora_fim,
+    visitaId: data.visitaId, observacoes_gerais: null, conclusao: null, pastos: [],
+  } as VisitaPdfData, 50);
+
+  // Bloco Avaliação
+  if (y > pageH - 70) { doc.addPage(); y = 20; }
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, y, 2.5, 6, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("AVALIAÇÃO DA FÁBRICA", 20, y + 4.5);
+  y += 10;
+
+  const wTable = pageW - 30;
+  const labelW = wTable * 0.62;
+  const rowH = 8;
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.3);
+  const notaValida = data.quesitos.filter(q => q.nota != null);
+  const media = notaValida.length
+    ? notaValida.reduce((s, q) => s + (q.nota || 0), 0) / notaValida.length
+    : 0;
+  data.quesitos.forEach((q, i) => {
+    if (y + rowH > pageH - 30) { doc.addPage(); y = 20; }
+    if (i % 2 === 0) { doc.setFillColor("#FAF8F0"); doc.rect(15, y, wTable, rowH, "F"); }
+    doc.setTextColor(INK);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.text(q.rotulo, 18, y + 5.4);
+    // rating boxes 1..5
+    const bxSize = 5.2;
+    const gap = 1.4;
+    const groupW = 5 * bxSize + 4 * gap;
+    const bxStart = 15 + labelW + (wTable - labelW - groupW - 4);
+    for (let n = 1; n <= 5; n++) {
+      const bx = bxStart + (n - 1) * (bxSize + gap);
+      const by = y + (rowH - bxSize) / 2;
+      const active = q.nota === n;
+      doc.setDrawColor(active ? GREEN_DARK : LINE);
+      doc.setFillColor(active ? GREEN_DARK : "#FFFFFF");
+      doc.roundedRect(bx, by, bxSize, bxSize, 1, 1, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(active ? GOLD : INK_SOFT);
+      doc.text(String(n), bx + bxSize / 2, by + bxSize / 2 + 1.4, { align: "center" });
+    }
+    doc.setDrawColor(LINE);
+    doc.line(15, y + rowH, 15 + wTable, y + rowH);
+    y += rowH;
+  });
+
+  if (notaValida.length) {
+    y += 4;
+    doc.setTextColor(GREEN_DARK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`Média geral: ${media.toFixed(1)}/5  ·  ${notaValida.length}/${data.quesitos.length} quesitos avaliados`, 15, y);
+    y += 8;
+  } else {
+    y += 6;
+  }
+
+  // Tópicos (custom + footer inline)
+  const sortedTopicos = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
+  for (const t of sortedTopicos) {
+    const tx = (t.texto || "").trim();
+    if (!t.titulo.trim() && !tx && t.fotos.length === 0) continue;
+    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    if (t.titulo.trim() || tx) {
+      y = drawIntroBlock(doc, t.titulo || "—", tx || "—", y);
+    }
+    if (t.fotos.length > 0) {
+      const wArea = pageW - 30;
+      const cols = 5;
+      const gap = 2;
+      const fw = (wArea - (cols - 1) * gap) / cols;
+      const fh = fw;
+      if (y + fh > pageH - 20) { doc.addPage(); y = 20; }
+      for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
+        const fx = 15 + i * (fw + gap);
+        const foto = t.fotos[i];
+        const dataUrl = fotosCache[foto.id];
+        if (dataUrl) {
+          try {
+            const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+            doc.addImage(dataUrl, fmt, fx, y, fw, fh, undefined, "FAST");
+          } catch {
+            doc.setDrawColor(LINE); doc.rect(fx, y, fw, fh);
+          }
+        } else {
+          doc.setFillColor("#F3F1E8"); doc.rect(fx, y, fw, fh, "F");
+        }
+        // Numeração global
+        const n = data.numeroMap?.[foto.id];
+        if (n != null) drawNumeroBadge(doc, fx + 1.5, y + 1.5, n);
+      }
+      y += fh + 6;
+    } else {
+      y += 2;
+    }
+  }
+
+  // Assinatura
+  const sigY = pageH - 40;
+  doc.setDrawColor(INK_SOFT);
+  doc.setLineWidth(0.3);
+  doc.line(pageW / 2 - 40, sigY, pageW / 2 + 40, sigY);
+  doc.setTextColor(INK_SOFT);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(data.consultor.nome || "Consultor", pageW / 2, sigY + 5, { align: "center" });
+  doc.setFontSize(8);
+  doc.text("Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
+
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    drawFooter(doc, p, total);
+  }
+
+  const blob = doc.output("blob");
+  const stamp = format(new Date(), "yyyyMMdd-HHmm");
+  const safeName = (data.fazenda.nome_fazenda || "fazenda").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const fileName = `fabrica-${safeName}-${stamp}.pdf`;
+  return { blob, fileName };
+}

@@ -54,7 +54,7 @@ export default function ConsultorFazendaDetalhePage() {
     setLoading(false);
   }
 
-  async function iniciarVisita(tipo: "rotina" | "confinamento") {
+  async function iniciarVisita(tipo: "rotina" | "confinamento" | "fabrica") {
     if (!roleData?.consultorId || !fazendaId) return;
     setCreating(true);
     try {
@@ -155,6 +155,15 @@ export default function ConsultorFazendaDetalhePage() {
             >
               <div className="font-semibold text-base">Confinamento</div>
               <div className="text-xs text-muted-foreground font-normal">Avaliação sequencial de currais</div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start flex-col items-start"
+              onClick={() => iniciarVisita("fabrica")}
+              disabled={creating}
+            >
+              <div className="font-semibold text-base">Fábrica</div>
+              <div className="text-xs text-muted-foreground font-normal">Avaliação da fábrica/insumos com tópicos livres</div>
             </Button>
           </div>
         </DialogContent>

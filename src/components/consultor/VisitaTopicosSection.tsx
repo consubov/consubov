@@ -36,9 +36,13 @@ interface Props {
   };
   onNotifyEdit?: () => void;
   onChange?: (topicos: Topico[]) => void;
+  /** "rotina" (padrão) = 3 fixos + 2 encerramento. "fabrica" = apenas 1 tópico inicial editável. */
+  mode?: "rotina" | "fabrica";
+  /** Numeração global de fotos por visita (id -> número sequencial). */
+  numeroMap?: Record<string, number>;
 }
 
-export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit, onChange }: Props) {
+export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit, onChange, mode = "rotina", numeroMap }: Props) {
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -56,21 +60,30 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     // Seed defaults: 3 header (1-3) + 2 footer (1001-1002). Insert only missing ordens.
     if (!seededRef.current) {
       seededRef.current = true;
-      const defaults: { ordem: number; titulo: string; texto: string | null }[] = [
-        { ordem: 1, titulo: DEFAULT_TITLES[0], texto: seedFrom?.objetivo || null },
-        { ordem: 2, titulo: DEFAULT_TITLES[1], texto: seedFrom?.resumo || null },
-        { ordem: 3, titulo: DEFAULT_TITLES[2], texto: seedFrom?.indicadores || null },
-        { ordem: 1001, titulo: "Observações Gerais", texto: seedFrom?.observacoes || null },
-        { ordem: 1002, titulo: "Conclusão", texto: seedFrom?.conclusao || null },
-      ];
+      const defaults: { ordem: number; titulo: string; texto: string | null }[] =
+        mode === "fabrica"
+          ? [
+              { ordem: 5, titulo: "Observações Gerais da Fábrica", texto: null },
+            ]
+          : [
+              { ordem: 1, titulo: DEFAULT_TITLES[0], texto: seedFrom?.objetivo || null },
+              { ordem: 2, titulo: DEFAULT_TITLES[1], texto: seedFrom?.resumo || null },
+              { ordem: 3, titulo: DEFAULT_TITLES[2], texto: seedFrom?.indicadores || null },
+              { ordem: 1001, titulo: "Observações Gerais", texto: seedFrom?.observacoes || null },
+              { ordem: 1002, titulo: "Conclusão", texto: seedFrom?.conclusao || null },
+            ];
       const existingOrdens = new Set(rows.map(r => r.ordem));
-      const toInsert = defaults
-        .filter(d => !existingOrdens.has(d.ordem))
-        .map(d => ({ ...d, visita_id: visitaId }));
-      if (toInsert.length) {
-        const { data: ins } = await (supabase as any).from("visita_topicos")
-          .insert(toInsert).select();
-        rows = [...rows, ...((ins as any[]) || [])];
+      // Fábrica: só semeia se não houver NENHUM tópico ainda. Rotina: insere apenas os fixos que faltam.
+      const shouldSeed = mode === "fabrica" ? rows.length === 0 : true;
+      if (shouldSeed) {
+        const toInsert = defaults
+          .filter(d => !existingOrdens.has(d.ordem))
+          .map(d => ({ ...d, visita_id: visitaId }));
+        if (toInsert.length) {
+          const { data: ins } = await (supabase as any).from("visita_topicos")
+            .insert(toInsert).select();
+          rows = [...rows, ...((ins as any[]) || [])];
+        }
       }
     }
 
@@ -196,12 +209,14 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 
   return (
     <div className="space-y-3">
-      {fixos.map(t => <TopicoCard key={t.id} topico={t} letter="" onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto} uploading={uploading===t.id} />)}
-      <div className="rounded-lg border-2 border-dashed p-3 text-center text-xs text-muted-foreground" style={{ borderColor: "#C9A84C" }}>
-        ⬇ Tabela "Indicadores Gerais da Fazenda" abaixo (posição 4) ⬇
-      </div>
+      {fixos.map(t => <TopicoCard key={t.id} topico={t} numeroMap={numeroMap} onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto} uploading={uploading===t.id} />)}
+      {mode === "rotina" && fixos.length > 0 && (
+        <div className="rounded-lg border-2 border-dashed p-3 text-center text-xs text-muted-foreground" style={{ borderColor: "#C9A84C" }}>
+          ⬇ Tabela "Indicadores Gerais da Fazenda" abaixo (posição 4) ⬇
+        </div>
+      )}
       {customs.map((t, i) => (
-        <TopicoCard key={t.id} topico={t} letter=""
+        <TopicoCard key={t.id} topico={t} numeroMap={numeroMap}
           onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
           uploading={uploading===t.id}
           onMoveUp={i > 0 ? () => move(t, -1) : undefined}
@@ -218,7 +233,7 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
             Encerramento do Relatório
           </div>
           {footer.map(t => (
-            <TopicoCard key={t.id} topico={t} letter=""
+            <TopicoCard key={t.id} topico={t} numeroMap={numeroMap}
               onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
               uploading={uploading===t.id} />
           ))}
@@ -229,11 +244,12 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 }
 
 function TopicoCard({
-  topico, letter, uploading,
+  topico, uploading, numeroMap,
   onUpdate, onSave, onAddFoto, onDelFoto,
   onMoveUp, onMoveDown, onDelete,
 }: {
-  topico: Topico; letter: string; uploading: boolean;
+  topico: Topico; uploading: boolean;
+  numeroMap?: Record<string, number>;
   onUpdate: (id: string, patch: Partial<Topico>) => void;
   onSave: (id: string, patch: Partial<Topico>) => void;
   onAddFoto: (t: Topico, f: File) => void;
@@ -244,12 +260,6 @@ function TopicoCard({
   return (
     <div className="rounded-lg border bg-card" style={{ borderColor: "#E7E3D6" }}>
       <div className="flex items-center gap-2 p-3 border-b" style={{ borderColor: "#E7E3D6" }}>
-        {letter && (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-base flex-shrink-0"
-            style={{ background: "#14432B", color: "#C9A84C", fontFamily: "'Manrope', sans-serif" }}>
-            {letter}
-          </div>
-        )}
         <Input
           value={topico.titulo}
           placeholder="Título do tópico"
@@ -295,6 +305,12 @@ function TopicoCard({
                 {topico.signed[f.id]
                   ? <img src={topico.signed[f.id]} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
+                {numeroMap?.[f.id] != null && (
+                  <div className="absolute top-0.5 left-0.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-extrabold shadow"
+                    style={{ background: "#14432B", color: "#C9A84C" }}>
+                    {numeroMap[f.id]}
+                  </div>
+                )}
                 <button type="button" onClick={() => onDelFoto(topico, f)}
                   className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
                   <X className="w-3 h-3 text-destructive-foreground" />

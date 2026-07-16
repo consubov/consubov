@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
+import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 
 interface Visita {
@@ -124,6 +125,9 @@ export default function VisitaTecnicaPage() {
 
   if (visita.tipo === "confinamento") {
     return <ConfinamentoVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
+  }
+  if (visita.tipo === "fabrica") {
+    return <FabricaVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
   }
 
 
