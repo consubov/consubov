@@ -36,9 +36,13 @@ interface Props {
   };
   onNotifyEdit?: () => void;
   onChange?: (topicos: Topico[]) => void;
+  /** "rotina" (padrão) = 3 fixos + 2 encerramento. "fabrica" = apenas 1 tópico inicial editável. */
+  mode?: "rotina" | "fabrica";
+  /** Numeração global de fotos por visita (id -> número sequencial). */
+  numeroMap?: Record<string, number>;
 }
 
-export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit, onChange }: Props) {
+export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit, onChange, mode = "rotina", numeroMap }: Props) {
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
