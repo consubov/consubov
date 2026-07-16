@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
+import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -114,7 +115,10 @@ function drawLogoFitted(
   doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
 ) {
   if (!asset) return;
-  const scale = Math.min(boxW / asset.w, boxH / asset.h);
+  // Ambas as logos usam a MESMA altura máxima (boxH) — só reduzimos largura se
+  // a proporção estourar a caixa lateral. Nunca esticamos.
+  let scale = boxH / asset.h;
+  if (asset.w * scale > boxW) scale = boxW / asset.w;
   const w = asset.w * scale;
   const h = asset.h * scale;
   const x = align === "left" ? boxX : boxX + boxW - w;
@@ -145,7 +149,7 @@ function drawCoverHeader(
 ) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
-  const logoW = 44;
+  const logoW = 60;
   const logoX = 15;
   const logoY = 10;
 
@@ -228,26 +232,29 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
 }
 
 function drawScoreRow(
-  doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number,
+  doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number, cellW = 40,
 ) {
+  const key = label.toLowerCase();
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(INK_SOFT);
   doc.text(label.toUpperCase(), x, y);
   const dotY = y + 4;
-  const dotR = 1.6;
-  const gap = 4.5;
-  for (let n = 1; n <= 5; n++) {
-    const dx = x + 2 + (n - 1) * gap;
-    if (nota && n <= nota) doc.setFillColor(GOLD);
-    else doc.setFillColor("#E7E3D6");
-    doc.circle(dx, dotY, dotR, "F");
-  }
-  if (nota) {
-    doc.setFontSize(7);
-    doc.setTextColor(GREEN_DARK);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${nota}/5`, x + 2 + 5 * gap + 2, dotY + 1.2);
+  // Indicador único (círculo + N/5) em vez das 5 opções.
+  doc.setFillColor(nota ? GOLD : "#E7E3D6");
+  doc.circle(x + 2, dotY, 1.8, "F");
+  doc.setFontSize(9);
+  doc.setTextColor(nota ? GREEN_DARK : INK_SOFT);
+  doc.setFont("helvetica", "bold");
+  doc.text(nota ? `${nota}/5` : "—", x + 6, dotY + 1.2);
+  // Legenda curta
+  doc.setFontSize(5.6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(INK_SOFT);
+  const legend = getScoreDescription(key);
+  if (legend) {
+    const lines = doc.splitTextToSize(legend, cellW - 4);
+    doc.text(lines.slice(0, 2), x, dotY + 4.8);
   }
 }
 
@@ -284,9 +291,9 @@ async function drawCurralBlock(
   const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
   const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
   const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
-  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1);
-  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1);
-  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1);
+  drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
+  drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
+  drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
 
   const fotosStartY = y + 54;
   const fotoAreaH = height - (fotosStartY - y) - 4;

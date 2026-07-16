@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 interface Visita {
   id: string; tipo: string; status: string;
@@ -155,32 +156,46 @@ export default function FabricaVisitaView({
             </div>
           )}
         </div>
-        <div className="space-y-2.5">
-          {QUESITOS.map(q => (
-            <div key={q.key} className="flex items-center justify-between gap-2">
-              <div className="text-sm text-foreground flex-1 min-w-0">{q.label}</div>
-              <div className="flex gap-1 shrink-0">
-                {[1, 2, 3, 4, 5].map(n => {
-                  const active = notas[q.key] === n;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => saveNota(q.key, n)}
-                      disabled={readOnly}
-                      className={`w-8 h-8 rounded-md text-sm font-bold transition-colors ${
-                        active
-                          ? "bg-primary text-primary-foreground shadow"
-                          : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
-                      }`}
+        <div className="space-y-3">
+          {QUESITOS.map(q => {
+            const nota = notas[q.key];
+            const legend = getScoreDescription(q.key);
+            return (
+              <div key={q.key} className="flex items-start justify-between gap-3 pb-2 border-b border-border/60 last:border-b-0">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">{q.label}</div>
+                  {legend && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      {legend} <span className="italic">{SCORE_SCALE_HINT}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {nota ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="text-sm font-bold text-primary tabular-nums">{nota}/5</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sem nota</span>
+                  )}
+                  {!readOnly && (
+                    <select
+                      value={nota ?? ""}
+                      onChange={e => saveNota(q.key, Number(e.target.value))}
+                      className="h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      aria-label={`Nota — ${q.label}`}
                     >
-                      {n}
-                    </button>
-                  );
-                })}
+                      <option value="" disabled>—</option>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 

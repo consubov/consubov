@@ -175,17 +175,38 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       const usadas = new Set(t.fotos.map(f => f.ordem));
       let ordem = 1;
       while (usadas.has(ordem) && ordem <= MAX_FOTOS) ordem++;
-      const ext = file.name.split(".").pop() || "jpg";
+      // Comprimir no cliente para acelerar upload (câmera/galeria)
+      const { compressImageFileToDataUrl } = await import("@/lib/imageCompression");
+      const dataUrl = await compressImageFileToDataUrl(file, {
+        maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
+      });
+      let uploadBody: Blob = file;
+      let ext = file.name.split(".").pop() || "jpg";
+      if (dataUrl) {
+        const [meta, b64] = dataUrl.split(",");
+        const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        uploadBody = new Blob([arr], { type: mime });
+        ext = "jpg";
+      }
       const path = `topicos/${t.id}/${ordem}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
+      const { error } = await supabase.storage.from(BUCKET).upload(path, uploadBody, {
+        upsert: true, contentType: uploadBody.type || "image/jpeg",
+      });
       if (error) throw error;
       const { data, error: insErr } = await (supabase as any).from("visita_topico_fotos")
         .insert({ visita_topico_id: t.id, url: path, ordem }).select().single();
       if (insErr) throw insErr;
-      const url = await signPath((data as any).url);
+      // Preview instantâneo com o dataUrl local
       update(t.id, {
         fotos: [...t.fotos, data as TopicoFoto].sort((a,b)=>a.ordem-b.ordem),
-        signed: { ...t.signed, [(data as any).id]: url },
+        signed: { ...t.signed, [(data as any).id]: dataUrl || "" },
+      });
+      // Signed URL em background (não bloqueia UI)
+      signPath((data as any).url).then(url => {
+        if (url) update(t.id, { signed: { ...t.signed, [(data as any).id]: url } });
       });
     } catch (err: any) {
       toast.error("Erro ao enviar foto: " + (err?.message || ""));
