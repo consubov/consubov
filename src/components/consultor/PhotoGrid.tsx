@@ -107,7 +107,12 @@ export default function PhotoGrid({
       });
     };
     void refresh();
-    const unsub = subscribeSyncStatus(() => { void refresh(); void reloadFotos(); });
+    let prevPending = 0;
+    const unsub = subscribeSyncStatus((pending) => {
+      // só recarrega quando a fila de fotos ACABOU de esvaziar (evita loop de sync ao adicionar fotos online)
+      if (prevPending > 0 && pending === 0) { void refresh(); void reloadFotos(); }
+      prevPending = pending;
+    });
     return () => { alive = false; unsub(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId, targetKind]);
