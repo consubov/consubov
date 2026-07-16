@@ -54,7 +54,7 @@ export default function ConsultorFazendaDetalhePage() {
     setLoading(false);
   }
 
-  async function iniciarVisita(tipo: "rotina" | "confinamento") {
+  async function iniciarVisita(tipo: "rotina" | "confinamento" | "fabrica") {
     if (!roleData?.consultorId || !fazendaId) return;
     setCreating(true);
     try {
