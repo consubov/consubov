@@ -269,7 +269,7 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   const lines = doc.splitTextToSize(text, w);
-  doc.text(lines, 15, y + 11);
+  doc.text(lines, 15, y + 11, { align: "justify", maxWidth: w });
   return y + 11 + lines.length * 4.6 + 4;
 }
 
