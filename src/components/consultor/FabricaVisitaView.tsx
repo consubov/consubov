@@ -96,8 +96,8 @@ export default function FabricaVisitaView({
           fotos: t.fotos.map(f => ({ id: f.id, url: f.url, ordem: f.ordem })),
         })),
         numeroMap,
-        logoOverride: consultor?.logo_modo && consultor.logo_modo !== 'padrao'
-          ? { modo: consultor.logo_modo, path: consultor.logo_personalizada_url || null }
+        logoOverride: (consultor as any)?.logo_modo && (consultor as any).logo_modo !== 'padrao'
+          ? { modo: (consultor as any).logo_modo, path: (consultor as any).logo_personalizada_url || null }
           : null,
       });
       const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visitaId);
