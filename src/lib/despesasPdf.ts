@@ -216,7 +216,7 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
     doc.setTextColor(INK_SOFT);
     doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
     doc.setTextColor(GOLD);
-    doc.text("Consubov · Consultoria", 15, H - 8);
+    doc.text("Gerado por Consubov.com.br", 15, H - 8);
   }
 
   return doc.output("blob");
