@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
+import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -151,7 +152,11 @@ function drawLogoFitted(
   doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
 ) {
   if (!asset) return;
-  const scale = Math.min(boxW / asset.w, boxH / asset.h);
+  // Ambas as logos (esquerda e direita) devem usar a MESMA altura máxima como
+  // referência (boxH), preservando a proporção original. A largura só é reduzida
+  // se a imagem for tão larga que estouraria a caixa — nunca aumentamos além de boxH.
+  let scale = boxH / asset.h;
+  if (asset.w * scale > boxW) scale = boxW / asset.w;
   const w = asset.w * scale;
   const h = asset.h * scale;
   const x = align === "left" ? boxX : boxX + boxW - w;
@@ -182,7 +187,7 @@ function drawCoverHeader(
   const w = doc.internal.pageSize.getWidth();
   const headerH = 32;
   const logoH = 16;
-  const logoW = 44;
+  const logoW = 60; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
   const logoX = 15;
   const logoY = 10;
 
@@ -339,36 +344,41 @@ async function drawPastoBlock(
     doc.text(c.value, cx, lineY2 + 5);
   });
 
-  const scoreY = y + 46;
+  const scoreY = y + 44;
   const scoreCellW = (width - 6) / 3;
-  const scores: [string, number | undefined][] = [
-    ["Fezes", pasto.scores.fezes],
-    ["Corporal", pasto.scores.corporal],
-    ["Bebedouro", pasto.scores.bebedouro],
+  const scores: [string, string, number | undefined][] = [
+    ["Fezes", "fezes", pasto.scores.fezes],
+    ["Corporal", "corporal", pasto.scores.corporal],
+    ["Bebedouro", "bebedouro", pasto.scores.bebedouro],
   ];
-  scores.forEach(([label, nota], i) => {
+  scores.forEach(([label, key, nota], i) => {
     const cx = x + 3 + i * scoreCellW;
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
     doc.text(label.toUpperCase(), cx, scoreY);
+    // Indicador único (círculo dourado + N/5) em vez das 5 opções.
+    const notaNum = nota != null ? Math.round(nota * 10) / 10 : null;
     const dotY = scoreY + 4;
-    const dotR = 1.6;
-    const gap = 4.5;
-    const notaInt = nota ? Math.round(nota) : null;
-    for (let n = 1; n <= 5; n++) {
-      const dx = cx + 2 + (n - 1) * gap;
-      if (notaInt && n <= notaInt) doc.setFillColor(GOLD);
-      else doc.setFillColor("#E7E3D6");
-      doc.circle(dx, dotY, dotR, "F");
-    }
-    if (nota) {
-      doc.setFontSize(7);
-      doc.setTextColor(GREEN_DARK);
-      doc.setFont("helvetica", "bold");
-      doc.text(nota.toFixed(1), cx + 2 + 5 * gap + 2, dotY + 1.2);
-    }
+    doc.setFillColor(notaNum ? GOLD : "#E7E3D6");
+    doc.circle(cx + 2, dotY, 1.8, "F");
+    doc.setFontSize(9);
+    doc.setTextColor(notaNum ? GREEN_DARK : INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.text(notaNum ? `${notaNum}/5` : "—", cx + 6, dotY + 1.2);
+    // Legenda curta abaixo, quebrando em até 2 linhas.
+    doc.setFontSize(5.6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(INK_SOFT);
+    const legend = getScoreDescription(key);
+    const legLines = doc.splitTextToSize(legend, scoreCellW - 4);
+    doc.text(legLines.slice(0, 2), cx, dotY + 4.8);
   });
+  // Rodapé da escala (1 = fora do esperado · 5 = dentro do esperado)
+  doc.setFontSize(5.6);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(INK_SOFT);
+  doc.text(SCORE_SCALE_HINT, x + width - 3, scoreY + 14, { align: "right" });
 
   if (pasto.observacao) {
     doc.setFontSize(7);
@@ -712,35 +722,46 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   y += 10;
 
   const wTable = pageW - 30;
-  const labelW = wTable * 0.62;
-  const rowH = 8;
+  const rowH = 13;
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.3);
   const notaValida = data.quesitos.filter(q => q.nota != null);
   const media = notaValida.length
     ? notaValida.reduce((s, q) => s + (q.nota || 0), 0) / notaValida.length
     : 0;
+  const notaColW = 20; // largura da coluna do indicador N/5 à direita
+  const labelX = 18;
+  const notaX = 15 + wTable - notaColW / 2;
   data.quesitos.forEach((q, i) => {
     if (i % 2 === 0) { doc.setFillColor("#FAF8F0"); doc.rect(15, y, wTable, rowH, "F"); }
+    // Rótulo
     doc.setTextColor(INK);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
-    doc.text(q.rotulo, 18, y + 5.4);
-    const bxSize = 5.2;
-    const gap = 1.4;
-    const groupW = 5 * bxSize + 4 * gap;
-    const bxStart = 15 + labelW + (wTable - labelW - groupW - 4);
-    for (let n = 1; n <= 5; n++) {
-      const bx = bxStart + (n - 1) * (bxSize + gap);
-      const by = y + (rowH - bxSize) / 2;
-      const active = q.nota === n;
-      doc.setDrawColor(active ? GREEN_DARK : LINE);
-      doc.setFillColor(active ? GREEN_DARK : "#FFFFFF");
-      doc.roundedRect(bx, by, bxSize, bxSize, 1, 1, "FD");
+    doc.text(q.rotulo, labelX, y + 5.4);
+    // Legenda em cinza logo abaixo
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.8);
+    doc.setTextColor(INK_SOFT);
+    const legend = getScoreDescription(q.chave);
+    if (legend) {
+      const legLines = doc.splitTextToSize(`${legend} ${SCORE_SCALE_HINT}`, wTable - notaColW - 8);
+      doc.text(legLines.slice(0, 1), labelX, y + 10);
+    }
+    // Indicador único N/5 à direita
+    const cy = y + rowH / 2;
+    if (q.nota != null) {
+      doc.setFillColor(GOLD);
+      doc.circle(notaX - 6, cy, 2.2, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(active ? GOLD : INK_SOFT);
-      doc.text(String(n), bx + bxSize / 2, by + bxSize / 2 + 1.4, { align: "center" });
+      doc.setFontSize(11);
+      doc.setTextColor(GREEN_DARK);
+      doc.text(`${q.nota}/5`, notaX, cy + 1.4, { align: "center" });
+    } else {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(INK_SOFT);
+      doc.text("—", notaX, cy + 1.4, { align: "center" });
     }
     doc.setDrawColor(LINE);
     doc.line(15, y + rowH, 15 + wTable, y + rowH);

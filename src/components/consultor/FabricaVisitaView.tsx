@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 interface Visita {
   id: string; tipo: string; status: string;
