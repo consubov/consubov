@@ -461,9 +461,7 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  const lines = doc.splitTextToSize(text || "—", w);
-  doc.text(lines, x, y + 15, { align: "justify", maxWidth: w });
-  return y + 15 + lines.length * 4.8;
+  return drawParagraphText(doc, text || "—", x, y + 15, w, 4.8);
 }
 
 export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Blob; fileName: string }> {
