@@ -49,10 +49,13 @@ export default function CurralVisitaModal({
       setCurralIdLocal(curral.id);
       setNumCurral(curral.num_curral);
       // load samples
-      supabase.from("avaliacoes_score")
-        .select("id, tipo, nota")
-        .eq("visita_curral_id", curral.id)
-        .then(async ({ data }) => {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const source = online
+        ? supabase.from("avaliacoes_score")
+            .select("id, tipo, nota")
+            .eq("visita_curral_id", curral.id)
+        : Promise.resolve({ data: [] });
+      source.then(async ({ data }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
           let rows = (data as any[]) || [];
           if (rows.length === 0) {

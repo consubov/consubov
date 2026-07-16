@@ -112,10 +112,13 @@ export default function PastoVisitaModal({
       setConsumoEsperado(pasto.consumo_esperado_kg?.toString() || "");
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
-      supabase.from("avaliacoes_score")
-        .select("id, tipo, nota")
-        .eq("visita_pasto_id", pasto.id)
-        .then(async ({ data }) => {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const source = online
+        ? supabase.from("avaliacoes_score")
+            .select("id, tipo, nota")
+            .eq("visita_pasto_id", pasto.id)
+        : Promise.resolve({ data: [] });
+      source.then(async ({ data }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
           let rows = (data as any[]) || [];
           if (rows.length === 0) {
