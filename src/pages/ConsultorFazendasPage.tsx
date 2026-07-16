@@ -51,12 +51,27 @@ export default function ConsultorFazendasPage() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("fazendas_consultor")
-      .select("*")
-      .eq("consultor_id", roleData.consultorId!)
-      .order("nome_fazenda");
-    setFazendas((data as Fazenda[]) || []);
+    try {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const { data } = online
+        ? await supabase
+            .from("fazendas_consultor")
+            .select("*")
+            .eq("consultor_id", roleData.consultorId!)
+            .order("nome_fazenda")
+        : { data: null };
+      const rows = (data as Fazenda[]) || [];
+      if (rows.length) {
+        window.localStorage.setItem(`consultor_offline_fazendas_${roleData.consultorId}`, JSON.stringify(rows));
+        setFazendas(rows);
+      } else {
+        const cached = window.localStorage.getItem(`consultor_offline_fazendas_${roleData.consultorId}`);
+        setFazendas(cached ? JSON.parse(cached) : []);
+      }
+    } catch {
+      const cached = window.localStorage.getItem(`consultor_offline_fazendas_${roleData.consultorId}`);
+      setFazendas(cached ? JSON.parse(cached) : []);
+    }
     setLoading(false);
   }
 

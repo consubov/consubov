@@ -48,14 +48,34 @@ export default function ConsultorFazendaDetalhePage() {
 
   async function load() {
     setLoading(true);
-    const [fRes, vRes] = await Promise.all([
-      supabase.from("fazendas_consultor").select("*").eq("id", fazendaId!).maybeSingle(),
-      supabase.from("visitas_tecnicas").select("id, tipo, status, hora_inicio, hora_fim")
-        .eq("fazenda_consultor_id", fazendaId!)
-        .order("hora_inicio", { ascending: false }),
-    ]);
-    setFazenda(fRes.data as Fazenda | null);
-    setVisitas((vRes.data as Visita[]) || []);
+    try {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const [fRes, vRes] = online
+        ? await Promise.all([
+            supabase.from("fazendas_consultor").select("*").eq("id", fazendaId!).maybeSingle(),
+            supabase.from("visitas_tecnicas").select("id, tipo, status, hora_inicio, hora_fim")
+              .eq("fazenda_consultor_id", fazendaId!)
+              .order("hora_inicio", { ascending: false }),
+          ])
+        : [{ data: null }, { data: null }];
+      const cached = (() => {
+        try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
+        catch { return null; }
+      })();
+      const fazendaRow = (fRes.data as Fazenda | null) || cached?.fazenda || null;
+      if (fazendaRow) {
+        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ ...(cached || {}), fazenda: fazendaRow }));
+      }
+      setFazenda(fazendaRow);
+      setVisitas((vRes.data as Visita[]) || cached?.visitas || []);
+    } catch {
+      const cached = (() => {
+        try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
+        catch { return null; }
+      })();
+      setFazenda(cached?.fazenda || null);
+      setVisitas(cached?.visitas || []);
+    }
     setLoading(false);
   }
 
@@ -78,7 +98,7 @@ export default function ConsultorFazendaDetalhePage() {
         fazendaDetalhe = (data as Fazenda | null) || fazenda;
       }
       try {
-        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor }));
+        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor, visitas }));
       } catch { /* best effort */ }
       // Pequena espera para dar feedback visual mesmo em conexões rápidas
       await new Promise((r) => setTimeout(r, 700));
