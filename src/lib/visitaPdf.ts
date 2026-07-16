@@ -565,6 +565,12 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     doc.setLineWidth(0.4);
     doc.line(15, 16, pageW - 15, 16);
 
+    // Escala de scores impressa UMA VEZ por página de pastos (rodapé do cabeçalho).
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(INK_SOFT);
+    doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+
     let py = 24;
     for (const p of pair) {
       await drawPastoBlock(doc, p, fotosCache, 15, py, pageW - 30, blockHeight);
