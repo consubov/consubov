@@ -643,6 +643,7 @@ export interface VisitaFabricaPdfData {
   topicos: { id: string; titulo: string; texto: string | null; ordem: number;
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
+  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
 }
 
 function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
