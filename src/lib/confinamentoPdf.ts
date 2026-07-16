@@ -30,7 +30,6 @@ export interface ConfinamentoPdfData {
   observacoes_gerais: string | null;
   titulo_encerramento?: string | null;
   conclusao: string | null;
-  titulo_encerramento?: string | null;
   objetivo_visita?: string | null;
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
