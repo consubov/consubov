@@ -207,15 +207,16 @@ export default function RevisaoVisitaPage() {
       });
     }
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
-      const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : [];
+      const snapPasto = (snap?.pastos || []).find((x: any) => x.id === p.id) as any;
+      const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : (snapPasto?.fotos || []);
       const fotos = fotosByPasto[p.id]?.length ? fotosByPasto[p.id] : fallbackFotos;
-      const signed: Record<string, string> = { ...((p as any).signed || {}) };
+      const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
       await Promise.all(fotos
         .filter((f: any) => !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
-        samples: samplesByPasto[p.id] || (p as any).samples || { fezes: [], corporal: [], bebedouro: [] },
+        samples: samplesByPasto[p.id] || (p as any).samples || snapPasto?.samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       } as Pasto;
     }));

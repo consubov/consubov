@@ -116,15 +116,16 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       });
     }
     const built: Curral[] = await Promise.all(rows.map(async r => {
-      const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : [];
+      const snapCurral = (snap?.currais || []).find((x: any) => x.id === r.id) as any;
+      const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : (snapCurral?.fotos || []);
       const fotos = fotosBy[r.id]?.length ? fotosBy[r.id] : fallbackFotos;
-      const signed: Record<string, string> = { ...((r as any).signed || {}) };
+      const signed: Record<string, string> = { ...(snapCurral?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
         .filter((f: any) => !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         id: r.id, num_curral: r.num_curral, ordem: r.ordem,
-        samples: samplesBy[r.id] || (r as any).samples || { fezes: [], corporal: [], bebedouro: [] },
+        samples: samplesBy[r.id] || (r as any).samples || snapCurral?.samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       };
     }));

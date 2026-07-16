@@ -135,9 +135,10 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       });
     }
     const built: Topico[] = await Promise.all(rows.map(async r => {
-      const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : [];
+      const snapTopico = (snap?.topicos || []).find((x: any) => x.id === r.id) as any;
+      const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : (snapTopico?.fotos || []);
       const fotos = fotosByTopico[r.id]?.length ? fotosByTopico[r.id] : fallbackFotos;
-      const signed: Record<string, string> = { ...((r as any).signed || {}) };
+      const signed: Record<string, string> = { ...(snapTopico?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
         .filter((f: any) => !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
