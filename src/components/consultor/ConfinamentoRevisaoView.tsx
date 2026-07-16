@@ -49,6 +49,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
   const [tituloEncerramento, setTituloEncerramento] = useState("Observações e Recomendações");
+  const [fabricaNota, setFabricaNota] = useState<number | null>(null);
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
   const [objetivo, setObjetivo] = useState("");
   const [resumo, setResumo] = useState("");
