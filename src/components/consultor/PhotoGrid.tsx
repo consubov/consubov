@@ -51,6 +51,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 export default function PhotoGrid({
+  visitaId = null,
   visitaPastoId = null,
   visitaCurralId = null,
   max = DEFAULT_MAX,
@@ -60,6 +61,7 @@ export default function PhotoGrid({
   const [fotos, setFotos] = useState<FotoRow[]>([]);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [pendings, setPendings] = useState<Record<number, Pending>>({});
+  const [queuedPreviews, setQueuedPreviews] = useState<Record<number, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<number>(1);
 
@@ -67,18 +69,42 @@ export default function PhotoGrid({
   const targetKind: "pasto" | "curral" | null =
     visitaCurralId ? "curral" : visitaPastoId ? "pasto" : null;
 
-  useEffect(() => {
+  const reloadFotos = async () => {
     if (!targetId || !targetKind) { setFotos([]); return; }
-    (async () => {
-      const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
-      const { data } = await supabase.from("visita_fotos")
-        .select("*").eq(col, targetId).order("ordem");
-      const rows = (data as FotoRow[]) || [];
-      setFotos(rows);
-      const map: Record<string, string> = {};
-      await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
-      setSigned(map);
-    })();
+    const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
+    const { data } = await supabase.from("visita_fotos")
+      .select("*").eq(col, targetId).order("ordem");
+    const rows = (data as FotoRow[]) || [];
+    setFotos(rows);
+    const map: Record<string, string> = {};
+    await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
+    setSigned(map);
+  };
+
+  useEffect(() => {
+    void reloadFotos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId, targetKind]);
+
+  // Load queued (persisted) uploads for this parent and refresh when the queue drains
+  useEffect(() => {
+    if (!targetId || !targetKind) return;
+    let alive = true;
+    const refresh = async () => {
+      const items = await getQueuedPhotosForParent(targetKind, targetId);
+      if (!alive) return;
+      const map: Record<number, string> = {};
+      items.forEach(it => { map[it.ordem] = URL.createObjectURL(it.blob); });
+      setQueuedPreviews(prev => {
+        // revoke old
+        Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+        return map;
+      });
+    };
+    void refresh();
+    const unsub = subscribeSyncStatus(() => { void refresh(); void reloadFotos(); });
+    return () => { alive = false; unsub(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId, targetKind]);
 
   const slots = Array.from({ length: max }, (_, i) => {
