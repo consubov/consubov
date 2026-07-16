@@ -713,8 +713,8 @@ function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
   doc.circle(x + r, y + r, r, "F");
   doc.setTextColor(GOLD);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text(String(n), x + r, y + r + 2.2, { align: "center" });
+  doc.setFontSize(9);
+  doc.text(String(n), x + r, y + r, { align: "center", baseline: "middle" });
 }
 
 export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ blob: Blob; fileName: string }> {
