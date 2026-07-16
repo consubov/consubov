@@ -219,5 +219,5 @@ if (typeof window !== "undefined") {
 }
 
 export async function getPendingCount() {
-  return countAllFotos();
+  return countPendingFotos();
 }
