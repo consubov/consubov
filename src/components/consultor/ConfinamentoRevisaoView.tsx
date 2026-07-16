@@ -114,6 +114,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       };
     }));
     setCurrais(built);
+    void saveSnapshot(visitaId, {
+      visita: v,
+      currais: built,
+    }).catch(() => {});
     setLoading(false);
   }, [visitaId]);
 
