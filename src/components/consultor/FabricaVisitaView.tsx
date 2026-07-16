@@ -140,6 +140,17 @@ export default function FabricaVisitaView({
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
+      // Refetch fresh photos from Supabase (queued: URLs from local state won't resolve)
+      const topicosFresh = await Promise.all(topicos.map(async t => {
+        const { data: fresh } = await (supabase as any)
+          .from("visita_topico_fotos")
+          .select("*").eq("visita_topico_id", t.id).order("ordem");
+        const list = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos: list };
+      }));
+      const numeroMapFresh = computeFabricaPhotoNumbering(
+        topicosFresh.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos }))
+      );
       const { blob, fileName } = await generateFabricaPdf({
         visitaId,
         fazenda: {
@@ -153,16 +164,8 @@ export default function FabricaVisitaView({
         hora_inicio: visita.hora_inicio,
         hora_fim: visita.hora_fim || new Date().toISOString(),
         quesitos: QUESITOS.map(q => ({ chave: q.key, rotulo: q.label, nota: notas[q.key] ?? null })),
-        topicos: await Promise.all(topicos.map(async t => {
-          // Buscar fotos frescas do Supabase — os URLs "queued:..." locais
-          // não são resolvíveis como storage path.
-          const { data: fresh } = await (supabase as any)
-            .from("visita_topico_fotos")
-            .select("*").eq("visita_topico_id", t.id).order("ordem");
-          const list = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-          return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos: list };
-        })),
-        numeroMap,
+        topicos: topicosFresh,
+        numeroMap: numeroMapFresh,
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
