@@ -9,6 +9,7 @@ import {
   type FotoQueueItem,
 } from "./db";
 import { drainMutations } from "./mutationQueue";
+import { patchSnapshot } from "./snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -67,6 +68,7 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
 
 async function uploadOne(item: FotoQueueItem): Promise<boolean> {
   try {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
     item.status = "uploading";
     await putFoto(item);
     emit();
@@ -84,10 +86,43 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     else insertPayload.visita_pasto_id = item.parentId;
 
     const table = item.parentKind === "topico" ? "visita_topico_fotos" : "visita_fotos";
-    const { error: insErr } = await (supabase as any).from(table).insert(insertPayload);
+    const { data: inserted, error: insErr } = await (supabase as any)
+      .from(table)
+      .insert(insertPayload)
+      .select("*")
+      .single();
     if (insErr) throw insErr;
 
     await deleteFoto(item.localId);
+    await patchSnapshot(item.visitaId, (curr) => {
+      const queuedUrl = `queued:${item.localId}`;
+      const replaceFoto = (parent: any) => {
+        const signed = { ...(parent.signed || {}) };
+        delete signed[item.localId];
+        const fotos = ((parent.fotos || []) as any[])
+          .filter((f) => f.id !== item.localId && f.url !== queuedUrl);
+        if (inserted) fotos.push(inserted);
+        fotos.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        return { ...parent, fotos, signed };
+      };
+
+      if (item.parentKind === "curral") {
+        return {
+          ...curr,
+          currais: (curr.currais || []).map((c: any) => c.id === item.parentId ? replaceFoto(c) : c),
+        };
+      }
+      if (item.parentKind === "topico") {
+        return {
+          ...curr,
+          topicos: (curr.topicos || []).map((t: any) => t.id === item.parentId ? replaceFoto(t) : t),
+        };
+      }
+      return {
+        ...curr,
+        pastos: (curr.pastos || []).map((p: any) => p.id === item.parentId ? replaceFoto(p) : p),
+      };
+    }).catch(() => null);
     await refreshPendingCount();
     return true;
   } catch (err) {
@@ -118,10 +153,10 @@ export async function drain(): Promise<void> {
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllFotos();
-        const target = items.find((i) => i.status !== "error" || i.tries < 3);
+        const target = items.find((i) => i.status !== "error" || (i.tries ?? 0) < 3);
         if (!target) break;
         const ok = await uploadOne(target);
-        if (!ok && target.tries >= 3) {
+        if (!ok && ((target.tries ?? 0) >= 3 || (typeof navigator !== "undefined" && !navigator.onLine))) {
           // stop trying this one for now
           break;
         }
@@ -143,7 +178,7 @@ export async function syncNow() {
   // reset error status so failed items get retried
   const items = await listAllFotos();
   for (const it of items) {
-    if (it.status === "error") {
+    if (it.status === "error" || it.status === "uploading") {
       it.status = "pending";
       it.tries = 0;
       it.lastError = undefined;

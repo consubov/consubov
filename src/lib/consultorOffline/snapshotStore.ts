@@ -1,4 +1,4 @@
-import { getSnapshot, putSnapshot } from "./db";
+import { getSnapshot, listFotosByVisita, listMutationsByVisita, putSnapshot } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMutation } from "./mutationQueue";
 
@@ -31,6 +31,18 @@ export async function saveSnapshot(visitaId: string, data: VisitaSnapshotData) {
     data,
     updatedAt: new Date().toISOString(),
   });
+}
+
+export async function hasPendingLocalChanges(visitaId: string): Promise<boolean> {
+  try {
+    const [mutations, fotos] = await Promise.all([
+      listMutationsByVisita(visitaId),
+      listFotosByVisita(visitaId),
+    ]);
+    return mutations.length > 0 || fotos.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** Merge a partial patch into the current snapshot. */

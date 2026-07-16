@@ -76,6 +76,7 @@ export async function enqueueMutation(params: {
 
 async function flushOne(m: TextMutation): Promise<boolean> {
   try {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
     m.status = "flushing";
     await putMutation(m);
     emit();
@@ -122,10 +123,13 @@ export async function drainMutations(): Promise<void> {
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllMutations();
-        const target = items.find((i) => i.status !== "error" || i.tries < 3);
+        const target = items.find((i) => i.status !== "error" || (i.tries ?? 0) < 3);
         if (!target) break;
         const ok = await flushOne(target);
-        if (!ok && target.tries >= 3) break;
+        if (!ok) {
+          if ((target.tries ?? 0) >= 3) break;
+          if (typeof navigator !== "undefined" && !navigator.onLine) break;
+        }
         attempts++;
       }
     } finally {
@@ -143,7 +147,7 @@ export async function drainMutations(): Promise<void> {
 export async function retryFailedMutations() {
   const items = await listAllMutations();
   for (const it of items) {
-    if (it.status === "error") {
+    if (it.status === "error" || it.status === "flushing") {
       it.status = "pending";
       it.tries = 0;
       it.lastError = undefined;
