@@ -65,6 +65,7 @@ export default function ConsultorFazendasPage() {
         consultor_id: roleData.consultorId!,
         nome_fazenda: form.nome_fazenda.trim(),
         proprietario: form.proprietario.trim() || null,
+        responsavel: form.responsavel.trim() || null,
         municipio: form.municipio.trim() || null,
         uf: form.uf.trim().toUpperCase() || null,
         latitude: form.latitude ? Number(form.latitude) : null,
