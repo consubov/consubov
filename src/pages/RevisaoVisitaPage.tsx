@@ -18,6 +18,7 @@ import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consulto
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 import SyncBadge from "@/components/consultor/SyncBadge";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 
