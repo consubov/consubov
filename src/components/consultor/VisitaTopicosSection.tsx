@@ -55,16 +55,12 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [visitaId]);
   useEffect(() => { onChange?.(topicos); /* eslint-disable-next-line */ }, [topicos]);
   useEffect(() => {
-    const unsub = subscribeSyncStatus((pending) => {
-      if (pending > 0) setHadPendingUploads(true);
-      if (pending === 0 && hadPendingUploads) {
-        setHadPendingUploads(false);
-        void load();
-      }
-    });
+    // Não recarrega a lista de tópicos ao sincronizar — as fotos já estão exibidas
+    // localmente via dataUrl. Recarregar causava scroll ao topo e "piscada" da UI.
+    const unsub = subscribeSyncStatus(() => {});
     return () => { unsub(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hadPendingUploads, visitaId]);
+  }, [visitaId]);
 
   function dataUrlToBlob(dataUrl: string): Blob {
     const [meta, b64] = dataUrl.split(",");
