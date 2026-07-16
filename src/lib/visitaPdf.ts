@@ -114,21 +114,38 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "normal");
-  doc.text("Gerado por Consubov", 15, h - 6);
+  doc.text("Gerado por Consubov.com.br", 15, h - 6);
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 6, { align: "right" });
 }
 
-function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string) {
+function drawCoverHeader(
+  doc: jsPDF,
+  logoDataUrl: string | null,
+  subtitle: string,
+  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; dataUrl: string | null } | null,
+) {
   const w = doc.internal.pageSize.getWidth();
-  // fundo branco (padrão), sem retângulo verde
   const headerH = 32;
   const logoH = 16;
-  const logoW = 44; // proporção ~2.8:1 da logo consubov
+  const logoW = 44;
   const logoX = 15;
   const logoY = 10;
-  if (logoDataUrl) {
-    try { doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
+
+  const modo = logoOverride?.modo ?? 'padrao';
+  const customUrl = logoOverride?.dataUrl ?? null;
+
+  // Left logo
+  const leftLogo = modo === 'substituir' && customUrl ? customUrl : logoDataUrl;
+  if (leftLogo) {
+    try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
+
+  // Right logo (only 'adicionar')
+  if (modo === 'adicionar' && customUrl) {
+    const rightX = w - 15 - logoW;
+    try { doc.addImage(customUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+  }
+
   // Linha vertical fina verde
   const dividerX = logoX + logoW + 6;
   doc.setDrawColor(GREEN_DARK);
