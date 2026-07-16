@@ -13,6 +13,7 @@ import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamen
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 import SyncBadge from "./SyncBadge";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
