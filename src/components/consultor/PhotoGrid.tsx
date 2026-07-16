@@ -4,6 +4,8 @@ import { Loader2, Camera, X, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
+import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
+import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
