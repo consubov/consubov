@@ -126,6 +126,9 @@ export default function VisitaTecnicaPage() {
   if (visita.tipo === "confinamento") {
     return <ConfinamentoVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
   }
+  if (visita.tipo === "fabrica") {
+    return <FabricaVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
+  }
 
 
   return (
