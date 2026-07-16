@@ -846,6 +846,8 @@ export type Database = {
           ativo: boolean
           created_at: string
           id: string
+          logo_modo: string
+          logo_personalizada_url: string | null
           nome: string
           user_id: string
         }
@@ -853,6 +855,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          logo_modo?: string
+          logo_personalizada_url?: string | null
           nome: string
           user_id: string
         }
@@ -860,6 +864,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          logo_modo?: string
+          logo_personalizada_url?: string | null
           nome?: string
           user_id?: string
         }
