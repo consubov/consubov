@@ -117,8 +117,17 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     if ("titulo" in patch) dbPatch.titulo = patch.titulo ?? "";
     if ("texto" in patch) dbPatch.texto = patch.texto || null;
     if (!Object.keys(dbPatch).length) return;
-    const { error } = await (supabase as any).from("visita_topicos").update(dbPatch).eq("id", id);
-    if (error) toast.error("Erro ao salvar tópico");
+    const res = await offlineUpdate({
+      visitaId,
+      table: "visita_topicos",
+      rowId: id,
+      patch: dbPatch,
+      applyToSnapshot: (curr, p) => {
+        const topicos = (curr.topicos ?? []).map((t: any) => (t.id === id ? { ...t, ...p } : t));
+        return { ...curr, topicos };
+      },
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar tópico");
   }
 
   async function addTopico() {
