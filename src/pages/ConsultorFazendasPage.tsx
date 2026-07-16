@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MapPin, ChevronRight, Landmark } from "lucide-react";
+import { Plus, Loader2, MapPin, ChevronRight, Landmark, Image as ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Fazenda {
