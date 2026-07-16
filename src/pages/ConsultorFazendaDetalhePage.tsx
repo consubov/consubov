@@ -12,6 +12,8 @@ import { Loader2, MapPin, Play, ArrowLeft, ChevronRight, Landmark } from "lucide
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { requestPersistentStorage } from "@/lib/storageProtection";
 
 interface Fazenda {
   id: string;
@@ -39,6 +41,7 @@ export default function ConsultorFazendaDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [tipoModal, setTipoModal] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(false);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => { if (fazendaId) load(); }, [fazendaId]);
@@ -58,22 +61,34 @@ export default function ConsultorFazendaDetalhePage() {
 
   async function prepararOffline() {
     setPreparing(true);
+    setOfflineReady(false);
     try {
+      toast.info("Preparando para uso off-line...");
+      await requestPersistentStorage().catch(() => null);
       // Pré-carrega dados do consultor (logo, preferências) para uso offline
+      let consultor: any = null;
       if (roleData?.consultorId) {
-        await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
+        const { data } = await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
+        consultor = data;
       }
       // Pré-carrega detalhes da fazenda
+      let fazendaDetalhe: Fazenda | null = fazenda;
       if (fazendaId) {
-        await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
+        const { data } = await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
+        fazendaDetalhe = (data as Fazenda | null) || fazenda;
       }
+      try {
+        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor }));
+      } catch { /* best effort */ }
       // Pequena espera para dar feedback visual mesmo em conexões rápidas
       await new Promise((r) => setTimeout(r, 700));
     } catch {
       /* segue mesmo se offline */
     } finally {
       setPreparing(false);
-      setTipoModal(true);
+      setOfflineReady(true);
+      toast.success("Pronto para uso off-line ✅");
+      window.setTimeout(() => setTipoModal(true), 800);
     }
   }
 
@@ -81,16 +96,36 @@ export default function ConsultorFazendaDetalhePage() {
     if (!roleData?.consultorId || !fazendaId) return;
     setCreating(true);
     try {
-      const { data, error } = await supabase.from("visitas_tecnicas").insert({
+      const id = crypto.randomUUID();
+      const payload = {
         consultor_id: roleData.consultorId,
         fazenda_consultor_id: fazendaId,
         tipo,
         status: "rascunho",
         hora_inicio: new Date().toISOString(),
-      }).select("id").single();
-      if (error) throw error;
+      };
+      const cached = (() => {
+        try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
+        catch { return null; }
+      })();
+      await saveSnapshot(id, {
+        visita: { id, ...payload, hora_fim: null, observacoes_gerais: null, conclusao: null, pdf_url: null },
+        fazenda: cached?.fazenda || fazenda,
+        consultor: cached?.consultor || null,
+        pastos: [],
+        currais: [],
+        topicos: [],
+      });
+      const res = await offlineUpsert({
+        visitaId: id,
+        table: "visitas_tecnicas",
+        rowId: id,
+        payload,
+        applyToSnapshot: (curr, p) => ({ ...curr, visita: { ...(curr.visita || {}), id, ...p } }),
+      });
+      if (res.queued) toast.info("Visita salva off-line. Sincronize quando a internet voltar.");
       setTipoModal(false);
-      navigate(`/consultor/visitas/${data.id}`);
+      navigate(`/consultor/visitas/${id}`);
     } catch (err: any) {
       toast.error("Erro: " + (err?.message || "desconhecido"));
     } finally { setCreating(false); }
@@ -126,6 +161,9 @@ export default function ConsultorFazendaDetalhePage() {
           {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           {preparing ? "Preparando para uso off-line..." : "Iniciar Visita"}
         </Button>
+        {offlineReady && (
+          <div className="text-xs font-medium text-primary text-center">Pronto para uso off-line ✅</div>
+        )}
       </Card>
 
       <div>

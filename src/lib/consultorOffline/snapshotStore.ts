@@ -103,3 +103,98 @@ export async function offlineUpdate(params: {
     return { ok: false, queued: true };
   }
 }
+
+/**
+ * Upsert com suporte off-line para linhas criadas no aparelho.
+ * Usa IDs gerados no cliente, grava primeiro no snapshot local e depois tenta o Supabase.
+ */
+export async function offlineUpsert(params: {
+  visitaId: string;
+  table: string;
+  rowId: string;
+  payload: Record<string, any>;
+  onConflict?: string;
+  applyToSnapshot?: (current: VisitaSnapshotData, payload: Record<string, any>) => VisitaSnapshotData;
+}): Promise<{ ok: boolean; queued: boolean }> {
+  try {
+    if (params.applyToSnapshot) {
+      await patchSnapshot(params.visitaId, (curr) => params.applyToSnapshot!(curr, params.payload));
+    }
+  } catch (err) {
+    console.warn("[offlineUpsert] snapshot patch failed:", err);
+  }
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    await enqueueMutation({
+      visitaId: params.visitaId,
+      table: params.table,
+      rowId: params.rowId,
+      operation: "upsert",
+      onConflict: params.onConflict ?? "id",
+      patch: params.payload,
+    });
+    return { ok: false, queued: true };
+  }
+
+  try {
+    const { error } = await (supabase as any)
+      .from(params.table)
+      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id" });
+    if (error) throw error;
+    return { ok: true, queued: false };
+  } catch (err) {
+    console.warn("[offlineUpsert] direct write failed, enqueueing:", err);
+    await enqueueMutation({
+      visitaId: params.visitaId,
+      table: params.table,
+      rowId: params.rowId,
+      operation: "upsert",
+      onConflict: params.onConflict ?? "id",
+      patch: params.payload,
+    });
+    return { ok: false, queued: true };
+  }
+}
+
+/** Delete off-line first: updates the local snapshot immediately and queues the DB delete if needed. */
+export async function offlineDelete(params: {
+  visitaId: string;
+  table: string;
+  rowId: string;
+  applyToSnapshot?: (current: VisitaSnapshotData) => VisitaSnapshotData;
+}): Promise<{ ok: boolean; queued: boolean }> {
+  try {
+    if (params.applyToSnapshot) {
+      await patchSnapshot(params.visitaId, (curr) => params.applyToSnapshot!(curr));
+    }
+  } catch (err) {
+    console.warn("[offlineDelete] snapshot patch failed:", err);
+  }
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    await enqueueMutation({
+      visitaId: params.visitaId,
+      table: params.table,
+      rowId: params.rowId,
+      operation: "delete",
+      patch: {},
+    });
+    return { ok: false, queued: true };
+  }
+
+  try {
+    const { error } = await (supabase as any).from(params.table).delete().eq("id", params.rowId);
+    if (error) throw error;
+    return { ok: true, queued: false };
+  } catch (err) {
+    console.warn("[offlineDelete] direct delete failed, enqueueing:", err);
+    await enqueueMutation({
+      visitaId: params.visitaId,
+      table: params.table,
+      rowId: params.rowId,
+      operation: "delete",
+      patch: {},
+    });
+    return { ok: false, queued: true };
+  }
+}

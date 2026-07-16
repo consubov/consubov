@@ -6,7 +6,7 @@ const DB_VERSION = 2;
 export interface FotoQueueItem {
   localId: string;
   visitaId: string;
-  parentKind: "pasto" | "curral";
+  parentKind: "pasto" | "curral" | "topico";
   parentId: string;
   ordem: number;
   blob: Blob;
@@ -28,6 +28,8 @@ export interface TextMutation {
   visitaId: string;
   table: string;
   rowId: string;
+  operation?: "update" | "upsert" | "insert" | "delete";
+  onConflict?: string;
   patch: Record<string, any>;
   createdAt: string;
   tries: number;
@@ -91,7 +93,7 @@ export async function getFoto(localId: string) {
   const db = await getDb();
   return db.get("foto_queue", localId);
 }
-export async function listFotosByParent(kind: "pasto" | "curral", id: string) {
+export async function listFotosByParent(kind: "pasto" | "curral" | "topico", id: string) {
   const db = await getDb();
   return db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
 }

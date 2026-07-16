@@ -24,7 +24,8 @@ export function useSyncStatus() {
   }, []);
 
   const syncNow = async () => {
-    await Promise.all([syncPhotosNow(), retryFailedMutations()]);
+    await retryFailedMutations();
+    await syncPhotosNow();
   };
 
   return {

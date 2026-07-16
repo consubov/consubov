@@ -40,6 +40,8 @@ export async function enqueueMutation(params: {
   visitaId: string;
   table: string;
   rowId: string;
+  operation?: "update" | "upsert" | "insert" | "delete";
+  onConflict?: string;
   patch: Record<string, any>;
 }) {
   const existing = (await listAllMutations()).find(
@@ -47,6 +49,8 @@ export async function enqueueMutation(params: {
   );
   if (existing) {
     existing.patch = { ...existing.patch, ...params.patch };
+    existing.operation = existing.operation === "upsert" ? "upsert" : params.operation ?? existing.operation ?? "update";
+    existing.onConflict = params.onConflict ?? existing.onConflict;
     existing.status = "pending";
     existing.tries = 0;
     existing.lastError = undefined;
@@ -57,6 +61,8 @@ export async function enqueueMutation(params: {
       visitaId: params.visitaId,
       table: params.table,
       rowId: params.rowId,
+      operation: params.operation ?? "update",
+      onConflict: params.onConflict,
       patch: params.patch,
       createdAt: new Date().toISOString(),
       tries: 0,
@@ -65,7 +71,7 @@ export async function enqueueMutation(params: {
     await putMutation(m);
   }
   await refresh();
-  void drainMutations();
+  if (typeof navigator === "undefined" || navigator.onLine) void drainMutations();
 }
 
 async function flushOne(m: TextMutation): Promise<boolean> {
@@ -73,7 +79,23 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     m.status = "flushing";
     await putMutation(m);
     emit();
-    const { error } = await (supabase as any).from(m.table).update(m.patch).eq("id", m.rowId);
+    const operation = m.operation ?? "update";
+    let error: any = null;
+    if (operation === "upsert") {
+      const res = await (supabase as any)
+        .from(m.table)
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" });
+      error = res.error;
+    } else if (operation === "insert") {
+      const res = await (supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch });
+      error = res.error;
+    } else if (operation === "delete") {
+      const res = await (supabase as any).from(m.table).delete().eq("id", m.rowId);
+      error = res.error;
+    } else {
+      const res = await (supabase as any).from(m.table).update(m.patch).eq("id", m.rowId);
+      error = res.error;
+    }
     if (error) throw error;
     await deleteMutation(m.id);
     await refresh();
@@ -96,6 +118,7 @@ export async function drainMutations(): Promise<void> {
     syncing = true;
     emit();
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllMutations();
@@ -131,6 +154,6 @@ export async function retryFailedMutations() {
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => void drainMutations());
-  void drainMutations();
+  window.addEventListener("online", () => void retryFailedMutations());
+  if (navigator.onLine) void drainMutations();
 }
