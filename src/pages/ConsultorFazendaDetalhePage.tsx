@@ -115,26 +115,8 @@ export default function ConsultorFazendaDetalhePage() {
       }, 1500);
     }
   }
-      // Pré-carrega detalhes da fazenda
-      let fazendaDetalhe: Fazenda | null = fazenda || cached?.fazenda || null;
-      if (online && fazendaId) {
-        const { data } = await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
-        fazendaDetalhe = (data as Fazenda | null) || fazendaDetalhe;
-      }
-      try {
-        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor, visitas }));
-      } catch { /* best effort */ }
-      // Pequena espera para dar feedback visual mesmo em conexões rápidas
-      await new Promise((r) => setTimeout(r, 700));
-    } catch {
-      /* segue mesmo se offline */
-    } finally {
-      setPreparing(false);
-      setOfflineReady(true);
-      toast.success("Pronto para uso off-line ✅");
-      window.setTimeout(() => setTipoModal(true), 800);
-    }
-  }
+
+
 
   async function iniciarVisita(tipo: "rotina" | "confinamento" | "fabrica") {
     if (!roleData?.consultorId || !fazendaId) return;
