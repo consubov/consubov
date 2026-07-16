@@ -90,6 +90,7 @@ export default function FabricaVisitaView({
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
           proprietario: fazenda.proprietario,
+          responsavel: fazenda.responsavel ?? null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
         },
