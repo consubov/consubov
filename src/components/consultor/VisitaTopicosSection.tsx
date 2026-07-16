@@ -244,11 +244,12 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 }
 
 function TopicoCard({
-  topico, letter, uploading,
+  topico, uploading, numeroMap,
   onUpdate, onSave, onAddFoto, onDelFoto,
   onMoveUp, onMoveDown, onDelete,
 }: {
-  topico: Topico; letter: string; uploading: boolean;
+  topico: Topico; uploading: boolean;
+  numeroMap?: Record<string, number>;
   onUpdate: (id: string, patch: Partial<Topico>) => void;
   onSave: (id: string, patch: Partial<Topico>) => void;
   onAddFoto: (t: Topico, f: File) => void;
@@ -259,12 +260,6 @@ function TopicoCard({
   return (
     <div className="rounded-lg border bg-card" style={{ borderColor: "#E7E3D6" }}>
       <div className="flex items-center gap-2 p-3 border-b" style={{ borderColor: "#E7E3D6" }}>
-        {letter && (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-base flex-shrink-0"
-            style={{ background: "#14432B", color: "#C9A84C", fontFamily: "'Manrope', sans-serif" }}>
-            {letter}
-          </div>
-        )}
         <Input
           value={topico.titulo}
           placeholder="Título do tópico"
