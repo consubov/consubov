@@ -255,6 +255,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
           proprietario: fazenda.proprietario,
+          responsavel: (fazenda as any).responsavel ?? null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
         },
