@@ -123,7 +123,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       avaliacao_fabrica_visita: afRow,
     }).catch(() => {});
     setLoading(false);
-  }, [visitaId, fazenda, visita]);
+  }, [visitaId, fazenda, initialVisita]);
 
   const nextOrdem = useMemo(
     () => (currais.length > 0 ? Math.max(...currais.map(c => c.ordem)) + 1 : 0),
