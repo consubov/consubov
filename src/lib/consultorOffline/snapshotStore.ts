@@ -108,7 +108,7 @@ export async function offlineUpdate(params: {
 
   // 3. Tenta gravar online
   try {
-    const { error } = await withTimeout((supabase as any)
+    const { error } = await withTimeout<any>((supabase as any)
       .from(params.table)
       .update(params.patch)
       .eq("id", params.rowId));
@@ -159,7 +159,7 @@ export async function offlineUpsert(params: {
   }
 
   try {
-    const { error } = await withTimeout((supabase as any)
+    const { error } = await withTimeout<any>((supabase as any)
       .from(params.table)
       .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id" }));
     if (error) throw error;
@@ -205,7 +205,7 @@ export async function offlineDelete(params: {
   }
 
   try {
-    const { error } = await withTimeout((supabase as any).from(params.table).delete().eq("id", params.rowId));
+    const { error } = await withTimeout<any>((supabase as any).from(params.table).delete().eq("id", params.rowId));
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (err) {

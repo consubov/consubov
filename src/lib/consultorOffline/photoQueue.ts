@@ -96,7 +96,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     else insertPayload.visita_pasto_id = item.parentId;
 
     const table = item.parentKind === "topico" ? "visita_topico_fotos" : "visita_fotos";
-    const existingRes = await withTimeout((supabase as any)
+    const existingRes: any = await withTimeout((supabase as any)
       .from(table)
       .select("*")
       .eq("url", path)
@@ -104,7 +104,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     let inserted = existingRes.data;
     let insErr = existingRes.error;
     if (!inserted && !insErr) {
-      const insertRes = await withTimeout((supabase as any)
+      const insertRes: any = await withTimeout((supabase as any)
         .from(table)
         .insert(insertPayload)
         .select("*")

@@ -93,18 +93,18 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     const operation = m.operation ?? "update";
     let error: any = null;
     if (operation === "upsert") {
-      const res = await withTimeout((supabase as any)
+      const res: any = await withTimeout((supabase as any)
         .from(m.table)
         .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" }));
       error = res.error;
     } else if (operation === "insert") {
-      const res = await withTimeout((supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch }));
+      const res: any = await withTimeout((supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch }));
       error = res.error;
     } else if (operation === "delete") {
-      const res = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
+      const res: any = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
       error = res.error;
     } else {
-      const res = await withTimeout((supabase as any).from(m.table).update(m.patch).eq("id", m.rowId));
+      const res: any = await withTimeout((supabase as any).from(m.table).update(m.patch).eq("id", m.rowId));
       error = res.error;
     }
     if (error) throw error;
