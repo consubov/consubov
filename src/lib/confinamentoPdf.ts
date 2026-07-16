@@ -28,6 +28,7 @@ export interface ConfinamentoPdfData {
   hora_inicio: string;
   hora_fim: string | null;
   observacoes_gerais: string | null;
+  titulo_encerramento?: string | null;
   conclusao: string | null;
   objetivo_visita?: string | null;
   resumo_executivo?: string | null;
@@ -56,7 +57,18 @@ async function fetchFotoDataUrl(path: string): Promise<string | null> {
 }
 
 const BUCKET_LOGOS = "logos-consultor";
-async function fetchLogoDataUrl(path: string | null | undefined): Promise<string | null> {
+type LogoAsset = { dataUrl: string; w: number; h: number } | null;
+
+async function measureImage(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth || 1, h: im.naturalHeight || 1 });
+    im.onerror = () => resolve({ w: 1, h: 1 });
+    im.src = dataUrl;
+  });
+}
+
+async function fetchLogoAsset(path: string | null | undefined): Promise<LogoAsset> {
   if (!path) return null;
   try {
     let res: Response;
@@ -68,12 +80,14 @@ async function fetchLogoDataUrl(path: string | null | undefined): Promise<string
       res = await fetch(data.signedUrl);
     }
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = reject;
       r.readAsDataURL(blob);
     });
+    const s = await measureImage(dataUrl);
+    return { dataUrl, w: s.w, h: s.h };
   } catch { return null; }
 }
 
@@ -90,6 +104,26 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
   } catch { return null; }
 }
 
+async function toLogoAsset(dataUrl: string | null): Promise<LogoAsset> {
+  if (!dataUrl) return null;
+  const s = await measureImage(dataUrl);
+  return { dataUrl, w: s.w, h: s.h };
+}
+
+function drawLogoFitted(
+  doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
+) {
+  if (!asset) return;
+  const scale = Math.min(boxW / asset.w, boxH / asset.h);
+  const w = asset.w * scale;
+  const h = asset.h * scale;
+  const x = align === "left" ? boxX : boxX + boxW - w;
+  const y = boxY + (boxH - h) / 2;
+  const fmt = asset.dataUrl.includes("image/png") ? "PNG" : "JPEG";
+  try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
+}
+
+
 function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
@@ -105,9 +139,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  defaultLogoDataUrl: string | null,
+  defaultLogo: LogoAsset,
   subtitle: string,
-  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
+  logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
@@ -115,13 +149,11 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
-  if (leftLogo) {
-    try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
-  }
-  if (logos?.direitaDataUrl) {
-    const rightX = w - 15 - logoW;
-    try { doc.addImage(logos.direitaDataUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+  const leftAsset = logos?.esquerda || defaultLogo;
+  drawLogoFitted(doc, leftAsset, logoX, logoY, logoW, logoH, "left");
+  if (logos?.direita) {
+    const rightBoxX = w - 15 - logoW;
+    drawLogoFitted(doc, logos.direita, rightBoxX, logoY, logoW, logoH, "right");
   }
 
   const dividerX = logoX + logoW + 6;
@@ -383,18 +415,19 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
-    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
-    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  const logoDefaultDataUrl = await fetchAssetDataUrl(logoAsset.url);
+  const [logoDefault, esquerda, direita] = await Promise.all([
+    toLogoAsset(logoDefaultDataUrl),
+    fetchLogoAsset(data.logoOverride?.esquerdaPath || null),
+    fetchLogoAsset(data.logoOverride?.direitaPath || null),
   ]);
-  const logos = { esquerdaDataUrl, direitaDataUrl };
+  const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logos);
+  drawCoverHeader(doc, logoDefault, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
@@ -445,8 +478,18 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.line(15, 16, pageW - 15, 16);
 
   let fy = 26;
+  // Título editável da seção final
+  const tituloEnc = (data.titulo_encerramento || "Observações e Recomendações").trim() || "Observações e Recomendações";
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, fy, 3, 10, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
+  fy += 16;
+
   fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-  fy = Math.max(fy + 8, 130);
+  fy = Math.max(fy + 8, 140);
   drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
 
   const sigY = pageH - 40;

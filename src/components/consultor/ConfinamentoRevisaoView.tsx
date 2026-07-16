@@ -48,6 +48,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [currais, setCurrais] = useState<Curral[]>([]);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
+  const [tituloEncerramento, setTituloEncerramento] = useState("Observações e Recomendações");
   const [fabricaNota, setFabricaNota] = useState<number | null>(null);
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
   const [objetivo, setObjetivo] = useState("");
@@ -248,6 +249,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        titulo_encerramento: tituloEncerramento,
         objetivo_visita: objetivo,
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
@@ -439,6 +441,14 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       {/* Observações & Conclusão */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
+          <Input
+            value={tituloEncerramento}
+            onChange={e => setTituloEncerramento(e.target.value)}
+            placeholder="Observações e Recomendações"
+          />
+        </div>
+        <div>
           <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Observações gerais</div>
           <Textarea
             value={obsGerais}
@@ -457,6 +467,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           />
         </div>
       </div>
+
 
       {/* Botão fixo — acima da nav */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
