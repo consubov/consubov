@@ -681,19 +681,20 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
-    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
-    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  const logoDefaultDataUrl = await fetchAssetDataUrl(logoAsset.url);
+  const [logoDefault, esquerda, direita] = await Promise.all([
+    toLogoAsset(logoDefaultDataUrl),
+    fetchLogoAsset(data.logoOverride?.esquerdaPath || null),
+    fetchLogoAsset(data.logoOverride?.direitaPath || null),
   ]);
-  const logos = { esquerdaDataUrl, direitaDataUrl };
+  const logos = { esquerda, direita };
 
   const fotosCache: Record<string, string | null> = {};
   const allFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica", logos);
+  drawCoverHeader(doc, logoDefault, "Visita Técnica - Fábrica", logos);
   let y = drawFarmBlock(doc, {
     fazenda: data.fazenda, consultor: data.consultor,
     hora_inicio: data.hora_inicio, hora_fim: data.hora_fim,
@@ -720,13 +721,11 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     ? notaValida.reduce((s, q) => s + (q.nota || 0), 0) / notaValida.length
     : 0;
   data.quesitos.forEach((q, i) => {
-    if (y + rowH > pageH - 30) { doc.addPage(); y = 20; }
     if (i % 2 === 0) { doc.setFillColor("#FAF8F0"); doc.rect(15, y, wTable, rowH, "F"); }
     doc.setTextColor(INK);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.text(q.rotulo, 18, y + 5.4);
-    // rating boxes 1..5
     const bxSize = 5.2;
     const gap = 1.4;
     const groupW = 5 * bxSize + 4 * gap;
@@ -759,14 +758,13 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     y += 6;
   }
 
-  // Tópicos (custom + footer inline)
-  const sortedTopicos = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
-  for (const t of sortedTopicos) {
+  // Renderiza um tópico completo (título + texto + fotos), retorna novo y
+  const renderTopico = (t: NonNullable<typeof data.topicos>[number], yStart: number): number => {
+    let yy = yStart;
     const tx = (t.texto || "").trim();
-    if (!t.titulo.trim() && !tx && t.fotos.length === 0) continue;
-    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    if (!t.titulo.trim() && !tx && t.fotos.length === 0) return yy;
     if (t.titulo.trim() || tx) {
-      y = drawIntroBlock(doc, t.titulo || "—", tx || "—", y);
+      yy = drawIntroBlock(doc, t.titulo || "—", tx || "—", yy);
     }
     if (t.fotos.length > 0) {
       const wArea = pageW - 30;
@@ -774,7 +772,6 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
       const gap = 2;
       const fw = (wArea - (cols - 1) * gap) / cols;
       const fh = fw;
-      if (y + fh > pageH - 20) { doc.addPage(); y = 20; }
       for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
         const fx = 15 + i * (fw + gap);
         const foto = t.fotos[i];
@@ -782,22 +779,49 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
         if (dataUrl) {
           try {
             const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
-            doc.addImage(dataUrl, fmt, fx, y, fw, fh, undefined, "FAST");
+            doc.addImage(dataUrl, fmt, fx, yy, fw, fh, undefined, "FAST");
           } catch {
-            doc.setDrawColor(LINE); doc.rect(fx, y, fw, fh);
+            doc.setDrawColor(LINE); doc.rect(fx, yy, fw, fh);
           }
         } else {
-          doc.setFillColor("#F3F1E8"); doc.rect(fx, y, fw, fh, "F");
+          doc.setFillColor("#F3F1E8"); doc.rect(fx, yy, fw, fh, "F");
         }
-        // Numeração global
         const n = data.numeroMap?.[foto.id];
-        if (n != null) drawNumeroBadge(doc, fx + 1.5, y + 1.5, n);
+        if (n != null) drawNumeroBadge(doc, fx + 1.5, yy + 1.5, n);
       }
-      y += fh + 6;
+      yy += fh + 6;
     } else {
-      y += 2;
+      yy += 2;
+    }
+    return yy;
+  };
+
+  // Paginação Fábrica:
+  // Página 1 = header + Avaliação + 1º tópico
+  // A partir da página 2 = 2 tópicos por página
+  const sortedTopicos = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
+    .filter(t => t.titulo.trim() || (t.texto || "").trim() || t.fotos.length > 0);
+
+  if (sortedTopicos.length > 0) {
+    y = renderTopico(sortedTopicos[0], y);
+    for (let i = 1; i < sortedTopicos.length; i += 2) {
+      doc.addPage();
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+      doc.setDrawColor(LINE);
+      doc.setLineWidth(0.4);
+      doc.line(15, 16, pageW - 15, 16);
+      let py = 24;
+      py = renderTopico(sortedTopicos[i], py);
+      if (i + 1 < sortedTopicos.length) {
+        py += 4;
+        py = renderTopico(sortedTopicos[i + 1], py);
+      }
     }
   }
+
 
   // Assinatura
   const sigY = pageH - 40;
