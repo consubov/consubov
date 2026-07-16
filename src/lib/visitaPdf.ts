@@ -658,19 +658,18 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
 
   const fotosCache: Record<string, string | null> = {};
   const allFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica", logoOverride);
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica", logos);
   let y = drawFarmBlock(doc, {
     fazenda: data.fazenda, consultor: data.consultor,
     hora_inicio: data.hora_inicio, hora_fim: data.hora_fim,
