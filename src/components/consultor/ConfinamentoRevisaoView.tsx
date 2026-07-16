@@ -392,20 +392,25 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           organizacao_fabrica_nota: fabricaNota,
           organizacao_insumos_nota: insumosNota,
         },
-        currais: currais.map(c => ({
-          id: c.id,
-          num_curral: c.num_curral,
-          scores: {
-            fezes: averageOf(c.samples.fezes),
-            corporal: averageOf(c.samples.corporal),
-            bebedouro: averageOf(c.samples.bebedouro),
-          },
-          sampleCounts: {
-            fezes: c.samples.fezes.length,
-            corporal: c.samples.corporal.length,
-            bebedouro: c.samples.bebedouro.length,
-          },
-          fotos: c.fotos,
+        currais: await Promise.all(currais.map(async c => {
+          const { data: fresh } = await supabase.from("visita_fotos")
+            .select("*").eq("visita_curral_id", c.id).order("ordem");
+          const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+          return {
+            id: c.id,
+            num_curral: c.num_curral,
+            scores: {
+              fezes: averageOf(c.samples.fezes),
+              corporal: averageOf(c.samples.corporal),
+              bebedouro: averageOf(c.samples.bebedouro),
+            },
+            sampleCounts: {
+              fezes: c.samples.fezes.length,
+              corporal: c.samples.corporal.length,
+              bebedouro: c.samples.bebedouro.length,
+            },
+            fotos,
+          };
         })),
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
