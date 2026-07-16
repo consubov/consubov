@@ -152,15 +152,14 @@ function drawLogoFitted(
   doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
 ) {
   if (!asset) return;
-  // Ambas as logos (esquerda e direita) devem usar a MESMA altura máxima como
-  // referência (boxH), preservando a proporção original. A largura só é reduzida
-  // se a imagem for tão larga que estouraria a caixa — nunca aumentamos além de boxH.
-  let scale = boxH / asset.h;
-  if (asset.w * scale > boxW) scale = boxW / asset.w;
-  const w = asset.w * scale;
-  const h = asset.h * scale;
+  // REGRA ÚNICA: escalar SEMPRE pela mesma altura de referência (boxH), sem
+  // clamp por largura. Assim, ambas as logos (esquerda e direita) terminam
+  // visualmente com a MESMA altura, independentemente da proporção original.
+  // A largura é calculada proporcionalmente a partir dessa altura.
+  const h = boxH;
+  const w = asset.w * (boxH / asset.h);
   const x = align === "left" ? boxX : boxX + boxW - w;
-  const y = boxY + (boxH - h) / 2;
+  const y = boxY;
   const fmt = asset.dataUrl.includes("image/png") ? "PNG" : "JPEG";
   try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
@@ -374,11 +373,7 @@ async function drawPastoBlock(
     const legLines = doc.splitTextToSize(legend, scoreCellW - 4);
     doc.text(legLines.slice(0, 2), cx, dotY + 4.8);
   });
-  // Rodapé da escala (1 = fora do esperado · 5 = dentro do esperado)
-  doc.setFontSize(5.6);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(INK_SOFT);
-  doc.text(SCORE_SCALE_HINT, x + width - 3, scoreY + 14, { align: "right" });
+  // A escala 1-5 é impressa uma única vez no rodapé da página de pastos, não por card.
 
   if (pasto.observacao) {
     doc.setFontSize(7);
@@ -570,6 +565,12 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     doc.setLineWidth(0.4);
     doc.line(15, 16, pageW - 15, 16);
 
+    // Escala de scores impressa UMA VEZ por página de pastos (rodapé do cabeçalho).
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(INK_SOFT);
+    doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+
     let py = 24;
     for (const p of pair) {
       await drawPastoBlock(doc, p, fotosCache, 15, py, pageW - 30, blockHeight);
@@ -745,7 +746,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     doc.setTextColor(INK_SOFT);
     const legend = getScoreDescription(q.chave);
     if (legend) {
-      const legLines = doc.splitTextToSize(`${legend} ${SCORE_SCALE_HINT}`, wTable - notaColW - 8);
+      const legLines = doc.splitTextToSize(legend, wTable - notaColW - 8);
       doc.text(legLines.slice(0, 1), labelX, y + 10);
     }
     // Indicador único N/5 à direita
@@ -768,8 +769,15 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     y += rowH;
   });
 
+  // Escala uma única vez, logo antes da média geral.
+  y += 2;
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(INK_SOFT);
+  doc.text(SCORE_SCALE_HINT, 15, y);
+  y += 5;
+
   if (notaValida.length) {
-    y += 4;
     doc.setTextColor(GREEN_DARK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
