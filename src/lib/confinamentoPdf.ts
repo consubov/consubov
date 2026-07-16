@@ -37,7 +37,7 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
+  logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
