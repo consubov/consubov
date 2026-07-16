@@ -178,72 +178,163 @@ export default function ConsultorFazendasPage() {
 }
 
 // ============================================================================
-// Modal — Personalizar Logo do Relatório
+// Modal — Personalizar Logo do Relatório (2 slots independentes)
 // ============================================================================
-type LogoModo = 'padrao' | 'substituir' | 'adicionar';
+
+function LogoSlot({
+  title,
+  toggleLabel,
+  toggleOn,
+  onToggle,
+  previewUrl,
+  onSelectFile,
+  onRemove,
+  showRemove,
+  saving,
+  isDefaultConsubov,
+}: {
+  title: string;
+  toggleLabel: string;
+  toggleOn: boolean;
+  onToggle: (v: boolean) => void;
+  previewUrl: string | null;
+  onSelectFile: (f: File) => void;
+  onRemove: () => void;
+  showRemove: boolean;
+  saving: boolean;
+  isDefaultConsubov?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <span className="text-xs text-muted-foreground">{toggleLabel}</span>
+          <Switch checked={toggleOn} onCheckedChange={onToggle} />
+        </label>
+      </div>
+
+      {toggleOn && (
+        <div className="space-y-2">
+          <Input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) {
+                toast.error("Envie um arquivo de imagem (PNG, JPG, WebP ou SVG)");
+                return;
+              }
+              onSelectFile(f);
+            }}
+          />
+          {previewUrl && (
+            <div className="flex items-center gap-3 pt-1">
+              <img src={previewUrl} alt="Prévia" className="h-14 w-auto object-contain bg-muted rounded border p-1" />
+              {showRemove && (
+                <Button variant="ghost" size="sm" onClick={onRemove} disabled={saving} className="text-destructive gap-1">
+                  <Trash2 className="w-4 h-4" /> Remover
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!toggleOn && isDefaultConsubov && (
+        <div className="text-xs text-muted-foreground">Usando a logo Consubov padrão.</div>
+      )}
+      {!toggleOn && !isDefaultConsubov && (
+        <div className="text-xs text-muted-foreground">Nenhuma logo será exibida nessa posição.</div>
+      )}
+    </div>
+  );
+}
 
 function PersonalizarLogoModal({
   open, onOpenChange, consultorId,
 }: { open: boolean; onOpenChange: (v: boolean) => void; consultorId: string | null }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [modo, setModo] = useState<LogoModo>('padrao');
-  const [logoPath, setLogoPath] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+
+  // Left slot
+  const [esquerdaCustom, setEsquerdaCustom] = useState(false); // toggle OFF => Consubov padrão
+  const [esquerdaPath, setEsquerdaPath] = useState<string | null>(null);
+  const [esquerdaPreview, setEsquerdaPreview] = useState<string | null>(null);
+  const [esquerdaFile, setEsquerdaFile] = useState<File | null>(null);
+
+  // Right slot
+  const [direitaOn, setDireitaOn] = useState(false);
+  const [direitaPath, setDireitaPath] = useState<string | null>(null);
+  const [direitaPreview, setDireitaPreview] = useState<string | null>(null);
+  const [direitaFile, setDireitaFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open || !consultorId) return;
     setLoading(true);
     (async () => {
-      const { data } = await supabase.from("consultores").select("logo_modo, logo_personalizada_url" as any).eq("id", consultorId).maybeSingle();
+      const { data } = await supabase
+        .from("consultores")
+        .select("logo_esquerda_url, logo_direita_url" as any)
+        .eq("id", consultorId)
+        .maybeSingle();
       const c = data as any;
-      setModo((c?.logo_modo as LogoModo) || 'padrao');
-      setLogoPath(c?.logo_personalizada_url || null);
-      if (c?.logo_personalizada_url) {
-        const { data: signed } = await supabase.storage.from("logos-consultor").createSignedUrl(c.logo_personalizada_url, 60 * 60);
-        setPreviewUrl(signed?.signedUrl || null);
-      } else {
-        setPreviewUrl(null);
-      }
-      setFile(null);
+      const eUrl = c?.logo_esquerda_url || null;
+      const dUrl = c?.logo_direita_url || null;
+
+      setEsquerdaPath(eUrl);
+      setEsquerdaCustom(!!eUrl);
+      setEsquerdaFile(null);
+      if (eUrl) {
+        const { data: signed } = await supabase.storage.from("logos-consultor").createSignedUrl(eUrl, 60 * 60);
+        setEsquerdaPreview(signed?.signedUrl || null);
+      } else setEsquerdaPreview(null);
+
+      setDireitaPath(dUrl);
+      setDireitaOn(!!dUrl);
+      setDireitaFile(null);
+      if (dUrl) {
+        const { data: signed } = await supabase.storage.from("logos-consultor").createSignedUrl(dUrl, 60 * 60);
+        setDireitaPreview(signed?.signedUrl || null);
+      } else setDireitaPreview(null);
+
       setLoading(false);
     })();
   }, [open, consultorId]);
-
-  function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) {
-      toast.error("Envie um arquivo de imagem (PNG, JPG, WebP ou SVG)");
-      return;
-    }
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
-  }
 
   async function handleSave() {
     if (!consultorId) return;
     setSaving(true);
     try {
-      let newPath = logoPath;
-      if ((modo === 'substituir' || modo === 'adicionar') && file) {
-        const ext = file.name.split(".").pop() || "png";
-        const path = `${consultorId}/logo-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("logos-consultor").upload(path, file, { upsert: true, contentType: file.type });
-        if (upErr) throw upErr;
-        newPath = path;
+      let newEsquerda = esquerdaPath;
+      let newDireita = direitaPath;
+
+      if (esquerdaCustom && esquerdaFile) {
+        const ext = esquerdaFile.name.split(".").pop() || "png";
+        const path = `${consultorId}/logo-esq-${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("logos-consultor")
+          .upload(path, esquerdaFile, { upsert: true, contentType: esquerdaFile.type });
+        if (error) throw error;
+        newEsquerda = path;
+      } else if (!esquerdaCustom) {
+        newEsquerda = null;
       }
-      if (modo === 'padrao') {
-        // opcional: manter path para reutilização futura — só zera modo
-      } else if (!newPath) {
-        toast.error("Envie uma imagem para essa opção");
-        setSaving(false);
-        return;
+
+      if (direitaOn && direitaFile) {
+        const ext = direitaFile.name.split(".").pop() || "png";
+        const path = `${consultorId}/logo-dir-${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("logos-consultor")
+          .upload(path, direitaFile, { upsert: true, contentType: direitaFile.type });
+        if (error) throw error;
+        newDireita = path;
+      } else if (!direitaOn) {
+        newDireita = null;
       }
+
       const { error } = await supabase
         .from("consultores")
-        .update({ logo_modo: modo, logo_personalizada_url: newPath } as any)
+        .update({ logo_esquerda_url: newEsquerda, logo_direita_url: newDireita } as any)
         .eq("id", consultorId);
       if (error) throw error;
       toast.success("Preferência de logo salva!");
@@ -255,26 +346,40 @@ function PersonalizarLogoModal({
     }
   }
 
-  async function handleRemove() {
-    if (!consultorId || !logoPath) return;
+  async function removeEsquerda() {
+    if (!consultorId) return;
     setSaving(true);
     try {
-      await supabase.storage.from("logos-consultor").remove([logoPath]);
-      const { error } = await supabase
-        .from("consultores")
-        .update({ logo_modo: 'padrao', logo_personalizada_url: null } as any)
-        .eq("id", consultorId);
+      if (esquerdaPath) await supabase.storage.from("logos-consultor").remove([esquerdaPath]);
+      const { error } = await supabase.from("consultores")
+        .update({ logo_esquerda_url: null } as any).eq("id", consultorId);
       if (error) throw error;
-      setLogoPath(null);
-      setPreviewUrl(null);
-      setFile(null);
-      setModo('padrao');
-      toast.success("Logo removida");
+      setEsquerdaPath(null);
+      setEsquerdaPreview(null);
+      setEsquerdaFile(null);
+      setEsquerdaCustom(false);
+      toast.success("Logo esquerda removida");
     } catch (err: any) {
-      toast.error("Erro ao remover: " + (err?.message || "desconhecido"));
-    } finally {
-      setSaving(false);
-    }
+      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } finally { setSaving(false); }
+  }
+
+  async function removeDireita() {
+    if (!consultorId) return;
+    setSaving(true);
+    try {
+      if (direitaPath) await supabase.storage.from("logos-consultor").remove([direitaPath]);
+      const { error } = await supabase.from("consultores")
+        .update({ logo_direita_url: null } as any).eq("id", consultorId);
+      if (error) throw error;
+      setDireitaPath(null);
+      setDireitaPreview(null);
+      setDireitaFile(null);
+      setDireitaOn(false);
+      toast.success("Logo direita removida");
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } finally { setSaving(false); }
   }
 
   return (
@@ -282,54 +387,50 @@ function PersonalizarLogoModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Personalizar Logo do Relatório</DialogTitle>
-          <DialogDescription>Escolha como a logo aparece no cabeçalho dos PDFs de visita.</DialogDescription>
+          <DialogDescription>
+            Configure as duas posições de logo do cabeçalho dos PDFs de visita de forma independente.
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              {[
-                { v: 'padrao' as LogoModo, t: "Padrão", d: "Apenas a logo Consubov" },
-                { v: 'substituir' as LogoModo, t: "Substituir", d: "Sua logo no lugar da Consubov" },
-                { v: 'adicionar' as LogoModo, t: "Adicionar", d: "Consubov à esquerda + sua logo à direita" },
-              ].map(opt => (
-                <label
-                  key={opt.v}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${modo === opt.v ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
-                >
-                  <input
-                    type="radio"
-                    name="logo-modo"
-                    checked={modo === opt.v}
-                    onChange={() => setModo(opt.v)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm">{opt.t}</div>
-                    <div className="text-xs text-muted-foreground">{opt.d}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
+          <div className="space-y-3">
+            <LogoSlot
+              title="Logo à Esquerda"
+              toggleLabel={esquerdaCustom ? "Minha logo" : "Consubov (padrão)"}
+              toggleOn={esquerdaCustom}
+              onToggle={(v) => {
+                setEsquerdaCustom(v);
+                if (!v) { setEsquerdaFile(null); setEsquerdaPreview(esquerdaPath ? esquerdaPreview : null); }
+              }}
+              previewUrl={esquerdaPreview}
+              onSelectFile={(f) => { setEsquerdaFile(f); setEsquerdaPreview(URL.createObjectURL(f)); }}
+              onRemove={removeEsquerda}
+              showRemove={!!esquerdaPath && !esquerdaFile}
+              saving={saving}
+              isDefaultConsubov={!esquerdaCustom}
+            />
 
-            {(modo === 'substituir' || modo === 'adicionar') && (
-              <div className="space-y-2 pt-2 border-t">
-                <Label>Sua logo (PNG, JPG, WebP ou SVG)</Label>
-                <Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onSelectFile} />
-                {previewUrl && (
-                  <div className="flex items-center gap-3 pt-2">
-                    <img src={previewUrl} alt="Prévia" className="h-16 w-auto object-contain bg-muted rounded border p-1" />
-                    {logoPath && !file && (
-                      <Button variant="ghost" size="sm" onClick={handleRemove} className="text-destructive gap-1">
-                        <Trash2 className="w-4 h-4" /> Remover
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <LogoSlot
+              title="Logo à Direita"
+              toggleLabel={direitaOn ? "Ativada" : "Desativada"}
+              toggleOn={direitaOn}
+              onToggle={(v) => {
+                setDireitaOn(v);
+                if (!v) { setDireitaFile(null); }
+              }}
+              previewUrl={direitaPreview}
+              onSelectFile={(f) => { setDireitaFile(f); setDireitaPreview(URL.createObjectURL(f)); }}
+              onRemove={removeDireita}
+              showRemove={!!direitaPath && !direitaFile}
+              saving={saving}
+              isDefaultConsubov={false}
+            />
+
+            <p className="text-xs text-muted-foreground pt-1">
+              Envie a logo com fundo branco, ou em PNG transparente (sem fundo), para melhor encaixe no cabeçalho do relatório.
+            </p>
           </div>
         )}
 
@@ -343,3 +444,4 @@ function PersonalizarLogoModal({
     </Dialog>
   );
 }
+
