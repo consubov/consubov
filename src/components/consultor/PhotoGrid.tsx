@@ -174,16 +174,6 @@ export default function PhotoGrid({
     }
   }
 
-  async function handleDelete(f: FotoRow) {
-    try {
-      await supabase.storage.from(BUCKET).remove([f.url]);
-      await supabase.from("visita_fotos").delete().eq("id", f.id);
-      setFotos(prev => prev.filter(x => x.id !== f.id));
-    } catch {
-      toast.error("Erro ao remover foto");
-    }
-  }
-
   const gridCols = "grid-cols-5";
 
   return (
@@ -192,8 +182,9 @@ export default function PhotoGrid({
         Fotos ({fotos.length}/{max})
       </div>
       <div className={cn("grid gap-1.5", gridCols)}>
-        {slots.map(({ ordem, foto, pending }) => {
-          const showPending = pending && !foto;
+        {slots.map(({ ordem, foto, pending, queuedPreview }) => {
+          const showQueued = !foto && queuedPreview;
+          const showPending = !foto && !queuedPreview && pending;
           return (
             <div key={ordem} className="aspect-square rounded-md border border-dashed border-border bg-muted/40 relative overflow-hidden">
               {foto ? (
@@ -208,33 +199,31 @@ export default function PhotoGrid({
                     </button>
                   )}
                 </>
+              ) : showQueued ? (
+                <>
+                  <img src={queuedPreview} alt="" className="w-full h-full object-cover opacity-90" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/20">
+                    <div className="flex items-center gap-1 rounded bg-background/80 px-1.5 py-0.5 text-[9px] font-medium text-foreground">
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" /> fila
+                    </div>
+                  </div>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => cancelQueued(ordem)}
+                      className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5"
+                      title="Cancelar envio"
+                    >
+                      <X className="w-3 h-3 text-destructive-foreground" />
+                    </button>
+                  )}
+                </>
               ) : showPending ? (
                 <>
                   <img src={pending!.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
-                  {pending!.status === "uploading" ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => retryPending(ordem)}
-                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-destructive/60 text-destructive-foreground"
-                        title={pending!.error || "Tentar novamente"}
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        <RefreshCw className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => cancelPending(ordem)}
-                        className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5"
-                      >
-                        <X className="w-3 h-3 text-destructive-foreground" />
-                      </button>
-                    </>
-                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  </div>
                 </>
               ) : (
                 <button
