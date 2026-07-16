@@ -1357,6 +1357,7 @@ export type Database = {
           municipio: string | null
           nome_fazenda: string
           proprietario: string | null
+          responsavel: string | null
           uf: string | null
         }
         Insert: {
@@ -1368,6 +1369,7 @@ export type Database = {
           municipio?: string | null
           nome_fazenda: string
           proprietario?: string | null
+          responsavel?: string | null
           uf?: string | null
         }
         Update: {
@@ -1379,6 +1381,7 @@ export type Database = {
           municipio?: string | null
           nome_fazenda?: string
           proprietario?: string | null
+          responsavel?: string | null
           uf?: string | null
         }
         Relationships: [

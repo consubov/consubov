@@ -16,6 +16,7 @@ interface Fazenda {
   id: string;
   nome_fazenda: string;
   proprietario: string | null;
+  responsavel: string | null;
   municipio: string | null;
   uf: string | null;
   latitude: number | null;
@@ -25,13 +26,14 @@ interface Fazenda {
 interface Form {
   nome_fazenda: string;
   proprietario: string;
+  responsavel: string;
   municipio: string;
   uf: string;
   latitude: string;
   longitude: string;
 }
 
-const emptyForm: Form = { nome_fazenda: "", proprietario: "", municipio: "", uf: "", latitude: "", longitude: "" };
+const emptyForm: Form = { nome_fazenda: "", proprietario: "", responsavel: "", municipio: "", uf: "", latitude: "", longitude: "" };
 
 export default function ConsultorFazendasPage() {
   const { roleData } = useAuth();
@@ -63,6 +65,7 @@ export default function ConsultorFazendasPage() {
         consultor_id: roleData.consultorId!,
         nome_fazenda: form.nome_fazenda.trim(),
         proprietario: form.proprietario.trim() || null,
+        responsavel: form.responsavel.trim() || null,
         municipio: form.municipio.trim() || null,
         uf: form.uf.trim().toUpperCase() || null,
         latitude: form.latitude ? Number(form.latitude) : null,
@@ -134,6 +137,7 @@ export default function ConsultorFazendasPage() {
           <div className="space-y-3">
             <div><Label>Nome da fazenda *</Label><Input value={form.nome_fazenda} onChange={e => setForm(f => ({ ...f, nome_fazenda: e.target.value }))} /></div>
             <div><Label>Proprietário</Label><Input value={form.proprietario} onChange={e => setForm(f => ({ ...f, proprietario: e.target.value }))} /></div>
+            <div><Label>Responsável</Label><Input placeholder="Nome do gerente ou responsável" value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2"><Label>Município</Label><Input value={form.municipio} onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))} /></div>
               <div><Label>UF</Label><Input maxLength={2} value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value }))} /></div>

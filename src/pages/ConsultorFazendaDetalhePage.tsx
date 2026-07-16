@@ -17,6 +17,7 @@ interface Fazenda {
   id: string;
   nome_fazenda: string;
   proprietario: string | null;
+  responsavel: string | null;
   municipio: string | null;
   uf: string | null;
 }
@@ -90,6 +91,7 @@ export default function ConsultorFazendaDetalhePage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground">{fazenda.nome_fazenda}</h1>
             {fazenda.proprietario && <div className="text-sm text-muted-foreground">{fazenda.proprietario}</div>}
+            {fazenda.responsavel && <div className="text-xs text-muted-foreground">Responsável: {fazenda.responsavel}</div>}
             {(fazenda.municipio || fazenda.uf) && (
               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3" />

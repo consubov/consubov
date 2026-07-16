@@ -1,0 +1,1 @@
+ALTER TABLE public.fazendas_consultor ADD COLUMN responsavel text;
