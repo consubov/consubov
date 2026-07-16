@@ -413,12 +413,11 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const pageH = doc.internal.pageSize.getHeight();
 
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
   const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
