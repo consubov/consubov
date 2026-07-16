@@ -232,7 +232,6 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     try {
       await supabase.from("visitas_tecnicas").update({
         observacoes_gerais: obsGerais, conclusao,
-        titulo_encerramento: tituloEncerramento,
         objetivo_visita: objetivo || null,
         resumo_executivo: resumo || null,
         indicadores_gerais: indicadores || null,
@@ -250,6 +249,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
         conclusao,
+        titulo_encerramento: tituloEncerramento,
         objetivo_visita: objetivo,
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
