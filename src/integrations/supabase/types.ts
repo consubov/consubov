@@ -846,6 +846,8 @@ export type Database = {
           ativo: boolean
           created_at: string
           id: string
+          logo_direita_url: string | null
+          logo_esquerda_url: string | null
           logo_modo: string
           logo_personalizada_url: string | null
           nome: string
@@ -855,6 +857,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          logo_direita_url?: string | null
+          logo_esquerda_url?: string | null
           logo_modo?: string
           logo_personalizada_url?: string | null
           nome: string
@@ -864,6 +868,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          logo_direita_url?: string | null
+          logo_esquerda_url?: string | null
           logo_modo?: string
           logo_personalizada_url?: string | null
           nome?: string
