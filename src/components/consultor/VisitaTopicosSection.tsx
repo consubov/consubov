@@ -209,12 +209,14 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
 
   return (
     <div className="space-y-3">
-      {fixos.map(t => <TopicoCard key={t.id} topico={t} letter="" onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto} uploading={uploading===t.id} />)}
-      <div className="rounded-lg border-2 border-dashed p-3 text-center text-xs text-muted-foreground" style={{ borderColor: "#C9A84C" }}>
-        ⬇ Tabela "Indicadores Gerais da Fazenda" abaixo (posição 4) ⬇
-      </div>
+      {fixos.map(t => <TopicoCard key={t.id} topico={t} numeroMap={numeroMap} onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto} uploading={uploading===t.id} />)}
+      {mode === "rotina" && fixos.length > 0 && (
+        <div className="rounded-lg border-2 border-dashed p-3 text-center text-xs text-muted-foreground" style={{ borderColor: "#C9A84C" }}>
+          ⬇ Tabela "Indicadores Gerais da Fazenda" abaixo (posição 4) ⬇
+        </div>
+      )}
       {customs.map((t, i) => (
-        <TopicoCard key={t.id} topico={t} letter=""
+        <TopicoCard key={t.id} topico={t} numeroMap={numeroMap}
           onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
           uploading={uploading===t.id}
           onMoveUp={i > 0 ? () => move(t, -1) : undefined}
@@ -231,7 +233,7 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
             Encerramento do Relatório
           </div>
           {footer.map(t => (
-            <TopicoCard key={t.id} topico={t} letter=""
+            <TopicoCard key={t.id} topico={t} numeroMap={numeroMap}
               onUpdate={update} onSave={saveField} onAddFoto={addFoto} onDelFoto={delFoto}
               uploading={uploading===t.id} />
           ))}
