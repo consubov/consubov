@@ -746,7 +746,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     doc.setTextColor(INK_SOFT);
     const legend = getScoreDescription(q.chave);
     if (legend) {
-      const legLines = doc.splitTextToSize(`${legend} ${SCORE_SCALE_HINT}`, wTable - notaColW - 8);
+      const legLines = doc.splitTextToSize(legend, wTable - notaColW - 8);
       doc.text(legLines.slice(0, 1), labelX, y + 10);
     }
     // Indicador único N/5 à direita
