@@ -4,6 +4,8 @@ import { Loader2, Camera, X, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
+import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
+import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
@@ -17,6 +19,7 @@ export interface FotoRow {
 }
 
 interface Props {
+  visitaId?: string | null;
   visitaPastoId?: string | null;
   visitaCurralId?: string | null;
   max?: number;
@@ -48,6 +51,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 export default function PhotoGrid({
+  visitaId = null,
   visitaPastoId = null,
   visitaCurralId = null,
   max = DEFAULT_MAX,
@@ -57,6 +61,7 @@ export default function PhotoGrid({
   const [fotos, setFotos] = useState<FotoRow[]>([]);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [pendings, setPendings] = useState<Record<number, Pending>>({});
+  const [queuedPreviews, setQueuedPreviews] = useState<Record<number, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<number>(1);
 
@@ -64,57 +69,51 @@ export default function PhotoGrid({
   const targetKind: "pasto" | "curral" | null =
     visitaCurralId ? "curral" : visitaPastoId ? "pasto" : null;
 
-  useEffect(() => {
+  const reloadFotos = async () => {
     if (!targetId || !targetKind) { setFotos([]); return; }
-    (async () => {
-      const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
-      const { data } = await supabase.from("visita_fotos")
-        .select("*").eq(col, targetId).order("ordem");
-      const rows = (data as FotoRow[]) || [];
-      setFotos(rows);
-      const map: Record<string, string> = {};
-      await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
-      setSigned(map);
-    })();
+    const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
+    const { data } = await supabase.from("visita_fotos")
+      .select("*").eq(col, targetId).order("ordem");
+    const rows = (data as FotoRow[]) || [];
+    setFotos(rows);
+    const map: Record<string, string> = {};
+    await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
+    setSigned(map);
+  };
+
+  useEffect(() => {
+    void reloadFotos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId, targetKind]);
+
+  // Load queued (persisted) uploads for this parent and refresh when the queue drains
+  useEffect(() => {
+    if (!targetId || !targetKind) return;
+    let alive = true;
+    const refresh = async () => {
+      const items = await getQueuedPhotosForParent(targetKind, targetId);
+      if (!alive) return;
+      const map: Record<number, string> = {};
+      items.forEach(it => { map[it.ordem] = URL.createObjectURL(it.blob); });
+      setQueuedPreviews(prev => {
+        // revoke old
+        Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+        return map;
+      });
+    };
+    void refresh();
+    const unsub = subscribeSyncStatus(() => { void refresh(); void reloadFotos(); });
+    return () => { alive = false; unsub(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId, targetKind]);
 
   const slots = Array.from({ length: max }, (_, i) => {
     const ordem = i + 1;
-    return { ordem, foto: fotos.find(f => f.ordem === ordem), pending: pendings[ordem] };
+    const foto = fotos.find(f => f.ordem === ordem);
+    const pending = pendings[ordem];
+    const queuedPreview = queuedPreviews[ordem];
+    return { ordem, foto, pending, queuedPreview };
   });
-
-  async function uploadPending(ordem: number, blob: Blob, ext: string, previewUrl: string) {
-    if (!targetId || !targetKind) return;
-    try {
-      const folder = targetKind === "curral" ? "currais" : "pastos";
-      const path = `${folder}/${targetId}/${ordem}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-        upsert: true, contentType: blob.type || "image/jpeg",
-      });
-      if (error) throw error;
-      const insertPayload: any = { url: path, ordem };
-      if (targetKind === "curral") insertPayload.visita_curral_id = targetId;
-      else insertPayload.visita_pasto_id = targetId;
-      const { data, error: insErr } = await supabase.from("visita_fotos")
-        .insert(insertPayload).select().single();
-      if (insErr) throw insErr;
-      const row = data as FotoRow;
-      setFotos(prev => [...prev.filter(f => f.ordem !== ordem), row].sort((a, b) => a.ordem - b.ordem));
-      // Preserve immediate preview using the local dataUrl so it appears instantly.
-      setSigned(prev => ({ ...prev, [row.id]: previewUrl }));
-      // Async fetch signed url (also works offline of cache) — swap when ready.
-      getSignedUrl(row.url).then(u => {
-        if (u) setSigned(prev => ({ ...prev, [row.id]: u }));
-      });
-      setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
-    } catch (err: any) {
-      setPendings(prev => ({
-        ...prev,
-        [ordem]: { ordem, previewUrl, file: blob, ext, status: "error", error: err?.message || "erro" },
-      }));
-      toast.error("Falha no envio da foto — toque para tentar novamente");
-    }
-  }
 
   async function handleUpload(file: File) {
     if (!targetId || !targetKind) {
@@ -123,36 +122,31 @@ export default function PhotoGrid({
     }
     const ordem = slotRef.current;
     try {
-      // Compress + generate instant preview
       const dataUrl = await compressImageFileToDataUrl(file, {
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
       if (!dataUrl) throw new Error("Falha ao processar imagem");
       const blob = dataUrlToBlob(dataUrl);
-      const ext = "jpg";
-      // Optimistic preview
+      // Optimistic preview immediately
       setPendings(prev => ({
         ...prev,
-        [ordem]: { ordem, previewUrl: dataUrl, file: blob, ext, status: "uploading" },
+        [ordem]: { ordem, previewUrl: dataUrl, file: blob, ext: "jpg", status: "uploading" },
       }));
-      // Fire and forget upload
-      uploadPending(ordem, blob, ext, dataUrl);
+      // Persist to IndexedDB queue — survives app close, uploads in background
+      await enqueuePhoto({
+        visitaId: visitaId || targetId,
+        parentKind: targetKind,
+        parentId: targetId,
+        ordem,
+        blob,
+      });
+      // Clear inline pending — the queue-driven refresh will render it
+      setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
       toast.error("Erro ao preparar foto: " + (err?.message || "desconhecido"));
     } finally {
       if (inputRef.current) inputRef.current.value = "";
     }
-  }
-
-  function retryPending(ordem: number) {
-    const p = pendings[ordem];
-    if (!p) return;
-    setPendings(prev => ({ ...prev, [ordem]: { ...p, status: "uploading", error: undefined } }));
-    uploadPending(ordem, p.file, p.ext, p.previewUrl);
-  }
-
-  function cancelPending(ordem: number) {
-    setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
   }
 
   async function handleDelete(f: FotoRow) {
@@ -165,6 +159,21 @@ export default function PhotoGrid({
     }
   }
 
+  async function cancelQueued(ordem: number) {
+    if (!targetId || !targetKind) return;
+    const items = await getQueuedPhotosForParent(targetKind, targetId);
+    const target = items.find(it => it.ordem === ordem);
+    if (target) {
+      await deleteQueuedFoto(target.localId);
+      setQueuedPreviews(prev => {
+        const cp = { ...prev };
+        if (cp[ordem]) URL.revokeObjectURL(cp[ordem]);
+        delete cp[ordem];
+        return cp;
+      });
+    }
+  }
+
   const gridCols = "grid-cols-5";
 
   return (
@@ -173,8 +182,9 @@ export default function PhotoGrid({
         Fotos ({fotos.length}/{max})
       </div>
       <div className={cn("grid gap-1.5", gridCols)}>
-        {slots.map(({ ordem, foto, pending }) => {
-          const showPending = pending && !foto;
+        {slots.map(({ ordem, foto, pending, queuedPreview }) => {
+          const showQueued = !foto && queuedPreview;
+          const showPending = !foto && !queuedPreview && pending;
           return (
             <div key={ordem} className="aspect-square rounded-md border border-dashed border-border bg-muted/40 relative overflow-hidden">
               {foto ? (
@@ -189,33 +199,31 @@ export default function PhotoGrid({
                     </button>
                   )}
                 </>
+              ) : showQueued ? (
+                <>
+                  <img src={queuedPreview} alt="" className="w-full h-full object-cover opacity-90" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/20">
+                    <div className="flex items-center gap-1 rounded bg-background/80 px-1.5 py-0.5 text-[9px] font-medium text-foreground">
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" /> fila
+                    </div>
+                  </div>
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => cancelQueued(ordem)}
+                      className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5"
+                      title="Cancelar envio"
+                    >
+                      <X className="w-3 h-3 text-destructive-foreground" />
+                    </button>
+                  )}
+                </>
               ) : showPending ? (
                 <>
                   <img src={pending!.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
-                  {pending!.status === "uploading" ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/30">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => retryPending(ordem)}
-                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-destructive/60 text-destructive-foreground"
-                        title={pending!.error || "Tentar novamente"}
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        <RefreshCw className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => cancelPending(ordem)}
-                        className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5"
-                      >
-                        <X className="w-3 h-3 text-destructive-foreground" />
-                      </button>
-                    </>
-                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  </div>
                 </>
               ) : (
                 <button

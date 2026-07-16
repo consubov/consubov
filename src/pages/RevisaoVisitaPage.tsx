@@ -16,6 +16,8 @@ import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
+import SyncBadge from "@/components/consultor/SyncBadge";
+import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -133,6 +135,7 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const { pending: pendingUploads } = useSyncStatus();
 
   useEffect(() => {
     if (!visitaId) return;
@@ -613,7 +616,9 @@ export default function RevisaoVisitaPage() {
 
       {/* Botão fixo por status — acima da nav */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
-        <div className="max-w-md mx-auto flex gap-2">
+        <div className="max-w-md mx-auto space-y-2">
+          <SyncBadge compact />
+          <div className="flex gap-2">
           {(visita.status === "rascunho") && (
             <Button
               onClick={confirmarRevisao}
@@ -628,12 +633,15 @@ export default function RevisaoVisitaPage() {
           {(visita.status === "revisao" || visita.status === "finalizada") && (
             <Button
               onClick={gerarPdf}
-              disabled={gerandoPdf}
+              disabled={gerandoPdf || pendingUploads > 0}
               className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
+              title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
+              {pendingUploads > 0
+                ? `Aguardando ${pendingUploads} foto${pendingUploads === 1 ? "" : "s"}…`
+                : visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
@@ -648,6 +656,7 @@ export default function RevisaoVisitaPage() {
               </Button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

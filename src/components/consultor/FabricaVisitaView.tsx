@@ -12,6 +12,8 @@ import VisitaTopicosSection, { type Topico } from "@/components/consultor/Visita
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
+import SyncBadge from "./SyncBadge";
+import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 
 interface Visita {
   id: string; tipo: string; status: string;
@@ -45,6 +47,8 @@ export default function FabricaVisitaView({
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const { pending: pendingUploads } = useSyncStatus();
+
 
   useEffect(() => { loadAvaliacoes(); loadConsultor(); }, [visitaId]);
 
@@ -209,15 +213,19 @@ export default function FabricaVisitaView({
         numeroMap={numeroMap}
       />
 
-      <div className="sticky bottom-16 pt-2">
+      <div className="sticky bottom-16 pt-2 space-y-2">
+        <SyncBadge compact />
         <Button
           onClick={gerarPdf}
-          disabled={gerandoPdf || quantidadeAvaliadas === 0}
+          disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0}
           className="w-full gap-2 bg-primary hover:bg-primary/90"
+          title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
         >
           {gerandoPdf
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
-            : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
+            : pendingUploads > 0
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Aguardando {pendingUploads} foto{pendingUploads === 1 ? "" : "s"}…</>
+              : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
         </Button>
       </div>
 
