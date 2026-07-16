@@ -122,8 +122,9 @@ export default function ConsultorFazendaDetalhePage() {
             )}
           </div>
         </div>
-        <Button onClick={() => setTipoModal(true)} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
-          <Play className="w-4 h-4" /> Iniciar Visita
+        <Button onClick={prepararOffline} disabled={preparing} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
+          {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          {preparing ? "Preparando para uso off-line..." : "Iniciar Visita"}
         </Button>
       </Card>
 
