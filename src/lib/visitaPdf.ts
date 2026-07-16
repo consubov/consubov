@@ -373,11 +373,7 @@ async function drawPastoBlock(
     const legLines = doc.splitTextToSize(legend, scoreCellW - 4);
     doc.text(legLines.slice(0, 2), cx, dotY + 4.8);
   });
-  // Rodapé da escala (1 = fora do esperado · 5 = dentro do esperado)
-  doc.setFontSize(5.6);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(INK_SOFT);
-  doc.text(SCORE_SCALE_HINT, x + width - 3, scoreY + 14, { align: "right" });
+  // A escala 1-5 é impressa uma única vez no rodapé da página de pastos, não por card.
 
   if (pasto.observacao) {
     doc.setFontSize(7);
