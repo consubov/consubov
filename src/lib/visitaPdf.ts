@@ -105,6 +105,29 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
   } catch { return null; }
 }
 
+const BUCKET_LOGOS = "logos-consultor";
+async function fetchLogoDataUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  try {
+    // Se já vier como URL absoluta, baixa direto; senão trata como path no bucket privado.
+    let res: Response;
+    if (/^https?:\/\//i.test(path)) {
+      res = await fetch(path);
+    } else {
+      const { data } = await supabase.storage.from(BUCKET_LOGOS).createSignedUrl(path, 60 * 60);
+      if (!data?.signedUrl) return null;
+      res = await fetch(data.signedUrl);
+    }
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
 function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
