@@ -30,7 +30,8 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
 }
 
 async function refreshPendingCount() {
-  cachedPending = await countAllFotos();
+  await purgeDeadFotos();
+  cachedPending = await countPendingFotos();
   emit();
 }
 
