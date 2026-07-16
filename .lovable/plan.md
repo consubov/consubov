@@ -1,65 +1,50 @@
-Escopo aditivo no módulo Consultor. Divido em 2 blocos: correções rápidas (1-3) e offline-first (4-7).
+# Bloco B — Consultor offline-first
 
-## Bloco A — Correções de PDF/legenda (rápido)
+Objetivo: uma visita pode ser iniciada, editada, fotografada e finalizada sem conexão. O PDF só é gerado depois que a fila de sincronização estiver zerada. Rotina, Confinamento e Fábrica usam a mesma infra.
 
-1. **Legenda de escala uma única vez** — em `visitaPdf.ts` (Rotina + Fábrica) e `confinamentoPdf.ts`: `drawScoreRow` passa a mostrar apenas a descrição específica do quesito (sem sufixo). Após a última linha de score de cada bloco, imprimir uma linha itálica cinza: `"Escala: 1 = fora do esperado · 5 = dentro do esperado"`, imediatamente antes de "Média geral: X/5". Ajustar `scoreLegends.ts`: `getScoreLegend` deixa de anexar sufixo (só descrição) e exportar constante `SCORE_SCALE_HINT`. UI de revisão continua usando `getScoreLegend` (que agora vem sem sufixo — a escala já é evidente pelo input 1-5).
+Correção rápida já aplicada nesta rodada: escala "1…5" agora aparece 1× ao fim da lista em Fábrica (antes repetia por item). Segue o resto abaixo.
 
-2. **Texto de "Organização geral da fábrica"** — em `scoreLegends.ts`, trocar `"Avalia limpeza, layout e fluxo de trabalho da fábrica."` por `"Avalia limpeza e fluxo de trabalho da fábrica."` nas chaves `organizacao_fabrica` e `organizacao_geral`.
+## O que muda para o usuário
 
-3. **Logos com mesma altura** — em `visitaPdf.ts` e `confinamentoPdf.ts`: criar constante local `LOGO_MAX_H` e usar EXATAMENTE o mesmo valor para os dois lados em `drawLogoFitted`. Também garantir mesma largura máxima e limitar apenas pela altura (largura calculada proporcionalmente), evitando qualquer clamp de largura que reduza um dos lados.
+- Ao abrir uma visita, o app baixa e guarda tudo que precisa (fazenda, pastos/currais, tópicos, avaliações, fotos já enviadas). Depois disso funciona offline.
+- Fotos aparecem no grid **na hora** que a pessoa tira — sobem em background.
+- Um contador "X pendentes" fica visível no topo da visita, com botão **Sincronizar agora**.
+- O botão **Gerar PDF** fica desabilitado enquanto houver fotos/campos pendentes, com mensagem clara ("Sincronize antes de finalizar").
+- Se o app for fechado no meio da visita, ao reabrir tudo volta como estava (rascunho local).
 
-## Bloco B — Offline-first para visitas (4-7)
+## Arquitetura técnica
 
-Reaproveitar `offlineDb.ts` (IndexedDB já usado no capataz). Adicionar novos stores/tabelas via `openDB` versão bumped:
+Novo módulo `src/lib/consultorOffline/`:
 
-- `visita_drafts` — snapshot completo da visita em rascunho: `{ visitaId, tipo, fazendaSnapshot, consultorSnapshot, visita, pastos[], currais[], topicos[], fotos[], scores[], avaliacaoFabrica, updatedAt, pendingSync: boolean }`
-- `visita_foto_blobs` — `{ id, visitaId, targetKind, targetId, ordem, blob, mime, ext, uploaded: boolean, remotePath?, attempts }`
-- `visita_sync_queue` — fila de operações pendentes: `{ id, visitaId, op, payload, attempts, lastError }`
+- `db.ts` — Dexie (IndexedDB) com stores:
+  - `visita_drafts` — snapshot da visita + tópicos + avaliações + notas (chave = `visita_id`)
+  - `visita_foto_blobs` — `{ localId, visitaId, parentType, parentId, blob, mime, createdAt, remoteUrl? }`
+  - `sync_queue` — `{ id, kind: 'foto'|'campo'|'topico'|'avaliacao', payload, tries, lastError, createdAt }`
+- `snapshotLoader.ts` — ao abrir a visita: baixa e persiste tudo em `visita_drafts`; se offline, lê do IDB.
+- `photoQueue.ts` — comprime local (já existe), salva blob no IDB, retorna `localId` para preview otimista, enfileira upload.
+- `syncEngine.ts` — worker que processa `sync_queue` em ordem; expõe `pendingCount$` (subscribable) e `syncNow()`.
+- `useVisitaOffline(visitaId)` — hook que abstrai leitura/escrita, retorna `{ draft, updateField, addPhoto, pending, syncing, syncNow }`.
 
-### 4. Compressão local + preview instantâneo + upload assíncrono
-`PhotoGrid.tsx` já comprime e mostra preview otimista. Adicionar:
-- Persistir o blob comprimido em `visita_foto_blobs` ANTES de tentar upload (já com `uploaded=false`).
-- Preview lê do IndexedDB (URL.createObjectURL do blob) se ainda não sincronizado.
-- Upload em background: novo módulo `src/lib/visitaSync.ts` com fila que processa `visita_foto_blobs` where `uploaded=false` quando `navigator.onLine`.
-- Aplicar mesmo padrão em `VisitaTopicosSection.tsx` (fotos de tópicos).
+Componentes tocados (aditivo, não muda API pública):
 
-### 5. Pré-carregamento ao iniciar visita
-Interceptar o handler de "Iniciar Visita" (`ConsultorFazendaDetalhePage.tsx`). Após criar a visita no Supabase, buscar em uma única chamada tudo que a UI de visita usa (fazenda, dados do consultor, formulas/quesitos) e gravar em `visita_drafts`. Adicionar helper `preloadVisita(visitaId)` em `visitaSync.ts`.
+- `PhotoGrid.tsx` / `VisitaTopicosSection.tsx` — trocam upload direto por `photoQueue.enqueue`; renderizam `blob:` URL enquanto `remoteUrl` não chega.
+- `ConfinamentoVisitaView.tsx`, `FabricaVisitaView.tsx`, `VisitaTecnicaPage.tsx` — usam `useVisitaOffline`; salvamentos passam pelo draft local + fila.
+- `RevisaoVisitaPage.tsx` + `ConfinamentoRevisaoView.tsx` + `FabricaVisitaView.tsx` — botão "Gerar PDF" fica `disabled` quando `pending > 0`; mostra badge com contagem e link "Sincronizar agora".
 
-### 6. Persistência entre sessões
-Alterar `VisitaTecnicaPage.tsx`, `ConfinamentoVisitaView.tsx`, `FabricaVisitaView.tsx` e os modais (`PastoVisitaModal`, `CurralVisitaModal`, `VisitaTopicosSection`) para:
-- Ler do `visita_drafts` primeiro; se não existir e houver rede, buscar do Supabase e cachear.
-- Todo save (adicionar pasto/curral, editar score, mudar tópico, observações) atualiza o draft local imediatamente e enfileira op remota.
-- Ao reabrir sem rede: draft continua acessível, UI funciona 100%.
+Novo componente `SyncBadge.tsx` — barra fixa no topo da visita: ícone + "N pendentes" + botão. Some quando `pending === 0` e mostra "Tudo sincronizado ✓" por 3s.
 
-### 7. Botão "Sincronizar" + bloqueio de PDF
-- `ConsultorHistoricoPage.tsx`: badge "Pendente de sincronização" para visitas com `visita_drafts.pendingSync=true` ou blobs não enviados.
-- Botão global "Sincronizar (N)" no topo quando houver pendências. Ao clicar: dispara `flushSyncQueue()` mostrando progresso via toast/`sonner`.
-- Auto-sync em background: listener em `window.addEventListener('online', ...)` + intervalo leve (30s) quando `navigator.onLine`.
-- Botão "Gerar PDF" em `RevisaoVisitaPage`, `ConfinamentoRevisaoView`, `FabricaVisitaView` fica desabilitado enquanto `pendingSync=true` para essa visita, com tooltip "Sincronize antes de gerar o PDF".
+## Ordem de entrega
 
-## Detalhes técnicos
+1. Infra: `db.ts` + `syncEngine.ts` + `photoQueue.ts` + hook.
+2. Migração de `PhotoGrid` e `VisitaTopicosSection` (fotos otimistas, fila).
+3. Snapshot loader + persistência de rascunho nas 3 views de visita.
+4. `SyncBadge` + bloqueio dos botões "Gerar PDF".
+5. Bump `APP_VERSION` → `1.23.0`.
 
-- **Sem alterações de schema no Supabase** — nada muda no lado servidor, apenas nova camada local.
-- **Compatibilidade**: usuários com dados existentes continuam funcionando; drafts só são criados a partir das próximas visitas.
-- **Fotos existentes** (com URL do Storage) continuam via signed URL; só as novas passam pelo blob local.
-- **APP_VERSION** → bump para `1.22.0`.
+## Fora do escopo
 
-## Arquivos afetados
+- Não altero cálculos, fórmulas, PDFs, tabelas do Supabase ou fluxos de Rotina/Confinamento/Fábrica além do necessário para plugar a fila.
+- Módulos fora do Consultor (Capataz, Gerente, Admin, Fábrica interna) ficam intocados.
+- Não crio nova tabela no Supabase — a fila é 100% local; o backend já aceita os mesmos inserts/updates de hoje.
 
-- `src/lib/scoreLegends.ts` (edit)
-- `src/lib/visitaPdf.ts` (edit)
-- `src/lib/confinamentoPdf.ts` (edit)
-- `src/lib/offlineDb.ts` (edit — novos stores)
-- `src/lib/visitaSync.ts` (NEW — fila, upload async, preload)
-- `src/components/consultor/PhotoGrid.tsx` (edit — persistir blob local)
-- `src/components/consultor/VisitaTopicosSection.tsx` (edit — persistir blob local)
-- `src/pages/ConsultorFazendaDetalhePage.tsx` (edit — preload no "Iniciar Visita")
-- `src/pages/VisitaTecnicaPage.tsx` (edit — hidratar do draft)
-- `src/components/consultor/ConfinamentoVisitaView.tsx` (edit — draft + gate PDF)
-- `src/components/consultor/FabricaVisitaView.tsx` (edit — draft + gate PDF)
-- `src/pages/RevisaoVisitaPage.tsx` (edit — gate PDF)
-- `src/pages/ConsultorHistoricoPage.tsx` (edit — badge + botão sync)
-- `src/lib/appVersion.ts` (bump)
-
-Confirma que posso prosseguir com esse escopo completo, ou prefere fatiar (ex: aplicar só Bloco A agora e Bloco B em turno seguinte)?
+Confirma que posso executar essa sequência?
