@@ -135,6 +135,7 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const { pending: pendingUploads } = useSyncStatus();
 
   useEffect(() => {
     if (!visitaId) return;
