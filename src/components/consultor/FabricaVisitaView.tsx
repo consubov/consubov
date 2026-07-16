@@ -14,6 +14,7 @@ import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string; tipo: string; status: string;
@@ -44,35 +45,62 @@ export default function FabricaVisitaView({
 }: { visitaId: string; visita: Visita; fazenda: Fazenda | null }) {
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita>(initialVisita);
+  const [fazendaAtual, setFazendaAtual] = useState<Fazenda | null>(fazenda);
   const [consultor, setConsultor] = useState<Consultor | null>(null);
   const [notas, setNotas] = useState<Record<string, number>>({});
+  const [notaIds, setNotaIds] = useState<Record<string, string>>({});
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
 
 
-  useEffect(() => { loadAvaliacoes(); loadConsultor(); }, [visitaId]);
+  useEffect(() => { loadDados(); }, [visitaId]);
 
-  async function loadConsultor() {
-    const { data } = await supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle();
-    setConsultor(data as Consultor | null);
-  }
-
-  async function loadAvaliacoes() {
-    const { data } = await (supabase as any).from("avaliacoes_fabrica_quesito")
-      .select("quesito, nota").eq("visita_id", visitaId);
+  async function loadDados() {
+    const snap = await loadSnapshot(visitaId);
+    setFazendaAtual(fazenda || (snap?.fazenda as Fazenda | undefined) || null);
+    const [{ data: consultorData }, { data }] = await Promise.all([
+      supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle(),
+      (supabase as any).from("avaliacoes_fabrica_quesito").select("id, quesito, nota").eq("visita_id", visitaId),
+    ]);
+    const consultorRow = (consultorData as Consultor | null) || (snap?.consultor as Consultor | undefined) || null;
+    setConsultor(consultorRow);
+    const rows = ((data as any[])?.length ? data as any[] : (snap?.avaliacoes_fabrica as any[]) || []);
     const map: Record<string, number> = {};
-    (data as any[] || []).forEach(r => { map[r.quesito] = r.nota; });
+    const ids: Record<string, string> = {};
+    rows.forEach(r => { map[r.quesito] = r.nota; if (r.id) ids[r.quesito] = r.id; });
     setNotas(map);
+    setNotaIds(ids);
+    void saveSnapshot(visitaId, {
+      ...(snap || {}),
+      visita,
+      fazenda: fazenda || snap?.fazenda,
+      consultor: consultorRow,
+      avaliacoes_fabrica: rows,
+    }).catch(() => {});
   }
 
   async function saveNota(quesito: string, nota: number) {
     if (readOnly) return;
     setNotas(prev => ({ ...prev, [quesito]: nota }));
-    await (supabase as any).from("avaliacoes_fabrica_quesito")
-      .upsert({ visita_id: visitaId, quesito, nota }, { onConflict: "visita_id,quesito" });
+    const rowId = notaIds[quesito] || crypto.randomUUID();
+    setNotaIds(prev => ({ ...prev, [quesito]: rowId }));
+    await offlineUpsert({
+      visitaId,
+      table: "avaliacoes_fabrica_quesito",
+      rowId,
+      payload: { visita_id: visitaId, quesito, nota },
+      onConflict: "visita_id,quesito",
+      applyToSnapshot: (curr, payload) => {
+        const rows = [...((curr.avaliacoes_fabrica as any[]) || [])];
+        const idx = rows.findIndex(r => r.quesito === quesito);
+        if (idx >= 0) rows[idx] = { ...rows[idx], id: rowId, ...payload };
+        else rows.push({ id: rowId, ...payload });
+        return { ...curr, avaliacoes_fabrica: rows };
+      },
+    });
     if (visita.status === "finalizada") {
-      await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visitaId);
+      await offlineUpdate({ visitaId, table: "visitas_tecnicas", rowId: visitaId, patch: { pdf_url: null, status: "revisao" } });
       setVisita(prev => ({ ...prev, pdf_url: null, status: "revisao" }));
     }
   }
@@ -81,18 +109,18 @@ export default function FabricaVisitaView({
   const numeroMap = computeFabricaPhotoNumbering(topicos.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos })));
 
   async function gerarPdf() {
-    if (!fazenda || !consultor) { toast.error("Dados insuficientes"); return; }
+    if (!fazendaAtual || !consultor) { toast.error("Dados insuficientes"); return; }
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
       const { blob, fileName } = await generateFabricaPdf({
         visitaId,
         fazenda: {
-          nome_fazenda: fazenda.nome_fazenda,
-          proprietario: fazenda.proprietario,
-          responsavel: fazenda.responsavel ?? null,
-          municipio: fazenda.municipio,
-          uf: fazenda.uf,
+          nome_fazenda: fazendaAtual.nome_fazenda,
+          proprietario: fazendaAtual.proprietario,
+          responsavel: fazendaAtual.responsavel ?? null,
+          municipio: fazendaAtual.municipio,
+          uf: fazendaAtual.uf,
         },
         consultor: { nome: consultor.nome },
         hora_inicio: visita.hora_inicio,
@@ -139,7 +167,7 @@ export default function FabricaVisitaView({
             <Factory className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
               <div className="font-bold text-foreground truncate">
-                Fábrica · {fazenda?.nome_fazenda || "—"}
+                Fábrica · {fazendaAtual?.nome_fazenda || "—"}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Clock className="w-3 h-3" />

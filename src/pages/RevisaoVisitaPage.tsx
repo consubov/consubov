@@ -18,7 +18,10 @@ import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consulto
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { compressImageFileToDataUrl } from "@/lib/imageCompression";
+import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
+import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -137,37 +140,56 @@ export default function RevisaoVisitaPage() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
+  const [hadPendingUploads, setHadPendingUploads] = useState(false);
 
   useEffect(() => {
     if (!visitaId) return;
     (async () => {
       const { data } = await supabase.from("visitas_tecnicas").select("tipo").eq("id", visitaId).maybeSingle();
-      setTipoLoaded((data?.tipo as string) || "rotina");
+      if (data?.tipo) {
+        setTipoLoaded(data.tipo as string);
+      } else {
+        const snap = await loadSnapshot(visitaId);
+        setTipoLoaded((snap?.visita?.tipo as string) || "rotina");
+      }
     })();
   }, [visitaId]);
 
   useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(); }, [visitaId, tipoLoaded]);
+  useEffect(() => {
+    if (pendingUploads > 0) setHadPendingUploads(true);
+    if (pendingUploads === 0 && hadPendingUploads && visitaId && tipoLoaded && tipoLoaded !== "confinamento") {
+      setHadPendingUploads(false);
+      void load();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingUploads, hadPendingUploads, visitaId, tipoLoaded]);
 
   async function load() {
     setLoading(true);
+    const snap = visitaId ? await loadSnapshot(visitaId) : null;
     const { data: v } = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle();
-    if (!v) { setLoading(false); return; }
-    setVisita(v as any);
-    setObsGerais(v.observacoes_gerais || "");
-    setConclusao(v.conclusao || "");
-    setObjetivo((v as any).objetivo_visita || "");
-    setResumo((v as any).resumo_executivo || "");
-    setIndicadores((v as any).indicadores_gerais || "");
-    setIndicadoresTabela(((v as any).indicadores_tabela as Record<string,string>) || {});
+    const visitaRow = (v as any) || snap?.visita;
+    if (!visitaRow) { setLoading(false); return; }
+    setVisita(visitaRow as any);
+    setObsGerais(visitaRow.observacoes_gerais || "");
+    setConclusao(visitaRow.conclusao || "");
+    setObjetivo((visitaRow as any).objetivo_visita || "");
+    setResumo((visitaRow as any).resumo_executivo || "");
+    setIndicadores((visitaRow as any).indicadores_gerais || "");
+    setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
 
     const [{ data: fz }, { data: cs }, { data: ps }] = await Promise.all([
-      supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
-      supabase.from("consultores").select("*").eq("id", v.consultor_id).maybeSingle(),
+      supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
+      supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
       supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
     ]);
-    setFazenda(fz); setConsultor(cs);
+    const fazendaRow = fz || snap?.fazenda;
+    const consultorRow = cs || snap?.consultor;
+    setFazenda(fazendaRow); setConsultor(consultorRow);
 
-    const pastoRows = (ps as any[]) || [];
+    let pastoRows = (ps as any[]) || [];
+    if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as any[];
     const ids = pastoRows.map(p => p.id);
     const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
     const fotosByPasto: Record<string, Foto[]> = {};
@@ -185,21 +207,24 @@ export default function RevisaoVisitaPage() {
       });
     }
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
-      const fotos = fotosByPasto[p.id] || [];
-      const signed: Record<string, string> = {};
-      await Promise.all(fotos.map(async f => { signed[f.id] = await signPath(f.url); }));
+      const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : [];
+      const fotos = fotosByPasto[p.id]?.length ? fotosByPasto[p.id] : fallbackFotos;
+      const signed: Record<string, string> = { ...((p as any).signed || {}) };
+      await Promise.all(fotos
+        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
-        samples: samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] },
+        samples: samplesByPasto[p.id] || (p as any).samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       } as Pasto;
     }));
     setPastos(built);
     // Snapshot local — permite reabrir a visita offline com dados pré-carregados
     void saveSnapshot(visitaId!, {
-      visita: v,
-      fazenda: fz,
-      consultor: cs,
+      visita: visitaRow,
+      fazenda: fazendaRow,
+      consultor: consultorRow,
       pastos: built,
     }).catch(() => {});
     setLoading(false);
@@ -218,8 +243,17 @@ export default function RevisaoVisitaPage() {
       if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
-    const { error } = await supabase.from("visita_pastos").update(dbPatch).eq("id", pastoId);
-    if (error) toast.error("Erro ao salvar: " + error.message);
+    const res = await offlineUpdate({
+      visitaId: visitaId!,
+      table: "visita_pastos",
+      rowId: pastoId,
+      patch: dbPatch,
+      applyToSnapshot: (curr, p) => ({
+        ...curr,
+        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, ...p } : x),
+      }),
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
 
   function updatePasto(id: string, patch: Partial<Pasto>) {
@@ -228,11 +262,22 @@ export default function RevisaoVisitaPage() {
 
   async function addSample(pastoId: string, tipo: "fezes"|"corporal"|"bebedouro", nota: number) {
     await notifyEdit();
-    const { data, error } = await supabase.from("avaliacoes_score")
-      .insert({ visita_pasto_id: pastoId, tipo, nota }).select("id").single();
-    if (error) { toast.error("Erro ao adicionar amostra"); return; }
+    const id = crypto.randomUUID();
+    const res = await offlineUpsert({
+      visitaId: visitaId!,
+      table: "avaliacoes_score",
+      rowId: id,
+      payload: { visita_pasto_id: pastoId, tipo, nota },
+      applyToSnapshot: (curr) => ({
+        ...curr,
+        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
+          ? { ...p, samples: { ...(p.samples || {}), [tipo]: [...((p.samples || {})[tipo] || []), { id, nota }] } }
+          : p),
+      }),
+    });
+    if (!res.ok && !res.queued) { toast.error("Erro ao adicionar amostra"); return; }
     setPastos(prev => prev.map(p => p.id === pastoId
-      ? { ...p, samples: { ...p.samples, [tipo]: [...p.samples[tipo], { id: data.id, nota }] } }
+      ? { ...p, samples: { ...p.samples, [tipo]: [...p.samples[tipo], { id, nota }] } }
       : p));
   }
 
@@ -240,7 +285,17 @@ export default function RevisaoVisitaPage() {
     await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
     const s = p.samples[tipo][index]; if (!s?.id) return;
-    await supabase.from("avaliacoes_score").delete().eq("id", s.id);
+    await offlineDelete({
+      visitaId: visitaId!,
+      table: "avaliacoes_score",
+      rowId: s.id,
+      applyToSnapshot: (curr) => ({
+        ...curr,
+        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
+          ? { ...p, samples: { ...(p.samples || {}), [tipo]: ((p.samples || {})[tipo] || []).filter((x: any) => x.id !== s.id) } }
+          : p),
+      }),
+    });
     setPastos(prev => prev.map(x => x.id === pastoId
       ? { ...x, samples: { ...x.samples, [tipo]: x.samples[tipo].filter((_, i) => i !== index) } }
       : x));
@@ -265,29 +320,48 @@ export default function RevisaoVisitaPage() {
     let ordem = 1;
     while (usadas.has(ordem) && ordem <= 5) ordem++;
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${pastoId}/${ordem}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data, error: insErr } = await supabase.from("visita_fotos")
-        .insert({ visita_pasto_id: pastoId, url: path, ordem }).select().single();
-      if (insErr) throw insErr;
-      const url = await signPath((data as any).url);
+      const dataUrl = await compressImageFileToDataUrl(file, { maxDimension: 1600, quality: 0.78, maxBytes: 900_000 });
+      if (!dataUrl) throw new Error("Falha ao processar imagem");
+      const [meta, b64] = dataUrl.split(",");
+      const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const blob = new Blob([arr], { type: mime });
+      const queued = await enqueuePhoto({ visitaId: visitaId!, parentKind: "pasto", parentId: pastoId, ordem, blob });
+      const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as Foto;
       updatePasto(pastoId, {
-        fotos: [...p.fotos, data as Foto].sort((a, b) => a.ordem - b.ordem),
-        signed: { ...p.signed, [(data as any).id]: url },
+        fotos: [...p.fotos, data].sort((a, b) => a.ordem - b.ordem),
+        signed: { ...p.signed, [data.id]: dataUrl },
       });
+      await patchSnapshot(visitaId!, (curr) => ({
+        ...curr,
+        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
+          ? { ...x, fotos: [...(x.fotos || []), data].sort((a: Foto, b: Foto) => a.ordem - b.ordem), signed: { ...(x.signed || {}), [data.id]: dataUrl } }
+          : x),
+      }));
+      toast.info("Foto salva off-line. Sincronize quando houver internet.");
     } catch (err: any) {
-      toast.error("Erro ao enviar foto: " + (err?.message || ""));
+      toast.error("Erro ao preparar foto: " + (err?.message || ""));
     }
   }
 
   async function delFoto(pastoId: string, f: Foto) {
     await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
-    await supabase.storage.from(BUCKET).remove([f.url]);
-    await supabase.from("visita_fotos").delete().eq("id", f.id);
+    if (String(f.url).startsWith("queued:")) {
+      await deleteQueuedFoto(f.id);
+    } else {
+      if (typeof navigator === "undefined" || navigator.onLine) await supabase.storage.from(BUCKET).remove([f.url]);
+      await offlineDelete({ visitaId: visitaId!, table: "visita_fotos", rowId: f.id });
+    }
     updatePasto(pastoId, { fotos: p.fotos.filter(x => x.id !== f.id) });
+    await patchSnapshot(visitaId!, (curr) => ({
+      ...curr,
+      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
+        ? { ...x, fotos: (x.fotos || []).filter((foto: Foto) => foto.id !== f.id) }
+        : x),
+    }));
   }
 
   async function moveFoto(pastoId: string, index: number, dir: -1 | 1) {
@@ -299,9 +373,14 @@ export default function RevisaoVisitaPage() {
     [arr[index], arr[j]] = [arr[j], arr[index]];
     const updates = arr.map((f, i) => ({ ...f, ordem: i + 1 }));
     updatePasto(pastoId, { fotos: updates });
-    await Promise.all(updates.map(u =>
-      supabase.from("visita_fotos").update({ ordem: u.ordem }).eq("id", u.id)
-    ));
+    await patchSnapshot(visitaId!, (curr) => ({
+      ...curr,
+      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, fotos: updates } : x),
+    }));
+    await Promise.all(updates
+      .filter(u => !String(u.url).startsWith("queued:"))
+      .map(u => offlineUpdate({ visitaId: visitaId!, table: "visita_fotos", rowId: u.id, patch: { ordem: u.ordem } }))
+    );
   }
 
   async function confirmarRevisao() {

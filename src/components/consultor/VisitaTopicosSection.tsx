@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { offlineUpdate } from "@/lib/consultorOffline/snapshotStore";
+import { offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { enqueuePhoto, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
+import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,16 +49,39 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const seededRef = useRef(false);
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [visitaId]);
   useEffect(() => { onChange?.(topicos); /* eslint-disable-next-line */ }, [topicos]);
+  useEffect(() => {
+    const unsub = subscribeSyncStatus((pending) => {
+      if (pending > 0) setHadPendingUploads(true);
+      if (pending === 0 && hadPendingUploads) {
+        setHadPendingUploads(false);
+        void load();
+      }
+    });
+    return () => { unsub(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hadPendingUploads, visitaId]);
+
+  function dataUrlToBlob(dataUrl: string): Blob {
+    const [meta, b64] = dataUrl.split(",");
+    const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
 
   async function load() {
     setLoading(true);
+    const snap = await loadSnapshot(visitaId);
     const { data } = await (supabase as any).from("visita_topicos")
       .select("*").eq("visita_id", visitaId).order("ordem");
     let rows = (data as any[]) || [];
+    if (rows.length === 0 && snap?.topicos?.length) rows = snap.topicos as any[];
 
     // Seed defaults: 3 header (1-3) + 2 footer (1001-1002). Insert only missing ordens.
     if (!seededRef.current) {
@@ -81,9 +106,21 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
           .filter(d => !existingOrdens.has(d.ordem))
           .map(d => ({ ...d, visita_id: visitaId }));
         if (toInsert.length) {
-          const { data: ins } = await (supabase as any).from("visita_topicos")
-            .insert(toInsert).select();
-          rows = [...rows, ...((ins as any[]) || [])];
+          const inserted = await Promise.all(toInsert.map(async d => {
+            const id = crypto.randomUUID();
+            await offlineUpsert({
+              visitaId,
+              table: "visita_topicos",
+              rowId: id,
+              payload: d,
+              applyToSnapshot: (curr, payload) => ({
+                ...curr,
+                topicos: [...(curr.topicos || []), { id, ...payload, fotos: [], signed: {} }],
+              }),
+            });
+            return { id, ...d, fotos: [], signed: {} };
+          }));
+          rows = [...rows, ...inserted];
         }
       }
     }
@@ -98,9 +135,12 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       });
     }
     const built: Topico[] = await Promise.all(rows.map(async r => {
-      const fotos = fotosByTopico[r.id] || [];
-      const signed: Record<string, string> = {};
-      await Promise.all(fotos.map(async f => { signed[f.id] = await signPath(f.url); }));
+      const fallbackFotos = Array.isArray((r as any).fotos) ? (r as any).fotos : [];
+      const fotos = fotosByTopico[r.id]?.length ? fotosByTopico[r.id] : fallbackFotos;
+      const signed: Record<string, string> = { ...((r as any).signed || {}) };
+      await Promise.all(fotos
+        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .map(async f => { signed[f.id] = await signPath(f.url); }));
       return { ...r, fotos, signed } as Topico;
     }));
     setTopicos(built.sort((a, b) => a.ordem - b.ordem));
@@ -134,29 +174,45 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     onNotifyEdit?.();
     const customs = topicos.filter(t => t.ordem >= 5 && t.ordem <= 1000);
     const nextOrdem = customs.length ? Math.max(...customs.map(t => t.ordem)) + 1 : 5;
-    const { data, error } = await (supabase as any).from("visita_topicos")
-      .insert({ visita_id: visitaId, titulo: "", texto: null, ordem: nextOrdem })
-      .select().single();
-    if (error) { toast.error("Erro ao criar tópico"); return; }
-    setTopicos(prev => [...prev, { ...(data as any), fotos: [], signed: {} }].sort((a,b)=>a.ordem-b.ordem));
+    const id = crypto.randomUUID();
+    const payload = { visita_id: visitaId, titulo: "", texto: null, ordem: nextOrdem };
+    const res = await offlineUpsert({
+      visitaId,
+      table: "visita_topicos",
+      rowId: id,
+      payload,
+      applyToSnapshot: (curr, p) => ({
+        ...curr,
+        topicos: [...(curr.topicos || []), { id, ...p, fotos: [], signed: {} }],
+      }),
+    });
+    if (res.queued) toast.info("Tópico salvo off-line.");
+    setTopicos(prev => [...prev, { id, ...payload, fotos: [], signed: {} }].sort((a,b)=>a.ordem-b.ordem));
   }
 
   async function deleteTopico(t: Topico) {
     if (t.ordem <= 3 || t.ordem >= 1001) return;
     if (!confirm("Remover este tópico?")) return;
     onNotifyEdit?.();
-    if (t.fotos.length) {
-      await supabase.storage.from(BUCKET).remove(t.fotos.map(f => f.url));
+    for (const f of t.fotos) {
+      if (String(f.url).startsWith("queued:")) await deleteQueuedFoto(f.id);
+      else if (typeof navigator === "undefined" || navigator.onLine) await supabase.storage.from(BUCKET).remove([f.url]);
     }
-    await (supabase as any).from("visita_topicos").delete().eq("id", t.id);
+    await offlineDelete({
+      visitaId,
+      table: "visita_topicos",
+      rowId: t.id,
+      applyToSnapshot: (curr) => ({ ...curr, topicos: (curr.topicos || []).filter((x: any) => x.id !== t.id) }),
+    });
     const remaining = topicos.filter(x => x.id !== t.id);
     const others = remaining.filter(x => x.ordem <= 3 || x.ordem >= 1001);
     const customs = remaining.filter(x => x.ordem >= 5 && x.ordem <= 1000).sort((a,b)=>a.ordem-b.ordem);
     const renum = customs.map((c, i) => ({ ...c, ordem: 5 + i }));
     setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
+    await patchSnapshot(visitaId, (curr) => ({ ...curr, topicos: [...others, ...renum].sort((a,b)=>a.ordem-b.ordem) }));
     await Promise.all(renum.map((c, i) => {
       if (c.ordem === customs[i]?.ordem) return Promise.resolve();
-      return (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id);
+      return offlineUpdate({ visitaId, table: "visita_topicos", rowId: c.id, patch: { ordem: c.ordem } });
     }));
   }
 
@@ -172,8 +228,9 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
     const renum = arr.map((c, i) => ({ ...c, ordem: 5 + i }));
     const others = topicos.filter(x => x.ordem <= 3 || x.ordem >= 1001);
     setTopicos([...others, ...renum].sort((a,b)=>a.ordem-b.ordem));
+    await patchSnapshot(visitaId, (curr) => ({ ...curr, topicos: [...others, ...renum].sort((a,b)=>a.ordem-b.ordem) }));
     await Promise.all(renum.map(c =>
-      (supabase as any).from("visita_topicos").update({ ordem: c.ordem }).eq("id", c.id)
+      offlineUpdate({ visitaId, table: "visita_topicos", rowId: c.id, patch: { ordem: c.ordem } })
     ));
   }
 
@@ -191,7 +248,6 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
       let uploadBody: Blob = file;
-      let ext = file.name.split(".").pop() || "jpg";
       if (dataUrl) {
         const [meta, b64] = dataUrl.split(",");
         const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
@@ -199,35 +255,42 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
         const arr = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         uploadBody = new Blob([arr], { type: mime });
-        ext = "jpg";
       }
-      const path = `topicos/${t.id}/${ordem}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, uploadBody, {
-        upsert: true, contentType: uploadBody.type || "image/jpeg",
-      });
-      if (error) throw error;
-      const { data, error: insErr } = await (supabase as any).from("visita_topico_fotos")
-        .insert({ visita_topico_id: t.id, url: path, ordem }).select().single();
-      if (insErr) throw insErr;
+      const blob = uploadBody instanceof Blob ? uploadBody : dataUrlToBlob(dataUrl || "");
+      const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob });
+      const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as TopicoFoto;
       // Preview instantâneo com o dataUrl local
       update(t.id, {
         fotos: [...t.fotos, data as TopicoFoto].sort((a,b)=>a.ordem-b.ordem),
         signed: { ...t.signed, [(data as any).id]: dataUrl || "" },
       });
-      // Signed URL em background (não bloqueia UI)
-      signPath((data as any).url).then(url => {
-        if (url) update(t.id, { signed: { ...t.signed, [(data as any).id]: url } });
-      });
+      await patchSnapshot(visitaId, (curr) => ({
+        ...curr,
+        topicos: (curr.topicos || []).map((x: any) => x.id === t.id
+          ? { ...x, fotos: [...(x.fotos || []), data], signed: { ...(x.signed || {}), [(data as any).id]: dataUrl || "" } }
+          : x),
+      }));
+      toast.info("Foto salva off-line. Sincronize quando houver internet.");
     } catch (err: any) {
-      toast.error("Erro ao enviar foto: " + (err?.message || ""));
+      toast.error("Erro ao preparar foto: " + (err?.message || ""));
     } finally { setUploading(null); }
   }
 
   async function delFoto(t: Topico, f: TopicoFoto) {
     onNotifyEdit?.();
-    await supabase.storage.from(BUCKET).remove([f.url]);
-    await (supabase as any).from("visita_topico_fotos").delete().eq("id", f.id);
+    if (String(f.url).startsWith("queued:")) {
+      await deleteQueuedFoto(f.id);
+    } else {
+      if (typeof navigator === "undefined" || navigator.onLine) await supabase.storage.from(BUCKET).remove([f.url]);
+      await offlineDelete({ visitaId, table: "visita_topico_fotos", rowId: f.id });
+    }
     update(t.id, { fotos: t.fotos.filter(x => x.id !== f.id) });
+    await patchSnapshot(visitaId, (curr) => ({
+      ...curr,
+      topicos: (curr.topicos || []).map((x: any) => x.id === t.id
+        ? { ...x, fotos: (x.fotos || []).filter((foto: TopicoFoto) => foto.id !== f.id) }
+        : x),
+    }));
   }
 
   if (loading) {

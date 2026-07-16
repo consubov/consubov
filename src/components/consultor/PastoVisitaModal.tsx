@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
+import { offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaPastoRow {
   id: string;
@@ -174,16 +175,25 @@ export default function PastoVisitaModal({
     if (!letra.trim()) return null;
     setCreating(true);
     try {
-      const { data, error } = await supabase.from("visita_pastos")
-        .insert({
-          visita_id: visitaId,
-          letra: letra.trim().toUpperCase(),
-          ordem: proximaOrdem,
-        })
-        .select("id").single();
-      if (error) throw error;
-      setPastoIdLocal(data.id);
-      return data.id;
+      const id = crypto.randomUUID();
+      const payload = {
+        visita_id: visitaId,
+        letra: letra.trim().toUpperCase(),
+        ordem: proximaOrdem,
+      };
+      const res = await offlineUpsert({
+        visitaId,
+        table: "visita_pastos",
+        rowId: id,
+        payload,
+        applyToSnapshot: (curr, p) => ({
+          ...curr,
+          pastos: [...(curr.pastos || []), { id, ...p, fotos: [], signed: {}, samples: { fezes: [], corporal: [], bebedouro: [] } }],
+        }),
+      });
+      if (res.queued) toast.info("Pasto salvo off-line.");
+      setPastoIdLocal(id);
+      return id;
     } catch (err: any) {
       toast.error("Erro ao criar pasto: " + (err?.message || ""));
       return null;
@@ -197,17 +207,36 @@ export default function PastoVisitaModal({
     if (!pastoIdLocal && letra.trim()) {
       await ensurePasto();
     } else if (pastoIdLocal && letra.trim()) {
-      await supabase.from("visita_pastos").update({ letra: letra.trim().toUpperCase() }).eq("id", pastoIdLocal);
+      await offlineUpdate({
+        visitaId,
+        table: "visita_pastos",
+        rowId: pastoIdLocal,
+        patch: { letra: letra.trim().toUpperCase() },
+        applyToSnapshot: (curr, patch) => ({
+          ...curr,
+          pastos: (curr.pastos || []).map((p: any) => p.id === pastoIdLocal ? { ...p, ...patch } : p),
+        }),
+      });
     }
   }
 
   async function addSample(tipo: keyof SamplesState, nota: number) {
     const id = await ensurePasto();
     if (!id) { toast.error("Informe a letra do pasto primeiro"); return; }
-    const { data, error } = await supabase.from("avaliacoes_score")
-      .insert({ visita_pasto_id: id, tipo, nota }).select("id").single();
-    if (error) { toast.error("Erro: " + error.message); return; }
-    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: data.id, nota }] }));
+    const scoreId = crypto.randomUUID();
+    const item = { id: scoreId, nota };
+    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], item] }));
+    const res = await offlineUpsert({
+      visitaId,
+      table: "avaliacoes_score",
+      rowId: scoreId,
+      payload: { visita_pasto_id: id, tipo, nota },
+      applyToSnapshot: (curr, payload) => ({
+        ...curr,
+        avaliacoes_score: [...(curr.avaliacoes_score || []), { id: scoreId, ...payload }],
+      }),
+    });
+    if (res.queued) toast.info("Amostra salva off-line.");
   }
 
   async function removeSample(tipo: keyof SamplesState, index: number) {
@@ -237,8 +266,17 @@ export default function PastoVisitaModal({
         consumo_kg_dia: realN, // manter em sync p/ compatibilidade
         observacao: obs.trim() || null,
       };
-      const { error } = await supabase.from("visita_pastos").update(payload).eq("id", id);
-      if (error) throw error;
+      const res = await offlineUpdate({
+        visitaId,
+        table: "visita_pastos",
+        rowId: id,
+        patch: payload,
+        applyToSnapshot: (curr, p) => ({
+          ...curr,
+          pastos: (curr.pastos || []).map((x: any) => x.id === id ? { ...x, ...p } : x),
+        }),
+      });
+      if (res.queued) toast.info("Pasto salvo off-line.");
       toast.success(pasto ? "Pasto atualizado" : "Pasto adicionado");
       onOpenChange(false);
       onSaved();
@@ -382,7 +420,7 @@ export default function PastoVisitaModal({
           </div>
 
           <div className="pt-2 border-t">
-            <PhotoGrid visitaPastoId={pastoIdLocal} disabled={readOnly} />
+            <PhotoGrid visitaId={visitaId} visitaPastoId={pastoIdLocal} disabled={readOnly} />
             {!pastoIdLocal && (
               <p className="text-[11px] text-muted-foreground mt-1">Informe a letra do pasto para habilitar o envio de fotos.</p>
             )}

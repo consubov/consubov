@@ -8,6 +8,7 @@ import {
   putFoto,
   type FotoQueueItem,
 } from "./db";
+import { drainMutations } from "./mutationQueue";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -35,7 +36,7 @@ export function subscribeSyncStatus(listener: Listener) {
 
 export async function enqueuePhoto(params: {
   visitaId: string;
-  parentKind: "pasto" | "curral";
+  parentKind: "pasto" | "curral" | "topico";
   parentId: string;
   ordem: number;
   blob: Blob;
@@ -56,11 +57,11 @@ export async function enqueuePhoto(params: {
   await putFoto(item);
   await refreshPendingCount();
   // fire drain in background
-  void drain();
+  if (typeof navigator === "undefined" || navigator.onLine) void drain();
   return item;
 }
 
-export async function getQueuedPhotosForParent(kind: "pasto" | "curral", id: string) {
+export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topico", id: string) {
   return listFotosByParent(kind, id);
 }
 
@@ -70,7 +71,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     await putFoto(item);
     emit();
 
-    const folder = item.parentKind === "curral" ? "currais" : "pastos";
+    const folder = item.parentKind === "curral" ? "currais" : item.parentKind === "topico" ? "topicos" : "pastos";
     const path = `${folder}/${item.parentId}/${item.ordem}-${Date.now()}.jpg`;
     const { error: upErr } = await supabase.storage
       .from(BUCKET)
@@ -79,9 +80,11 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
 
     const insertPayload: any = { url: path, ordem: item.ordem };
     if (item.parentKind === "curral") insertPayload.visita_curral_id = item.parentId;
+    else if (item.parentKind === "topico") insertPayload.visita_topico_id = item.parentId;
     else insertPayload.visita_pasto_id = item.parentId;
 
-    const { error: insErr } = await supabase.from("visita_fotos").insert(insertPayload);
+    const table = item.parentKind === "topico" ? "visita_topico_fotos" : "visita_fotos";
+    const { error: insErr } = await (supabase as any).from(table).insert(insertPayload);
     if (insErr) throw insErr;
 
     await deleteFoto(item.localId);
@@ -108,6 +111,9 @@ export async function drain(): Promise<void> {
     syncing = true;
     emit();
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      // Primeiro sincroniza textos/linhas novas para evitar erro de FK nas fotos.
+      await drainMutations();
       // process in a loop until empty or all failing
       let attempts = 0;
       while (attempts < 50) {

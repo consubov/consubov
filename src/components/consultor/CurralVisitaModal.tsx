@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
+import { offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaCurralRow {
   id: string;
@@ -70,12 +71,21 @@ export default function CurralVisitaModal({
     if (!numCurral.trim()) return null;
     setCreating(true);
     try {
-      const { data, error } = await supabase.from("visita_currais")
-        .insert({ visita_id: visitaId, num_curral: numCurral.trim(), ordem: proximaOrdem })
-        .select("id").single();
-      if (error) throw error;
-      setCurralIdLocal(data.id);
-      return data.id;
+      const id = crypto.randomUUID();
+      const payload = { visita_id: visitaId, num_curral: numCurral.trim(), ordem: proximaOrdem };
+      const res = await offlineUpsert({
+        visitaId,
+        table: "visita_currais",
+        rowId: id,
+        payload,
+        applyToSnapshot: (curr, p) => ({
+          ...curr,
+          currais: [...(curr.currais || []), { id, ...p, fotos: [], signed: {}, samples: { fezes: [], corporal: [], bebedouro: [] } }],
+        }),
+      });
+      if (res.queued) toast.info("Curral salvo off-line.");
+      setCurralIdLocal(id);
+      return id;
     } catch (err: any) {
       toast.error("Erro ao criar curral: " + (err?.message || ""));
       return null;
@@ -89,17 +99,35 @@ export default function CurralVisitaModal({
     if (!curralIdLocal && numCurral.trim()) {
       await ensureCurral();
     } else if (curralIdLocal && numCurral.trim() && curral && numCurral.trim() !== curral.num_curral) {
-      await supabase.from("visita_currais").update({ num_curral: numCurral.trim() }).eq("id", curralIdLocal);
+      await offlineUpdate({
+        visitaId,
+        table: "visita_currais",
+        rowId: curralIdLocal,
+        patch: { num_curral: numCurral.trim() },
+        applyToSnapshot: (curr, patch) => ({
+          ...curr,
+          currais: (curr.currais || []).map((c: any) => c.id === curralIdLocal ? { ...c, ...patch } : c),
+        }),
+      });
     }
   }
 
   async function addSample(tipo: keyof SamplesState, nota: number) {
     const id = await ensureCurral();
     if (!id) { toast.error("Informe o número do curral primeiro"); return; }
-    const { data, error } = await supabase.from("avaliacoes_score")
-      .insert({ visita_curral_id: id, tipo, nota }).select("id").single();
-    if (error) { toast.error("Erro: " + error.message); return; }
-    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: data.id, nota }] }));
+    const scoreId = crypto.randomUUID();
+    setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: scoreId, nota }] }));
+    const res = await offlineUpsert({
+      visitaId,
+      table: "avaliacoes_score",
+      rowId: scoreId,
+      payload: { visita_curral_id: id, tipo, nota },
+      applyToSnapshot: (curr, payload) => ({
+        ...curr,
+        avaliacoes_score: [...(curr.avaliacoes_score || []), { id: scoreId, ...payload }],
+      }),
+    });
+    if (res.queued) toast.info("Amostra salva off-line.");
   }
 
   async function removeSample(tipo: keyof SamplesState, index: number) {
@@ -116,7 +144,17 @@ export default function CurralVisitaModal({
       const id = await ensureCurral();
       if (!id) return;
       // ensure num_curral persisted
-      await supabase.from("visita_currais").update({ num_curral: numCurral.trim() }).eq("id", id);
+      const res = await offlineUpdate({
+        visitaId,
+        table: "visita_currais",
+        rowId: id,
+        patch: { num_curral: numCurral.trim() },
+        applyToSnapshot: (curr, patch) => ({
+          ...curr,
+          currais: (curr.currais || []).map((c: any) => c.id === id ? { ...c, ...patch } : c),
+        }),
+      });
+      if (res.queued) toast.info("Curral salvo off-line.");
       toast.success(curral || curralIdLocal ? "Curral salvo" : "Curral adicionado");
       onSaved({ continueSequential });
     } catch (err: any) {
@@ -177,7 +215,7 @@ export default function CurralVisitaModal({
           </div>
 
           <div className="pt-2 border-t">
-            <PhotoGrid visitaCurralId={curralIdLocal} max={10} disabled={readOnly} />
+            <PhotoGrid visitaId={visitaId} visitaCurralId={curralIdLocal} max={10} disabled={readOnly} />
             {!curralIdLocal && (
               <p className="text-[11px] text-muted-foreground mt-1">
                 Informe o número do curral para habilitar o envio de fotos.

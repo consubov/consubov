@@ -17,6 +17,7 @@ import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/Pa
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import { loadSnapshot, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -29,7 +30,7 @@ interface Visita {
   fazenda_consultor_id: string;
   pdf_url: string | null;
 }
-interface Fazenda { id: string; nome_fazenda: string; }
+interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
 
 function proximaLetra(pastos: VisitaPastoRow[]): string {
   const usadas = new Set(pastos.map(p => p.letra.toUpperCase()));
@@ -61,17 +62,20 @@ export default function VisitaTecnicaPage() {
   async function load() {
     setLoading(true);
     const vRes = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle();
-    const v = vRes.data as Visita | null;
+    const snap = await loadSnapshot(visitaId!);
+    const v = (vRes.data as Visita | null) || (snap?.visita as Visita | undefined) || null;
     setVisita(v);
     if (v) {
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");
       const [fRes, pRes] = await Promise.all([
-        supabase.from("fazendas_consultor").select("id, nome_fazenda").eq("id", v.fazenda_consultor_id).maybeSingle(),
+        supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
         supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
       ]);
-      setFazenda(fRes.data as Fazenda | null);
-      const pastosData = (pRes.data as any[]) || [];
+      const fazendaData = (fRes.data as Fazenda | null) || (snap?.fazenda as Fazenda | undefined) || null;
+      setFazenda(fazendaData);
+      let pastosData = (pRes.data as any[]) || [];
+      if (pastosData.length === 0 && snap?.pastos?.length) pastosData = snap.pastos as any[];
       const ids = pastosData.map(p => p.id);
       const samplesByPasto: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
       if (ids.length > 0) {
@@ -83,7 +87,7 @@ export default function VisitaTecnicaPage() {
           if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
         });
       }
-      setPastos(pastosData.map(p => {
+      const builtPastos = pastosData.map(p => {
         const samples = samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] };
         return {
           ...p,
@@ -94,7 +98,14 @@ export default function VisitaTecnicaPage() {
           },
           _sampleCounts: samples,
         } as any;
-      }));
+      });
+      setPastos(builtPastos);
+      void saveSnapshot(visitaId!, {
+        ...(snap || {}),
+        visita: v,
+        fazenda: fazendaData,
+        pastos: builtPastos,
+      }).catch(() => {});
     }
     setLoading(false);
   }
