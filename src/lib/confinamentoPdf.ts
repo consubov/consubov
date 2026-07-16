@@ -384,18 +384,17 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageH = doc.internal.pageSize.getHeight();
 
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logoOverride);
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
