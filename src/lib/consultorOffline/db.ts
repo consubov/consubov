@@ -153,6 +153,20 @@ export async function countAllMutations() {
   const db = await getDb();
   return db.count("text_mutations");
 }
+// Conta apenas mutações realmente pendentes
+export async function countPendingMutations() {
+  const items = await listAllMutations();
+  return items.filter((i) => !(i.status === "error" && (i.tries ?? 0) >= 3)).length;
+}
+export async function purgeDeadMutations() {
+  const db = await getDb();
+  const items = await db.getAll("text_mutations");
+  for (const it of items) {
+    if (it.status === "error" && (it.tries ?? 0) >= 5) {
+      await db.delete("text_mutations", it.id);
+    }
+  }
+}
 export async function listMutationsByVisita(visitaId: string) {
   const db = await getDb();
   return db.getAllFromIndex("text_mutations", "by-visita", visitaId);
