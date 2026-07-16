@@ -346,6 +346,7 @@ export default function RevisaoVisitaPage() {
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
           proprietario: fazenda.proprietario,
+          responsavel: (fazenda as any).responsavel ?? null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
         },
