@@ -195,6 +195,13 @@ export default function RevisaoVisitaPage() {
       } as Pasto;
     }));
     setPastos(built);
+    // Snapshot local — permite reabrir a visita offline com dados pré-carregados
+    void saveSnapshot(visitaId!, {
+      visita: v,
+      fazenda: fz,
+      consultor: cs,
+      pastos: built,
+    }).catch(() => {});
     setLoading(false);
   }
 
