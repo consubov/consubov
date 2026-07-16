@@ -59,6 +59,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const { pending: pendingUploads } = useSyncStatus();
+
 
   const load = useCallback(async () => {
     setLoading(true);
