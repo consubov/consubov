@@ -152,15 +152,14 @@ function drawLogoFitted(
   doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
 ) {
   if (!asset) return;
-  // Ambas as logos (esquerda e direita) devem usar a MESMA altura máxima como
-  // referência (boxH), preservando a proporção original. A largura só é reduzida
-  // se a imagem for tão larga que estouraria a caixa — nunca aumentamos além de boxH.
-  let scale = boxH / asset.h;
-  if (asset.w * scale > boxW) scale = boxW / asset.w;
-  const w = asset.w * scale;
-  const h = asset.h * scale;
+  // REGRA ÚNICA: escalar SEMPRE pela mesma altura de referência (boxH), sem
+  // clamp por largura. Assim, ambas as logos (esquerda e direita) terminam
+  // visualmente com a MESMA altura, independentemente da proporção original.
+  // A largura é calculada proporcionalmente a partir dessa altura.
+  const h = boxH;
+  const w = asset.w * (boxH / asset.h);
   const x = align === "left" ? boxX : boxX + boxW - w;
-  const y = boxY + (boxH - h) / 2;
+  const y = boxY;
   const fmt = asset.dataUrl.includes("image/png") ? "PNG" : "JPEG";
   try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
