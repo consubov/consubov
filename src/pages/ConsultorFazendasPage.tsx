@@ -16,6 +16,7 @@ interface Fazenda {
   id: string;
   nome_fazenda: string;
   proprietario: string | null;
+  responsavel: string | null;
   municipio: string | null;
   uf: string | null;
   latitude: number | null;
@@ -25,13 +26,14 @@ interface Fazenda {
 interface Form {
   nome_fazenda: string;
   proprietario: string;
+  responsavel: string;
   municipio: string;
   uf: string;
   latitude: string;
   longitude: string;
 }
 
-const emptyForm: Form = { nome_fazenda: "", proprietario: "", municipio: "", uf: "", latitude: "", longitude: "" };
+const emptyForm: Form = { nome_fazenda: "", proprietario: "", responsavel: "", municipio: "", uf: "", latitude: "", longitude: "" };
 
 export default function ConsultorFazendasPage() {
   const { roleData } = useAuth();
