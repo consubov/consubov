@@ -55,14 +55,22 @@ export async function hasPendingLocalChanges(visitaId: string): Promise<boolean>
   }
 }
 
-/** Merge a partial patch into the current snapshot. */
+/** Merge a partial patch into the current snapshot. Serialized per visitaId to avoid races. */
+const patchLocks = new Map<string, Promise<void>>();
 export async function patchSnapshot(
   visitaId: string,
   patcher: (current: VisitaSnapshotData) => VisitaSnapshotData,
 ) {
-  const current = (await loadSnapshot(visitaId)) ?? {};
-  const next = patcher(current);
-  await saveSnapshot(visitaId, next);
+  const prev = patchLocks.get(visitaId) ?? Promise.resolve();
+  const next = prev.then(async () => {
+    const current = (await loadSnapshot(visitaId)) ?? {};
+    const merged = patcher(current);
+    await saveSnapshot(visitaId, merged);
+  }).catch((err) => { console.warn("[patchSnapshot] error:", err); });
+  patchLocks.set(visitaId, next);
+  try { await next; } finally {
+    if (patchLocks.get(visitaId) === next) patchLocks.delete(visitaId);
+  }
 }
 
 /**

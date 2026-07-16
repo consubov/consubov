@@ -627,6 +627,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
                 try {
                   await autosaveVisita({ observacoes_gerais: obsGerais, conclusao } as any);
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                  navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
               }}
               disabled={salvandoOffline}

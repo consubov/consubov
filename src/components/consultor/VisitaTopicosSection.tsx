@@ -265,11 +265,10 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
       const blob = uploadBody instanceof Blob ? uploadBody : dataUrlToBlob(dataUrl || "");
       const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as TopicoFoto;
-      // Preview instantâneo com o dataUrl local
-      update(t.id, {
-        fotos: [...t.fotos, data as TopicoFoto].sort((a,b)=>a.ordem-b.ordem),
-        signed: { ...t.signed, [(data as any).id]: dataUrl || "" },
-      });
+      // Preview instantâneo com o dataUrl local — usa estado atual para não perder fotos concorrentes
+      setTopicos(prev => prev.map(x => x.id === t.id
+        ? { ...x, fotos: [...x.fotos, data].sort((a,b)=>a.ordem-b.ordem), signed: { ...x.signed, [data.id]: dataUrl || "" } }
+        : x));
       await patchSnapshot(visitaId, (curr) => ({
         ...curr,
         topicos: (curr.topicos || []).map((x: any) => x.id === t.id

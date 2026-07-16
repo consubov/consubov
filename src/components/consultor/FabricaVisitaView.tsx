@@ -278,6 +278,7 @@ export default function FabricaVisitaView({
               try {
                 await offlineUpdate({ visitaId, table: "visitas_tecnicas", rowId: visitaId, patch: {} });
                 toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                navigate("/consultor/historico");
               } finally { setSalvandoOffline(false); }
             }}
             disabled={salvandoOffline}

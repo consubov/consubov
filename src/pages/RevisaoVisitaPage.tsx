@@ -769,6 +769,7 @@ export default function RevisaoVisitaPage() {
                     indicadores_tabela: indicadoresTabela as any,
                   } as any);
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                  navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
               }}
               disabled={salvandoOffline}

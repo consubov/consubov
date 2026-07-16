@@ -229,10 +229,8 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
 
   let metaY = y + 6;
   const locStr = [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
-  const line1parts: string[] = [];
-  if (data.fazenda.proprietario) line1parts.push(`Proprietário: ${data.fazenda.proprietario}`);
-  if (locStr) line1parts.push(locStr);
-  if (line1parts.length) { doc.text(line1parts.join("  ·  "), 15, metaY); metaY += 5; }
+  if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
+  if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
 
   const boxY = Math.max(y + 12, metaY + 2);

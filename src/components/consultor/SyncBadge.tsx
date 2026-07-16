@@ -45,11 +45,11 @@ export default function SyncBadge({ className, compact }: Props) {
 
   const label = (() => {
     if (syncing) {
-      const total = pending || (photoPending + mutPending) || 1;
-      return `Sincronizando… ${total} pendente${total === 1 ? "" : "s"}`;
+      const total = pending || 1;
+      return `Sincronizando… ${total} visita${total === 1 ? "" : "s"} pendente${total === 1 ? "" : "s"}`;
     }
-    if (!online && hasPending) return `Sem conexão · ${pending} pendente${pending === 1 ? "" : "s"}`;
-    if (hasPending) return `Sincronizar (${pending} pendente${pending === 1 ? "" : "s"})`;
+    if (!online && hasPending) return `Sem conexão · ${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`;
+    if (hasPending) return `Sincronizar (${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"})`;
     if (showDone) return "Sincronização concluída ✓";
     return "Tudo sincronizado";
   })();
