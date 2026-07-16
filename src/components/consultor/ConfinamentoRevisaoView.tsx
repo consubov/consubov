@@ -515,6 +515,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               </Button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>
