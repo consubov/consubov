@@ -769,8 +769,15 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     y += rowH;
   });
 
+  // Escala uma única vez, logo antes da média geral.
+  y += 2;
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(INK_SOFT);
+  doc.text(SCORE_SCALE_HINT, 15, y);
+  y += 5;
+
   if (notaValida.length) {
-    y += 4;
     doc.setTextColor(GREEN_DARK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
