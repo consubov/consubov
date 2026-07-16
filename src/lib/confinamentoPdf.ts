@@ -28,6 +28,7 @@ export interface ConfinamentoPdfData {
   hora_inicio: string;
   hora_fim: string | null;
   observacoes_gerais: string | null;
+  titulo_encerramento?: string | null;
   conclusao: string | null;
   titulo_encerramento?: string | null;
   objetivo_visita?: string | null;
