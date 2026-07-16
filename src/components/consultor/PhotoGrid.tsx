@@ -109,41 +109,11 @@ export default function PhotoGrid({
 
   const slots = Array.from({ length: max }, (_, i) => {
     const ordem = i + 1;
-    return { ordem, foto: fotos.find(f => f.ordem === ordem), pending: pendings[ordem] };
+    const foto = fotos.find(f => f.ordem === ordem);
+    const pending = pendings[ordem];
+    const queuedPreview = queuedPreviews[ordem];
+    return { ordem, foto, pending, queuedPreview };
   });
-
-  async function uploadPending(ordem: number, blob: Blob, ext: string, previewUrl: string) {
-    if (!targetId || !targetKind) return;
-    try {
-      const folder = targetKind === "curral" ? "currais" : "pastos";
-      const path = `${folder}/${targetId}/${ordem}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-        upsert: true, contentType: blob.type || "image/jpeg",
-      });
-      if (error) throw error;
-      const insertPayload: any = { url: path, ordem };
-      if (targetKind === "curral") insertPayload.visita_curral_id = targetId;
-      else insertPayload.visita_pasto_id = targetId;
-      const { data, error: insErr } = await supabase.from("visita_fotos")
-        .insert(insertPayload).select().single();
-      if (insErr) throw insErr;
-      const row = data as FotoRow;
-      setFotos(prev => [...prev.filter(f => f.ordem !== ordem), row].sort((a, b) => a.ordem - b.ordem));
-      // Preserve immediate preview using the local dataUrl so it appears instantly.
-      setSigned(prev => ({ ...prev, [row.id]: previewUrl }));
-      // Async fetch signed url (also works offline of cache) — swap when ready.
-      getSignedUrl(row.url).then(u => {
-        if (u) setSigned(prev => ({ ...prev, [row.id]: u }));
-      });
-      setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
-    } catch (err: any) {
-      setPendings(prev => ({
-        ...prev,
-        [ordem]: { ordem, previewUrl, file: blob, ext, status: "error", error: err?.message || "erro" },
-      }));
-      toast.error("Falha no envio da foto — toque para tentar novamente");
-    }
-  }
 
   async function handleUpload(file: File) {
     if (!targetId || !targetKind) {
@@ -152,20 +122,26 @@ export default function PhotoGrid({
     }
     const ordem = slotRef.current;
     try {
-      // Compress + generate instant preview
       const dataUrl = await compressImageFileToDataUrl(file, {
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
       if (!dataUrl) throw new Error("Falha ao processar imagem");
       const blob = dataUrlToBlob(dataUrl);
-      const ext = "jpg";
-      // Optimistic preview
+      // Optimistic preview immediately
       setPendings(prev => ({
         ...prev,
-        [ordem]: { ordem, previewUrl: dataUrl, file: blob, ext, status: "uploading" },
+        [ordem]: { ordem, previewUrl: dataUrl, file: blob, ext: "jpg", status: "uploading" },
       }));
-      // Fire and forget upload
-      uploadPending(ordem, blob, ext, dataUrl);
+      // Persist to IndexedDB queue — survives app close, uploads in background
+      await enqueuePhoto({
+        visitaId: visitaId || targetId,
+        parentKind: targetKind,
+        parentId: targetId,
+        ordem,
+        blob,
+      });
+      // Clear inline pending — the queue-driven refresh will render it
+      setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
       toast.error("Erro ao preparar foto: " + (err?.message || "desconhecido"));
     } finally {
@@ -173,15 +149,29 @@ export default function PhotoGrid({
     }
   }
 
-  function retryPending(ordem: number) {
-    const p = pendings[ordem];
-    if (!p) return;
-    setPendings(prev => ({ ...prev, [ordem]: { ...p, status: "uploading", error: undefined } }));
-    uploadPending(ordem, p.file, p.ext, p.previewUrl);
+  async function handleDelete(f: FotoRow) {
+    try {
+      await supabase.storage.from(BUCKET).remove([f.url]);
+      await supabase.from("visita_fotos").delete().eq("id", f.id);
+      setFotos(prev => prev.filter(x => x.id !== f.id));
+    } catch {
+      toast.error("Erro ao remover foto");
+    }
   }
 
-  function cancelPending(ordem: number) {
-    setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
+  async function cancelQueued(ordem: number) {
+    if (!targetId || !targetKind) return;
+    const items = await getQueuedPhotosForParent(targetKind, targetId);
+    const target = items.find(it => it.ordem === ordem);
+    if (target) {
+      await deleteQueuedFoto(target.localId);
+      setQueuedPreviews(prev => {
+        const cp = { ...prev };
+        if (cp[ordem]) URL.revokeObjectURL(cp[ordem]);
+        delete cp[ordem];
+        return cp;
+      });
+    }
   }
 
   async function handleDelete(f: FotoRow) {
