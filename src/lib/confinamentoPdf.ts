@@ -139,9 +139,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  defaultLogoDataUrl: string | null,
+  defaultLogo: LogoAsset,
   subtitle: string,
-  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
+  logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
@@ -149,13 +149,11 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
-  if (leftLogo) {
-    try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
-  }
-  if (logos?.direitaDataUrl) {
-    const rightX = w - 15 - logoW;
-    try { doc.addImage(logos.direitaDataUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+  const leftAsset = logos?.esquerda || defaultLogo;
+  drawLogoFitted(doc, leftAsset, logoX, logoY, logoW, logoH, "left");
+  if (logos?.direita) {
+    const rightBoxX = w - 15 - logoW;
+    drawLogoFitted(doc, logos.direita, rightBoxX, logoY, logoW, logoH, "right");
   }
 
   const dividerX = logoX + logoW + 6;
