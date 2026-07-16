@@ -18,6 +18,7 @@ import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consulto
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 import SyncBadge from "@/components/consultor/SyncBadge";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -194,6 +195,13 @@ export default function RevisaoVisitaPage() {
       } as Pasto;
     }));
     setPastos(built);
+    // Snapshot local — permite reabrir a visita offline com dados pré-carregados
+    void saveSnapshot(visitaId!, {
+      visita: v,
+      fazenda: fz,
+      consultor: cs,
+      pastos: built,
+    }).catch(() => {});
     setLoading(false);
   }
 
@@ -240,8 +248,13 @@ export default function RevisaoVisitaPage() {
 
   async function autosaveVisita(patch: Partial<Visita>) {
     await notifyEdit();
-    const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId!);
-    if (error) toast.error("Erro ao salvar: " + error.message);
+    const res = await offlineUpdate({
+      visitaId: visitaId!,
+      table: "visitas_tecnicas",
+      rowId: visitaId!,
+      patch: patch as any,
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
 
   async function addFoto(pastoId: string, file: File) {

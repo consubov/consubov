@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function SyncBadge({ className, compact }: Props) {
-  const { pending, syncing, syncNow } = useSyncStatus();
+  const { pending, photoPending, mutPending, syncing, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
 
@@ -45,7 +45,16 @@ export default function SyncBadge({ className, compact }: Props) {
           <WifiOff className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
         )}
         <div className="text-xs text-amber-900 dark:text-amber-100 min-w-0">
-          <div className="font-semibold">{pending} {pending === 1 ? "foto pendente" : "fotos pendentes"}</div>
+          <div className="font-semibold">
+            {pending} {pending === 1 ? "item pendente" : "itens pendentes"}
+            {(photoPending > 0 || mutPending > 0) && (
+              <span className="font-normal opacity-80">
+                {" "}({photoPending > 0 ? `${photoPending} foto${photoPending === 1 ? "" : "s"}` : ""}
+                {photoPending > 0 && mutPending > 0 ? " · " : ""}
+                {mutPending > 0 ? `${mutPending} texto${mutPending === 1 ? "" : "s"}` : ""})
+              </span>
+            )}
+          </div>
           {!compact && (
             <div className="text-[11px] opacity-80 truncate">
               {online ? (syncing ? "Enviando…" : "Aguardando envio") : "Sem conexão — envia quando voltar"}

@@ -13,6 +13,7 @@ import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamen
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 import SyncBadge from "./SyncBadge";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { offlineUpdate, saveSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
@@ -113,6 +114,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       };
     }));
     setCurrais(built);
+    void saveSnapshot(visitaId, {
+      visita: v,
+      currais: built,
+    }).catch(() => {});
     setLoading(false);
   }, [visitaId]);
 
@@ -156,8 +161,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
 
   async function autosaveVisita(patch: Partial<Visita>) {
     await notifyEdit();
-    const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId);
-    if (error) toast.error("Erro ao salvar: " + error.message);
+    const res = await offlineUpdate({
+      visitaId,
+      table: "visitas_tecnicas",
+      rowId: visitaId,
+      patch: patch as any,
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
 
   async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
