@@ -48,7 +48,7 @@ export default function FabricaVisitaView({
   useEffect(() => { loadAvaliacoes(); loadConsultor(); }, [visitaId]);
 
   async function loadConsultor() {
-    const { data } = await supabase.from("consultores").select("id, nome").eq("id", visita.consultor_id).maybeSingle();
+    const { data } = await supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle();
     setConsultor(data as Consultor | null);
   }
 
