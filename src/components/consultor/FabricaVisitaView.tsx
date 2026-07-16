@@ -166,7 +166,7 @@ export default function FabricaVisitaView({
                   <div className="text-sm font-medium text-foreground">{q.label}</div>
                   {legend && (
                     <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                      {legend} <span className="italic">{SCORE_SCALE_HINT}</span>
+                      {legend}
                     </div>
                   )}
                 </div>
