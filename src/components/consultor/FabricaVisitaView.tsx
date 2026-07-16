@@ -48,7 +48,7 @@ export default function FabricaVisitaView({
   useEffect(() => { loadAvaliacoes(); loadConsultor(); }, [visitaId]);
 
   async function loadConsultor() {
-    const { data } = await supabase.from("consultores").select("id, nome").eq("id", visita.consultor_id).maybeSingle();
+    const { data } = await supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle();
     setConsultor(data as Consultor | null);
   }
 
@@ -96,9 +96,10 @@ export default function FabricaVisitaView({
           fotos: t.fotos.map(f => ({ id: f.id, url: f.url, ordem: f.ordem })),
         })),
         numeroMap,
-        logoOverride: (consultor as any)?.logo_modo && (consultor as any).logo_modo !== 'padrao'
-          ? { modo: (consultor as any).logo_modo, path: (consultor as any).logo_personalizada_url || null }
-          : null,
+        logoOverride: {
+          esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
+          direitaPath: (consultor as any)?.logo_direita_url || null,
+        },
       });
       const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visitaId);
       const { error } = await supabase.from("visitas_tecnicas").update({

@@ -55,7 +55,7 @@ export interface VisitaPdfData {
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number;
     fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
+  logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
 async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Promise<string> {
@@ -144,9 +144,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  logoDataUrl: string | null,
+  defaultLogoDataUrl: string | null,
   subtitle: string,
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; dataUrl: string | null } | null,
+  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const headerH = 32;
@@ -155,19 +155,17 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  const modo = logoOverride?.modo ?? 'padrao';
-  const customUrl = logoOverride?.dataUrl ?? null;
-
-  // Left logo
-  const leftLogo = modo === 'substituir' && customUrl ? customUrl : logoDataUrl;
+  // Left logo: custom se enviada, senão Consubov padrão
+  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
   if (leftLogo) {
     try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
 
-  // Right logo (only 'adicionar')
-  if (modo === 'adicionar' && customUrl) {
+  // Right logo: apenas se enviada
+  const hasRight = !!logos?.direitaDataUrl;
+  if (hasRight) {
     const rightX = w - 15 - logoW;
-    try { doc.addImage(customUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+    try { doc.addImage(logos!.direitaDataUrl!, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
 
   // Linha vertical fina verde
@@ -176,7 +174,7 @@ function drawCoverHeader(
   doc.setLineWidth(0.8);
   doc.line(dividerX, logoY, dividerX, logoY + logoH);
 
-  // eyebrow + título
+  // eyebrow + título (não sobrepõe logo direita — texto vai até ~x=140, logo direita começa em ~x=151)
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -415,12 +413,11 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const pageH = doc.internal.pageSize.getHeight();
 
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
   const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
@@ -430,7 +427,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   ]);
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina", logoOverride);
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const drawTabela = () => {
@@ -643,7 +640,7 @@ export interface VisitaFabricaPdfData {
   topicos: { id: string; titulo: string; texto: string | null; ordem: number;
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
+  logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
 function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
@@ -661,19 +658,18 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
 
   const fotosCache: Record<string, string | null> = {};
   const allFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica", logoOverride);
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Fábrica", logos);
   let y = drawFarmBlock(doc, {
     fazenda: data.fazenda, consultor: data.consultor,
     hora_inicio: data.hora_inicio, hora_fim: data.hora_fim,

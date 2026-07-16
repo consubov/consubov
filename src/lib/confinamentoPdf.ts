@@ -37,7 +37,7 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
+  logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
@@ -105,9 +105,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  logoDataUrl: string | null,
+  defaultLogoDataUrl: string | null,
   subtitle: string,
-  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; dataUrl: string | null } | null,
+  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
@@ -115,16 +115,13 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  const modo = logoOverride?.modo ?? 'padrao';
-  const customUrl = logoOverride?.dataUrl ?? null;
-
-  const leftLogo = modo === 'substituir' && customUrl ? customUrl : logoDataUrl;
+  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
   if (leftLogo) {
     try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
-  if (modo === 'adicionar' && customUrl) {
+  if (logos?.direitaDataUrl) {
     const rightX = w - 15 - logoW;
-    try { doc.addImage(customUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
+    try { doc.addImage(logos.direitaDataUrl, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
   }
 
   const dividerX = logoX + logoW + 6;
@@ -387,18 +384,17 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageH = doc.internal.pageSize.getHeight();
 
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const customLogoDataUrl = data.logoOverride && data.logoOverride.modo !== 'padrao'
-    ? await fetchLogoDataUrl(data.logoOverride.path)
-    : null;
-  const logoOverride = data.logoOverride
-    ? { modo: data.logoOverride.modo, dataUrl: customLogoDataUrl }
-    : null;
+  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
+    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
+    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  ]);
+  const logos = { esquerdaDataUrl, direitaDataUrl };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logoOverride);
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
