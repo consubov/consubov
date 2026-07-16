@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Clock, FileText, Download, Share2, Factory } from "lucide-react";
+import { ArrowLeft, Loader2, Clock, FileText, Download, Share2, Factory, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -53,6 +53,19 @@ export default function FabricaVisitaView({
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [salvandoOffline, setSalvandoOffline] = useState(false);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
 
   useEffect(() => { loadDados(); }, [visitaId]);
@@ -258,19 +271,35 @@ export default function FabricaVisitaView({
       />
 
       <div className="sticky bottom-16 pt-2 space-y-2">
-        
-        <Button
-          onClick={gerarPdf}
-          disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0 || pendingThisVisit}
-          className="w-full gap-2 bg-primary hover:bg-primary/90"
-          title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
-        >
-          {gerandoPdf
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
-            : pendingUploads > 0 || pendingThisVisit
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronize {pendingUploads || 1} pendente{(pendingUploads || 1) === 1 ? "" : "s"}</>
-              : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF e Finalizar"}</>}
-        </Button>
+        {!online ? (
+          <Button
+            onClick={async () => {
+              setSalvandoOffline(true);
+              try {
+                await offlineUpdate({ visitaId, table: "visitas_tecnicas", rowId: visitaId, patch: {} });
+                toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+              } finally { setSalvandoOffline(false); }
+            }}
+            disabled={salvandoOffline}
+            className="w-full gap-2 bg-[#1F7A4D] hover:bg-[#166A42] text-white"
+          >
+            {salvandoOffline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Salvar off-line
+          </Button>
+        ) : (
+          <Button
+            onClick={gerarPdf}
+            disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0 || pendingThisVisit}
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
+            title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
+          >
+            {gerandoPdf
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
+              : pendingUploads > 0 || pendingThisVisit
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronize {pendingUploads || 1} pendente{(pendingUploads || 1) === 1 ? "" : "s"}</>
+                : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}</>}
+          </Button>
+        )}
       </div>
 
       {visita.status === "finalizada" && visita.pdf_url && (

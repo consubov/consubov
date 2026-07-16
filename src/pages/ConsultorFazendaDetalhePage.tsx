@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, MapPin, Play, ArrowLeft, ChevronRight, Landmark } from "lucide-react";
+import { Loader2, MapPin, Play, ArrowLeft, ChevronRight, Landmark, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,20 +83,17 @@ export default function ConsultorFazendaDetalhePage() {
     setPreparing(true);
     setOfflineReady(false);
     try {
-      toast.info("Preparando para uso off-line...");
       await requestPersistentStorage().catch(() => null);
       const online = typeof navigator === "undefined" || navigator.onLine;
       const cached = (() => {
         try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
         catch { return null; }
       })();
-      // Pré-carrega dados do consultor (logo, preferências) para uso offline
       let consultor: any = cached?.consultor || null;
       if (online && roleData?.consultorId) {
         const { data } = await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
         consultor = data || consultor;
       }
-      // Pré-carrega detalhes da fazenda
       let fazendaDetalhe: Fazenda | null = fazenda || cached?.fazenda || null;
       if (online && fazendaId) {
         const { data } = await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
@@ -105,17 +102,21 @@ export default function ConsultorFazendaDetalhePage() {
       try {
         window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor, visitas }));
       } catch { /* best effort */ }
-      // Pequena espera para dar feedback visual mesmo em conexões rápidas
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 900));
     } catch {
       /* segue mesmo se offline */
     } finally {
       setPreparing(false);
       setOfflineReady(true);
-      toast.success("Pronto para uso off-line ✅");
-      window.setTimeout(() => setTipoModal(true), 800);
+      // Fecha automaticamente após 1,5s e abre seleção de tipo
+      window.setTimeout(() => {
+        setOfflineReady(false);
+        setTipoModal(true);
+      }, 1500);
     }
   }
+
+
 
   async function iniciarVisita(tipo: "rotina" | "confinamento" | "fabrica") {
     if (!roleData?.consultorId || !fazendaId) return;
@@ -186,14 +187,45 @@ export default function ConsultorFazendaDetalhePage() {
             )}
           </div>
         </div>
-        <Button onClick={prepararOffline} disabled={preparing} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
-          {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          {preparing ? "Preparando para uso off-line..." : "Iniciar Visita"}
+        <Button onClick={prepararOffline} disabled={preparing || offlineReady} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
+          <Play className="w-4 h-4" />
+          Iniciar Visita
         </Button>
-        {offlineReady && (
-          <div className="text-xs font-medium text-primary text-center">Pronto para uso off-line ✅</div>
-        )}
       </Card>
+
+      {/* Modal Preparando → Pronto */}
+      <Dialog open={preparing || offlineReady} onOpenChange={() => { /* controlado */ }}>
+        <DialogContent className="max-w-xs" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {offlineReady ? "Pronto para uso off-line" : "Preparando para uso off-line"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {offlineReady
+                ? "Você já pode registrar a visita mesmo sem internet."
+                : "Baixando dados da fazenda e do consultor…"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            {offlineReady ? (
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-primary" />
+              </div>
+            ) : (
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            )}
+          </div>
+          {offlineReady && (
+            <Button
+              onClick={() => { setOfflineReady(false); setTipoModal(true); }}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              Começar
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-2">Visitas anteriores</h2>

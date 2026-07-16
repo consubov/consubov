@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Loader2, CloudUpload, CheckCircle2, WifiOff } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -9,10 +9,27 @@ interface Props {
   compact?: boolean;
 }
 
+/**
+ * Botão fixo de sincronização — sempre visível.
+ * Verde quando há pendências (habilitado) ou opaco quando nada pendente (desabilitado).
+ * Auto-sincroniza em segundo plano ao detectar internet; o clique força/repete.
+ */
 export default function SyncBadge({ className, compact }: Props) {
   const { pending, photoPending, mutPending, syncing, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   useEffect(() => {
     if (pending > 0) setWasPending(true);
@@ -23,55 +40,41 @@ export default function SyncBadge({ className, compact }: Props) {
     }
   }, [pending, wasPending]);
 
-  const online = typeof navigator === "undefined" ? true : navigator.onLine;
+  const hasPending = pending > 0;
+  const disabled = syncing || !hasPending || !online;
 
-  if (pending === 0 && !showDone) return null;
+  const label = (() => {
+    if (syncing) {
+      const total = pending || (photoPending + mutPending) || 1;
+      return `Sincronizando… ${total} pendente${total === 1 ? "" : "s"}`;
+    }
+    if (!online && hasPending) return `Sem conexão · ${pending} pendente${pending === 1 ? "" : "s"}`;
+    if (hasPending) return `Sincronizar (${pending} pendente${pending === 1 ? "" : "s"})`;
+    if (showDone) return "Sincronização concluída ✓";
+    return "Tudo sincronizado";
+  })();
 
-  if (pending === 0 && showDone) {
-    return (
-      <div className={cn("flex items-center gap-2 rounded-md bg-primary/10 text-primary px-3 py-2 text-xs font-medium", className)}>
-        <CheckCircle2 className="w-4 h-4" />
-        Tudo sincronizado
-      </div>
-    );
-  }
+  const Icon = syncing
+    ? Loader2
+    : !online && hasPending
+      ? WifiOff
+      : hasPending
+        ? RefreshCw
+        : CheckCircle2;
 
   return (
-    <div className={cn("flex items-center justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 px-3 py-2", className)}>
-      <div className="flex items-center gap-2 min-w-0">
-        {online ? (
-          <CloudUpload className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-        ) : (
-          <WifiOff className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-        )}
-        <div className="text-xs text-amber-900 dark:text-amber-100 min-w-0">
-          <div className="font-semibold">
-            {pending} {pending === 1 ? "item pendente" : "itens pendentes"}
-            {(photoPending > 0 || mutPending > 0) && (
-              <span className="font-normal opacity-80">
-                {" "}({photoPending > 0 ? `${photoPending} foto${photoPending === 1 ? "" : "s"}` : ""}
-                {photoPending > 0 && mutPending > 0 ? " · " : ""}
-                {mutPending > 0 ? `${mutPending} texto${mutPending === 1 ? "" : "s"}` : ""})
-              </span>
-            )}
-          </div>
-          {!compact && (
-            <div className="text-[11px] opacity-80 truncate">
-              {online ? (syncing ? "Enviando…" : "Aguardando envio") : "Sem conexão — envia quando voltar"}
-            </div>
-          )}
-        </div>
-      </div>
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 gap-1 text-xs"
-        disabled={syncing || !online}
-        onClick={() => void syncNow()}
-      >
-        {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CloudUpload className="w-3 h-3" />}
-        Sincronizar
-      </Button>
-    </div>
+    <Button
+      onClick={() => void syncNow()}
+      disabled={disabled}
+      className={cn(
+        "w-full gap-2 font-semibold text-white shadow-sm",
+        "bg-[#1F7A4D] hover:bg-[#166A42] disabled:opacity-60 disabled:text-white",
+        "disabled:bg-[#1F7A4D]",
+        className,
+      )}
+    >
+      <Icon className={cn("w-4 h-4", syncing && "animate-spin")} />
+      <span className="truncate">{label}</span>
+    </Button>
   );
 }

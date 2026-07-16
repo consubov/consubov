@@ -67,6 +67,19 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [salvandoOffline, setSalvandoOffline] = useState(false);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
 
   const load = useCallback(async () => {
@@ -607,7 +620,24 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               Confirmar Revisão
             </Button>
           )}
-          {(visita.status === "revisao" || visita.status === "finalizada") && (
+          {(visita.status === "revisao" || visita.status === "finalizada") && !online && (
+            <Button
+              onClick={async () => {
+                setSalvandoOffline(true);
+                try {
+                  await autosaveVisita({ observacoes_gerais: obsGerais, conclusao } as any);
+                  toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                } finally { setSalvandoOffline(false); }
+              }}
+              disabled={salvandoOffline}
+              className="flex-1 gap-2"
+              style={{ background: "#1F7A4D", color: "white" }}
+            >
+              {salvandoOffline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Salvar off-line
+            </Button>
+          )}
+          {(visita.status === "revisao" || visita.status === "finalizada") && online && (
             <Button
               onClick={gerarPdf}
               disabled={gerandoPdf || pendingUploads > 0 || pendingThisVisit}
@@ -618,7 +648,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               {pendingUploads > 0 || pendingThisVisit
                 ? `Sincronize ${pendingUploads || 1} pendente${(pendingUploads || 1) === 1 ? "" : "s"}`
-                : visita.status === "finalizada" ? "Gerar Novo PDF" : "Gerar PDF"}
+                : visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
