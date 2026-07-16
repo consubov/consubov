@@ -83,19 +83,38 @@ export default function ConsultorFazendaDetalhePage() {
     setPreparing(true);
     setOfflineReady(false);
     try {
-      toast.info("Preparando para uso off-line...");
       await requestPersistentStorage().catch(() => null);
       const online = typeof navigator === "undefined" || navigator.onLine;
       const cached = (() => {
         try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
         catch { return null; }
       })();
-      // Pré-carrega dados do consultor (logo, preferências) para uso offline
       let consultor: any = cached?.consultor || null;
       if (online && roleData?.consultorId) {
         const { data } = await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
         consultor = data || consultor;
       }
+      let fazendaDetalhe: Fazenda | null = fazenda || cached?.fazenda || null;
+      if (online && fazendaId) {
+        const { data } = await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
+        fazendaDetalhe = (data as Fazenda | null) || fazendaDetalhe;
+      }
+      try {
+        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor, visitas }));
+      } catch { /* best effort */ }
+      await new Promise((r) => setTimeout(r, 900));
+    } catch {
+      /* segue mesmo se offline */
+    } finally {
+      setPreparing(false);
+      setOfflineReady(true);
+      // Fecha automaticamente após 1,5s e abre seleção de tipo
+      window.setTimeout(() => {
+        setOfflineReady(false);
+        setTipoModal(true);
+      }, 1500);
+    }
+  }
       // Pré-carrega detalhes da fazenda
       let fazendaDetalhe: Fazenda | null = fazenda || cached?.fazenda || null;
       if (online && fazendaId) {
