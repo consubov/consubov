@@ -257,6 +257,34 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   return boxY + 24;
 }
 
+/**
+ * Renderiza texto respeitando quebras de linha manuais do usuário.
+ * Cada parágrafo (separado por \n) é justificado, exceto a última linha
+ * (norma ABNT). Linhas curtas ou únicas ficam alinhadas à esquerda para
+ * evitar espaçamentos gigantes entre palavras.
+ */
+function drawParagraphText(
+  doc: jsPDF, text: string, x: number, y: number, maxWidth: number, lineHeight = 4.6,
+): number {
+  const raw = String(text ?? "");
+  const paragraphs = raw.split(/\r?\n/);
+  for (const para of paragraphs) {
+    const trimmed = para.trim();
+    if (!trimmed) { y += lineHeight; continue; }
+    const lines = doc.splitTextToSize(trimmed, maxWidth) as string[];
+    for (let i = 0; i < lines.length; i++) {
+      const isLast = i === lines.length - 1;
+      if (isLast) {
+        doc.text(lines[i], x, y);
+      } else {
+        doc.text(lines[i], x, y, { align: "justify", maxWidth });
+      }
+      y += lineHeight;
+    }
+  }
+  return y;
+}
+
 function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): number {
   const w = doc.internal.pageSize.getWidth() - 30;
   doc.setFillColor(GREEN_DARK);
@@ -268,9 +296,8 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  const lines = doc.splitTextToSize(text, w);
-  doc.text(lines, 15, y + 11, { align: "justify", maxWidth: w });
-  return y + 11 + lines.length * 4.6 + 4;
+  const yEnd = drawParagraphText(doc, text, 15, y + 11, w, 4.6);
+  return yEnd + 4;
 }
 
 async function drawPastoBlock(
