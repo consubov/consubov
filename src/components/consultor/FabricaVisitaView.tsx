@@ -12,6 +12,8 @@ import VisitaTopicosSection, { type Topico } from "@/components/consultor/Visita
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
+import SyncBadge from "./SyncBadge";
+import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 
 interface Visita {
   id: string; tipo: string; status: string;
