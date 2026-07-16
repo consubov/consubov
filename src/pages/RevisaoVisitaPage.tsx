@@ -142,6 +142,19 @@ export default function RevisaoVisitaPage() {
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [salvandoOffline, setSalvandoOffline] = useState(false);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   useEffect(() => {
     if (!visitaId) return;
