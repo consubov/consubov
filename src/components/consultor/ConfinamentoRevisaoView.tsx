@@ -156,8 +156,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
 
   async function autosaveVisita(patch: Partial<Visita>) {
     await notifyEdit();
-    const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", visitaId);
-    if (error) toast.error("Erro ao salvar: " + error.message);
+    const res = await offlineUpdate({
+      visitaId,
+      table: "visitas_tecnicas",
+      rowId: visitaId,
+      patch: patch as any,
+    });
+    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
 
   async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
