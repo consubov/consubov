@@ -220,7 +220,7 @@ export default function RevisaoVisitaPage() {
       const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((r: any) => r.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,

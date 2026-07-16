@@ -129,7 +129,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((rf: any) => rf.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapCurral?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         id: r.id, num_curral: r.num_curral, ordem: r.ordem,

@@ -85,17 +85,22 @@ export default function ConsultorFazendaDetalhePage() {
     try {
       toast.info("Preparando para uso off-line...");
       await requestPersistentStorage().catch(() => null);
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const cached = (() => {
+        try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
+        catch { return null; }
+      })();
       // Pré-carrega dados do consultor (logo, preferências) para uso offline
-      let consultor: any = null;
-      if (roleData?.consultorId) {
+      let consultor: any = cached?.consultor || null;
+      if (online && roleData?.consultorId) {
         const { data } = await supabase.from("consultores").select("*").eq("id", roleData.consultorId).maybeSingle();
-        consultor = data;
+        consultor = data || consultor;
       }
       // Pré-carrega detalhes da fazenda
-      let fazendaDetalhe: Fazenda | null = fazenda;
-      if (fazendaId) {
+      let fazendaDetalhe: Fazenda | null = fazenda || cached?.fazenda || null;
+      if (online && fazendaId) {
         const { data } = await supabase.from("fazendas_consultor").select("*").eq("id", fazendaId).maybeSingle();
-        fazendaDetalhe = (data as Fazenda | null) || fazenda;
+        fazendaDetalhe = (data as Fazenda | null) || fazendaDetalhe;
       }
       try {
         window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ fazenda: fazendaDetalhe, consultor, visitas }));
@@ -144,6 +149,10 @@ export default function ConsultorFazendaDetalhePage() {
         applyToSnapshot: (curr, p) => ({ ...curr, visita: { ...(curr.visita || {}), id, ...p } }),
       });
       if (res.queued) toast.info("Visita salva off-line. Sincronize quando a internet voltar.");
+      try {
+        const nextVisitas = [{ id, tipo, status: "rascunho", hora_inicio: payload.hora_inicio, hora_fim: null }, ...visitas];
+        window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ ...(cached || {}), fazenda: cached?.fazenda || fazenda, consultor: cached?.consultor || null, visitas: nextVisitas }));
+      } catch { /* best effort */ }
       setTipoModal(false);
       navigate(`/consultor/visitas/${id}`);
     } catch (err: any) {
