@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function SyncBadge({ className, compact }: Props) {
-  const { pending, syncing, syncNow } = useSyncStatus();
+  const { pending, photoPending, mutPending, syncing, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
 
