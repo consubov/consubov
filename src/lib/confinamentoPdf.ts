@@ -415,7 +415,7 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   const lines = doc.splitTextToSize(text || "—", w);
-  doc.text(lines, x, y + 15);
+  doc.text(lines, x, y + 15, { align: "justify", maxWidth: w });
   return y + 15 + lines.length * 4.8;
 }
 
