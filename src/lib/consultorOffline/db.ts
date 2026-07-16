@@ -110,6 +110,21 @@ export async function countAllFotos() {
   const db = await getDb();
   return db.count("foto_queue");
 }
+// Conta apenas fotos realmente pendentes (exclui órfãos com erro permanente após 3 tentativas)
+export async function countPendingFotos() {
+  const items = await listAllFotos();
+  return items.filter((i) => !(i.status === "error" && (i.tries ?? 0) >= 3)).length;
+}
+// Remove itens com falha permanente (órfãos que nunca vão sincronizar)
+export async function purgeDeadFotos() {
+  const db = await getDb();
+  const items = await db.getAll("foto_queue");
+  for (const it of items) {
+    if (it.status === "error" && (it.tries ?? 0) >= 5) {
+      await db.delete("foto_queue", it.localId);
+    }
+  }
+}
 
 // ===== Snapshots =====
 export async function getSnapshot(visitaId: string) {
