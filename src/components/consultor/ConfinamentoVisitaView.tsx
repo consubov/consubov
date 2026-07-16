@@ -117,7 +117,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     }
     void saveSnapshot(visitaId, {
       ...(snap || {}),
-      visita: vRes.data || snap?.visita || visita,
+      visita: vRes.data || snap?.visita || initialVisita,
       fazenda: fazenda || snap?.fazenda,
       currais: built,
       avaliacao_fabrica_visita: afRow,
