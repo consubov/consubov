@@ -415,18 +415,19 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
-  const [esquerdaDataUrl, direitaDataUrl] = await Promise.all([
-    fetchLogoDataUrl(data.logoOverride?.esquerdaPath || null),
-    fetchLogoDataUrl(data.logoOverride?.direitaPath || null),
+  const logoDefaultDataUrl = await fetchAssetDataUrl(logoAsset.url);
+  const [logoDefault, esquerda, direita] = await Promise.all([
+    toLogoAsset(logoDefaultDataUrl),
+    fetchLogoAsset(data.logoOverride?.esquerdaPath || null),
+    fetchLogoAsset(data.logoOverride?.direitaPath || null),
   ]);
-  const logos = { esquerdaDataUrl, direitaDataUrl };
+  const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
 
   // PAGE 1 — cover claro
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Confinamento", logos);
+  drawCoverHeader(doc, logoDefault, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
   const intros: [string, string | null | undefined][] = [
@@ -477,8 +478,18 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.line(15, 16, pageW - 15, 16);
 
   let fy = 26;
+  // Título editável da seção final
+  const tituloEnc = (data.titulo_encerramento || "Observações e Recomendações").trim() || "Observações e Recomendações";
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, fy, 3, 10, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
+  fy += 16;
+
   fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-  fy = Math.max(fy + 8, 130);
+  fy = Math.max(fy + 8, 140);
   drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
 
   const sigY = pageH - 40;
