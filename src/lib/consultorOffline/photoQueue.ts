@@ -1,11 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
-  countAllFotos,
+  countPendingFotos,
   deleteFoto,
   getFoto,
   listAllFotos,
   listFotosByParent,
   putFoto,
+  purgeDeadFotos,
   type FotoQueueItem,
 } from "./db";
 import { drainMutations } from "./mutationQueue";
