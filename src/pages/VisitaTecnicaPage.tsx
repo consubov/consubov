@@ -17,7 +17,7 @@ import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/Pa
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { loadSnapshot, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -61,24 +61,29 @@ export default function VisitaTecnicaPage() {
 
   async function load() {
     setLoading(true);
-    const vRes = await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle();
     const snap = await loadSnapshot(visitaId!);
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const vRes = online
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
+      : { data: null };
     const v = (vRes.data as Visita | null) || (snap?.visita as Visita | undefined) || null;
     setVisita(v);
     if (v) {
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");
-      const [fRes, pRes] = await Promise.all([
-        supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
-        supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
-      ]);
+      const [fRes, pRes] = online
+        ? await Promise.all([
+            supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
+            supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
+          ])
+        : [{ data: null }, { data: null }];
       const fazendaData = (fRes.data as Fazenda | null) || (snap?.fazenda as Fazenda | undefined) || null;
       setFazenda(fazendaData);
       let pastosData = (pRes.data as any[]) || [];
       if (pastosData.length === 0 && snap?.pastos?.length) pastosData = snap.pastos as any[];
       const ids = pastosData.map(p => p.id);
       const samplesByPasto: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
-      if (ids.length > 0) {
+      if (ids.length > 0 && online) {
         const { data: scoresData } = await supabase.from("avaliacoes_score")
           .select("visita_pasto_id, tipo, nota")
           .in("visita_pasto_id", ids);
@@ -88,7 +93,12 @@ export default function VisitaTecnicaPage() {
         });
       }
       const builtPastos = pastosData.map(p => {
-        const samples = samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] };
+        const snapSamples = (p as any).samples || {};
+        const samples = samplesByPasto[p.id] || {
+          fezes: (snapSamples.fezes || []).map((s: any) => s.nota ?? s),
+          corporal: (snapSamples.corporal || []).map((s: any) => s.nota ?? s),
+          bebedouro: (snapSamples.bebedouro || []).map((s: any) => s.nota ?? s),
+        };
         return {
           ...p,
           scores: {
@@ -116,14 +126,18 @@ export default function VisitaTecnicaPage() {
   async function handleFinalizar() {
     setFinalizando(true);
     try {
-      const { error } = await supabase.from("visitas_tecnicas").update({
+      const { queued } = await offlineUpdate({
+        visitaId: visitaId!,
+        table: "visitas_tecnicas",
+        rowId: visitaId!,
+        patch: {
         status: "finalizada",
         hora_fim: new Date().toISOString(),
         observacoes_gerais: obsGerais.trim() || null,
         conclusao: conclusao.trim() || null,
-      }).eq("id", visitaId!);
-      if (error) throw error;
-      toast.success("Visita finalizada!");
+        },
+      });
+      toast.success(queued ? "Visita salva off-line." : "Visita finalizada!");
       setFinalizarOpen(false);
       load();
     } catch (err: any) {
