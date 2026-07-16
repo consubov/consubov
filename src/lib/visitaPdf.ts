@@ -107,10 +107,20 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
 }
 
 const BUCKET_LOGOS = "logos-consultor";
-async function fetchLogoDataUrl(path: string | null | undefined): Promise<string | null> {
+export type LogoAsset = { dataUrl: string; w: number; h: number } | null;
+
+async function measureImage(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve({ w: im.naturalWidth || 1, h: im.naturalHeight || 1 });
+    im.onerror = () => resolve({ w: 1, h: 1 });
+    im.src = dataUrl;
+  });
+}
+
+async function fetchLogoAsset(path: string | null | undefined): Promise<LogoAsset> {
   if (!path) return null;
   try {
-    // Se já vier como URL absoluta, baixa direto; senão trata como path no bucket privado.
     let res: Response;
     if (/^https?:\/\//i.test(path)) {
       res = await fetch(path);
@@ -120,13 +130,34 @@ async function fetchLogoDataUrl(path: string | null | undefined): Promise<string
       res = await fetch(data.signedUrl);
     }
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = reject;
       r.readAsDataURL(blob);
     });
+    const size = await measureImage(dataUrl);
+    return { dataUrl, w: size.w, h: size.h };
   } catch { return null; }
+}
+
+async function toLogoAsset(dataUrl: string | null): Promise<LogoAsset> {
+  if (!dataUrl) return null;
+  const s = await measureImage(dataUrl);
+  return { dataUrl, w: s.w, h: s.h };
+}
+
+function drawLogoFitted(
+  doc: jsPDF, asset: LogoAsset, boxX: number, boxY: number, boxW: number, boxH: number, align: "left" | "right",
+) {
+  if (!asset) return;
+  const scale = Math.min(boxW / asset.w, boxH / asset.h);
+  const w = asset.w * scale;
+  const h = asset.h * scale;
+  const x = align === "left" ? boxX : boxX + boxW - w;
+  const y = boxY + (boxH - h) / 2;
+  const fmt = asset.dataUrl.includes("image/png") ? "PNG" : "JPEG";
+  try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
 
 function drawFooter(doc: jsPDF, page: number, totalPages: number) {
@@ -144,9 +175,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
 
 function drawCoverHeader(
   doc: jsPDF,
-  defaultLogoDataUrl: string | null,
+  defaultLogo: LogoAsset,
   subtitle: string,
-  logos?: { esquerdaDataUrl: string | null; direitaDataUrl: string | null } | null,
+  logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
 ) {
   const w = doc.internal.pageSize.getWidth();
   const headerH = 32;
@@ -155,26 +186,19 @@ function drawCoverHeader(
   const logoX = 15;
   const logoY = 10;
 
-  // Left logo: custom se enviada, senão Consubov padrão
-  const leftLogo = logos?.esquerdaDataUrl || defaultLogoDataUrl;
-  if (leftLogo) {
-    try { doc.addImage(leftLogo, "PNG", logoX, logoY, logoW, logoH); } catch { /* ignore */ }
+  const leftAsset = logos?.esquerda || defaultLogo;
+  drawLogoFitted(doc, leftAsset, logoX, logoY, logoW, logoH, "left");
+
+  if (logos?.direita) {
+    const rightBoxX = w - 15 - logoW;
+    drawLogoFitted(doc, logos.direita, rightBoxX, logoY, logoW, logoH, "right");
   }
 
-  // Right logo: apenas se enviada
-  const hasRight = !!logos?.direitaDataUrl;
-  if (hasRight) {
-    const rightX = w - 15 - logoW;
-    try { doc.addImage(logos!.direitaDataUrl!, "PNG", rightX, logoY, logoW, logoH); } catch { /* ignore */ }
-  }
-
-  // Linha vertical fina verde
   const dividerX = logoX + logoW + 6;
   doc.setDrawColor(GREEN_DARK);
   doc.setLineWidth(0.8);
   doc.line(dividerX, logoY, dividerX, logoY + logoH);
 
-  // eyebrow + título (não sobrepõe logo direita — texto vai até ~x=140, logo direita começa em ~x=151)
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -184,7 +208,6 @@ function drawCoverHeader(
   doc.setFontSize(13);
   doc.text(subtitle, dividerX + 4, logoY + 14);
 
-  // linha divisória abaixo do header
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.line(15, headerH + 4, w - 15, headerH + 4);
