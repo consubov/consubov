@@ -166,7 +166,7 @@ export default function FabricaVisitaView({
                   <div className="text-sm font-medium text-foreground">{q.label}</div>
                   {legend && (
                     <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                      {legend} <span className="italic">{SCORE_SCALE_HINT}</span>
+                      {legend}
                     </div>
                   )}
                 </div>
@@ -196,6 +196,9 @@ export default function FabricaVisitaView({
               </div>
             );
           })}
+        </div>
+        <div className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+          {SCORE_SCALE_HINT}
         </div>
       </Card>
 
