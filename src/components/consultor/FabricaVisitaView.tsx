@@ -197,6 +197,9 @@ export default function FabricaVisitaView({
             );
           })}
         </div>
+        <div className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+          {SCORE_SCALE_HINT}
+        </div>
       </Card>
 
       <VisitaTopicosSection
