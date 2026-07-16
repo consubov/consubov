@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
 const DB_NAME = "consubov-consultor-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface FotoQueueItem {
   localId: string;
@@ -17,11 +17,38 @@ export interface FotoQueueItem {
   status: "pending" | "uploading" | "error";
 }
 
+export interface VisitaSnapshot {
+  visitaId: string;
+  data: Record<string, any>;
+  updatedAt: string;
+}
+
+export interface TextMutation {
+  id: string;
+  visitaId: string;
+  table: string;
+  rowId: string;
+  patch: Record<string, any>;
+  createdAt: string;
+  tries: number;
+  status: "pending" | "flushing" | "error";
+  lastError?: string;
+}
+
 interface ConsultorSchema extends DBSchema {
   foto_queue: {
     key: string;
     value: FotoQueueItem;
     indexes: { "by-visita": string; "by-parent": [string, string] };
+  };
+  snapshots: {
+    key: string;
+    value: VisitaSnapshot;
+  };
+  text_mutations: {
+    key: string;
+    value: TextMutation;
+    indexes: { "by-visita": string };
   };
 }
 
@@ -30,11 +57,20 @@ let dbp: Promise<IDBPDatabase<ConsultorSchema>> | null = null;
 export function getDb() {
   if (!dbp) {
     dbp = openDB<ConsultorSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
         if (!db.objectStoreNames.contains("foto_queue")) {
           const store = db.createObjectStore("foto_queue", { keyPath: "localId" });
           store.createIndex("by-visita", "visitaId");
           store.createIndex("by-parent", ["parentKind", "parentId"]);
+        }
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains("snapshots")) {
+            db.createObjectStore("snapshots", { keyPath: "visitaId" });
+          }
+          if (!db.objectStoreNames.contains("text_mutations")) {
+            const s = db.createObjectStore("text_mutations", { keyPath: "id" });
+            s.createIndex("by-visita", "visitaId");
+          }
         }
       },
     });
@@ -42,32 +78,60 @@ export function getDb() {
   return dbp;
 }
 
+// ===== Photo queue =====
 export async function putFoto(item: FotoQueueItem) {
   const db = await getDb();
   await db.put("foto_queue", item);
 }
-
 export async function deleteFoto(localId: string) {
   const db = await getDb();
   await db.delete("foto_queue", localId);
 }
-
 export async function getFoto(localId: string) {
   const db = await getDb();
   return db.get("foto_queue", localId);
 }
-
 export async function listFotosByParent(kind: "pasto" | "curral", id: string) {
   const db = await getDb();
   return db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
 }
-
 export async function listAllFotos() {
   const db = await getDb();
   return db.getAll("foto_queue");
 }
-
 export async function countAllFotos() {
   const db = await getDb();
   return db.count("foto_queue");
+}
+
+// ===== Snapshots =====
+export async function getSnapshot(visitaId: string) {
+  const db = await getDb();
+  return db.get("snapshots", visitaId);
+}
+export async function putSnapshot(snap: VisitaSnapshot) {
+  const db = await getDb();
+  await db.put("snapshots", snap);
+}
+
+// ===== Text mutations =====
+export async function putMutation(m: TextMutation) {
+  const db = await getDb();
+  await db.put("text_mutations", m);
+}
+export async function deleteMutation(id: string) {
+  const db = await getDb();
+  await db.delete("text_mutations", id);
+}
+export async function listAllMutations() {
+  const db = await getDb();
+  return db.getAll("text_mutations");
+}
+export async function countAllMutations() {
+  const db = await getDb();
+  return db.count("text_mutations");
+}
+export async function listMutationsByVisita(visitaId: string) {
+  const db = await getDb();
+  return db.getAllFromIndex("text_mutations", "by-visita", visitaId);
 }
