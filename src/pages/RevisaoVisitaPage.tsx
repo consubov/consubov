@@ -444,12 +444,34 @@ export default function RevisaoVisitaPage() {
         value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
       }));
 
+      // Refetch fresh fotos direct from Supabase — local state may still carry
+      // queued: URLs from photos that just synced.
       const topicosForPdf = await Promise.all(topicos.map(async t => {
-        const fotos = await Promise.all(t.fotos.map(async f => {
-          const { data } = await supabase.storage.from(BUCKET).createSignedUrl(f.url, 60 * 60);
-          return { id: f.id, url: f.url, ordem: f.ordem, signedUrl: data?.signedUrl || "" };
-        }));
+        const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
+          .select("*").eq("visita_topico_id", t.id).order("ordem");
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos };
+      }));
+
+      const pastosForPdf = await Promise.all(pastos.map(async p => {
+        const { data: fresh } = await supabase.from("visita_fotos")
+          .select("*").eq("visita_pasto_id", p.id).order("ordem");
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return {
+          id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
+          tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
+          consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
+          categoria: p.categoria,
+          peso_medio_kg: p.peso_medio_kg,
+          consumo_esperado_kg: p.consumo_esperado_kg,
+          consumo_real_kg: p.consumo_real_kg,
+          scores: {
+            fezes: averageOf(p.samples.fezes),
+            corporal: averageOf(p.samples.corporal),
+            bebedouro: averageOf(p.samples.bebedouro),
+          },
+          fotos,
+        };
       }));
 
       const { blob, fileName } = await generateVisitaPdf({
@@ -475,21 +497,7 @@ export default function RevisaoVisitaPage() {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
-        pastos: pastos.map(p => ({
-          id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
-          tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
-          consumo_kg_dia: p.consumo_kg_dia, observacao: p.observacao,
-          categoria: p.categoria,
-          peso_medio_kg: p.peso_medio_kg,
-          consumo_esperado_kg: p.consumo_esperado_kg,
-          consumo_real_kg: p.consumo_real_kg,
-          scores: {
-            fezes: averageOf(p.samples.fezes),
-            corporal: averageOf(p.samples.corporal),
-            bebedouro: averageOf(p.samples.bebedouro),
-          },
-          fotos: p.fotos,
-        })),
+        pastos: pastosForPdf,
       });
 
 

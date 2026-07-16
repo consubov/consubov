@@ -211,12 +211,12 @@ export default function PhotoGrid({
                 </>
               ) : showQueued ? (
                 <>
-                  <img src={queuedPreview} alt="" className="w-full h-full object-cover opacity-90" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/20">
-                    <div className="flex items-center gap-1 rounded bg-background/80 px-1.5 py-0.5 text-[9px] font-medium text-foreground">
-                      <Loader2 className="w-2.5 h-2.5 animate-spin" /> fila
+                  <img src={queuedPreview} alt="" className="w-full h-full object-cover" />
+                  {typeof navigator !== "undefined" && !navigator.onLine && (
+                    <div className="absolute bottom-0.5 left-0.5 flex items-center gap-1 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-foreground">
+                      <Loader2 className="w-2 h-2 animate-spin" /> off-line
                     </div>
-                  </div>
+                  )}
                   {!disabled && (
                     <button
                       type="button"

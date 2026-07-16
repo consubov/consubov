@@ -271,7 +271,9 @@ export default function VisitaTopicosSection({ visitaId, seedFrom, onNotifyEdit,
           ? { ...x, fotos: [...(x.fotos || []), data], signed: { ...(x.signed || {}), [(data as any).id]: dataUrl || "" } }
           : x),
       }));
-      toast.info("Foto salva off-line. Sincronize quando houver internet.");
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        toast.info("Foto salva off-line. Sincronize quando houver internet.");
+      }
     } catch (err: any) {
       toast.error("Erro ao preparar foto: " + (err?.message || ""));
     } finally { setUploading(null); }
