@@ -343,8 +343,8 @@ export default function RevisaoVisitaPage() {
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
         topicos: topicosForPdf,
-        logoOverride: consultor?.logo_modo && consultor.logo_modo !== 'padrao'
-          ? { modo: consultor.logo_modo, path: consultor.logo_personalizada_url || null }
+        logoOverride: (consultor as any)?.logo_modo && (consultor as any).logo_modo !== 'padrao'
+          ? { modo: (consultor as any).logo_modo, path: (consultor as any).logo_personalizada_url || null }
           : null,
         pastos: pastos.map(p => ({
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
