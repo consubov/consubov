@@ -41,6 +41,7 @@ export default function ConsultorFazendasPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
   const [saving, setSaving] = useState(false);
 
