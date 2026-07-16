@@ -430,7 +430,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   ]);
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina");
+  drawCoverHeader(doc, logoDataUrl, "Visita Técnica - Rotina", logoOverride);
   let y = drawFarmBlock(doc, data, 50);
 
   const drawTabela = () => {
