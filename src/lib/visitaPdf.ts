@@ -55,6 +55,7 @@ export interface VisitaPdfData {
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number;
     fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
+  logoOverride?: { modo: 'padrao' | 'substituir' | 'adicionar'; path: string | null } | null;
 }
 
 async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Promise<string> {
