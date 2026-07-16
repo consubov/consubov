@@ -17,6 +17,7 @@ interface Fazenda {
   id: string;
   nome_fazenda: string;
   proprietario: string | null;
+  responsavel: string | null;
   municipio: string | null;
   uf: string | null;
 }
