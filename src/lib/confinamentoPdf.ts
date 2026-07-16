@@ -66,11 +66,7 @@ async function fetchLogoDataUrl(path: string | null | undefined): Promise<string
       const { data } = await supabase.storage.from(BUCKET_LOGOS).createSignedUrl(path, 60 * 60);
       if (!data?.signedUrl) return null;
       res = await fetch(data.signedUrl);
-}
-
-async function fetchAssetDataUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
+    }
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
@@ -80,6 +76,10 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
     });
   } catch { return null; }
 }
+
+async function fetchAssetDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
