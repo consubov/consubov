@@ -24,15 +24,20 @@ export default function PesadorPesagemResumoPage() {
       if (!pesagemId) return;
       const { data: p } = await supabase
         .from("pesagens_compra")
-        .select("cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo")
+        .select(
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal"
+        )
         .eq("id", pesagemId)
         .maybeSingle();
       if (p) {
         setCfg({
           tipo_preco: p.tipo_preco as any,
-          preco_valor: Number(p.preco_valor),
-          modo_percentual: p.modo_percentual as any,
+          preco_valor: Number(p.preco_valor ?? 0),
+          modo_percentual: (p.modo_percentual as any) ?? "na",
           percentual_fixo: p.percentual_fixo != null ? Number(p.percentual_fixo) : null,
+          preco_arroba: p.preco_arroba != null ? Number(p.preco_arroba) : null,
+          preco_kg: p.preco_kg != null ? Number(p.preco_kg) : null,
+          preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
         });
         setCategoria(p.categoria);
         const { data: c } = await supabase
@@ -44,7 +49,7 @@ export default function PesadorPesagemResumoPage() {
       }
       const { data: ps } = await supabase
         .from("pesos_pesagem_compra")
-        .select("ordem, peso_kg, percentual_individual")
+        .select("ordem, peso_kg, percentual_individual, tipo_preco_individual")
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
       setPesos(
@@ -53,6 +58,7 @@ export default function PesadorPesagemResumoPage() {
           peso_kg: Number(x.peso_kg),
           percentual_individual:
             x.percentual_individual != null ? Number(x.percentual_individual) : null,
+          tipo_preco_individual: x.tipo_preco_individual ?? null,
         }))
       );
       setLoading(false);
@@ -72,18 +78,30 @@ export default function PesadorPesagemResumoPage() {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  const showArroba = cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto";
+
+  const cabecalhoPreco =
+    cfg.tipo_preco === "arroba"
+      ? `@ ${brl(cfg.preco_valor)}`
+      : cfg.tipo_preco === "kg"
+      ? `kg ${brl(cfg.preco_valor)}`
+      : cfg.tipo_preco === "fixo_animal"
+      ? `Fixo ${brl(cfg.preco_valor)}/animal`
+      : [
+          cfg.preco_arroba ? `@ ${brl(cfg.preco_arroba)}` : null,
+          cfg.preco_kg ? `kg ${brl(cfg.preco_kg)}` : null,
+          cfg.preco_fixo_animal ? `Fixo ${brl(cfg.preco_fixo_animal)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" • ");
+
   return (
     <div className="space-y-4 pb-24">
       <div className="rounded-lg border bg-card p-4">
         <div className="text-xs uppercase text-muted-foreground">Pesagem finalizada</div>
         <div className="text-lg font-semibold">{clienteNome}</div>
         <div className="text-xs text-muted-foreground">
-          {categoria} •{" "}
-          {cfg.tipo_preco === "arroba"
-            ? `@ ${brl(cfg.preco_valor)}`
-            : cfg.tipo_preco === "kg"
-            ? `kg ${brl(cfg.preco_valor)}`
-            : `Fixo ${brl(cfg.preco_valor)}/animal`}
+          {categoria} • {cabecalhoPreco}
         </div>
       </div>
 
@@ -100,12 +118,18 @@ export default function PesadorPesagemResumoPage() {
           <div className="text-xs text-muted-foreground">Peso total</div>
           <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
         </div>
-        {cfg.tipo_preco === "arroba" && (
+        {showArroba && (
           <div className="rounded-lg border bg-card p-3 text-center">
             <div className="text-xs text-muted-foreground">@ pagáveis</div>
             <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
           </div>
         )}
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground">Média de @ por animal</div>
+          <div className="text-xl font-bold">
+            {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
+          </div>
+        </div>
         <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
           <div className="text-xs text-muted-foreground">Total a pagar</div>
           <div className="text-2xl font-bold text-primary">{brl(tot.totalValor)}</div>
@@ -117,13 +141,8 @@ export default function PesadorPesagemResumoPage() {
         <div className="max-h-72 overflow-y-auto text-xs space-y-1">
           {animais.map((a) => (
             <div key={a.ordem} className="flex justify-between border-b border-border/40 py-1">
-              <span>#{a.ordem}</span>
-              <span>
-                {a.peso_kg} kg
-                {a.percentual_individual != null ? ` • ${a.percentual_individual}%` : ""}
-                {" • "}
-                {brl(a.valor)}
-              </span>
+              <span>{a.ordem}</span>
+              <span>{a.peso_kg.toString().replace(".", ",")} kg</span>
             </div>
           ))}
         </div>

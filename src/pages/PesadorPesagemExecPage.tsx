@@ -5,25 +5,61 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Check, Loader2, Scale, Undo2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Pesagem = {
   id: string;
   cliente_id: string;
   categoria: string;
-  tipo_preco: "arroba" | "kg" | "fixo_animal";
-  preco_valor: number;
-  modo_percentual: "fixo" | "aleatorio" | "na";
+  tipo_preco: "arroba" | "kg" | "fixo_animal" | "misto";
+  preco_valor: number | null;
+  modo_percentual: "fixo" | "aleatorio" | "na" | null;
   percentual_fixo: number | null;
+  preco_arroba: number | null;
+  preco_kg: number | null;
+  preco_fixo_animal: number | null;
   status: string;
 };
+
+type TipoInd = "arroba" | "kg" | "fixo_animal";
 
 type Peso = {
   ordem: number;
   peso_kg: number;
   percentual_individual: number | null;
+  tipo_preco_individual: TipoInd | null;
 };
 
-type SubStep = "peso" | "percentual";
+type SubStep = "peso" | "tipo_pagamento" | "percentual";
+
+function Chip({
+  active,
+  onClick,
+  children,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "px-3 py-2 rounded-full text-sm border transition-colors",
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-card text-foreground border-border hover:bg-muted",
+        disabled && "opacity-40 cursor-not-allowed"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function PesadorPesagemExecPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
@@ -38,6 +74,7 @@ export default function PesadorPesagemExecPage() {
   const [current, setCurrent] = useState("");
   const [subStep, setSubStep] = useState<SubStep>("peso");
   const [pendingPeso, setPendingPeso] = useState<number | null>(null);
+  const [pendingTipo, setPendingTipo] = useState<TipoInd | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,7 +82,9 @@ export default function PesadorPesagemExecPage() {
       if (!pesagemId) return;
       const { data: p, error } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, status")
+        .select(
+          "id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, status"
+        )
         .eq("id", pesagemId)
         .maybeSingle();
       if (error || !p) {
@@ -65,7 +104,9 @@ export default function PesadorPesagemExecPage() {
   }, [pesagemId, navigate]);
 
   useEffect(() => {
-    if (!loading) setTimeout(() => inputRef.current?.focus(), 100);
+    if (!loading && subStep !== "tipo_pagamento") {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
   }, [loading, subStep, pesos.length]);
 
   const media = useMemo(
@@ -73,6 +114,7 @@ export default function PesadorPesagemExecPage() {
     [pesos]
   );
 
+  const isMisto = pesagem?.tipo_preco === "misto";
   const modoAleatorio =
     pesagem?.tipo_preco === "arroba" && pesagem.modo_percentual === "aleatorio";
 
@@ -82,36 +124,56 @@ export default function PesadorPesagemExecPage() {
       ordem: p.ordem,
       peso_kg: p.peso_kg,
       percentual_individual: p.percentual_individual,
+      tipo_preco_individual: p.tipo_preco_individual,
     });
     if (error) {
       toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
-      // rollback local
       setPesos((prev) => prev.filter((x) => x.ordem !== p.ordem));
       return false;
     }
     return true;
   }
 
+  async function commitPeso(peso_kg: number, tipo: TipoInd | null, pct: number | null) {
+    const ordem = pesos.length + 1;
+    const novo: Peso = {
+      ordem,
+      peso_kg,
+      percentual_individual: pct,
+      tipo_preco_individual: tipo,
+    };
+    setPesos((prev) => [...prev, novo]);
+    setCurrent("");
+    setPendingPeso(null);
+    setPendingTipo(null);
+    setSubStep("peso");
+    await persistirPeso(novo);
+  }
+
   async function handleProximo() {
+    if (subStep === "tipo_pagamento") return; // avançado por chips
     const val = parseFloat(current.replace(",", "."));
     if (!Number.isFinite(val) || val <= 0) return;
 
     if (subStep === "peso") {
+      if (isMisto) {
+        setPendingPeso(val);
+        setCurrent("");
+        setSubStep("tipo_pagamento");
+        return;
+      }
       if (modoAleatorio) {
         setPendingPeso(val);
         setCurrent("");
         setSubStep("percentual");
         return;
       }
-      const ordem = pesos.length + 1;
-      const novo: Peso = { ordem, peso_kg: val, percentual_individual: null };
-      setPesos((prev) => [...prev, novo]);
-      setCurrent("");
-      await persistirPeso(novo);
+      // fluxo tradicional (kg / fixo / arroba com % fixo)
+      await commitPeso(val, null, null);
       return;
     }
 
-    // percentual (modo aleatório)
+    // percentual
     if (pendingPeso == null) {
       setSubStep("peso");
       return;
@@ -120,16 +182,45 @@ export default function PesadorPesagemExecPage() {
       toast({ title: "Percentual inválido", description: "Informe um valor entre 1 e 100.", variant: "destructive" });
       return;
     }
-    const ordem = pesos.length + 1;
-    const novo: Peso = { ordem, peso_kg: pendingPeso, percentual_individual: val };
-    setPesos((prev) => [...prev, novo]);
-    setCurrent("");
-    setPendingPeso(null);
-    setSubStep("peso");
-    await persistirPeso(novo);
+    // Se veio do fluxo misto, usa pendingTipo; senão null (arroba do lote)
+    const tipo = isMisto ? pendingTipo : null;
+    await commitPeso(pendingPeso, tipo, val);
+  }
+
+  async function handleEscolherTipo(tipo: TipoInd) {
+    if (pendingPeso == null) return;
+    // Valida se o lote misto tem esse preço configurado
+    if (pesagem) {
+      const has =
+        (tipo === "arroba" && (pesagem.preco_arroba ?? 0) > 0) ||
+        (tipo === "kg" && (pesagem.preco_kg ?? 0) > 0) ||
+        (tipo === "fixo_animal" && (pesagem.preco_fixo_animal ?? 0) > 0);
+      if (!has) {
+        toast({
+          title: "Preço não configurado",
+          description: "Esta forma de pagamento não foi cadastrada no lote.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setPendingTipo(tipo);
+    if (tipo === "arroba") {
+      setSubStep("percentual");
+    } else {
+      await commitPeso(pendingPeso, tipo, null);
+    }
   }
 
   async function handleDesfazer() {
+    // Se estamos em um sub-passo pendente, apenas volta
+    if (subStep !== "peso") {
+      setSubStep("peso");
+      setPendingPeso(null);
+      setPendingTipo(null);
+      setCurrent("");
+      return;
+    }
     const last = pesos[pesos.length - 1];
     if (!last) return;
     setPesos((prev) => prev.slice(0, -1));
@@ -170,7 +261,15 @@ export default function PesadorPesagemExecPage() {
   }
 
   const tipoLabel =
-    pesagem.tipo_preco === "arroba" ? "@" : pesagem.tipo_preco === "kg" ? "kg" : "fixo/animal";
+    pesagem.tipo_preco === "arroba"
+      ? "@"
+      : pesagem.tipo_preco === "kg"
+      ? "kg"
+      : pesagem.tipo_preco === "fixo_animal"
+      ? "fixo/animal"
+      : "misto";
+
+  const animalNum = pesos.length + 1;
 
   return (
     <div className="space-y-4 pb-28">
@@ -199,37 +298,68 @@ export default function PesadorPesagemExecPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="text-sm font-medium">
-          {subStep === "peso"
-            ? `Animal ${pesos.length + 1} — Peso (kg)`
-            : `Animal ${pesos.length + 1} — Rendimento (%)`}
+      {subStep === "tipo_pagamento" ? (
+        <div className="space-y-3">
+          <div className="text-sm font-medium">
+            Animal {animalNum} — Forma de pagamento ({pendingPeso} kg)
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Chip
+              active={false}
+              disabled={!((pesagem.preco_arroba ?? 0) > 0)}
+              onClick={() => void handleEscolherTipo("arroba")}
+            >
+              @
+            </Chip>
+            <Chip
+              active={false}
+              disabled={!((pesagem.preco_kg ?? 0) > 0)}
+              onClick={() => void handleEscolherTipo("kg")}
+            >
+              kg
+            </Chip>
+            <Chip
+              active={false}
+              disabled={!((pesagem.preco_fixo_animal ?? 0) > 0)}
+              onClick={() => void handleEscolherTipo("fixo_animal")}
+            >
+              Fixo por animal
+            </Chip>
+          </div>
         </div>
-        <Input
-          ref={inputRef}
-          type="number"
-          inputMode="decimal"
-          placeholder={subStep === "peso" ? "Peso (kg)" : "Rendimento (%)"}
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void handleProximo();
-            }
-          }}
-          className="text-xl h-14 text-center"
-          autoFocus
-        />
-        <Button
-          className="w-full h-12"
-          onClick={() => void handleProximo()}
-          disabled={!current || parseFloat(current.replace(",", ".")) <= 0}
-        >
-          <Scale className="w-4 h-4 mr-2" />
-          Próximo ➜
-        </Button>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">
+            {subStep === "peso"
+              ? `Animal ${animalNum} — Peso (kg)`
+              : `Animal ${animalNum} — Rendimento (%)`}
+          </div>
+          <Input
+            ref={inputRef}
+            type="number"
+            inputMode="decimal"
+            placeholder={subStep === "peso" ? "Peso (kg)" : "Rendimento (%)"}
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void handleProximo();
+              }
+            }}
+            className="text-xl h-14 text-center"
+            autoFocus
+          />
+          <Button
+            className="w-full h-12"
+            onClick={() => void handleProximo()}
+            disabled={!current || parseFloat(current.replace(",", ".")) <= 0}
+          >
+            <Scale className="w-4 h-4 mr-2" />
+            Próximo ➜
+          </Button>
+        </div>
+      )}
 
       {pesos.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
@@ -240,9 +370,16 @@ export default function PesadorPesagemExecPage() {
               .reverse()
               .map((p) => (
                 <div key={p.ordem} className="flex justify-between border-b border-border/40 py-1">
-                  <span>#{p.ordem}</span>
+                  <span>{p.ordem}</span>
                   <span>
                     {p.peso_kg} kg
+                    {p.tipo_preco_individual ? ` • ${
+                      p.tipo_preco_individual === "arroba"
+                        ? "@"
+                        : p.tipo_preco_individual === "kg"
+                        ? "kg"
+                        : "fixo"
+                    }` : ""}
                     {p.percentual_individual != null ? ` • ${p.percentual_individual}%` : ""}
                   </span>
                 </div>
@@ -252,7 +389,7 @@ export default function PesadorPesagemExecPage() {
       )}
 
       <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
-        <Button variant="outline" onClick={() => void handleDesfazer()} disabled={pesos.length === 0}>
+        <Button variant="outline" onClick={() => void handleDesfazer()} disabled={pesos.length === 0 && subStep === "peso"}>
           <Undo2 className="w-4 h-4 mr-1" /> Desfazer
         </Button>
         <Button
