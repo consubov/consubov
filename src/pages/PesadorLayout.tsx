@@ -1,11 +1,12 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, BarChart3, Users, Scale } from "lucide-react";
+import { LogOut, RefreshCw, BarChart3, Users, Scale, Settings } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import PesadorConfigModal from "@/components/PesadorConfigModal";
 
 export default function PesadorLayout() {
   const { signOut } = useAuth();
