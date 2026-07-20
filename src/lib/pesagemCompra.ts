@@ -104,8 +104,8 @@ export function totalizar(animais: AnimalCalc[]) {
   const totalArroba = animais.reduce((s, a) => s + (a.arroba_pagavel ?? 0), 0);
   const totalValor = animais.reduce((s, a) => s + a.valor, 0);
   const mediaPeso = totalAnimais ? totalPeso / totalAnimais : 0;
-  // Média de @ por animal = peso médio ÷ 30 (arroba viva)
-  const mediaArrobaPorAnimal = mediaPeso / 30;
+  // Média de @ por animal = @ pagáveis totais ÷ nº de animais
+  const mediaArrobaPorAnimal = totalAnimais ? totalArroba / totalAnimais : 0;
   return {
     totalAnimais,
     totalPeso: round2(totalPeso),
