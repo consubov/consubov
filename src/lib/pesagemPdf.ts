@@ -55,45 +55,55 @@ async function urlToJpeg(url: string, maxDim = 800, quality = 0.85): Promise<{ d
   } catch { return null; }
 }
 
-function drawHeader(
+// Header block only on page 1. Text and logo stay ABOVE the green stripe.
+// Returns the Y position immediately below the stripe (where content begins).
+function drawFirstPageHeader(
   doc: jsPDF,
   nomeEmpresa: string,
   pesadorNome: string | null,
   rightLogo: { dataUrl: string; w: number; h: number } | null,
-) {
+): number {
   const W = doc.internal.pageSize.getWidth();
-  const topY = 14;
-  // Left: nome_empresa + pesador nome + subtitle
+  const topY = 12;
+  const HEADER_H = 26; // block height reserved for text/logo
+  const stripeY = topY + HEADER_H;
+
+  // Left text block
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(nomeEmpresa || "PESADOR", 15, topY + 6);
-  let subY = topY + 12;
+  doc.setFontSize(16);
+  doc.text(nomeEmpresa || "PESADOR", 15, topY + 7);
+
+  let y = topY + 13;
   if (pesadorNome) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(INK);
-    doc.text(pesadorNome, 15, subY);
-    subY += 5;
+    doc.text(pesadorNome, 15, y);
+    y += 5;
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(INK_SOFT);
-  doc.text("RELATÓRIO DE PESAGEM", 15, subY);
+  doc.text("RELATÓRIO DE PESAGEM", 15, y);
 
-  // Right: pesador logo (proportional)
+  // Right logo — vertically centered inside HEADER_H
   if (rightLogo) {
-    const boxH = 16;
+    const maxH = HEADER_H - 4;
+    const maxW = 45;
     const ratio = rightLogo.w / rightLogo.h;
-    const h = boxH;
-    const wDraw = Math.min(45, h * ratio);
-    try { doc.addImage(rightLogo.dataUrl, "JPEG", W - 15 - wDraw, topY, wDraw, h); } catch { /* ignore */ }
+    let h = maxH;
+    let w = h * ratio;
+    if (w > maxW) { w = maxW; h = w / ratio; }
+    const yLogo = topY + (HEADER_H - h) / 2;
+    try { doc.addImage(rightLogo.dataUrl, "JPEG", W - 15 - w, yLogo, w, h); } catch { /* ignore */ }
   }
 
-  // Green stripe
-  const stripeY = topY + 16;
+  // Green stripe below the whole header block
   doc.setFillColor(GREEN_STRIPE);
   doc.rect(0, stripeY, W, 2.5, "F");
+
+  return stripeY + 6;
 }
 
 function drawFooter(doc: jsPDF) {
@@ -114,7 +124,6 @@ function renderChartToDataUrl(pesos: number[]): string | null {
   try {
     const n = pesos.length;
     if (n === 0) return null;
-    // High-res canvas
     const W = 1400, H = 600;
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
@@ -129,17 +138,14 @@ function renderChartToDataUrl(pesos: number[]): string | null {
 
     const max = Math.max(...pesos);
     const min = Math.min(...pesos);
-    // Y scale: nice bounds
     const yMax = Math.ceil(max / 50) * 50;
     const yMin = Math.max(0, Math.floor(min / 50) * 50 - 50);
     const yRange = yMax - yMin || 1;
 
-    // Axes
     ctx.strokeStyle = "#CCCCCC";
     ctx.lineWidth = 1;
     ctx.font = "16px Helvetica";
     ctx.fillStyle = "#666666";
-    // Y grid + labels
     const ySteps = 5;
     for (let i = 0; i <= ySteps; i++) {
       const y = padT + (chartH * i) / ySteps;
@@ -151,10 +157,9 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       ctx.fillText(`${Math.round(val)}`, padL - 8, y + 5);
     }
 
-    // Bars
     const barSlot = chartW / n;
     const barW = Math.max(1, barSlot * 0.7);
-    const showLabels = barSlot >= 22; // ~22px per slot before labels get illegible
+    const showLabels = barSlot >= 22;
 
     ctx.fillStyle = GREEN_STRIPE;
     for (let i = 0; i < n; i++) {
@@ -165,7 +170,6 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       ctx.fillRect(x, y, barW, h);
     }
 
-    // Line overlay (orange)
     ctx.strokeStyle = "#E8863A";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -177,7 +181,6 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
-    // Line points
     ctx.fillStyle = "#E8863A";
     for (let i = 0; i < n; i++) {
       const v = pesos[i];
@@ -187,7 +190,6 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Labels above bars (only if fits)
     if (showLabels) {
       ctx.fillStyle = "#333333";
       ctx.font = "14px Helvetica";
@@ -201,7 +203,6 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       }
     }
 
-    // X axis ticks (indices)
     ctx.fillStyle = "#666666";
     ctx.font = "14px Helvetica";
     ctx.textAlign = "center";
@@ -210,13 +211,11 @@ function renderChartToDataUrl(pesos: number[]): string | null {
       const x = padL + i * barSlot + barSlot / 2;
       ctx.fillText(`${i + 1}`, x, padT + chartH + 20);
     }
-    // Always draw last index
     if ((n - 1) % tickStep !== 0) {
       const x = padL + (n - 1) * barSlot + barSlot / 2;
       ctx.fillText(`${n}`, x, padT + chartH + 20);
     }
 
-    // Baseline
     ctx.strokeStyle = "#999999";
     ctx.beginPath();
     ctx.moveTo(padL, padT + chartH);
@@ -238,10 +237,10 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   const nomeEmpresa = data.pesadorNomeEmpresa || "PESADOR";
   const pesadorNome = data.pesadorNome ?? null;
 
-  drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
+  // ===== PAGE 1: header + info + weights grid + chart =====
+  let y = drawFirstPageHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
 
   // Info block
-  let y = 42;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
@@ -282,68 +281,97 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(INK);
     doc.text(String(value), 15 + labelW + 2, y);
-    y += 6;
+    y += 5.5;
   }
 
   // Divider
-  y += 2;
+  y += 1;
   doc.setDrawColor(LINE); doc.setLineWidth(0.4);
   doc.line(15, y, W - 15, y);
-  y += 8;
+  y += 6;
 
-  // Pesos registrados
+  // ===== Weights registered — dynamic layout to fit on page 1 =====
+  const n = data.animais.length;
+  const FOOTER_RESERVE = 12;
+  const CHART_TITLE_H = 6;
+  const CHART_H_MIN = 45;
+  const CHART_H_MAX = 70;
+  const LIST_TITLE_H = 6;
+
+  // Available height on page 1 below the info block
+  const availableForListAndChart = H - FOOTER_RESERVE - y;
+
+  // Try progressively denser grids until content fits
+  const attempts: Array<{ cols: number; rowH: number; fontSize: number }> = [
+    { cols: 3, rowH: 5.5, fontSize: 9 },
+    { cols: 3, rowH: 5.0, fontSize: 8.5 },
+    { cols: 4, rowH: 4.8, fontSize: 8 },
+    { cols: 5, rowH: 4.5, fontSize: 7.5 },
+    { cols: 6, rowH: 4.2, fontSize: 7 },
+    { cols: 7, rowH: 4.0, fontSize: 6.8 },
+    { cols: 8, rowH: 3.8, fontSize: 6.5 },
+  ];
+
+  let chosen = attempts[attempts.length - 1];
+  let chartH = CHART_H_MIN;
+  for (const a of attempts) {
+    const rows = Math.ceil(n / a.cols);
+    const listH = LIST_TITLE_H + rows * a.rowH;
+    const remainingForChart = availableForListAndChart - listH - CHART_TITLE_H - 2;
+    if (remainingForChart >= CHART_H_MIN) {
+      chosen = a;
+      chartH = Math.min(CHART_H_MAX, remainingForChart);
+      break;
+    }
+  }
+
+  // Draw list title
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(INK);
   doc.text("Pesos registrados (peso vivo):", 15, y);
-  y += 6;
+  y += LIST_TITLE_H;
 
-  const cols = 3;
+  // Draw grid — sequential numbering (idx+1), row-major
+  const { cols, rowH, fontSize } = chosen;
   const colW = (W - 30) / cols;
-  const rowH = 5.5;
-  const lines = data.animais.map((a) => `${a.ordem}. ${fmtNum(a.peso_kg, 0)} kg`);
-  const rowsCount = Math.ceil(lines.length / cols);
-  const listMaxY = H - 22;
+  const rowsCount = Math.ceil(n / cols);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(fontSize);
   for (let r = 0; r < rowsCount; r++) {
-    if (y + rowH > listMaxY) {
-      doc.addPage();
-      drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
-      y = 42;
-    }
     for (let c = 0; c < cols; c++) {
       const idx = r * cols + c;
-      if (idx >= lines.length) break;
-      doc.text(lines[idx], 15 + c * colW, y);
+      if (idx >= n) break;
+      const a = data.animais[idx];
+      const label = `${idx + 1}. ${fmtNum(a.peso_kg, 0)} kg`;
+      doc.text(label, 15 + c * colW, y);
     }
     y += rowH;
   }
 
-  // ===== Chart page =====
+  // ===== Chart on same page 1 =====
   const pesosArr = data.animais.map((a) => a.peso_kg);
   const chartDataUrl = renderChartToDataUrl(pesosArr);
   if (chartDataUrl) {
-    doc.addPage();
-    drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
+    y += 2;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
+    doc.setFontSize(11);
     doc.setTextColor(INK);
-    doc.text(`Gráfico de Pesos (1 a ${pesosArr.length})`, 15, 42);
+    doc.text(`Gráfico de Pesos (1 a ${pesosArr.length})`, 15, y);
+    y += 2;
     const imgW = W - 30;
-    const imgH = imgW * (600 / 1400);
-    try { doc.addImage(chartDataUrl, "JPEG", 15, 48, imgW, imgH); } catch { /* ignore */ }
+    const imgH = Math.min(chartH, imgW * (600 / 1400));
+    try { doc.addImage(chartDataUrl, "JPEG", 15, y, imgW, imgH); } catch { /* ignore */ }
   }
 
-  // ===== Totais em nova página =====
+  // ===== Totais em nova página (sem cabeçalho) =====
   const tot = totalizar(data.animais);
   doc.addPage();
-  drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("Totais do Lote", 15, 44);
+  doc.text("Totais do Lote", 15, 20);
 
   const tipo = cfg.tipo_preco;
   const body: [string, string][] = [];
@@ -353,8 +381,8 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
 
   if (tipo === "arroba") {
     body.push(["Rendimento de carcaça", rendimentoLabel]);
-    body.push(["@ pagáveis totais", fmtNum(tot.totalArroba, 3)]);
-    body.push(["Média de @ por animal", fmtNum(tot.mediaArrobaPorAnimal, 3)]);
+    body.push(["@ pagáveis totais", fmtNum(tot.totalArroba, 2)]);
+    body.push(["Média de @ por animal", fmtNum(tot.mediaArrobaPorAnimal, 2)]);
   } else if (tipo === "misto") {
     const nA = data.animais.filter((a) => a.tipo_preco_individual === "arroba").length;
     const nK = data.animais.filter((a) => a.tipo_preco_individual === "kg").length;
@@ -362,13 +390,13 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     body.push(["Animais por @", String(nA)]);
     body.push(["Animais por kg", String(nK)]);
     body.push(["Animais preço fixo", String(nF)]);
-    if (nA > 0) body.push(["@ pagáveis totais", fmtNum(tot.totalArroba, 3)]);
+    if (nA > 0) body.push(["@ pagáveis totais", fmtNum(tot.totalArroba, 2)]);
   } else if (tipo === "fixo_animal") {
     body.push(["Preço fixo por animal", fmtBRL(cfg.preco_valor)]);
   }
 
   autoTable(doc, {
-    startY: 52,
+    startY: 28,
     body,
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 3, textColor: INK, lineColor: LINE },
@@ -379,7 +407,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     margin: { left: 15, right: 15 },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY ?? 100;
+  const finalY = (doc as any).lastAutoTable?.finalY ?? 80;
 
   doc.setFillColor(20, 67, 43);
   doc.roundedRect(15, finalY + 8, W - 30, 22, 3, 3, "F");
