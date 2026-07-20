@@ -1,16 +1,18 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, BarChart3, Users, Scale } from "lucide-react";
+import { LogOut, RefreshCw, BarChart3, Users, Scale, Settings } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import PesadorConfigModal from "@/components/PesadorConfigModal";
 
 export default function PesadorLayout() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -33,6 +35,9 @@ export default function PesadorLayout() {
             </div>
           </button>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </Button>
@@ -42,6 +47,7 @@ export default function PesadorLayout() {
           </div>
         </div>
       </header>
+      <PesadorConfigModal open={configOpen} onOpenChange={setConfigOpen} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-3 pb-20">
         <Outlet />
