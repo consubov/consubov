@@ -23,6 +23,7 @@ export interface PesagemPdfData {
   animais: AnimalCalc[];
   pesadorLogoUrl?: string | null;
   pesadorNomeEmpresa?: string | null;
+  pesadorNome?: string | null;
 }
 
 function fmtBRL(v: number) {
