@@ -7,6 +7,7 @@ import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import PesadorConfigModal from "@/components/PesadorConfigModal";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 export default function PesadorLayout() {
   const { signOut } = useAuth();
@@ -48,6 +49,7 @@ export default function PesadorLayout() {
         </div>
       </header>
       <PesadorConfigModal open={configOpen} onOpenChange={setConfigOpen} />
+      <UpdateBanner />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-3 pb-20">
         <Outlet />
