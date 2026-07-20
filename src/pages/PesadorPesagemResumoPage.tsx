@@ -2,13 +2,27 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import {
   calcularAnimais,
   totalizar,
   type PesagemCompraCfg,
   type PesoAnimal,
 } from "@/lib/pesagemCompra";
+import { gerarPesagemPdf } from "@/lib/pesagemPdf";
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  boi_gordo: "Boi Gordo",
+  vaca_gorda: "Vaca Gorda",
+  vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro",
+  garrote: "Garrote",
+  novilha: "Novilha",
+  bezerro: "Bezerro",
+  bezerra: "Bezerra",
+  aleatoria: "Aleatória",
+};
 
 export default function PesadorPesagemResumoPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
@@ -16,8 +30,13 @@ export default function PesadorPesagemResumoPage() {
   const [loading, setLoading] = useState(true);
   const [cfg, setCfg] = useState<PesagemCompraCfg | null>(null);
   const [clienteNome, setClienteNome] = useState("");
+  const [clienteFazenda, setClienteFazenda] = useState("");
+  const [clienteCidade, setClienteCidade] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [finalizadaAt, setFinalizadaAt] = useState<string | null>(null);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -25,7 +44,7 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url"
         )
         .eq("id", pesagemId)
         .maybeSingle();
@@ -40,12 +59,16 @@ export default function PesadorPesagemResumoPage() {
           preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
         });
         setCategoria(p.categoria);
+        setFinalizadaAt(p.finalizada_at);
+        setPdfUrl((p as any).pdf_url ?? null);
         const { data: c } = await supabase
           .from("clientes_pesador")
-          .select("nome")
+          .select("nome, nome_fazenda, cidade")
           .eq("id", p.cliente_id)
           .maybeSingle();
         setClienteNome((c?.nome as string) ?? "");
+        setClienteFazenda((c?.nome_fazenda as string) ?? "");
+        setClienteCidade((c?.cidade as string) ?? "");
       }
       const { data: ps } = await supabase
         .from("pesos_pesagem_compra")
@@ -95,13 +118,79 @@ export default function PesadorPesagemResumoPage() {
           .filter(Boolean)
           .join(" • ");
 
+  const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
+
+  async function handleGerarPdf() {
+    if (!pesagemId || !cfg) return;
+    setGenerating(true);
+    try {
+      // Fetch pesador logo
+      const { data: authUser } = await supabase.auth.getUser();
+      let pesadorLogoUrl: string | null = null;
+      if (authUser.user) {
+        const { data: pes } = await supabase
+          .from("pesadores")
+          .select("logo_url")
+          .eq("user_id", authUser.user.id)
+          .maybeSingle();
+        pesadorLogoUrl = pes?.logo_url ?? null;
+      }
+
+      const blob = await gerarPesagemPdf({
+        header: {
+          produtor: clienteNome,
+          fazenda: clienteFazenda,
+          cidade: clienteCidade,
+          data: finalizadaAt ?? new Date().toISOString(),
+          categoriaLabel,
+          formaPagamento: cabecalhoPreco,
+        },
+        cfg,
+        animais,
+        pesadorLogoUrl,
+      });
+
+      const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from("relatorios")
+        .upload(path, blob, { contentType: "application/pdf", upsert: true });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
+      const url = pub.publicUrl;
+      await supabase.from("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
+      setPdfUrl(url);
+      toast({ title: "PDF gerado com sucesso" });
+    } catch (e: any) {
+      toast({ title: "Erro ao gerar PDF", description: e.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!pdfUrl) return;
+    const shareData = {
+      title: "Relatório de Pesagem",
+      text: `Pesagem — ${clienteNome}`,
+      url: pdfUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(pdfUrl);
+        toast({ title: "Link copiado" });
+      }
+    } catch { /* ignore */ }
+  }
+
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-40">
       <div className="rounded-lg border bg-card p-4">
         <div className="text-xs uppercase text-muted-foreground">Pesagem finalizada</div>
         <div className="text-lg font-semibold">{clienteNome}</div>
         <div className="text-xs text-muted-foreground">
-          {categoria} • {cabecalhoPreco}
+          {categoriaLabel} • {cabecalhoPreco}
         </div>
       </div>
 
@@ -148,10 +237,34 @@ export default function PesadorPesagemResumoPage() {
         </div>
       </div>
 
-      <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t">
-        <Button className="w-full h-12" onClick={() => navigate("/pesador/clientes")}>
-          Concluir <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+      <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t space-y-2">
+        {pdfUrl ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" className="h-11" asChild>
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
+              </a>
+            </Button>
+            <Button variant="outline" className="h-11" onClick={handleShare}>
+              <Share2 className="w-4 h-4 mr-2" /> Compartilhar
+            </Button>
+            <Button className="w-full h-11 col-span-2" onClick={() => navigate("/pesador/clientes")}>
+              Concluir <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            className="w-full h-12"
+            onClick={handleGerarPdf}
+            disabled={generating}
+          >
+            {generating ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PDF...</>
+            ) : (
+              <>Concluir e gerar PDF <ArrowRight className="w-4 h-4 ml-2" /></>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
