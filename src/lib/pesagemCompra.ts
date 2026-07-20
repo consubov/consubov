@@ -27,7 +27,7 @@ export interface AnimalCalc extends PesoAnimal {
 }
 
 /**
- * ARROBA VIVA: sempre peso_pagavel ÷ 30. NUNCA ÷ 15.
+ * ARROBA DE CARCAÇA: peso_carcaca (peso_vivo × rendimento%) ÷ 15.
  */
 export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): AnimalCalc[] {
   return pesos.map((p) => {
