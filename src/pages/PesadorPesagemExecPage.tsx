@@ -147,6 +147,8 @@ export default function PesadorPesagemExecPage() {
     setPendingPeso(null);
     setPendingTipo(null);
     setSubStep("peso");
+    // Mantém o teclado aberto: reforça o foco no mesmo gesto do usuário
+    inputRef.current?.focus();
     await persistirPeso(novo);
   }
 
@@ -166,6 +168,8 @@ export default function PesadorPesagemExecPage() {
         setPendingPeso(val);
         setCurrent("");
         setSubStep("percentual");
+        // Mantém teclado aberto ao trocar peso → percentual
+        inputRef.current?.focus();
         return;
       }
       // fluxo tradicional (kg / fixo / arroba com % fixo)
@@ -352,6 +356,8 @@ export default function PesadorPesagemExecPage() {
           />
           <Button
             className="w-full h-12"
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => e.preventDefault()}
             onClick={() => void handleProximo()}
             disabled={!current || parseFloat(current.replace(",", ".")) <= 0}
           >
