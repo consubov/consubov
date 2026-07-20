@@ -2492,14 +2492,14 @@ export type Database = {
           created_at: string | null
           finalizada_at: string | null
           id: string
-          modo_percentual: string
+          modo_percentual: string | null
           pdf_url: string | null
           percentual_fixo: number | null
           pesador_id: string
           preco_arroba: number | null
           preco_fixo_animal: number | null
           preco_kg: number | null
-          preco_valor: number
+          preco_valor: number | null
           status: string
           tipo_preco: string
         }
@@ -2509,14 +2509,14 @@ export type Database = {
           created_at?: string | null
           finalizada_at?: string | null
           id?: string
-          modo_percentual: string
+          modo_percentual?: string | null
           pdf_url?: string | null
           percentual_fixo?: number | null
           pesador_id: string
           preco_arroba?: number | null
           preco_fixo_animal?: number | null
           preco_kg?: number | null
-          preco_valor: number
+          preco_valor?: number | null
           status?: string
           tipo_preco: string
         }
@@ -2526,14 +2526,14 @@ export type Database = {
           created_at?: string | null
           finalizada_at?: string | null
           id?: string
-          modo_percentual?: string
+          modo_percentual?: string | null
           pdf_url?: string | null
           percentual_fixo?: number | null
           pesador_id?: string
           preco_arroba?: number | null
           preco_fixo_animal?: number | null
           preco_kg?: number | null
-          preco_valor?: number
+          preco_valor?: number | null
           status?: string
           tipo_preco?: string
         }

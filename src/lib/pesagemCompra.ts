@@ -1,4 +1,5 @@
-export type TipoPreco = "arroba" | "kg" | "fixo_animal";
+export type TipoPreco = "arroba" | "kg" | "fixo_animal" | "misto";
+export type TipoPrecoIndividual = "arroba" | "kg" | "fixo_animal";
 export type ModoPercentual = "fixo" | "aleatorio" | "na";
 
 export interface PesagemCompraCfg {
@@ -6,12 +7,17 @@ export interface PesagemCompraCfg {
   preco_valor: number;
   modo_percentual: ModoPercentual;
   percentual_fixo: number | null;
+  // Preços independentes para lotes "misto" (categoria "aleatoria")
+  preco_arroba?: number | null;
+  preco_kg?: number | null;
+  preco_fixo_animal?: number | null;
 }
 
 export interface PesoAnimal {
   ordem: number;
   peso_kg: number;
   percentual_individual: number | null;
+  tipo_preco_individual?: TipoPrecoIndividual | null;
 }
 
 export interface AnimalCalc extends PesoAnimal {
@@ -21,13 +27,44 @@ export interface AnimalCalc extends PesoAnimal {
 }
 
 /**
- * Calcula o valor a pagar por animal segundo as regras definidas:
- * - arroba: peso_pagavel = peso*(pct/100); @ = peso_pagavel/30; valor = @ * preco
- * - kg:     valor = peso * preco (pct não é usado)
- * - fixo:   valor = preco (peso_kg é só registro)
+ * ARROBA VIVA: sempre peso_pagavel ÷ 30. NUNCA ÷ 15.
  */
 export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): AnimalCalc[] {
   return pesos.map((p) => {
+    // Lote misto: usa tipo_preco_individual do próprio animal + preços do lote
+    if (cfg.tipo_preco === "misto") {
+      const tipoInd = p.tipo_preco_individual ?? "kg";
+      if (tipoInd === "kg") {
+        const preco = cfg.preco_kg ?? 0;
+        return {
+          ...p,
+          peso_pagavel: p.peso_kg,
+          arroba_pagavel: null,
+          valor: round2(p.peso_kg * preco),
+        };
+      }
+      if (tipoInd === "fixo_animal") {
+        const preco = cfg.preco_fixo_animal ?? 0;
+        return {
+          ...p,
+          peso_pagavel: null,
+          arroba_pagavel: null,
+          valor: round2(preco),
+        };
+      }
+      // arroba
+      const pct = p.percentual_individual ?? 0;
+      const pesoPagavel = (p.peso_kg * pct) / 100;
+      const arroba = pesoPagavel / 30;
+      const preco = cfg.preco_arroba ?? 0;
+      return {
+        ...p,
+        peso_pagavel: round2(pesoPagavel),
+        arroba_pagavel: round3(arroba),
+        valor: round2(arroba * preco),
+      };
+    }
+
     if (cfg.tipo_preco === "kg") {
       return {
         ...p,
@@ -44,7 +81,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
         valor: round2(cfg.preco_valor),
       };
     }
-    // arroba
+    // arroba (categoria não-aleatória)
     const pct =
       cfg.modo_percentual === "fixo"
         ? cfg.percentual_fixo ?? 0
@@ -66,13 +103,17 @@ export function totalizar(animais: AnimalCalc[]) {
   const totalPagavel = animais.reduce((s, a) => s + (a.peso_pagavel ?? 0), 0);
   const totalArroba = animais.reduce((s, a) => s + (a.arroba_pagavel ?? 0), 0);
   const totalValor = animais.reduce((s, a) => s + a.valor, 0);
+  const mediaPeso = totalAnimais ? totalPeso / totalAnimais : 0;
+  // Média de @ por animal = peso médio ÷ 30 (arroba viva)
+  const mediaArrobaPorAnimal = mediaPeso / 30;
   return {
     totalAnimais,
     totalPeso: round2(totalPeso),
     totalPagavel: round2(totalPagavel),
     totalArroba: round3(totalArroba),
     totalValor: round2(totalValor),
-    mediaPeso: totalAnimais ? round2(totalPeso / totalAnimais) : 0,
+    mediaPeso: round2(mediaPeso),
+    mediaArrobaPorAnimal: round3(mediaArrobaPorAnimal),
   };
 }
 
