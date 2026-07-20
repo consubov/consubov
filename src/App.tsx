@@ -53,6 +53,10 @@ import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import ConsultorPainelPage from "./pages/ConsultorPainelPage";
 import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
 import FormulasSistemaPage from "./pages/FormulasSistemaPage";
+import PesadorLayout from "./pages/PesadorLayout";
+import PesadorDashboard from "./pages/PesadorDashboard";
+import PesadorClientesPage from "./pages/PesadorClientesPage";
+import PesadorPesagemPage from "./pages/PesadorPesagemPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -167,6 +171,8 @@ function RoleRedirect() {
       return <Navigate to="/fabrica" replace />;
     case "consultor":
       return <Navigate to="/consultor" replace />;
+    case "pesador":
+      return <Navigate to="/pesador" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
@@ -261,6 +267,13 @@ const App = () => (
                 <Route path="painel" element={<ConsultorPainelPage />} />
                 <Route path="despesas" element={<ConsultorDespesasPage />} />
               </Route>
+
+              <Route path="/pesador" element={<ProtectedRoute allowedRoles={["pesador"]}><PesadorLayout /></ProtectedRoute>}>
+                <Route index element={<PesadorDashboard />} />
+                <Route path="clientes" element={<PesadorClientesPage />} />
+                <Route path="pesagem" element={<PesadorPesagemPage />} />
+              </Route>
+
 
 
               <Route path="*" element={<NotFound />} />
