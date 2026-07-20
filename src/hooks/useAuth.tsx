@@ -8,7 +8,7 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | null;
 
 interface RoleData {
   role: UserRole;
@@ -141,6 +141,20 @@ async function detectRole(userId: string): Promise<RoleData> {
   if (consultor) {
     return { role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id };
   }
+
+  // 0c. Check pesador
+  const { data: pesador, error: pesadorError } = await supabase
+    .from("pesadores")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (pesadorError) throw pesadorError;
+
+  if (pesador) {
+    return { role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null };
+  }
+
 
   // 0b. Check operador_fabrica
   const { data: operador, error: operadorError } = await supabase
