@@ -49,6 +49,7 @@ export default function PesadorLayout() {
         </div>
       </header>
       <PesadorConfigModal open={configOpen} onOpenChange={setConfigOpen} />
+      <UpdateBanner />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-3 pb-20">
         <Outlet />
