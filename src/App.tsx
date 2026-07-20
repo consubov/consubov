@@ -44,6 +44,7 @@ import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import ConsultoresPage from "./pages/ConsultoresPage";
+import PesadoresPage from "./pages/PesadoresPage";
 import ConsultorLayout from "./pages/ConsultorLayout";
 import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
 import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
@@ -249,6 +250,7 @@ const App = () => (
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
                 <Route path="consultores" element={<ConsultoresPage />} />
+                <Route path="pesadores" element={<PesadoresPage />} />
                 <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
               </Route>
 
