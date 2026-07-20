@@ -44,6 +44,7 @@ import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import ConsultoresPage from "./pages/ConsultoresPage";
+import PesadoresPage from "./pages/PesadoresPage";
 import ConsultorLayout from "./pages/ConsultorLayout";
 import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
 import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";

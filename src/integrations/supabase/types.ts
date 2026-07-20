@@ -2397,27 +2397,36 @@ export type Database = {
       }
       pesadores: {
         Row: {
+          ativo: boolean
           created_at: string | null
           email: string | null
           id: string
           logo_url: string | null
           nome: string
+          nome_empresa: string | null
+          telefone: string | null
           user_id: string
         }
         Insert: {
+          ativo?: boolean
           created_at?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           nome: string
+          nome_empresa?: string | null
+          telefone?: string | null
           user_id: string
         }
         Update: {
+          ativo?: boolean
           created_at?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
           nome?: string
+          nome_empresa?: string | null
+          telefone?: string | null
           user_id?: string
         }
         Relationships: []
