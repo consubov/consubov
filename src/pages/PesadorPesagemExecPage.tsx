@@ -147,6 +147,8 @@ export default function PesadorPesagemExecPage() {
     setPendingPeso(null);
     setPendingTipo(null);
     setSubStep("peso");
+    // Mantém o teclado aberto: reforça o foco no mesmo gesto do usuário
+    inputRef.current?.focus();
     await persistirPeso(novo);
   }
 
