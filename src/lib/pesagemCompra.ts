@@ -55,7 +55,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
       // arroba
       const pct = p.percentual_individual ?? 0;
       const pesoPagavel = (p.peso_kg * pct) / 100;
-      const arroba = pesoPagavel / 30;
+      const arroba = pesoPagavel / 15;
       const preco = cfg.preco_arroba ?? 0;
       return {
         ...p,
