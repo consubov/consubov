@@ -35,6 +35,9 @@ export default function PesadorLayout() {
             </div>
           </button>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </Button>
@@ -44,6 +47,7 @@ export default function PesadorLayout() {
           </div>
         </div>
       </header>
+      <PesadorConfigModal open={configOpen} onOpenChange={setConfigOpen} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-3 pb-20">
         <Outlet />
