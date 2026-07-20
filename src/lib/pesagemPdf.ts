@@ -236,6 +236,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
 
   const rightLogo = data.pesadorLogoUrl ? await urlToJpeg(data.pesadorLogoUrl) : null;
   const nomeEmpresa = data.pesadorNomeEmpresa || "PESADOR";
+  const pesadorNome = data.pesadorNome ?? null;
 
   drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
 
