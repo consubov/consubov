@@ -176,8 +176,8 @@ export default function PesadorPesagemNovoPage() {
         <Label>Categoria</Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((c) => (
-            <Chip key={c} active={categoria === c} onClick={() => setCategoria(c)}>
-              {c}
+            <Chip key={c.value} active={categoria === c.value} onClick={() => setCategoria(c.value)}>
+              {c.label}
             </Chip>
           ))}
         </div>
