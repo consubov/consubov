@@ -8,7 +8,7 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | null;
 
 interface RoleData {
   role: UserRole;
