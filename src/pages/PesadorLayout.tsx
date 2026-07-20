@@ -7,6 +7,7 @@ import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import PesadorConfigModal from "@/components/PesadorConfigModal";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 export default function PesadorLayout() {
   const { signOut } = useAuth();
