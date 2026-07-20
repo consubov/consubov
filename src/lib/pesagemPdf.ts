@@ -23,6 +23,7 @@ export interface PesagemPdfData {
   animais: AnimalCalc[];
   pesadorLogoUrl?: string | null;
   pesadorNomeEmpresa?: string | null;
+  pesadorNome?: string | null;
 }
 
 function fmtBRL(v: number) {
@@ -57,19 +58,28 @@ async function urlToJpeg(url: string, maxDim = 800, quality = 0.85): Promise<{ d
 function drawHeader(
   doc: jsPDF,
   nomeEmpresa: string,
+  pesadorNome: string | null,
   rightLogo: { dataUrl: string; w: number; h: number } | null,
 ) {
   const W = doc.internal.pageSize.getWidth();
   const topY = 14;
-  // Left: nome_empresa + subtitle
+  // Left: nome_empresa + pesador nome + subtitle
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text(nomeEmpresa || "PESADOR", 15, topY + 6);
+  let subY = topY + 12;
+  if (pesadorNome) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(INK);
+    doc.text(pesadorNome, 15, subY);
+    subY += 5;
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(INK_SOFT);
-  doc.text("RELATÓRIO DE PESAGEM", 15, topY + 12);
+  doc.text("RELATÓRIO DE PESAGEM", 15, subY);
 
   // Right: pesador logo (proportional)
   if (rightLogo) {
@@ -226,8 +236,9 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
 
   const rightLogo = data.pesadorLogoUrl ? await urlToJpeg(data.pesadorLogoUrl) : null;
   const nomeEmpresa = data.pesadorNomeEmpresa || "PESADOR";
+  const pesadorNome = data.pesadorNome ?? null;
 
-  drawHeader(doc, nomeEmpresa, rightLogo);
+  drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
 
   // Info block
   let y = 42;
@@ -298,7 +309,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   for (let r = 0; r < rowsCount; r++) {
     if (y + rowH > listMaxY) {
       doc.addPage();
-      drawHeader(doc, nomeEmpresa, rightLogo);
+      drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
       y = 42;
     }
     for (let c = 0; c < cols; c++) {
@@ -314,7 +325,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   const chartDataUrl = renderChartToDataUrl(pesosArr);
   if (chartDataUrl) {
     doc.addPage();
-    drawHeader(doc, nomeEmpresa, rightLogo);
+    drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(INK);
@@ -327,7 +338,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   // ===== Totais em nova página =====
   const tot = totalizar(data.animais);
   doc.addPage();
-  drawHeader(doc, nomeEmpresa, rightLogo);
+  drawHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
