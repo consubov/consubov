@@ -250,6 +250,7 @@ const App = () => (
                 <Route path="materias-primas" element={<MateriasPrimasPage />} />
                 <Route path="entrada-materias-primas" element={<EntradaMateriasPrimasPage />} />
                 <Route path="consultores" element={<ConsultoresPage />} />
+                <Route path="pesadores" element={<PesadoresPage />} />
                 <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
               </Route>
 
