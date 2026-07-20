@@ -57,6 +57,9 @@ import PesadorLayout from "./pages/PesadorLayout";
 import PesadorDashboard from "./pages/PesadorDashboard";
 import PesadorClientesPage from "./pages/PesadorClientesPage";
 import PesadorPesagemPage from "./pages/PesadorPesagemPage";
+import PesadorPesagemNovoPage from "./pages/PesadorPesagemNovoPage";
+import PesadorPesagemExecPage from "./pages/PesadorPesagemExecPage";
+import PesadorPesagemResumoPage from "./pages/PesadorPesagemResumoPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -272,7 +275,14 @@ const App = () => (
                 <Route index element={<PesadorDashboard />} />
                 <Route path="clientes" element={<PesadorClientesPage />} />
                 <Route path="pesagem" element={<PesadorPesagemPage />} />
+                <Route path="pesagem/novo" element={<PesadorPesagemNovoPage />} />
+                <Route path="pesagem/:pesagemId" element={<PesadorPesagemExecPage />} />
+                <Route path="pesagem/:pesagemId/resumo" element={<PesadorPesagemResumoPage />} />
               </Route>
+
+
+
+
 
 
 

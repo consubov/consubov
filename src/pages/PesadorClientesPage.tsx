@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const clienteSchema = z.object({
 export default function PesadorClientesPage() {
   const { roleData } = useAuth();
   const pesadorId = roleData.roleId;
+  const navigate = useNavigate();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,12 +200,7 @@ export default function PesadorClientesPage() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() =>
-                    toast({
-                      title: "Em breve",
-                      description: "O fluxo de pesagem será liberado na próxima fase.",
-                    })
-                  }
+                  onClick={() => navigate(`/pesador/pesagem/novo?cliente_id=${c.id}`)}
                   className="gap-1"
                 >
                   <Scale className="w-4 h-4" />
