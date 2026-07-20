@@ -27,7 +27,7 @@ export interface AnimalCalc extends PesoAnimal {
 }
 
 /**
- * ARROBA VIVA: sempre peso_pagavel ÷ 30. NUNCA ÷ 15.
+ * ARROBA DE CARCAÇA: peso_carcaca (peso_vivo × rendimento%) ÷ 15.
  */
 export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): AnimalCalc[] {
   return pesos.map((p) => {
@@ -55,7 +55,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
       // arroba
       const pct = p.percentual_individual ?? 0;
       const pesoPagavel = (p.peso_kg * pct) / 100;
-      const arroba = pesoPagavel / 30;
+      const arroba = pesoPagavel / 15;
       const preco = cfg.preco_arroba ?? 0;
       return {
         ...p,
@@ -87,7 +87,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
         ? cfg.percentual_fixo ?? 0
         : p.percentual_individual ?? 0;
     const pesoPagavel = (p.peso_kg * pct) / 100;
-    const arroba = pesoPagavel / 30;
+    const arroba = pesoPagavel / 15;
     return {
       ...p,
       peso_pagavel: round2(pesoPagavel),
@@ -104,8 +104,8 @@ export function totalizar(animais: AnimalCalc[]) {
   const totalArroba = animais.reduce((s, a) => s + (a.arroba_pagavel ?? 0), 0);
   const totalValor = animais.reduce((s, a) => s + a.valor, 0);
   const mediaPeso = totalAnimais ? totalPeso / totalAnimais : 0;
-  // Média de @ por animal = peso médio ÷ 30 (arroba viva)
-  const mediaArrobaPorAnimal = mediaPeso / 30;
+  // Média de @ por animal = @ pagáveis totais ÷ nº de animais
+  const mediaArrobaPorAnimal = totalAnimais ? totalArroba / totalAnimais : 0;
   return {
     totalAnimais,
     totalPeso: round2(totalPeso),
