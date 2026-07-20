@@ -127,13 +127,15 @@ export default function PesadorPesagemResumoPage() {
       // Fetch pesador logo
       const { data: authUser } = await supabase.auth.getUser();
       let pesadorLogoUrl: string | null = null;
+      let pesadorNomeEmpresa: string | null = null;
       if (authUser.user) {
         const { data: pes } = await supabase
           .from("pesadores")
-          .select("logo_url")
+          .select("logo_url, nome_empresa")
           .eq("user_id", authUser.user.id)
           .maybeSingle();
-        pesadorLogoUrl = pes?.logo_url ?? null;
+        pesadorLogoUrl = (pes as any)?.logo_url ?? null;
+        pesadorNomeEmpresa = (pes as any)?.nome_empresa ?? null;
       }
 
       const blob = await gerarPesagemPdf({
@@ -148,6 +150,7 @@ export default function PesadorPesagemResumoPage() {
         cfg,
         animais,
         pesadorLogoUrl,
+        pesadorNomeEmpresa,
       });
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
