@@ -682,6 +682,44 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes_pesador: {
+        Row: {
+          cidade: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          nome_fazenda: string | null
+          pesador_id: string
+          telefone: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          nome_fazenda?: string | null
+          pesador_id: string
+          telefone?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          nome_fazenda?: string | null
+          pesador_id?: string
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_pesador_pesador_id_fkey"
+            columns: ["pesador_id"]
+            isOneToOne: false
+            referencedRelation: "pesadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencias_checklist: {
         Row: {
           cocho_abastecido: boolean
@@ -2357,6 +2395,33 @@ export type Database = {
           },
         ]
       }
+      pesadores: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pesagens: {
         Row: {
           data_pesagem: string
@@ -2407,6 +2472,101 @@ export type Database = {
             columns: ["lote_id"]
             isOneToOne: false
             referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesagens_compra: {
+        Row: {
+          categoria: string
+          cliente_id: string
+          created_at: string | null
+          finalizada_at: string | null
+          id: string
+          modo_percentual: string
+          pdf_url: string | null
+          percentual_fixo: number | null
+          pesador_id: string
+          preco_valor: number
+          status: string
+          tipo_preco: string
+        }
+        Insert: {
+          categoria: string
+          cliente_id: string
+          created_at?: string | null
+          finalizada_at?: string | null
+          id?: string
+          modo_percentual: string
+          pdf_url?: string | null
+          percentual_fixo?: number | null
+          pesador_id: string
+          preco_valor: number
+          status?: string
+          tipo_preco: string
+        }
+        Update: {
+          categoria?: string
+          cliente_id?: string
+          created_at?: string | null
+          finalizada_at?: string | null
+          id?: string
+          modo_percentual?: string
+          pdf_url?: string | null
+          percentual_fixo?: number | null
+          pesador_id?: string
+          preco_valor?: number
+          status?: string
+          tipo_preco?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesagens_compra_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_pesador"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesagens_compra_pesador_id_fkey"
+            columns: ["pesador_id"]
+            isOneToOne: false
+            referencedRelation: "pesadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesos_pesagem_compra: {
+        Row: {
+          created_at: string | null
+          id: string
+          ordem: number
+          percentual_individual: number | null
+          pesagem_id: string
+          peso_kg: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ordem: number
+          percentual_individual?: number | null
+          pesagem_id: string
+          peso_kg: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ordem?: number
+          percentual_individual?: number | null
+          pesagem_id?: string
+          peso_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesos_pesagem_compra_pesagem_id_fkey"
+            columns: ["pesagem_id"]
+            isOneToOne: false
+            referencedRelation: "pesagens_compra"
             referencedColumns: ["id"]
           },
         ]
