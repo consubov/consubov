@@ -18,6 +18,7 @@ const CATEGORIAS: { label: string; value: string }[] = [
   { label: "Novilha", value: "novilha" },
   { label: "Bezerro", value: "bezerro" },
   { label: "Bezerra", value: "bezerra" },
+  { label: "Aleatória", value: "aleatoria" },
 ];
 
 type TipoPreco = "arroba" | "kg" | "fixo_animal";
@@ -55,6 +56,8 @@ function Chip({
   );
 }
 
+const parseNum = (s: string) => parseFloat(s.replace(",", "."));
+
 export default function PesadorPesagemNovoPage() {
   const { roleData } = useAuth();
   const pesadorId = roleData.roleId;
@@ -71,6 +74,13 @@ export default function PesadorPesagemNovoPage() {
   const [precoValor, setPrecoValor] = useState<string>("");
   const [modoPercentual, setModoPercentual] = useState<ModoPercentual | "">("");
   const [percentualFixo, setPercentualFixo] = useState<string>("");
+
+  // Campos independentes para lote "Aleatória" (misto)
+  const [precoArroba, setPrecoArroba] = useState<string>("");
+  const [precoKg, setPrecoKg] = useState<string>("");
+  const [precoFixoAnimal, setPrecoFixoAnimal] = useState<string>("");
+
+  const isAleatoria = categoria === "aleatoria";
 
   useEffect(() => {
     (async () => {
@@ -93,37 +103,71 @@ export default function PesadorPesagemNovoPage() {
   }, [clienteId]);
 
   const canSubmit = useMemo(() => {
-    if (!categoria || !tipoPreco || !precoValor) return false;
-    const preco = parseFloat(precoValor.replace(",", "."));
+    if (!categoria) return false;
+    if (isAleatoria) {
+      // Ao menos um dos três preços preenchido e > 0
+      const arr = parseNum(precoArroba);
+      const kg = parseNum(precoKg);
+      const fx = parseNum(precoFixoAnimal);
+      const anyValid =
+        (Number.isFinite(arr) && arr > 0) ||
+        (Number.isFinite(kg) && kg > 0) ||
+        (Number.isFinite(fx) && fx > 0);
+      return anyValid;
+    }
+    if (!tipoPreco || !precoValor) return false;
+    const preco = parseNum(precoValor);
     if (!Number.isFinite(preco) || preco <= 0) return false;
     if (tipoPreco === "arroba") {
       if (!modoPercentual) return false;
       if (modoPercentual === "fixo") {
-        const pct = parseFloat(percentualFixo.replace(",", "."));
+        const pct = parseNum(percentualFixo);
         if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return false;
       }
     }
     return true;
-  }, [categoria, tipoPreco, precoValor, modoPercentual, percentualFixo]);
+  }, [isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, precoArroba, precoKg, precoFixoAnimal]);
 
   async function handleIniciar() {
     if (!pesadorId || !clienteId || !canSubmit) return;
     setSaving(true);
-    const preco = parseFloat(precoValor.replace(",", "."));
-    const payload: any = {
-      pesador_id: pesadorId,
-      cliente_id: clienteId,
-      categoria,
-      tipo_preco: tipoPreco,
-      preco_valor: preco,
-      modo_percentual:
-        tipoPreco === "arroba" ? (modoPercentual as ModoPercentual) : "na",
-      percentual_fixo:
-        tipoPreco === "arroba" && modoPercentual === "fixo"
-          ? parseFloat(percentualFixo.replace(",", "."))
-          : null,
-      status: "em_andamento",
-    };
+
+    let payload: any;
+    if (isAleatoria) {
+      const arr = parseNum(precoArroba);
+      const kg = parseNum(precoKg);
+      const fx = parseNum(precoFixoAnimal);
+      payload = {
+        pesador_id: pesadorId,
+        cliente_id: clienteId,
+        categoria: "aleatoria",
+        tipo_preco: "misto",
+        preco_valor: null,
+        modo_percentual: null,
+        percentual_fixo: null,
+        preco_arroba: Number.isFinite(arr) && arr > 0 ? arr : null,
+        preco_kg: Number.isFinite(kg) && kg > 0 ? kg : null,
+        preco_fixo_animal: Number.isFinite(fx) && fx > 0 ? fx : null,
+        status: "em_andamento",
+      };
+    } else {
+      const preco = parseNum(precoValor);
+      payload = {
+        pesador_id: pesadorId,
+        cliente_id: clienteId,
+        categoria,
+        tipo_preco: tipoPreco,
+        preco_valor: preco,
+        modo_percentual:
+          tipoPreco === "arroba" ? (modoPercentual as ModoPercentual) : "fixo",
+        percentual_fixo:
+          tipoPreco === "arroba" && modoPercentual === "fixo"
+            ? parseNum(percentualFixo)
+            : null,
+        status: "em_andamento",
+      };
+    }
+
     const { data, error } = await supabase
       .from("pesagens_compra")
       .insert(payload)
@@ -183,88 +227,128 @@ export default function PesadorPesagemNovoPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Forma de pagamento</Label>
-        <div className="flex flex-wrap gap-2">
-          <Chip active={tipoPreco === "arroba"} onClick={() => setTipoPreco("arroba")}>
-            @ (arroba)
-          </Chip>
-          <Chip active={tipoPreco === "kg"} onClick={() => setTipoPreco("kg")}>
-            kg
-          </Chip>
-          <Chip active={tipoPreco === "fixo_animal"} onClick={() => setTipoPreco("fixo_animal")}>
-            Preço fixo por animal
-          </Chip>
-        </div>
-      </div>
-
-      {tipoPreco === "arroba" && (
-        <>
+      {isAleatoria ? (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+            Lote misto — preencha ao menos um preço. A forma de pagamento será escolhida animal por animal na pesagem.
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="preco">Preço da @ (R$)</Label>
+            <Label htmlFor="pa">Preço da @ (R$)</Label>
             <Input
-              id="preco"
+              id="pa"
               inputMode="decimal"
-              value={precoValor}
-              onChange={(e) => setPrecoValor(e.target.value)}
-              placeholder="Ex: 320,00"
+              value={precoArroba}
+              onChange={(e) => setPrecoArroba(e.target.value)}
+              placeholder="Opcional • Ex: 320,00"
             />
           </div>
-
           <div className="space-y-2">
-            <Label>Rendimento</Label>
+            <Label htmlFor="pk">Preço por kg (R$)</Label>
+            <Input
+              id="pk"
+              inputMode="decimal"
+              value={precoKg}
+              onChange={(e) => setPrecoKg(e.target.value)}
+              placeholder="Opcional • Ex: 10,50"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pf">Preço fixo por animal (R$)</Label>
+            <Input
+              id="pf"
+              inputMode="decimal"
+              value={precoFixoAnimal}
+              onChange={(e) => setPrecoFixoAnimal(e.target.value)}
+              placeholder="Opcional • Ex: 3000,00"
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label>Forma de pagamento</Label>
             <div className="flex flex-wrap gap-2">
-              <Chip active={modoPercentual === "fixo"} onClick={() => setModoPercentual("fixo")}>
-                Rendimento: Fixo
+              <Chip active={tipoPreco === "arroba"} onClick={() => setTipoPreco("arroba")}>
+                @ (arroba)
               </Chip>
-              <Chip
-                active={modoPercentual === "aleatorio"}
-                onClick={() => setModoPercentual("aleatorio")}
-              >
-                Rendimento: Aleatório
+              <Chip active={tipoPreco === "kg"} onClick={() => setTipoPreco("kg")}>
+                kg
+              </Chip>
+              <Chip active={tipoPreco === "fixo_animal"} onClick={() => setTipoPreco("fixo_animal")}>
+                Preço fixo por animal
               </Chip>
             </div>
           </div>
 
-          {modoPercentual === "fixo" && (
+          {tipoPreco === "arroba" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="preco">Preço da @ (R$)</Label>
+                <Input
+                  id="preco"
+                  inputMode="decimal"
+                  value={precoValor}
+                  onChange={(e) => setPrecoValor(e.target.value)}
+                  placeholder="Ex: 320,00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Rendimento</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Chip active={modoPercentual === "fixo"} onClick={() => setModoPercentual("fixo")}>
+                    Rendimento: Fixo
+                  </Chip>
+                  <Chip
+                    active={modoPercentual === "aleatorio"}
+                    onClick={() => setModoPercentual("aleatorio")}
+                  >
+                    Rendimento: Aleatório
+                  </Chip>
+                </div>
+              </div>
+
+              {modoPercentual === "fixo" && (
+                <div className="space-y-2">
+                  <Label htmlFor="pct">Percentual (%)</Label>
+                  <Input
+                    id="pct"
+                    inputMode="decimal"
+                    value={percentualFixo}
+                    onChange={(e) => setPercentualFixo(e.target.value)}
+                    placeholder="Ex: 52"
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {tipoPreco === "kg" && (
             <div className="space-y-2">
-              <Label htmlFor="pct">Percentual (%)</Label>
+              <Label htmlFor="preco">Preço por kg (R$)</Label>
               <Input
-                id="pct"
+                id="preco"
                 inputMode="decimal"
-                value={percentualFixo}
-                onChange={(e) => setPercentualFixo(e.target.value)}
-                placeholder="Ex: 52"
+                value={precoValor}
+                onChange={(e) => setPrecoValor(e.target.value)}
+                placeholder="Ex: 10,50"
+              />
+            </div>
+          )}
+
+          {tipoPreco === "fixo_animal" && (
+            <div className="space-y-2">
+              <Label htmlFor="preco">Preço fixo (R$)</Label>
+              <Input
+                id="preco"
+                inputMode="decimal"
+                value={precoValor}
+                onChange={(e) => setPrecoValor(e.target.value)}
+                placeholder="Ex: 3000,00"
               />
             </div>
           )}
         </>
-      )}
-
-      {tipoPreco === "kg" && (
-        <div className="space-y-2">
-          <Label htmlFor="preco">Preço por kg (R$)</Label>
-          <Input
-            id="preco"
-            inputMode="decimal"
-            value={precoValor}
-            onChange={(e) => setPrecoValor(e.target.value)}
-            placeholder="Ex: 10,50"
-          />
-        </div>
-      )}
-
-      {tipoPreco === "fixo_animal" && (
-        <div className="space-y-2">
-          <Label htmlFor="preco">Preço fixo (R$)</Label>
-          <Input
-            id="preco"
-            inputMode="decimal"
-            value={precoValor}
-            onChange={(e) => setPrecoValor(e.target.value)}
-            placeholder="Ex: 3000,00"
-          />
-        </div>
       )}
 
       <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t">
