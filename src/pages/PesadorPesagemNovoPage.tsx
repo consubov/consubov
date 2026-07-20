@@ -9,15 +9,15 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const CATEGORIAS = [
-  "Boi Gordo",
-  "Vaca Gorda",
-  "Vaca Magra",
-  "Boi Magro",
-  "Garrote",
-  "Novilha",
-  "Bezerro",
-  "Bezerra",
+const CATEGORIAS: { label: string; value: string }[] = [
+  { label: "Boi Gordo", value: "boi_gordo" },
+  { label: "Vaca Gorda", value: "vaca_gorda" },
+  { label: "Vaca Magra", value: "vaca_magra" },
+  { label: "Boi Magro", value: "boi_magro" },
+  { label: "Garrote", value: "garrote" },
+  { label: "Novilha", value: "novilha" },
+  { label: "Bezerro", value: "bezerro" },
+  { label: "Bezerra", value: "bezerra" },
 ];
 
 type TipoPreco = "arroba" | "kg" | "fixo_animal";
@@ -176,8 +176,8 @@ export default function PesadorPesagemNovoPage() {
         <Label>Categoria</Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((c) => (
-            <Chip key={c} active={categoria === c} onClick={() => setCategoria(c)}>
-              {c}
+            <Chip key={c.value} active={categoria === c.value} onClick={() => setCategoria(c.value)}>
+              {c.label}
             </Chip>
           ))}
         </div>
