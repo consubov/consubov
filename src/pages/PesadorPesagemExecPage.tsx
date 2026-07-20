@@ -168,6 +168,8 @@ export default function PesadorPesagemExecPage() {
         setPendingPeso(val);
         setCurrent("");
         setSubStep("percentual");
+        // Mantém teclado aberto ao trocar peso → percentual
+        inputRef.current?.focus();
         return;
       }
       // fluxo tradicional (kg / fixo / arroba com % fixo)
