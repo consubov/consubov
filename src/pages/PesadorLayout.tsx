@@ -12,6 +12,7 @@ export default function PesadorLayout() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
