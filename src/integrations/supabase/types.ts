@@ -2496,6 +2496,9 @@ export type Database = {
           pdf_url: string | null
           percentual_fixo: number | null
           pesador_id: string
+          preco_arroba: number | null
+          preco_fixo_animal: number | null
+          preco_kg: number | null
           preco_valor: number
           status: string
           tipo_preco: string
@@ -2510,6 +2513,9 @@ export type Database = {
           pdf_url?: string | null
           percentual_fixo?: number | null
           pesador_id: string
+          preco_arroba?: number | null
+          preco_fixo_animal?: number | null
+          preco_kg?: number | null
           preco_valor: number
           status?: string
           tipo_preco: string
@@ -2524,6 +2530,9 @@ export type Database = {
           pdf_url?: string | null
           percentual_fixo?: number | null
           pesador_id?: string
+          preco_arroba?: number | null
+          preco_fixo_animal?: number | null
+          preco_kg?: number | null
           preco_valor?: number
           status?: string
           tipo_preco?: string
@@ -2553,6 +2562,7 @@ export type Database = {
           percentual_individual: number | null
           pesagem_id: string
           peso_kg: number
+          tipo_preco_individual: string | null
         }
         Insert: {
           created_at?: string | null
@@ -2561,6 +2571,7 @@ export type Database = {
           percentual_individual?: number | null
           pesagem_id: string
           peso_kg: number
+          tipo_preco_individual?: string | null
         }
         Update: {
           created_at?: string | null
@@ -2569,6 +2580,7 @@ export type Database = {
           percentual_individual?: number | null
           pesagem_id?: string
           peso_kg?: number
+          tipo_preco_individual?: string | null
         }
         Relationships: [
           {
