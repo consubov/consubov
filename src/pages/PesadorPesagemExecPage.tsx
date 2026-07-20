@@ -356,6 +356,8 @@ export default function PesadorPesagemExecPage() {
           />
           <Button
             className="w-full h-12"
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => e.preventDefault()}
             onClick={() => void handleProximo()}
             disabled={!current || parseFloat(current.replace(",", ".")) <= 0}
           >
