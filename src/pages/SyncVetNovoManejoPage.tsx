@@ -111,6 +111,7 @@ export default function SyncVetNovoManejoPage() {
         data_prevista: data,
         status: "em_andamento",
         hora_inicio: new Date().toISOString(),
+        codigo_preco: codigoPreco?.trim() || null,
       };
 
       if (tipo === "iatf") {
