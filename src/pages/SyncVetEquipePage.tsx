@@ -135,9 +135,27 @@ export default function SyncVetEquipePage() {
 
   async function handleDelete(m: Membro) {
     if (!confirm(`Remover ${m.nome}?`)) return;
-    const { error } = await supabase.from("syncvet_equipe").delete().eq("id", m.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("syncvet-delete-equipe", {
+        body: { equipe_id: m.id },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.deactivated) {
+        toast.success("Este membro tem histórico de manejos e não pode ser excluído — foi desativado em vez disso.");
+      } else {
+        toast.success("Removido");
+      }
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao remover");
+    }
+  }
+
+  async function handleReactivate(m: Membro) {
+    const { error } = await supabase.from("syncvet_equipe").update({ ativo: true }).eq("id", m.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success("Reativado"); load(); }
   }
 
   return (
