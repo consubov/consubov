@@ -57,7 +57,7 @@ export default function SyncVetNovoManejoPage() {
         supabase.from("syncvet_lotes").select("id, nome").eq("fazenda_id", fazendaId).order("nome"),
         supabase.from("syncvet_protocolos").select("id, nome").order("nome"),
         supabase.from("syncvet_semen").select("id, touro, codigo").order("touro"),
-        supabase.from("syncvet_equipe").select("id, nome, user_id").order("nome"),
+        supabase.from("syncvet_equipe").select("id, nome, user_id").eq("ativo", true).order("nome"),
         supabase.auth.getUser(),
       ]);
       setFazendaNome((f as any)?.nome ?? "");

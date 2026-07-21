@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Perfil = "administrador" | "veterinario" | "prestador_servico" | "estagiario" | "auxiliar";
 const PERFIL_LABEL: Record<Perfil, string> = {
@@ -54,6 +55,7 @@ export default function SyncVetEquipePage() {
       .from("syncvet_equipe")
       .select("id, nome, perfil, telefone, email, user_id, ativo")
       .eq("empresa_id", empresaId)
+      .order("ativo", { ascending: false })
       .order("nome");
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
@@ -134,9 +136,27 @@ export default function SyncVetEquipePage() {
 
   async function handleDelete(m: Membro) {
     if (!confirm(`Remover ${m.nome}?`)) return;
-    const { error } = await supabase.from("syncvet_equipe").delete().eq("id", m.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("syncvet-delete-equipe", {
+        body: { equipe_id: m.id },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.deactivated) {
+        toast.success("Este membro tem histórico de manejos e não pode ser excluído — foi desativado em vez disso.");
+      } else {
+        toast.success("Removido");
+      }
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao remover");
+    }
+  }
+
+  async function handleReactivate(m: Membro) {
+    const { error } = await supabase.from("syncvet_equipe").update({ ativo: true }).eq("id", m.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success("Reativado"); load(); }
   }
 
   return (
@@ -207,11 +227,12 @@ export default function SyncVetEquipePage() {
       ) : (
         <div className="space-y-2">
           {rows.map((m) => (
-            <Card key={m.id} className="p-3 flex items-center justify-between">
+            <Card key={m.id} className={cn("p-3 flex items-center justify-between", !m.ativo && "opacity-60")}>
               <div className="min-w-0">
                 <div className="font-semibold flex items-center gap-2">
                   {m.nome}
-                  {m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" />acesso</span>}
+                  {!m.ativo && <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Inativo</span>}
+                  {m.ativo && m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" />acesso</span>}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {PERFIL_LABEL[m.perfil]}
@@ -220,8 +241,14 @@ export default function SyncVetEquipePage() {
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="w-4 h-4" /></Button>
+                {m.ativo ? (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="w-4 h-4" /></Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => handleReactivate(m)}>Reativar</Button>
+                )}
               </div>
             </Card>
           ))}

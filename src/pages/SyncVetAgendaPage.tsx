@@ -178,7 +178,7 @@ export default function SyncVetAgendaPage() {
 
   const getCtx = useCallback((m: Manejo) => {
     if (m.lote_ciclo_id) {
-      const c = getCtx(m);
+      const c = ctxByCiclo.get(m.lote_ciclo_id);
       if (c) return c;
     }
     const lote = m.lote_id ? (lotes.find(l => l.id === m.lote_id) || null) : null;
