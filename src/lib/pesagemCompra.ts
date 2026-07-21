@@ -43,7 +43,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
           : null;
       const tipoInd = (mapped?.tipo_preco ?? p.tipo_preco_individual ?? "kg") as TipoPrecoIndividual;
       if (tipoInd === "kg") {
-        const preco = cfg.preco_kg ?? 0;
+        const preco = mapped?.preco_valor ?? cfg.preco_kg ?? 0;
         return {
           ...p,
           peso_pagavel: p.peso_kg,
@@ -52,7 +52,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
         };
       }
       if (tipoInd === "fixo_animal") {
-        const preco = cfg.preco_fixo_animal ?? 0;
+        const preco = mapped?.preco_valor ?? cfg.preco_fixo_animal ?? 0;
         return {
           ...p,
           peso_pagavel: null,
@@ -64,7 +64,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
       const pct = p.percentual_individual ?? 0;
       const pesoPagavel = (p.peso_kg * pct) / 100;
       const arroba = pesoPagavel / 15;
-      const preco = cfg.preco_arroba ?? 0;
+      const preco = mapped?.preco_valor ?? cfg.preco_arroba ?? 0;
       return {
         ...p,
         peso_pagavel: round2(pesoPagavel),
