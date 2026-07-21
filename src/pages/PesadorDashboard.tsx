@@ -185,13 +185,12 @@ export default function PesadorDashboard() {
       if (d.getFullYear() === year) animaisAno += pesos.length;
       if (d.getFullYear() === year && d.getMonth() === month) {
         animaisMes += pesos.length;
-        const t = totalizar(calcularAnimais(buildCfg(p), pesos));
-        valorMes += t.totalValor;
+        valorMes += Number(p.valor_total_pago ?? 0);
       }
     }
     return { animaisAno, animaisMes, valorMes };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pesagens, pesosByPesagem, catsByPesagem]);
+  }, [pesagens, pesosByPesagem]);
 
   const anosDisponiveis = useMemo(() => {
     const set = new Set<number>();
