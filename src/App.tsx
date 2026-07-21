@@ -82,6 +82,8 @@ import SyncVetDashboardPage from "./pages/SyncVetDashboardPage";
 import SyncVetPartosPage from "./pages/SyncVetPartosPage";
 import SyncVetAuditoriaPage from "./pages/SyncVetAuditoriaPage";
 import AdminSyncVetOnboardingPage from "./pages/AdminSyncVetOnboardingPage";
+import SyncVetNovoManejoPage from "./pages/SyncVetNovoManejoPage";
+import SyncVetManejoExecucaoPage from "./pages/SyncVetManejoExecucaoPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -313,6 +315,8 @@ const App = () => (
                 <Route path="fazendas" element={<SyncVetFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<SyncVetFazendaDetalhePage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId" element={<SyncVetLoteDetalhePage />} />
+                <Route path="fazendas/:fazendaId/novo-manejo" element={<SyncVetNovoManejoPage />} />
+                <Route path="manejos/:manejoId/executar" element={<SyncVetManejoExecucaoPage />} />
                 <Route path="fazendas/:fazendaId/estacoes/:estacaoId" element={<SyncVetEstacaoDetalhePage />} />
                 <Route path="medicamentos" element={<SyncVetMedicamentosPage />} />
                 <Route path="semen" element={<SyncVetSemenPage />} />

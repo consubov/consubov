@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -21,13 +21,16 @@ import { isSyncvetFullAccess } from "@/lib/syncvetPerfil";
 
 type Manejo = {
   id: string;
-  lote_ciclo_id: string;
-  etapa_id: string;
+  lote_ciclo_id: string | null;
+  etapa_id: string | null;
   data_prevista: string;
   data_execucao: string | null;
   status: string;
   responsavel_id: string | null;
   observacoes: string | null;
+  tipo_manejo: string | null;
+  lote_id: string | null;
+  fazenda_id: string | null;
 };
 type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null; ordem: number };
 type Ciclo = { id: string; lote_id: string; estacao_id: string; protocolo_id: string; data_d0: string };
@@ -48,6 +51,7 @@ function fmtDateLong(iso: string) {
 }
 
 export default function SyncVetAgendaPage() {
+  const navigate = useNavigate();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const fullAccess = isSyncvetFullAccess(roleData.syncvetPerfil);
@@ -112,23 +116,33 @@ export default function SyncVetAgendaPage() {
       setLotes(lotesArr);
 
       const loteIds = lotesArr.map(l => l.id);
-      if (loteIds.length === 0) { setCiclos([]); setEtapas([]); setManejos([]); return; }
-      const { data: cData } = await supabase.from("syncvet_lote_ciclos")
-        .select("id, lote_id, estacao_id, protocolo_id, data_d0").in("lote_id", loteIds);
+      const { data: cData } = loteIds.length > 0
+        ? await supabase.from("syncvet_lote_ciclos")
+            .select("id, lote_id, estacao_id, protocolo_id, data_d0").in("lote_id", loteIds)
+        : { data: [] as Ciclo[] } as any;
       const cArr = (cData as Ciclo[]) || [];
       setCiclos(cArr);
 
       const cicloIds = cArr.map(c => c.id);
-      if (cicloIds.length === 0) { setEtapas([]); setManejos([]); return; }
       const protIds = Array.from(new Set(cArr.map(c => c.protocolo_id)));
-      const [{ data: eData }, { data: mData }] = await Promise.all([
-        supabase.from("syncvet_protocolo_etapas").select("id, protocolo_id, dia_offset, nome_etapa, ordem").in("protocolo_id", protIds),
-        supabase.from("syncvet_manejos")
-          .select("id, lote_ciclo_id, etapa_id, data_prevista, data_execucao, status, responsavel_id, observacoes")
-          .in("lote_ciclo_id", cicloIds).order("data_prevista"),
+      const [{ data: eData }, { data: mCiclo }, { data: mAvulso }] = await Promise.all([
+        protIds.length > 0
+          ? supabase.from("syncvet_protocolo_etapas").select("id, protocolo_id, dia_offset, nome_etapa, ordem").in("protocolo_id", protIds)
+          : Promise.resolve({ data: [] } as any),
+        cicloIds.length > 0
+          ? supabase.from("syncvet_manejos")
+              .select("id, lote_ciclo_id, etapa_id, data_prevista, data_execucao, status, responsavel_id, observacoes, tipo_manejo, lote_id, fazenda_id")
+              .in("lote_ciclo_id", cicloIds).order("data_prevista")
+          : Promise.resolve({ data: [] } as any),
+        (supabase as any).from("syncvet_manejos")
+          .select("id, lote_ciclo_id, etapa_id, data_prevista, data_execucao, status, responsavel_id, observacoes, tipo_manejo, lote_id, fazenda_id")
+          .in("fazenda_id", fazIds).not("tipo_manejo", "is", null).order("data_prevista"),
       ]);
       setEtapas((eData as Etapa[]) || []);
-      setManejos((mData as Manejo[]) || []);
+      const combined = [...((mCiclo as Manejo[]) || []), ...((mAvulso as Manejo[]) || [])];
+      // dedup by id
+      const seen = new Set<string>();
+      setManejos(combined.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true))));
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar agenda");
@@ -162,14 +176,25 @@ export default function SyncVetAgendaPage() {
     return m;
   }, [equipe]);
 
+  const getCtx = useCallback((m: Manejo) => {
+    if (m.lote_ciclo_id) {
+      const c = getCtx(m);
+      if (c) return c;
+    }
+    const lote = m.lote_id ? (lotes.find(l => l.id === m.lote_id) || null) : null;
+    const fazenda = m.fazenda_id
+      ? (fazendas.find(f => f.id === m.fazenda_id) || null)
+      : (lote ? fazendas.find(f => f.id === lote.fazenda_id) || null : null);
+    return { lote, fazenda, protocolo: null as Proto | null, ciclo: null as Ciclo | null };
+  }, [ctxByCiclo, lotes, fazendas]);
+
   const filtrados = useMemo(() => {
     const today = todayISO();
     return manejos.filter(m => {
-      // Perfis restritos: apenas manejos atribuídos ao próprio usuário
       if (!fullAccess) {
         if (!ownEquipeId || m.responsavel_id !== ownEquipeId) return false;
       }
-      const ctx = ctxByCiclo.get(m.lote_ciclo_id);
+      const ctx = getCtx(m);
       if (fFazenda !== "all" && ctx?.fazenda?.id !== fFazenda) return false;
       if (fullAccess && fResp !== "all") {
         if (fResp === "none" && m.responsavel_id) return false;
@@ -182,7 +207,7 @@ export default function SyncVetAgendaPage() {
       }
       return true;
     });
-  }, [manejos, ctxByCiclo, fFazenda, fResp, fStatus, fullAccess, ownEquipeId]);
+  }, [manejos, getCtx, fFazenda, fResp, fStatus, fullAccess, ownEquipeId]);
 
   const grupos = useMemo(() => {
     const g = new Map<string, Manejo[]>();
@@ -195,6 +220,10 @@ export default function SyncVetAgendaPage() {
   }, [filtrados]);
 
   function openManejo(m: Manejo) {
+    if (m.tipo_manejo) {
+      navigate(`/syncvet/manejos/${m.id}/executar`);
+      return;
+    }
     setSelected(m);
     setAssignId(m.responsavel_id ?? "");
   }
@@ -215,8 +244,8 @@ export default function SyncVetAgendaPage() {
 
       if (novo && novo !== anterior) {
         const member = equipeById.get(novo);
-        const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
-        const etapa = etapaById.get(selected.etapa_id);
+        const ctx = getCtx(selected);
+        const etapa = (selected.etapa_id ? etapaById.get(selected.etapa_id) : null);
         const dataStr = fmtDate(selected.data_prevista);
         const fazendaNome = ctx?.fazenda?.nome ?? "";
         const loteNome = ctx?.lote?.nome ?? "";
@@ -237,7 +266,7 @@ export default function SyncVetAgendaPage() {
 
   function openTrajetoDialog() {
     if (!selected) return;
-    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    const ctx = getCtx(selected);
     if (!ctx?.fazenda?.latitude || !ctx?.fazenda?.longitude) {
       toast.error("Fazenda sem coordenadas cadastradas — preencha latitude/longitude no cadastro");
       return;
@@ -271,7 +300,7 @@ export default function SyncVetAgendaPage() {
 
   async function handleCalcular() {
     if (!selected) return;
-    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    const ctx = getCtx(selected);
     const destLat = ctx?.fazenda?.latitude;
     const destLng = ctx?.fazenda?.longitude;
     const oLat = parseFloat(origemLat.replace(",", "."));
@@ -307,13 +336,13 @@ export default function SyncVetAgendaPage() {
   }
 
   function isDGEtapa(m: Manejo): boolean {
-    const etapa = etapaById.get(m.etapa_id);
+    const etapa = (m.etapa_id ? etapaById.get(m.etapa_id) : null);
     const n = (etapa?.nome_etapa || "").toLowerCase();
     return n.includes("dg") || n.includes("diagn");
   }
 
   async function fetchAnimaisDoManejo(m: Manejo): Promise<AnimalRow[]> {
-    const ctx = ctxByCiclo.get(m.lote_ciclo_id);
+    const ctx = getCtx(m);
     if (!ctx?.lote?.id) return [];
     const { data } = await supabase
       .from("syncvet_animais")
@@ -344,7 +373,7 @@ export default function SyncVetAgendaPage() {
 
   async function handleConfirmarESalvar() {
     if (!selected || !calcResult || !user) return;
-    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    const ctx = getCtx(selected);
     const destLat = ctx?.fazenda?.latitude;
     const destLng = ctx?.fazenda?.longitude;
     const fazendaId = ctx?.fazenda?.id;
@@ -520,8 +549,8 @@ export default function SyncVetAgendaPage() {
               </div>
               <div className="space-y-2">
                 {itens.map(m => {
-                  const ctx = ctxByCiclo.get(m.lote_ciclo_id);
-                  const etapa = etapaById.get(m.etapa_id);
+                  const ctx = getCtx(m);
+                  const etapa = (m.etapa_id ? etapaById.get(m.etapa_id) : null);
                   const resp = m.responsavel_id ? equipeById.get(m.responsavel_id) : null;
                   const atrasado = m.status === "pendente" && m.data_prevista < today;
                   const concluido = m.status === "concluido";
@@ -577,8 +606,8 @@ export default function SyncVetAgendaPage() {
             <DialogTitle>Manejo</DialogTitle>
           </DialogHeader>
           {selected && (() => {
-            const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
-            const etapa = etapaById.get(selected.etapa_id);
+            const ctx = getCtx(selected);
+            const etapa = (selected.etapa_id ? etapaById.get(selected.etapa_id) : null);
             const semCoords = !ctx?.fazenda?.latitude || !ctx?.fazenda?.longitude;
             return (
               <div className="space-y-3 text-sm">

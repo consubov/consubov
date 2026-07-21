@@ -1,50 +1,43 @@
-# Bloco B — Consultor offline-first
+## Fluxo único "Novo Manejo" — SyncVet (Fase 10 UI)
 
-Objetivo: uma visita pode ser iniciada, editada, fotografada e finalizada sem conexão. O PDF só é gerado depois que a fila de sincronização estiver zerada. Rotina, Confinamento e Fábrica usam a mesma infra.
+Reaproveita o schema já criado (`syncvet_manejos.tipo_manejo`, `fonte_protocolo`, `fonte_semen`, `semen_id`, `semen_descricao_fazenda`, `hora_inicio` + trigger `syncvet_prenhez_historico`). Nenhuma migração nova.
 
-Correção rápida já aplicada nesta rodada: escala "1…5" agora aparece 1× ao fim da lista em Fábrica (antes repetia por item). Segue o resto abaixo.
+### 1. Ponto de entrada — tela de Fazenda › aba Lotes
+- Em `SyncVetFazendaDetalhePage.tsx`, adicionar botão fixo **"+ Novo manejo"** no topo da aba Lotes.
+- Abre `/syncvet/fazendas/:fazendaId/novo-manejo` (nova página).
 
-## O que muda para o usuário
+### 2. Nova página `SyncVetNovoManejoPage.tsx` (wizard 4 etapas)
+- **Etapa A — Lotes + tipo por lote**: lista os lotes da fazenda com checkbox; para cada lote marcado, escolher tipo (`DG/US` | `IATF` | `Retirada`). Múltiplos lotes, tipos diferentes, mesma data.
+- **Etapa B — Configuração por tipo**:
+  - DG/US → só data.
+  - IATF/Retirada → `fonte_protocolo` (veterinário/fazenda) + `protocolo_id` (só se veterinário) + `fonte_semen` (veterinário/fazenda) + `semen_id` OU `semen_descricao_fazenda`.
+- **Etapa C — Data + responsável único** (equipe da empresa) para todo o batch.
+- **Etapa D — Resumo + "Salvar"**: cria 1 linha `syncvet_manejos` por lote com `tipo_manejo`, `fonte_*`, `data_prevista`, `responsavel_id`, `lote_id`, `fazenda_id`, `origem='novo_manejo'`, `status='pendente'`. Sem `lote_ciclo_id` (fluxo independente do ciclo). Aparece automaticamente na Agenda.
 
-- Ao abrir uma visita, o app baixa e guarda tudo que precisa (fazenda, pastos/currais, tópicos, avaliações, fotos já enviadas). Depois disso funciona offline.
-- Fotos aparecem no grid **na hora** que a pessoa tira — sobem em background.
-- Um contador "X pendentes" fica visível no topo da visita, com botão **Sincronizar agora**.
-- O botão **Gerar PDF** fica desabilitado enquanto houver fotos/campos pendentes, com mensagem clara ("Sincronize antes de finalizar").
-- Se o app for fechado no meio da visita, ao reabrir tudo volta como estava (rascunho local).
+### 3. Execução (responsável)
+- Novo cartão de ação nos manejos com `tipo_manejo IN ('dg_us','iatf','retirada')` na `SyncVetAgendaPage`: botão **"Iniciar/Continuar"** abre `/syncvet/manejos/:id/executar`.
+- `SyncVetManejoExecucaoPage.tsx`:
+  - **Resumo inicial** (fazenda, lote, tipo, qtd animais) + botão **"Iniciar"** → `UPDATE syncvet_manejos SET hora_inicio=now(), status='em_andamento'`.
+  - **Execução**: input número do animal + Confirmar. Cria/reusa animal em `syncvet_animais` (via `lote_id` + `numero`).
+    - DG/US: botões **C** (prenha) / **V** (vazia) → insert em `syncvet_manejo_resultados`.
+    - IATF/Retirada: Confirmar já grava `resultado='realizado'`.
+  - Lista lateral dos já registrados; botão **"Próximo"** limpa e refoca o input.
+  - Rodapé com contadores e taxa de prenhez ao vivo (DG/US).
+- **Finalização**: dois botões:
+  - **"Finalizar Manejo"** → `status='concluido', data_execucao=now()` (dispara trigger de histórico de prenhez para DG/US).
+  - **"Finalizar e Gerar PDF"** → mesmo update + `syncvetManejoPdf.ts` gera PDF (identidade Consubov: verde `#14432B`, dourado `#C9A84C`) com fazenda, lote, tipo, responsável, tabela de animais (número/categoria/diagnóstico) e taxa de prenhez. Usa Web Share API quando disponível.
 
-## Arquitetura técnica
+### 4. Gráficos de prenhez
+- `SyncVetDashboardPage.tsx`: adicionar gráfico de linha (Recharts) por mês a partir de `syncvet_prenhez_historico` (empresa toda), respeitando filtros já existentes (fazenda/vet/protocolo).
+- "Meu Painel" do membro (dashboard restrito): idem, filtrado por `veterinario_id = ownEquipeId`. Perfil restrito continua caindo em `/syncvet/agenda` — Meu Painel fica opcional, mas gráfico é adicionado à agenda como card do topo para o restrito.
 
-Novo módulo `src/lib/consultorOffline/`:
+### 5. Vínculo com Agenda
+- Nenhuma nova tela — `SyncVetAgendaPage.tsx` já lê `syncvet_manejos` com filtro por responsável. Os manejos criados no wizard aparecem automaticamente. Ajuste mínimo: renderizar `tipo_manejo` (DG/US/IATF/Retirada) como badge quando `etapa_id` for null.
 
-- `db.ts` — Dexie (IndexedDB) com stores:
-  - `visita_drafts` — snapshot da visita + tópicos + avaliações + notas (chave = `visita_id`)
-  - `visita_foto_blobs` — `{ localId, visitaId, parentType, parentId, blob, mime, createdAt, remoteUrl? }`
-  - `sync_queue` — `{ id, kind: 'foto'|'campo'|'topico'|'avaliacao', payload, tries, lastError, createdAt }`
-- `snapshotLoader.ts` — ao abrir a visita: baixa e persiste tudo em `visita_drafts`; se offline, lê do IDB.
-- `photoQueue.ts` — comprime local (já existe), salva blob no IDB, retorna `localId` para preview otimista, enfileira upload.
-- `syncEngine.ts` — worker que processa `sync_queue` em ordem; expõe `pendingCount$` (subscribable) e `syncNow()`.
-- `useVisitaOffline(visitaId)` — hook que abstrai leitura/escrita, retorna `{ draft, updateField, addPhoto, pending, syncing, syncNow }`.
+### Detalhes técnicos
+- Nova rota em `App.tsx`: `/syncvet/fazendas/:fazendaId/novo-manejo`, `/syncvet/manejos/:id/executar`.
+- Novo lib `src/lib/syncvetManejoPdf.ts` (baseado em `syncvetServicoPdf.ts`).
+- `APP_VERSION` → `1.37.0`.
+- Nada em outros módulos é tocado.
 
-Componentes tocados (aditivo, não muda API pública):
-
-- `PhotoGrid.tsx` / `VisitaTopicosSection.tsx` — trocam upload direto por `photoQueue.enqueue`; renderizam `blob:` URL enquanto `remoteUrl` não chega.
-- `ConfinamentoVisitaView.tsx`, `FabricaVisitaView.tsx`, `VisitaTecnicaPage.tsx` — usam `useVisitaOffline`; salvamentos passam pelo draft local + fila.
-- `RevisaoVisitaPage.tsx` + `ConfinamentoRevisaoView.tsx` + `FabricaVisitaView.tsx` — botão "Gerar PDF" fica `disabled` quando `pending > 0`; mostra badge com contagem e link "Sincronizar agora".
-
-Novo componente `SyncBadge.tsx` — barra fixa no topo da visita: ícone + "N pendentes" + botão. Some quando `pending === 0` e mostra "Tudo sincronizado ✓" por 3s.
-
-## Ordem de entrega
-
-1. Infra: `db.ts` + `syncEngine.ts` + `photoQueue.ts` + hook.
-2. Migração de `PhotoGrid` e `VisitaTopicosSection` (fotos otimistas, fila).
-3. Snapshot loader + persistência de rascunho nas 3 views de visita.
-4. `SyncBadge` + bloqueio dos botões "Gerar PDF".
-5. Bump `APP_VERSION` → `1.23.0`.
-
-## Fora do escopo
-
-- Não altero cálculos, fórmulas, PDFs, tabelas do Supabase ou fluxos de Rotina/Confinamento/Fábrica além do necessário para plugar a fila.
-- Módulos fora do Consultor (Capataz, Gerente, Admin, Fábrica interna) ficam intocados.
-- Não crio nova tabela no Supabase — a fila é 100% local; o backend já aceita os mesmos inserts/updates de hoje.
-
-Confirma que posso executar essa sequência?
+Aprova para eu implementar?
