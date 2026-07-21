@@ -302,7 +302,8 @@ const App = () => (
               </Route>
 
               <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
-                <Route index element={<SyncVetEmpresaPage />} />
+                <Route index element={<SyncVetDashboardPage />} />
+                <Route path="empresa" element={<SyncVetEmpresaPage />} />
                 <Route path="equipe" element={<SyncVetEquipePage />} />
                 <Route path="fazendas" element={<SyncVetFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<SyncVetFazendaDetalhePage />} />
@@ -313,11 +314,13 @@ const App = () => (
                 <Route path="protocolos" element={<SyncVetProtocolosPage />} />
                 <Route path="protocolos/:protocoloId" element={<SyncVetProtocoloDetalhePage />} />
                 <Route path="agenda" element={<SyncVetAgendaPage />} />
+                <Route path="partos" element={<SyncVetPartosPage />} />
                 <Route path="preferencias" element={<SyncVetPreferenciasPage />} />
                 <Route path="trajetos" element={<SyncVetTrajetosPage />} />
                 <Route path="precos" element={<SyncVetPrecosPage />} />
                 <Route path="servicos/novo" element={<SyncVetServicoNovoPage />} />
                 <Route path="contas" element={<SyncVetContasPage />} />
+                <Route path="auditoria" element={<SyncVetAuditoriaPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
