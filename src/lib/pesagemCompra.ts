@@ -20,6 +20,7 @@ export interface PesoAnimal {
   peso_kg: number;
   percentual_individual: number | null;
   tipo_preco_individual?: TipoPrecoIndividual | null;
+  categoria_individual?: string | null;
 }
 
 export interface AnimalCalc extends PesoAnimal {
