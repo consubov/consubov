@@ -40,8 +40,8 @@ export default function PesadorLayout() {
     }
   }
 
-  const displayLogo = logoUrl || maisArrobasAsset.url;
-  const displayName = nomeEmpresa || "Mais Arrobas";
+  const displayLogo = maisArrobasAsset.url;
+  const displayName = "Mais Arrobas";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
