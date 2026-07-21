@@ -466,7 +466,7 @@ export default function SyncVetAgendaPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5" /> Agenda de Manejos
+          <CalendarIcon className="w-5 h-5" /> {fullAccess ? "Agenda de Manejos" : "Minha Agenda"}
         </h1>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -476,7 +476,7 @@ export default function SyncVetAgendaPage() {
         </div>
       </div>
 
-      <Card className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <Card className={`p-3 grid grid-cols-1 gap-2 ${fullAccess ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Select value={fFazenda} onValueChange={setFFazenda}>
           <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
           <SelectContent>
@@ -484,14 +484,16 @@ export default function SyncVetAgendaPage() {
             {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={fResp} onValueChange={setFResp}>
-          <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os responsáveis</SelectItem>
-            <SelectItem value="none">Sem responsável</SelectItem>
-            {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {fullAccess && (
+          <Select value={fResp} onValueChange={setFResp}>
+            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os responsáveis</SelectItem>
+              <SelectItem value="none">Sem responsável</SelectItem>
+              {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={fStatus} onValueChange={setFStatus}>
           <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
