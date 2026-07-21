@@ -3233,6 +3233,131 @@ export type Database = {
           },
         ]
       }
+      syncvet_estacao_protocolos: {
+        Row: {
+          created_at: string
+          estacao_id: string
+          id: string
+          observacoes: string | null
+          preco_por_cabeca: number
+          protocolo_id: string
+        }
+        Insert: {
+          created_at?: string
+          estacao_id: string
+          id?: string
+          observacoes?: string | null
+          preco_por_cabeca: number
+          protocolo_id: string
+        }
+        Update: {
+          created_at?: string
+          estacao_id?: string
+          id?: string
+          observacoes?: string | null
+          preco_por_cabeca?: number
+          protocolo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_estacao_protocolos_estacao_id_fkey"
+            columns: ["estacao_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_estacoes_monta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_estacao_protocolos_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_estacao_semen: {
+        Row: {
+          created_at: string
+          estacao_id: string
+          id: string
+          observacoes: string | null
+          semen_id: string
+          valor_unitario: number | null
+        }
+        Insert: {
+          created_at?: string
+          estacao_id: string
+          id?: string
+          observacoes?: string | null
+          semen_id: string
+          valor_unitario?: number | null
+        }
+        Update: {
+          created_at?: string
+          estacao_id?: string
+          id?: string
+          observacoes?: string | null
+          semen_id?: string
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_estacao_semen_estacao_id_fkey"
+            columns: ["estacao_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_estacoes_monta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_estacao_semen_semen_id_fkey"
+            columns: ["semen_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_semen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_estacoes_monta: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          fazenda_id: string
+          id: string
+          nome: string
+          observacoes: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          fazenda_id: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          fazenda_id?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_estacoes_monta_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_fazendas: {
         Row: {
           created_at: string
@@ -3292,6 +3417,61 @@ export type Database = {
             columns: ["fazenda_matriz_id"]
             isOneToOne: false
             referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_lote_ciclos: {
+        Row: {
+          created_at: string
+          data_d0: string
+          estacao_id: string
+          id: string
+          lote_id: string
+          observacoes: string | null
+          protocolo_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          data_d0: string
+          estacao_id: string
+          id?: string
+          lote_id: string
+          observacoes?: string | null
+          protocolo_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          data_d0?: string
+          estacao_id?: string
+          id?: string
+          lote_id?: string
+          observacoes?: string | null
+          protocolo_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_lote_ciclos_estacao_id_fkey"
+            columns: ["estacao_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_estacoes_monta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_lote_ciclos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_lote_ciclos_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_protocolos"
             referencedColumns: ["id"]
           },
         ]
