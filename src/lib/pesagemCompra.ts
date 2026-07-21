@@ -11,6 +11,8 @@ export interface PesagemCompraCfg {
   preco_arroba?: number | null;
   preco_kg?: number | null;
   preco_fixo_animal?: number | null;
+  // Mapa por categoria para lotes "aleatoria" (novo modelo)
+  categorias_map?: Record<string, { tipo_preco: TipoPrecoIndividual; preco_valor: number }> | null;
 }
 
 export interface PesoAnimal {
