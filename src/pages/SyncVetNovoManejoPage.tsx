@@ -222,6 +222,30 @@ export default function SyncVetNovoManejoPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="sm:col-span-2">
+          <Label className="text-xs">Código de Preço (Tabela de Preços)</Label>
+          {precos.length > 0 ? (
+            <Select value={codigoPreco} onValueChange={setCodigoPreco}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                {precos.map(p => (
+                  <SelectItem key={p.tipo_servico} value={p.tipo_servico}>
+                    {p.tipo_servico}{p.descricao ? ` — ${p.descricao}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              value={codigoPreco}
+              onChange={(e) => setCodigoPreco(e.target.value)}
+              placeholder="Ex: DG/US"
+            />
+          )}
+          <div className="text-[10px] text-muted-foreground mt-1">
+            Usado para buscar o valor na Tabela de Preços ao gerar o serviço.
+          </div>
+        </div>
       </Card>
 
       {tipo === "iatf" && (
