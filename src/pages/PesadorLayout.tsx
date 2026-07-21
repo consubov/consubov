@@ -89,7 +89,7 @@ export default function PesadorLayout() {
               )
             }
           >
-            <Scale className="w-5 h-5" /> Pesagem
+            <History className="w-5 h-5" /> Histórico
           </NavLink>
         </div>
         <div className="text-center pb-1">

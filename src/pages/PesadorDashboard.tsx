@@ -176,42 +176,6 @@ export default function PesadorDashboard() {
         <KpiCard icon={<DollarSign className="w-4 h-4" />} label="Valor pago no mês" value={brl(stats.valorMes)} />
       </div>
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-semibold mb-2">Últimas pesagens finalizadas</div>
-        {ultimas.length === 0 ? (
-          <div className="text-xs text-muted-foreground py-4 text-center">
-            Nenhuma pesagem finalizada ainda.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {ultimas.map((p) => (
-              <div key={p.id} className="py-2 flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">
-                    {clienteNomes[p.cliente_id] ?? "—"}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {CATEGORIA_LABELS[p.categoria] ?? p.categoria} • {fmtDate(p.finalizada_at)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-primary">{brl(p.totalValor)}</div>
-                  {p.pdf_url && (
-                    <a
-                      href={p.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
-                    >
-                      <FileDown className="w-3 h-3" /> PDF
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
