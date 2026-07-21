@@ -72,7 +72,7 @@ export default function PesadorPesagemResumoPage() {
       }
       const { data: ps } = await supabase
         .from("pesos_pesagem_compra")
-        .select("ordem, peso_kg, percentual_individual, tipo_preco_individual")
+        .select("ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual")
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
       setPesos(
@@ -82,8 +82,20 @@ export default function PesadorPesagemResumoPage() {
           percentual_individual:
             x.percentual_individual != null ? Number(x.percentual_individual) : null,
           tipo_preco_individual: x.tipo_preco_individual ?? null,
+          categoria_individual: x.categoria_individual ?? null,
         }))
       );
+      if (p?.tipo_preco === "misto") {
+        const { data: cats } = await supabase
+          .from("pesagens_compra_categorias")
+          .select("categoria, tipo_preco, preco_valor")
+          .eq("pesagem_id", pesagemId);
+        const map: Record<string, { tipo_preco: any; preco_valor: number }> = {};
+        (cats ?? []).forEach((r: any) => {
+          map[r.categoria] = { tipo_preco: r.tipo_preco, preco_valor: Number(r.preco_valor) };
+        });
+        setCfg((prev) => (prev ? { ...prev, categorias_map: map } : prev));
+      }
       setLoading(false);
     })();
   }, [pesagemId]);
