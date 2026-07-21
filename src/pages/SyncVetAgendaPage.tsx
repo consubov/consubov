@@ -706,6 +706,60 @@ export default function SyncVetAgendaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={resultadoOpen} onOpenChange={(o) => { if (!o) { setResultadoOpen(false); setResultadoManejo(null); } }}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              {resultadoIsDG ? "Diagnóstico por animal" : "Resultado por animal"}
+            </DialogTitle>
+            <DialogDescription>
+              Marque o resultado de cada animal. Ao confirmar, o manejo será concluído.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pb-2 border-b">
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("prenha")}>Todas prenhas</Button>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("vazia")}>Todas vazias</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 py-2">
+            {resultadoAnimais.map(a => {
+              const v = resultadoValues[a.id] || "prenha";
+              return (
+                <div key={a.id} className="flex items-center justify-between border border-border rounded-md px-2 py-1.5">
+                  <div className="text-xs min-w-0">
+                    <div className="font-medium truncate">{a.brinco || a.numero || "(sem brinco)"}</div>
+                    <div className="text-muted-foreground truncate">{a.categoria ?? ""}</div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant={v === "prenha" ? "default" : "outline"}
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "prenha" }))}
+                    >Prenha</Button>
+                    <Button
+                      size="sm"
+                      variant={v === "vazia" ? "destructive" : "outline"}
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "vazia" }))}
+                    >Vazia</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => { setResultadoOpen(false); setResultadoManejo(null); }} disabled={savingResultado}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarResultado} disabled={savingResultado}>
+              {savingResultado ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+              Salvar e concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
