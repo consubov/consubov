@@ -67,6 +67,7 @@ type PesagemRow = {
   preco_arroba: number | null;
   preco_kg: number | null;
   preco_fixo_animal: number | null;
+  valor_total_pago: number | null;
 };
 
 type CategoriaMap = Record<string, { tipo_preco: any; preco_valor: number }>;
