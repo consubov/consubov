@@ -23,14 +23,32 @@ type Pesagem = {
 
 type TipoInd = "arroba" | "kg" | "fixo_animal";
 
+type CategoriaCfg = {
+  categoria: string;
+  tipo_preco: TipoInd;
+  preco_valor: number;
+};
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  boi_gordo: "Boi Gordo",
+  vaca_gorda: "Vaca Gorda",
+  vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro",
+  garrote: "Garrote",
+  novilha: "Novilha",
+  bezerro: "Bezerro",
+  bezerra: "Bezerra",
+};
+
 type Peso = {
   ordem: number;
   peso_kg: number;
   percentual_individual: number | null;
   tipo_preco_individual: TipoInd | null;
+  categoria_individual: string | null;
 };
 
-type SubStep = "peso" | "tipo_pagamento" | "percentual";
+type SubStep = "peso" | "categoria" | "tipo_pagamento" | "percentual";
 
 function Chip({
   active,
@@ -75,6 +93,8 @@ export default function PesadorPesagemExecPage() {
   const [subStep, setSubStep] = useState<SubStep>("peso");
   const [pendingPeso, setPendingPeso] = useState<number | null>(null);
   const [pendingTipo, setPendingTipo] = useState<TipoInd | null>(null);
+  const [pendingCategoria, setPendingCategoria] = useState<string | null>(null);
+  const [categoriasLote, setCategoriasLote] = useState<CategoriaCfg[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -93,6 +113,19 @@ export default function PesadorPesagemExecPage() {
         return;
       }
       setPesagem(p as Pesagem);
+      if ((p as Pesagem).tipo_preco === "misto") {
+        const { data: cats } = await supabase
+          .from("pesagens_compra_categorias")
+          .select("categoria, tipo_preco, preco_valor")
+          .eq("pesagem_id", pesagemId);
+        setCategoriasLote(
+          (cats ?? []).map((r: any) => ({
+            categoria: r.categoria,
+            tipo_preco: r.tipo_preco,
+            preco_valor: Number(r.preco_valor),
+          }))
+        );
+      }
       const { data: c } = await supabase
         .from("clientes_pesador")
         .select("nome")
@@ -104,7 +137,7 @@ export default function PesadorPesagemExecPage() {
   }, [pesagemId, navigate]);
 
   useEffect(() => {
-    if (!loading && subStep !== "tipo_pagamento") {
+    if (!loading && subStep !== "categoria" && subStep !== "tipo_pagamento") {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [loading, subStep, pesos.length]);
@@ -125,6 +158,7 @@ export default function PesadorPesagemExecPage() {
       peso_kg: p.peso_kg,
       percentual_individual: p.percentual_individual,
       tipo_preco_individual: p.tipo_preco_individual,
+      categoria_individual: p.categoria_individual,
     });
     if (error) {
       toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
@@ -134,26 +168,32 @@ export default function PesadorPesagemExecPage() {
     return true;
   }
 
-  async function commitPeso(peso_kg: number, tipo: TipoInd | null, pct: number | null) {
+  async function commitPeso(
+    peso_kg: number,
+    tipo: TipoInd | null,
+    pct: number | null,
+    categoria: string | null,
+  ) {
     const ordem = pesos.length + 1;
     const novo: Peso = {
       ordem,
       peso_kg,
       percentual_individual: pct,
       tipo_preco_individual: tipo,
+      categoria_individual: categoria,
     };
     setPesos((prev) => [...prev, novo]);
     setCurrent("");
     setPendingPeso(null);
     setPendingTipo(null);
+    setPendingCategoria(null);
     setSubStep("peso");
-    // Mantém o teclado aberto: reforça o foco no mesmo gesto do usuário
     inputRef.current?.focus();
     await persistirPeso(novo);
   }
 
   async function handleProximo() {
-    if (subStep === "tipo_pagamento") return; // avançado por chips
+    if (subStep === "tipo_pagamento" || subStep === "categoria") return;
     const val = parseFloat(current.replace(",", "."));
     if (!Number.isFinite(val) || val <= 0) return;
 
@@ -161,19 +201,17 @@ export default function PesadorPesagemExecPage() {
       if (isMisto) {
         setPendingPeso(val);
         setCurrent("");
-        setSubStep("tipo_pagamento");
+        setSubStep("categoria");
         return;
       }
       if (modoAleatorio) {
         setPendingPeso(val);
         setCurrent("");
         setSubStep("percentual");
-        // Mantém teclado aberto ao trocar peso → percentual
         inputRef.current?.focus();
         return;
       }
-      // fluxo tradicional (kg / fixo / arroba com % fixo)
-      await commitPeso(val, null, null);
+      await commitPeso(val, null, null, null);
       return;
     }
 
@@ -186,42 +224,33 @@ export default function PesadorPesagemExecPage() {
       toast({ title: "Percentual inválido", description: "Informe um valor entre 1 e 100.", variant: "destructive" });
       return;
     }
-    // Se veio do fluxo misto, usa pendingTipo; senão null (arroba do lote)
     const tipo = isMisto ? pendingTipo : null;
-    await commitPeso(pendingPeso, tipo, val);
+    await commitPeso(pendingPeso, tipo, val, pendingCategoria);
   }
 
-  async function handleEscolherTipo(tipo: TipoInd) {
+  async function handleEscolherCategoria(cat: string) {
     if (pendingPeso == null) return;
-    // Valida se o lote misto tem esse preço configurado
-    if (pesagem) {
-      const has =
-        (tipo === "arroba" && (pesagem.preco_arroba ?? 0) > 0) ||
-        (tipo === "kg" && (pesagem.preco_kg ?? 0) > 0) ||
-        (tipo === "fixo_animal" && (pesagem.preco_fixo_animal ?? 0) > 0);
-      if (!has) {
-        toast({
-          title: "Preço não configurado",
-          description: "Esta forma de pagamento não foi cadastrada no lote.",
-          variant: "destructive",
-        });
-        return;
-      }
+    const cfg = categoriasLote.find((c) => c.categoria === cat);
+    if (!cfg) {
+      toast({ title: "Categoria não configurada", variant: "destructive" });
+      return;
     }
-    setPendingTipo(tipo);
-    if (tipo === "arroba") {
+    setPendingCategoria(cat);
+    setPendingTipo(cfg.tipo_preco);
+    if (cfg.tipo_preco === "arroba") {
       setSubStep("percentual");
+      inputRef.current?.focus();
     } else {
-      await commitPeso(pendingPeso, tipo, null);
+      await commitPeso(pendingPeso, cfg.tipo_preco, null, cat);
     }
   }
 
   async function handleDesfazer() {
-    // Se estamos em um sub-passo pendente, apenas volta
     if (subStep !== "peso") {
       setSubStep("peso");
       setPendingPeso(null);
       setPendingTipo(null);
+      setPendingCategoria(null);
       setCurrent("");
       return;
     }
@@ -237,6 +266,7 @@ export default function PesadorPesagemExecPage() {
       toast({ title: "Erro ao desfazer", description: error.message, variant: "destructive" });
     }
   }
+
 
   async function handleFinalizar() {
     if (!pesagem || pesos.length === 0) {
@@ -302,33 +332,24 @@ export default function PesadorPesagemExecPage() {
         </div>
       </div>
 
-      {subStep === "tipo_pagamento" ? (
+      {subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
-            Animal {animalNum} — Forma de pagamento ({pendingPeso} kg)
+            Animal {animalNum} — Categoria ({pendingPeso} kg)
           </div>
           <div className="flex flex-wrap gap-2">
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_arroba ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("arroba")}
-            >
-              @
-            </Chip>
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_kg ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("kg")}
-            >
-              kg
-            </Chip>
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_fixo_animal ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("fixo_animal")}
-            >
-              Fixo por animal
-            </Chip>
+            {categoriasLote.map((c) => (
+              <Chip
+                key={c.categoria}
+                active={false}
+                onClick={() => void handleEscolherCategoria(c.categoria)}
+              >
+                {CATEGORIA_LABELS[c.categoria] ?? c.categoria}
+                <span className="ml-1 text-xs opacity-70">
+                  ({c.tipo_preco === "arroba" ? "@" : c.tipo_preco === "kg" ? "kg" : "fixo"})
+                </span>
+              </Chip>
+            ))}
           </div>
         </div>
       ) : (

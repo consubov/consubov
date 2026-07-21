@@ -72,7 +72,7 @@ export default function PesadorPesagemResumoPage() {
       }
       const { data: ps } = await supabase
         .from("pesos_pesagem_compra")
-        .select("ordem, peso_kg, percentual_individual, tipo_preco_individual")
+        .select("ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual")
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
       setPesos(
@@ -82,8 +82,20 @@ export default function PesadorPesagemResumoPage() {
           percentual_individual:
             x.percentual_individual != null ? Number(x.percentual_individual) : null,
           tipo_preco_individual: x.tipo_preco_individual ?? null,
+          categoria_individual: x.categoria_individual ?? null,
         }))
       );
+      if (p?.tipo_preco === "misto") {
+        const { data: cats } = await supabase
+          .from("pesagens_compra_categorias")
+          .select("categoria, tipo_preco, preco_valor")
+          .eq("pesagem_id", pesagemId);
+        const map: Record<string, { tipo_preco: any; preco_valor: number }> = {};
+        (cats ?? []).forEach((r: any) => {
+          map[r.categoria] = { tipo_preco: r.tipo_preco, preco_valor: Number(r.preco_valor) };
+        });
+        setCfg((prev) => (prev ? { ...prev, categorias_map: map } : prev));
+      }
       setLoading(false);
     })();
   }, [pesagemId]);
@@ -110,15 +122,32 @@ export default function PesadorPesagemResumoPage() {
       ? `kg ${brl(cfg.preco_valor)}`
       : cfg.tipo_preco === "fixo_animal"
       ? `Fixo ${brl(cfg.preco_valor)}/animal`
-      : [
-          cfg.preco_arroba ? `@ ${brl(cfg.preco_arroba)}` : null,
-          cfg.preco_kg ? `kg ${brl(cfg.preco_kg)}` : null,
-          cfg.preco_fixo_animal ? `Fixo ${brl(cfg.preco_fixo_animal)}` : null,
-        ]
-          .filter(Boolean)
+      : Object.entries(cfg.categorias_map ?? {})
+          .map(([cat, m]) => {
+            const label = CATEGORIA_LABELS[cat] ?? cat;
+            const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
+            return `${label}: ${tp} ${brl(m.preco_valor)}`;
+          })
           .join(" • ");
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
+
+  // Detalhamento por categoria (apenas para lote misto)
+  const breakdownPorCategoria = cfg.tipo_preco === "misto"
+    ? Object.entries(
+        animais.reduce<Record<string, { count: number; valor: number }>>((acc, a) => {
+          const cat = a.categoria_individual ?? "—";
+          if (!acc[cat]) acc[cat] = { count: 0, valor: 0 };
+          acc[cat].count += 1;
+          acc[cat].valor += a.valor;
+          return acc;
+        }, {})
+      ).map(([cat, v]) => ({
+        label: CATEGORIA_LABELS[cat] ?? cat,
+        count: v.count,
+        valor: v.valor,
+      }))
+    : [];
 
   async function handleGerarPdf() {
     if (!pesagemId || !cfg) return;
@@ -236,6 +265,21 @@ export default function PesadorPesagemResumoPage() {
           <div className="text-2xl font-bold text-primary">{brl(tot.totalValor)}</div>
         </div>
       </div>
+
+      {breakdownPorCategoria.length > 0 && (
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-xs text-muted-foreground mb-2">Por categoria</div>
+          <div className="text-xs space-y-1">
+            {breakdownPorCategoria.map((b) => (
+              <div key={b.label} className="flex justify-between border-b border-border/40 py-1">
+                <span>{b.label}</span>
+                <span>{b.count} animais — {brl(b.valor)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       <div className="rounded-lg border bg-card p-3">
         <div className="text-xs text-muted-foreground mb-2">Detalhamento</div>

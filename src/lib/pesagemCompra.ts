@@ -11,6 +11,8 @@ export interface PesagemCompraCfg {
   preco_arroba?: number | null;
   preco_kg?: number | null;
   preco_fixo_animal?: number | null;
+  // Mapa por categoria para lotes "aleatoria" (novo modelo)
+  categorias_map?: Record<string, { tipo_preco: TipoPrecoIndividual; preco_valor: number }> | null;
 }
 
 export interface PesoAnimal {
@@ -18,6 +20,7 @@ export interface PesoAnimal {
   peso_kg: number;
   percentual_individual: number | null;
   tipo_preco_individual?: TipoPrecoIndividual | null;
+  categoria_individual?: string | null;
 }
 
 export interface AnimalCalc extends PesoAnimal {
@@ -31,11 +34,16 @@ export interface AnimalCalc extends PesoAnimal {
  */
 export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): AnimalCalc[] {
   return pesos.map((p) => {
-    // Lote misto: usa tipo_preco_individual do próprio animal + preços do lote
+    // Lote misto (aleatória): usa categoria_individual + categorias_map (novo modelo).
+    // Fallback legado: tipo_preco_individual + preços do lote.
     if (cfg.tipo_preco === "misto") {
-      const tipoInd = p.tipo_preco_individual ?? "kg";
+      const mapped =
+        p.categoria_individual && cfg.categorias_map
+          ? cfg.categorias_map[p.categoria_individual]
+          : null;
+      const tipoInd = (mapped?.tipo_preco ?? p.tipo_preco_individual ?? "kg") as TipoPrecoIndividual;
       if (tipoInd === "kg") {
-        const preco = cfg.preco_kg ?? 0;
+        const preco = mapped?.preco_valor ?? cfg.preco_kg ?? 0;
         return {
           ...p,
           peso_pagavel: p.peso_kg,
@@ -44,7 +52,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
         };
       }
       if (tipoInd === "fixo_animal") {
-        const preco = cfg.preco_fixo_animal ?? 0;
+        const preco = mapped?.preco_valor ?? cfg.preco_fixo_animal ?? 0;
         return {
           ...p,
           peso_pagavel: null,
@@ -56,7 +64,7 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
       const pct = p.percentual_individual ?? 0;
       const pesoPagavel = (p.peso_kg * pct) / 100;
       const arroba = pesoPagavel / 15;
-      const preco = cfg.preco_arroba ?? 0;
+      const preco = mapped?.preco_valor ?? cfg.preco_arroba ?? 0;
       return {
         ...p,
         peso_pagavel: round2(pesoPagavel),
