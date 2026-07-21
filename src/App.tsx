@@ -78,6 +78,9 @@ import SyncVetTrajetosPage from "./pages/SyncVetTrajetosPage";
 import SyncVetPrecosPage from "./pages/SyncVetPrecosPage";
 import SyncVetServicoNovoPage from "./pages/SyncVetServicoNovoPage";
 import SyncVetContasPage from "./pages/SyncVetContasPage";
+import SyncVetDashboardPage from "./pages/SyncVetDashboardPage";
+import SyncVetPartosPage from "./pages/SyncVetPartosPage";
+import SyncVetAuditoriaPage from "./pages/SyncVetAuditoriaPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
