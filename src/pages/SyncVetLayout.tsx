@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, Building2, Users, Landmark } from "lucide-react";
+import { LogOut, Building2, Users, Landmark, Pill, Snowflake, Workflow } from "lucide-react";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 
@@ -31,35 +31,27 @@ export default function SyncVetLayout() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
-        <div className="max-w-5xl mx-auto grid grid-cols-3">
-          <NavLink
-            to="/syncvet"
-            end
-            className={({ isActive }) =>
-              cn("flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground")
-            }
-          >
-            <Building2 className="w-5 h-5" /> Empresa
-          </NavLink>
-          <NavLink
-            to="/syncvet/equipe"
-            className={({ isActive }) =>
-              cn("flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground")
-            }
-          >
-            <Users className="w-5 h-5" /> Equipe
-          </NavLink>
-          <NavLink
-            to="/syncvet/fazendas"
-            className={({ isActive }) =>
-              cn("flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground")
-            }
-          >
-            <Landmark className="w-5 h-5" /> Fazendas
-          </NavLink>
+        <div className="max-w-5xl mx-auto grid grid-cols-6">
+          {[
+            { to: "/syncvet", end: true, icon: Building2, label: "Empresa" },
+            { to: "/syncvet/equipe", icon: Users, label: "Equipe" },
+            { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
+            { to: "/syncvet/medicamentos", icon: Pill, label: "Medic." },
+            { to: "/syncvet/semen", icon: Snowflake, label: "Sêmen" },
+            { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
+          ].map((it) => (
+            <NavLink
+              key={it.to}
+              to={it.to}
+              end={it.end}
+              className={({ isActive }) =>
+                cn("flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium",
+                  isActive ? "text-primary" : "text-muted-foreground")
+              }
+            >
+              <it.icon className="w-5 h-5" /> {it.label}
+            </NavLink>
+          ))}
         </div>
         <div className="text-center pb-1">
           <AppVersionBadge />
