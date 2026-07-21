@@ -3862,6 +3862,38 @@ export type Database = {
           },
         ]
       }
+      syncvet_racas_gestacao: {
+        Row: {
+          created_at: string
+          dias_gestacao: number
+          empresa_id: string
+          id: string
+          raca: string
+        }
+        Insert: {
+          created_at?: string
+          dias_gestacao?: number
+          empresa_id: string
+          id?: string
+          raca: string
+        }
+        Update: {
+          created_at?: string
+          dias_gestacao?: number
+          empresa_id?: string
+          id?: string
+          raca?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_racas_gestacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_semen: {
         Row: {
           central: string | null

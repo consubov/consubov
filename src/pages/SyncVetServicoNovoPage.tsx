@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, FileText, Sparkles } from "lucide-react";
 import { gerarServicoPDF, type ServicoPdfItem } from "@/lib/syncvetServicoPdf";
+import { logAuditoria } from "@/lib/syncvetAuditoria";
 
 type Fazenda = {
   id: string; nome: string; modelo_cobranca: "protocolo_completo" | "mao_obra_km";
@@ -247,6 +248,12 @@ export default function SyncVetServicoNovoPage() {
         const mRows = manejoIds.map(m => ({ servico_id: servicoId, manejo_id: m }));
         await supabase.from("syncvet_servico_manejos").insert(mRows);
       }
+
+      void logAuditoria({
+        empresaId, userId: user?.id ?? null,
+        acao: "criar", entidade: "syncvet_servicos", entidade_id: servicoId,
+        detalhes: { valor_total: valorTotal, itens: items.length, manejos: manejoIds.length },
+      });
 
       // Generate PDF
       const pdfItems: ServicoPdfItem[] = items.map(it => ({

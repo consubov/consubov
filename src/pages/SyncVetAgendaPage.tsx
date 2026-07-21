@@ -14,8 +14,9 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation, ClipboardCheck } from "lucide-react";
 import { sendPush } from "@/lib/pushService";
+import { logAuditoria } from "@/lib/syncvetAuditoria";
 
 type Manejo = {
   id: string;
@@ -74,6 +75,15 @@ export default function SyncVetAgendaPage() {
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcResult, setCalcResult] = useState<{ distancia_km: number; duracao_min: number; origem_endereco: string | null } | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+
+  // Resultado por animal dialog state
+  type AnimalRow = { id: string; brinco: string | null; numero: string | null; categoria: string | null };
+  const [resultadoOpen, setResultadoOpen] = useState(false);
+  const [resultadoAnimais, setResultadoAnimais] = useState<AnimalRow[]>([]);
+  const [resultadoValues, setResultadoValues] = useState<Record<string, "prenha" | "vazia">>({});
+  const [resultadoIsDG, setResultadoIsDG] = useState(false);
+  const [resultadoManejo, setResultadoManejo] = useState<Manejo | null>(null);
+  const [savingResultado, setSavingResultado] = useState(false);
 
   const load = useCallback(async () => {
     if (!empresaId) return;
@@ -289,6 +299,42 @@ export default function SyncVetAgendaPage() {
     }
   }
 
+  function isDGEtapa(m: Manejo): boolean {
+    const etapa = etapaById.get(m.etapa_id);
+    const n = (etapa?.nome_etapa || "").toLowerCase();
+    return n.includes("dg") || n.includes("diagn");
+  }
+
+  async function fetchAnimaisDoManejo(m: Manejo): Promise<AnimalRow[]> {
+    const ctx = ctxByCiclo.get(m.lote_ciclo_id);
+    if (!ctx?.lote?.id) return [];
+    const { data } = await supabase
+      .from("syncvet_animais")
+      .select("id, brinco, numero, categoria")
+      .eq("lote_id", ctx.lote.id)
+      .order("brinco", { nullsFirst: false })
+      .order("numero", { nullsFirst: false });
+    return ((data as AnimalRow[]) || []);
+  }
+
+  async function finalizarConclusao(m: Manejo, opts?: { trajetoRegistrado?: boolean }) {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("syncvet_manejos")
+      .update({ status: "concluido", data_execucao: now })
+      .eq("id", m.id);
+    if (error) throw error;
+    setManejos(prev => prev.map(x => x.id === m.id ? { ...x, status: "concluido", data_execucao: now } : x));
+    // Auditoria
+    void logAuditoria({
+      empresaId, userId: user?.id ?? null,
+      acao: "concluir",
+      entidade: "syncvet_manejos",
+      entidade_id: m.id,
+      detalhes: { trajeto: !!opts?.trajetoRegistrado, is_dg: isDGEtapa(m) },
+    });
+  }
+
   async function handleConfirmarESalvar() {
     if (!selected || !calcResult || !user) return;
     const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
@@ -299,7 +345,6 @@ export default function SyncVetAgendaPage() {
 
     setFinalizing(true);
     try {
-      // Resolve veterinario_id from equipe by user_id
       const { data: vet } = await supabase.from("syncvet_equipe")
         .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).maybeSingle();
       const vetId = (vet as { id: string } | null)?.id;
@@ -308,10 +353,8 @@ export default function SyncVetAgendaPage() {
         setFinalizing(false);
         return;
       }
-
       const oLat = parseFloat(origemLat.replace(",", "."));
       const oLng = parseFloat(origemLng.replace(",", "."));
-
       const { error: trajErr } = await supabase.from("syncvet_trajetos").insert({
         veterinario_id: vetId,
         fazenda_id: fazendaId,
@@ -328,20 +371,11 @@ export default function SyncVetAgendaPage() {
       });
       if (trajErr) throw trajErr;
 
-      const now = new Date().toISOString();
-      const { error: mErr } = await supabase
-        .from("syncvet_manejos")
-        .update({ status: "concluido", data_execucao: now })
-        .eq("id", selected.id);
-      if (mErr) throw mErr;
-
-      setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, status: "concluido", data_execucao: now } : x));
-      toast.success("Manejo concluído e trajeto registrado");
       setTrajetoOpen(false);
-      setSelected(null);
+      await abrirResultadoOuConcluir(selected, true);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar trajeto/conclusão");
+      toast.error("Erro ao salvar trajeto");
     } finally {
       setFinalizing(false);
     }
@@ -351,15 +385,7 @@ export default function SyncVetAgendaPage() {
     if (!selected) return;
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("syncvet_manejos")
-        .update({ status: "concluido", data_execucao: now })
-        .eq("id", selected.id);
-      if (error) throw error;
-      setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, status: "concluido", data_execucao: now } : x));
-      toast.success("Manejo concluído");
-      setSelected(null);
+      await abrirResultadoOuConcluir(selected, false);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao concluir manejo");
@@ -367,6 +393,65 @@ export default function SyncVetAgendaPage() {
       setSaving(false);
     }
   }
+
+  async function abrirResultadoOuConcluir(m: Manejo, trajetoRegistrado: boolean) {
+    const isDG = isDGEtapa(m);
+    const animais = await fetchAnimaisDoManejo(m);
+    if (isDG && animais.length > 0) {
+      // Abre dialog para marcar prenha/vazia por animal
+      setResultadoAnimais(animais);
+      setResultadoValues(Object.fromEntries(animais.map(a => [a.id, "prenha" as const])));
+      setResultadoIsDG(true);
+      setResultadoManejo(m);
+      setResultadoOpen(true);
+      // Mantém o dialog do manejo fechado para não sobrepor
+      setSelected(null);
+      return;
+    }
+    // Não-DG: insere 'realizado' em lote (se houver animais) e conclui
+    if (animais.length > 0) {
+      await supabase.from("syncvet_manejo_resultados").insert(
+        animais.map(a => ({ manejo_id: m.id, animal_id: a.id, resultado: "realizado" }))
+      );
+    }
+    await finalizarConclusao(m, { trajetoRegistrado });
+    toast.success(trajetoRegistrado ? "Manejo concluído e trajeto registrado" : "Manejo concluído");
+    setSelected(null);
+  }
+
+  async function handleSalvarResultado() {
+    if (!resultadoManejo) return;
+    setSavingResultado(true);
+    try {
+      const rows = resultadoAnimais.map(a => ({
+        manejo_id: resultadoManejo.id,
+        animal_id: a.id,
+        resultado: resultadoValues[a.id] || "prenha",
+      }));
+      if (rows.length > 0) {
+        const { error } = await supabase.from("syncvet_manejo_resultados").insert(rows);
+        if (error) throw error;
+      }
+      await finalizarConclusao(resultadoManejo);
+      toast.success("Diagnóstico registrado e manejo concluído");
+      setResultadoOpen(false);
+      setResultadoManejo(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar diagnóstico");
+    } finally {
+      setSavingResultado(false);
+    }
+  }
+
+  function setAllResultado(v: "prenha" | "vazia") {
+    setResultadoValues(prev => {
+      const next = { ...prev };
+      for (const a of resultadoAnimais) next[a.id] = v;
+      return next;
+    });
+  }
+
 
   const today = todayISO();
 
@@ -618,6 +703,60 @@ export default function SyncVetAgendaPage() {
                 Confirmar e concluir manejo
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resultadoOpen} onOpenChange={(o) => { if (!o) { setResultadoOpen(false); setResultadoManejo(null); } }}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              {resultadoIsDG ? "Diagnóstico por animal" : "Resultado por animal"}
+            </DialogTitle>
+            <DialogDescription>
+              Marque o resultado de cada animal. Ao confirmar, o manejo será concluído.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pb-2 border-b">
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("prenha")}>Todas prenhas</Button>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("vazia")}>Todas vazias</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 py-2">
+            {resultadoAnimais.map(a => {
+              const v = resultadoValues[a.id] || "prenha";
+              return (
+                <div key={a.id} className="flex items-center justify-between border border-border rounded-md px-2 py-1.5">
+                  <div className="text-xs min-w-0">
+                    <div className="font-medium truncate">{a.brinco || a.numero || "(sem brinco)"}</div>
+                    <div className="text-muted-foreground truncate">{a.categoria ?? ""}</div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant={v === "prenha" ? "default" : "outline"}
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "prenha" }))}
+                    >Prenha</Button>
+                    <Button
+                      size="sm"
+                      variant={v === "vazia" ? "destructive" : "outline"}
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "vazia" }))}
+                    >Vazia</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => { setResultadoOpen(false); setResultadoManejo(null); }} disabled={savingResultado}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarResultado} disabled={savingResultado}>
+              {savingResultado ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+              Salvar e concluir
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
