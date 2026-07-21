@@ -274,9 +274,30 @@ export default function PesadorPesagemExecPage() {
       return;
     }
     setSaving(true);
+    // Compute valor_total_pago as single source of truth
+    const { calcularAnimais, totalizar } = await import("@/lib/pesagemCompra");
+    const categoriasMap: Record<string, { tipo_preco: any; preco_valor: number }> = {};
+    for (const c of categoriasLote) {
+      categoriasMap[c.categoria] = { tipo_preco: c.tipo_preco, preco_valor: c.preco_valor };
+    }
+    const cfg: any = {
+      tipo_preco: pesagem.tipo_preco,
+      preco_valor: Number(pesagem.preco_valor ?? 0),
+      modo_percentual: pesagem.modo_percentual ?? "na",
+      percentual_fixo: pesagem.percentual_fixo != null ? Number(pesagem.percentual_fixo) : null,
+      preco_arroba: pesagem.preco_arroba != null ? Number(pesagem.preco_arroba) : null,
+      preco_kg: pesagem.preco_kg != null ? Number(pesagem.preco_kg) : null,
+      preco_fixo_animal: pesagem.preco_fixo_animal != null ? Number(pesagem.preco_fixo_animal) : null,
+      categorias_map: pesagem.tipo_preco === "misto" ? categoriasMap : null,
+    };
+    const totals = totalizar(calcularAnimais(cfg, pesos as any));
     const { error } = await supabase
       .from("pesagens_compra")
-      .update({ status: "finalizada", finalizada_at: new Date().toISOString() })
+      .update({
+        status: "finalizada",
+        finalizada_at: new Date().toISOString(),
+        valor_total_pago: totals.totalValor,
+      })
       .eq("id", pesagem.id);
     setSaving(false);
     if (error) {
