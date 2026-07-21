@@ -270,6 +270,9 @@ export default function SyncVetProtocoloDetalhePage() {
                   <div className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">D+{e.dia_offset}</div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{e.nome_etapa || `Etapa D+${e.dia_offset}`}</div>
+                    {e.codigo_preco && (
+                      <div className="text-[10px] text-muted-foreground">Preço: <span className="font-semibold text-primary">{e.codigo_preco}</span></div>
+                    )}
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEditEtapa(e)}><Pencil className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => deleteEtapa(e)}><Trash2 className="w-4 h-4" /></Button>
