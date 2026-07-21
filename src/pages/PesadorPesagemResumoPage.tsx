@@ -34,6 +34,7 @@ export default function PesadorPesagemResumoPage() {
   const [clienteCidade, setClienteCidade] = useState("");
   const [categoria, setCategoria] = useState("");
   const [finalizadaAt, setFinalizadaAt] = useState<string | null>(null);
+  const [valorTotalPago, setValorTotalPago] = useState<number | null>(null);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -44,7 +45,7 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago"
         )
         .eq("id", pesagemId)
         .maybeSingle();
@@ -60,6 +61,7 @@ export default function PesadorPesagemResumoPage() {
         });
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
+        setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
         setPdfUrl((p as any).pdf_url ?? null);
         const { data: c } = await supabase
           .from("clientes_pesador")
@@ -183,6 +185,7 @@ export default function PesadorPesagemResumoPage() {
         pesadorLogoUrl,
         pesadorNomeEmpresa,
         pesadorNome,
+        valorTotalOverride: valorTotalPago,
       });
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
@@ -262,7 +265,7 @@ export default function PesadorPesagemResumoPage() {
         </div>
         <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
           <div className="text-xs text-muted-foreground">Total a pagar</div>
-          <div className="text-2xl font-bold text-primary">{brl(tot.totalValor)}</div>
+          <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
         </div>
       </div>
 

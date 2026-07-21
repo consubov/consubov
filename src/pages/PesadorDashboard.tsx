@@ -67,6 +67,7 @@ type PesagemRow = {
   preco_arroba: number | null;
   preco_kg: number | null;
   preco_fixo_animal: number | null;
+  valor_total_pago: number | null;
 };
 
 type CategoriaMap = Record<string, { tipo_preco: any; preco_valor: number }>;
@@ -104,7 +105,7 @@ export default function PesadorDashboard() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal")
+        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, valor_total_pago")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
@@ -184,13 +185,12 @@ export default function PesadorDashboard() {
       if (d.getFullYear() === year) animaisAno += pesos.length;
       if (d.getFullYear() === year && d.getMonth() === month) {
         animaisMes += pesos.length;
-        const t = totalizar(calcularAnimais(buildCfg(p), pesos));
-        valorMes += t.totalValor;
+        valorMes += Number(p.valor_total_pago ?? 0);
       }
     }
     return { animaisAno, animaisMes, valorMes };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pesagens, pesosByPesagem, catsByPesagem]);
+  }, [pesagens, pesosByPesagem]);
 
   const anosDisponiveis = useMemo(() => {
     const set = new Set<number>();
@@ -216,24 +216,31 @@ export default function PesadorDashboard() {
       const cfg = buildCfg(p);
       const animais = calcularAnimais(cfg, pesos);
       const t = totalizar(animais);
-      totalPorMes[mes] += t.totalValor;
+      const pesagemTotal = Number(p.valor_total_pago ?? t.totalValor);
+      totalPorMes[mes] += pesagemTotal;
 
       if (appliedMonth === "all" || mes + 1 === appliedMonth) {
-        totalValor += t.totalValor;
+        totalValor += pesagemTotal;
         totalAnimais += animais.length;
         totalArrobas += t.totalArroba;
 
-        for (const a of animais) {
-          let cat: string;
-          if (p.categoria === "aleatoria") {
-            cat = a.categoria_individual ?? "aleatoria";
-          } else {
-            cat = p.categoria;
-          }
+        // Per-category valor: for non-misto lots, all pesagemTotal goes to the lot category.
+        // For misto lots, we still need per-animal breakdown (no stored per-animal amount);
+        // fall back to the computed animais valor.
+        if (p.categoria !== "aleatoria") {
+          const cat = p.categoria;
           if (!porCategoria[cat]) porCategoria[cat] = { animais: 0, arrobas: 0, valor: 0 };
-          porCategoria[cat].animais += 1;
-          porCategoria[cat].arrobas += a.arroba_pagavel ?? 0;
-          porCategoria[cat].valor += a.valor;
+          porCategoria[cat].animais += animais.length;
+          porCategoria[cat].arrobas += t.totalArroba;
+          porCategoria[cat].valor += pesagemTotal;
+        } else {
+          for (const a of animais) {
+            const cat = a.categoria_individual ?? "aleatoria";
+            if (!porCategoria[cat]) porCategoria[cat] = { animais: 0, arrobas: 0, valor: 0 };
+            porCategoria[cat].animais += 1;
+            porCategoria[cat].arrobas += a.arroba_pagavel ?? 0;
+            porCategoria[cat].valor += a.valor;
+          }
         }
       }
     }

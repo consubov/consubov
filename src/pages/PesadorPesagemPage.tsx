@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, FileDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { calcularAnimais, totalizar, type PesagemCompraCfg, type PesoAnimal } from "@/lib/pesagemCompra";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -22,13 +21,7 @@ type PesagemRow = {
   categoria: string;
   finalizada_at: string;
   pdf_url: string | null;
-  tipo_preco: string;
-  preco_valor: number | null;
-  modo_percentual: string | null;
-  percentual_fixo: number | null;
-  preco_arroba: number | null;
-  preco_kg: number | null;
-  preco_fixo_animal: number | null;
+  valor_total_pago: number | null;
 };
 
 const PAGE_SIZE = 20;
@@ -36,7 +29,6 @@ const PAGE_SIZE = 20;
 export default function PesadorPesagemPage() {
   const [loading, setLoading] = useState(true);
   const [pesagens, setPesagens] = useState<PesagemRow[]>([]);
-  const [pesosByPesagem, setPesosByPesagem] = useState<Record<string, PesoAnimal[]>>({});
   const [clienteNomes, setClienteNomes] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -57,62 +49,34 @@ export default function PesadorPesagemPage() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, pdf_url, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal")
+        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
       const rows = (pAll ?? []) as PesagemRow[];
       setPesagens(rows);
 
-      const ids = rows.map((r) => r.id);
-      if (ids.length > 0) {
-        const { data: pesos } = await supabase
-          .from("pesos_pesagem_compra")
-          .select("pesagem_id, ordem, peso_kg, percentual_individual, tipo_preco_individual")
-          .in("pesagem_id", ids);
-        const map: Record<string, PesoAnimal[]> = {};
-        for (const p of pesos ?? []) {
-          const key = (p as any).pesagem_id as string;
-          (map[key] ||= []).push({
-            ordem: (p as any).ordem,
-            peso_kg: Number((p as any).peso_kg),
-            percentual_individual: (p as any).percentual_individual != null ? Number((p as any).percentual_individual) : null,
-            tipo_preco_individual: (p as any).tipo_preco_individual ?? null,
-          });
-        }
-        setPesosByPesagem(map);
-
-        const clienteIds = Array.from(new Set(rows.map((r) => r.cliente_id)));
-        if (clienteIds.length > 0) {
-          const { data: cs } = await supabase
-            .from("clientes_pesador")
-            .select("id, nome")
-            .in("id", clienteIds);
-          const cmap: Record<string, string> = {};
-          for (const c of cs ?? []) cmap[(c as any).id] = (c as any).nome;
-          setClienteNomes(cmap);
-        }
+      const clienteIds = Array.from(new Set(rows.map((r) => r.cliente_id)));
+      if (clienteIds.length > 0) {
+        const { data: cs } = await supabase
+          .from("clientes_pesador")
+          .select("id, nome")
+          .in("id", clienteIds);
+        const cmap: Record<string, string> = {};
+        for (const c of cs ?? []) cmap[(c as any).id] = (c as any).nome;
+        setClienteNomes(cmap);
       }
       setLoading(false);
     })();
   }, []);
 
   const items = useMemo(() => {
-    return pesagens.map((p) => {
-      const pesos = pesosByPesagem[p.id] ?? [];
-      const cfg: PesagemCompraCfg = {
-        tipo_preco: p.tipo_preco as any,
-        preco_valor: Number(p.preco_valor ?? 0),
-        modo_percentual: (p.modo_percentual as any) ?? "na",
-        percentual_fixo: p.percentual_fixo != null ? Number(p.percentual_fixo) : null,
-        preco_arroba: p.preco_arroba != null ? Number(p.preco_arroba) : null,
-        preco_kg: p.preco_kg != null ? Number(p.preco_kg) : null,
-        preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
-      };
-      const t = totalizar(calcularAnimais(cfg, pesos));
-      return { ...p, totalValor: t.totalValor, produtor: clienteNomes[p.cliente_id] ?? "—" };
-    });
-  }, [pesagens, pesosByPesagem, clienteNomes]);
+    return pesagens.map((p) => ({
+      ...p,
+      totalValor: Number(p.valor_total_pago ?? 0),
+      produtor: clienteNomes[p.cliente_id] ?? "—",
+    }));
+  }, [pesagens, clienteNomes]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
