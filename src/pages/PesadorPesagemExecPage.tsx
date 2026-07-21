@@ -113,6 +113,19 @@ export default function PesadorPesagemExecPage() {
         return;
       }
       setPesagem(p as Pesagem);
+      if ((p as Pesagem).tipo_preco === "misto") {
+        const { data: cats } = await supabase
+          .from("pesagens_compra_categorias")
+          .select("categoria, tipo_preco, preco_valor")
+          .eq("pesagem_id", pesagemId);
+        setCategoriasLote(
+          (cats ?? []).map((r: any) => ({
+            categoria: r.categoria,
+            tipo_preco: r.tipo_preco,
+            preco_valor: Number(r.preco_valor),
+          }))
+        );
+      }
       const { data: c } = await supabase
         .from("clientes_pesador")
         .select("nome")
