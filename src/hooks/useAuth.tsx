@@ -8,7 +8,7 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | "syncvet" | null;
 
 interface RoleData {
   role: UserRole;
@@ -17,6 +17,8 @@ interface RoleData {
   retiroId: string | null;
   fabricaId?: string | null;
   consultorId?: string | null;
+  syncvetEmpresaId?: string | null;
+  syncvetPerfil?: string | null;
 }
 
 interface AuthContextType {
