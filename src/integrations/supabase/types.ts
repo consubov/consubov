@@ -3233,6 +3233,35 @@ export type Database = {
           },
         ]
       }
+      syncvet_equipe_notificacoes: {
+        Row: {
+          created_at: string
+          equipe_id: string
+          horas_antes: number
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          equipe_id: string
+          horas_antes: number
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          equipe_id?: string
+          horas_antes?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_equipe_notificacoes_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_estacao_protocolos: {
         Row: {
           created_at: string
@@ -3510,6 +3539,64 @@ export type Database = {
             columns: ["fazenda_id"]
             isOneToOne: false
             referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_manejos: {
+        Row: {
+          created_at: string
+          data_execucao: string | null
+          data_prevista: string
+          etapa_id: string
+          id: string
+          lote_ciclo_id: string
+          observacoes: string | null
+          responsavel_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          data_execucao?: string | null
+          data_prevista: string
+          etapa_id: string
+          id?: string
+          lote_ciclo_id: string
+          observacoes?: string | null
+          responsavel_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          data_execucao?: string | null
+          data_prevista?: string
+          etapa_id?: string
+          id?: string
+          lote_ciclo_id?: string
+          observacoes?: string | null
+          responsavel_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_manejos_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_protocolo_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejos_lote_ciclo_id_fkey"
+            columns: ["lote_ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_lote_ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejos_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
             referencedColumns: ["id"]
           },
         ]

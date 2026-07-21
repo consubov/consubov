@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, Building2, Users, Landmark, Pill, Snowflake, Workflow } from "lucide-react";
+import { LogOut, Building2, Users, Landmark, Pill, Snowflake, Workflow, Calendar, Settings } from "lucide-react";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +20,14 @@ export default function SyncVetLayout() {
               <div className="text-[10px] uppercase tracking-wider opacity-80">Módulo Veterinário</div>
             </div>
           </button>
-          <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/syncvet/preferencias")} className="text-primary-foreground hover:bg-white/10">
+              <Settings className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -31,11 +36,12 @@ export default function SyncVetLayout() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
-        <div className="max-w-5xl mx-auto grid grid-cols-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-7">
           {[
             { to: "/syncvet", end: true, icon: Building2, label: "Empresa" },
             { to: "/syncvet/equipe", icon: Users, label: "Equipe" },
             { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
+            { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
             { to: "/syncvet/medicamentos", icon: Pill, label: "Medic." },
             { to: "/syncvet/semen", icon: Snowflake, label: "Sêmen" },
             { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
