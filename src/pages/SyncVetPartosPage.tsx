@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Baby, Settings2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Settings2, Plus, Trash2 } from "lucide-react";
+import { CalfIcon } from "@/components/icons/CalfIcon";
 import { calcularPartosPrevistos, RACAS_PADRAO, type PartoPrevisto } from "@/lib/syncvetPartos";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -97,7 +98,7 @@ export default function SyncVetPartosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <Baby className="w-5 h-5" /> Calendário de Partos
+          <CalfIcon className="w-5 h-5" /> Calendário de Partos
         </h1>
         <Button variant="outline" size="sm" onClick={() => setCfgOpen(true)}>
           <Settings2 className="w-3.5 h-3.5 mr-1" /> Raças
