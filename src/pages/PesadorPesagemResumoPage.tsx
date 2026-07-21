@@ -266,6 +266,21 @@ export default function PesadorPesagemResumoPage() {
         </div>
       </div>
 
+      {breakdownPorCategoria.length > 0 && (
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-xs text-muted-foreground mb-2">Por categoria</div>
+          <div className="text-xs space-y-1">
+            {breakdownPorCategoria.map((b) => (
+              <div key={b.label} className="flex justify-between border-b border-border/40 py-1">
+                <span>{b.label}</span>
+                <span>{b.count} animais — {brl(b.valor)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
       <div className="rounded-lg border bg-card p-3">
         <div className="text-xs text-muted-foreground mb-2">Detalhamento</div>
         <div className="max-h-72 overflow-y-auto text-xs space-y-1">
