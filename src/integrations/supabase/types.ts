@@ -3334,6 +3334,212 @@ export type Database = {
           },
         ]
       }
+      syncvet_medicamentos: {
+        Row: {
+          created_at: string
+          dosagem_padrao: string | null
+          empresa_id: string
+          foto_url: string | null
+          id: string
+          laboratorio: string | null
+          nome_comercial: string
+          observacoes: string | null
+          principio_ativo: string | null
+          via_aplicacao: string | null
+        }
+        Insert: {
+          created_at?: string
+          dosagem_padrao?: string | null
+          empresa_id: string
+          foto_url?: string | null
+          id?: string
+          laboratorio?: string | null
+          nome_comercial: string
+          observacoes?: string | null
+          principio_ativo?: string | null
+          via_aplicacao?: string | null
+        }
+        Update: {
+          created_at?: string
+          dosagem_padrao?: string | null
+          empresa_id?: string
+          foto_url?: string | null
+          id?: string
+          laboratorio?: string | null
+          nome_comercial?: string
+          observacoes?: string | null
+          principio_ativo?: string | null
+          via_aplicacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_medicamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_protocolo_etapa_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          dosagem: string | null
+          etapa_id: string
+          id: string
+          medicamento_id: string | null
+          observacoes: string | null
+          ordem: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          dosagem?: string | null
+          etapa_id: string
+          id?: string
+          medicamento_id?: string | null
+          observacoes?: string | null
+          ordem?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          dosagem?: string | null
+          etapa_id?: string
+          id?: string
+          medicamento_id?: string | null
+          observacoes?: string | null
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_protocolo_etapa_itens_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_protocolo_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_protocolo_etapa_itens_medicamento_id_fkey"
+            columns: ["medicamento_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_medicamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_protocolo_etapas: {
+        Row: {
+          created_at: string
+          dia_offset: number
+          id: string
+          nome_etapa: string | null
+          ordem: number
+          protocolo_id: string
+        }
+        Insert: {
+          created_at?: string
+          dia_offset: number
+          id?: string
+          nome_etapa?: string | null
+          ordem?: number
+          protocolo_id: string
+        }
+        Update: {
+          created_at?: string
+          dia_offset?: number
+          id?: string
+          nome_etapa?: string | null
+          ordem?: number
+          protocolo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_protocolo_etapas_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_protocolos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_protocolos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_semen: {
+        Row: {
+          central: string | null
+          codigo: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          lote: string | null
+          observacoes: string | null
+          raca: string | null
+          touro: string
+        }
+        Insert: {
+          central?: string | null
+          codigo?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          lote?: string | null
+          observacoes?: string | null
+          raca?: string | null
+          touro: string
+        }
+        Update: {
+          central?: string | null
+          codigo?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          lote?: string | null
+          observacoes?: string | null
+          raca?: string | null
+          touro?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_semen_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teste: {
         Row: {
           id: number
