@@ -36,11 +36,12 @@ export default function SyncVetLayout() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
-        <div className="max-w-5xl mx-auto grid grid-cols-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-7">
           {[
             { to: "/syncvet", end: true, icon: Building2, label: "Empresa" },
             { to: "/syncvet/equipe", icon: Users, label: "Equipe" },
             { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
+            { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
             { to: "/syncvet/medicamentos", icon: Pill, label: "Medic." },
             { to: "/syncvet/semen", icon: Snowflake, label: "Sêmen" },
             { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
