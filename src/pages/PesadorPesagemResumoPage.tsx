@@ -185,6 +185,7 @@ export default function PesadorPesagemResumoPage() {
         pesadorLogoUrl,
         pesadorNomeEmpresa,
         pesadorNome,
+        valorTotalOverride: valorTotalPago,
       });
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;

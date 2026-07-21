@@ -477,7 +477,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   doc.text("Valor total a pagar", 22, finalY + 17);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(fmtBRL(tot.totalValor), 22, finalY + 26);
+  doc.text(fmtBRL(data.valorTotalOverride ?? tot.totalValor), 22, finalY + 26);
 
   drawFooter(doc);
   return doc.output("blob");
