@@ -76,6 +76,15 @@ export default function SyncVetAgendaPage() {
   const [calcResult, setCalcResult] = useState<{ distancia_km: number; duracao_min: number; origem_endereco: string | null } | null>(null);
   const [finalizing, setFinalizing] = useState(false);
 
+  // Resultado por animal dialog state
+  type AnimalRow = { id: string; brinco: string | null; numero: string | null; categoria: string | null };
+  const [resultadoOpen, setResultadoOpen] = useState(false);
+  const [resultadoAnimais, setResultadoAnimais] = useState<AnimalRow[]>([]);
+  const [resultadoValues, setResultadoValues] = useState<Record<string, "prenha" | "vazia">>({});
+  const [resultadoIsDG, setResultadoIsDG] = useState(false);
+  const [resultadoManejo, setResultadoManejo] = useState<Manejo | null>(null);
+  const [savingResultado, setSavingResultado] = useState(false);
+
   const load = useCallback(async () => {
     if (!empresaId) return;
     setLoading(true);
