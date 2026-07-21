@@ -28,12 +28,14 @@ export default function SyncVetNovoManejoPage() {
   const [protocolos, setProtocolos] = useState<Protocolo[]>([]);
   const [semens, setSemens] = useState<Semen[]>([]);
   const [equipe, setEquipe] = useState<Equipe[]>([]);
+  const [precos, setPrecos] = useState<{ tipo_servico: string; descricao: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [tipo, setTipo] = useState<TipoManejo>("dg_us");
   const [loteId, setLoteId] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [responsavelId, setResponsavelId] = useState("");
+  const [codigoPreco, setCodigoPreco] = useState<string>("DG/US");
 
   // IATF
   const [fonteProtocolo, setFonteProtocolo] = useState<"veterinario" | "fazenda">("veterinario");
@@ -70,6 +72,29 @@ export default function SyncVetNovoManejoPage() {
       setLoading(false);
     })();
   }, [fazendaId]);
+
+  // Carrega tabela de preços do responsável selecionado
+  useEffect(() => {
+    (async () => {
+      if (!responsavelId) { setPrecos([]); return; }
+      const { data } = await supabase.from("syncvet_tabela_precos")
+        .select("tipo_servico, descricao").eq("veterinario_id", responsavelId).order("tipo_servico");
+      setPrecos((data as any) ?? []);
+    })();
+  }, [responsavelId]);
+
+  // Sugestão automática de codigo_preco por tipo
+  useEffect(() => {
+    const map: Record<TipoManejo, string[]> = {
+      dg_us: ["DG/US", "DG", "US", "Diagnóstico"],
+      iatf: ["IATF"],
+      retirada: ["Retirada", "Retirada de Implante"],
+    };
+    const options = map[tipo];
+    const match = precos.find(p => options.some(o => p.tipo_servico.toLowerCase().includes(o.toLowerCase())));
+    if (match) setCodigoPreco(match.tipo_servico);
+    else setCodigoPreco(options[0]);
+  }, [tipo, precos]);
 
   async function handleIniciar() {
     if (!fazendaId) return;
