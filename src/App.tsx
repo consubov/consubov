@@ -67,6 +67,10 @@ import SyncVetEquipePage from "./pages/SyncVetEquipePage";
 import SyncVetFazendasPage from "./pages/SyncVetFazendasPage";
 import SyncVetFazendaDetalhePage from "./pages/SyncVetFazendaDetalhePage";
 import SyncVetLoteDetalhePage from "./pages/SyncVetLoteDetalhePage";
+import SyncVetMedicamentosPage from "./pages/SyncVetMedicamentosPage";
+import SyncVetSemenPage from "./pages/SyncVetSemenPage";
+import SyncVetProtocolosPage from "./pages/SyncVetProtocolosPage";
+import SyncVetProtocoloDetalhePage from "./pages/SyncVetProtocoloDetalhePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -296,6 +300,10 @@ const App = () => (
                 <Route path="fazendas" element={<SyncVetFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<SyncVetFazendaDetalhePage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId" element={<SyncVetLoteDetalhePage />} />
+                <Route path="medicamentos" element={<SyncVetMedicamentosPage />} />
+                <Route path="semen" element={<SyncVetSemenPage />} />
+                <Route path="protocolos" element={<SyncVetProtocolosPage />} />
+                <Route path="protocolos/:protocoloId" element={<SyncVetProtocoloDetalhePage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
