@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Bell } from "lucide-react";
+import { Loader2, Bell, DollarSign, FileText, Wallet, Route as RouteIcon, ChevronRight } from "lucide-react";
 
 const OPCOES = [
   { horas: 24, label: "24 horas antes" },
@@ -86,9 +87,33 @@ export default function SyncVetPreferenciasPage() {
 
   return (
     <div className="space-y-4 max-w-lg">
-      <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-        <Bell className="w-5 h-5" /> Preferências de Notificação
-      </h1>
+      <h1 className="text-lg font-bold text-primary">Configurações & Financeiro</h1>
+
+      <div className="grid grid-cols-1 gap-2">
+        {[
+          { to: "/syncvet/precos", icon: DollarSign, label: "Tabela de Preços", desc: "Cadastre seus valores de serviço" },
+          { to: "/syncvet/servicos/novo", icon: FileText, label: "Gerar Serviço", desc: "Monte um novo relatório de cobrança" },
+          { to: "/syncvet/contas", icon: Wallet, label: "Contas a Receber", desc: "Serviços emitidos e pagamentos" },
+          { to: "/syncvet/trajetos", icon: RouteIcon, label: "Meus Trajetos", desc: "Histórico de km rodado" },
+        ].map(it => (
+          <Link key={it.to} to={it.to} className="block">
+            <Card className="p-3 flex items-center gap-3 hover:bg-muted/40">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <it.icon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold">{it.label}</div>
+                <div className="text-xs text-muted-foreground">{it.desc}</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      <h2 className="text-base font-bold text-primary flex items-center gap-2 pt-2">
+        <Bell className="w-4 h-4" /> Notificações de Manejo
+      </h2>
 
       <Card className="p-4 space-y-3">
         <p className="text-sm text-muted-foreground">

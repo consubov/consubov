@@ -75,6 +75,9 @@ import SyncVetEstacaoDetalhePage from "./pages/SyncVetEstacaoDetalhePage";
 import SyncVetAgendaPage from "./pages/SyncVetAgendaPage";
 import SyncVetPreferenciasPage from "./pages/SyncVetPreferenciasPage";
 import SyncVetTrajetosPage from "./pages/SyncVetTrajetosPage";
+import SyncVetPrecosPage from "./pages/SyncVetPrecosPage";
+import SyncVetServicoNovoPage from "./pages/SyncVetServicoNovoPage";
+import SyncVetContasPage from "./pages/SyncVetContasPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -312,6 +315,9 @@ const App = () => (
                 <Route path="agenda" element={<SyncVetAgendaPage />} />
                 <Route path="preferencias" element={<SyncVetPreferenciasPage />} />
                 <Route path="trajetos" element={<SyncVetTrajetosPage />} />
+                <Route path="precos" element={<SyncVetPrecosPage />} />
+                <Route path="servicos/novo" element={<SyncVetServicoNovoPage />} />
+                <Route path="contas" element={<SyncVetContasPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
