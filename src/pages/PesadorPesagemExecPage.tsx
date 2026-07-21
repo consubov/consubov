@@ -158,6 +158,7 @@ export default function PesadorPesagemExecPage() {
       peso_kg: p.peso_kg,
       percentual_individual: p.percentual_individual,
       tipo_preco_individual: p.tipo_preco_individual,
+      categoria_individual: p.categoria_individual,
     });
     if (error) {
       toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
@@ -167,26 +168,32 @@ export default function PesadorPesagemExecPage() {
     return true;
   }
 
-  async function commitPeso(peso_kg: number, tipo: TipoInd | null, pct: number | null) {
+  async function commitPeso(
+    peso_kg: number,
+    tipo: TipoInd | null,
+    pct: number | null,
+    categoria: string | null,
+  ) {
     const ordem = pesos.length + 1;
     const novo: Peso = {
       ordem,
       peso_kg,
       percentual_individual: pct,
       tipo_preco_individual: tipo,
+      categoria_individual: categoria,
     };
     setPesos((prev) => [...prev, novo]);
     setCurrent("");
     setPendingPeso(null);
     setPendingTipo(null);
+    setPendingCategoria(null);
     setSubStep("peso");
-    // Mantém o teclado aberto: reforça o foco no mesmo gesto do usuário
     inputRef.current?.focus();
     await persistirPeso(novo);
   }
 
   async function handleProximo() {
-    if (subStep === "tipo_pagamento") return; // avançado por chips
+    if (subStep === "tipo_pagamento" || subStep === "categoria") return;
     const val = parseFloat(current.replace(",", "."));
     if (!Number.isFinite(val) || val <= 0) return;
 
@@ -194,19 +201,17 @@ export default function PesadorPesagemExecPage() {
       if (isMisto) {
         setPendingPeso(val);
         setCurrent("");
-        setSubStep("tipo_pagamento");
+        setSubStep("categoria");
         return;
       }
       if (modoAleatorio) {
         setPendingPeso(val);
         setCurrent("");
         setSubStep("percentual");
-        // Mantém teclado aberto ao trocar peso → percentual
         inputRef.current?.focus();
         return;
       }
-      // fluxo tradicional (kg / fixo / arroba com % fixo)
-      await commitPeso(val, null, null);
+      await commitPeso(val, null, null, null);
       return;
     }
 
@@ -219,34 +224,48 @@ export default function PesadorPesagemExecPage() {
       toast({ title: "Percentual inválido", description: "Informe um valor entre 1 e 100.", variant: "destructive" });
       return;
     }
-    // Se veio do fluxo misto, usa pendingTipo; senão null (arroba do lote)
     const tipo = isMisto ? pendingTipo : null;
-    await commitPeso(pendingPeso, tipo, val);
+    await commitPeso(pendingPeso, tipo, val, pendingCategoria);
   }
 
-  async function handleEscolherTipo(tipo: TipoInd) {
+  async function handleEscolherCategoria(cat: string) {
     if (pendingPeso == null) return;
-    // Valida se o lote misto tem esse preço configurado
-    if (pesagem) {
-      const has =
-        (tipo === "arroba" && (pesagem.preco_arroba ?? 0) > 0) ||
-        (tipo === "kg" && (pesagem.preco_kg ?? 0) > 0) ||
-        (tipo === "fixo_animal" && (pesagem.preco_fixo_animal ?? 0) > 0);
-      if (!has) {
-        toast({
-          title: "Preço não configurado",
-          description: "Esta forma de pagamento não foi cadastrada no lote.",
-          variant: "destructive",
-        });
-        return;
-      }
+    const cfg = categoriasLote.find((c) => c.categoria === cat);
+    if (!cfg) {
+      toast({ title: "Categoria não configurada", variant: "destructive" });
+      return;
     }
-    setPendingTipo(tipo);
-    if (tipo === "arroba") {
+    setPendingCategoria(cat);
+    setPendingTipo(cfg.tipo_preco);
+    if (cfg.tipo_preco === "arroba") {
       setSubStep("percentual");
+      inputRef.current?.focus();
     } else {
-      await commitPeso(pendingPeso, tipo, null);
+      await commitPeso(pendingPeso, cfg.tipo_preco, null, cat);
     }
+  }
+
+  async function handleDesfazer() {
+    if (subStep !== "peso") {
+      setSubStep("peso");
+      setPendingPeso(null);
+      setPendingTipo(null);
+      setPendingCategoria(null);
+      setCurrent("");
+      return;
+    }
+    const last = pesos[pesos.length - 1];
+    if (!last) return;
+    setPesos((prev) => prev.slice(0, -1));
+    const { error } = await supabase
+      .from("pesos_pesagem_compra")
+      .delete()
+      .eq("pesagem_id", pesagemId!)
+      .eq("ordem", last.ordem);
+    if (error) {
+      toast({ title: "Erro ao desfazer", description: error.message, variant: "destructive" });
+    }
+  }
   }
 
   async function handleDesfazer() {
