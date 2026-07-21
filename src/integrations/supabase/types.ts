@@ -3527,30 +3527,42 @@ export type Database = {
           created_at: string
           data_d0: string
           estacao_id: string
+          fonte_protocolo: string
+          fonte_semen: string
           id: string
           lote_id: string
           observacoes: string | null
           protocolo_id: string
+          semen_descricao_fazenda: string | null
+          semen_id: string | null
           status: string
         }
         Insert: {
           created_at?: string
           data_d0: string
           estacao_id: string
+          fonte_protocolo?: string
+          fonte_semen?: string
           id?: string
           lote_id: string
           observacoes?: string | null
           protocolo_id: string
+          semen_descricao_fazenda?: string | null
+          semen_id?: string | null
           status?: string
         }
         Update: {
           created_at?: string
           data_d0?: string
           estacao_id?: string
+          fonte_protocolo?: string
+          fonte_semen?: string
           id?: string
           lote_id?: string
           observacoes?: string | null
           protocolo_id?: string
+          semen_descricao_fazenda?: string | null
+          semen_id?: string | null
           status?: string
         }
         Relationships: [
@@ -3573,6 +3585,13 @@ export type Database = {
             columns: ["protocolo_id"]
             isOneToOne: false
             referencedRelation: "syncvet_protocolos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_lote_ciclos_semen_id_fkey"
+            columns: ["semen_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_semen"
             referencedColumns: ["id"]
           },
         ]
@@ -3686,13 +3705,19 @@ export type Database = {
           descricao_avulsa: string | null
           etapa_id: string | null
           fazenda_id: string | null
+          fonte_protocolo: string | null
+          fonte_semen: string | null
+          hora_inicio: string | null
           id: string
           lote_ciclo_id: string | null
           lote_id: string | null
           observacoes: string | null
           origem: string
           responsavel_id: string | null
+          semen_descricao_fazenda: string | null
+          semen_id: string | null
           status: string
+          tipo_manejo: string | null
         }
         Insert: {
           created_at?: string
@@ -3701,13 +3726,19 @@ export type Database = {
           descricao_avulsa?: string | null
           etapa_id?: string | null
           fazenda_id?: string | null
+          fonte_protocolo?: string | null
+          fonte_semen?: string | null
+          hora_inicio?: string | null
           id?: string
           lote_ciclo_id?: string | null
           lote_id?: string | null
           observacoes?: string | null
           origem?: string
           responsavel_id?: string | null
+          semen_descricao_fazenda?: string | null
+          semen_id?: string | null
           status?: string
+          tipo_manejo?: string | null
         }
         Update: {
           created_at?: string
@@ -3716,13 +3747,19 @@ export type Database = {
           descricao_avulsa?: string | null
           etapa_id?: string | null
           fazenda_id?: string | null
+          fonte_protocolo?: string | null
+          fonte_semen?: string | null
+          hora_inicio?: string | null
           id?: string
           lote_ciclo_id?: string | null
           lote_id?: string | null
           observacoes?: string | null
           origem?: string
           responsavel_id?: string | null
+          semen_descricao_fazenda?: string | null
+          semen_id?: string | null
           status?: string
+          tipo_manejo?: string | null
         }
         Relationships: [
           {
@@ -3758,6 +3795,13 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejos_semen_id_fkey"
+            columns: ["semen_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_semen"
             referencedColumns: ["id"]
           },
         ]
@@ -3805,6 +3849,74 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_prenhez_historico: {
+        Row: {
+          created_at: string
+          data: string
+          fazenda_id: string | null
+          id: string
+          lote_id: string | null
+          manejo_id: string
+          taxa_pct: number | null
+          total_diagnosticadas: number
+          total_prenhas: number
+          veterinario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          fazenda_id?: string | null
+          id?: string
+          lote_id?: string | null
+          manejo_id: string
+          taxa_pct?: number | null
+          total_diagnosticadas?: number
+          total_prenhas?: number
+          veterinario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          fazenda_id?: string | null
+          id?: string
+          lote_id?: string | null
+          manejo_id?: string
+          taxa_pct?: number | null
+          total_diagnosticadas?: number
+          total_prenhas?: number
+          veterinario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_prenhez_historico_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_manejos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_prenhez_historico_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_historico_animal"
+            referencedColumns: ["manejo_id"]
+          },
+          {
+            foreignKeyName: "syncvet_prenhez_historico_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_manejo_fazenda"
+            referencedColumns: ["manejo_id"]
+          },
+          {
+            foreignKeyName: "syncvet_prenhez_historico_veterinario_id_fkey"
+            columns: ["veterinario_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
             referencedColumns: ["id"]
           },
         ]
