@@ -74,6 +74,7 @@ import SyncVetProtocoloDetalhePage from "./pages/SyncVetProtocoloDetalhePage";
 import SyncVetEstacaoDetalhePage from "./pages/SyncVetEstacaoDetalhePage";
 import SyncVetAgendaPage from "./pages/SyncVetAgendaPage";
 import SyncVetPreferenciasPage from "./pages/SyncVetPreferenciasPage";
+import SyncVetTrajetosPage from "./pages/SyncVetTrajetosPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
