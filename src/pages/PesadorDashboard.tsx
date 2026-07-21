@@ -216,24 +216,31 @@ export default function PesadorDashboard() {
       const cfg = buildCfg(p);
       const animais = calcularAnimais(cfg, pesos);
       const t = totalizar(animais);
-      totalPorMes[mes] += t.totalValor;
+      const pesagemTotal = Number(p.valor_total_pago ?? t.totalValor);
+      totalPorMes[mes] += pesagemTotal;
 
       if (appliedMonth === "all" || mes + 1 === appliedMonth) {
-        totalValor += t.totalValor;
+        totalValor += pesagemTotal;
         totalAnimais += animais.length;
         totalArrobas += t.totalArroba;
 
-        for (const a of animais) {
-          let cat: string;
-          if (p.categoria === "aleatoria") {
-            cat = a.categoria_individual ?? "aleatoria";
-          } else {
-            cat = p.categoria;
-          }
+        // Per-category valor: for non-misto lots, all pesagemTotal goes to the lot category.
+        // For misto lots, we still need per-animal breakdown (no stored per-animal amount);
+        // fall back to the computed animais valor.
+        if (p.categoria !== "aleatoria") {
+          const cat = p.categoria;
           if (!porCategoria[cat]) porCategoria[cat] = { animais: 0, arrobas: 0, valor: 0 };
-          porCategoria[cat].animais += 1;
-          porCategoria[cat].arrobas += a.arroba_pagavel ?? 0;
-          porCategoria[cat].valor += a.valor;
+          porCategoria[cat].animais += animais.length;
+          porCategoria[cat].arrobas += t.totalArroba;
+          porCategoria[cat].valor += pesagemTotal;
+        } else {
+          for (const a of animais) {
+            const cat = a.categoria_individual ?? "aleatoria";
+            if (!porCategoria[cat]) porCategoria[cat] = { animais: 0, arrobas: 0, valor: 0 };
+            porCategoria[cat].animais += 1;
+            porCategoria[cat].arrobas += a.arroba_pagavel ?? 0;
+            porCategoria[cat].valor += a.valor;
+          }
         }
       }
     }
