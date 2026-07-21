@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation, ClipboardCheck } from "lucide-react";
 import { sendPush } from "@/lib/pushService";
 import { logAuditoria } from "@/lib/syncvetAuditoria";
+import { isSyncvetFullAccess } from "@/lib/syncvetPerfil";
 
 type Manejo = {
   id: string;
@@ -49,6 +50,8 @@ function fmtDateLong(iso: string) {
 export default function SyncVetAgendaPage() {
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
+  const fullAccess = isSyncvetFullAccess(roleData.syncvetPerfil);
+  const ownEquipeId = roleData.roleId; // roleId = syncvet_equipe.id do usuário logado
 
   const [loading, setLoading] = useState(true);
   const [manejos, setManejos] = useState<Manejo[]>([]);
@@ -162,9 +165,13 @@ export default function SyncVetAgendaPage() {
   const filtrados = useMemo(() => {
     const today = todayISO();
     return manejos.filter(m => {
+      // Perfis restritos: apenas manejos atribuídos ao próprio usuário
+      if (!fullAccess) {
+        if (!ownEquipeId || m.responsavel_id !== ownEquipeId) return false;
+      }
       const ctx = ctxByCiclo.get(m.lote_ciclo_id);
       if (fFazenda !== "all" && ctx?.fazenda?.id !== fFazenda) return false;
-      if (fResp !== "all") {
+      if (fullAccess && fResp !== "all") {
         if (fResp === "none" && m.responsavel_id) return false;
         if (fResp !== "none" && m.responsavel_id !== fResp) return false;
       }
@@ -175,7 +182,7 @@ export default function SyncVetAgendaPage() {
       }
       return true;
     });
-  }, [manejos, ctxByCiclo, fFazenda, fResp, fStatus]);
+  }, [manejos, ctxByCiclo, fFazenda, fResp, fStatus, fullAccess, ownEquipeId]);
 
   const grupos = useMemo(() => {
     const g = new Map<string, Manejo[]>();
