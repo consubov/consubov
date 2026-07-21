@@ -112,16 +112,23 @@ export default function SyncVetProtocoloDetalhePage() {
   }
 
   function openNewEtapa() {
-    setEtapaEditing(null); setDia("0"); setNomeEtapa(""); setEtapaOpen(true);
+    setEtapaEditing(null); setDia("0"); setNomeEtapa(""); setCodigoPreco("__none__"); setEtapaOpen(true);
   }
   function openEditEtapa(e: Etapa) {
-    setEtapaEditing(e); setDia(String(e.dia_offset)); setNomeEtapa(e.nome_etapa ?? ""); setEtapaOpen(true);
+    setEtapaEditing(e); setDia(String(e.dia_offset)); setNomeEtapa(e.nome_etapa ?? "");
+    setCodigoPreco(e.codigo_preco ?? "__none__");
+    setEtapaOpen(true);
   }
   async function saveEtapa() {
     if (!protocoloId) return;
     const d = parseInt(dia, 10);
     if (isNaN(d) || d < 0) { toast.error("Dia (D+) deve ser um número ≥ 0"); return; }
-    const payload = { protocolo_id: protocoloId, dia_offset: d, nome_etapa: nomeEtapa || null };
+    const payload = {
+      protocolo_id: protocoloId,
+      dia_offset: d,
+      nome_etapa: nomeEtapa || null,
+      codigo_preco: codigoPreco === "__none__" ? null : codigoPreco,
+    };
     if (etapaEditing) {
       const { error } = await supabase.from("syncvet_protocolo_etapas").update(payload).eq("id", etapaEditing.id);
       if (error) return toast.error(error.message);
