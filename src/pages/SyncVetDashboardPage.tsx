@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Landmark, Users, Syringe, Workflow, Baby, Wallet, TrendingUp, Percent } from "lucide-react";
+import { Loader2, Landmark, Users, Syringe, Workflow, Wallet, TrendingUp, Percent } from "lucide-react";
+import { CalfIcon } from "@/components/icons/CalfIcon";
 import { calcularPartosPrevistos } from "@/lib/syncvetPartos";
 
 type KPIs = {
@@ -211,7 +212,7 @@ export default function SyncVetDashboardPage() {
     { icon: Users, label: "Animais hoje", value: kpis?.animaisHoje ?? 0 },
     { icon: Syringe, label: "IA/DG hoje", value: kpis?.iaDgHoje ?? 0 },
     { icon: Workflow, label: "Protocolos ativos", value: kpis?.protocolosAtivos ?? 0 },
-    { icon: Baby, label: "Partos no mês", value: kpis?.partosMes ?? 0 },
+    { icon: CalfIcon, label: "Partos no mês", value: kpis?.partosMes ?? 0 },
     { icon: Wallet, label: "Contas em aberto", value: kpis?.contasAbertas ?? 0 },
   ];
 
