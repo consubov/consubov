@@ -14,8 +14,9 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation, ClipboardCheck } from "lucide-react";
 import { sendPush } from "@/lib/pushService";
+import { logAuditoria } from "@/lib/syncvetAuditoria";
 
 type Manejo = {
   id: string;
