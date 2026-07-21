@@ -324,7 +324,7 @@ export default function SyncVetAgendaPage() {
         distancia_km: calcResult.distancia_km,
         duracao_min: calcResult.duracao_min,
         origem_endereco: calcResult.origem_endereco,
-        fonte: "google_directions",
+        fonte: "haversine_estimativa",
       });
       if (trajErr) throw trajErr;
 
