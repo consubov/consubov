@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, BarChart3, Users, Scale, Settings } from "lucide-react";
+import { LogOut, RefreshCw, BarChart3, Users, History, Settings } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export default function PesadorLayout() {
               )
             }
           >
-            <Scale className="w-5 h-5" /> Pesagem
+            <History className="w-5 h-5" /> Histórico
           </NavLink>
         </div>
         <div className="text-center pb-1">
