@@ -593,22 +593,26 @@ export default function SyncVetAgendaPage() {
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-xs font-medium mb-1">Responsável</div>
-                  <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem responsável</SelectItem>
-                      {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {fullAccess && (
+                  <div>
+                    <div className="text-xs font-medium mb-1">Responsável</div>
+                    <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem responsável</SelectItem>
+                        {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
                   <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>Fechar</Button>
-                  <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
-                  </Button>
+                  {fullAccess && (
+                    <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
+                    </Button>
+                  )}
                   {selected.status !== "concluido" && (
                     semCoords ? (
                       <Button onClick={handleConcluirSemTrajeto} disabled={saving}>
