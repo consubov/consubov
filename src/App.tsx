@@ -308,6 +308,8 @@ const App = () => (
                 <Route path="semen" element={<SyncVetSemenPage />} />
                 <Route path="protocolos" element={<SyncVetProtocolosPage />} />
                 <Route path="protocolos/:protocoloId" element={<SyncVetProtocoloDetalhePage />} />
+                <Route path="agenda" element={<SyncVetAgendaPage />} />
+                <Route path="preferencias" element={<SyncVetPreferenciasPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
