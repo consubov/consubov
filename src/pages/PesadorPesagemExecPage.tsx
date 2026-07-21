@@ -332,33 +332,24 @@ export default function PesadorPesagemExecPage() {
         </div>
       </div>
 
-      {subStep === "tipo_pagamento" ? (
+      {subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
-            Animal {animalNum} — Forma de pagamento ({pendingPeso} kg)
+            Animal {animalNum} — Categoria ({pendingPeso} kg)
           </div>
           <div className="flex flex-wrap gap-2">
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_arroba ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("arroba")}
-            >
-              @
-            </Chip>
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_kg ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("kg")}
-            >
-              kg
-            </Chip>
-            <Chip
-              active={false}
-              disabled={!((pesagem.preco_fixo_animal ?? 0) > 0)}
-              onClick={() => void handleEscolherTipo("fixo_animal")}
-            >
-              Fixo por animal
-            </Chip>
+            {categoriasLote.map((c) => (
+              <Chip
+                key={c.categoria}
+                active={false}
+                onClick={() => void handleEscolherCategoria(c.categoria)}
+              >
+                {CATEGORIA_LABELS[c.categoria] ?? c.categoria}
+                <span className="ml-1 text-xs opacity-70">
+                  ({c.tipo_preco === "arroba" ? "@" : c.tipo_preco === "kg" ? "kg" : "fixo"})
+                </span>
+              </Chip>
+            ))}
           </div>
         </div>
       ) : (
