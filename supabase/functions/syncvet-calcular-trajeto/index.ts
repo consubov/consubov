@@ -9,6 +9,19 @@ const BodySchema = z.object({
   destino_lng: z.number(),
 });
 
+// Haversine — distância em linha reta entre dois pontos (km)
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // raio da Terra em km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -40,36 +53,19 @@ Deno.serve(async (req) => {
     }
     const { origem_lat, origem_lng, destino_lat, destino_lng } = parsed.data;
 
-    const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'GOOGLE_MAPS_API_KEY não configurada' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origem_lat},${origem_lng}&destination=${destino_lat},${destino_lng}&mode=driving&key=${apiKey}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    if (data.status !== 'OK' || !data.routes?.[0]?.legs?.[0]) {
-      return new Response(JSON.stringify({
-        error: 'Não foi possível calcular o trajeto',
-        google_status: data.status,
-        google_message: data.error_message ?? null,
-      }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const leg = data.routes[0].legs[0];
-    const distancia_km = Math.round((leg.distance.value / 1000) * 100) / 100;
-    const duracao_min = Math.round(leg.duration.value / 60);
+    // Estimativa provisória via Haversine (linha reta).
+    // Quando GOOGLE_MAPS_API_KEY estiver configurada, trocar para Google Directions.
+    const distKm = haversineKm(origem_lat, origem_lng, destino_lat, destino_lng);
+    const distancia_km = Math.round(distKm * 100) / 100;
+    // Duração estimada assumindo velocidade média de 60 km/h (aproximação simples)
+    const duracao_min = Math.round((distKm / 60) * 60);
 
     return new Response(JSON.stringify({
       distancia_km,
       duracao_min,
-      origem_endereco: leg.start_address ?? null,
-      destino_endereco: leg.end_address ?? null,
+      origem_endereco: null,
+      destino_endereco: null,
+      fonte: 'haversine_estimativa',
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
