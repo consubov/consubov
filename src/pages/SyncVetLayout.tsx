@@ -30,7 +30,8 @@ export default function SyncVetLayout() {
         { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
       ]
     : [
-        { to: "/syncvet/agenda", icon: Calendar, label: "Minha Agenda" },
+        { to: "/syncvet/meu-painel", icon: LayoutDashboard, label: "Painel" },
+        { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
         { to: "/syncvet/trajetos", icon: RouteIcon, label: "Trajetos" },
       ];
 

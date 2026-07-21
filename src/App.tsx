@@ -84,6 +84,7 @@ import SyncVetAuditoriaPage from "./pages/SyncVetAuditoriaPage";
 import AdminSyncVetOnboardingPage from "./pages/AdminSyncVetOnboardingPage";
 import SyncVetNovoManejoPage from "./pages/SyncVetNovoManejoPage";
 import SyncVetManejoExecucaoPage from "./pages/SyncVetManejoExecucaoPage";
+import SyncVetMeuPainelPage from "./pages/SyncVetMeuPainelPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -330,6 +331,7 @@ const App = () => (
                 <Route path="servicos/novo" element={<SyncVetServicoNovoPage />} />
                 <Route path="contas" element={<SyncVetContasPage />} />
                 <Route path="auditoria" element={<SyncVetAuditoriaPage />} />
+                <Route path="meu-painel" element={<SyncVetMeuPainelPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
