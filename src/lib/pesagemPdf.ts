@@ -314,52 +314,99 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   const availableForListAndChart = H - FOOTER_RESERVE - y;
 
   // Try progressively denser grids until content fits
-  const attempts: Array<{ cols: number; rowH: number; fontSize: number }> = [
-    { cols: 3, rowH: 5.5, fontSize: 9 },
-    { cols: 3, rowH: 5.0, fontSize: 8.5 },
-    { cols: 4, rowH: 4.8, fontSize: 8 },
-    { cols: 5, rowH: 4.5, fontSize: 7.5 },
-    { cols: 6, rowH: 4.2, fontSize: 7 },
-    { cols: 7, rowH: 4.0, fontSize: 6.8 },
-    { cols: 8, rowH: 3.8, fontSize: 6.5 },
-  ];
-
-  let chosen = attempts[attempts.length - 1];
+  const isMisto = cfg.tipo_preco === "misto";
   let chartH = CHART_H_MIN;
-  for (const a of attempts) {
-    const rows = Math.ceil(n / a.cols);
-    const listH = LIST_TITLE_H + rows * a.rowH;
-    const remainingForChart = availableForListAndChart - listH - CHART_TITLE_H - 2;
-    if (remainingForChart >= CHART_H_MIN) {
-      chosen = a;
-      chartH = Math.min(CHART_H_MAX, remainingForChart);
-      break;
+
+  if (isMisto) {
+    // One-column list, one row per animal, with category / rendimento / valor
+    const listAttempts = [
+      { rowH: 5.2, fontSize: 9 },
+      { rowH: 4.8, fontSize: 8.5 },
+      { rowH: 4.4, fontSize: 8 },
+      { rowH: 4.0, fontSize: 7.5 },
+      { rowH: 3.7, fontSize: 7 },
+      { rowH: 3.5, fontSize: 6.5 },
+    ];
+    let chosenList = listAttempts[listAttempts.length - 1];
+    for (const a of listAttempts) {
+      const listH = LIST_TITLE_H + n * a.rowH;
+      const remainingForChart = availableForListAndChart - listH - CHART_TITLE_H - 2;
+      if (remainingForChart >= CHART_H_MIN) {
+        chosenList = a;
+        chartH = Math.min(CHART_H_MAX, remainingForChart);
+        break;
+      }
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(INK);
+    doc.text("Pesos registrados (peso vivo):", 15, y);
+    y += LIST_TITLE_H;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(chosenList.fontSize);
+    for (let i = 0; i < n; i++) {
+      const a = data.animais[i];
+      const catKey = a.categoria_individual ?? "";
+      const catLabel = CATEGORIA_LABELS_PDF[catKey] ?? catKey ?? "—";
+      const mapped = cfg.categorias_map?.[catKey];
+      const tipoInd = (mapped?.tipo_preco ?? a.tipo_preco_individual ?? "kg");
+      const parts: string[] = [`${i + 1}. ${fmtNum(a.peso_kg, 0)} kg`, catLabel];
+      if (tipoInd === "arroba" && a.percentual_individual != null) {
+        parts.push(`Rend. ${fmtNum(a.percentual_individual, 0)}%`);
+      }
+      parts.push(fmtBRL(a.valor));
+      doc.text(parts.join(" — "), 15, y);
+      y += chosenList.rowH;
+    }
+  } else {
+    // Try progressively denser grids until content fits
+    const attempts: Array<{ cols: number; rowH: number; fontSize: number }> = [
+      { cols: 3, rowH: 5.5, fontSize: 9 },
+      { cols: 3, rowH: 5.0, fontSize: 8.5 },
+      { cols: 4, rowH: 4.8, fontSize: 8 },
+      { cols: 5, rowH: 4.5, fontSize: 7.5 },
+      { cols: 6, rowH: 4.2, fontSize: 7 },
+      { cols: 7, rowH: 4.0, fontSize: 6.8 },
+      { cols: 8, rowH: 3.8, fontSize: 6.5 },
+    ];
+
+    let chosen = attempts[attempts.length - 1];
+    for (const a of attempts) {
+      const rows = Math.ceil(n / a.cols);
+      const listH = LIST_TITLE_H + rows * a.rowH;
+      const remainingForChart = availableForListAndChart - listH - CHART_TITLE_H - 2;
+      if (remainingForChart >= CHART_H_MIN) {
+        chosen = a;
+        chartH = Math.min(CHART_H_MAX, remainingForChart);
+        break;
+      }
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(INK);
+    doc.text("Pesos registrados (peso vivo):", 15, y);
+    y += LIST_TITLE_H;
+
+    const { cols, rowH, fontSize } = chosen;
+    const colW = (W - 30) / cols;
+    const rowsCount = Math.ceil(n / cols);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(fontSize);
+    for (let r = 0; r < rowsCount; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        if (idx >= n) break;
+        const a = data.animais[idx];
+        const label = `${idx + 1}. ${fmtNum(a.peso_kg, 0)} kg`;
+        doc.text(label, 15 + c * colW, y);
+      }
+      y += rowH;
     }
   }
 
-  // Draw list title
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(INK);
-  doc.text("Pesos registrados (peso vivo):", 15, y);
-  y += LIST_TITLE_H;
-
-  // Draw grid — sequential numbering (idx+1), row-major
-  const { cols, rowH, fontSize } = chosen;
-  const colW = (W - 30) / cols;
-  const rowsCount = Math.ceil(n / cols);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(fontSize);
-  for (let r = 0; r < rowsCount; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c;
-      if (idx >= n) break;
-      const a = data.animais[idx];
-      const label = `${idx + 1}. ${fmtNum(a.peso_kg, 0)} kg`;
-      doc.text(label, 15 + c * colW, y);
-    }
-    y += rowH;
-  }
 
   // ===== Chart on same page 1 =====
   const pesosArr = data.animais.map((a) => a.peso_kg);
