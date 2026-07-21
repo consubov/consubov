@@ -3699,6 +3699,7 @@ export type Database = {
       }
       syncvet_manejos: {
         Row: {
+          codigo_preco: string | null
           created_at: string
           data_execucao: string | null
           data_prevista: string
@@ -3720,6 +3721,7 @@ export type Database = {
           tipo_manejo: string | null
         }
         Insert: {
+          codigo_preco?: string | null
           created_at?: string
           data_execucao?: string | null
           data_prevista: string
@@ -3741,6 +3743,7 @@ export type Database = {
           tipo_manejo?: string | null
         }
         Update: {
+          codigo_preco?: string | null
           created_at?: string
           data_execucao?: string | null
           data_prevista?: string
@@ -3971,6 +3974,7 @@ export type Database = {
       }
       syncvet_protocolo_etapas: {
         Row: {
+          codigo_preco: string | null
           created_at: string
           dia_offset: number
           id: string
@@ -3979,6 +3983,7 @@ export type Database = {
           protocolo_id: string
         }
         Insert: {
+          codigo_preco?: string | null
           created_at?: string
           dia_offset: number
           id?: string
@@ -3987,6 +3992,7 @@ export type Database = {
           protocolo_id: string
         }
         Update: {
+          codigo_preco?: string | null
           created_at?: string
           dia_offset?: number
           id?: string
