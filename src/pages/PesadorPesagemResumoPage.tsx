@@ -45,7 +45,7 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago"
         )
         .eq("id", pesagemId)
         .maybeSingle();
