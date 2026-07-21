@@ -34,9 +34,14 @@ export interface AnimalCalc extends PesoAnimal {
  */
 export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): AnimalCalc[] {
   return pesos.map((p) => {
-    // Lote misto: usa tipo_preco_individual do próprio animal + preços do lote
+    // Lote misto (aleatória): usa categoria_individual + categorias_map (novo modelo).
+    // Fallback legado: tipo_preco_individual + preços do lote.
     if (cfg.tipo_preco === "misto") {
-      const tipoInd = p.tipo_preco_individual ?? "kg";
+      const mapped =
+        p.categoria_individual && cfg.categorias_map
+          ? cfg.categorias_map[p.categoria_individual]
+          : null;
+      const tipoInd = (mapped?.tipo_preco ?? p.tipo_preco_individual ?? "kg") as TipoPrecoIndividual;
       if (tipoInd === "kg") {
         const preco = cfg.preco_kg ?? 0;
         return {
