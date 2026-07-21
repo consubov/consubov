@@ -61,6 +61,7 @@ export default function PesadorPesagemResumoPage() {
         });
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
+        setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
         setPdfUrl((p as any).pdf_url ?? null);
         const { data: c } = await supabase
           .from("clientes_pesador")
