@@ -105,7 +105,7 @@ export default function PesadorDashboard() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal")
+        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, valor_total_pago")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
