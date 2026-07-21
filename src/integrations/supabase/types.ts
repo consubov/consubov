@@ -3215,6 +3215,7 @@ export type Database = {
       }
       syncvet_empresas: {
         Row: {
+          cidade: string | null
           cnpj: string | null
           created_at: string
           crmv: string | null
@@ -3224,8 +3225,10 @@ export type Database = {
           nome: string
           responsavel_tecnico: string | null
           telefone: string | null
+          uf: string | null
         }
         Insert: {
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string
           crmv?: string | null
@@ -3235,8 +3238,10 @@ export type Database = {
           nome: string
           responsavel_tecnico?: string | null
           telefone?: string | null
+          uf?: string | null
         }
         Update: {
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string
           crmv?: string | null
@@ -3246,6 +3251,7 @@ export type Database = {
           nome?: string
           responsavel_tecnico?: string | null
           telefone?: string | null
+          uf?: string | null
         }
         Relationships: []
       }
