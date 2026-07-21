@@ -130,6 +130,27 @@ function deferNonCritical(task: () => void) {
 }
 
 async function detectRole(userId: string): Promise<RoleData> {
+  // SyncVet team member (checked first — isolated module)
+  const { data: syncvetMember, error: syncvetError } = await supabase
+    .from("syncvet_equipe")
+    .select("id, empresa_id, perfil")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (syncvetError) throw syncvetError;
+
+  if (syncvetMember) {
+    return {
+      role: "syncvet",
+      roleId: syncvetMember.id,
+      fazendaId: null,
+      retiroId: null,
+      syncvetEmpresaId: syncvetMember.empresa_id,
+      syncvetPerfil: syncvetMember.perfil,
+    };
+  }
+
   // 0a. Check consultor first
   const { data: consultor, error: consultorError } = await supabase
     .from("consultores")
