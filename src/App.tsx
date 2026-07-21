@@ -311,6 +311,7 @@ const App = () => (
                 <Route path="protocolos/:protocoloId" element={<SyncVetProtocoloDetalhePage />} />
                 <Route path="agenda" element={<SyncVetAgendaPage />} />
                 <Route path="preferencias" element={<SyncVetPreferenciasPage />} />
+                <Route path="trajetos" element={<SyncVetTrajetosPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
