@@ -122,15 +122,32 @@ export default function PesadorPesagemResumoPage() {
       ? `kg ${brl(cfg.preco_valor)}`
       : cfg.tipo_preco === "fixo_animal"
       ? `Fixo ${brl(cfg.preco_valor)}/animal`
-      : [
-          cfg.preco_arroba ? `@ ${brl(cfg.preco_arroba)}` : null,
-          cfg.preco_kg ? `kg ${brl(cfg.preco_kg)}` : null,
-          cfg.preco_fixo_animal ? `Fixo ${brl(cfg.preco_fixo_animal)}` : null,
-        ]
-          .filter(Boolean)
+      : Object.entries(cfg.categorias_map ?? {})
+          .map(([cat, m]) => {
+            const label = CATEGORIA_LABELS[cat] ?? cat;
+            const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
+            return `${label}: ${tp} ${brl(m.preco_valor)}`;
+          })
           .join(" • ");
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
+
+  // Detalhamento por categoria (apenas para lote misto)
+  const breakdownPorCategoria = cfg.tipo_preco === "misto"
+    ? Object.entries(
+        animais.reduce<Record<string, { count: number; valor: number }>>((acc, a) => {
+          const cat = a.categoria_individual ?? "—";
+          if (!acc[cat]) acc[cat] = { count: 0, valor: 0 };
+          acc[cat].count += 1;
+          acc[cat].valor += a.valor;
+          return acc;
+        }, {})
+      ).map(([cat, v]) => ({
+        label: CATEGORIA_LABELS[cat] ?? cat,
+        count: v.count,
+        valor: v.valor,
+      }))
+    : [];
 
   async function handleGerarPdf() {
     if (!pesagemId || !cfg) return;
