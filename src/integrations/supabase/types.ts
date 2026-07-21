@@ -2554,8 +2554,44 @@ export type Database = {
           },
         ]
       }
+      pesagens_compra_categorias: {
+        Row: {
+          categoria: string
+          created_at: string | null
+          id: string
+          pesagem_id: string
+          preco_valor: number
+          tipo_preco: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string | null
+          id?: string
+          pesagem_id: string
+          preco_valor: number
+          tipo_preco: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string | null
+          id?: string
+          pesagem_id?: string
+          preco_valor?: number
+          tipo_preco?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesagens_compra_categorias_pesagem_id_fkey"
+            columns: ["pesagem_id"]
+            isOneToOne: false
+            referencedRelation: "pesagens_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pesos_pesagem_compra: {
         Row: {
+          categoria_individual: string | null
           created_at: string | null
           id: string
           ordem: number
@@ -2565,6 +2601,7 @@ export type Database = {
           tipo_preco_individual: string | null
         }
         Insert: {
+          categoria_individual?: string | null
           created_at?: string | null
           id?: string
           ordem: number
@@ -2574,6 +2611,7 @@ export type Database = {
           tipo_preco_individual?: string | null
         }
         Update: {
+          categoria_individual?: string | null
           created_at?: string | null
           id?: string
           ordem?: number
