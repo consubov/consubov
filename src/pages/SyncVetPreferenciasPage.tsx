@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Bell, DollarSign, FileText, Wallet, Route as RouteIcon, ChevronRight, Building2, ShieldCheck } from "lucide-react";
+import { isSyncvetFullAccess } from "@/lib/syncvetPerfil";
 
 const OPCOES = [
   { horas: 24, label: "24 horas antes" },
