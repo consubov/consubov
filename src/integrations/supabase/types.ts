@@ -2502,6 +2502,7 @@ export type Database = {
           preco_valor: number | null
           status: string
           tipo_preco: string
+          valor_total_pago: number | null
         }
         Insert: {
           categoria: string
@@ -2519,6 +2520,7 @@ export type Database = {
           preco_valor?: number | null
           status?: string
           tipo_preco: string
+          valor_total_pago?: number | null
         }
         Update: {
           categoria?: string
@@ -2536,6 +2538,7 @@ export type Database = {
           preco_valor?: number | null
           status?: string
           tipo_preco?: string
+          valor_total_pago?: number | null
         }
         Relationships: [
           {
