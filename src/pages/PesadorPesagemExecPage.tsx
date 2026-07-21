@@ -23,14 +23,32 @@ type Pesagem = {
 
 type TipoInd = "arroba" | "kg" | "fixo_animal";
 
+type CategoriaCfg = {
+  categoria: string;
+  tipo_preco: TipoInd;
+  preco_valor: number;
+};
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  boi_gordo: "Boi Gordo",
+  vaca_gorda: "Vaca Gorda",
+  vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro",
+  garrote: "Garrote",
+  novilha: "Novilha",
+  bezerro: "Bezerro",
+  bezerra: "Bezerra",
+};
+
 type Peso = {
   ordem: number;
   peso_kg: number;
   percentual_individual: number | null;
   tipo_preco_individual: TipoInd | null;
+  categoria_individual: string | null;
 };
 
-type SubStep = "peso" | "tipo_pagamento" | "percentual";
+type SubStep = "peso" | "categoria" | "tipo_pagamento" | "percentual";
 
 function Chip({
   active,
