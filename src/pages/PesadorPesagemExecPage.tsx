@@ -137,7 +137,7 @@ export default function PesadorPesagemExecPage() {
   }, [pesagemId, navigate]);
 
   useEffect(() => {
-    if (!loading && subStep !== "tipo_pagamento") {
+    if (!loading && subStep !== "categoria" && subStep !== "tipo_pagamento") {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [loading, subStep, pesos.length]);
