@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Perfil = "administrador" | "veterinario" | "prestador_servico" | "estagiario" | "auxiliar";
 const PERFIL_LABEL: Record<Perfil, string> = {
