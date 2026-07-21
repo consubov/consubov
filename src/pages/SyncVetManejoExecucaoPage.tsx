@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Loader2, FileDown } from "lucide-react";
+import { ArrowLeft, Loader2, FileDown, CheckCircle2, Trash2 } from "lucide-react";
 import { gerarManejoPDF } from "@/lib/syncvetManejoPdf";
 
-type Animal = {
-  id: string;
-  brinco: string | null;
-  numero: string | null;
-  categoria: string | null;
+type Resultado = "prenha" | "vazia" | "realizado";
+
+type Registro = {
+  animal_id: string;
+  numero: string;
+  resultado: Resultado;
 };
 
 type Manejo = {
@@ -30,18 +31,16 @@ type Manejo = {
   protocolo_id: string | null;
   semen_id: string | null;
   semen_descricao_fazenda: string | null;
-  fonte_protocolo: string | null;
 };
-
-type Resultado = "prenha" | "vazia" | "realizado";
 
 export default function SyncVetManejoExecucaoPage() {
   const { manejoId } = useParams<{ manejoId: string }>();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [manejo, setManejo] = useState<Manejo | null>(null);
-  const [animais, setAnimais] = useState<Animal[]>([]);
-  const [values, setValues] = useState<Record<string, Resultado>>({});
+  const [registros, setRegistros] = useState<Registro[]>([]);
+  const [numero, setNumero] = useState("");
   const [fazendaNome, setFazendaNome] = useState("");
   const [loteNome, setLoteNome] = useState("");
   const [responsavelNome, setResponsavelNome] = useState("");
@@ -51,7 +50,7 @@ export default function SyncVetManejoExecucaoPage() {
   const [obsFinais, setObsFinais] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [current, setCurrent] = useState(0);
+  const [confirmando, setConfirmando] = useState(false);
 
   const tipo = (manejo?.tipo_manejo as "dg_us" | "iatf" | "retirada") ?? "dg_us";
   const isDG = tipo === "dg_us";
@@ -69,15 +68,13 @@ export default function SyncVetManejoExecucaoPage() {
       setManejo(m as Manejo);
       setObsFinais((m as Manejo).observacoes ?? "");
 
-      const [{ data: an }, { data: f }, { data: l }, { data: r }] = await Promise.all([
-        supabase.from("syncvet_animais").select("id, brinco, numero, categoria").eq("lote_id", m.lote_id).order("created_at"),
+      const [{ data: f }, { data: l }, { data: r }] = await Promise.all([
         supabase.from("syncvet_fazendas").select("nome, empresa_id").eq("id", m.fazenda_id).maybeSingle(),
         supabase.from("syncvet_lotes").select("nome").eq("id", m.lote_id).maybeSingle(),
         m.responsavel_id
           ? supabase.from("syncvet_equipe").select("nome").eq("id", m.responsavel_id).maybeSingle()
           : Promise.resolve({ data: null } as any),
       ]);
-      setAnimais((an as any) ?? []);
       setFazendaNome((f as any)?.nome ?? "");
       setLoteNome((l as any)?.nome ?? "");
       setResponsavelNome((r as any)?.nome ?? "");
@@ -97,61 +94,106 @@ export default function SyncVetManejoExecucaoPage() {
         setSemenNome(m.semen_descricao_fazenda);
       }
 
-      // carrega resultados existentes
+      // carrega resultados existentes + animais para exibir número
       const { data: rs } = await (supabase as any)
         .from("syncvet_manejo_resultados")
         .select("animal_id, resultado")
         .eq("manejo_id", manejoId);
-      const v: Record<string, Resultado> = {};
-      for (const row of (rs as any[]) ?? []) {
-        v[row.animal_id] = row.resultado as Resultado;
+      const animalIds = ((rs as any[]) ?? []).map((r: any) => r.animal_id);
+      let animMap: Record<string, string> = {};
+      if (animalIds.length > 0) {
+        const { data: an } = await supabase
+          .from("syncvet_animais")
+          .select("id, numero, brinco")
+          .in("id", animalIds);
+        for (const a of ((an as any[]) ?? [])) {
+          animMap[a.id] = a.numero || a.brinco || "";
+        }
       }
-      setValues(v);
+      const regs: Registro[] = ((rs as any[]) ?? []).map((r: any) => ({
+        animal_id: r.animal_id,
+        numero: animMap[r.animal_id] ?? "",
+        resultado: r.resultado as Resultado,
+      }));
+      setRegistros(regs);
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     })();
   }, [manejoId]);
 
   const stats = useMemo(() => {
-    const p = Object.values(values).filter(v => v === "prenha").length;
-    const va = Object.values(values).filter(v => v === "vazia").length;
-    const r = Object.values(values).filter(v => v === "realizado").length;
-    const total = animais.length;
-    const done = p + va + r;
+    const p = registros.filter(r => r.resultado === "prenha").length;
+    const va = registros.filter(r => r.resultado === "vazia").length;
+    const r = registros.filter(r => r.resultado === "realizado").length;
     const taxa = (p + va) > 0 ? (p / (p + va)) * 100 : 0;
-    return { p, va, r, total, done, taxa };
-  }, [values, animais]);
+    return { p, va, r, total: registros.length, taxa };
+  }, [registros]);
 
-  function setResult(animalId: string, r: Resultado) {
-    setValues(prev => ({ ...prev, [animalId]: r }));
-    // avança
-    if (current < animais.length - 1) setCurrent(current + 1);
+  async function confirmar(resultado: Resultado) {
+    if (!manejo?.lote_id) return;
+    const num = numero.trim();
+    if (!num) { inputRef.current?.focus(); return; }
+    setConfirmando(true);
+    try {
+      // busca animal
+      let { data: existing } = await supabase
+        .from("syncvet_animais")
+        .select("id, numero, brinco")
+        .eq("lote_id", manejo.lote_id)
+        .or(`numero.eq.${num},brinco.eq.${num}`)
+        .maybeSingle();
+
+      let animalId = (existing as any)?.id as string | undefined;
+      if (!animalId) {
+        const { data: created, error: cErr } = await supabase
+          .from("syncvet_animais")
+          .insert({ lote_id: manejo.lote_id, numero: num })
+          .select("id")
+          .single();
+        if (cErr) throw cErr;
+        animalId = (created as any).id;
+      }
+
+      // se já existe registro para esse animal, atualiza; senão insere
+      const idx = registros.findIndex(r => r.animal_id === animalId);
+      if (idx >= 0) {
+        await (supabase as any).from("syncvet_manejo_resultados")
+          .delete()
+          .eq("manejo_id", manejo.id)
+          .eq("animal_id", animalId);
+      }
+      const { error } = await (supabase as any)
+        .from("syncvet_manejo_resultados")
+        .insert({ manejo_id: manejo.id, animal_id: animalId, resultado });
+      if (error) throw error;
+
+      setRegistros(prev => {
+        const next = prev.filter(r => r.animal_id !== animalId);
+        return [{ animal_id: animalId!, numero: num, resultado }, ...next];
+      });
+      setNumero("");
+      setTimeout(() => inputRef.current?.focus(), 30);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao registrar");
+    } finally {
+      setConfirmando(false);
+    }
   }
 
-  function marcarTodos(r: Resultado) {
-    const next: Record<string, Resultado> = { ...values };
-    for (const a of animais) next[a.id] = r;
-    setValues(next);
-  }
-
-  async function persistResultados() {
-    if (!manejoId) return;
-    const rows = Object.entries(values).map(([animal_id, resultado]) => ({
-      manejo_id: manejoId,
-      animal_id,
-      resultado,
-    }));
-    if (rows.length === 0) return;
-    await (supabase as any).from("syncvet_manejo_resultados").delete().eq("manejo_id", manejoId);
-    const { error } = await (supabase as any).from("syncvet_manejo_resultados").insert(rows);
-    if (error) throw error;
-  }
-
-  async function handleFinalizarEGerarPdf() {
+  async function removerRegistro(animal_id: string) {
     if (!manejo) return;
-    if (stats.done === 0) { toast.error("Registre pelo menos um resultado"); return; }
+    await (supabase as any).from("syncvet_manejo_resultados")
+      .delete()
+      .eq("manejo_id", manejo.id)
+      .eq("animal_id", animal_id);
+    setRegistros(prev => prev.filter(r => r.animal_id !== animal_id));
+  }
+
+  async function finalizar(gerarPdf: boolean) {
+    if (!manejo) return;
+    if (registros.length === 0) { toast.error("Registre pelo menos um animal"); return; }
     setSaving(true);
     try {
-      await persistResultados();
       const { error } = await (supabase as any)
         .from("syncvet_manejos")
         .update({
@@ -162,29 +204,31 @@ export default function SyncVetManejoExecucaoPage() {
         .eq("id", manejo.id);
       if (error) throw error;
 
-      const pdfAnimais = animais.map(a => ({
-        numero: a.brinco || a.numero || "(sem brinco)",
-        categoria: a.categoria,
-        diagnostico: values[a.id] ?? null,
-      }));
-      const blob = await gerarManejoPDF({
-        tipo,
-        data: manejo.data_prevista,
-        empresa: empresaNome,
-        fazenda: fazendaNome,
-        lote: loteNome,
-        responsavel: responsavelNome,
-        protocolo: protocoloNome || null,
-        semen: semenNome || null,
-        observacoes: obsFinais || null,
-        animais: pdfAnimais,
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `manejo-${tipo}-${manejo.data_prevista}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (gerarPdf) {
+        const pdfAnimais = registros.map(r => ({
+          numero: r.numero,
+          categoria: null,
+          diagnostico: r.resultado,
+        }));
+        const blob = await gerarManejoPDF({
+          tipo,
+          data: manejo.data_prevista,
+          empresa: empresaNome,
+          fazenda: fazendaNome,
+          lote: loteNome,
+          responsavel: responsavelNome,
+          protocolo: protocoloNome || null,
+          semen: semenNome || null,
+          observacoes: obsFinais || null,
+          animais: pdfAnimais,
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `manejo-${tipo}-${manejo.data_prevista}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
 
       toast.success("Manejo finalizado");
       navigate(`/syncvet/agenda`);
@@ -195,27 +239,13 @@ export default function SyncVetManejoExecucaoPage() {
     }
   }
 
-  async function handleSalvarParcial() {
-    setSaving(true);
-    try {
-      await persistResultados();
-      toast.success("Progresso salvo");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao salvar");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
   if (!manejo) return null;
 
-  const animal = animais[current];
-
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
         <div className="flex-1 min-w-0">
@@ -224,80 +254,61 @@ export default function SyncVetManejoExecucaoPage() {
         </div>
       </div>
 
-      <Card className="p-3 grid grid-cols-3 gap-2 text-center">
+      <Card className="p-4 space-y-3">
         <div>
-          <div className="text-[10px] text-muted-foreground">Progresso</div>
-          <div className="text-lg font-bold">{stats.done}/{stats.total}</div>
+          <Label className="text-xs">Número do animal</Label>
+          <Input
+            ref={inputRef}
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            placeholder="Digite o número/brinco"
+            inputMode="text"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && isDG) { e.preventDefault(); confirmar("prenha"); }
+              else if (e.key === "Enter") { e.preventDefault(); confirmar("realizado"); }
+            }}
+          />
         </div>
         {isDG ? (
-          <>
-            <div>
-              <div className="text-[10px] text-muted-foreground">Prenhas</div>
-              <div className="text-lg font-bold text-primary">{stats.p}</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-muted-foreground">Taxa</div>
-              <div className="text-lg font-bold">{stats.taxa.toFixed(1)}%</div>
-            </div>
-          </>
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="lg" onClick={() => confirmar("prenha")} disabled={confirmando || !numero.trim()}>
+              Prenha
+            </Button>
+            <Button size="lg" variant="destructive" onClick={() => confirmar("vazia")} disabled={confirmando || !numero.trim()}>
+              Vazia
+            </Button>
+          </div>
         ) : (
-          <>
-            <div>
-              <div className="text-[10px] text-muted-foreground">Realizados</div>
-              <div className="text-lg font-bold text-primary">{stats.r}</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-muted-foreground">Restantes</div>
-              <div className="text-lg font-bold">{stats.total - stats.done}</div>
-            </div>
-          </>
+          <Button size="lg" className="w-full" onClick={() => confirmar("realizado")} disabled={confirmando || !numero.trim()}>
+            <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmar
+          </Button>
         )}
+        <div className="text-center text-sm text-muted-foreground pt-1">
+          <span className="font-semibold text-foreground">{stats.total}</span> {stats.total === 1 ? "animal diagnosticado" : "animais diagnosticados"}
+          {isDG && stats.total > 0 && (
+            <span className="ml-2">• Taxa de prenhez: <span className="font-semibold text-primary">{stats.taxa.toFixed(1)}%</span></span>
+          )}
+        </div>
       </Card>
 
-      <div className="flex gap-2">
-        {isDG ? (
-          <>
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => marcarTodos("prenha")}>Todas prenhas</Button>
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => marcarTodos("vazia")}>Todas vazias</Button>
-          </>
-        ) : (
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => marcarTodos("realizado")}>Marcar todos como realizado</Button>
-        )}
-      </div>
-
-      {animal && (
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-muted-foreground">Animal {current + 1} de {animais.length}</div>
-              <div className="text-2xl font-bold">{animal.brinco || animal.numero || "(sem brinco)"}</div>
-              <div className="text-xs text-muted-foreground">{animal.categoria ?? "—"}</div>
-            </div>
-            {values[animal.id] && (
-              <Badge className="text-[10px]">
-                {values[animal.id] === "prenha" ? "Prenha" : values[animal.id] === "vazia" ? "Vazia" : "Realizado"}
-              </Badge>
-            )}
-          </div>
-
-          {isDG ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Button size="lg" variant={values[animal.id] === "prenha" ? "default" : "outline"} onClick={() => setResult(animal.id, "prenha")}>
-                Prenha
-              </Button>
-              <Button size="lg" variant={values[animal.id] === "vazia" ? "destructive" : "outline"} onClick={() => setResult(animal.id, "vazia")}>
-                Vazia
-              </Button>
-            </div>
-          ) : (
-            <Button size="lg" className="w-full" variant={values[animal.id] === "realizado" ? "default" : "outline"} onClick={() => setResult(animal.id, "realizado")}>
-              <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como realizado
-            </Button>
-          )}
-
-          <div className="flex justify-between text-xs">
-            <Button size="sm" variant="ghost" disabled={current === 0} onClick={() => setCurrent(current - 1)}>← Anterior</Button>
-            <Button size="sm" variant="ghost" disabled={current >= animais.length - 1} onClick={() => setCurrent(current + 1)}>Próximo →</Button>
+      {registros.length > 0 && (
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-2 text-muted-foreground">Últimos registros</div>
+          <div className="max-h-64 overflow-y-auto divide-y">
+            {registros.map(r => (
+              <div key={r.animal_id} className="flex items-center justify-between py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{r.numero}</span>
+                  <Badge variant={r.resultado === "prenha" ? "default" : r.resultado === "vazia" ? "destructive" : "secondary"} className="text-[10px]">
+                    {r.resultado === "prenha" ? "Prenha" : r.resultado === "vazia" ? "Vazia" : "Realizado"}
+                  </Badge>
+                </div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removerRegistro(r.animal_id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))}
           </div>
         </Card>
       )}
@@ -307,9 +318,12 @@ export default function SyncVetManejoExecucaoPage() {
         <Textarea value={obsFinais} onChange={(e) => setObsFinais(e.target.value)} rows={3} />
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-3 flex gap-2 z-40">
-        <Button variant="outline" className="flex-1" onClick={handleSalvarParcial} disabled={saving}>Salvar progresso</Button>
-        <Button className="flex-1" onClick={handleFinalizarEGerarPdf} disabled={saving}>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" onClick={() => finalizar(false)} disabled={saving}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+          Finalizar
+        </Button>
+        <Button onClick={() => finalizar(true)} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileDown className="w-4 h-4 mr-1" />}
           Finalizar e Gerar PDF
         </Button>
