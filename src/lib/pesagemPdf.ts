@@ -103,8 +103,20 @@ function drawFirstPageHeader(
   doc.setFillColor(GREEN_STRIPE);
   doc.rect(0, stripeY, W, 2.5, "F");
 
-  return stripeY + 6;
+  return stripeY + 12;
 }
+
+const CATEGORIA_LABELS_PDF: Record<string, string> = {
+  boi_gordo: "Boi Gordo",
+  vaca_gorda: "Vaca Gorda",
+  vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro",
+  garrote: "Garrote",
+  novilha: "Novilha",
+  bezerro: "Bezerro",
+  bezerra: "Bezerra",
+  aleatoria: "Aleatória",
+};
 
 function drawFooter(doc: jsPDF) {
   const W = doc.internal.pageSize.getWidth();
