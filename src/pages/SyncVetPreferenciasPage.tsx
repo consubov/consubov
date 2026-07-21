@@ -19,6 +19,7 @@ const OPCOES = [
 export default function SyncVetPreferenciasPage() {
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
+  const fullAccess = isSyncvetFullAccess(roleData.syncvetPerfil);
 
   const [equipeId, setEquipeId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
