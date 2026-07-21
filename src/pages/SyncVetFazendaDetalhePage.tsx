@@ -145,7 +145,10 @@ export default function SyncVetFazendaDetalhePage() {
           </TabsList>
 
           <TabsContent value="lotes" className="space-y-3 mt-3">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => navigate(`/syncvet/fazendas/${fazendaId}/novo-manejo`)}>
+                <Plus className="w-4 h-4 mr-1" />Novo manejo
+              </Button>
               <Dialog open={loteOpen} onOpenChange={setLoteOpen}>
                 <DialogTrigger asChild>
                   <Button onClick={openNewLote}><Plus className="w-4 h-4 mr-1" />Novo lote</Button>
