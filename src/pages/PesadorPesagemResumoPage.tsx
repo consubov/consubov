@@ -264,7 +264,7 @@ export default function PesadorPesagemResumoPage() {
         </div>
         <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
           <div className="text-xs text-muted-foreground">Total a pagar</div>
-          <div className="text-2xl font-bold text-primary">{brl(tot.totalValor)}</div>
+          <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
         </div>
       </div>
 
