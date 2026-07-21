@@ -226,11 +226,12 @@ export default function SyncVetEquipePage() {
       ) : (
         <div className="space-y-2">
           {rows.map((m) => (
-            <Card key={m.id} className="p-3 flex items-center justify-between">
+            <Card key={m.id} className={cn("p-3 flex items-center justify-between", !m.ativo && "opacity-60")}>
               <div className="min-w-0">
                 <div className="font-semibold flex items-center gap-2">
                   {m.nome}
-                  {m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" />acesso</span>}
+                  {!m.ativo && <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Inativo</span>}
+                  {m.ativo && m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" />acesso</span>}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {PERFIL_LABEL[m.perfil]}
@@ -239,8 +240,14 @@ export default function SyncVetEquipePage() {
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="w-4 h-4" /></Button>
+                {m.ativo ? (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="w-4 h-4" /></Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => handleReactivate(m)}>Reativar</Button>
+                )}
               </div>
             </Card>
           ))}
