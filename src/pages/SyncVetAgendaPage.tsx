@@ -299,6 +299,42 @@ export default function SyncVetAgendaPage() {
     }
   }
 
+  function isDGEtapa(m: Manejo): boolean {
+    const etapa = etapaById.get(m.etapa_id);
+    const n = (etapa?.nome_etapa || "").toLowerCase();
+    return n.includes("dg") || n.includes("diagn");
+  }
+
+  async function fetchAnimaisDoManejo(m: Manejo): Promise<AnimalRow[]> {
+    const ctx = ctxByCiclo.get(m.lote_ciclo_id);
+    if (!ctx?.lote?.id) return [];
+    const { data } = await supabase
+      .from("syncvet_animais")
+      .select("id, brinco, numero, categoria")
+      .eq("lote_id", ctx.lote.id)
+      .order("brinco", { nullsFirst: false })
+      .order("numero", { nullsFirst: false });
+    return ((data as AnimalRow[]) || []);
+  }
+
+  async function finalizarConclusao(m: Manejo, opts?: { trajetoRegistrado?: boolean }) {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("syncvet_manejos")
+      .update({ status: "concluido", data_execucao: now })
+      .eq("id", m.id);
+    if (error) throw error;
+    setManejos(prev => prev.map(x => x.id === m.id ? { ...x, status: "concluido", data_execucao: now } : x));
+    // Auditoria
+    void logAuditoria({
+      empresaId, userId: user?.id ?? null,
+      acao: "concluir",
+      entidade: "syncvet_manejos",
+      entidade_id: m.id,
+      detalhes: { trajeto: !!opts?.trajetoRegistrado, is_dg: isDGEtapa(m) },
+    });
+  }
+
   async function handleConfirmarESalvar() {
     if (!selected || !calcResult || !user) return;
     const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
@@ -309,7 +345,6 @@ export default function SyncVetAgendaPage() {
 
     setFinalizing(true);
     try {
-      // Resolve veterinario_id from equipe by user_id
       const { data: vet } = await supabase.from("syncvet_equipe")
         .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).maybeSingle();
       const vetId = (vet as { id: string } | null)?.id;
@@ -318,10 +353,8 @@ export default function SyncVetAgendaPage() {
         setFinalizing(false);
         return;
       }
-
       const oLat = parseFloat(origemLat.replace(",", "."));
       const oLng = parseFloat(origemLng.replace(",", "."));
-
       const { error: trajErr } = await supabase.from("syncvet_trajetos").insert({
         veterinario_id: vetId,
         fazenda_id: fazendaId,
@@ -338,20 +371,11 @@ export default function SyncVetAgendaPage() {
       });
       if (trajErr) throw trajErr;
 
-      const now = new Date().toISOString();
-      const { error: mErr } = await supabase
-        .from("syncvet_manejos")
-        .update({ status: "concluido", data_execucao: now })
-        .eq("id", selected.id);
-      if (mErr) throw mErr;
-
-      setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, status: "concluido", data_execucao: now } : x));
-      toast.success("Manejo concluído e trajeto registrado");
       setTrajetoOpen(false);
-      setSelected(null);
+      await abrirResultadoOuConcluir(selected, true);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar trajeto/conclusão");
+      toast.error("Erro ao salvar trajeto");
     } finally {
       setFinalizing(false);
     }
@@ -361,15 +385,7 @@ export default function SyncVetAgendaPage() {
     if (!selected) return;
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("syncvet_manejos")
-        .update({ status: "concluido", data_execucao: now })
-        .eq("id", selected.id);
-      if (error) throw error;
-      setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, status: "concluido", data_execucao: now } : x));
-      toast.success("Manejo concluído");
-      setSelected(null);
+      await abrirResultadoOuConcluir(selected, false);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao concluir manejo");
@@ -377,6 +393,65 @@ export default function SyncVetAgendaPage() {
       setSaving(false);
     }
   }
+
+  async function abrirResultadoOuConcluir(m: Manejo, trajetoRegistrado: boolean) {
+    const isDG = isDGEtapa(m);
+    const animais = await fetchAnimaisDoManejo(m);
+    if (isDG && animais.length > 0) {
+      // Abre dialog para marcar prenha/vazia por animal
+      setResultadoAnimais(animais);
+      setResultadoValues(Object.fromEntries(animais.map(a => [a.id, "prenha" as const])));
+      setResultadoIsDG(true);
+      setResultadoManejo(m);
+      setResultadoOpen(true);
+      // Mantém o dialog do manejo fechado para não sobrepor
+      setSelected(null);
+      return;
+    }
+    // Não-DG: insere 'realizado' em lote (se houver animais) e conclui
+    if (animais.length > 0) {
+      await supabase.from("syncvet_manejo_resultados").insert(
+        animais.map(a => ({ manejo_id: m.id, animal_id: a.id, resultado: "realizado" }))
+      );
+    }
+    await finalizarConclusao(m, { trajetoRegistrado });
+    toast.success(trajetoRegistrado ? "Manejo concluído e trajeto registrado" : "Manejo concluído");
+    setSelected(null);
+  }
+
+  async function handleSalvarResultado() {
+    if (!resultadoManejo) return;
+    setSavingResultado(true);
+    try {
+      const rows = resultadoAnimais.map(a => ({
+        manejo_id: resultadoManejo.id,
+        animal_id: a.id,
+        resultado: resultadoValues[a.id] || "prenha",
+      }));
+      if (rows.length > 0) {
+        const { error } = await supabase.from("syncvet_manejo_resultados").insert(rows);
+        if (error) throw error;
+      }
+      await finalizarConclusao(resultadoManejo);
+      toast.success("Diagnóstico registrado e manejo concluído");
+      setResultadoOpen(false);
+      setResultadoManejo(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar diagnóstico");
+    } finally {
+      setSavingResultado(false);
+    }
+  }
+
+  function setAllResultado(v: "prenha" | "vazia") {
+    setResultadoValues(prev => {
+      const next = { ...prev };
+      for (const a of resultadoAnimais) next[a.id] = v;
+      return next;
+    });
+  }
+
 
   const today = todayISO();
 
