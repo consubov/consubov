@@ -54,6 +54,7 @@ export default function SyncVetEquipePage() {
       .from("syncvet_equipe")
       .select("id, nome, perfil, telefone, email, user_id, ativo")
       .eq("empresa_id", empresaId)
+      .order("ativo", { ascending: false })
       .order("nome");
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
