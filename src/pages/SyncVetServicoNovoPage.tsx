@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, FileText, Sparkles } from "lucide-react";
 import { gerarServicoPDF, type ServicoPdfItem } from "@/lib/syncvetServicoPdf";
+import { logAuditoria } from "@/lib/syncvetAuditoria";
 
 type Fazenda = {
   id: string; nome: string; modelo_cobranca: "protocolo_completo" | "mao_obra_km";
