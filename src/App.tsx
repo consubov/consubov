@@ -284,11 +284,13 @@ const App = () => (
                 <Route path="pesagem/:pesagemId/resumo" element={<PesadorPesagemResumoPage />} />
               </Route>
 
-
-
-
-
-
+              <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
+                <Route index element={<SyncVetEmpresaPage />} />
+                <Route path="equipe" element={<SyncVetEquipePage />} />
+                <Route path="fazendas" element={<SyncVetFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<SyncVetFazendaDetalhePage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId" element={<SyncVetLoteDetalhePage />} />
+              </Route>
 
               <Route path="*" element={<NotFound />} />
             </Routes>
