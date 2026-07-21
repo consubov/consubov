@@ -20,9 +20,14 @@ export default function SyncVetLayout() {
               <div className="text-[10px] uppercase tracking-wider opacity-80">Módulo Veterinário</div>
             </div>
           </button>
-          <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/syncvet/preferencias")} className="text-primary-foreground hover:bg-white/10">
+              <Settings className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
