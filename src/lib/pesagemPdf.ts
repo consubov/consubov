@@ -24,6 +24,7 @@ export interface PesagemPdfData {
   pesadorLogoUrl?: string | null;
   pesadorNomeEmpresa?: string | null;
   pesadorNome?: string | null;
+  valorTotalOverride?: number | null;
 }
 
 function fmtBRL(v: number) {
