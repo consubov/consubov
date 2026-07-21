@@ -3258,8 +3258,11 @@ export type Database = {
       syncvet_equipe: {
         Row: {
           ativo: boolean
+          convite_status: string
           created_at: string
+          email: string | null
           empresa_id: string
+          horario_notificacao_proximo_dia: string | null
           id: string
           nome: string
           perfil: Database["public"]["Enums"]["syncvet_perfil"]
@@ -3268,8 +3271,11 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          convite_status?: string
           created_at?: string
+          email?: string | null
           empresa_id: string
+          horario_notificacao_proximo_dia?: string | null
           id?: string
           nome: string
           perfil: Database["public"]["Enums"]["syncvet_perfil"]
@@ -3278,8 +3284,11 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          convite_status?: string
           created_at?: string
+          email?: string | null
           empresa_id?: string
+          horario_notificacao_proximo_dia?: string | null
           id?: string
           nome?: string
           perfil?: Database["public"]["Enums"]["syncvet_perfil"]
@@ -3640,11 +3649,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "syncvet_manejo_resultados_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_historico_animal"
+            referencedColumns: ["animal_id"]
+          },
+          {
             foreignKeyName: "syncvet_manejo_resultados_manejo_id_fkey"
             columns: ["manejo_id"]
             isOneToOne: false
             referencedRelation: "syncvet_manejos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejo_resultados_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_historico_animal"
+            referencedColumns: ["manejo_id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejo_resultados_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_manejo_fazenda"
+            referencedColumns: ["manejo_id"]
           },
         ]
       }
@@ -3653,10 +3683,14 @@ export type Database = {
           created_at: string
           data_execucao: string | null
           data_prevista: string
-          etapa_id: string
+          descricao_avulsa: string | null
+          etapa_id: string | null
+          fazenda_id: string | null
           id: string
-          lote_ciclo_id: string
+          lote_ciclo_id: string | null
+          lote_id: string | null
           observacoes: string | null
+          origem: string
           responsavel_id: string | null
           status: string
         }
@@ -3664,10 +3698,14 @@ export type Database = {
           created_at?: string
           data_execucao?: string | null
           data_prevista: string
-          etapa_id: string
+          descricao_avulsa?: string | null
+          etapa_id?: string | null
+          fazenda_id?: string | null
           id?: string
-          lote_ciclo_id: string
+          lote_ciclo_id?: string | null
+          lote_id?: string | null
           observacoes?: string | null
+          origem?: string
           responsavel_id?: string | null
           status?: string
         }
@@ -3675,10 +3713,14 @@ export type Database = {
           created_at?: string
           data_execucao?: string | null
           data_prevista?: string
-          etapa_id?: string
+          descricao_avulsa?: string | null
+          etapa_id?: string | null
+          fazenda_id?: string | null
           id?: string
-          lote_ciclo_id?: string
+          lote_ciclo_id?: string | null
+          lote_id?: string | null
           observacoes?: string | null
+          origem?: string
           responsavel_id?: string | null
           status?: string
         }
@@ -3691,10 +3733,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "syncvet_manejos_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "syncvet_manejos_lote_ciclo_id_fkey"
             columns: ["lote_ciclo_id"]
             isOneToOne: false
             referencedRelation: "syncvet_lote_ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_manejos_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_lotes"
             referencedColumns: ["id"]
           },
           {
@@ -3944,6 +4000,39 @@ export type Database = {
           },
         ]
       }
+      syncvet_servico_equipe: {
+        Row: {
+          equipe_id: string
+          servico_id: string
+          vinculado_em: string
+        }
+        Insert: {
+          equipe_id: string
+          servico_id: string
+          vinculado_em?: string
+        }
+        Update: {
+          equipe_id?: string
+          servico_id?: string
+          vinculado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_servico_equipe_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_servico_equipe_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_servico_itens: {
         Row: {
           created_at: string
@@ -4005,6 +4094,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "syncvet_manejos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_servico_manejos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_historico_animal"
+            referencedColumns: ["manejo_id"]
+          },
+          {
+            foreignKeyName: "syncvet_servico_manejos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_manejo_fazenda"
+            referencedColumns: ["manejo_id"]
           },
           {
             foreignKeyName: "syncvet_servico_manejos_servico_id_fkey"
@@ -4186,6 +4289,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "syncvet_manejos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_trajetos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_historico_animal"
+            referencedColumns: ["manejo_id"]
+          },
+          {
+            foreignKeyName: "syncvet_trajetos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_view_manejo_fazenda"
+            referencedColumns: ["manejo_id"]
           },
           {
             foreignKeyName: "syncvet_trajetos_veterinario_id_fkey"
@@ -4747,6 +4864,40 @@ export type Database = {
       }
     }
     Views: {
+      syncvet_view_historico_animal: {
+        Row: {
+          animal_id: string | null
+          brinco: string | null
+          data_execucao: string | null
+          data_prevista: string | null
+          manejo_descricao: string | null
+          manejo_id: string | null
+          numero: string | null
+          resultado: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      syncvet_view_manejo_fazenda: {
+        Row: {
+          data_execucao: string | null
+          data_prevista: string | null
+          fazenda_id: string | null
+          lote_id: string | null
+          manejo_id: string | null
+          responsavel_id: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_manejos_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_view_taxa_prenhez: {
         Row: {
           estacao_id: string | null
