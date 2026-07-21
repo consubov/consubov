@@ -32,7 +32,9 @@ export default function SyncVetLayout() {
       ]
     : [
         { to: "/syncvet/meu-painel", icon: LayoutDashboard, label: "Painel" },
+        { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
         { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
+        { to: "/syncvet/partos", icon: CalfIcon, label: "Partos" },
         { to: "/syncvet/trajetos", icon: RouteIcon, label: "Trajetos" },
       ];
 
@@ -48,11 +50,9 @@ export default function SyncVetLayout() {
             </div>
           </button>
           <div className="flex items-center gap-1">
-            {fullAccess && (
-              <Button variant="ghost" size="icon" onClick={() => navigate("/syncvet/preferencias")} className="text-primary-foreground hover:bg-white/10">
-                <Settings className="w-4 h-4" />
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => navigate("/syncvet/preferencias")} className="text-primary-foreground hover:bg-white/10">
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </Button>

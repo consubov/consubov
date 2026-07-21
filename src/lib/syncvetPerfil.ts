@@ -1,8 +1,9 @@
 // Perfis de acesso do módulo SyncVet.
-// Full access: administrador da empresa e médico veterinário.
-// Restricted: prestador de serviço, estagiário, auxiliar — enxergam apenas
-// a "Minha Agenda" (com filtragem por responsavel_id = próprio usuário) e o
-// registro de trajetos do dia.
+// Full access: SOMENTE administrador da empresa.
+// Restricted: veterinário (não-admin), prestador de serviço, estagiário, auxiliar —
+// enxergam apenas o "Meu Painel", "Minha Agenda", Trajetos, Fazendas (leitura),
+// Partos e Preferências. NÃO enxergam Painel do Admin, Financeiro, Medicamentos,
+// Sêmen, Protocolos, Equipe nem Empresa.
 export type SyncvetPerfil =
   | "administrador"
   | "veterinario"
@@ -10,7 +11,7 @@ export type SyncvetPerfil =
   | "estagiario"
   | "auxiliar";
 
-const FULL_ACCESS = new Set<SyncvetPerfil>(["administrador", "veterinario"]);
+const FULL_ACCESS = new Set<SyncvetPerfil>(["administrador"]);
 
 export function isSyncvetFullAccess(perfil: string | null | undefined): boolean {
   if (!perfil) return false;
@@ -22,6 +23,9 @@ export const SYNCVET_RESTRICTED_ALLOWED_PATHS = [
   "/syncvet/meu-painel",
   "/syncvet/agenda",
   "/syncvet/trajetos",
+  "/syncvet/partos",
+  "/syncvet/fazendas",
+  "/syncvet/preferencias",
 ];
 
 export function isSyncvetRestrictedPathAllowed(pathname: string): boolean {
