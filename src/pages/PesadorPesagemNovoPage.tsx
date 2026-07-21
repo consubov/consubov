@@ -21,6 +21,8 @@ const CATEGORIAS: { label: string; value: string }[] = [
   { label: "Aleatória", value: "aleatoria" },
 ];
 
+const CATEGORIAS_PURAS = CATEGORIAS.filter((c) => c.value !== "aleatoria");
+
 type TipoPreco = "arroba" | "kg" | "fixo_animal";
 type ModoPercentual = "fixo" | "aleatorio";
 
@@ -29,6 +31,11 @@ type Cliente = {
   nome: string;
   nome_fazenda: string | null;
   cidade: string | null;
+};
+
+type CategoriaMistaCfg = {
+  tipo_preco: TipoPreco | "";
+  preco_valor: string;
 };
 
 function Chip({
@@ -75,10 +82,8 @@ export default function PesadorPesagemNovoPage() {
   const [modoPercentual, setModoPercentual] = useState<ModoPercentual | "">("");
   const [percentualFixo, setPercentualFixo] = useState<string>("");
 
-  // Campos independentes para lote "Aleatória" (misto)
-  const [precoArroba, setPrecoArroba] = useState<string>("");
-  const [precoKg, setPrecoKg] = useState<string>("");
-  const [precoFixoAnimal, setPrecoFixoAnimal] = useState<string>("");
+  // Configuração por categoria para lote misto ("Aleatória")
+  const [categoriasMistas, setCategoriasMistas] = useState<Record<string, CategoriaMistaCfg>>({});
 
   const isAleatoria = categoria === "aleatoria";
 
@@ -102,18 +107,40 @@ export default function PesadorPesagemNovoPage() {
     })();
   }, [clienteId]);
 
+  function toggleCategoriaMista(value: string) {
+    setCategoriasMistas((prev) => {
+      const next = { ...prev };
+      if (next[value]) delete next[value];
+      else next[value] = { tipo_preco: "", preco_valor: "" };
+      return next;
+    });
+  }
+
+  function setMistaTipo(value: string, tipo: TipoPreco) {
+    setCategoriasMistas((prev) => ({
+      ...prev,
+      [value]: { ...(prev[value] ?? { tipo_preco: "", preco_valor: "" }), tipo_preco: tipo },
+    }));
+  }
+
+  function setMistaPreco(value: string, preco: string) {
+    setCategoriasMistas((prev) => ({
+      ...prev,
+      [value]: { ...(prev[value] ?? { tipo_preco: "", preco_valor: "" }), preco_valor: preco },
+    }));
+  }
+
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
     if (isAleatoria) {
-      // Ao menos um dos três preços preenchido e > 0
-      const arr = parseNum(precoArroba);
-      const kg = parseNum(precoKg);
-      const fx = parseNum(precoFixoAnimal);
-      const anyValid =
-        (Number.isFinite(arr) && arr > 0) ||
-        (Number.isFinite(kg) && kg > 0) ||
-        (Number.isFinite(fx) && fx > 0);
-      return anyValid;
+      const entries = Object.entries(categoriasMistas);
+      if (entries.length === 0) return false;
+      for (const [, cfg] of entries) {
+        if (!cfg.tipo_preco) return false;
+        const v = parseNum(cfg.preco_valor);
+        if (!Number.isFinite(v) || v <= 0) return false;
+      }
+      return true;
     }
     if (!tipoPreco || !precoValor) return false;
     const preco = parseNum(precoValor);
@@ -126,7 +153,7 @@ export default function PesadorPesagemNovoPage() {
       }
     }
     return true;
-  }, [isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, precoArroba, precoKg, precoFixoAnimal]);
+  }, [isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas]);
 
   async function handleIniciar() {
     if (!pesadorId || !clienteId || !canSubmit) return;
@@ -134,9 +161,6 @@ export default function PesadorPesagemNovoPage() {
 
     let payload: any;
     if (isAleatoria) {
-      const arr = parseNum(precoArroba);
-      const kg = parseNum(precoKg);
-      const fx = parseNum(precoFixoAnimal);
       payload = {
         pesador_id: pesadorId,
         cliente_id: clienteId,
@@ -145,9 +169,9 @@ export default function PesadorPesagemNovoPage() {
         preco_valor: null,
         modo_percentual: null,
         percentual_fixo: null,
-        preco_arroba: Number.isFinite(arr) && arr > 0 ? arr : null,
-        preco_kg: Number.isFinite(kg) && kg > 0 ? kg : null,
-        preco_fixo_animal: Number.isFinite(fx) && fx > 0 ? fx : null,
+        preco_arroba: null,
+        preco_kg: null,
+        preco_fixo_animal: null,
         status: "em_andamento",
       };
     } else {
@@ -173,11 +197,30 @@ export default function PesadorPesagemNovoPage() {
       .insert(payload)
       .select("id")
       .single();
-    setSaving(false);
     if (error || !data) {
+      setSaving(false);
       toast({ title: "Erro ao iniciar pesagem", description: error?.message, variant: "destructive" });
       return;
     }
+
+    if (isAleatoria) {
+      const rows = Object.entries(categoriasMistas).map(([cat, cfg]) => ({
+        pesagem_id: data.id,
+        categoria: cat,
+        tipo_preco: cfg.tipo_preco,
+        preco_valor: parseNum(cfg.preco_valor),
+      }));
+      const { error: catErr } = await supabase
+        .from("pesagens_compra_categorias")
+        .insert(rows);
+      if (catErr) {
+        setSaving(false);
+        toast({ title: "Erro ao salvar categorias", description: catErr.message, variant: "destructive" });
+        return;
+      }
+    }
+
+    setSaving(false);
     navigate(`/pesador/pesagem/${data.id}`);
   }
 
@@ -230,38 +273,65 @@ export default function PesadorPesagemNovoPage() {
       {isAleatoria ? (
         <div className="space-y-3">
           <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-            Lote misto — preencha ao menos um preço. A forma de pagamento será escolhida animal por animal na pesagem.
+            Selecione as categorias que aparecerão neste lote misto e configure a forma de pagamento de cada uma.
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pa">Preço da @ (R$)</Label>
-            <Input
-              id="pa"
-              inputMode="decimal"
-              value={precoArroba}
-              onChange={(e) => setPrecoArroba(e.target.value)}
-              placeholder="Opcional • Ex: 320,00"
-            />
+            <Label>Categorias do lote</Label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIAS_PURAS.map((c) => (
+                <Chip
+                  key={c.value}
+                  active={!!categoriasMistas[c.value]}
+                  onClick={() => toggleCategoriaMista(c.value)}
+                >
+                  {c.label}
+                </Chip>
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="pk">Preço por kg (R$)</Label>
-            <Input
-              id="pk"
-              inputMode="decimal"
-              value={precoKg}
-              onChange={(e) => setPrecoKg(e.target.value)}
-              placeholder="Opcional • Ex: 10,50"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="pf">Preço fixo por animal (R$)</Label>
-            <Input
-              id="pf"
-              inputMode="decimal"
-              value={precoFixoAnimal}
-              onChange={(e) => setPrecoFixoAnimal(e.target.value)}
-              placeholder="Opcional • Ex: 3000,00"
-            />
-          </div>
+
+          {CATEGORIAS_PURAS.filter((c) => categoriasMistas[c.value]).map((c) => {
+            const cfg = categoriasMistas[c.value];
+            const precoLabel =
+              cfg.tipo_preco === "arroba"
+                ? "Preço da @ (R$)"
+                : cfg.tipo_preco === "kg"
+                ? "Preço por kg (R$)"
+                : cfg.tipo_preco === "fixo_animal"
+                ? "Preço fixo por animal (R$)"
+                : "Preço (R$)";
+            return (
+              <div key={c.value} className="rounded-lg border bg-card p-3 space-y-3">
+                <div className="text-sm font-semibold">{c.label}</div>
+                <div className="flex flex-wrap gap-2">
+                  <Chip active={cfg.tipo_preco === "arroba"} onClick={() => setMistaTipo(c.value, "arroba")}>
+                    @ (arroba)
+                  </Chip>
+                  <Chip active={cfg.tipo_preco === "kg"} onClick={() => setMistaTipo(c.value, "kg")}>
+                    kg
+                  </Chip>
+                  <Chip
+                    active={cfg.tipo_preco === "fixo_animal"}
+                    onClick={() => setMistaTipo(c.value, "fixo_animal")}
+                  >
+                    Fixo por animal
+                  </Chip>
+                </div>
+                {cfg.tipo_preco && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`preco-${c.value}`}>{precoLabel}</Label>
+                    <Input
+                      id={`preco-${c.value}`}
+                      inputMode="decimal"
+                      value={cfg.preco_valor}
+                      onChange={(e) => setMistaPreco(c.value, e.target.value)}
+                      placeholder="Ex: 320,00"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <>
