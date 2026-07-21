@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, ArrowLeft, Trash2, Pencil, Save } from "lucide-react";
 
 type Proto = { id: string; nome: string; descricao: string | null };
-type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null };
+type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null; codigo_preco: string | null };
 type Item = {
   id: string;
   etapa_id: string;
@@ -28,17 +28,19 @@ type Item = {
   ordem: number;
 };
 type Med = { id: string; nome_comercial: string; dosagem_padrao: string | null };
+type PrecoOpt = { tipo_servico: string; descricao: string | null; valor: number };
 
 export default function SyncVetProtocoloDetalhePage() {
   const { protocoloId } = useParams<{ protocoloId: string }>();
   const navigate = useNavigate();
-  const { roleData } = useAuth();
+  const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
   const [proto, setProto] = useState<Proto | null>(null);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
   const [meds, setMeds] = useState<Med[]>([]);
+  const [precos, setPrecos] = useState<PrecoOpt[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editHeader, setEditHeader] = useState(false);
@@ -50,6 +52,7 @@ export default function SyncVetProtocoloDetalhePage() {
   const [etapaEditing, setEtapaEditing] = useState<Etapa | null>(null);
   const [dia, setDia] = useState<string>("0");
   const [nomeEtapa, setNomeEtapa] = useState("");
+  const [codigoPreco, setCodigoPreco] = useState<string>("__none__");
 
   // Item dialog
   const [itemOpen, setItemOpen] = useState(false);
@@ -64,12 +67,22 @@ export default function SyncVetProtocoloDetalhePage() {
   async function load() {
     if (!protocoloId) return;
     setLoading(true);
-    const [p, e, i, m] = await Promise.all([
+    // resolve vetId (equipe do usuário logado nessa empresa)
+    let vetId: string | null = null;
+    if (empresaId && user?.id) {
+      const { data: eq } = await supabase.from("syncvet_equipe")
+        .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).eq("ativo", true).maybeSingle();
+      vetId = (eq as any)?.id ?? null;
+    }
+    const [p, e, i, m, pr] = await Promise.all([
       supabase.from("syncvet_protocolos").select("*").eq("id", protocoloId).maybeSingle(),
       supabase.from("syncvet_protocolo_etapas").select("*").eq("protocolo_id", protocoloId),
       supabase.from("syncvet_protocolo_etapa_itens").select("*"),
       empresaId
         ? supabase.from("syncvet_medicamentos").select("id, nome_comercial, dosagem_padrao").eq("empresa_id", empresaId).order("nome_comercial")
+        : Promise.resolve({ data: [], error: null } as any),
+      vetId
+        ? supabase.from("syncvet_tabela_precos").select("tipo_servico, descricao, valor").eq("veterinario_id", vetId).order("tipo_servico")
         : Promise.resolve({ data: [], error: null } as any),
     ]);
     if (p.error) toast.error(p.error.message);
@@ -83,9 +96,10 @@ export default function SyncVetProtocoloDetalhePage() {
     const etIds = new Set(et.map((x) => x.id));
     setItens(((i.data as Item[]) ?? []).filter((x) => etIds.has(x.etapa_id)).sort((a, b) => a.ordem - b.ordem));
     setMeds((m.data as Med[]) ?? []);
+    setPrecos((pr.data as PrecoOpt[]) ?? []);
     setLoading(false);
   }
-  useEffect(() => { load(); }, [protocoloId, empresaId]);
+  useEffect(() => { load(); }, [protocoloId, empresaId, user?.id]);
 
   async function saveHeader() {
     if (!proto) return;
@@ -98,16 +112,23 @@ export default function SyncVetProtocoloDetalhePage() {
   }
 
   function openNewEtapa() {
-    setEtapaEditing(null); setDia("0"); setNomeEtapa(""); setEtapaOpen(true);
+    setEtapaEditing(null); setDia("0"); setNomeEtapa(""); setCodigoPreco("__none__"); setEtapaOpen(true);
   }
   function openEditEtapa(e: Etapa) {
-    setEtapaEditing(e); setDia(String(e.dia_offset)); setNomeEtapa(e.nome_etapa ?? ""); setEtapaOpen(true);
+    setEtapaEditing(e); setDia(String(e.dia_offset)); setNomeEtapa(e.nome_etapa ?? "");
+    setCodigoPreco(e.codigo_preco ?? "__none__");
+    setEtapaOpen(true);
   }
   async function saveEtapa() {
     if (!protocoloId) return;
     const d = parseInt(dia, 10);
     if (isNaN(d) || d < 0) { toast.error("Dia (D+) deve ser um número ≥ 0"); return; }
-    const payload = { protocolo_id: protocoloId, dia_offset: d, nome_etapa: nomeEtapa || null };
+    const payload = {
+      protocolo_id: protocoloId,
+      dia_offset: d,
+      nome_etapa: nomeEtapa || null,
+      codigo_preco: codigoPreco === "__none__" ? null : codigoPreco,
+    };
     if (etapaEditing) {
       const { error } = await supabase.from("syncvet_protocolo_etapas").update(payload).eq("id", etapaEditing.id);
       if (error) return toast.error(error.message);
@@ -249,6 +270,9 @@ export default function SyncVetProtocoloDetalhePage() {
                   <div className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">D+{e.dia_offset}</div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{e.nome_etapa || `Etapa D+${e.dia_offset}`}</div>
+                    {e.codigo_preco && (
+                      <div className="text-[10px] text-muted-foreground">Preço: <span className="font-semibold text-primary">{e.codigo_preco}</span></div>
+                    )}
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEditEtapa(e)}><Pencil className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => deleteEtapa(e)}><Trash2 className="w-4 h-4" /></Button>
@@ -292,6 +316,25 @@ export default function SyncVetProtocoloDetalhePage() {
           <div className="space-y-3">
             <div><Label className="text-xs">Dia (D+)*</Label><Input type="number" min="0" value={dia} onChange={(e) => setDia(e.target.value)} /></div>
             <div><Label className="text-xs">Nome da etapa</Label><Input value={nomeEtapa} onChange={(e) => setNomeEtapa(e.target.value)} placeholder="Ex: Implante + BE" /></div>
+            <div>
+              <Label className="text-xs">Vincular à Tabela de Preços</Label>
+              <Select value={codigoPreco} onValueChange={setCodigoPreco}>
+                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— não vincular —</SelectItem>
+                  {precos.map((p) => (
+                    <SelectItem key={p.tipo_servico} value={p.tipo_servico}>
+                      {p.tipo_servico}{p.descricao ? ` — ${p.descricao}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {precos.length === 0 && (
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  Nenhum item cadastrado na sua Tabela de Preços.
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEtapaOpen(false)}>Cancelar</Button>

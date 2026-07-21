@@ -90,96 +90,75 @@ export default function SyncVetServicoNovoPage() {
     if (!dataInicio || !dataFim) { toast.error("Informe o período"); return; }
     setSuggesting(true);
     try {
-      // Load ciclos of this fazenda in the period (via estacao filter or fazenda filter)
-      let ciclosQ = supabase
-        .from("syncvet_lote_ciclos")
-        .select("id, estacao_id, lote_id, protocolo_id, data_d0, lote:syncvet_lotes!inner(fazenda_id, quantidade_animais)")
-        .gte("data_d0", dataInicio).lte("data_d0", dataFim);
-      if (estacao) ciclosQ = ciclosQ.eq("estacao_id", estacao.id);
-      const { data: ciclos } = await ciclosQ;
-      const ciclosFiltered = ((ciclos as any[]) ?? []).filter(c => c.lote?.fazenda_id === fazenda.id);
-      const cicloIds = ciclosFiltered.map(c => c.id);
-
-      // Load concluded manejos linked to these ciclos + belonging to me
-      const { data: manejos } = cicloIds.length ? await supabase
+      // Buscar TODOS os manejos concluídos do vet nesta fazenda no período (avulsos + ciclo)
+      const { data: manejosRaw } = await supabase
         .from("syncvet_manejos")
-        .select("id, lote_ciclo_id, data_execucao, responsavel_id, status")
-        .in("lote_ciclo_id", cicloIds)
-        .eq("status", "concluido") : { data: [] as any[] };
-      const meusManejos = ((manejos as any[]) ?? []).filter(m => !m.responsavel_id || m.responsavel_id === vetId);
+        .select("id, data_execucao, responsavel_id, status, codigo_preco, tipo_manejo, lote_id, lote_ciclo_id, fazenda_id, syncvet_lotes:lote_id(fazenda_id)")
+        .eq("status", "concluido")
+        .gte("data_execucao", dataInicio)
+        .lte("data_execucao", dataFim + "T23:59:59");
+      const meusManejos = ((manejosRaw as any[]) ?? []).filter(m => {
+        if (m.responsavel_id && m.responsavel_id !== vetId) return false;
+        const fid = m.fazenda_id || m.syncvet_lotes?.fazenda_id;
+        return fid === fazenda.id;
+      });
       setManejoIds(meusManejos.map(m => m.id));
-      const diasSet = new Set(meusManejos.map(m => (m.data_execucao || "").slice(0, 10)).filter(Boolean));
-      const dias = diasSet.size;
-      setDiasTrabalhados(dias);
 
-      // Load trajetos in period for this fazenda + vet
+      const diasSet = new Set(meusManejos.map(m => (m.data_execucao || "").slice(0, 10)).filter(Boolean));
+      setDiasTrabalhados(diasSet.size);
+
+      // Contagem de animais por manejo (via resultados)
+      const manejoIdsList = meusManejos.map(m => m.id);
+      const animaisPorManejo: Record<string, number> = {};
+      if (manejoIdsList.length > 0) {
+        const { data: resultados } = await supabase
+          .from("syncvet_manejo_resultados")
+          .select("manejo_id")
+          .in("manejo_id", manejoIdsList);
+        for (const r of ((resultados as any[]) ?? [])) {
+          animaisPorManejo[r.manejo_id] = (animaisPorManejo[r.manejo_id] ?? 0) + 1;
+        }
+      }
+
+      // Trajetos (km) do período
       const { data: trajetos } = await supabase.from("syncvet_trajetos")
         .select("distancia_km, data").eq("veterinario_id", vetId).eq("fazenda_id", fazenda.id)
         .gte("data", dataInicio).lte("data", dataFim);
       const km = ((trajetos as any[]) ?? []).reduce((s, t) => s + (t.distancia_km ?? 0), 0);
       setKmTotal(km);
 
-      // Load tabela de precos
-      const { data: precos } = await supabase.from("syncvet_tabela_precos")
+      // Tabela de preços do vet — mapa por tipo_servico
+      const { data: precosRaw } = await supabase.from("syncvet_tabela_precos")
         .select("tipo_servico, descricao, valor, unidade").eq("veterinario_id", vetId);
-      const P = (precos as any[]) ?? [];
+      const P = (precosRaw as any[]) ?? [];
+      const precoMap = new Map<string, { descricao: string | null; valor: number }>();
+      for (const p of P) precoMap.set(p.tipo_servico, { descricao: p.descricao, valor: p.valor });
       const pKm = P.find(p => p.tipo_servico === "km" || p.unidade === "por_km");
-      const pDia = P.find(p => p.tipo_servico === "diaria" || p.unidade === "por_dia");
-      const pVisita = P.find(p => p.tipo_servico === "visita" || p.unidade === "por_visita");
 
+      // Agrupar manejos por codigo_preco
       const suggested: Item[] = [];
-
-      if (fazenda.modelo_cobranca === "protocolo_completo") {
-        // Group cycles by protocolo, use estacao_protocolos price if selected
-        let estProts: any[] = [];
-        if (estacao) {
-          const { data: ep } = await supabase.from("syncvet_estacao_protocolos")
-            .select("protocolo_id, preco_por_cabeca, protocolo:syncvet_protocolos(nome)")
-            .eq("estacao_id", estacao.id);
-          estProts = (ep as any[]) ?? [];
-        }
-        const byProt = new Map<string, { nome: string; animais: number; preco: number }>();
-        for (const c of ciclosFiltered) {
-          const ep = estProts.find(x => x.protocolo_id === c.protocolo_id);
-          const preco = ep?.preco_por_cabeca ?? 0;
-          const nome = ep?.protocolo?.nome ?? "Protocolo";
-          const anim = c.lote?.quantidade_animais ?? 0;
-          const cur = byProt.get(c.protocolo_id) || { nome, animais: 0, preco };
-          cur.animais += anim;
-          byProt.set(c.protocolo_id, cur);
-        }
-        let totalAnim = 0;
-        for (const [, v] of byProt) {
-          totalAnim += v.animais;
-          if (v.animais > 0) {
-            suggested.push({
-              descricao: `Protocolo: ${v.nome}`,
-              tipo_item: "protocolo",
-              quantidade: v.animais,
-              valor_unitario: v.preco,
-            });
-          }
-        }
-        setAnimaisTotal(totalAnim);
-      } else {
-        // mao_obra_km
-        if (dias > 0 && pDia) {
-          suggested.push({
-            descricao: pDia.descricao || "Diária técnica",
-            tipo_item: "diaria",
-            quantidade: dias,
-            valor_unitario: pDia.valor,
-          });
-        } else if (meusManejos.length > 0 && pVisita) {
-          suggested.push({
-            descricao: pVisita.descricao || "Visita técnica",
-            tipo_item: "visita",
-            quantidade: meusManejos.length,
-            valor_unitario: pVisita.valor,
-          });
-        }
-        setAnimaisTotal(ciclosFiltered.reduce((s, c) => s + (c.lote?.quantidade_animais ?? 0), 0));
+      const grupos = new Map<string, { count: number; animais: number; tipo: string }>();
+      for (const m of meusManejos) {
+        const codigo = m.codigo_preco || m.tipo_manejo || "outro";
+        const cur = grupos.get(codigo) || { count: 0, animais: 0, tipo: m.tipo_manejo || "outro" };
+        cur.count += 1;
+        cur.animais += animaisPorManejo[m.id] ?? 0;
+        grupos.set(codigo, cur);
       }
+
+      let totalAnim = 0;
+      for (const [codigo, g] of grupos) {
+        totalAnim += g.animais;
+        const preco = precoMap.get(codigo);
+        const qtd = g.animais > 0 ? g.animais : g.count;
+        suggested.push({
+          descricao: preco?.descricao || codigo,
+          tipo_item: codigo,
+          quantidade: qtd,
+          valor_unitario: preco?.valor ?? 0,
+        });
+      }
+      setAnimaisTotal(totalAnim);
 
       if (km > 0 && pKm) {
         suggested.push({
@@ -191,7 +170,12 @@ export default function SyncVetServicoNovoPage() {
       }
 
       setItems(suggested);
-      toast.success(`${suggested.length} item(ns) sugerido(s)`);
+      const semPreco = suggested.filter(s => s.tipo_item !== "km" && s.valor_unitario === 0).length;
+      if (semPreco > 0) {
+        toast.warning(`${suggested.length} item(ns) sugerido(s). ${semPreco} sem preço na tabela — edite manualmente.`);
+      } else {
+        toast.success(`${suggested.length} item(ns) sugerido(s)`);
+      }
     } catch (e: any) {
       console.error(e); toast.error(e.message || "Erro ao sugerir itens");
     } finally { setSuggesting(false); }
