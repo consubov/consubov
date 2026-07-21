@@ -19,6 +19,7 @@ export function isSyncvetFullAccess(perfil: string | null | undefined): boolean 
 
 // Rotas (relativas a /syncvet) permitidas para perfis restritos.
 export const SYNCVET_RESTRICTED_ALLOWED_PATHS = [
+  "/syncvet/meu-painel",
   "/syncvet/agenda",
   "/syncvet/trajetos",
 ];

@@ -15,7 +15,7 @@ export default function SyncVetLayout() {
 
   // Guard: perfis restritos só podem acessar Agenda e Trajetos
   if (!fullAccess && !isSyncvetRestrictedPathAllowed(location.pathname)) {
-    return <Navigate to="/syncvet/agenda" replace />;
+    return <Navigate to="/syncvet/meu-painel" replace />;
   }
 
   const navItems = fullAccess
@@ -30,7 +30,8 @@ export default function SyncVetLayout() {
         { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
       ]
     : [
-        { to: "/syncvet/agenda", icon: Calendar, label: "Minha Agenda" },
+        { to: "/syncvet/meu-painel", icon: LayoutDashboard, label: "Painel" },
+        { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
         { to: "/syncvet/trajetos", icon: RouteIcon, label: "Trajetos" },
       ];
 
@@ -38,7 +39,7 @@ export default function SyncVetLayout() {
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
-          <button onClick={() => navigate(fullAccess ? "/syncvet" : "/syncvet/agenda")} className="flex items-center gap-2">
+          <button onClick={() => navigate(fullAccess ? "/syncvet" : "/syncvet/meu-painel")} className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-md bg-secondary text-primary flex items-center justify-center font-extrabold">S</div>
             <div className="text-left">
               <div className="text-sm font-bold leading-tight">SyncVet</div>
