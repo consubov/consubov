@@ -177,6 +177,8 @@ function RoleRedirect() {
       return <Navigate to="/consultor" replace />;
     case "pesador":
       return <Navigate to="/pesador" replace />;
+    case "syncvet":
+      return <Navigate to="/syncvet" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
