@@ -175,18 +175,24 @@ export default function PesadorPesagemResumoPage() {
 
   async function handleShare() {
     if (!pdfUrl) return;
-    const shareData = {
-      title: "Relatório de Pesagem",
-      text: `Pesagem — ${clienteNome}`,
-      url: pdfUrl,
-    };
+    const title = "Relatório de Pesagem";
+    const text = `Pesagem — ${clienteNome}`;
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(pdfUrl);
-        toast({ title: "Link copiado" });
+      const resp = await fetch(pdfUrl);
+      const blob = await resp.blob();
+      const fileName = `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`;
+      const file = new File([blob], fileName, { type: "application/pdf" });
+      const nav: any = navigator;
+      if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title, text });
+        return;
       }
+      if (nav.share) {
+        await nav.share({ title, text, url: pdfUrl });
+        return;
+      }
+      await navigator.clipboard.writeText(pdfUrl);
+      toast({ title: "Link copiado" });
     } catch { /* ignore */ }
   }
 
