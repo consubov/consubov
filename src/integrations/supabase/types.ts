@@ -3807,6 +3807,185 @@ export type Database = {
           },
         ]
       }
+      syncvet_servico_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          quantidade: number
+          servico_id: string
+          tipo_item: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          quantidade?: number
+          servico_id: string
+          tipo_item: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          quantidade?: number
+          servico_id?: string
+          tipo_item?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_servico_itens_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_servico_manejos: {
+        Row: {
+          manejo_id: string
+          servico_id: string
+        }
+        Insert: {
+          manejo_id: string
+          servico_id: string
+        }
+        Update: {
+          manejo_id?: string
+          servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_servico_manejos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_manejos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_servico_manejos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_servicos: {
+        Row: {
+          animais_atendidos: number | null
+          created_at: string
+          data_referencia: string
+          data_vencimento: string | null
+          dias_trabalhados: number | null
+          estacao_id: string | null
+          fazenda_id: string
+          id: string
+          km_total: number | null
+          observacoes: string | null
+          status: Database["public"]["Enums"]["syncvet_status_pagamento"]
+          valor_total: number
+          veterinario_id: string
+        }
+        Insert: {
+          animais_atendidos?: number | null
+          created_at?: string
+          data_referencia: string
+          data_vencimento?: string | null
+          dias_trabalhados?: number | null
+          estacao_id?: string | null
+          fazenda_id: string
+          id?: string
+          km_total?: number | null
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["syncvet_status_pagamento"]
+          valor_total?: number
+          veterinario_id: string
+        }
+        Update: {
+          animais_atendidos?: number | null
+          created_at?: string
+          data_referencia?: string
+          data_vencimento?: string | null
+          dias_trabalhados?: number | null
+          estacao_id?: string | null
+          fazenda_id?: string
+          id?: string
+          km_total?: number | null
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["syncvet_status_pagamento"]
+          valor_total?: number
+          veterinario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_servicos_estacao_id_fkey"
+            columns: ["estacao_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_estacoes_monta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_servicos_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_servicos_veterinario_id_fkey"
+            columns: ["veterinario_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_tabela_precos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          tipo_servico: string
+          unidade: string
+          valor: number
+          veterinario_id: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          tipo_servico: string
+          unidade: string
+          valor: number
+          veterinario_id: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          tipo_servico?: string
+          unidade?: string
+          valor?: number
+          veterinario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_tabela_precos_veterinario_id_fkey"
+            columns: ["veterinario_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syncvet_trajetos: {
         Row: {
           created_at: string
@@ -4703,6 +4882,7 @@ export type Database = {
         | "prestador_servico"
         | "estagiario"
         | "auxiliar"
+      syncvet_status_pagamento: "pendente" | "pago" | "vencido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4838,6 +5018,7 @@ export const Constants = {
         "estagiario",
         "auxiliar",
       ],
+      syncvet_status_pagamento: ["pendente", "pago", "vencido"],
     },
   },
 } as const
