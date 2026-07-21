@@ -248,6 +248,12 @@ export default function SyncVetServicoNovoPage() {
         await supabase.from("syncvet_servico_manejos").insert(mRows);
       }
 
+      void logAuditoria({
+        empresaId, userId: user?.id ?? null,
+        acao: "criar", entidade: "syncvet_servicos", entidade_id: servicoId,
+        detalhes: { valor_total: valorTotal, itens: items.length, manejos: manejoIds.length },
+      });
+
       // Generate PDF
       const pdfItems: ServicoPdfItem[] = items.map(it => ({
         descricao: it.descricao || it.tipo_item,
