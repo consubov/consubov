@@ -4,14 +4,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation } from "lucide-react";
 import { sendPush } from "@/lib/pushService";
 
 type Manejo = {
@@ -27,7 +30,7 @@ type Manejo = {
 type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null; ordem: number };
 type Ciclo = { id: string; lote_id: string; estacao_id: string; protocolo_id: string; data_d0: string };
 type Lote = { id: string; nome: string; fazenda_id: string };
-type Fazenda = { id: string; nome: string };
+type Fazenda = { id: string; nome: string; latitude: number | null; longitude: number | null };
 type Equipe = { id: string; nome: string; user_id: string | null };
 type Proto = { id: string; nome: string };
 
@@ -43,7 +46,7 @@ function fmtDateLong(iso: string) {
 }
 
 export default function SyncVetAgendaPage() {
-  const { roleData } = useAuth();
+  const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
   const [loading, setLoading] = useState(true);
@@ -63,12 +66,21 @@ export default function SyncVetAgendaPage() {
   const [assignId, setAssignId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  // Trajeto dialog state
+  const [trajetoOpen, setTrajetoOpen] = useState(false);
+  const [origemLat, setOrigemLat] = useState<string>("");
+  const [origemLng, setOrigemLng] = useState<string>("");
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcResult, setCalcResult] = useState<{ distancia_km: number; duracao_min: number; origem_endereco: string | null } | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+
   const load = useCallback(async () => {
     if (!empresaId) return;
     setLoading(true);
     try {
       const [{ data: faz }, { data: eq }, { data: prot }] = await Promise.all([
-        supabase.from("syncvet_fazendas").select("id, nome").eq("empresa_id", empresaId).order("nome"),
+        supabase.from("syncvet_fazendas").select("id, nome, latitude, longitude").eq("empresa_id", empresaId).order("nome"),
         supabase.from("syncvet_equipe").select("id, nome, user_id").eq("empresa_id", empresaId).eq("ativo", true).order("nome"),
         supabase.from("syncvet_protocolos").select("id, nome").eq("empresa_id", empresaId),
       ]);
@@ -184,7 +196,6 @@ export default function SyncVetAgendaPage() {
       setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, responsavel_id: novo } : x));
       toast.success("Responsável atualizado");
 
-      // Push notification (silenciosa em caso de falha)
       if (novo && novo !== anterior) {
         const member = equipeById.get(novo);
         const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
@@ -207,7 +218,136 @@ export default function SyncVetAgendaPage() {
     }
   }
 
-  async function handleConcluir() {
+  function openTrajetoDialog() {
+    if (!selected) return;
+    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    if (!ctx?.fazenda?.latitude || !ctx?.fazenda?.longitude) {
+      toast.error("Fazenda sem coordenadas cadastradas — preencha latitude/longitude no cadastro");
+      return;
+    }
+    setOrigemLat("");
+    setOrigemLng("");
+    setCalcResult(null);
+    setTrajetoOpen(true);
+  }
+
+  function handleGPS() {
+    if (!navigator.geolocation) {
+      toast.error("GPS não disponível neste dispositivo");
+      return;
+    }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setOrigemLat(pos.coords.latitude.toFixed(6));
+        setOrigemLng(pos.coords.longitude.toFixed(6));
+        setGpsLoading(false);
+        toast.success("Localização capturada");
+      },
+      (err) => {
+        setGpsLoading(false);
+        toast.error(`Erro GPS: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  async function handleCalcular() {
+    if (!selected) return;
+    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    const destLat = ctx?.fazenda?.latitude;
+    const destLng = ctx?.fazenda?.longitude;
+    const oLat = parseFloat(origemLat.replace(",", "."));
+    const oLng = parseFloat(origemLng.replace(",", "."));
+    if (!Number.isFinite(oLat) || !Number.isFinite(oLng)) {
+      toast.error("Origem inválida");
+      return;
+    }
+    if (destLat == null || destLng == null) {
+      toast.error("Fazenda sem coordenadas");
+      return;
+    }
+    setCalcLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("syncvet-calcular-trajeto", {
+        body: { origem_lat: oLat, origem_lng: oLng, destino_lat: destLat, destino_lng: destLng },
+      });
+      if (error) throw error;
+      if (!data || typeof data.distancia_km !== "number") {
+        throw new Error(data?.error || "Resposta inválida");
+      }
+      setCalcResult({
+        distancia_km: data.distancia_km,
+        duracao_min: data.duracao_min,
+        origem_endereco: data.origem_endereco ?? null,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao calcular trajeto");
+    } finally {
+      setCalcLoading(false);
+    }
+  }
+
+  async function handleConfirmarESalvar() {
+    if (!selected || !calcResult || !user) return;
+    const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
+    const destLat = ctx?.fazenda?.latitude;
+    const destLng = ctx?.fazenda?.longitude;
+    const fazendaId = ctx?.fazenda?.id;
+    if (!fazendaId || destLat == null || destLng == null) return;
+
+    setFinalizing(true);
+    try {
+      // Resolve veterinario_id from equipe by user_id
+      const { data: vet } = await supabase.from("syncvet_equipe")
+        .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).maybeSingle();
+      const vetId = (vet as { id: string } | null)?.id;
+      if (!vetId) {
+        toast.error("Você não está cadastrado como membro da equipe desta empresa");
+        setFinalizing(false);
+        return;
+      }
+
+      const oLat = parseFloat(origemLat.replace(",", "."));
+      const oLng = parseFloat(origemLng.replace(",", "."));
+
+      const { error: trajErr } = await supabase.from("syncvet_trajetos").insert({
+        veterinario_id: vetId,
+        fazenda_id: fazendaId,
+        manejo_id: selected.id,
+        data: todayISO(),
+        origem_lat: oLat,
+        origem_lng: oLng,
+        destino_lat: destLat,
+        destino_lng: destLng,
+        distancia_km: calcResult.distancia_km,
+        duracao_min: calcResult.duracao_min,
+        origem_endereco: calcResult.origem_endereco,
+        fonte: "google_directions",
+      });
+      if (trajErr) throw trajErr;
+
+      const now = new Date().toISOString();
+      const { error: mErr } = await supabase
+        .from("syncvet_manejos")
+        .update({ status: "concluido", data_execucao: now })
+        .eq("id", selected.id);
+      if (mErr) throw mErr;
+
+      setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, status: "concluido", data_execucao: now } : x));
+      toast.success("Manejo concluído e trajeto registrado");
+      setTrajetoOpen(false);
+      setSelected(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar trajeto/conclusão");
+    } finally {
+      setFinalizing(false);
+    }
+  }
+
+  async function handleConcluirSemTrajeto() {
     if (!selected) return;
     setSaving(true);
     try {
@@ -236,7 +376,12 @@ export default function SyncVetAgendaPage() {
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
           <CalendarIcon className="w-5 h-5" /> Agenda de Manejos
         </h1>
-        <Badge variant="secondary" className="text-xs">{filtrados.length}</Badge>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/syncvet/trajetos"><RouteIcon className="w-3.5 h-3.5 mr-1" /> Trajetos</Link>
+          </Button>
+          <Badge variant="secondary" className="text-xs">{filtrados.length}</Badge>
+        </div>
       </div>
 
       <Card className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -340,6 +485,7 @@ export default function SyncVetAgendaPage() {
           {selected && (() => {
             const ctx = ctxByCiclo.get(selected.lote_ciclo_id);
             const etapa = etapaById.get(selected.etapa_id);
+            const semCoords = !ctx?.fazenda?.latitude || !ctx?.fazenda?.longitude;
             return (
               <div className="space-y-3 text-sm">
                 <div>
@@ -370,14 +516,109 @@ export default function SyncVetAgendaPage() {
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
                   </Button>
                   {selected.status !== "concluido" && (
-                    <Button onClick={handleConcluir} disabled={saving}>
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como concluído
-                    </Button>
+                    semCoords ? (
+                      <Button onClick={handleConcluirSemTrajeto} disabled={saving}>
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como concluído
+                      </Button>
+                    ) : (
+                      <Button onClick={openTrajetoDialog} disabled={saving}>
+                        <RouteIcon className="w-4 h-4 mr-1" /> Registrar trajeto e concluir
+                      </Button>
+                    )
                   )}
                 </DialogFooter>
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={trajetoOpen} onOpenChange={(o) => { if (!o) { setTrajetoOpen(false); setCalcResult(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar Trajeto</DialogTitle>
+            <DialogDescription>
+              Informe sua origem. O destino é a fazenda deste manejo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={handleGPS}
+              disabled={gpsLoading || calcLoading || finalizing}
+            >
+              {gpsLoading
+                ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                : <Navigation className="w-4 h-4 mr-2" />}
+              Usar minha localização agora
+            </Button>
+
+            <div className="text-[11px] text-center text-muted-foreground">ou informe manualmente</div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Latitude</Label>
+                <Input
+                  value={origemLat}
+                  onChange={(e) => { setOrigemLat(e.target.value); setCalcResult(null); }}
+                  placeholder="-15.7801"
+                  inputMode="decimal"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Longitude</Label>
+                <Input
+                  value={origemLng}
+                  onChange={(e) => { setOrigemLng(e.target.value); setCalcResult(null); }}
+                  placeholder="-47.9292"
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+            <div className="text-[11px] text-muted-foreground flex items-start gap-1">
+              <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+              Dica: no Google Maps, toque e segure um ponto no mapa para ver as coordenadas.
+            </div>
+
+            {!calcResult ? (
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handleCalcular}
+                disabled={!origemLat || !origemLng || calcLoading || finalizing}
+              >
+                {calcLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Calcular distância
+              </Button>
+            ) : (
+              <Card className="p-3 bg-primary/5 border-primary/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Distância calculada</div>
+                    <div className="text-2xl font-bold text-primary">{calcResult.distancia_km.toFixed(2)} km</div>
+                    <div className="text-xs text-muted-foreground">Duração aprox.: {calcResult.duracao_min} min</div>
+                  </div>
+                </div>
+                {calcResult.origem_endereco && (
+                  <div className="text-[11px] text-muted-foreground mt-2 truncate">
+                    Origem: {calcResult.origem_endereco}
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setTrajetoOpen(false)} disabled={finalizing}>Cancelar</Button>
+            {calcResult && (
+              <Button onClick={handleConfirmarESalvar} disabled={finalizing}>
+                {finalizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+                Confirmar e concluir manejo
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
