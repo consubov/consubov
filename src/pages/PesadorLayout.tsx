@@ -2,18 +2,34 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Users, History, Settings } from "lucide-react";
-import logoConsubov from "@/assets/logo-consubov.jpeg";
+import maisArrobasAsset from "@/assets/mais-arrobas-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PesadorConfigModal from "@/components/PesadorConfigModal";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PesadorLayout() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [nomeEmpresa, setNomeEmpresa] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("pesadores")
+        .select("logo_url, nome_empresa")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setLogoUrl((data as any)?.logo_url ?? null);
+      setNomeEmpresa((data as any)?.nome_empresa ?? null);
+    })();
+  }, [user, configOpen]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -24,14 +40,17 @@ export default function PesadorLayout() {
     }
   }
 
+  const displayLogo = logoUrl || maisArrobasAsset.url;
+  const displayName = nomeEmpresa || "Mais Arrobas";
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
           <button onClick={() => navigate("/pesador")} className="flex items-center gap-2">
-            <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-md object-cover" />
+            <img src={displayLogo} alt={displayName} className="w-9 h-9 rounded-md object-cover bg-white" />
             <div className="text-left">
-              <div className="text-sm font-bold leading-tight">Consubov</div>
+              <div className="text-sm font-bold leading-tight">{displayName}</div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">Pesador</div>
             </div>
           </button>
