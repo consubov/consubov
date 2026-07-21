@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditoria } from "@/lib/syncvetAuditoria";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,7 +61,7 @@ function addDaysISO(iso: string, days: number): string {
 export default function SyncVetEstacaoDetalhePage() {
   const { fazendaId, estacaoId } = useParams<{ fazendaId: string; estacaoId: string }>();
   const navigate = useNavigate();
-  const { roleData } = useAuth();
+  const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
   const [estacao, setEstacao] = useState<Estacao | null>(null);
@@ -235,18 +236,24 @@ export default function SyncVetEstacaoDetalhePage() {
     if (!estacaoId || !cicloLote) return;
     if (!cicloProtoId) { toast.error("Selecione o protocolo"); return; }
     if (!cicloD0) { toast.error("Informe a data do D-0"); return; }
-    const { error } = await (supabase as any).from("syncvet_lote_ciclos").insert({
+    const { data: inserted, error } = await (supabase as any).from("syncvet_lote_ciclos").insert({
       estacao_id: estacaoId,
       lote_id: cicloLote.id,
       protocolo_id: cicloProtoId,
       data_d0: cicloD0,
       status: cicloStatus,
       observacoes: cicloObs || null,
-    });
+    }).select("id").single();
     if (error) toast.error(error.message);
     else {
       toast.success("Ciclo criado — agenda calculada");
       setCicloOpen(false);
+      void logAuditoria({
+        empresaId, userId: user?.id ?? null,
+        acao: "criar", entidade: "syncvet_lote_ciclos",
+        entidade_id: (inserted as { id: string } | null)?.id ?? null,
+        detalhes: { lote_id: cicloLote.id, protocolo_id: cicloProtoId, data_d0: cicloD0 },
+      });
       load();
     }
   }
