@@ -81,6 +81,7 @@ import SyncVetContasPage from "./pages/SyncVetContasPage";
 import SyncVetDashboardPage from "./pages/SyncVetDashboardPage";
 import SyncVetPartosPage from "./pages/SyncVetPartosPage";
 import SyncVetAuditoriaPage from "./pages/SyncVetAuditoriaPage";
+import AdminSyncVetOnboardingPage from "./pages/AdminSyncVetOnboardingPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -274,6 +275,7 @@ const App = () => (
                 <Route path="consultores" element={<ConsultoresPage />} />
                 <Route path="pesadores" element={<PesadoresPage />} />
                 <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
+                <Route path="syncvet-onboarding" element={<AdminSyncVetOnboardingPage />} />
               </Route>
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
