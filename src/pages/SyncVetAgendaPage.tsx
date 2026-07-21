@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle2, AlertTriangle, Calendar as CalendarIcon, UserRound, Route as RouteIcon, MapPin, Navigation, ClipboardCheck } from "lucide-react";
 import { sendPush } from "@/lib/pushService";
 import { logAuditoria } from "@/lib/syncvetAuditoria";
+import { isSyncvetFullAccess } from "@/lib/syncvetPerfil";
 
 type Manejo = {
   id: string;
@@ -49,6 +50,8 @@ function fmtDateLong(iso: string) {
 export default function SyncVetAgendaPage() {
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
+  const fullAccess = isSyncvetFullAccess(roleData.syncvetPerfil);
+  const ownEquipeId = roleData.roleId; // roleId = syncvet_equipe.id do usuário logado
 
   const [loading, setLoading] = useState(true);
   const [manejos, setManejos] = useState<Manejo[]>([]);
@@ -162,9 +165,13 @@ export default function SyncVetAgendaPage() {
   const filtrados = useMemo(() => {
     const today = todayISO();
     return manejos.filter(m => {
+      // Perfis restritos: apenas manejos atribuídos ao próprio usuário
+      if (!fullAccess) {
+        if (!ownEquipeId || m.responsavel_id !== ownEquipeId) return false;
+      }
       const ctx = ctxByCiclo.get(m.lote_ciclo_id);
       if (fFazenda !== "all" && ctx?.fazenda?.id !== fFazenda) return false;
-      if (fResp !== "all") {
+      if (fullAccess && fResp !== "all") {
         if (fResp === "none" && m.responsavel_id) return false;
         if (fResp !== "none" && m.responsavel_id !== fResp) return false;
       }
@@ -175,7 +182,7 @@ export default function SyncVetAgendaPage() {
       }
       return true;
     });
-  }, [manejos, ctxByCiclo, fFazenda, fResp, fStatus]);
+  }, [manejos, ctxByCiclo, fFazenda, fResp, fStatus, fullAccess, ownEquipeId]);
 
   const grupos = useMemo(() => {
     const g = new Map<string, Manejo[]>();
@@ -459,7 +466,7 @@ export default function SyncVetAgendaPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5" /> Agenda de Manejos
+          <CalendarIcon className="w-5 h-5" /> {fullAccess ? "Agenda de Manejos" : "Minha Agenda"}
         </h1>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -469,7 +476,7 @@ export default function SyncVetAgendaPage() {
         </div>
       </div>
 
-      <Card className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <Card className={`p-3 grid grid-cols-1 gap-2 ${fullAccess ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Select value={fFazenda} onValueChange={setFFazenda}>
           <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
           <SelectContent>
@@ -477,14 +484,16 @@ export default function SyncVetAgendaPage() {
             {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={fResp} onValueChange={setFResp}>
-          <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os responsáveis</SelectItem>
-            <SelectItem value="none">Sem responsável</SelectItem>
-            {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {fullAccess && (
+          <Select value={fResp} onValueChange={setFResp}>
+            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os responsáveis</SelectItem>
+              <SelectItem value="none">Sem responsável</SelectItem>
+              {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={fStatus} onValueChange={setFStatus}>
           <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -584,22 +593,26 @@ export default function SyncVetAgendaPage() {
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-xs font-medium mb-1">Responsável</div>
-                  <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem responsável</SelectItem>
-                      {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {fullAccess && (
+                  <div>
+                    <div className="text-xs font-medium mb-1">Responsável</div>
+                    <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sem responsável</SelectItem>
+                        {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
                   <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>Fechar</Button>
-                  <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
-                  </Button>
+                  {fullAccess && (
+                    <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
+                    </Button>
+                  )}
                   {selected.status !== "concluido" && (
                     semCoords ? (
                       <Button onClick={handleConcluirSemTrajeto} disabled={saving}>

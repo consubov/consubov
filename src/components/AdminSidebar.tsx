@@ -1,6 +1,9 @@
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -37,8 +40,29 @@ const menuItems = [
 
 export function AdminSidebar() {
   const { state, setOpenMobile, setOpen } = useSidebar();
+  const { user } = useAuth();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const [showSyncvetOnboarding, setShowSyncvetOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("syncvet_equipe")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (!cancelled) setShowSyncvetOnboarding(!data);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const items = showSyncvetOnboarding
+    ? [...menuItems, { title: "SyncVet — Criar Empresa", url: "/admin/syncvet-onboarding", icon: Sparkles }]
+    : menuItems;
 
   const handleNavClick = () => {
     setOpenMobile(false);
@@ -56,7 +80,7 @@ export function AdminSidebar() {
           )}
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {items.map((item) => {
                 const isActive = item.url === "/admin"
                   ? location.pathname === "/admin"
                   : location.pathname.startsWith(item.url);
