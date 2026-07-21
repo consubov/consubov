@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, ArrowLeft, Trash2, Pencil, Save } from "lucide-react";
 
 type Proto = { id: string; nome: string; descricao: string | null };
-type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null };
+type Etapa = { id: string; protocolo_id: string; dia_offset: number; nome_etapa: string | null; codigo_preco: string | null };
 type Item = {
   id: string;
   etapa_id: string;
@@ -28,6 +28,7 @@ type Item = {
   ordem: number;
 };
 type Med = { id: string; nome_comercial: string; dosagem_padrao: string | null };
+type PrecoOpt = { tipo_servico: string; descricao: string | null; valor: number };
 
 export default function SyncVetProtocoloDetalhePage() {
   const { protocoloId } = useParams<{ protocoloId: string }>();
