@@ -8,7 +8,7 @@ import {
   buildSessionPayload,
 } from "@/lib/offlineSession";
 
-export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | null;
+export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | "syncvet" | null;
 
 interface RoleData {
   role: UserRole;
@@ -17,6 +17,8 @@ interface RoleData {
   retiroId: string | null;
   fabricaId?: string | null;
   consultorId?: string | null;
+  syncvetEmpresaId?: string | null;
+  syncvetPerfil?: string | null;
 }
 
 interface AuthContextType {
@@ -75,6 +77,8 @@ function getCachedRole(userId: string): RoleData | null {
       retiroId: parsed.retiroId ?? null,
       fabricaId: parsed.fabricaId ?? null,
       consultorId: parsed.consultorId ?? null,
+      syncvetEmpresaId: parsed.syncvetEmpresaId ?? null,
+      syncvetPerfil: parsed.syncvetPerfil ?? null,
     };
   } catch {
     return null;
@@ -128,6 +132,27 @@ function deferNonCritical(task: () => void) {
 }
 
 async function detectRole(userId: string): Promise<RoleData> {
+  // SyncVet team member (checked first — isolated module)
+  const { data: syncvetMember, error: syncvetError } = await supabase
+    .from("syncvet_equipe")
+    .select("id, empresa_id, perfil")
+    .eq("user_id", userId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (syncvetError) throw syncvetError;
+
+  if (syncvetMember) {
+    return {
+      role: "syncvet",
+      roleId: syncvetMember.id,
+      fazendaId: null,
+      retiroId: null,
+      syncvetEmpresaId: syncvetMember.empresa_id,
+      syncvetPerfil: syncvetMember.perfil,
+    };
+  }
+
   // 0a. Check consultor first
   const { data: consultor, error: consultorError } = await supabase
     .from("consultores")

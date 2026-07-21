@@ -61,6 +61,12 @@ import PesadorPesagemPage from "./pages/PesadorPesagemPage";
 import PesadorPesagemNovoPage from "./pages/PesadorPesagemNovoPage";
 import PesadorPesagemExecPage from "./pages/PesadorPesagemExecPage";
 import PesadorPesagemResumoPage from "./pages/PesadorPesagemResumoPage";
+import SyncVetLayout from "./pages/SyncVetLayout";
+import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
+import SyncVetEquipePage from "./pages/SyncVetEquipePage";
+import SyncVetFazendasPage from "./pages/SyncVetFazendasPage";
+import SyncVetFazendaDetalhePage from "./pages/SyncVetFazendaDetalhePage";
+import SyncVetLoteDetalhePage from "./pages/SyncVetLoteDetalhePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -177,6 +183,8 @@ function RoleRedirect() {
       return <Navigate to="/consultor" replace />;
     case "pesador":
       return <Navigate to="/pesador" replace />;
+    case "syncvet":
+      return <Navigate to="/syncvet" replace />;
     default:
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         return <LoadingScreen />;
@@ -282,11 +290,13 @@ const App = () => (
                 <Route path="pesagem/:pesagemId/resumo" element={<PesadorPesagemResumoPage />} />
               </Route>
 
-
-
-
-
-
+              <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
+                <Route index element={<SyncVetEmpresaPage />} />
+                <Route path="equipe" element={<SyncVetEquipePage />} />
+                <Route path="fazendas" element={<SyncVetFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<SyncVetFazendaDetalhePage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId" element={<SyncVetLoteDetalhePage />} />
+              </Route>
 
               <Route path="*" element={<NotFound />} />
             </Routes>

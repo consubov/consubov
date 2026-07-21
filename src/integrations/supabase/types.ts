@@ -3115,6 +3115,225 @@ export type Database = {
         }
         Relationships: []
       }
+      syncvet_animais: {
+        Row: {
+          brinco: string | null
+          categoria: string | null
+          created_at: string
+          id: string
+          idade: number | null
+          lote_id: string
+          numero: string | null
+          raca: string | null
+        }
+        Insert: {
+          brinco?: string | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          idade?: number | null
+          lote_id: string
+          numero?: string | null
+          raca?: string | null
+        }
+        Update: {
+          brinco?: string | null
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          idade?: number | null
+          lote_id?: string
+          numero?: string | null
+          raca?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_animais_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_lotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_empresas: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          crmv: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          responsavel_tecnico: string | null
+          telefone: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          crmv?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          responsavel_tecnico?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          crmv?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          responsavel_tecnico?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      syncvet_equipe: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          id: string
+          nome: string
+          perfil: Database["public"]["Enums"]["syncvet_perfil"]
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome: string
+          perfil: Database["public"]["Enums"]["syncvet_perfil"]
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          perfil?: Database["public"]["Enums"]["syncvet_perfil"]
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_equipe_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_fazendas: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          estado: string | null
+          fazenda_matriz_id: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          modelo_cobranca: Database["public"]["Enums"]["syncvet_modelo_cobranca"]
+          municipio: string | null
+          nome: string
+          observacoes: string | null
+          proprietario: string | null
+          telefone: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          estado?: string | null
+          fazenda_matriz_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          modelo_cobranca?: Database["public"]["Enums"]["syncvet_modelo_cobranca"]
+          municipio?: string | null
+          nome: string
+          observacoes?: string | null
+          proprietario?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          estado?: string | null
+          fazenda_matriz_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          modelo_cobranca?: Database["public"]["Enums"]["syncvet_modelo_cobranca"]
+          municipio?: string | null
+          nome?: string
+          observacoes?: string | null
+          proprietario?: string | null
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_fazendas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_fazendas_fazenda_matriz_id_fkey"
+            columns: ["fazenda_matriz_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syncvet_lotes: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          fazenda_id: string
+          id: string
+          nome: string
+          observacoes: string | null
+          quantidade_animais: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          fazenda_id: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          quantidade_animais?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          fazenda_id?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          quantidade_animais?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_lotes_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teste: {
         Row: {
           id: number
@@ -3931,7 +4150,13 @@ export type Database = {
       verificar_salgas_atrasadas: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      syncvet_modelo_cobranca: "protocolo_completo" | "mao_obra_km"
+      syncvet_perfil:
+        | "administrador"
+        | "veterinario"
+        | "prestador_servico"
+        | "estagiario"
+        | "auxiliar"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4058,6 +4283,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      syncvet_modelo_cobranca: ["protocolo_completo", "mao_obra_km"],
+      syncvet_perfil: [
+        "administrador",
+        "veterinario",
+        "prestador_servico",
+        "estagiario",
+        "auxiliar",
+      ],
+    },
   },
 } as const
