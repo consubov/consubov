@@ -95,11 +95,11 @@ export function calcularAnimais(cfg: PesagemCompraCfg, pesos: PesoAnimal[]): Ani
         ? cfg.percentual_fixo ?? 0
         : p.percentual_individual ?? 0;
     const pesoPagavel = (p.peso_kg * pct) / 100;
-    const arroba = pesoPagavel / 15;
+    const arroba = trunc2(pesoPagavel / 15);
     return {
       ...p,
       peso_pagavel: round2(pesoPagavel),
-      arroba_pagavel: round3(arroba),
+      arroba_pagavel: arroba,
       valor: round2(arroba * cfg.preco_valor),
     };
   });
@@ -118,16 +118,16 @@ export function totalizar(animais: AnimalCalc[]) {
     totalAnimais,
     totalPeso: round2(totalPeso),
     totalPagavel: round2(totalPagavel),
-    totalArroba: round3(totalArroba),
+    totalArroba: trunc2(totalArroba),
     totalValor: round2(totalValor),
     mediaPeso: round2(mediaPeso),
-    mediaArrobaPorAnimal: round3(mediaArrobaPorAnimal),
+    mediaArrobaPorAnimal: trunc2(mediaArrobaPorAnimal),
   };
 }
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
-function round3(n: number) {
-  return Math.round(n * 1000) / 1000;
+function trunc2(n: number) {
+  return Math.floor(n * 100) / 100;
 }
