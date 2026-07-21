@@ -266,29 +266,7 @@ export default function PesadorPesagemExecPage() {
       toast({ title: "Erro ao desfazer", description: error.message, variant: "destructive" });
     }
   }
-  }
 
-  async function handleDesfazer() {
-    // Se estamos em um sub-passo pendente, apenas volta
-    if (subStep !== "peso") {
-      setSubStep("peso");
-      setPendingPeso(null);
-      setPendingTipo(null);
-      setCurrent("");
-      return;
-    }
-    const last = pesos[pesos.length - 1];
-    if (!last) return;
-    setPesos((prev) => prev.slice(0, -1));
-    const { error } = await supabase
-      .from("pesos_pesagem_compra")
-      .delete()
-      .eq("pesagem_id", pesagemId!)
-      .eq("ordem", last.ordem);
-    if (error) {
-      toast({ title: "Erro ao desfazer", description: error.message, variant: "destructive" });
-    }
-  }
 
   async function handleFinalizar() {
     if (!pesagem || pesos.length === 0) {
