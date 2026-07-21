@@ -33,13 +33,14 @@ type PrecoOpt = { tipo_servico: string; descricao: string | null; valor: number 
 export default function SyncVetProtocoloDetalhePage() {
   const { protocoloId } = useParams<{ protocoloId: string }>();
   const navigate = useNavigate();
-  const { roleData } = useAuth();
+  const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
   const [proto, setProto] = useState<Proto | null>(null);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
   const [meds, setMeds] = useState<Med[]>([]);
+  const [precos, setPrecos] = useState<PrecoOpt[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editHeader, setEditHeader] = useState(false);
@@ -51,6 +52,7 @@ export default function SyncVetProtocoloDetalhePage() {
   const [etapaEditing, setEtapaEditing] = useState<Etapa | null>(null);
   const [dia, setDia] = useState<string>("0");
   const [nomeEtapa, setNomeEtapa] = useState("");
+  const [codigoPreco, setCodigoPreco] = useState<string>("__none__");
 
   // Item dialog
   const [itemOpen, setItemOpen] = useState(false);
@@ -65,12 +67,22 @@ export default function SyncVetProtocoloDetalhePage() {
   async function load() {
     if (!protocoloId) return;
     setLoading(true);
-    const [p, e, i, m] = await Promise.all([
+    // resolve vetId (equipe do usuário logado nessa empresa)
+    let vetId: string | null = null;
+    if (empresaId && user?.id) {
+      const { data: eq } = await supabase.from("syncvet_equipe")
+        .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).eq("ativo", true).maybeSingle();
+      vetId = (eq as any)?.id ?? null;
+    }
+    const [p, e, i, m, pr] = await Promise.all([
       supabase.from("syncvet_protocolos").select("*").eq("id", protocoloId).maybeSingle(),
       supabase.from("syncvet_protocolo_etapas").select("*").eq("protocolo_id", protocoloId),
       supabase.from("syncvet_protocolo_etapa_itens").select("*"),
       empresaId
         ? supabase.from("syncvet_medicamentos").select("id, nome_comercial, dosagem_padrao").eq("empresa_id", empresaId).order("nome_comercial")
+        : Promise.resolve({ data: [], error: null } as any),
+      vetId
+        ? supabase.from("syncvet_tabela_precos").select("tipo_servico, descricao, valor").eq("veterinario_id", vetId).order("tipo_servico")
         : Promise.resolve({ data: [], error: null } as any),
     ]);
     if (p.error) toast.error(p.error.message);
@@ -84,9 +96,10 @@ export default function SyncVetProtocoloDetalhePage() {
     const etIds = new Set(et.map((x) => x.id));
     setItens(((i.data as Item[]) ?? []).filter((x) => etIds.has(x.etapa_id)).sort((a, b) => a.ordem - b.ordem));
     setMeds((m.data as Med[]) ?? []);
+    setPrecos((pr.data as PrecoOpt[]) ?? []);
     setLoading(false);
   }
-  useEffect(() => { load(); }, [protocoloId, empresaId]);
+  useEffect(() => { load(); }, [protocoloId, empresaId, user?.id]);
 
   async function saveHeader() {
     if (!proto) return;
