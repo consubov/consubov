@@ -316,6 +316,25 @@ export default function SyncVetProtocoloDetalhePage() {
           <div className="space-y-3">
             <div><Label className="text-xs">Dia (D+)*</Label><Input type="number" min="0" value={dia} onChange={(e) => setDia(e.target.value)} /></div>
             <div><Label className="text-xs">Nome da etapa</Label><Input value={nomeEtapa} onChange={(e) => setNomeEtapa(e.target.value)} placeholder="Ex: Implante + BE" /></div>
+            <div>
+              <Label className="text-xs">Vincular à Tabela de Preços</Label>
+              <Select value={codigoPreco} onValueChange={setCodigoPreco}>
+                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— não vincular —</SelectItem>
+                  {precos.map((p) => (
+                    <SelectItem key={p.tipo_servico} value={p.tipo_servico}>
+                      {p.tipo_servico}{p.descricao ? ` — ${p.descricao}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {precos.length === 0 && (
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  Nenhum item cadastrado na sua Tabela de Preços.
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEtapaOpen(false)}>Cancelar</Button>
