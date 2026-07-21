@@ -61,6 +61,12 @@ import PesadorPesagemPage from "./pages/PesadorPesagemPage";
 import PesadorPesagemNovoPage from "./pages/PesadorPesagemNovoPage";
 import PesadorPesagemExecPage from "./pages/PesadorPesagemExecPage";
 import PesadorPesagemResumoPage from "./pages/PesadorPesagemResumoPage";
+import SyncVetLayout from "./pages/SyncVetLayout";
+import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
+import SyncVetEquipePage from "./pages/SyncVetEquipePage";
+import SyncVetFazendasPage from "./pages/SyncVetFazendasPage";
+import SyncVetFazendaDetalhePage from "./pages/SyncVetFazendaDetalhePage";
+import SyncVetLoteDetalhePage from "./pages/SyncVetLoteDetalhePage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
