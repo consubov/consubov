@@ -3807,6 +3807,79 @@ export type Database = {
           },
         ]
       }
+      syncvet_trajetos: {
+        Row: {
+          created_at: string
+          data: string
+          destino_lat: number
+          destino_lng: number
+          distancia_km: number | null
+          duracao_min: number | null
+          fazenda_id: string
+          fonte: string
+          id: string
+          manejo_id: string | null
+          origem_endereco: string | null
+          origem_lat: number
+          origem_lng: number
+          veterinario_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          destino_lat: number
+          destino_lng: number
+          distancia_km?: number | null
+          duracao_min?: number | null
+          fazenda_id: string
+          fonte?: string
+          id?: string
+          manejo_id?: string | null
+          origem_endereco?: string | null
+          origem_lat: number
+          origem_lng: number
+          veterinario_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          destino_lat?: number
+          destino_lng?: number
+          distancia_km?: number | null
+          duracao_min?: number | null
+          fazenda_id?: string
+          fonte?: string
+          id?: string
+          manejo_id?: string | null
+          origem_endereco?: string | null
+          origem_lat?: number
+          origem_lng?: number
+          veterinario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syncvet_trajetos_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_trajetos_manejo_id_fkey"
+            columns: ["manejo_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_manejos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syncvet_trajetos_veterinario_id_fkey"
+            columns: ["veterinario_id"]
+            isOneToOne: false
+            referencedRelation: "syncvet_equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teste: {
         Row: {
           id: number
