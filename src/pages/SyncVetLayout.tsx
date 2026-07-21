@@ -1,7 +1,8 @@
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Users, Landmark, Pill, Snowflake, Workflow, Calendar, Settings, Baby, Route as RouteIcon } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Landmark, Pill, Snowflake, Workflow, Calendar, Settings, Route as RouteIcon } from "lucide-react";
+import { CalfIcon } from "@/components/icons/CalfIcon";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { isSyncvetFullAccess, isSyncvetRestrictedPathAllowed } from "@/lib/syncvetPerfil";
@@ -23,7 +24,7 @@ export default function SyncVetLayout() {
         { to: "/syncvet", end: true, icon: LayoutDashboard, label: "Painel" },
         { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
         { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
-        { to: "/syncvet/partos", icon: Baby, label: "Partos" },
+        { to: "/syncvet/partos", icon: CalfIcon, label: "Partos" },
         { to: "/syncvet/equipe", icon: Users, label: "Equipe" },
         { to: "/syncvet/medicamentos", icon: Pill, label: "Medic." },
         { to: "/syncvet/semen", icon: Snowflake, label: "Sêmen" },
