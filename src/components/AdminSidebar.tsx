@@ -61,7 +61,7 @@ export function AdminSidebar() {
   }, [user]);
 
   const items = showSyncvetOnboarding
-    ? [...menuItems, { title: "SyncVet — Criar Empresa", url: "/admin/syncvet-onboarding", icon: Sparkles }]
+    ? [...menuItems, { title: "syncvet — Criar Empresa", url: "/admin/syncvet-onboarding", icon: Sparkles }]
     : menuItems;
 
   const handleNavClick = () => {

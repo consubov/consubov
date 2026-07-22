@@ -135,7 +135,7 @@ export default function SyncVetPreferenciasPage() {
           </div>
         ) : !equipeId ? (
           <div className="text-sm text-muted-foreground italic">
-            Seu usuário ainda não está vinculado a uma equipe SyncVet.
+            Seu usuário ainda não está vinculado a uma equipe syncvet.
           </div>
         ) : (
           <div className="space-y-2">
