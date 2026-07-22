@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, Users, Landmark, Pill, Snowflake, Workflow, Calendar, Settings, Route as RouteIcon } from "lucide-react";
 import { CalfIcon } from "@/components/icons/CalfIcon";
+import syncvetLogo from "@/assets/syncvet-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { isSyncvetFullAccess, isSyncvetRestrictedPathAllowed } from "@/lib/syncvetPerfil";
@@ -43,9 +44,11 @@ export default function SyncVetLayout() {
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
           <button onClick={() => navigate(fullAccess ? "/syncvet" : "/syncvet/meu-painel")} className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-md bg-secondary text-primary flex items-center justify-center font-extrabold">S</div>
-            <div className="text-left">
-              <div className="text-sm font-bold leading-tight">SyncVet</div>
+            <div className="w-10 h-10 rounded-md bg-white flex items-center justify-center overflow-hidden shrink-0">
+              <img src={syncvetLogo.url} alt="syncvet" className="w-full h-full object-contain" />
+            </div>
+            <div className="text-left leading-tight">
+              <div className="text-xl font-extrabold tracking-tight lowercase">syncvet</div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">Módulo Veterinário</div>
             </div>
           </button>

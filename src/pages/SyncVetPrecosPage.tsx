@@ -124,7 +124,7 @@ export default function SyncVetPrecosPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : !vetId ? (
-        <Card className="p-6 text-sm text-center text-muted-foreground">Seu usuário não está vinculado a nenhuma equipe SyncVet.</Card>
+        <Card className="p-6 text-sm text-center text-muted-foreground">Seu usuário não está vinculado a nenhuma equipe syncvet.</Card>
       ) : rows.length === 0 ? (
         <Card className="p-6 text-sm text-center text-muted-foreground">Nenhum preço cadastrado. Adicione o primeiro.</Card>
       ) : (
