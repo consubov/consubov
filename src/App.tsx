@@ -315,6 +315,13 @@ const App = () => (
                 <Route path="pesagem/:pesagemId/resumo" element={<PesadorPesagemResumoPage />} />
               </Route>
 
+              <Route path="/pecuarista" element={<ProtectedRoute allowedRoles={["pecuarista"]}><PecuaristaLayout /></ProtectedRoute>}>
+                <Route index element={<PecuaristaDashboard />} />
+                <Route path="fazendas" element={<PecuaristaFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<PecuaristaFazendaDetalhePage />} />
+                <Route path="lotes" element={<PecuaristaDashboard />} />
+              </Route>
+
               <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
                 <Route index element={<SyncVetDashboardPage />} />
                 <Route path="empresa" element={<SyncVetEmpresaPage />} />
