@@ -238,28 +238,19 @@ export default function PecuaristaApartacaoPage() {
           destLote = { id: (novo as any).id, nome_lote: (novo as any).nome_lote, codigo: (novo as any).codigo, identificado: lote.identificado };
         }
 
-        // apartacao_lotes row (para trilha)
-        const { data: alRow, error: e3 } = await supabase.from("apartacao_lotes").insert({
-          apartacao_id: apId,
-          nome_lote: destLote.nome_lote,
-          ordem: ordens[i],
-          quantidade: 0,
-        }).select("id").single();
-        if (e3) throw e3;
-
         // apartacao_destinos_pecuarista: faixa de peso por destino
         const r = ranges[i];
-        const { error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
+        const { data: destRow, error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
           apartacao_id: apId,
           lote_destino_id: destLote.id,
           peso_min: r.min,
           peso_max: r.max,
           ordem: i + 1,
-        });
-        if (eDest) throw eDest;
+        }).select("id").single();
+        if (eDest || !destRow) throw eDest ?? new Error("Falha ao gravar destino");
 
         destinosFeitos.push({
-          id: (alRow as any).id,
+          id: (destRow as any).id,
           lote_id: destLote.id,
           nome_lote: destLote.nome_lote,
           codigo: destLote.codigo,
