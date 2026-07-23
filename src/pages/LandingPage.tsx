@@ -381,15 +381,16 @@ export default function LandingPage() {
         }}
       >
         <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg overflow-hidden ring-1" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden ring-1 shrink-0" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-extrabold tracking-[0.2em] text-sm">CONSUBOV</span>
-              <span className="text-[10px] tracking-[0.3em]" style={{ color: NEON }}>INTELIGÊNCIA NUTRICIONAL</span>
+            <div className="flex flex-col leading-none min-w-0">
+              <span className="font-extrabold tracking-[0.15em] sm:tracking-[0.2em] text-xs sm:text-sm">CONSUBOV</span>
+              <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>INTELIGÊNCIA NUTRICIONAL</span>
             </div>
           </div>
+
           <div className="flex items-center gap-1.5 sm:gap-3">
             <span
               className="hidden xs:inline-flex rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
