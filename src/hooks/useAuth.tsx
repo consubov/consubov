@@ -180,6 +180,19 @@ async function detectRole(userId: string): Promise<RoleData> {
     return { role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null };
   }
 
+  // 0d. Check pecuarista
+  const { data: pecuarista, error: pecuaristaError } = await supabase
+    .from("pecuaristas")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (pecuaristaError) throw pecuaristaError;
+
+  if (pecuarista) {
+    return { role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null };
+  }
+
 
   // 0b. Check operador_fabrica
   const { data: operador, error: operadorError } = await supabase
