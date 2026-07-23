@@ -266,6 +266,9 @@ export default function PesadorPesagemResumoPage() {
         <div className="text-xs text-muted-foreground">
           {categoriaLabel} • {cabecalhoPreco}
         </div>
+        {dataLinha && (
+          <div className="text-xs text-muted-foreground mt-1">{dataLinha}</div>
+        )}
       </div>
 
       {semValores ? (
@@ -293,6 +296,12 @@ export default function PesadorPesagemResumoPage() {
               <div className="text-[11px] text-muted-foreground mt-1 italic">
                 Valor informativo, sem finalidade comercial.
               </div>
+            </div>
+          )}
+          {mediaArrobaEst != null && (
+            <div className="rounded-lg border bg-card p-3 text-center col-span-2">
+              <div className="text-xs text-muted-foreground">Média de @ por animal (estimada)</div>
+              <div className="text-xl font-bold">{mediaArrobaEst.toString().replace(".", ",")}</div>
             </div>
           )}
         </div>
