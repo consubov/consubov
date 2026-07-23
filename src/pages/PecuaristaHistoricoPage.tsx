@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, FileDown, Search, Scale, Split } from "lucide-react";
+import { downloadPdfFromUrl } from "@/lib/downloadPdf";
 
 const CATEGORIAS_PADRAO: Record<string, string> = {
   boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
@@ -170,14 +171,13 @@ export default function PecuaristaHistoricoPage() {
                   </div>
                 </div>
                 {p.pdfUrl && (
-                  <a
-                    href={p.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void downloadPdfFromUrl(p.pdfUrl!, `${p.tipo}-${p.id}.pdf`)}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
                   >
                     <FileDown className="w-4 h-4" /> PDF
-                  </a>
+                  </button>
                 )}
               </div>
             ))}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, FileDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { downloadPdfFromUrl } from "@/lib/downloadPdf";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -132,14 +133,13 @@ export default function PesadorPesagemPage() {
                 <div className="text-right flex flex-col items-end gap-1">
                   <div className="text-sm font-semibold text-primary">{brl(p.totalValor)}</div>
                   {p.pdf_url && (
-                    <a
-                      href={p.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => void downloadPdfFromUrl(p.pdf_url!, `pesagem-${p.id}.pdf`)}
                       className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
                     >
                       <FileDown className="w-3 h-3" /> PDF
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
