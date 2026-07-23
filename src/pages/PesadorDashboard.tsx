@@ -186,7 +186,7 @@ export default function PesadorDashboard() {
       if (d.getFullYear() === year) animaisAno += pesos.length;
       if (d.getFullYear() === year && d.getMonth() === month) {
         animaisMes += pesos.length;
-        valorMes += Number(p.valor_total_pago ?? 0);
+        if (!p.sem_valores) valorMes += Number(p.valor_total_pago ?? 0);
       }
     }
     return { animaisAno, animaisMes, valorMes };
