@@ -613,6 +613,27 @@ export default function PecuaristaApartacaoPage() {
                 )}
               </div>
             )}
+
+            <div className="pt-2 border-t space-y-2">
+              <Label className="text-sm">Faixa de peso (kg) — opcional</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Peso mínimo</Label>
+                  <Input type="number" inputMode="decimal" placeholder="ex: 401"
+                    value={(c as any).pesoMin}
+                    onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMin = e.target.value; return n; })} />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Peso máximo</Label>
+                  <Input type="number" inputMode="decimal" placeholder="ex: 500"
+                    value={(c as any).pesoMax}
+                    onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMax = e.target.value; return n; })} />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Deixe em branco para "sem limite". As faixas não podem se sobrepor entre os destinos.
+              </div>
+            </div>
           </Card>
         ))}
 
