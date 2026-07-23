@@ -74,6 +74,8 @@ export default function PecuaristaFazendaDetalhePage() {
   });
   const [query, setQuery] = useState("");
   const [configOpen, setConfigOpen] = useState(false);
+  const [loteParaApagar, setLoteParaApagar] = useState<Lote | null>(null);
+  const [apagando, setApagando] = useState(false);
 
   useEffect(() => {
     if (!user || !fazendaId) return;
