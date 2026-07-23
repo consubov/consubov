@@ -143,8 +143,23 @@ export default function PesadorPesagemResumoPage() {
   const arrobasEstimadas = rendimentoRotina != null
     ? Math.floor((tot.totalPeso * rendimentoRotina / 100 / 15) * 100) / 100
     : null;
+  const mediaArrobaEst = arrobasEstimadas != null && tot.totalAnimais > 0
+    ? Math.floor((arrobasEstimadas / tot.totalAnimais) * 100) / 100
+    : null;
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
+
+  const fmtHora = (iso: string) => {
+    try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+  };
+  const dataLinha = (() => {
+    if (!finalizadaAt) return null;
+    const dia = new Date(finalizadaAt).toLocaleDateString("pt-BR");
+    const hFim = fmtHora(finalizadaAt);
+    const hIni = createdAt ? fmtHora(createdAt) : "";
+    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+    return hFim ? `${dia} · ${hFim}` : dia;
+  })();
 
   // Detalhamento por categoria (apenas para lote misto)
   const breakdownPorCategoria = cfg.tipo_preco === "misto"
