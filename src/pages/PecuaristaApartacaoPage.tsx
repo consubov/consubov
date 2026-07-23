@@ -31,8 +31,8 @@ interface CatCustom { id: string; nome: string; }
 interface LoteExistente { id: string; nome_lote: string; codigo: string; identificado: boolean; status: string; }
 
 type DestinoConfig =
-  | { modo: "novo"; nome: string; categoriaSlug: string; categoriaCustomId: string; novaCategoria: string; criandoNova: boolean }
-  | { modo: "existente"; loteExistenteId: string };
+  | { modo: "novo"; nome: string; categoriaSlug: string; categoriaCustomId: string; novaCategoria: string; criandoNova: boolean; pesoMin: string; pesoMax: string }
+  | { modo: "existente"; loteExistenteId: string; pesoMin: string; pesoMax: string };
 
 interface Destino {
   id: string;                 // apartacao_lotes.id
@@ -40,6 +40,30 @@ interface Destino {
   nome_lote: string;
   codigo: string;
   identificado: boolean;
+  peso_min: number | null;
+  peso_max: number | null;
+}
+
+function parseRange(pMin: string, pMax: string): { min: number | null; max: number | null } | { error: string } {
+  const trim = (s: string) => s.trim().replace(",", ".");
+  const min = trim(pMin) === "" ? null : Number(trim(pMin));
+  const max = trim(pMax) === "" ? null : Number(trim(pMax));
+  if (min !== null && (!Number.isFinite(min) || min < 0)) return { error: "Peso mínimo inválido" };
+  if (max !== null && (!Number.isFinite(max) || max < 0)) return { error: "Peso máximo inválido" };
+  if (min !== null && max !== null && min > max) return { error: "Peso mínimo maior que peso máximo" };
+  return { min, max };
+}
+function rangesOverlap(a: { min: number | null; max: number | null }, b: { min: number | null; max: number | null }): boolean {
+  const aMin = a.min ?? -Infinity, aMax = a.max ?? Infinity;
+  const bMin = b.min ?? -Infinity, bMax = b.max ?? Infinity;
+  return aMin <= bMax && bMin <= aMax;
+}
+function destinoParaPeso(destinos: Destino[], peso: number): Destino | null {
+  const matches = destinos.filter(d =>
+    (d.peso_min == null || peso >= d.peso_min) &&
+    (d.peso_max == null || peso <= d.peso_max)
+  );
+  return matches.length === 1 ? matches[0] : null;
 }
 
 type LinhaId = {
