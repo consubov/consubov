@@ -234,12 +234,13 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
   async function apagar(l: Lote) {
-    const { count } = await supabase
-      .from("pesagens_lote_pecuarista")
-      .select("id", { count: "exact", head: true })
-      .eq("lote_id", l.id);
-    if ((count ?? 0) > 0) {
-      toast.error("Lote com histórico de pesagem não pode ser apagado. Use o botão de encerrar para preservar o rastreamento de GMD.");
+    const [{ count: cPes }, { count: cOri }, { count: cDest }] = await Promise.all([
+      supabase.from("pesagens_lote_pecuarista").select("id", { count: "exact", head: true }).eq("lote_id", l.id),
+      supabase.from("apartacoes_pecuarista").select("id", { count: "exact", head: true }).eq("lote_origem_id", l.id),
+      supabase.from("apartacao_destinos_pecuarista").select("id", { count: "exact", head: true }).eq("lote_destino_id", l.id),
+    ]);
+    if ((cPes ?? 0) > 0 || (cOri ?? 0) > 0 || (cDest ?? 0) > 0) {
+      toast.error("Lote com histórico (pesagem ou apartação) não pode ser apagado. Use o botão de encerrar para preservar o rastreamento de GMD.");
       return;
     }
     if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
