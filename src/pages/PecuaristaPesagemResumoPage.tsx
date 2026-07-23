@@ -109,6 +109,9 @@ export default function PecuaristaPesagemResumoPage() {
         <div className="text-xs text-muted-foreground">
           {data.identificado ? "Lote identificado" : "Sem identificação"}
         </div>
+        {fmtDataLinha(data.dataFim, data.horaInicio) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, data.horaInicio)}</div>
+        )}
       </Card>
 
       <div className="grid grid-cols-3 gap-2">
