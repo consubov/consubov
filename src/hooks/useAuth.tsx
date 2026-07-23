@@ -132,16 +132,34 @@ function deferNonCritical(task: () => void) {
 }
 
 async function detectRole(userId: string): Promise<RoleData> {
-  // SyncVet team member (checked first — isolated module)
-  const { data: syncvetMember, error: syncvetError } = await supabase
-    .from("syncvet_equipe")
-    .select("id, empresa_id, perfil")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
+  // Cada checagem é isolada: se uma tabela falhar (erro de rede, resposta
+  // inesperada, permissão), NÃO interrompemos a cadeia — apenas registramos
+  // e seguimos para a próxima. Isso garante que um perfil válido em uma
+  // tabela mais abaixo (ex.: pecuaristas) não fique invisível por causa
+  // de um erro transitório numa tabela anterior.
+  const probe = async <T,>(
+    label: string,
+    runner: () => Promise<{ data: T | null; error: unknown }>,
+  ): Promise<T | null> => {
+    try {
+      const { data, error } = await runner();
+      if (error) {
+        console.warn(`[detectRole] ${label} falhou:`, error);
+        return null;
+      }
+      return data;
+    } catch (e) {
+      console.warn(`[detectRole] ${label} exceção:`, e);
+      return null;
+    }
+  };
 
-  if (syncvetError) throw syncvetError;
-
+  // SyncVet team member
+  const syncvetMember = await probe<{ id: string; empresa_id: string; perfil: string }>(
+    "syncvet_equipe",
+    () => supabase.from("syncvet_equipe").select("id, empresa_id, perfil")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (syncvetMember) {
     return {
       role: "syncvet",
@@ -153,119 +171,89 @@ async function detectRole(userId: string): Promise<RoleData> {
     };
   }
 
-  // 0a. Check consultor first
-  const { data: consultor, error: consultorError } = await supabase
-    .from("consultores")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (consultorError) throw consultorError;
-
+  // Consultor
+  const consultor = await probe<{ id: string }>(
+    "consultores",
+    () => supabase.from("consultores").select("id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (consultor) {
     return { role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id };
   }
 
-  // 0c. Check pesador
-  const { data: pesador, error: pesadorError } = await supabase
-    .from("pesadores")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (pesadorError) throw pesadorError;
-
+  // Pesador
+  const pesador = await probe<{ id: string }>(
+    "pesadores",
+    () => supabase.from("pesadores").select("id")
+      .eq("user_id", userId).maybeSingle() as any,
+  );
   if (pesador) {
     return { role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null };
   }
 
-  // 0d. Check pecuarista
-  const { data: pecuarista, error: pecuaristaError } = await supabase
-    .from("pecuaristas")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (pecuaristaError) throw pecuaristaError;
-
+  // Pecuarista
+  const pecuarista = await probe<{ id: string }>(
+    "pecuaristas",
+    () => supabase.from("pecuaristas").select("id")
+      .eq("user_id", userId).maybeSingle() as any,
+  );
   if (pecuarista) {
     return { role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null };
   }
 
-
-  // 0b. Check operador_fabrica
-  const { data: operador, error: operadorError } = await supabase
-    .from("operadores_fabrica")
-    .select("id, fabrica_id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (operadorError) throw operadorError;
-
+  // Operador de fábrica
+  const operador = await probe<{ id: string; fabrica_id: string }>(
+    "operadores_fabrica",
+    () => supabase.from("operadores_fabrica").select("id, fabrica_id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (operador) {
     return { role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id };
   }
 
-  // 1. Check capataz first (as user requested order)
-  const { data: capataz, error: capatazError } = await supabase
-    .from("capatazes")
-    .select("id, retiro_id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (capatazError) throw capatazError;
-
+  // Capataz
+  const capataz = await probe<{ id: string; retiro_id: string }>(
+    "capatazes",
+    () => supabase.from("capatazes").select("id, retiro_id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (capataz) {
     return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
   }
 
-  // 2. Check gerente
-  const { data: gerente, error: gerenteError } = await supabase
-    .from("gerentes")
-    .select("id, fazenda_id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (gerenteError) throw gerenteError;
-
+  // Gerente
+  const gerente = await probe<{ id: string; fazenda_id: string }>(
+    "gerentes",
+    () => supabase.from("gerentes").select("id, fazenda_id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (gerente) {
     return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
   }
 
-  // 3. Check escritorio
-  const { data: escritorio, error: escritorioError } = await supabase
-    .from("escritorios")
-    .select("id, fazenda_id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (escritorioError) throw escritorioError;
-
+  // Escritório
+  const escritorio = await probe<{ id: string; fazenda_id: string }>(
+    "escritorios",
+    () => supabase.from("escritorios").select("id, fazenda_id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (escritorio) {
     return { role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null };
   }
 
-  // 4. Check administrador
-  const { data: admin, error: adminError } = await supabase
-    .from("administradores")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("ativo", true)
-    .maybeSingle();
-
-  if (adminError) throw adminError;
-
+  // Administrador
+  const admin = await probe<{ id: string }>(
+    "administradores",
+    () => supabase.from("administradores").select("id")
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+  );
   if (admin) {
     return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
   }
 
   return emptyRoleData;
 }
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
