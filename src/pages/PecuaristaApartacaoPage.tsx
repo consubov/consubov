@@ -238,28 +238,19 @@ export default function PecuaristaApartacaoPage() {
           destLote = { id: (novo as any).id, nome_lote: (novo as any).nome_lote, codigo: (novo as any).codigo, identificado: lote.identificado };
         }
 
-        // apartacao_lotes row (para trilha)
-        const { data: alRow, error: e3 } = await supabase.from("apartacao_lotes").insert({
-          apartacao_id: apId,
-          nome_lote: destLote.nome_lote,
-          ordem: ordens[i],
-          quantidade: 0,
-        }).select("id").single();
-        if (e3) throw e3;
-
         // apartacao_destinos_pecuarista: faixa de peso por destino
         const r = ranges[i];
-        const { error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
+        const { data: destRow, error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
           apartacao_id: apId,
           lote_destino_id: destLote.id,
           peso_min: r.min,
           peso_max: r.max,
           ordem: i + 1,
-        });
-        if (eDest) throw eDest;
+        }).select("id").single();
+        if (eDest || !destRow) throw eDest ?? new Error("Falha ao gravar destino");
 
         destinosFeitos.push({
-          id: (alRow as any).id,
+          id: (destRow as any).id,
           lote_id: destLote.id,
           nome_lote: destLote.nome_lote,
           codigo: destLote.codigo,
@@ -430,10 +421,7 @@ export default function PecuaristaApartacaoPage() {
         if (eP || !pRow) throw eP ?? new Error("Falha ao gravar pesagem do destino");
         const pesagemId = (pRow as any).id as string;
 
-        // update apartacao_lotes counters
-        await supabase.from("apartacao_lotes").update({
-          quantidade: qtd, media_kg: peso_medio,
-        }).eq("id", d.id);
+        // (contadores por destino são derivados das pesagens; nada a atualizar em apartacao_lotes)
 
         // Insere pesos identificados
         const identificadosOut: PecuaristaPesoIdentificado[] = [];
@@ -637,10 +625,39 @@ export default function PecuaristaApartacaoPage() {
           </Card>
         ))}
 
-        <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90" onClick={preparar} disabled={preparando}>
-          {preparando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Split className="w-5 h-5 mr-2" />}
-          Começar apartação
-        </Button>
+        {(() => {
+          const configOk = confs.slice(0, qtd).every(c => {
+            if (c.modo === "existente") { if (!c.loteExistenteId) return false; }
+            else {
+              if (!c.nome.trim()) return false;
+              if (c.criandoNova && !c.novaCategoria.trim()) return false;
+              if (!c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return false;
+            }
+            const r = parseRange(c.pesoMin, c.pesoMax);
+            if ("error" in r) return false;
+            return true;
+          });
+          const ranges = confs.slice(0, qtd).map(c => {
+            const r = parseRange(c.pesoMin, c.pesoMax);
+            return "error" in r ? { min: null, max: null } : r;
+          });
+          let overlap = false;
+          for (let i = 0; i < ranges.length && !overlap; i++) {
+            for (let j = i + 1; j < ranges.length && !overlap; j++) {
+              const a = ranges[i], b = ranges[j];
+              if (a.min == null && a.max == null) continue;
+              if (b.min == null && b.max == null) continue;
+              if (rangesOverlap(a, b)) overlap = true;
+            }
+          }
+          const canStart = configOk && !overlap;
+          return (
+            <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90" onClick={preparar} disabled={preparando || !canStart}>
+              {preparando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Split className="w-5 h-5 mr-2" />}
+              Começar apartação
+            </Button>
+          );
+        })()}
       </div>
     );
   }
