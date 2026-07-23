@@ -23,6 +23,7 @@ type PesagemRow = {
   finalizada_at: string;
   pdf_url: string | null;
   valor_total_pago: number | null;
+  sem_valores: boolean;
 };
 
 const PAGE_SIZE = 20;
