@@ -256,7 +256,7 @@ export default function PecuaristaPesagemExecPage() {
     if (error) { setFinalizando(false); return toast.error("Erro: " + error.message); }
 
     // dados de cabeçalho
-    const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade").eq("id", lote.fazenda_id).maybeSingle();
+    const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
     const { data: pc } = await supabase.from("pecuaristas").select("nome, nome_empresa").eq("id", lote.pecuarista_id).maybeSingle();
     let categoriaLabel = CATEGORIAS_LABELS[lote.categoria] ?? lote.categoria;
     if (lote.categoria === "customizada" && lote.categoria_customizada_id) {
@@ -277,7 +277,7 @@ export default function PecuaristaPesagemExecPage() {
         header: {
           produtor: (pc as any)?.nome ?? "",
           nomeEmpresa: null,
-          logoUrl: null,
+          logoUrl: (fz as any)?.logo_url ?? null,
           fazenda: (fz as any)?.nome_fazenda ?? "",
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
@@ -324,11 +324,11 @@ export default function PecuaristaPesagemExecPage() {
   const animalNum = contagem + 1;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 pb-28">
+    <div className="max-w-3xl mx-auto space-y-4 pb-44">
       <Card className="p-3">
         <div className="text-xs uppercase tracking-wide text-muted-foreground">Lote</div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
-          {lote.nome_lote} <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
+          {lote.nome_lote}
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
         </div>
       </Card>
@@ -458,7 +458,10 @@ export default function PecuaristaPesagemExecPage() {
         </Card>
       )}
 
-      <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-30">
+      <div
+        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-50 shadow-lg"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
+      >
         <Button variant="outline" onClick={() => void (lote.identificado ? desfazerId() : desfazerSem())} disabled={contagem === 0 && step === "numero"}>
           <Undo2 className="w-4 h-4 mr-1" /> Desfazer
         </Button>

@@ -87,7 +87,6 @@ export default function PecuaristaLoteDetalhePage() {
 
       <Card className="p-4 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
           <Badge variant={lote.status === "ativo" ? "default" : "secondary"}>{lote.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
         </div>

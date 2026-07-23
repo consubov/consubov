@@ -470,7 +470,7 @@ export default function PecuaristaApartacaoPage() {
       }
 
       // Cabeçalho dados
-      const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade").eq("id", lote.fazenda_id).maybeSingle();
+      const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
       const { data: pc } = await supabase.from("pecuaristas").select("nome").eq("id", lote.pecuarista_id).maybeSingle();
       let categoriaLabel = CATEGORIAS_PADRAO.find(c => c.slug === lote.categoria)?.label ?? lote.categoria;
       if (lote.categoria === "customizada" && lote.categoria_customizada_id) {
@@ -481,7 +481,7 @@ export default function PecuaristaApartacaoPage() {
       const blob = await gerarPecuaristaApartacaoPdf({
         header: {
           produtor: (pc as any)?.nome ?? "",
-          nomeEmpresa: null, logoUrl: null,
+          nomeEmpresa: null, logoUrl: (fz as any)?.logo_url ?? null,
           fazenda: (fz as any)?.nome_fazenda ?? "",
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
@@ -684,7 +684,7 @@ export default function PecuaristaApartacaoPage() {
       <Card className="p-3">
         <div className="text-xs uppercase text-muted-foreground">Apartação — origem</div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
-          {lote.nome_lote} <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
+          {lote.nome_lote}
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
         </div>
       </Card>
@@ -844,8 +844,8 @@ export default function PecuaristaApartacaoPage() {
       )}
 
       <div
-        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-30"
-        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "0.75rem" }}
+        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-50 shadow-lg"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
       >
         <Button variant="outline" onClick={desfazer} disabled={total === 0 && step === (lote.identificado ? "numero" : "peso")}>
           <Undo2 className="w-4 h-4 mr-1" /> Desfazer

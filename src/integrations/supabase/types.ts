@@ -1607,6 +1607,7 @@ export type Database = {
           cidade: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           nome_fazenda: string
           pecuarista_id: string
           uf: string | null
@@ -1615,6 +1616,7 @@ export type Database = {
           cidade?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           nome_fazenda: string
           pecuarista_id: string
           uf?: string | null
@@ -1623,6 +1625,7 @@ export type Database = {
           cidade?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           nome_fazenda?: string
           pecuarista_id?: string
           uf?: string | null

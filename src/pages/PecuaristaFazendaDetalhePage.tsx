@@ -9,8 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users, Settings } from "lucide-react";
 import { toast } from "sonner";
+import FazendaPecuaristaConfigModal from "@/components/FazendaPecuaristaConfigModal";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
   { slug: "boi_gordo", label: "Boi Gordo" },
@@ -61,6 +62,7 @@ export default function PecuaristaFazendaDetalhePage() {
     identificado: "sim" as "sim" | "nao",
   });
   const [query, setQuery] = useState("");
+  const [configOpen, setConfigOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !fazendaId) return;
@@ -271,10 +273,15 @@ export default function PecuaristaFazendaDetalhePage() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/pecuarista/fazendas")}><ArrowLeft className="w-4 h-4" /></Button>
         <h1 className="text-xl font-bold text-foreground flex-1">{fazendaNome || "Fazenda"}</h1>
+        <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} title="Configurações da fazenda">
+          <Settings className="w-4 h-4" />
+        </Button>
         <Button onClick={openCreate} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" /> Adicionar Lote
         </Button>
       </div>
+
+      <FazendaPecuaristaConfigModal open={configOpen} onOpenChange={setConfigOpen} fazendaId={fazendaId ?? null} />
 
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -306,7 +313,6 @@ export default function PecuaristaFazendaDetalhePage() {
                   >
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{l.nome_lote}</span>
-                      <Badge variant="outline" className="font-mono">#{l.codigo}</Badge>
                       <Badge variant={l.status === "ativo" ? "default" : "secondary"}>{l.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
                       {!l.identificado && <Badge variant="outline">Sem identificação</Badge>}
                     </div>

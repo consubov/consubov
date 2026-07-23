@@ -11,6 +11,7 @@ import {
   type PesoAnimal,
 } from "@/lib/pesagemCompra";
 import { gerarPesagemPdf } from "@/lib/pesagemPdf";
+import { downloadPdfFromUrl } from "@/lib/downloadPdf";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -299,10 +300,12 @@ export default function PesadorPesagemResumoPage() {
       <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t space-y-2">
         {pdfUrl ? (
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" className="h-11" asChild>
-              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
-              </a>
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => void downloadPdfFromUrl(pdfUrl!, `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`)}
+            >
+              <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
             </Button>
             <Button variant="outline" className="h-11" onClick={handleShare}>
               <Share2 className="w-4 h-4 mr-2" /> Compartilhar
