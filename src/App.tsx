@@ -182,8 +182,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function RoleRedirect() {
-  const { role, loading, signOut } = useAuth();
-  if (loading) return <LoadingScreen />;
+  const { role, loading, roleResolved, signOut } = useAuth();
+  if (loading || !roleResolved) return <LoadingScreen />;
 
   switch (role) {
     case "administrador":
