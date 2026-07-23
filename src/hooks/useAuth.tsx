@@ -296,13 +296,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               : detectedRole;
 
           cacheCapatazRole(currentSession.user.id, effectiveRole);
-          if (!cancelled) setRoleData(effectiveRole);
+          if (!cancelled) {
+            setRoleData(effectiveRole);
+            setRoleResolved(true);
+          }
         } catch (e) {
           console.error("Error detecting role:", e);
-          if (!cancelled) setRoleData(cachedCapatazRole ?? emptyRoleData);
+          if (!cancelled) {
+            setRoleData(cachedCapatazRole ?? emptyRoleData);
+            setRoleResolved(true);
+          }
         }
       } else {
         setRoleData(emptyRoleData);
+        setRoleResolved(true);
         clearCachedCapatazRole();
         void clearAuthSession();
       }
