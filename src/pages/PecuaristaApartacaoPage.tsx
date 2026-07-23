@@ -167,12 +167,25 @@ export default function PecuaristaApartacaoPage() {
   async function preparar() {
     if (!lote) return;
     // Validate configs
+    const ranges: Array<{ min: number | null; max: number | null }> = [];
     for (let i = 0; i < qtd; i++) {
       const c = confs[i];
       if (c.modo === "novo" && !c.nome.trim()) return toast.error(`Destino ${i + 1}: informe o nome do novo lote.`);
       if (c.modo === "novo" && c.criandoNova && !c.novaCategoria.trim()) return toast.error(`Destino ${i + 1}: informe o nome da nova categoria.`);
       if (c.modo === "novo" && !c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return toast.error(`Destino ${i + 1}: selecione a categoria personalizada.`);
       if (c.modo === "existente" && !c.loteExistenteId) return toast.error(`Destino ${i + 1}: selecione um lote existente.`);
+      const r = parseRange(c.pesoMin, c.pesoMax);
+      if ("error" in r) return toast.error(`Destino ${i + 1}: ${r.error}.`);
+      ranges.push(r);
+    }
+    // Validate no overlap between ranges (only among destinos that defined at least one bound)
+    for (let i = 0; i < ranges.length; i++) {
+      for (let j = i + 1; j < ranges.length; j++) {
+        const a = ranges[i], b = ranges[j];
+        if (a.min == null && a.max == null) continue;
+        if (b.min == null && b.max == null) continue;
+        if (rangesOverlap(a, b)) return toast.error(`As faixas de peso dos destinos ${i + 1} e ${j + 1} se sobrepõem.`);
+      }
     }
     setPreparando(true);
     try {
@@ -234,12 +247,25 @@ export default function PecuaristaApartacaoPage() {
         }).select("id").single();
         if (e3) throw e3;
 
+        // apartacao_destinos_pecuarista: faixa de peso por destino
+        const r = ranges[i];
+        const { error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
+          apartacao_id: apId,
+          lote_destino_id: destLote.id,
+          peso_min: r.min,
+          peso_max: r.max,
+          ordem: i + 1,
+        });
+        if (eDest) throw eDest;
+
         destinosFeitos.push({
           id: (alRow as any).id,
           lote_id: destLote.id,
           nome_lote: destLote.nome_lote,
           codigo: destLote.codigo,
           identificado: destLote.identificado,
+          peso_min: r.min,
+          peso_max: r.max,
         });
       }
 
