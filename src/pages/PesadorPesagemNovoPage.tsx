@@ -290,15 +290,16 @@ export default function PesadorPesagemNovoPage() {
       </div>
 
       <div className="space-y-2">
-        <Label>Tipo de pesagem</Label>
-        <div className="flex flex-wrap gap-2">
-          <Chip active={modo === "comercial"} onClick={() => setModo("comercial")}>
-            Pesagem comercial
-          </Chip>
-          <Chip active={modo === "rotina"} onClick={() => setModo("rotina")}>
-            Pesagem de rotina (sem valores)
-          </Chip>
-        </div>
+        <Label htmlFor="tipo-pesagem">Tipo de pesagem</Label>
+        <select
+          id="tipo-pesagem"
+          value={modo}
+          onChange={(e) => setModo(e.target.value as ModoPesagem)}
+          className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="comercial">Pesagem comercial</option>
+          <option value="rotina">Pesagem de rotina (sem valores)</option>
+        </select>
         {isRotina && (
           <p className="text-xs text-muted-foreground">
             Uso para conferência (ex.: antes do frigorífico). Nenhum valor será calculado.
