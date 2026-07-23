@@ -27,6 +27,7 @@ interface AuthContextType {
   role: UserRole;
   roleData: RoleData;
   loading: boolean;
+  roleResolved: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -260,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roleData, setRoleData] = useState<RoleData>(emptyRoleData);
   const [loading, setLoading] = useState(true);
+  const [roleResolved, setRoleResolved] = useState(false);
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -294,13 +296,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               : detectedRole;
 
           cacheCapatazRole(currentSession.user.id, effectiveRole);
-          if (!cancelled) setRoleData(effectiveRole);
+          if (!cancelled) {
+            setRoleData(effectiveRole);
+            setRoleResolved(true);
+          }
         } catch (e) {
           console.error("Error detecting role:", e);
-          if (!cancelled) setRoleData(cachedCapatazRole ?? emptyRoleData);
+          if (!cancelled) {
+            setRoleData(cachedCapatazRole ?? emptyRoleData);
+            setRoleResolved(true);
+          }
         }
       } else {
         setRoleData(emptyRoleData);
+        setRoleResolved(true);
         clearCachedCapatazRole();
         void clearAuthSession();
       }
@@ -426,7 +435,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role: roleData.role, roleData, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, role: roleData.role, roleData, loading, roleResolved, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

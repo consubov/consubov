@@ -135,23 +135,14 @@ function LegacyRetiroPainelRedirect() {
 }
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
-  const { user, role, loading, signOut } = useAuth();
+  const { user, role, loading, roleResolved, signOut } = useAuth();
   const navigate = useNavigate();
-  const [roleTimeout, setRoleTimeout] = useState(false);
-
-  useEffect(() => {
-    if (!loading && user && allowedRoles && !role) {
-      const timer = setTimeout(() => setRoleTimeout(true), 3000);
-      return () => clearTimeout(timer);
-    }
-    setRoleTimeout(false);
-  }, [loading, user, role, allowedRoles]);
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
-  // While role is still being resolved, show loading briefly
-  if (allowedRoles && !role && !roleTimeout) {
+  // Wait until role detection actually finished before deciding anything.
+  if (allowedRoles && !roleResolved) {
     return <LoadingScreen />;
   }
 
@@ -169,11 +160,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
     );
   }
 
-  // Role never resolved — user has no profile.
-  // When offline, never show the "sem perfil" error: the role detection
-  // simply couldn't reach Supabase. Keep the loading screen so the cached
-  // session can be restored silently when connectivity returns.
-  if (allowedRoles && !role && roleTimeout) {
+  // Role detection completed and returned nothing.
+  if (allowedRoles && !role) {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       return <LoadingScreen />;
     }
@@ -194,8 +182,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function RoleRedirect() {
-  const { role, loading, signOut } = useAuth();
-  if (loading) return <LoadingScreen />;
+  const { role, loading, roleResolved, signOut } = useAuth();
+  if (loading || !roleResolved) return <LoadingScreen />;
 
   switch (role) {
     case "administrador":
