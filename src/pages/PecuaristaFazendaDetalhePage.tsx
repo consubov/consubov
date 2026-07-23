@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Loader2, ArrowLeft, Archive, ChevronRight } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
@@ -49,6 +49,8 @@ export default function PecuaristaFazendaDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingHasPesagens, setEditingHasPesagens] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     categoriaSlug: "boi_gordo" as string,
@@ -130,6 +132,35 @@ export default function PecuaristaFazendaDetalhePage() {
     throw new Error("Limite de 999 lotes atingido");
   }
 
+  function resetForm() {
+    setEditingId(null);
+    setEditingHasPesagens(false);
+    setForm({ nome: "", categoriaSlug: "boi_gordo", categoriaCustomizadaId: "", novaCategoria: "", criandoNova: false, identificado: "sim" });
+  }
+
+  function openCreate() {
+    resetForm();
+    setDialogOpen(true);
+  }
+
+  async function openEdit(l: Lote) {
+    const { count } = await supabase
+      .from("pesagens_lote_pecuarista")
+      .select("id", { count: "exact", head: true })
+      .eq("lote_id", l.id);
+    setEditingId(l.id);
+    setEditingHasPesagens((count ?? 0) > 0);
+    setForm({
+      nome: l.nome_lote,
+      categoriaSlug: l.categoria,
+      categoriaCustomizadaId: l.categoria_customizada_id ?? "",
+      novaCategoria: "",
+      criandoNova: false,
+      identificado: l.identificado ? "sim" : "nao",
+    });
+    setDialogOpen(true);
+  }
+
   async function handleSave() {
     if (!pecuaristaId || !fazendaId) return;
     if (!form.nome.trim()) return toast.error("Nome do lote é obrigatório");
@@ -155,22 +186,35 @@ export default function PecuaristaFazendaDetalhePage() {
         categoria_customizada_id = form.categoriaCustomizadaId;
       }
 
-      const codigo = await nextCodigo(pecuaristaId);
-
-      const { error } = await supabase.from("lotes_pecuarista").insert({
-        pecuarista_id: pecuaristaId,
-        fazenda_id: fazendaId,
-        nome_lote: form.nome.trim(),
-        codigo,
-        categoria,
-        categoria_customizada_id,
-        identificado: form.identificado === "sim",
-        status: "ativo",
-      });
-      if (error) throw error;
-      toast.success(`Lote ${codigo} criado!`);
+      if (editingId) {
+        const payload: any = {
+          nome_lote: form.nome.trim(),
+          categoria,
+          categoria_customizada_id,
+        };
+        if (!editingHasPesagens) {
+          payload.identificado = form.identificado === "sim";
+        }
+        const { error } = await supabase.from("lotes_pecuarista").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Lote atualizado!");
+      } else {
+        const codigo = await nextCodigo(pecuaristaId);
+        const { error } = await supabase.from("lotes_pecuarista").insert({
+          pecuarista_id: pecuaristaId,
+          fazenda_id: fazendaId,
+          nome_lote: form.nome.trim(),
+          codigo,
+          categoria,
+          categoria_customizada_id,
+          identificado: form.identificado === "sim",
+          status: "ativo",
+        });
+        if (error) throw error;
+        toast.success(`Lote ${codigo} criado!`);
+      }
       setDialogOpen(false);
-      setForm({ nome: "", categoriaSlug: "boi_gordo", categoriaCustomizadaId: "", novaCategoria: "", criandoNova: false, identificado: "sim" });
+      resetForm();
       await Promise.all([loadLotes(), loadCats(pecuaristaId)]);
     } catch (e: any) {
       toast.error("Erro: " + (e?.message || "desconhecido"));
@@ -189,6 +233,29 @@ export default function PecuaristaFazendaDetalhePage() {
     else { toast.success("Lote encerrado"); loadLotes(); }
   }
 
+  async function apagar(l: Lote) {
+    const { count } = await supabase
+      .from("pesagens_lote_pecuarista")
+      .select("id", { count: "exact", head: true })
+      .eq("lote_id", l.id);
+    if ((count ?? 0) > 0) {
+      toast.error("Lote com histórico de pesagem não pode ser apagado. Use o botão de encerrar para preservar o rastreamento de GMD.");
+      return;
+    }
+    if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
+    try {
+      // remove animais órfãos vinculados a este lote (sem pesagem)
+      await supabase.from("animais_pecuarista").delete().eq("lote_atual_id", l.id);
+      const { error } = await supabase.from("lotes_pecuarista").delete().eq("id", l.id);
+      if (error) throw error;
+      toast.success("Lote apagado");
+      loadLotes();
+    } catch (e: any) {
+      toast.error("Erro ao apagar: " + (e?.message || "desconhecido"));
+    }
+  }
+
+
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -196,7 +263,7 @@ export default function PecuaristaFazendaDetalhePage() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/pecuarista/fazendas")}><ArrowLeft className="w-4 h-4" /></Button>
         <h1 className="text-xl font-bold text-foreground flex-1">{fazendaNome || "Fazenda"}</h1>
-        <Button onClick={() => setDialogOpen(true)} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+        <Button onClick={openCreate} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" /> Adicionar Lote
         </Button>
       </div>
@@ -228,11 +295,17 @@ export default function PecuaristaFazendaDetalhePage() {
                   )}
                 </button>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title="Editar lote">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   {l.status === "ativo" && (
                     <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
                       <Archive className="w-4 h-4 text-destructive" />
                     </Button>
                   )}
+                  <Button variant="ghost" size="icon" onClick={() => apagar(l)} title="Apagar lote">
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
               </div>
@@ -242,9 +315,10 @@ export default function PecuaristaFazendaDetalhePage() {
 
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Adicionar Lote</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar Lote" : "Adicionar Lote"}</DialogTitle></DialogHeader>
+
           <div className="space-y-4">
             <div><Label>Nome do lote *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
 
@@ -280,11 +354,15 @@ export default function PecuaristaFazendaDetalhePage() {
 
             <div>
               <Label className="mb-2 block">Identificação</Label>
-              <RadioGroup value={form.identificado} onValueChange={(v) => setForm(f => ({ ...f, identificado: v as "sim" | "nao" }))}>
+              <RadioGroup value={form.identificado} onValueChange={(v) => setForm(f => ({ ...f, identificado: v as "sim" | "nao" }))} disabled={!!editingId && editingHasPesagens}>
                 <div className="flex items-center gap-2"><RadioGroupItem value="sim" id="ident-sim" /><Label htmlFor="ident-sim" className="font-normal cursor-pointer">Lote identificado</Label></div>
                 <div className="flex items-center gap-2"><RadioGroupItem value="nao" id="ident-nao" /><Label htmlFor="ident-nao" className="font-normal cursor-pointer">Lote sem identificação</Label></div>
               </RadioGroup>
+              {editingId && editingHasPesagens && (
+                <p className="text-xs text-muted-foreground mt-1">A identificação fica travada após a primeira pesagem para preservar o histórico.</p>
+              )}
             </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
