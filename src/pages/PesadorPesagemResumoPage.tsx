@@ -60,7 +60,7 @@ export default function PesadorPesagemResumoPage() {
           preco_arroba: p.preco_arroba != null ? Number(p.preco_arroba) : null,
           preco_kg: p.preco_kg != null ? Number(p.preco_kg) : null,
           preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
-        });
+        } as any);
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
