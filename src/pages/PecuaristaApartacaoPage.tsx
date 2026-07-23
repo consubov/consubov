@@ -791,49 +791,47 @@ export default function PecuaristaApartacaoPage() {
                 <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
                 <div className="text-xs text-muted-foreground">{peso.toFixed(1)} kg</div>
                 {sugerido ? (
-                  <>
-                    <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
-                      onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                      onClick={() => escolherDestinoSem(sugerido.lote_id)}>
-                      <Check className="w-5 h-5 mr-2" />
-                      Confirmar {sugerido.nome_lote}
-                    </Button>
-                    <div className="text-xs text-muted-foreground text-center">ou trocar manualmente:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {destinos.filter(d => d.lote_id !== sugerido.lote_id).map(d => (
-                        <button key={d.lote_id} type="button"
-                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                          onClick={() => escolherDestinoSem(d.lote_id)}
-                          className="flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 border-muted-foreground/30 bg-background text-foreground text-sm hover:bg-muted transition">
-                          {d.nome_lote}
-                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
+                    onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                    onClick={() => escolherDestinoSem(sugerido.lote_id)}>
+                    <Check className="w-5 h-5 mr-2" />
+                    Confirmar {sugerido.nome_lote}
+                  </Button>
                 ) : (
-                  <>
-                    <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {destinos.map(d => (
-                        <button key={d.lote_id} type="button"
-                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                          onClick={() => escolherDestinoSem(d.lote_id)}
-                          className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
-                          {d.nome_lote}
-                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
                 )}
+                <div className="text-xs text-muted-foreground text-center">
+                  {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {destinos.map(d => {
+                    const isSug = sugerido?.lote_id === d.lote_id;
+                    return (
+                      <button key={d.lote_id} type="button"
+                        onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                        onClick={() => escolherDestinoSem(d.lote_id)}
+                        className={`flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 text-sm transition ${
+                          isSug
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-muted-foreground/30 bg-background text-foreground hover:bg-muted"
+                        }`}>
+                        {d.nome_lote}
+                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <RecentesList lote={lote} linhasId={linhasId} linhasSem={linhasSem} destinos={destinos} />
               </>
             );
           })()}
         </div>
       )}
 
-      <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-30">
+      <div
+        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t flex gap-2 z-30"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "0.75rem" }}
+      >
         <Button variant="outline" onClick={desfazer} disabled={total === 0 && step === (lote.identificado ? "numero" : "peso")}>
           <Undo2 className="w-4 h-4 mr-1" /> Desfazer
         </Button>
@@ -845,3 +843,41 @@ export default function PecuaristaApartacaoPage() {
     </div>
   );
 }
+
+function RecentesList({ lote, linhasId, linhasSem, destinos }: {
+  lote: { identificado: boolean };
+  linhasId: LinhaId[];
+  linhasSem: LinhaSem[];
+  destinos: Destino[];
+}) {
+  const nomeDestino = (id: string) => destinos.find(d => d.lote_id === id)?.nome_lote ?? "—";
+  const items = lote.identificado
+    ? linhasId.slice(-5).reverse().map((l, i) => ({
+        key: `${l.animal_id}-${i}`,
+        left: `Nº ${l.numero}`,
+        mid: `${l.peso_kg.toFixed(1)} kg`,
+        right: nomeDestino(l.destino_lote_id),
+      }))
+    : linhasSem.slice(-5).reverse().map((l) => ({
+        key: l.rowId,
+        left: `#${l.ordem}`,
+        mid: `${l.peso_kg.toFixed(1)} kg`,
+        right: nomeDestino(l.destino_lote_id),
+      }));
+  if (items.length === 0) return null;
+  return (
+    <Card className="p-3">
+      <div className="text-xs text-muted-foreground mb-2">Últimos pesados nesta sessão</div>
+      <div className="text-xs space-y-1">
+        {items.map((it) => (
+          <div key={it.key} className="flex justify-between gap-2 border-b border-border/40 py-1 last:border-0">
+            <span className="font-medium">{it.left}</span>
+            <span>{it.mid}</span>
+            <span className="text-muted-foreground truncate max-w-[40%] text-right">{it.right}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
