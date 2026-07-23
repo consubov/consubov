@@ -731,42 +731,37 @@ export default function PecuaristaApartacaoPage() {
                 <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
                 <div className="text-xs text-muted-foreground">Nº {prev?.numero} · {peso.toFixed(1)} kg</div>
                 {sugerido ? (
-                  <>
-                    <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
-                      onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                      onClick={() => escolherDestinoId(sugerido.lote_id)}>
-                      <Check className="w-5 h-5 mr-2" />
-                      Confirmar {sugerido.nome_lote}
-                    </Button>
-                    <div className="text-xs text-muted-foreground text-center">ou trocar manualmente:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {destinos.filter(d => d.lote_id !== sugerido.lote_id).map(d => (
-                        <button key={d.lote_id} type="button"
-                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                          onClick={() => escolherDestinoId(d.lote_id)}
-                          className="flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 border-muted-foreground/30 bg-background text-foreground text-sm hover:bg-muted transition">
-                          {d.nome_lote}
-                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
+                    onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                    onClick={() => escolherDestinoId(sugerido.lote_id)}>
+                    <Check className="w-5 h-5 mr-2" />
+                    Confirmar {sugerido.nome_lote}
+                  </Button>
                 ) : (
-                  <>
-                    <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {destinos.map(d => (
-                        <button key={d.lote_id} type="button"
-                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                          onClick={() => escolherDestinoId(d.lote_id)}
-                          className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
-                          {d.nome_lote}
-                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
                 )}
+                <div className="text-xs text-muted-foreground text-center">
+                  {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {destinos.map(d => {
+                    const isSug = sugerido?.lote_id === d.lote_id;
+                    return (
+                      <button key={d.lote_id} type="button"
+                        onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                        onClick={() => escolherDestinoId(d.lote_id)}
+                        className={`flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 text-sm transition ${
+                          isSug
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-muted-foreground/30 bg-background text-foreground hover:bg-muted"
+                        }`}>
+                        {d.nome_lote}
+                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <RecentesList lote={lote} linhasId={linhasId} linhasSem={linhasSem} destinos={destinos} />
               </>
             );
           })()}
