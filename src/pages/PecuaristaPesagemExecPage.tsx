@@ -70,7 +70,16 @@ export default function PecuaristaPesagemExecPage() {
   const [linhasSem, setLinhasSem] = useState<LinhaSem[]>([]);
   const [pesoSem, setPesoSem] = useState("");
 
+  const [horaInicio, setHoraInicio] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function marcarInicioSePreciso() {
+    if (horaInicio || !pesagemId) return;
+    const agora = new Date().toISOString();
+    setHoraInicio(agora);
+    await supabase.from("pesagens_lote_pecuarista").update({ hora_inicio: agora }).eq("id", pesagemId);
+  }
 
   useEffect(() => {
     if (!loteId) return;
@@ -172,6 +181,7 @@ export default function PecuaristaPesagemExecPage() {
       })
       .select("id").single();
     if (e2 || !pRow) return toast.error("Erro ao salvar peso: " + (e2?.message ?? ""));
+    void marcarInicioSePreciso();
 
     setLinhasId((prev2) => [
       ...prev2,
@@ -193,6 +203,7 @@ export default function PecuaristaPesagemExecPage() {
     // criamos um "animal anônimo" por peso? Não — para lotes sem ID não persistimos por animal.
     // Guardamos apenas em memória e ao finalizar gravamos totais.
     setLinhasSem((prev) => [...prev, { ordem: prev.length + 1, peso_kg: peso, rowId: crypto.randomUUID() }]);
+    void marcarInicioSePreciso();
     setPesoSem("");
     setTimeout(() => inputRef.current?.focus(), 30);
   }
@@ -246,11 +257,15 @@ export default function PecuaristaPesagemExecPage() {
     }
 
     setFinalizando(true);
+    const dataFim = new Date().toISOString();
+    const horaIniFinal = horaInicio ?? dataFim;
     const { error } = await supabase
       .from("pesagens_lote_pecuarista")
       .update({
         peso_total, quantidade_animais: qtd, peso_medio,
         gmd: gmdLote,
+        data_pesagem: dataFim,
+        hora_inicio: horaIniFinal,
       })
       .eq("id", pesagemId);
     if (error) { setFinalizando(false); return toast.error("Erro: " + error.message); }
@@ -282,7 +297,8 @@ export default function PecuaristaPesagemExecPage() {
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
           categoria: categoriaLabel, identificado: isId,
-          data: new Date().toISOString(),
+          data: dataFim,
+          horaInicio: horaIniFinal,
         },
         totais: {
           quantidade: qtd, peso_total, peso_medio,
@@ -314,6 +330,8 @@ export default function PecuaristaPesagemExecPage() {
         dias, gmd: gmdLote,
         identificados: isId ? identificados : undefined,
         semId: !isId ? semId : undefined,
+        dataFim,
+        horaInicio: horaIniFinal,
       },
     });
   }
