@@ -60,7 +60,7 @@ type PesagemRow = {
   cliente_id: string;
   categoria: string;
   finalizada_at: string;
-  tipo_preco: string;
+  tipo_preco: string | null;
   preco_valor: number | null;
   modo_percentual: string | null;
   percentual_fixo: number | null;
@@ -68,6 +68,7 @@ type PesagemRow = {
   preco_kg: number | null;
   preco_fixo_animal: number | null;
   valor_total_pago: number | null;
+  sem_valores: boolean;
 };
 
 type CategoriaMap = Record<string, { tipo_preco: any; preco_valor: number }>;
