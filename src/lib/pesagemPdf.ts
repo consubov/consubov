@@ -25,6 +25,8 @@ export interface PesagemPdfData {
   pesadorNomeEmpresa?: string | null;
   pesadorNome?: string | null;
   valorTotalOverride?: number | null;
+  semValores?: boolean;
+  rendimentoEstimado?: number | null;
 }
 
 function fmtBRL(v: number) {
