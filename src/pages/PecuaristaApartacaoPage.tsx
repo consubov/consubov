@@ -665,7 +665,7 @@ export default function PecuaristaApartacaoPage() {
   // ============ WEIGHING PHASE ============
   const animalNum = total + 1;
   return (
-    <div className="max-w-3xl mx-auto space-y-3 pb-32">
+    <div className="max-w-3xl mx-auto space-y-3 pb-44">
       <Card className="p-3">
         <div className="text-xs uppercase text-muted-foreground">Apartação — origem</div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
