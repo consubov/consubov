@@ -172,7 +172,7 @@ export default function PesadorPesagemNovoPage() {
 
     let payload: any;
     if (isRotina) {
-      const rend = rendimentoRotina.trim() ? parseNum(rendimentoRotina) : null;
+      const rend = parseNum(rendimentoRotina);
       payload = {
         pesador_id: pesadorId,
         cliente_id: clienteId,
