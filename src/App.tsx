@@ -205,6 +205,8 @@ function RoleRedirect() {
       return <Navigate to="/consultor" replace />;
     case "pesador":
       return <Navigate to="/pesador" replace />;
+    case "pecuarista":
+      return <Navigate to="/pecuarista" replace />;
     case "syncvet":
       return <Navigate to="/syncvet" replace />;
     default:
