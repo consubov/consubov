@@ -250,36 +250,66 @@ export default function PesadorPesagemResumoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Animais</div>
-          <div className="text-xl font-bold">{tot.totalAnimais}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Peso médio</div>
-          <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Peso total</div>
-          <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
-        </div>
-        {showArroba && (
+      {semValores ? (
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">@ pagáveis</div>
-            <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
+            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xl font-bold">{tot.totalAnimais}</div>
           </div>
-        )}
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Média de @ por animal</div>
-          <div className="text-xl font-bold">
-            {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center col-span-2">
+            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          {arrobasEstimadas != null && (
+            <div className="rounded-lg border bg-muted/60 p-3 text-center col-span-2">
+              <div className="text-xs text-muted-foreground">
+                @ estimadas ({rendimentoRotina}% de rendimento)
+              </div>
+              <div className="text-xl font-bold">
+                {arrobasEstimadas.toString().replace(".", ",")}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1 italic">
+                Valor informativo, sem finalidade comercial.
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xl font-bold">{tot.totalAnimais}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          {showArroba && (
+            <div className="rounded-lg border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground">@ pagáveis</div>
+              <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
+            </div>
+          )}
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Média de @ por animal</div>
+            <div className="text-xl font-bold">
+              {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
+            <div className="text-xs text-muted-foreground">Total a pagar</div>
+            <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
           </div>
         </div>
-        <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
-          <div className="text-xs text-muted-foreground">Total a pagar</div>
-          <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
-        </div>
-      </div>
+      )}
 
       {breakdownPorCategoria.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
