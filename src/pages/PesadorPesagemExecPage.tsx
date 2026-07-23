@@ -148,9 +148,10 @@ export default function PesadorPesagemExecPage() {
     [pesos]
   );
 
-  const isMisto = pesagem?.tipo_preco === "misto";
+  const semValores = !!pesagem?.sem_valores;
+  const isMisto = !semValores && pesagem?.tipo_preco === "misto";
   const modoAleatorio =
-    pesagem?.tipo_preco === "arroba" && pesagem.modo_percentual === "aleatorio";
+    !semValores && pesagem?.tipo_preco === "arroba" && pesagem.modo_percentual === "aleatorio";
 
   async function persistirPeso(p: Peso) {
     const { error } = await supabase.from("pesos_pesagem_compra").insert({
