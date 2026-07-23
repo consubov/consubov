@@ -256,12 +256,14 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
 
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/pecuarista/fazendas")}><ArrowLeft className="w-4 h-4" /></Button>
         <h1 className="text-xl font-bold text-foreground flex-1">{fazendaNome || "Fazenda"}</h1>
-        <Button onClick={() => setDialogOpen(true)} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+        <Button onClick={openCreate} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" /> Adicionar Lote
         </Button>
       </div>
@@ -293,11 +295,17 @@ export default function PecuaristaFazendaDetalhePage() {
                   )}
                 </button>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title="Editar lote">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   {l.status === "ativo" && (
                     <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
                       <Archive className="w-4 h-4 text-destructive" />
                     </Button>
                   )}
+                  <Button variant="ghost" size="icon" onClick={() => apagar(l)} title="Apagar lote">
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
               </div>
@@ -307,9 +315,10 @@ export default function PecuaristaFazendaDetalhePage() {
 
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Adicionar Lote</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar Lote" : "Adicionar Lote"}</DialogTitle></DialogHeader>
+
           <div className="space-y-4">
             <div><Label>Nome do lote *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
 
