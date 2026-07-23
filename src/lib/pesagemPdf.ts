@@ -44,14 +44,11 @@ function fmtHora(iso: string) {
     return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }
-function fmtDataComHoras(dataFim: string, dataInicio?: string | null) {
-  const dia = fmtDate(dataFim);
+function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | null {
   const hFim = fmtHora(dataFim);
-  if (dataInicio) {
-    const hIni = fmtHora(dataInicio);
-    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
-  }
-  return hFim ? `${dia} · ${hFim}` : dia;
+  const hIni = dataInicio ? fmtHora(dataInicio) : "";
+  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+  return null;
 }
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85): Promise<{ dataUrl: string; w: number; h: number } | null> {
@@ -310,7 +307,9 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   } else if (cfg.tipo_preco === "misto") {
     infoRows.push(["Forma de pagamento:", "Mista (@ / kg / Fixo por animal)"]);
   }
-  infoRows.push(["Data:", fmtDataComHoras(data.header.data, data.header.dataInicio)]);
+  infoRows.push(["Data:", fmtDate(data.header.data)]);
+  const horarioLinha = fmtHorarioLinha(data.header.data, data.header.dataInicio);
+  if (horarioLinha) infoRows.push(["", horarioLinha]);
 
   doc.setFontSize(10);
   for (const [label, value] of infoRows) {
@@ -474,8 +473,8 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
         ? Math.floor((arrobasEst / tot.totalAnimais) * 100) / 100
         : 0;
       body.push(["Rendimento estimado", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
-      body.push(["@ estimadas", fmtNum(arrobasEst, 2)]);
-      body.push(["Média de @ por animal (estimada)", fmtNum(mediaArrobaEst, 2)]);
+      body.push(["@ estimadas", `${fmtNum(arrobasEst, 2)}  (Valor informativo, sem finalidade comercial)`]);
+      body.push(["Média de @ por animal (estimada)", `${fmtNum(mediaArrobaEst, 2)}  (Valor informativo, sem finalidade comercial)`]);
     }
   } else if (tipo === "arroba") {
     body.push(["Rendimento de carcaça", rendimentoLabel]);
