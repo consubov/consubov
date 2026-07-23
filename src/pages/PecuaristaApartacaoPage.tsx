@@ -421,10 +421,7 @@ export default function PecuaristaApartacaoPage() {
         if (eP || !pRow) throw eP ?? new Error("Falha ao gravar pesagem do destino");
         const pesagemId = (pRow as any).id as string;
 
-        // update apartacao_lotes counters
-        await supabase.from("apartacao_lotes").update({
-          quantidade: qtd, media_kg: peso_medio,
-        }).eq("id", d.id);
+        // (contadores por destino são derivados das pesagens; nada a atualizar em apartacao_lotes)
 
         // Insere pesos identificados
         const identificadosOut: PecuaristaPesoIdentificado[] = [];
