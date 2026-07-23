@@ -245,7 +245,7 @@ export default function PecuaristaFazendaDetalhePage() {
     if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
     try {
       // remove animais órfãos vinculados a este lote (sem pesagem)
-      await supabase.from("animais_pecuarista").delete().eq("lote_id", l.id);
+      await supabase.from("animais_pecuarista").delete().eq("lote_atual_id", l.id);
       const { error } = await supabase.from("lotes_pecuarista").delete().eq("id", l.id);
       if (error) throw error;
       toast.success("Lote apagado");
