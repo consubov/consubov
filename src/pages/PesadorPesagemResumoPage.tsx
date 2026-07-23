@@ -35,6 +35,7 @@ export default function PesadorPesagemResumoPage() {
   const [clienteCidade, setClienteCidade] = useState("");
   const [categoria, setCategoria] = useState("");
   const [finalizadaAt, setFinalizadaAt] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [valorTotalPago, setValorTotalPago] = useState<number | null>(null);
   const [semValores, setSemValores] = useState(false);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
@@ -47,7 +48,7 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago, sem_valores"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, created_at, pdf_url, valor_total_pago, sem_valores"
         )
         .eq("id", pesagemId)
         .maybeSingle();
@@ -63,6 +64,7 @@ export default function PesadorPesagemResumoPage() {
         } as any);
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
+        setCreatedAt((p as any).created_at ?? null);
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
         setSemValores(!!(p as any).sem_valores);
         setPdfUrl((p as any).pdf_url ?? null);
