@@ -393,7 +393,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-1.5 sm:gap-3">
             <span
-              className="hidden xs:inline-flex rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
+              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
               style={{ background: "rgba(34,255,136,0.12)", color: NEON, border: `1px solid ${BORDER}` }}
             >
               v{APP_VERSION}
