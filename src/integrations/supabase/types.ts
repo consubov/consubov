@@ -105,6 +105,45 @@ export type Database = {
         }
         Relationships: []
       }
+      animais_pecuarista: {
+        Row: {
+          created_at: string | null
+          id: string
+          lote_atual_id: string
+          numero: string
+          pecuarista_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lote_atual_id: string
+          numero: string
+          pecuarista_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lote_atual_id?: string
+          numero?: string
+          pecuarista_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animais_pecuarista_lote_atual_id_fkey"
+            columns: ["lote_atual_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animais_pecuarista_pecuarista_id_fkey"
+            columns: ["pecuarista_id"]
+            isOneToOne: false
+            referencedRelation: "pecuaristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apartacao_lotes: {
         Row: {
           apartacao_id: string
@@ -2749,6 +2788,92 @@ export type Database = {
             columns: ["pesagem_id"]
             isOneToOne: false
             referencedRelation: "pesagens_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesagens_lote_pecuarista: {
+        Row: {
+          created_at: string | null
+          data_pesagem: string
+          gmd: number | null
+          id: string
+          lote_id: string
+          pdf_url: string | null
+          peso_medio: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Insert: {
+          created_at?: string | null
+          data_pesagem?: string
+          gmd?: number | null
+          id?: string
+          lote_id: string
+          pdf_url?: string | null
+          peso_medio: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Update: {
+          created_at?: string | null
+          data_pesagem?: string
+          gmd?: number | null
+          id?: string
+          lote_id?: string
+          pdf_url?: string | null
+          peso_medio?: number
+          peso_total?: number
+          quantidade_animais?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesagens_lote_pecuarista_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_pecuarista"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesos_animais_pecuarista: {
+        Row: {
+          animal_id: string
+          created_at: string | null
+          gmd_individual: number | null
+          id: string
+          pesagem_lote_id: string
+          peso_kg: number
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string | null
+          gmd_individual?: number | null
+          id?: string
+          pesagem_lote_id: string
+          peso_kg: number
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string | null
+          gmd_individual?: number | null
+          id?: string
+          pesagem_lote_id?: string
+          peso_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesos_animais_pecuarista_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animais_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesos_animais_pecuarista_pesagem_lote_id_fkey"
+            columns: ["pesagem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "pesagens_lote_pecuarista"
             referencedColumns: ["id"]
           },
         ]

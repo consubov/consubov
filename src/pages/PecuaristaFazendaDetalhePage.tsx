@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Loader2, ArrowLeft, Archive, Scale } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Archive, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
@@ -32,6 +32,8 @@ interface Lote {
   identificado: boolean;
   status: string;
   encerrado_at: string | null;
+  ultima_data?: string | null;
+  ultimo_gmd?: number | null;
 }
 
 interface CatCustom { id: string; nome: string; }
@@ -78,7 +80,28 @@ export default function PecuaristaFazendaDetalhePage() {
       .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status, encerrado_at")
       .eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false });
-    setLotes((data as Lote[]) || []);
+    const base = (data as Lote[]) || [];
+    // fetch last pesagem por lote
+    const ids = base.map((l) => l.id);
+    let mapa: Record<string, { data: string; gmd: number | null }> = {};
+    if (ids.length > 0) {
+      const { data: ps } = await supabase
+        .from("pesagens_lote_pecuarista")
+        .select("lote_id, data_pesagem, gmd")
+        .in("lote_id", ids)
+        .gt("quantidade_animais", 0)
+        .order("data_pesagem", { ascending: false });
+      for (const row of (ps as any[]) ?? []) {
+        if (!mapa[row.lote_id]) {
+          mapa[row.lote_id] = { data: row.data_pesagem, gmd: row.gmd != null ? Number(row.gmd) : null };
+        }
+      }
+    }
+    setLotes(base.map((l) => ({
+      ...l,
+      ultima_data: mapa[l.id]?.data ?? null,
+      ultimo_gmd: mapa[l.id]?.gmd ?? null,
+    })));
     setLoading(false);
   }
 
@@ -185,7 +208,11 @@ export default function PecuaristaFazendaDetalhePage() {
           {lotes.map(l => (
             <Card key={l.id} className="p-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${l.id}`)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{l.nome_lote}</span>
                     <Badge variant="outline" className="font-mono">#{l.codigo}</Badge>
@@ -193,21 +220,26 @@ export default function PecuaristaFazendaDetalhePage() {
                     {!l.identificado && <Badge variant="outline">Sem identificação</Badge>}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">{labelCategoria(l)}</div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" disabled={l.status !== "ativo"} className="gap-1">
-                    <Scale className="w-4 h-4" /> Iniciar Pesagem
-                  </Button>
+                  {l.ultima_data && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Última pesagem: {new Date(l.ultima_data).toLocaleDateString("pt-BR")}
+                      {l.ultimo_gmd != null && ` • GMD ${l.ultimo_gmd.toFixed(3)} kg/dia`}
+                    </div>
+                  )}
+                </button>
+                <div className="flex items-center gap-1 shrink-0">
                   {l.status === "ativo" && (
                     <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
                       <Archive className="w-4 h-4 text-destructive" />
                     </Button>
                   )}
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
               </div>
             </Card>
           ))}
         </div>
+
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -65,6 +65,9 @@ import PecuaristaLayout from "./pages/PecuaristaLayout";
 import PecuaristaDashboard from "./pages/PecuaristaDashboard";
 import PecuaristaFazendasPage from "./pages/PecuaristaFazendasPage";
 import PecuaristaFazendaDetalhePage from "./pages/PecuaristaFazendaDetalhePage";
+import PecuaristaLoteDetalhePage from "./pages/PecuaristaLoteDetalhePage";
+import PecuaristaPesagemExecPage from "./pages/PecuaristaPesagemExecPage";
+import PecuaristaBuscarAnimalPage from "./pages/PecuaristaBuscarAnimalPage";
 import SyncVetLayout from "./pages/SyncVetLayout";
 import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
 import SyncVetEquipePage from "./pages/SyncVetEquipePage";
@@ -319,8 +322,12 @@ const App = () => (
                 <Route index element={<PecuaristaDashboard />} />
                 <Route path="fazendas" element={<PecuaristaFazendasPage />} />
                 <Route path="fazendas/:fazendaId" element={<PecuaristaFazendaDetalhePage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId" element={<PecuaristaLoteDetalhePage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId/buscar" element={<PecuaristaBuscarAnimalPage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId/pesagem/:pesagemId" element={<PecuaristaPesagemExecPage />} />
                 <Route path="lotes" element={<PecuaristaDashboard />} />
               </Route>
+
 
               <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
                 <Route index element={<SyncVetDashboardPage />} />
