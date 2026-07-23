@@ -550,9 +550,11 @@ export default function PecuaristaApartacaoPage() {
             <div className="font-semibold">Destino {i + 1}</div>
             <RadioGroup value={c.modo} onValueChange={(v) => setConfs(prev => {
               const next = [...prev];
+              const keepMin = (next[i] as any).pesoMin ?? "";
+              const keepMax = (next[i] as any).pesoMax ?? "";
               next[i] = v === "novo"
-                ? { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false }
-                : { modo: "existente", loteExistenteId: "" };
+                ? { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: keepMin, pesoMax: keepMax }
+                : { modo: "existente", loteExistenteId: "", pesoMin: keepMin, pesoMax: keepMax };
               return next;
             })}>
               <div className="flex items-center gap-2"><RadioGroupItem value="novo" id={`m-novo-${i}`} /><Label htmlFor={`m-novo-${i}`} className="font-normal cursor-pointer">Criar novo lote</Label></div>
