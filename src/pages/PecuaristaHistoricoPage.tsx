@@ -135,25 +135,26 @@ export default function PecuaristaHistoricoPage() {
     if (!toDelete) return;
     setDeleting(true);
     try {
+      const sb = supabase as any;
       if (toDelete.tipo === "pesagem") {
         // filhos: pesos individuais
-        await supabase.from("pesos_animais_pecuarista").delete().eq("pesagem_id", toDelete.rawId);
-        const { error } = await supabase.from("pesagens_lote_pecuarista").delete().eq("id", toDelete.rawId);
+        await sb.from("pesos_animais_pecuarista").delete().eq("pesagem_lote_id", toDelete.rawId);
+        const { error } = await sb.from("pesagens_lote_pecuarista").delete().eq("id", toDelete.rawId);
         if (error) throw error;
       } else {
         // apartação: buscar pesagens filhas
-        const { data: pesFilhas } = await supabase
+        const { data: pesFilhas } = await sb
           .from("pesagens_lote_pecuarista")
           .select("id")
           .eq("apartacao_id", toDelete.rawId);
         const pesIds = (pesFilhas ?? []).map((r: any) => r.id);
         if (pesIds.length > 0) {
-          await supabase.from("pesos_animais_pecuarista").delete().in("pesagem_id", pesIds);
-          await supabase.from("pesagens_lote_pecuarista").delete().in("id", pesIds);
+          await sb.from("pesos_animais_pecuarista").delete().in("pesagem_lote_id", pesIds);
+          await sb.from("pesagens_lote_pecuarista").delete().in("id", pesIds);
         }
-        await supabase.from("apartacao_destinos_pecuarista").delete().eq("apartacao_id", toDelete.rawId);
-        await supabase.from("apartacao_lotes").delete().eq("apartacao_id", toDelete.rawId);
-        const { error } = await supabase.from("apartacoes_pecuarista").delete().eq("id", toDelete.rawId);
+        await sb.from("apartacao_destinos_pecuarista").delete().eq("apartacao_id", toDelete.rawId);
+        await sb.from("apartacao_lotes").delete().eq("apartacao_id", toDelete.rawId);
+        const { error } = await sb.from("apartacoes_pecuarista").delete().eq("id", toDelete.rawId);
         if (error) throw error;
       }
 
