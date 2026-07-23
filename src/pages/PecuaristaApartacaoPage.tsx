@@ -113,6 +113,14 @@ export default function PecuaristaApartacaoPage() {
   const [linhasId, setLinhasId] = useState<LinhaId[]>([]);
   const [linhasSem, setLinhasSem] = useState<LinhaSem[]>([]);
   const [finalizando, setFinalizando] = useState(false);
+  const [horaInicio, setHoraInicio] = useState<string | null>(null);
+
+  async function marcarInicioSePreciso(apId: string | null) {
+    if (horaInicio || !apId) return;
+    const agora = new Date().toISOString();
+    setHoraInicio(agora);
+    await supabase.from("apartacoes_pecuarista").update({ hora_inicio: agora }).eq("id", apId);
+  }
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -350,6 +358,7 @@ export default function PecuaristaApartacaoPage() {
       lote_anterior: prev.lote_anterior, gmd_individual: gmd, dias,
       destino_lote_id: destLoteId,
     }]);
+    void marcarInicioSePreciso(apartacaoId);
     setNumeroAtual(""); setPesoAtual(""); setPrev(null); setStep("numero");
     setTimeout(() => inputRef.current?.focus(), 30);
   }
@@ -360,6 +369,7 @@ export default function PecuaristaApartacaoPage() {
     setLinhasSem(prev => [...prev, {
       ordem: prev.length + 1, peso_kg: peso, rowId: crypto.randomUUID(), destino_lote_id: destLoteId,
     }]);
+    void marcarInicioSePreciso(apartacaoId);
     setPesoAtual(""); setStep("peso");
     setTimeout(() => inputRef.current?.focus(), 30);
   }
