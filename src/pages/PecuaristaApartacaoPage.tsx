@@ -97,8 +97,8 @@ export default function PecuaristaApartacaoPage() {
   // Config
   const [qtd, setQtd] = useState<2 | 3>(2);
   const [confs, setConfs] = useState<DestinoConfig[]>([
-    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false },
-    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false },
+    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" },
+    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" },
   ]);
   const [preparando, setPreparando] = useState(false);
 
