@@ -252,6 +252,51 @@ export type Database = {
           },
         ]
       }
+      apartacoes_pecuarista: {
+        Row: {
+          created_at: string | null
+          data_apartacao: string
+          id: string
+          lote_origem_id: string
+          pdf_url: string | null
+          pecuarista_id: string
+          quantidade_lotes_destino: number
+        }
+        Insert: {
+          created_at?: string | null
+          data_apartacao?: string
+          id?: string
+          lote_origem_id: string
+          pdf_url?: string | null
+          pecuarista_id: string
+          quantidade_lotes_destino: number
+        }
+        Update: {
+          created_at?: string | null
+          data_apartacao?: string
+          id?: string
+          lote_origem_id?: string
+          pdf_url?: string | null
+          pecuarista_id?: string
+          quantidade_lotes_destino?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apartacoes_pecuarista_lote_origem_id_fkey"
+            columns: ["lote_origem_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apartacoes_pecuarista_pecuarista_id_fkey"
+            columns: ["pecuarista_id"]
+            isOneToOne: false
+            referencedRelation: "pecuaristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_secrets: {
         Row: {
           key: string
@@ -2794,6 +2839,7 @@ export type Database = {
       }
       pesagens_lote_pecuarista: {
         Row: {
+          apartacao_id: string | null
           created_at: string | null
           data_pesagem: string
           gmd: number | null
@@ -2805,6 +2851,7 @@ export type Database = {
           quantidade_animais: number
         }
         Insert: {
+          apartacao_id?: string | null
           created_at?: string | null
           data_pesagem?: string
           gmd?: number | null
@@ -2816,6 +2863,7 @@ export type Database = {
           quantidade_animais: number
         }
         Update: {
+          apartacao_id?: string | null
           created_at?: string | null
           data_pesagem?: string
           gmd?: number | null
@@ -2827,6 +2875,13 @@ export type Database = {
           quantidade_animais?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pesagens_lote_pecuarista_apartacao_id_fkey"
+            columns: ["apartacao_id"]
+            isOneToOne: false
+            referencedRelation: "apartacoes_pecuarista"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pesagens_lote_pecuarista_lote_id_fkey"
             columns: ["lote_id"]
