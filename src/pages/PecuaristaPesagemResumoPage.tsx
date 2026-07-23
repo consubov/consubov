@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadPdfFromUrl } from "@/lib/downloadPdf";
 import type { PecuaristaPesoIdentificado, PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
 
 type NavState = {
@@ -148,14 +149,15 @@ export default function PecuaristaPesagemResumoPage() {
         </Card>
       )}
 
-      <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t space-y-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div
+        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t space-y-2 z-50 shadow-lg"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
+      >
         {pdfUrl ? (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-11" asChild>
-                <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download>
-                  <FileDown className="w-4 h-4 mr-2" /> Baixar
-                </a>
+              <Button variant="outline" className="h-11" onClick={() => void downloadPdfFromUrl(pdfUrl!, `pesagem-${pesagemId}.pdf`)}>
+                <FileDown className="w-4 h-4 mr-2" /> Baixar
               </Button>
               <Button variant="outline" className="h-11" onClick={handleShare} disabled={sharing}>
                 {sharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />} Compartilhar
