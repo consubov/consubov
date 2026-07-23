@@ -70,6 +70,7 @@ import PecuaristaPesagemExecPage from "./pages/PecuaristaPesagemExecPage";
 import PecuaristaPesagemResumoPage from "./pages/PecuaristaPesagemResumoPage";
 import PecuaristaApartacaoPage from "./pages/PecuaristaApartacaoPage";
 import PecuaristaApartacaoResumoPage from "./pages/PecuaristaApartacaoResumoPage";
+import PecuaristaHistoricoPage from "./pages/PecuaristaHistoricoPage";
 import PecuaristaBuscarAnimalPage from "./pages/PecuaristaBuscarAnimalPage";
 import SyncVetLayout from "./pages/SyncVetLayout";
 import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
