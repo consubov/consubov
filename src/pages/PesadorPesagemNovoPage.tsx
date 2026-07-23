@@ -137,11 +137,10 @@ export default function PesadorPesagemNovoPage() {
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
     if (isRotina) {
-      // Rendimento é opcional; se preenchido, validar intervalo.
-      if (rendimentoRotina.trim()) {
-        const r = parseNum(rendimentoRotina);
-        if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
-      }
+      // Rendimento é obrigatório para calcular a Média de @ por animal.
+      if (!rendimentoRotina.trim()) return false;
+      const r = parseNum(rendimentoRotina);
+      if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
       return true;
     }
     if (isAleatoria) {
@@ -173,7 +172,7 @@ export default function PesadorPesagemNovoPage() {
 
     let payload: any;
     if (isRotina) {
-      const rend = rendimentoRotina.trim() ? parseNum(rendimentoRotina) : null;
+      const rend = parseNum(rendimentoRotina);
       payload = {
         pesador_id: pesadorId,
         cliente_id: clienteId,
@@ -320,7 +319,7 @@ export default function PesadorPesagemNovoPage() {
 
       {isRotina ? (
         <div className="space-y-2">
-          <Label htmlFor="rend-rotina">Rendimento estimado (%) — opcional</Label>
+          <Label htmlFor="rend-rotina">Rendimento estimado (%)</Label>
           <Input
             id="rend-rotina"
             inputMode="decimal"
@@ -329,7 +328,7 @@ export default function PesadorPesagemNovoPage() {
             placeholder="Ex: 52"
           />
           <p className="text-xs text-muted-foreground">
-            Se informado, será usado apenas para estimar @ no resumo. Valor informativo, sem finalidade comercial.
+            Obrigatório. Usado para estimar @ e Média de @ por animal no resumo. Valor informativo, sem finalidade comercial.
           </p>
         </div>
       ) : isAleatoria ? (
