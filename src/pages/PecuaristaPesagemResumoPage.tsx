@@ -142,7 +142,7 @@ export default function PecuaristaPesagemResumoPage() {
           <div className="max-h-72 overflow-y-auto text-xs grid grid-cols-3 gap-1">
             {data.semId.map(p => (
               <div key={p.ordem} className="border-b border-border/40 py-1">
-                {p.ordem}. {fmt(p.peso_kg, 1)} kg
+                {p.ordem} - {fmt(p.peso_kg, 1)} kg
               </div>
             ))}
           </div>

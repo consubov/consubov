@@ -268,7 +268,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
         const idx = r * cols + c;
         if (idx >= data.semId.length) break;
         const p = data.semId[idx];
-        doc.text(`${p.ordem}. ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
+        doc.text(`${p.ordem} - ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
       }
       y += rowH;
       if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20; }
@@ -423,7 +423,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
           const idx = r * cols + c;
           if (idx >= d.semId.length) break;
           const p = d.semId[idx];
-          doc.text(`${p.ordem}. ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
+          doc.text(`${p.ordem} - ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
         }
         y += 5;
       }

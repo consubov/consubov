@@ -365,7 +365,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
       const catLabel = CATEGORIA_LABELS_PDF[catKey] ?? catKey ?? "—";
       const mapped = cfg.categorias_map?.[catKey];
       const tipoInd = (mapped?.tipo_preco ?? a.tipo_preco_individual ?? "kg");
-      const parts: string[] = [`${i + 1}. ${fmtNum(a.peso_kg, 0)} kg`, catLabel];
+      const parts: string[] = [`${i + 1} - ${fmtNum(a.peso_kg, 0)} kg`, catLabel];
       if (tipoInd === "arroba" && a.percentual_individual != null) {
         parts.push(`Rend. ${fmtNum(a.percentual_individual, 0)}%`);
       }
@@ -413,7 +413,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
         const idx = r * cols + c;
         if (idx >= n) break;
         const a = data.animais[idx];
-        const label = `${idx + 1}. ${fmtNum(a.peso_kg, 0)} kg`;
+        const label = `${idx + 1} - ${fmtNum(a.peso_kg, 0)} kg`;
         doc.text(label, 15 + c * colW, y);
       }
       y += rowH;

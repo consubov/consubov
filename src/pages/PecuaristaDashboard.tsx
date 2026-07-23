@@ -373,16 +373,31 @@ export default function PecuaristaDashboard() {
               {porCategoria.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Sem dados no período.</p>
               ) : (
-                <div className="h-72">
+                <div className="h-[420px]">
                   <ResponsiveContainer>
-                    <PieChart>
-                      <Pie data={porCategoria} dataKey="animais" nameKey="nome" outerRadius={90} label={(e: any) => e.animais}>
+                    <PieChart margin={{ top: 8, right: 8, bottom: 56, left: 8 }}>
+                      <Pie
+                        data={porCategoria}
+                        dataKey="animais"
+                        nameKey="nome"
+                        cx="50%"
+                        cy="42%"
+                        outerRadius={85}
+                        labelLine={false}
+                        label={(e: any) => e.animais}
+                      >
                         {porCategoria.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                       </Pie>
-                      <Legend formatter={(_v, _e, i) => {
-                        const c = porCategoria[i as number];
-                        return `${c.nome} — ${c.animais} anim. · ${c.gmdMedio.toFixed(3)} kg/d`;
-                      }} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        iconSize={10}
+                        wrapperStyle={{ paddingTop: 24, fontSize: 12, lineHeight: "1.6em" }}
+                        formatter={(_v, _e, i) => {
+                          const c = porCategoria[i as number];
+                          return `${c.nome} — ${c.animais} anim. · ${c.gmdMedio.toFixed(3)} kg/d`;
+                        }}
+                      />
                       <Tooltip formatter={(v: any) => `${v} animais`} />
                     </PieChart>
                   </ResponsiveContainer>
