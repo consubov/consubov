@@ -354,11 +354,15 @@ export default function PecuaristaFazendaDetalhePage() {
 
             <div>
               <Label className="mb-2 block">Identificação</Label>
-              <RadioGroup value={form.identificado} onValueChange={(v) => setForm(f => ({ ...f, identificado: v as "sim" | "nao" }))}>
+              <RadioGroup value={form.identificado} onValueChange={(v) => setForm(f => ({ ...f, identificado: v as "sim" | "nao" }))} disabled={!!editingId && editingHasPesagens}>
                 <div className="flex items-center gap-2"><RadioGroupItem value="sim" id="ident-sim" /><Label htmlFor="ident-sim" className="font-normal cursor-pointer">Lote identificado</Label></div>
                 <div className="flex items-center gap-2"><RadioGroupItem value="nao" id="ident-nao" /><Label htmlFor="ident-nao" className="font-normal cursor-pointer">Lote sem identificação</Label></div>
               </RadioGroup>
+              {editingId && editingHasPesagens && (
+                <p className="text-xs text-muted-foreground mt-1">A identificação fica travada após a primeira pesagem para preservar o histórico.</p>
+              )}
             </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
