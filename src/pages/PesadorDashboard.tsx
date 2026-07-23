@@ -210,6 +210,7 @@ export default function PesadorDashboard() {
     let totalArrobas = 0;
 
     for (const p of pesagens) {
+      if (p.sem_valores) continue;
       const d = new Date(p.finalizada_at);
       if (d.getFullYear() !== appliedYear) continue;
       const mes = d.getMonth();
