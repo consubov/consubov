@@ -11,13 +11,14 @@ type Pesagem = {
   id: string;
   cliente_id: string;
   categoria: string;
-  tipo_preco: "arroba" | "kg" | "fixo_animal" | "misto";
+  tipo_preco: "arroba" | "kg" | "fixo_animal" | "misto" | null;
   preco_valor: number | null;
   modo_percentual: "fixo" | "aleatorio" | "na" | null;
   percentual_fixo: number | null;
   preco_arroba: number | null;
   preco_kg: number | null;
   preco_fixo_animal: number | null;
+  sem_valores: boolean;
   status: string;
 };
 
