@@ -87,17 +87,21 @@ export default function PecuaristaFazendaDetalhePage() {
     const base = (data as Lote[]) || [];
     // fetch last pesagem por lote
     const ids = base.map((l) => l.id);
-    let mapa: Record<string, { data: string; gmd: number | null }> = {};
+    let mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
     if (ids.length > 0) {
       const { data: ps } = await supabase
         .from("pesagens_lote_pecuarista")
-        .select("lote_id, data_pesagem, gmd")
+        .select("lote_id, data_pesagem, gmd, quantidade_animais")
         .in("lote_id", ids)
         .gt("quantidade_animais", 0)
         .order("data_pesagem", { ascending: false });
       for (const row of (ps as any[]) ?? []) {
         if (!mapa[row.lote_id]) {
-          mapa[row.lote_id] = { data: row.data_pesagem, gmd: row.gmd != null ? Number(row.gmd) : null };
+          mapa[row.lote_id] = {
+            data: row.data_pesagem,
+            gmd: row.gmd != null ? Number(row.gmd) : null,
+            qtd: row.quantidade_animais != null ? Number(row.quantidade_animais) : null,
+          };
         }
       }
     }
@@ -105,6 +109,7 @@ export default function PecuaristaFazendaDetalhePage() {
       ...l,
       ultima_data: mapa[l.id]?.data ?? null,
       ultimo_gmd: mapa[l.id]?.gmd ?? null,
+      qtd_animais: mapa[l.id]?.qtd ?? null,
     })));
     setLoading(false);
   }
