@@ -12,10 +12,23 @@ type NavState = {
   pdfUrl?: string;
   totalGeral: { quantidade: number; peso_total: number };
   destinos: ApartacaoDestinoSection[];
+  dataFim?: string | null;
+  horaInicio?: string | null;
 };
 
 const fmt = (n: number, d = 2) =>
   n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtHora = (iso: string) => {
+  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+};
+const fmtDataLinha = (fim?: string | null, ini?: string | null) => {
+  if (!fim) return null;
+  const dia = new Date(fim).toLocaleDateString("pt-BR");
+  const hFim = fmtHora(fim);
+  const hIni = ini ? fmtHora(ini) : "";
+  if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+  return hFim ? `${dia} · ${hFim}` : dia;
+};
 
 export default function PecuaristaApartacaoResumoPage() {
   const { fazendaId, loteId, apartacaoId } = useParams();
@@ -33,7 +46,7 @@ export default function PecuaristaApartacaoResumoPage() {
     (async () => {
       if (!apartacaoId) return;
       const { data: ap } = await supabase.from("apartacoes_pecuarista")
-        .select("pdf_url").eq("id", apartacaoId).maybeSingle();
+        .select("pdf_url, data_apartacao, hora_inicio").eq("id", apartacaoId).maybeSingle();
       setPdfUrl((ap as any)?.pdf_url ?? null);
       const { data: pesagens } = await supabase.from("pesagens_lote_pecuarista")
         .select("lote_id, quantidade_animais, peso_total, peso_medio, gmd")
@@ -55,7 +68,7 @@ export default function PecuaristaApartacaoResumoPage() {
         totQ += Number(p.quantidade_animais);
         totP += Number(p.peso_total);
       }
-      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: (ap as any)?.pdf_url ?? undefined });
+      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: (ap as any)?.pdf_url ?? undefined, dataFim: (ap as any)?.data_apartacao ?? null, horaInicio: (ap as any)?.hora_inicio ?? null });
       setLoading(false);
     })();
   }, [apartacaoId, data]);
@@ -87,6 +100,9 @@ export default function PecuaristaApartacaoResumoPage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-40 px-2">
       <Card className="p-4">
         <div className="text-xs uppercase text-muted-foreground">Apartação finalizada</div>
+        {fmtDataLinha(data.dataFim, data.horaInicio) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, data.horaInicio)}</div>
+        )}
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
             <div className="text-xs text-muted-foreground">Total animais</div>
