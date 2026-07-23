@@ -47,13 +47,13 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago, sem_valores"
         )
         .eq("id", pesagemId)
         .maybeSingle();
       if (p) {
         setCfg({
-          tipo_preco: p.tipo_preco as any,
+          tipo_preco: (p.tipo_preco as any) ?? null,
           preco_valor: Number(p.preco_valor ?? 0),
           modo_percentual: (p.modo_percentual as any) ?? "na",
           percentual_fixo: p.percentual_fixo != null ? Number(p.percentual_fixo) : null,
@@ -64,6 +64,7 @@ export default function PesadorPesagemResumoPage() {
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
+        setSemValores(!!(p as any).sem_valores);
         setPdfUrl((p as any).pdf_url ?? null);
         const { data: c } = await supabase
           .from("clientes_pesador")
