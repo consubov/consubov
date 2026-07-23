@@ -67,6 +67,7 @@ import PecuaristaFazendasPage from "./pages/PecuaristaFazendasPage";
 import PecuaristaFazendaDetalhePage from "./pages/PecuaristaFazendaDetalhePage";
 import PecuaristaLoteDetalhePage from "./pages/PecuaristaLoteDetalhePage";
 import PecuaristaPesagemExecPage from "./pages/PecuaristaPesagemExecPage";
+import PecuaristaApartacaoPage from "./pages/PecuaristaApartacaoPage";
 import PecuaristaBuscarAnimalPage from "./pages/PecuaristaBuscarAnimalPage";
 import SyncVetLayout from "./pages/SyncVetLayout";
 import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
