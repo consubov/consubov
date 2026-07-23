@@ -332,7 +332,7 @@ const App = () => (
                 <Route path="fazendas/:fazendaId/lotes/:loteId/pesagem/:pesagemId/resumo" element={<PecuaristaPesagemResumoPage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/apartacao" element={<PecuaristaApartacaoPage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/apartacao/:apartacaoId/resumo" element={<PecuaristaApartacaoResumoPage />} />
-                <Route path="lotes" element={<PecuaristaDashboard />} />
+                <Route path="lotes" element={<PecuaristaHistoricoPage />} />
               </Route>
 
 
