@@ -21,10 +21,23 @@ type NavState = {
   identificados?: PecuaristaPesoIdentificado[];
   semId?: PecuaristaPesoSemId[];
   loteNome?: string;
+  dataFim?: string | null;
+  horaInicio?: string | null;
 };
 
 const fmt = (n: number, d = 2) =>
   n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtHora = (iso: string) => {
+  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+};
+const fmtDataLinha = (fim?: string | null, ini?: string | null) => {
+  if (!fim) return null;
+  const dia = new Date(fim).toLocaleDateString("pt-BR");
+  const hFim = fmtHora(fim);
+  const hIni = ini ? fmtHora(ini) : "";
+  if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+  return hFim ? `${dia} · ${hFim}` : dia;
+};
 
 export default function PecuaristaPesagemResumoPage() {
   const { fazendaId, loteId, pesagemId } = useParams();
@@ -43,7 +56,7 @@ export default function PecuaristaPesagemResumoPage() {
       if (!pesagemId) return;
       const { data: p } = await supabase
         .from("pesagens_lote_pecuarista")
-        .select("quantidade_animais, peso_total, peso_medio, gmd, pdf_url, lote_id")
+        .select("quantidade_animais, peso_total, peso_medio, gmd, pdf_url, lote_id, data_pesagem, hora_inicio")
         .eq("id", pesagemId)
         .maybeSingle();
       if (!p) { setLoading(false); return; }
@@ -58,6 +71,8 @@ export default function PecuaristaPesagemResumoPage() {
         peso_medio: Number((p as any).peso_medio ?? 0),
         gmd: (p as any).gmd != null ? Number((p as any).gmd) : null,
         pdfUrl: (p as any).pdf_url ?? undefined,
+        dataFim: (p as any).data_pesagem ?? null,
+        horaInicio: (p as any).hora_inicio ?? null,
       });
       setLoading(false);
     })();
