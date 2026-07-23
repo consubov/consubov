@@ -34,6 +34,7 @@ interface Lote {
   encerrado_at: string | null;
   ultima_data?: string | null;
   ultimo_gmd?: number | null;
+  qtd_animais?: number | null;
 }
 
 interface CatCustom { id: string; nome: string; }
