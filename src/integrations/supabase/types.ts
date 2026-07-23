@@ -599,6 +599,35 @@ export type Database = {
           },
         ]
       }
+      categorias_pecuarista: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          pecuarista_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          pecuarista_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          pecuarista_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorias_pecuarista_pecuarista_id_fkey"
+            columns: ["pecuarista_id"]
+            isOneToOne: false
+            referencedRelation: "pecuaristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ciclos: {
         Row: {
           ano: number
@@ -1444,6 +1473,41 @@ export type Database = {
           },
         ]
       }
+      fazendas_pecuarista: {
+        Row: {
+          cidade: string | null
+          created_at: string | null
+          id: string
+          nome_fazenda: string
+          pecuarista_id: string
+          uf: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          created_at?: string | null
+          id?: string
+          nome_fazenda: string
+          pecuarista_id: string
+          uf?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          created_at?: string | null
+          id?: string
+          nome_fazenda?: string
+          pecuarista_id?: string
+          uf?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fazendas_pecuarista_pecuarista_id_fkey"
+            columns: ["pecuarista_id"]
+            isOneToOne: false
+            referencedRelation: "pecuaristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formula_ingredientes: {
         Row: {
           criado_em: string | null
@@ -1894,6 +1958,70 @@ export type Database = {
             columns: ["mapa_id"]
             isOneToOne: false
             referencedRelation: "mapas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lotes_pecuarista: {
+        Row: {
+          categoria: string
+          categoria_customizada_id: string | null
+          codigo: string
+          created_at: string | null
+          encerrado_at: string | null
+          fazenda_id: string
+          id: string
+          identificado: boolean
+          nome_lote: string
+          pecuarista_id: string
+          status: string
+        }
+        Insert: {
+          categoria: string
+          categoria_customizada_id?: string | null
+          codigo: string
+          created_at?: string | null
+          encerrado_at?: string | null
+          fazenda_id: string
+          id?: string
+          identificado?: boolean
+          nome_lote: string
+          pecuarista_id: string
+          status?: string
+        }
+        Update: {
+          categoria?: string
+          categoria_customizada_id?: string | null
+          codigo?: string
+          created_at?: string | null
+          encerrado_at?: string | null
+          fazenda_id?: string
+          id?: string
+          identificado?: boolean
+          nome_lote?: string
+          pecuarista_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lotes_pecuarista_categoria_customizada_id_fkey"
+            columns: ["categoria_customizada_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lotes_pecuarista_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lotes_pecuarista_pecuarista_id_fkey"
+            columns: ["pecuarista_id"]
+            isOneToOne: false
+            referencedRelation: "pecuaristas"
             referencedColumns: ["id"]
           },
         ]
@@ -2394,6 +2522,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pecuaristas: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          nome_empresa: string | null
+          telefone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          nome_empresa?: string | null
+          telefone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          nome_empresa?: string | null
+          telefone?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       pesadores: {
         Row: {
