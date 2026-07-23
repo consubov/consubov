@@ -349,6 +349,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden" style={{ background: BG, color: "#E6F5EC", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <UpdateBanner />
       <style>{`
         @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px ${NEON_DIM}} 50%{box-shadow:0 0 40px ${NEON}} }
         @keyframes floatSlow { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(2deg)} }
