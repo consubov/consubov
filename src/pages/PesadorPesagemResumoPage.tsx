@@ -204,6 +204,7 @@ export default function PesadorPesagemResumoPage() {
           fazenda: clienteFazenda,
           cidade: clienteCidade,
           data: finalizadaAt ?? new Date().toISOString(),
+          dataInicio: createdAt,
           categoriaLabel,
           formaPagamento: cabecalhoPreco,
         },
