@@ -137,11 +137,10 @@ export default function PesadorPesagemNovoPage() {
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
     if (isRotina) {
-      // Rendimento é opcional; se preenchido, validar intervalo.
-      if (rendimentoRotina.trim()) {
-        const r = parseNum(rendimentoRotina);
-        if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
-      }
+      // Rendimento é obrigatório para calcular a Média de @ por animal.
+      if (!rendimentoRotina.trim()) return false;
+      const r = parseNum(rendimentoRotina);
+      if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
       return true;
     }
     if (isAleatoria) {
