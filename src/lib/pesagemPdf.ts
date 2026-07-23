@@ -315,11 +315,12 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   for (const [label, value] of infoRows) {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK);
-    doc.text(label, 15, y);
-    const labelW = doc.getTextWidth(label);
+    if (label) doc.text(label, 15, y);
+    const labelW = label ? doc.getTextWidth(label) : 0;
+    const valueX = label ? 15 + labelW + 2 : 15;
     doc.setFont("helvetica", "normal");
     doc.setTextColor(INK);
-    doc.text(String(value), 15 + labelW + 2, y);
+    doc.text(String(value), valueX, y);
     y += 5.5;
   }
 
