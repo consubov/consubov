@@ -37,11 +37,9 @@ export default function PecuaristaLayout() {
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
           <button onClick={() => navigate("/pecuarista")} className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-md bg-secondary flex items-center justify-center">
-              <span className="text-lg font-extrabold text-secondary-foreground">P</span>
-            </div>
+            <img src={maisArrobasAsset.url} alt="Mais Arrobas" className="w-9 h-9 rounded-md object-cover bg-white" />
             <div className="text-left">
-              <div className="text-sm font-bold leading-tight">Consubov</div>
+              <div className="text-sm font-bold leading-tight">Mais Arrobas</div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">Pecuarista</div>
             </div>
           </button>
