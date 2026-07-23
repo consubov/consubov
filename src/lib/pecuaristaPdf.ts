@@ -77,29 +77,51 @@ async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
   } catch { return null; }
 }
 
-function drawFirstHeader(doc: jsPDF, nomeEmpresa: string, logo: { dataUrl: string; w: number; h: number } | null): number {
+function drawFirstHeader(
+  doc: jsPDF,
+  opts: { line1: string; line2?: string | null; subtitle: string },
+  logo: { dataUrl: string; w: number; h: number } | null,
+): number {
   const W = doc.internal.pageSize.getWidth();
   const topY = 12;
-  const HEADER_H = 26;
+  const HEADER_H = 30;
   const stripeY = topY + HEADER_H;
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text(nomeEmpresa, 15, topY + 7);
+  doc.text(opts.line1 || "—", 15, topY + 7);
+
+  if (opts.line2) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(INK);
+    doc.text(opts.line2, 15, topY + 14);
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(INK_SOFT);
-  doc.text("RELATÓRIO DE PESAGEM DE LOTE", 15, topY + 13);
+  doc.text(opts.subtitle.toUpperCase(), 15, topY + (opts.line2 ? 21 : 14));
 
   if (logo) {
-    const maxH = HEADER_H - 4;
+    const maxH = HEADER_H - 6;
     const maxW = 45;
     const ratio = logo.w / logo.h;
     let h = maxH; let w = h * ratio;
     if (w > maxW) { w = maxW; h = w / ratio; }
     const yLogo = topY + (HEADER_H - h) / 2;
     try { doc.addImage(logo.dataUrl, "JPEG", W - 15 - w, yLogo, w, h); } catch {}
+  } else {
+    // Fallback: marca "Mais Arrobas" como texto no canto direito
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(GREEN);
+    doc.text("Mais Arrobas", W - 15, topY + 12, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(INK_SOFT);
+    doc.text("consubov.com.br", W - 15, topY + 17, { align: "right" });
   }
 
   doc.setFillColor(GREEN);
@@ -128,9 +150,16 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   const W = doc.internal.pageSize.getWidth();
 
   const logo = data.header.logoUrl ? await urlToJpeg(data.header.logoUrl) : null;
-  const nomeEmpresa = data.header.nomeEmpresa || "Mais Arrobas";
 
-  let y = drawFirstHeader(doc, nomeEmpresa, logo);
+  let y = drawFirstHeader(
+    doc,
+    {
+      line1: data.header.fazenda || "—",
+      line2: data.header.produtor || null,
+      subtitle: "Relatório de pesagem",
+    },
+    logo,
+  );
 
   // Info
   doc.setTextColor(INK);
@@ -145,7 +174,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   ];
   if (data.header.cidade) rows.push(["Cidade:", data.header.cidade]);
   rows.push(
-    ["Lote:", `${data.header.lote} (#${data.header.codigoLote})`],
+    ["Lote:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo de lote:", data.header.identificado ? "Identificado" : "Sem identificação"],
     ["Data:", fmtDateTime(data.header.data)],
@@ -281,17 +310,16 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
   const H = doc.internal.pageSize.getHeight();
 
   const logo = data.header.logoUrl ? await urlToJpeg(data.header.logoUrl) : null;
-  const nomeEmpresa = data.header.nomeEmpresa || "Mais Arrobas";
 
-  let y = drawFirstHeader(doc, nomeEmpresa, logo);
-  // Sobrescreve o título da seção (drawFirstHeader escreveu "RELATÓRIO DE PESAGEM DE LOTE")
-  // — repintamos por cima com fundo branco para trocar por "APARTAÇÃO".
-  doc.setFillColor(255, 255, 255);
-  doc.rect(15, 12 + 9, 160, 6, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(INK_SOFT);
-  doc.text("RELATÓRIO DE PESAGEM COM APARTAÇÃO", 15, 12 + 13);
+  let y = drawFirstHeader(
+    doc,
+    {
+      line1: data.header.fazenda || "—",
+      line2: data.header.produtor || null,
+      subtitle: "Relatório de pesagem — apartação",
+    },
+    logo,
+  );
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
@@ -305,7 +333,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
   ];
   if (data.header.cidade) rows.push(["Cidade:", data.header.cidade]);
   rows.push(
-    ["Lote de origem:", `${data.header.lote} (#${data.header.codigoLote})`],
+    ["Lote de origem:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
     ["Data:", fmtDateTime(data.header.data)],
@@ -336,8 +364,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     doc.setTextColor("#ffffff");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    const nomeDest = d.codigo ? `${d.nome_lote}  (#${d.codigo})` : d.nome_lote;
-    doc.text(`Destino: ${nomeDest}`, 17, y + 1.5);
+    doc.text(`Destino: ${d.nome_lote}`, 17, y + 1.5);
     doc.setFontSize(9);
     doc.text(`${d.quantidade} animais`, W - 17, y + 1.5, { align: "right" });
     y += 8;
