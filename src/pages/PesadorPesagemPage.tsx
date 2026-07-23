@@ -132,7 +132,9 @@ export default function PesadorPesagemPage() {
                   </div>
                 </div>
                 <div className="text-right flex flex-col items-end gap-1">
-                  <div className="text-sm font-semibold text-primary">{brl(p.totalValor)}</div>
+                  <div className={`text-sm font-semibold ${p.sem_valores ? "text-muted-foreground italic" : "text-primary"}`}>
+                    {p.sem_valores ? "Sem valores" : brl(p.totalValor)}
+                  </div>
                   {p.pdf_url && (
                     <button
                       type="button"
