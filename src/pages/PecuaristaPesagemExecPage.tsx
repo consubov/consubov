@@ -264,17 +264,19 @@ export default function PecuaristaPesagemExecPage() {
       categoriaLabel = (c as any)?.nome ?? "Personalizada";
     }
 
+    let pdfUrl: string | null = null;
+    const identificados: PecuaristaPesoIdentificado[] = linhasId.map((l) => ({
+      numero: l.numero, peso_kg: l.peso_kg, data: l.data,
+      peso_anterior_kg: l.peso_anterior_kg, data_anterior: l.data_anterior,
+      lote_anterior: l.lote_anterior, gmd_individual: l.gmd_individual, dias: l.dias,
+    }));
+    const semId: PecuaristaPesoSemId[] = linhasSem.map((l) => ({ ordem: l.ordem, peso_kg: l.peso_kg }));
+
     try {
-      const identificados: PecuaristaPesoIdentificado[] = linhasId.map((l) => ({
-        numero: l.numero, peso_kg: l.peso_kg, data: l.data,
-        peso_anterior_kg: l.peso_anterior_kg, data_anterior: l.data_anterior,
-        lote_anterior: l.lote_anterior, gmd_individual: l.gmd_individual, dias: l.dias,
-      }));
-      const semId: PecuaristaPesoSemId[] = linhasSem.map((l) => ({ ordem: l.ordem, peso_kg: l.peso_kg }));
       const blob = await gerarPecuaristaLotePdf({
         header: {
           produtor: (pc as any)?.nome ?? "",
-          nomeEmpresa: null, // sempre Mais Arrobas
+          nomeEmpresa: null,
           logoUrl: null,
           fazenda: (fz as any)?.nome_fazenda ?? "",
           cidade: (fz as any)?.cidade ?? null,
@@ -290,13 +292,30 @@ export default function PecuaristaPesagemExecPage() {
         identificados: isId ? identificados : undefined,
         semId: !isId ? semId : undefined,
       });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const path = `pecuarista/pesagens/${pesagemId}-${Date.now()}.pdf`;
+      const { error: upErr } = await supabase.storage.from("relatorios")
+        .upload(path, blob, { contentType: "application/pdf", upsert: true });
+      if (!upErr) {
+        const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
+        pdfUrl = pub.publicUrl;
+        await supabase.from("pesagens_lote_pecuarista").update({ pdf_url: pdfUrl }).eq("id", pesagemId);
+      }
     } catch (e: any) {
       toast.error("PDF: " + (e?.message ?? ""));
     }
     setFinalizando(false);
-    navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`);
+    navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${pesagemId}/resumo`, {
+      state: {
+        pdfUrl: pdfUrl ?? undefined,
+        identificado: isId,
+        loteNome: lote.nome_lote,
+        quantidade: qtd, peso_total, peso_medio,
+        peso_medio_anterior: mediaAnterior, data_anterior: dataAnterior,
+        dias, gmd: gmdLote,
+        identificados: isId ? identificados : undefined,
+        semId: !isId ? semId : undefined,
+      },
+    });
   }
 
   if (loading || !lote) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
