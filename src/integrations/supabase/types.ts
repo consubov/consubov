@@ -301,6 +301,7 @@ export type Database = {
         Row: {
           created_at: string | null
           data_apartacao: string
+          hora_inicio: string | null
           id: string
           lote_origem_id: string
           pdf_url: string | null
@@ -310,6 +311,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           data_apartacao?: string
+          hora_inicio?: string | null
           id?: string
           lote_origem_id: string
           pdf_url?: string | null
@@ -319,6 +321,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           data_apartacao?: string
+          hora_inicio?: string | null
           id?: string
           lote_origem_id?: string
           pdf_url?: string | null
@@ -2894,6 +2897,7 @@ export type Database = {
           created_at: string | null
           data_pesagem: string
           gmd: number | null
+          hora_inicio: string | null
           id: string
           lote_id: string
           pdf_url: string | null
@@ -2906,6 +2910,7 @@ export type Database = {
           created_at?: string | null
           data_pesagem?: string
           gmd?: number | null
+          hora_inicio?: string | null
           id?: string
           lote_id: string
           pdf_url?: string | null
@@ -2918,6 +2923,7 @@ export type Database = {
           created_at?: string | null
           data_pesagem?: string
           gmd?: number | null
+          hora_inicio?: string | null
           id?: string
           lote_id?: string
           pdf_url?: string | null
