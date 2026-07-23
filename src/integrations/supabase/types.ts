@@ -144,6 +144,51 @@ export type Database = {
           },
         ]
       }
+      apartacao_destinos_pecuarista: {
+        Row: {
+          apartacao_id: string
+          created_at: string | null
+          id: string
+          lote_destino_id: string
+          ordem: number
+          peso_max: number | null
+          peso_min: number | null
+        }
+        Insert: {
+          apartacao_id: string
+          created_at?: string | null
+          id?: string
+          lote_destino_id: string
+          ordem: number
+          peso_max?: number | null
+          peso_min?: number | null
+        }
+        Update: {
+          apartacao_id?: string
+          created_at?: string | null
+          id?: string
+          lote_destino_id?: string
+          ordem?: number
+          peso_max?: number | null
+          peso_min?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apartacao_destinos_pecuarista_apartacao_id_fkey"
+            columns: ["apartacao_id"]
+            isOneToOne: false
+            referencedRelation: "apartacoes_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apartacao_destinos_pecuarista_lote_destino_id_fkey"
+            columns: ["lote_destino_id"]
+            isOneToOne: false
+            referencedRelation: "lotes_pecuarista"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apartacao_lotes: {
         Row: {
           apartacao_id: string
