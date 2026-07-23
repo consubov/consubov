@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Scale, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, Scale, Search, Split } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIAS_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function PecuaristaLoteDetalhePage() {
   const [ultima, setUltima] = useState<UltimaPesagem | null>(null);
   const [loading, setLoading] = useState(true);
   const [iniciando, setIniciando] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
 
   useEffect(() => {
     if (!loteId) return;
@@ -100,8 +102,8 @@ export default function PecuaristaLoteDetalhePage() {
       </Card>
 
       <div className="grid gap-2">
-        <Button size="lg" className="h-14 bg-primary hover:bg-primary/90" disabled={iniciando || lote.status !== "ativo"} onClick={iniciarPesagem}>
-          {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Scale className="w-5 h-5 mr-2" />}
+        <Button size="lg" className="h-14 bg-primary hover:bg-primary/90" disabled={iniciando || lote.status !== "ativo"} onClick={() => setChoiceOpen(true)}>
+          <Scale className="w-5 h-5 mr-2" />
           Iniciar Pesagem
         </Button>
         {lote.identificado && (
@@ -110,6 +112,38 @@ export default function PecuaristaLoteDetalhePage() {
           </Button>
         )}
       </div>
+
+      <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Tipo de pesagem</DialogTitle></DialogHeader>
+          <div className="grid gap-2">
+            <Button
+              size="lg"
+              className="h-16 justify-start bg-primary hover:bg-primary/90"
+              disabled={iniciando}
+              onClick={() => { setChoiceOpen(false); void iniciarPesagem(); }}
+            >
+              {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Scale className="w-5 h-5 mr-2" />}
+              <div className="text-left">
+                <div className="font-semibold">Pesagem simples</div>
+                <div className="text-xs opacity-90 font-normal">Só pesa o lote atual.</div>
+              </div>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-16 justify-start"
+              onClick={() => { setChoiceOpen(false); navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao`); }}
+            >
+              <Split className="w-5 h-5 mr-2" />
+              <div className="text-left">
+                <div className="font-semibold">Pesagem + Apartação</div>
+                <div className="text-xs text-muted-foreground font-normal">Pesa e distribui em 2 ou 3 lotes de destino.</div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

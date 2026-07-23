@@ -67,6 +67,7 @@ import PecuaristaFazendasPage from "./pages/PecuaristaFazendasPage";
 import PecuaristaFazendaDetalhePage from "./pages/PecuaristaFazendaDetalhePage";
 import PecuaristaLoteDetalhePage from "./pages/PecuaristaLoteDetalhePage";
 import PecuaristaPesagemExecPage from "./pages/PecuaristaPesagemExecPage";
+import PecuaristaApartacaoPage from "./pages/PecuaristaApartacaoPage";
 import PecuaristaBuscarAnimalPage from "./pages/PecuaristaBuscarAnimalPage";
 import SyncVetLayout from "./pages/SyncVetLayout";
 import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
@@ -325,6 +326,7 @@ const App = () => (
                 <Route path="fazendas/:fazendaId/lotes/:loteId" element={<PecuaristaLoteDetalhePage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/buscar" element={<PecuaristaBuscarAnimalPage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/pesagem/:pesagemId" element={<PecuaristaPesagemExecPage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId/apartacao" element={<PecuaristaApartacaoPage />} />
                 <Route path="lotes" element={<PecuaristaDashboard />} />
               </Route>
 
