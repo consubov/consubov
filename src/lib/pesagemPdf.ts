@@ -315,11 +315,12 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   for (const [label, value] of infoRows) {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK);
-    doc.text(label, 15, y);
-    const labelW = doc.getTextWidth(label);
+    if (label) doc.text(label, 15, y);
+    const labelW = label ? doc.getTextWidth(label) : 0;
+    const valueX = label ? 15 + labelW + 2 : 15;
     doc.setFont("helvetica", "normal");
     doc.setTextColor(INK);
-    doc.text(String(value), 15 + labelW + 2, y);
+    doc.text(String(value), valueX, y);
     y += 5.5;
   }
 
@@ -473,8 +474,8 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
         ? Math.floor((arrobasEst / tot.totalAnimais) * 100) / 100
         : 0;
       body.push(["Rendimento estimado", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
-      body.push(["@ estimadas", `${fmtNum(arrobasEst, 2)}  (Valor informativo, sem finalidade comercial)`]);
-      body.push(["Média de @ por animal (estimada)", `${fmtNum(mediaArrobaEst, 2)}  (Valor informativo, sem finalidade comercial)`]);
+      body.push(["@ estimadas", fmtNum(arrobasEst, 2)]);
+      body.push(["Média de @ por animal (estimada)", fmtNum(mediaArrobaEst, 2)]);
     }
   } else if (tipo === "arroba") {
     body.push(["Rendimento de carcaça", rendimentoLabel]);
