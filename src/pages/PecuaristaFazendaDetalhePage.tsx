@@ -60,6 +60,7 @@ export default function PecuaristaFazendaDetalhePage() {
     criandoNova: false,
     identificado: "sim" as "sim" | "nao",
   });
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!user || !fazendaId) return;
