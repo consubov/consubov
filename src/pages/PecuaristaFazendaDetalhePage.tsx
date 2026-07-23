@@ -503,6 +503,27 @@ export default function PecuaristaFazendaDetalhePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!loteParaApagar} onOpenChange={(v) => { if (!v && !apagando) setLoteParaApagar(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar lote {loteParaApagar?.nome_lote}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este lote tem pesagens registradas. Ao apagar, todo o histórico de peso e GMD desse lote será perdido permanentemente. Tem certeza que deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={apagando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={apagando}
+              onClick={(e) => { e.preventDefault(); if (loteParaApagar) void executarApagar(loteParaApagar); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {apagando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Apagar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
