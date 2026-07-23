@@ -319,7 +319,7 @@ export default function PesadorPesagemNovoPage() {
 
       {isRotina ? (
         <div className="space-y-2">
-          <Label htmlFor="rend-rotina">Rendimento estimado (%) — opcional</Label>
+          <Label htmlFor="rend-rotina">Rendimento estimado (%)</Label>
           <Input
             id="rend-rotina"
             inputMode="decimal"
@@ -328,7 +328,7 @@ export default function PesadorPesagemNovoPage() {
             placeholder="Ex: 52"
           />
           <p className="text-xs text-muted-foreground">
-            Se informado, será usado apenas para estimar @ no resumo. Valor informativo, sem finalidade comercial.
+            Obrigatório. Usado para estimar @ e Média de @ por animal no resumo. Valor informativo, sem finalidade comercial.
           </p>
         </div>
       ) : isAleatoria ? (
