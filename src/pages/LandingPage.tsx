@@ -963,19 +963,8 @@ export default function LandingPage() {
               >
                 v{APP_VERSION}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set("__v", String(Date.now()));
-                  window.location.replace(url.toString());
-                }}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
-                style={{ background: NEON, color: "#05070A" }}
-                aria-label="Atualizar aplicativo"
-              >
-                <Lucide.RefreshCw className="w-3 h-3" /> Atualizar app
-              </button>
+
+
 
             </div>
           </div>
