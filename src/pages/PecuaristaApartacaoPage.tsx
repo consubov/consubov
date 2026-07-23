@@ -147,7 +147,7 @@ export default function PecuaristaApartacaoPage() {
     setQtd(n);
     setConfs(prev => {
       const next = [...prev];
-      while (next.length < n) next.push({ modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false });
+      while (next.length < n) next.push({ modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" });
       return next.slice(0, n);
     });
   }
