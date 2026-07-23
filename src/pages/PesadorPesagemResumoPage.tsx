@@ -118,22 +118,29 @@ export default function PesadorPesagemResumoPage() {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const showArroba = cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto";
+  const showArroba = !semValores && (cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto");
 
-  const cabecalhoPreco =
-    cfg.tipo_preco === "arroba"
-      ? `@ ${brl(cfg.preco_valor)}`
-      : cfg.tipo_preco === "kg"
-      ? `kg ${brl(cfg.preco_valor)}`
-      : cfg.tipo_preco === "fixo_animal"
-      ? `Fixo ${brl(cfg.preco_valor)}/animal`
-      : Object.entries(cfg.categorias_map ?? {})
-          .map(([cat, m]) => {
-            const label = CATEGORIA_LABELS[cat] ?? cat;
-            const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
-            return `${label}: ${tp} ${brl(m.preco_valor)}`;
-          })
-          .join(" • ");
+  const cabecalhoPreco = semValores
+    ? "Pesagem de rotina (sem valores)"
+    : cfg.tipo_preco === "arroba"
+    ? `@ ${brl(cfg.preco_valor)}`
+    : cfg.tipo_preco === "kg"
+    ? `kg ${brl(cfg.preco_valor)}`
+    : cfg.tipo_preco === "fixo_animal"
+    ? `Fixo ${brl(cfg.preco_valor)}/animal`
+    : Object.entries(cfg.categorias_map ?? {})
+        .map(([cat, m]) => {
+          const label = CATEGORIA_LABELS[cat] ?? cat;
+          const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
+          return `${label}: ${tp} ${brl(m.preco_valor)}`;
+        })
+        .join(" • ");
+
+  // @ estimadas (apenas rotina com rendimento informado)
+  const rendimentoRotina = semValores && cfg.percentual_fixo != null ? Number(cfg.percentual_fixo) : null;
+  const arrobasEstimadas = rendimentoRotina != null
+    ? Math.floor((tot.totalPeso * rendimentoRotina / 100 / 15) * 100) / 100
+    : null;
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
 
