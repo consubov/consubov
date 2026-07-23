@@ -320,14 +320,15 @@ export default function PesadorPesagemExecPage() {
     );
   }
 
-  const tipoLabel =
-    pesagem.tipo_preco === "arroba"
-      ? "@"
-      : pesagem.tipo_preco === "kg"
-      ? "kg"
-      : pesagem.tipo_preco === "fixo_animal"
-      ? "fixo/animal"
-      : "misto";
+  const tipoLabel = semValores
+    ? "sem valores"
+    : pesagem.tipo_preco === "arroba"
+    ? "@"
+    : pesagem.tipo_preco === "kg"
+    ? "kg"
+    : pesagem.tipo_preco === "fixo_animal"
+    ? "fixo/animal"
+    : "misto";
 
   const animalNum = pesos.length + 1;
 
