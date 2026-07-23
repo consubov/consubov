@@ -625,10 +625,39 @@ export default function PecuaristaApartacaoPage() {
           </Card>
         ))}
 
-        <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90" onClick={preparar} disabled={preparando}>
-          {preparando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Split className="w-5 h-5 mr-2" />}
-          Começar apartação
-        </Button>
+        {(() => {
+          const configOk = confs.slice(0, qtd).every(c => {
+            if (c.modo === "existente") { if (!c.loteExistenteId) return false; }
+            else {
+              if (!c.nome.trim()) return false;
+              if (c.criandoNova && !c.novaCategoria.trim()) return false;
+              if (!c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return false;
+            }
+            const r = parseRange(c.pesoMin, c.pesoMax);
+            if ("error" in r) return false;
+            return true;
+          });
+          const ranges = confs.slice(0, qtd).map(c => {
+            const r = parseRange(c.pesoMin, c.pesoMax);
+            return "error" in r ? { min: null, max: null } : r;
+          });
+          let overlap = false;
+          for (let i = 0; i < ranges.length && !overlap; i++) {
+            for (let j = i + 1; j < ranges.length && !overlap; j++) {
+              const a = ranges[i], b = ranges[j];
+              if (a.min == null && a.max == null) continue;
+              if (b.min == null && b.max == null) continue;
+              if (rangesOverlap(a, b)) overlap = true;
+            }
+          }
+          const canStart = configOk && !overlap;
+          return (
+            <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90" onClick={preparar} disabled={preparando || !canStart}>
+              {preparando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Split className="w-5 h-5 mr-2" />}
+              Começar apartação
+            </Button>
+          );
+        })()}
       </div>
     );
   }
