@@ -1,0 +1,200 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, FileDown, Search, Scale, Split } from "lucide-react";
+
+const CATEGORIAS_PADRAO: Record<string, string> = {
+  boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro", garrote: "Garrote", novilha: "Novilha",
+  bezerro: "Bezerro", bezerra: "Bezerra",
+};
+
+type Item = {
+  id: string;
+  tipo: "pesagem" | "apartacao";
+  data: string;
+  loteNome: string;
+  fazendaNome: string;
+  categoria: string;
+  gmd: number | null;
+  pdfUrl: string | null;
+};
+
+const PAGE_SIZE = 20;
+
+export default function PecuaristaHistoricoPage() {
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<Item[]>([]);
+  const [query, setQuery] = useState("");
+  const [visible, setVisible] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    (async () => {
+      const { data: authUser } = await supabase.auth.getUser();
+      const uid = authUser.user?.id;
+      if (!uid) { setLoading(false); return; }
+      const { data: p } = await supabase.from("pecuaristas").select("id").eq("user_id", uid).maybeSingle();
+      const pid = (p as any)?.id as string | undefined;
+      if (!pid) { setLoading(false); return; }
+
+      const [lotesRes, fazRes, catRes] = await Promise.all([
+        supabase.from("lotes_pecuarista").select("id, nome_lote, fazenda_id, categoria, categoria_customizada_id").eq("pecuarista_id", pid),
+        supabase.from("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid),
+        supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
+      ]);
+      const lotes = (lotesRes.data ?? []) as any[];
+      const fazMap: Record<string, string> = {};
+      (fazRes.data ?? []).forEach((f: any) => { fazMap[f.id] = f.nome_fazenda; });
+      const catMap: Record<string, string> = {};
+      (catRes.data ?? []).forEach((c: any) => { catMap[c.id] = c.nome; });
+
+      const loteMap: Record<string, { nome: string; fazenda: string; categoria: string }> = {};
+      lotes.forEach((l) => {
+        const cat = l.categoria === "customizada"
+          ? (catMap[l.categoria_customizada_id] ?? "Personalizada")
+          : (CATEGORIAS_PADRAO[l.categoria] ?? l.categoria);
+        loteMap[l.id] = { nome: l.nome_lote, fazenda: fazMap[l.fazenda_id] ?? "—", categoria: cat };
+      });
+
+      const loteIds = lotes.map((l) => l.id);
+      const collected: Item[] = [];
+
+      if (loteIds.length > 0) {
+        const { data: pes } = await supabase
+          .from("pesagens_lote_pecuarista")
+          .select("id, lote_id, data_pesagem, gmd, pdf_url, apartacao_id")
+          .in("lote_id", loteIds)
+          .not("pdf_url", "is", null)
+          .is("apartacao_id", null)
+          .order("data_pesagem", { ascending: false });
+        for (const r of (pes ?? []) as any[]) {
+          const l = loteMap[r.lote_id];
+          if (!l) continue;
+          collected.push({
+            id: `p-${r.id}`,
+            tipo: "pesagem",
+            data: r.data_pesagem,
+            loteNome: l.nome,
+            fazendaNome: l.fazenda,
+            categoria: l.categoria,
+            gmd: r.gmd != null ? Number(r.gmd) : null,
+            pdfUrl: r.pdf_url ?? null,
+          });
+        }
+
+        const { data: aps } = await supabase
+          .from("apartacoes_pecuarista")
+          .select("id, lote_origem_id, data_apartacao, pdf_url")
+          .eq("pecuarista_id", pid)
+          .not("pdf_url", "is", null)
+          .order("data_apartacao", { ascending: false });
+        for (const r of (aps ?? []) as any[]) {
+          const l = loteMap[r.lote_origem_id];
+          if (!l) continue;
+          collected.push({
+            id: `a-${r.id}`,
+            tipo: "apartacao",
+            data: r.data_apartacao,
+            loteNome: l.nome,
+            fazendaNome: l.fazenda,
+            categoria: l.categoria,
+            gmd: null,
+            pdfUrl: r.pdf_url ?? null,
+          });
+        }
+      }
+
+      collected.sort((a, b) => (a.data < b.data ? 1 : -1));
+      setItems(collected);
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) =>
+      it.loteNome.toLowerCase().includes(q) || it.fazendaNome.toLowerCase().includes(q)
+    );
+  }, [items, query]);
+
+  const shown = filtered.slice(0, visible);
+  const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; } };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando histórico...
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Histórico</h1>
+        <p className="text-sm text-muted-foreground">Pesagens e apartações finalizadas.</p>
+      </div>
+
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setVisible(PAGE_SIZE); }}
+          placeholder="Buscar por lote ou fazenda..."
+          className="pl-9"
+        />
+      </div>
+
+      <Card className="p-0">
+        {shown.length === 0 ? (
+          <div className="text-xs text-muted-foreground py-8 text-center">
+            {query ? "Nenhum resultado." : "Nenhuma pesagem finalizada ainda."}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {shown.map((p) => (
+              <div key={p.id} className="p-3 flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium truncate">{p.loteNome}</span>
+                    <Badge variant="outline" className="gap-1 text-[10px]">
+                      {p.tipo === "apartacao" ? <><Split className="w-3 h-3" /> Apartação</> : <><Scale className="w-3 h-3" /> Pesagem</>}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {p.fazendaNome} • {p.categoria} • {fmtDate(p.data)}
+                    {p.gmd != null && ` • GMD ${p.gmd.toFixed(3)} kg/d`}
+                  </div>
+                </div>
+                {p.pdfUrl && (
+                  <a
+                    href={p.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+                  >
+                    <FileDown className="w-4 h-4" /> PDF
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {filtered.length > visible && (
+        <div className="text-center">
+          <button
+            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+            className="text-sm text-primary font-medium py-2 px-4 rounded-md hover:bg-muted"
+          >
+            Carregar mais ({filtered.length - visible})
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
@@ -34,6 +34,7 @@ interface Lote {
   encerrado_at: string | null;
   ultima_data?: string | null;
   ultimo_gmd?: number | null;
+  qtd_animais?: number | null;
 }
 
 interface CatCustom { id: string; nome: string; }
@@ -59,6 +60,7 @@ export default function PecuaristaFazendaDetalhePage() {
     criandoNova: false,
     identificado: "sim" as "sim" | "nao",
   });
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!user || !fazendaId) return;
@@ -85,17 +87,21 @@ export default function PecuaristaFazendaDetalhePage() {
     const base = (data as Lote[]) || [];
     // fetch last pesagem por lote
     const ids = base.map((l) => l.id);
-    let mapa: Record<string, { data: string; gmd: number | null }> = {};
+    let mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
     if (ids.length > 0) {
       const { data: ps } = await supabase
         .from("pesagens_lote_pecuarista")
-        .select("lote_id, data_pesagem, gmd")
+        .select("lote_id, data_pesagem, gmd, quantidade_animais")
         .in("lote_id", ids)
         .gt("quantidade_animais", 0)
         .order("data_pesagem", { ascending: false });
       for (const row of (ps as any[]) ?? []) {
         if (!mapa[row.lote_id]) {
-          mapa[row.lote_id] = { data: row.data_pesagem, gmd: row.gmd != null ? Number(row.gmd) : null };
+          mapa[row.lote_id] = {
+            data: row.data_pesagem,
+            gmd: row.gmd != null ? Number(row.gmd) : null,
+            qtd: row.quantidade_animais != null ? Number(row.quantidade_animais) : null,
+          };
         }
       }
     }
@@ -103,6 +109,7 @@ export default function PecuaristaFazendaDetalhePage() {
       ...l,
       ultima_data: mapa[l.id]?.data ?? null,
       ultimo_gmd: mapa[l.id]?.gmd ?? null,
+      qtd_animais: mapa[l.id]?.qtd ?? null,
     })));
     setLoading(false);
   }
@@ -269,52 +276,76 @@ export default function PecuaristaFazendaDetalhePage() {
         </Button>
       </div>
 
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar lote pelo nome..."
+          className="pl-9"
+        />
+      </div>
+
       {lotes.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">Nenhum lote cadastrado.</Card>
-      ) : (
-        <div className="space-y-2">
-          {lotes.map(l => (
-            <Card key={l.id} className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${l.id}`)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{l.nome_lote}</span>
-                    <Badge variant="outline" className="font-mono">#{l.codigo}</Badge>
-                    <Badge variant={l.status === "ativo" ? "default" : "secondary"}>{l.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
-                    {!l.identificado && <Badge variant="outline">Sem identificação</Badge>}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">{labelCategoria(l)}</div>
-                  {l.ultima_data && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Última pesagem: {new Date(l.ultima_data).toLocaleDateString("pt-BR")}
-                      {l.ultimo_gmd != null && ` • GMD ${l.ultimo_gmd.toFixed(3)} kg/dia`}
+      ) : (() => {
+        const q = query.trim().toLowerCase();
+        const filtrados = q ? lotes.filter(l => l.nome_lote.toLowerCase().includes(q)) : lotes;
+        if (filtrados.length === 0) {
+          return <Card className="p-8 text-center text-muted-foreground">Nenhum lote encontrado para "{query}".</Card>;
+        }
+        return (
+          <div className="space-y-2">
+            {filtrados.map(l => (
+              <Card key={l.id} className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${l.id}`)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold">{l.nome_lote}</span>
+                      <Badge variant="outline" className="font-mono">#{l.codigo}</Badge>
+                      <Badge variant={l.status === "ativo" ? "default" : "secondary"}>{l.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
+                      {!l.identificado && <Badge variant="outline">Sem identificação</Badge>}
                     </div>
-                  )}
-                </button>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title="Editar lote">
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  {l.status === "ativo" && (
-                    <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
-                      <Archive className="w-4 h-4 text-destructive" />
+                    <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                      <span>{labelCategoria(l)}</span>
+                      {l.qtd_animais != null && l.qtd_animais > 0 && (
+                        <span className="inline-flex items-center gap-1 text-foreground/80">
+                          <Users className="w-3.5 h-3.5" /> {l.qtd_animais} animais
+                        </span>
+                      )}
+                    </div>
+                    {l.ultima_data && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Última pesagem: {new Date(l.ultima_data).toLocaleDateString("pt-BR")}
+                        {l.ultimo_gmd != null && ` • GMD ${l.ultimo_gmd.toFixed(3)} kg/dia`}
+                      </div>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title="Editar lote">
+                      <Pencil className="w-4 h-4" />
                     </Button>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={() => apagar(l)} title="Apagar lote">
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    {l.status === "ativo" && (
+                      <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
+                        <Archive className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => apagar(l)} title="Apagar lote">
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, BarChart3, Landmark, Layers } from "lucide-react";
+import { LogOut, RefreshCw, BarChart3, Landmark, History } from "lucide-react";
 import maisArrobasAsset from "@/assets/mais-arrobas-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
@@ -68,7 +68,7 @@ export default function PecuaristaLayout() {
             <Landmark className="w-5 h-5" /> Fazendas
           </NavLink>
           <NavLink to="/pecuarista/lotes" className={({ isActive }) => cn("flex flex-col items-center gap-1 py-2.5 text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
-            <Layers className="w-5 h-5" /> Lotes
+            <History className="w-5 h-5" /> Histórico
           </NavLink>
         </div>
         <div className="text-center pb-1">
