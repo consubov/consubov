@@ -491,10 +491,25 @@ export default function PecuaristaApartacaoPage() {
         totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
         destinos: secoes,
       });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      let pdfUrl: string | null = null;
+      try {
+        const path = `pecuarista/apartacoes/${apartacaoId}-${Date.now()}.pdf`;
+        const { error: upErr } = await supabase.storage.from("relatorios")
+          .upload(path, blob, { contentType: "application/pdf", upsert: true });
+        if (!upErr) {
+          const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
+          pdfUrl = pub.publicUrl;
+          await supabase.from("apartacoes_pecuarista").update({ pdf_url: pdfUrl }).eq("id", apartacaoId);
+        }
+      } catch { /* segue mesmo sem PDF */ }
       toast.success("Apartação finalizada!");
-      navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`);
+      navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao/${apartacaoId}/resumo`, {
+        state: {
+          pdfUrl: pdfUrl ?? undefined,
+          totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
+          destinos: secoes,
+        },
+      });
     } catch (e: any) {
       toast.error("Erro: " + (e?.message ?? ""));
     } finally {
