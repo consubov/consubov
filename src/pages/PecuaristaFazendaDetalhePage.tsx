@@ -8,10 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users, Settings } from "lucide-react";
 import { toast } from "sonner";
 import FazendaPecuaristaConfigModal from "@/components/FazendaPecuaristaConfigModal";
+
+function extractStoragePath(url: string, bucket: string): string | null {
+  const marker = `/${bucket}/`;
+  const i = url.indexOf(marker);
+  if (i === -1) return null;
+  return url.slice(i + marker.length).split("?")[0];
+}
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
   { slug: "boi_gordo", label: "Boi Gordo" },
@@ -63,6 +74,8 @@ export default function PecuaristaFazendaDetalhePage() {
   });
   const [query, setQuery] = useState("");
   const [configOpen, setConfigOpen] = useState(false);
+  const [loteParaApagar, setLoteParaApagar] = useState<Lote | null>(null);
+  const [apagando, setApagando] = useState(false);
 
   useEffect(() => {
     if (!user || !fazendaId) return;
@@ -248,22 +261,102 @@ export default function PecuaristaFazendaDetalhePage() {
       supabase.from("apartacoes_pecuarista").select("id", { count: "exact", head: true }).eq("lote_origem_id", l.id),
       supabase.from("apartacao_destinos_pecuarista").select("id", { count: "exact", head: true }).eq("lote_destino_id", l.id),
     ]);
-    if ((cPes ?? 0) > 0 || (cOri ?? 0) > 0 || (cDest ?? 0) > 0) {
-      toast.error("Lote com histórico (pesagem ou apartação) não pode ser apagado. Use o botão de encerrar para preservar o rastreamento de GMD.");
+    const temHistorico = (cPes ?? 0) > 0 || (cOri ?? 0) > 0 || (cDest ?? 0) > 0;
+    if (temHistorico) {
+      setLoteParaApagar(l);
       return;
     }
     if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
+    await executarApagar(l);
+  }
+
+  async function executarApagar(l: Lote) {
+    setApagando(true);
     try {
-      // remove animais órfãos vinculados a este lote (sem pesagem)
-      await supabase.from("animais_pecuarista").delete().eq("lote_atual_id", l.id);
-      const { error } = await supabase.from("lotes_pecuarista").delete().eq("id", l.id);
+      const sb = supabase as any;
+      const pdfPaths: string[] = [];
+
+      // 1) Pesagens vinculadas diretamente ao lote
+      const { data: pesagensLote } = await sb
+        .from("pesagens_lote_pecuarista")
+        .select("id, pdf_url")
+        .eq("lote_id", l.id);
+      const pesIdsLote = (pesagensLote ?? []).map((r: any) => r.id);
+      for (const r of pesagensLote ?? []) {
+        if (r.pdf_url) {
+          const p = extractStoragePath(r.pdf_url, "relatorios");
+          if (p) pdfPaths.push(p);
+        }
+      }
+
+      // 2) Apartações onde o lote é origem
+      const { data: apartOrigem } = await sb
+        .from("apartacoes_pecuarista")
+        .select("id, pdf_url")
+        .eq("lote_origem_id", l.id);
+      const apartIds = (apartOrigem ?? []).map((r: any) => r.id);
+      for (const r of apartOrigem ?? []) {
+        if (r.pdf_url) {
+          const p = extractStoragePath(r.pdf_url, "relatorios");
+          if (p) pdfPaths.push(p);
+        }
+      }
+
+      // 3) Pesagens filhas das apartações
+      let pesIdsApart: string[] = [];
+      if (apartIds.length > 0) {
+        const { data: pesFilhas } = await sb
+          .from("pesagens_lote_pecuarista")
+          .select("id, pdf_url")
+          .in("apartacao_id", apartIds);
+        pesIdsApart = (pesFilhas ?? []).map((r: any) => r.id);
+        for (const r of pesFilhas ?? []) {
+          if (r.pdf_url) {
+            const p = extractStoragePath(r.pdf_url, "relatorios");
+            if (p) pdfPaths.push(p);
+          }
+        }
+      }
+
+      const todasPesIds = Array.from(new Set([...pesIdsLote, ...pesIdsApart]));
+
+      // 4) Apagar pesos individuais
+      if (todasPesIds.length > 0) {
+        await sb.from("pesos_animais_pecuarista").delete().in("pesagem_lote_id", todasPesIds);
+        await sb.from("pesagens_lote_pecuarista").delete().in("id", todasPesIds);
+      }
+
+      // 5) Apagar destinos e apartações onde este lote participou
+      if (apartIds.length > 0) {
+        await sb.from("apartacao_destinos_pecuarista").delete().in("apartacao_id", apartIds);
+        await sb.from("apartacao_lotes").delete().in("apartacao_id", apartIds);
+        await sb.from("apartacoes_pecuarista").delete().in("id", apartIds);
+      }
+      // destinos onde este lote é destino (apartações que geraram este lote)
+      await sb.from("apartacao_destinos_pecuarista").delete().eq("lote_destino_id", l.id);
+
+      // 6) Animais vinculados a este lote
+      await sb.from("animais_pecuarista").delete().eq("lote_atual_id", l.id);
+
+      // 7) O próprio lote
+      const { error } = await sb.from("lotes_pecuarista").delete().eq("id", l.id);
       if (error) throw error;
-      toast.success("Lote apagado");
-      loadLotes();
+
+      // 8) Arquivos de Storage
+      if (pdfPaths.length > 0) {
+        await supabase.storage.from("relatorios").remove(pdfPaths);
+      }
+
+      toast.success("Lote e histórico apagados.");
+      setLoteParaApagar(null);
+      await loadLotes();
     } catch (e: any) {
       toast.error("Erro ao apagar: " + (e?.message || "desconhecido"));
+    } finally {
+      setApagando(false);
     }
   }
+
 
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -410,6 +503,27 @@ export default function PecuaristaFazendaDetalhePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!loteParaApagar} onOpenChange={(v) => { if (!v && !apagando) setLoteParaApagar(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar lote {loteParaApagar?.nome_lote}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este lote tem pesagens registradas. Ao apagar, todo o histórico de peso e GMD desse lote será perdido permanentemente. Tem certeza que deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={apagando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={apagando}
+              onClick={(e) => { e.preventDefault(); if (loteParaApagar) void executarApagar(loteParaApagar); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {apagando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Apagar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
