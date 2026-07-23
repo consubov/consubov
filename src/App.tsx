@@ -61,6 +61,10 @@ import PesadorPesagemPage from "./pages/PesadorPesagemPage";
 import PesadorPesagemNovoPage from "./pages/PesadorPesagemNovoPage";
 import PesadorPesagemExecPage from "./pages/PesadorPesagemExecPage";
 import PesadorPesagemResumoPage from "./pages/PesadorPesagemResumoPage";
+import PecuaristaLayout from "./pages/PecuaristaLayout";
+import PecuaristaDashboard from "./pages/PecuaristaDashboard";
+import PecuaristaFazendasPage from "./pages/PecuaristaFazendasPage";
+import PecuaristaFazendaDetalhePage from "./pages/PecuaristaFazendaDetalhePage";
 import SyncVetLayout from "./pages/SyncVetLayout";
 import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
 import SyncVetEquipePage from "./pages/SyncVetEquipePage";
@@ -201,6 +205,8 @@ function RoleRedirect() {
       return <Navigate to="/consultor" replace />;
     case "pesador":
       return <Navigate to="/pesador" replace />;
+    case "pecuarista":
+      return <Navigate to="/pecuarista" replace />;
     case "syncvet":
       return <Navigate to="/syncvet" replace />;
     default:
@@ -307,6 +313,13 @@ const App = () => (
                 <Route path="pesagem/novo" element={<PesadorPesagemNovoPage />} />
                 <Route path="pesagem/:pesagemId" element={<PesadorPesagemExecPage />} />
                 <Route path="pesagem/:pesagemId/resumo" element={<PesadorPesagemResumoPage />} />
+              </Route>
+
+              <Route path="/pecuarista" element={<ProtectedRoute allowedRoles={["pecuarista"]}><PecuaristaLayout /></ProtectedRoute>}>
+                <Route index element={<PecuaristaDashboard />} />
+                <Route path="fazendas" element={<PecuaristaFazendasPage />} />
+                <Route path="fazendas/:fazendaId" element={<PecuaristaFazendaDetalhePage />} />
+                <Route path="lotes" element={<PecuaristaDashboard />} />
               </Route>
 
               <Route path="/syncvet" element={<ProtectedRoute allowedRoles={["syncvet"]}><SyncVetLayout /></ProtectedRoute>}>
