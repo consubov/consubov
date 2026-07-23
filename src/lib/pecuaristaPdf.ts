@@ -61,14 +61,11 @@ function fmtDateTime(iso: string) { try { return new Date(iso).toLocaleString("p
 function fmtHora(iso: string) {
   try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 }
-function fmtDataComHoras(dataFim: string, dataInicio?: string | null) {
-  const dia = fmtDate(dataFim);
+function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | null {
   const hFim = fmtHora(dataFim);
-  if (dataInicio) {
-    const hIni = fmtHora(dataInicio);
-    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
-  }
-  return hFim ? `${dia} · ${hFim}` : dia;
+  const hIni = dataInicio ? fmtHora(dataInicio) : "";
+  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+  return null;
 }
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
@@ -190,8 +187,10 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ["Lote:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo de lote:", data.header.identificado ? "Identificado" : "Sem identificação"],
-    ["Data:", fmtDataComHoras(data.header.data, data.header.horaInicio)],
+    ["Data:", fmtDate(data.header.data)],
   );
+  const horarioLinhaP = fmtHorarioLinha(data.header.data, data.header.horaInicio);
+  if (horarioLinhaP) rows.push(["", horarioLinhaP]);
 
   doc.setFontSize(10);
   for (const [l, v] of rows) {
@@ -349,7 +348,11 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     ["Lote de origem:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
-    ["Data:", fmtDataComHoras(data.header.data, data.header.horaInicio)],
+    ["Data:", fmtDate(data.header.data)],
+  );
+  const horarioLinhaA = fmtHorarioLinha(data.header.data, data.header.horaInicio);
+  if (horarioLinhaA) rows.push(["", horarioLinhaA]);
+  rows.push(
     ["Total animais apartados:", String(data.totalGeral.quantidade)],
     ["Peso total geral:", `${fmtN(data.totalGeral.peso_total, 2)} kg`],
   );

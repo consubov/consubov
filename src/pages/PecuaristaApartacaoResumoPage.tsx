@@ -21,13 +21,16 @@ const fmt = (n: number, d = 2) =>
 const fmtHora = (iso: string) => {
   try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 };
-const fmtDataLinha = (fim?: string | null, ini?: string | null) => {
+const fmtDataLinha = (fim?: string | null) => {
   if (!fim) return null;
-  const dia = new Date(fim).toLocaleDateString("pt-BR");
+  return new Date(fim).toLocaleDateString("pt-BR");
+};
+const fmtHorarioLinha = (fim?: string | null, ini?: string | null) => {
+  if (!fim) return null;
   const hFim = fmtHora(fim);
   const hIni = ini ? fmtHora(ini) : "";
-  if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
-  return hFim ? `${dia} · ${hFim}` : dia;
+  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+  return null;
 };
 
 export default function PecuaristaApartacaoResumoPage() {
@@ -100,8 +103,11 @@ export default function PecuaristaApartacaoResumoPage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-40 px-2">
       <Card className="p-4">
         <div className="text-xs uppercase text-muted-foreground">Apartação finalizada</div>
-        {fmtDataLinha(data.dataFim, data.horaInicio) && (
-          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, data.horaInicio)}</div>
+        {fmtDataLinha(data.dataFim) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
+        )}
+        {fmtHorarioLinha(data.dataFim, data.horaInicio) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.dataFim, data.horaInicio)}</div>
         )}
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>

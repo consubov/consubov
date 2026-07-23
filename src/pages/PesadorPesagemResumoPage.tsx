@@ -152,13 +152,13 @@ export default function PesadorPesagemResumoPage() {
   const fmtHora = (iso: string) => {
     try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
   };
-  const dataLinha = (() => {
+  const dataLinha = finalizadaAt ? new Date(finalizadaAt).toLocaleDateString("pt-BR") : null;
+  const horarioLinha = (() => {
     if (!finalizadaAt) return null;
-    const dia = new Date(finalizadaAt).toLocaleDateString("pt-BR");
     const hFim = fmtHora(finalizadaAt);
     const hIni = createdAt ? fmtHora(createdAt) : "";
-    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
-    return hFim ? `${dia} · ${hFim}` : dia;
+    if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+    return null;
   })();
 
   // Detalhamento por categoria (apenas para lote misto)
@@ -269,6 +269,9 @@ export default function PesadorPesagemResumoPage() {
         {dataLinha && (
           <div className="text-xs text-muted-foreground mt-1">{dataLinha}</div>
         )}
+        {horarioLinha && (
+          <div className="text-xs text-muted-foreground">{horarioLinha}</div>
+        )}
       </div>
 
       {semValores ? (
@@ -302,6 +305,9 @@ export default function PesadorPesagemResumoPage() {
             <div className="rounded-lg border bg-card p-3 text-center col-span-2">
               <div className="text-xs text-muted-foreground">Média de @ por animal (estimada)</div>
               <div className="text-xl font-bold">{mediaArrobaEst.toString().replace(".", ",")}</div>
+              <div className="text-[11px] text-muted-foreground mt-1 italic">
+                Valor informativo, sem finalidade comercial.
+              </div>
             </div>
           )}
         </div>
