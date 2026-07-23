@@ -455,8 +455,12 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     body.push(["Tipo", "Pesagem de rotina (sem valores)"]);
     if (data.rendimentoEstimado != null) {
       const arrobasEst = Math.floor((tot.totalPeso * data.rendimentoEstimado / 100 / 15) * 100) / 100;
+      const mediaArrobaEst = tot.totalAnimais > 0
+        ? Math.floor((arrobasEst / tot.totalAnimais) * 100) / 100
+        : 0;
       body.push(["Rendimento estimado", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
       body.push(["@ estimadas", fmtNum(arrobasEst, 2)]);
+      body.push(["Média de @ por animal (estimada)", fmtNum(mediaArrobaEst, 2)]);
     }
   } else if (tipo === "arroba") {
     body.push(["Rendimento de carcaça", rendimentoLabel]);
