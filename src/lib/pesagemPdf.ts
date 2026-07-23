@@ -13,6 +13,7 @@ export interface PesagemPdfHeader {
   fazenda: string;
   cidade: string;
   data: string;
+  dataInicio?: string | null;
   categoriaLabel: string;
   formaPagamento: string;
 }
@@ -37,6 +38,20 @@ function fmtNum(v: number, decimals = 2) {
 }
 function fmtDate(iso: string) {
   try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; }
+}
+function fmtHora(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+function fmtDataComHoras(dataFim: string, dataInicio?: string | null) {
+  const dia = fmtDate(dataFim);
+  const hFim = fmtHora(dataFim);
+  if (dataInicio) {
+    const hIni = fmtHora(dataInicio);
+    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+  }
+  return hFim ? `${dia} · ${hFim}` : dia;
 }
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85): Promise<{ dataUrl: string; w: number; h: number } | null> {
@@ -295,7 +310,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   } else if (cfg.tipo_preco === "misto") {
     infoRows.push(["Forma de pagamento:", "Mista (@ / kg / Fixo por animal)"]);
   }
-  infoRows.push(["Data:", fmtDate(data.header.data)]);
+  infoRows.push(["Data:", fmtDataComHoras(data.header.data, data.header.dataInicio)]);
 
   doc.setFontSize(10);
   for (const [label, value] of infoRows) {

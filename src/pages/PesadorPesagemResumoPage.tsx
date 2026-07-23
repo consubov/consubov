@@ -35,6 +35,7 @@ export default function PesadorPesagemResumoPage() {
   const [clienteCidade, setClienteCidade] = useState("");
   const [categoria, setCategoria] = useState("");
   const [finalizadaAt, setFinalizadaAt] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [valorTotalPago, setValorTotalPago] = useState<number | null>(null);
   const [semValores, setSemValores] = useState(false);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
@@ -47,7 +48,7 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago, sem_valores"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, created_at, pdf_url, valor_total_pago, sem_valores"
         )
         .eq("id", pesagemId)
         .maybeSingle();
@@ -63,6 +64,7 @@ export default function PesadorPesagemResumoPage() {
         } as any);
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
+        setCreatedAt((p as any).created_at ?? null);
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
         setSemValores(!!(p as any).sem_valores);
         setPdfUrl((p as any).pdf_url ?? null);
@@ -141,8 +143,23 @@ export default function PesadorPesagemResumoPage() {
   const arrobasEstimadas = rendimentoRotina != null
     ? Math.floor((tot.totalPeso * rendimentoRotina / 100 / 15) * 100) / 100
     : null;
+  const mediaArrobaEst = arrobasEstimadas != null && tot.totalAnimais > 0
+    ? Math.floor((arrobasEstimadas / tot.totalAnimais) * 100) / 100
+    : null;
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
+
+  const fmtHora = (iso: string) => {
+    try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+  };
+  const dataLinha = (() => {
+    if (!finalizadaAt) return null;
+    const dia = new Date(finalizadaAt).toLocaleDateString("pt-BR");
+    const hFim = fmtHora(finalizadaAt);
+    const hIni = createdAt ? fmtHora(createdAt) : "";
+    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+    return hFim ? `${dia} · ${hFim}` : dia;
+  })();
 
   // Detalhamento por categoria (apenas para lote misto)
   const breakdownPorCategoria = cfg.tipo_preco === "misto"
@@ -187,6 +204,7 @@ export default function PesadorPesagemResumoPage() {
           fazenda: clienteFazenda,
           cidade: clienteCidade,
           data: finalizadaAt ?? new Date().toISOString(),
+          dataInicio: createdAt,
           categoriaLabel,
           formaPagamento: cabecalhoPreco,
         },
@@ -248,6 +266,9 @@ export default function PesadorPesagemResumoPage() {
         <div className="text-xs text-muted-foreground">
           {categoriaLabel} • {cabecalhoPreco}
         </div>
+        {dataLinha && (
+          <div className="text-xs text-muted-foreground mt-1">{dataLinha}</div>
+        )}
       </div>
 
       {semValores ? (
@@ -275,6 +296,12 @@ export default function PesadorPesagemResumoPage() {
               <div className="text-[11px] text-muted-foreground mt-1 italic">
                 Valor informativo, sem finalidade comercial.
               </div>
+            </div>
+          )}
+          {mediaArrobaEst != null && (
+            <div className="rounded-lg border bg-card p-3 text-center col-span-2">
+              <div className="text-xs text-muted-foreground">Média de @ por animal (estimada)</div>
+              <div className="text-xl font-bold">{mediaArrobaEst.toString().replace(".", ",")}</div>
             </div>
           )}
         </div>

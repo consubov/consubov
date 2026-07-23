@@ -17,6 +17,7 @@ export interface PecuaristaPdfHeader {
   categoria: string;
   identificado: boolean;
   data: string;
+  horaInicio?: string | null;
 }
 
 export interface PecuaristaPesoIdentificado {
@@ -57,6 +58,18 @@ function fmtN(v: number, d = 2) {
 }
 function fmtDate(iso: string) { try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; } }
 function fmtDateTime(iso: string) { try { return new Date(iso).toLocaleString("pt-BR"); } catch { return iso; } }
+function fmtHora(iso: string) {
+  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+}
+function fmtDataComHoras(dataFim: string, dataInicio?: string | null) {
+  const dia = fmtDate(dataFim);
+  const hFim = fmtHora(dataFim);
+  if (dataInicio) {
+    const hIni = fmtHora(dataInicio);
+    if (hIni && hFim) return `${dia} · Início ${hIni} — Fim ${hFim}`;
+  }
+  return hFim ? `${dia} · ${hFim}` : dia;
+}
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
   try {
@@ -177,7 +190,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ["Lote:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo de lote:", data.header.identificado ? "Identificado" : "Sem identificação"],
-    ["Data:", fmtDateTime(data.header.data)],
+    ["Data:", fmtDataComHoras(data.header.data, data.header.horaInicio)],
   );
 
   doc.setFontSize(10);
@@ -336,7 +349,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     ["Lote de origem:", data.header.lote],
     ["Categoria:", data.header.categoria],
     ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
-    ["Data:", fmtDateTime(data.header.data)],
+    ["Data:", fmtDataComHoras(data.header.data, data.header.horaInicio)],
     ["Total animais apartados:", String(data.totalGeral.quantidade)],
     ["Peso total geral:", `${fmtN(data.totalGeral.peso_total, 2)} kg`],
   );

@@ -113,6 +113,14 @@ export default function PecuaristaApartacaoPage() {
   const [linhasId, setLinhasId] = useState<LinhaId[]>([]);
   const [linhasSem, setLinhasSem] = useState<LinhaSem[]>([]);
   const [finalizando, setFinalizando] = useState(false);
+  const [horaInicio, setHoraInicio] = useState<string | null>(null);
+
+  async function marcarInicioSePreciso(apId: string | null) {
+    if (horaInicio || !apId) return;
+    const agora = new Date().toISOString();
+    setHoraInicio(agora);
+    await supabase.from("apartacoes_pecuarista").update({ hora_inicio: agora }).eq("id", apId);
+  }
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -350,6 +358,7 @@ export default function PecuaristaApartacaoPage() {
       lote_anterior: prev.lote_anterior, gmd_individual: gmd, dias,
       destino_lote_id: destLoteId,
     }]);
+    void marcarInicioSePreciso(apartacaoId);
     setNumeroAtual(""); setPesoAtual(""); setPrev(null); setStep("numero");
     setTimeout(() => inputRef.current?.focus(), 30);
   }
@@ -360,6 +369,7 @@ export default function PecuaristaApartacaoPage() {
     setLinhasSem(prev => [...prev, {
       ordem: prev.length + 1, peso_kg: peso, rowId: crypto.randomUUID(), destino_lote_id: destLoteId,
     }]);
+    void marcarInicioSePreciso(apartacaoId);
     setPesoAtual(""); setStep("peso");
     setTimeout(() => inputRef.current?.focus(), 30);
   }
@@ -380,6 +390,8 @@ export default function PecuaristaApartacaoPage() {
     if (total === 0) return toast.error("Nenhum animal pesado.");
     setFinalizando(true);
     try {
+      const dataFim = new Date().toISOString();
+      const horaIniFinal = horaInicio ?? dataFim;
       const secoes: ApartacaoDestinoSection[] = [];
       let totalGeralQtd = 0, totalGeralPeso = 0;
 
@@ -406,7 +418,7 @@ export default function PecuaristaApartacaoPage() {
         if (a) {
           mediaAnt = Number(a.peso_medio);
           dataAnt = a.data_pesagem;
-          dias = daysBetween(dataAnt!, new Date().toISOString());
+          dias = daysBetween(dataAnt!, dataFim);
           gmdLote = (peso_medio - mediaAnt) / dias;
         }
 
@@ -414,7 +426,8 @@ export default function PecuaristaApartacaoPage() {
         const { data: pRow, error: eP } = await supabase.from("pesagens_lote_pecuarista").insert({
           lote_id: d.lote_id,
           apartacao_id: apartacaoId,
-          data_pesagem: new Date().toISOString(),
+          data_pesagem: dataFim,
+          hora_inicio: horaIniFinal,
           peso_total, quantidade_animais: qtd, peso_medio,
           gmd: gmdLote,
         }).select("id").single();
@@ -486,7 +499,8 @@ export default function PecuaristaApartacaoPage() {
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
           categoria: categoriaLabel, identificado: lote.identificado,
-          data: new Date().toISOString(),
+          data: dataFim,
+          horaInicio: horaIniFinal,
         },
         totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
         destinos: secoes,
@@ -499,7 +513,13 @@ export default function PecuaristaApartacaoPage() {
         if (!upErr) {
           const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
           pdfUrl = pub.publicUrl;
-          await supabase.from("apartacoes_pecuarista").update({ pdf_url: pdfUrl }).eq("id", apartacaoId);
+          await supabase.from("apartacoes_pecuarista")
+            .update({ pdf_url: pdfUrl, data_apartacao: dataFim, hora_inicio: horaIniFinal })
+            .eq("id", apartacaoId);
+        } else {
+          await supabase.from("apartacoes_pecuarista")
+            .update({ data_apartacao: dataFim, hora_inicio: horaIniFinal })
+            .eq("id", apartacaoId);
         }
       } catch { /* segue mesmo sem PDF */ }
       toast.success("Apartação finalizada!");
@@ -508,6 +528,8 @@ export default function PecuaristaApartacaoPage() {
           pdfUrl: pdfUrl ?? undefined,
           totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
           destinos: secoes,
+          dataFim,
+          horaInicio: horaIniFinal,
         },
       });
     } catch (e: any) {
