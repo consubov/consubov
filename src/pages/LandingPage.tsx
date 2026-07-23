@@ -27,6 +27,9 @@ import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import BrasilMap from "@/components/landing/BrasilMap";
 import { useLandingContent } from "@/hooks/useLandingContent";
+import { UpdateBanner } from "@/components/UpdateBanner";
+import { APP_VERSION } from "@/lib/appVersion";
+import { useSWUpdate } from "@/lib/swRegistration";
 
 const leadSchema = z.object({
   nome: z.string().trim().min(2, "Nome obrigatório").max(100),
