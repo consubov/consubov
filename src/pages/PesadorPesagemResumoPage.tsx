@@ -36,6 +36,7 @@ export default function PesadorPesagemResumoPage() {
   const [categoria, setCategoria] = useState("");
   const [finalizadaAt, setFinalizadaAt] = useState<string | null>(null);
   const [valorTotalPago, setValorTotalPago] = useState<number | null>(null);
+  const [semValores, setSemValores] = useState(false);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -46,23 +47,24 @@ export default function PesadorPesagemResumoPage() {
       const { data: p } = await supabase
         .from("pesagens_compra")
         .select(
-          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago"
+          "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, pdf_url, valor_total_pago, sem_valores"
         )
         .eq("id", pesagemId)
         .maybeSingle();
       if (p) {
         setCfg({
-          tipo_preco: p.tipo_preco as any,
+          tipo_preco: (p.tipo_preco as any) ?? null,
           preco_valor: Number(p.preco_valor ?? 0),
           modo_percentual: (p.modo_percentual as any) ?? "na",
           percentual_fixo: p.percentual_fixo != null ? Number(p.percentual_fixo) : null,
           preco_arroba: p.preco_arroba != null ? Number(p.preco_arroba) : null,
           preco_kg: p.preco_kg != null ? Number(p.preco_kg) : null,
           preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
-        });
+        } as any);
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
+        setSemValores(!!(p as any).sem_valores);
         setPdfUrl((p as any).pdf_url ?? null);
         const { data: c } = await supabase
           .from("clientes_pesador")
@@ -116,22 +118,29 @@ export default function PesadorPesagemResumoPage() {
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const showArroba = cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto";
+  const showArroba = !semValores && (cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto");
 
-  const cabecalhoPreco =
-    cfg.tipo_preco === "arroba"
-      ? `@ ${brl(cfg.preco_valor)}`
-      : cfg.tipo_preco === "kg"
-      ? `kg ${brl(cfg.preco_valor)}`
-      : cfg.tipo_preco === "fixo_animal"
-      ? `Fixo ${brl(cfg.preco_valor)}/animal`
-      : Object.entries(cfg.categorias_map ?? {})
-          .map(([cat, m]) => {
-            const label = CATEGORIA_LABELS[cat] ?? cat;
-            const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
-            return `${label}: ${tp} ${brl(m.preco_valor)}`;
-          })
-          .join(" • ");
+  const cabecalhoPreco = semValores
+    ? "Pesagem de rotina (sem valores)"
+    : cfg.tipo_preco === "arroba"
+    ? `@ ${brl(cfg.preco_valor)}`
+    : cfg.tipo_preco === "kg"
+    ? `kg ${brl(cfg.preco_valor)}`
+    : cfg.tipo_preco === "fixo_animal"
+    ? `Fixo ${brl(cfg.preco_valor)}/animal`
+    : Object.entries(cfg.categorias_map ?? {})
+        .map(([cat, m]) => {
+          const label = CATEGORIA_LABELS[cat] ?? cat;
+          const tp = m.tipo_preco === "arroba" ? "@" : m.tipo_preco === "kg" ? "kg" : "Fixo";
+          return `${label}: ${tp} ${brl(m.preco_valor)}`;
+        })
+        .join(" • ");
+
+  // @ estimadas (apenas rotina com rendimento informado)
+  const rendimentoRotina = semValores && cfg.percentual_fixo != null ? Number(cfg.percentual_fixo) : null;
+  const arrobasEstimadas = rendimentoRotina != null
+    ? Math.floor((tot.totalPeso * rendimentoRotina / 100 / 15) * 100) / 100
+    : null;
 
   const categoriaLabel = CATEGORIA_LABELS[categoria] ?? categoria;
 
@@ -187,6 +196,8 @@ export default function PesadorPesagemResumoPage() {
         pesadorNomeEmpresa,
         pesadorNome,
         valorTotalOverride: valorTotalPago,
+        semValores,
+        rendimentoEstimado: rendimentoRotina,
       });
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
@@ -239,36 +250,66 @@ export default function PesadorPesagemResumoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Animais</div>
-          <div className="text-xl font-bold">{tot.totalAnimais}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Peso médio</div>
-          <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Peso total</div>
-          <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
-        </div>
-        {showArroba && (
+      {semValores ? (
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">@ pagáveis</div>
-            <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
+            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xl font-bold">{tot.totalAnimais}</div>
           </div>
-        )}
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground">Média de @ por animal</div>
-          <div className="text-xl font-bold">
-            {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center col-span-2">
+            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          {arrobasEstimadas != null && (
+            <div className="rounded-lg border bg-muted/60 p-3 text-center col-span-2">
+              <div className="text-xs text-muted-foreground">
+                @ estimadas ({rendimentoRotina}% de rendimento)
+              </div>
+              <div className="text-xl font-bold">
+                {arrobasEstimadas.toString().replace(".", ",")}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1 italic">
+                Valor informativo, sem finalidade comercial.
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xl font-bold">{tot.totalAnimais}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
+          </div>
+          {showArroba && (
+            <div className="rounded-lg border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground">@ pagáveis</div>
+              <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
+            </div>
+          )}
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <div className="text-xs text-muted-foreground">Média de @ por animal</div>
+            <div className="text-xl font-bold">
+              {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
+            <div className="text-xs text-muted-foreground">Total a pagar</div>
+            <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
           </div>
         </div>
-        <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
-          <div className="text-xs text-muted-foreground">Total a pagar</div>
-          <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
-        </div>
-      </div>
+      )}
 
       {breakdownPorCategoria.length > 0 && (
         <div className="rounded-lg border bg-card p-3">

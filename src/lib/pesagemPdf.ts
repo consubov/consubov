@@ -25,6 +25,8 @@ export interface PesagemPdfData {
   pesadorNomeEmpresa?: string | null;
   pesadorNome?: string | null;
   valorTotalOverride?: number | null;
+  semValores?: boolean;
+  rendimentoEstimado?: number | null;
 }
 
 function fmtBRL(v: number) {
@@ -265,6 +267,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   y += 6;
 
   const cfg = data.cfg;
+  const semValores = !!data.semValores;
   const rendimentoLabel =
     cfg.modo_percentual === "fixo" && cfg.percentual_fixo != null
       ? `${fmtNum(cfg.percentual_fixo, 1)}%`
@@ -277,7 +280,12 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   const catLabel = cfg.tipo_preco === "misto" ? "Aleatória (mista)" : data.header.categoriaLabel;
   infoRows.push(["Categoria:", catLabel]);
 
-  if (cfg.tipo_preco === "arroba") {
+  if (semValores) {
+    infoRows.push(["Tipo:", "Pesagem de rotina (sem valores)"]);
+    if (data.rendimentoEstimado != null) {
+      infoRows.push(["Rendimento estimado:", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
+    }
+  } else if (cfg.tipo_preco === "arroba") {
     infoRows.push(["Valor da arroba:", `${fmtBRL(cfg.preco_valor)}/@`]);
     infoRows.push(["Rendimento de carcaça:", rendimentoLabel]);
   } else if (cfg.tipo_preco === "kg") {
@@ -443,7 +451,14 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   body.push(["Peso total", `${fmtNum(tot.totalPeso, 2)} kg`]);
   body.push(["Peso médio", `${fmtNum(tot.mediaPeso, 2)} kg`]);
 
-  if (tipo === "arroba") {
+  if (semValores) {
+    body.push(["Tipo", "Pesagem de rotina (sem valores)"]);
+    if (data.rendimentoEstimado != null) {
+      const arrobasEst = Math.floor((tot.totalPeso * data.rendimentoEstimado / 100 / 15) * 100) / 100;
+      body.push(["Rendimento estimado", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
+      body.push(["@ estimadas", fmtNum(arrobasEst, 2)]);
+    }
+  } else if (tipo === "arroba") {
     body.push(["Rendimento de carcaça", rendimentoLabel]);
     body.push(["@ pagáveis totais", fmtNum(tot.totalArroba, 2)]);
     body.push(["Média de @ por animal", fmtNum(tot.mediaArrobaPorAnimal, 2)]);
@@ -473,15 +488,28 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
 
   const finalY = (doc as any).lastAutoTable?.finalY ?? 80;
 
-  doc.setFillColor(20, 67, 43);
-  doc.roundedRect(15, finalY + 8, W - 30, 22, 3, 3, "F");
-  doc.setTextColor(255);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("Valor total a pagar", 22, finalY + 17);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(fmtBRL(data.valorTotalOverride ?? tot.totalValor), 22, finalY + 26);
+  if (semValores) {
+    if (data.rendimentoEstimado != null) {
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.text(
+        "@ estimadas: valor informativo, sem finalidade comercial.",
+        15,
+        finalY + 10
+      );
+    }
+  } else {
+    doc.setFillColor(20, 67, 43);
+    doc.roundedRect(15, finalY + 8, W - 30, 22, 3, 3, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("Valor total a pagar", 22, finalY + 17);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(fmtBRL(data.valorTotalOverride ?? tot.totalValor), 22, finalY + 26);
+  }
 
   drawFooter(doc);
   return doc.output("blob");

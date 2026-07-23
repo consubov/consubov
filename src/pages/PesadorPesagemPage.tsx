@@ -23,6 +23,7 @@ type PesagemRow = {
   finalizada_at: string;
   pdf_url: string | null;
   valor_total_pago: number | null;
+  sem_valores: boolean;
 };
 
 const PAGE_SIZE = 20;
@@ -50,7 +51,7 @@ export default function PesadorPesagemPage() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago")
+        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago, sem_valores")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
@@ -131,7 +132,9 @@ export default function PesadorPesagemPage() {
                   </div>
                 </div>
                 <div className="text-right flex flex-col items-end gap-1">
-                  <div className="text-sm font-semibold text-primary">{brl(p.totalValor)}</div>
+                  <div className={`text-sm font-semibold ${p.sem_valores ? "text-muted-foreground italic" : "text-primary"}`}>
+                    {p.sem_valores ? "Sem valores" : brl(p.totalValor)}
+                  </div>
                   {p.pdf_url && (
                     <button
                       type="button"

@@ -60,7 +60,7 @@ type PesagemRow = {
   cliente_id: string;
   categoria: string;
   finalizada_at: string;
-  tipo_preco: string;
+  tipo_preco: string | null;
   preco_valor: number | null;
   modo_percentual: string | null;
   percentual_fixo: number | null;
@@ -68,6 +68,7 @@ type PesagemRow = {
   preco_kg: number | null;
   preco_fixo_animal: number | null;
   valor_total_pago: number | null;
+  sem_valores: boolean;
 };
 
 type CategoriaMap = Record<string, { tipo_preco: any; preco_valor: number }>;
@@ -105,7 +106,7 @@ export default function PesadorDashboard() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, valor_total_pago")
+        .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, valor_total_pago, sem_valores")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
@@ -185,7 +186,7 @@ export default function PesadorDashboard() {
       if (d.getFullYear() === year) animaisAno += pesos.length;
       if (d.getFullYear() === year && d.getMonth() === month) {
         animaisMes += pesos.length;
-        valorMes += Number(p.valor_total_pago ?? 0);
+        if (!p.sem_valores) valorMes += Number(p.valor_total_pago ?? 0);
       }
     }
     return { animaisAno, animaisMes, valorMes };
@@ -209,6 +210,7 @@ export default function PesadorDashboard() {
     let totalArrobas = 0;
 
     for (const p of pesagens) {
+      if (p.sem_valores) continue;
       const d = new Date(p.finalizada_at);
       if (d.getFullYear() !== appliedYear) continue;
       const mes = d.getMonth();
