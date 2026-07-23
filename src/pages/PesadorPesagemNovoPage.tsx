@@ -25,6 +25,7 @@ const CATEGORIAS_PURAS = CATEGORIAS.filter((c) => c.value !== "aleatoria");
 
 type TipoPreco = "arroba" | "kg" | "fixo_animal";
 type ModoPercentual = "fixo" | "aleatorio";
+type ModoPesagem = "comercial" | "rotina";
 
 type Cliente = {
   id: string;
@@ -76,16 +77,19 @@ export default function PesadorPesagemNovoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [modo, setModo] = useState<ModoPesagem>("comercial");
   const [categoria, setCategoria] = useState<string>("");
   const [tipoPreco, setTipoPreco] = useState<TipoPreco | "">("");
   const [precoValor, setPrecoValor] = useState<string>("");
   const [modoPercentual, setModoPercentual] = useState<ModoPercentual | "">("");
   const [percentualFixo, setPercentualFixo] = useState<string>("");
+  const [rendimentoRotina, setRendimentoRotina] = useState<string>("");
 
   // Configuração por categoria para lote misto ("Aleatória")
   const [categoriasMistas, setCategoriasMistas] = useState<Record<string, CategoriaMistaCfg>>({});
 
   const isAleatoria = categoria === "aleatoria";
+  const isRotina = modo === "rotina";
 
   useEffect(() => {
     (async () => {
@@ -132,6 +136,14 @@ export default function PesadorPesagemNovoPage() {
 
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
+    if (isRotina) {
+      // Rendimento é opcional; se preenchido, validar intervalo.
+      if (rendimentoRotina.trim()) {
+        const r = parseNum(rendimentoRotina);
+        if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
+      }
+      return true;
+    }
     if (isAleatoria) {
       const entries = Object.entries(categoriasMistas);
       if (entries.length === 0) return false;
@@ -153,14 +165,30 @@ export default function PesadorPesagemNovoPage() {
       }
     }
     return true;
-  }, [isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas]);
+  }, [isRotina, rendimentoRotina, isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas]);
 
   async function handleIniciar() {
     if (!pesadorId || !clienteId || !canSubmit) return;
     setSaving(true);
 
     let payload: any;
-    if (isAleatoria) {
+    if (isRotina) {
+      const rend = rendimentoRotina.trim() ? parseNum(rendimentoRotina) : null;
+      payload = {
+        pesador_id: pesadorId,
+        cliente_id: clienteId,
+        categoria,
+        tipo_preco: null,
+        preco_valor: null,
+        modo_percentual: null,
+        percentual_fixo: rend,
+        preco_arroba: null,
+        preco_kg: null,
+        preco_fixo_animal: null,
+        sem_valores: true,
+        status: "em_andamento",
+      };
+    } else if (isAleatoria) {
       payload = {
         pesador_id: pesadorId,
         cliente_id: clienteId,
@@ -172,6 +200,7 @@ export default function PesadorPesagemNovoPage() {
         preco_arroba: null,
         preco_kg: null,
         preco_fixo_animal: null,
+        sem_valores: false,
         status: "em_andamento",
       };
     } else {
@@ -188,6 +217,7 @@ export default function PesadorPesagemNovoPage() {
           tipoPreco === "arroba" && modoPercentual === "fixo"
             ? parseNum(percentualFixo)
             : null,
+        sem_valores: false,
         status: "em_andamento",
       };
     }
@@ -203,7 +233,7 @@ export default function PesadorPesagemNovoPage() {
       return;
     }
 
-    if (isAleatoria) {
+    if (!isRotina && isAleatoria) {
       const rows = Object.entries(categoriasMistas).map(([cat, cfg]) => ({
         pesagem_id: data.id,
         categoria: cat,
@@ -260,6 +290,23 @@ export default function PesadorPesagemNovoPage() {
       </div>
 
       <div className="space-y-2">
+        <Label>Tipo de pesagem</Label>
+        <div className="flex flex-wrap gap-2">
+          <Chip active={modo === "comercial"} onClick={() => setModo("comercial")}>
+            Pesagem comercial
+          </Chip>
+          <Chip active={modo === "rotina"} onClick={() => setModo("rotina")}>
+            Pesagem de rotina (sem valores)
+          </Chip>
+        </div>
+        {isRotina && (
+          <p className="text-xs text-muted-foreground">
+            Uso para conferência (ex.: antes do frigorífico). Nenhum valor será calculado.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label>Categoria</Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((c) => (
@@ -270,7 +317,21 @@ export default function PesadorPesagemNovoPage() {
         </div>
       </div>
 
-      {isAleatoria ? (
+      {isRotina ? (
+        <div className="space-y-2">
+          <Label htmlFor="rend-rotina">Rendimento estimado (%) — opcional</Label>
+          <Input
+            id="rend-rotina"
+            inputMode="decimal"
+            value={rendimentoRotina}
+            onChange={(e) => setRendimentoRotina(e.target.value)}
+            placeholder="Ex: 52"
+          />
+          <p className="text-xs text-muted-foreground">
+            Se informado, será usado apenas para estimar @ no resumo. Valor informativo, sem finalidade comercial.
+          </p>
+        </div>
+      ) : isAleatoria ? (
         <div className="space-y-3">
           <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
             Selecione as categorias que aparecerão neste lote misto e configure a forma de pagamento de cada uma.
