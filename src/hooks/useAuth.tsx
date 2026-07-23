@@ -261,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roleData, setRoleData] = useState<RoleData>(emptyRoleData);
   const [loading, setLoading] = useState(true);
+  const [roleResolved, setRoleResolved] = useState(false);
   const initializedRef = useRef(false);
 
   useEffect(() => {
