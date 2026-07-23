@@ -27,6 +27,9 @@ import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import BrasilMap from "@/components/landing/BrasilMap";
 import { useLandingContent } from "@/hooks/useLandingContent";
+import { UpdateBanner } from "@/components/UpdateBanner";
+import { APP_VERSION } from "@/lib/appVersion";
+
 
 const leadSchema = z.object({
   nome: z.string().trim().min(2, "Nome obrigatório").max(100),
@@ -346,6 +349,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden" style={{ background: BG, color: "#E6F5EC", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <UpdateBanner />
       <style>{`
         @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px ${NEON_DIM}} 50%{box-shadow:0 0 40px ${NEON}} }
         @keyframes floatSlow { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(2deg)} }
@@ -937,6 +941,27 @@ export default function LandingPage() {
               {t("footer_cidade", "Araguaína — TO, Brasil")} • {t("footer_telefone", "(63) 99113-6071")}
             </p>
             <p>© {t("footer_ano", "2026")} {t("footer_copyright", "Consubov. Todos os direitos reservados.")}</p>
+            <div className="mt-2 flex items-center gap-2 md:justify-end justify-center">
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
+                style={{ background: "rgba(34,255,136,0.12)", color: NEON, border: `1px solid ${BORDER}` }}
+              >
+                v{APP_VERSION}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("__v", String(Date.now()));
+                  window.location.replace(url.toString());
+                }}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition hover:opacity-80"
+                style={{ background: NEON, color: "#05070A" }}
+                aria-label="Atualizar aplicativo"
+              >
+                <Lucide.RefreshCw className="w-3 h-3" /> Atualizar app
+              </button>
+            </div>
           </div>
         </div>
       </footer>

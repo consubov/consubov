@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -24,6 +25,7 @@ export default function ConsultorLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <UpdateBanner />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
