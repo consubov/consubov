@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Landmark, Layers } from "lucide-react";
+import maisArrobasAsset from "@/assets/mais-arrobas-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
