@@ -51,7 +51,7 @@ export default function PesadorPesagemPage() {
 
       const { data: pAll } = await supabase
         .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago")
+        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago, sem_valores")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
         .order("finalizada_at", { ascending: false });
