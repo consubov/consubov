@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
