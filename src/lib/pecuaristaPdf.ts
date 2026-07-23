@@ -249,3 +249,161 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   drawFooter(doc);
   return doc.output("blob");
 }
+
+// ============================================================
+// APARTAÇÃO
+// ============================================================
+
+export interface ApartacaoDestinoSection {
+  nome_lote: string;
+  codigo?: string | null;
+  identificado: boolean;
+  quantidade: number;
+  peso_total: number;
+  peso_medio: number;
+  peso_medio_anterior?: number | null;
+  data_anterior?: string | null;
+  dias?: number | null;
+  gmd?: number | null;
+  identificados?: PecuaristaPesoIdentificado[];
+  semId?: PecuaristaPesoSemId[];
+}
+
+export interface ApartacaoPdfData {
+  header: Omit<PecuaristaPdfHeader, "identificado"> & { identificado: boolean };
+  totalGeral: { quantidade: number; peso_total: number };
+  destinos: ApartacaoDestinoSection[];
+}
+
+export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promise<Blob> {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+
+  const logo = data.header.logoUrl ? await urlToJpeg(data.header.logoUrl) : null;
+  const nomeEmpresa = data.header.nomeEmpresa || "Mais Arrobas";
+
+  let y = drawFirstHeader(doc, nomeEmpresa, logo);
+  // Sobrescreve o título da seção (drawFirstHeader escreveu "RELATÓRIO DE PESAGEM DE LOTE")
+  // — repintamos por cima com fundo branco para trocar por "APARTAÇÃO".
+  doc.setFillColor(255, 255, 255);
+  doc.rect(15, 12 + 9, 160, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(INK_SOFT);
+  doc.text("RELATÓRIO DE PESAGEM COM APARTAÇÃO", 15, 12 + 13);
+
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Informações da apartação", 15, y);
+  y += 6;
+
+  const rows: [string, string][] = [
+    ["Produtor:", data.header.produtor || "—"],
+    ["Fazenda:", data.header.fazenda || "—"],
+  ];
+  if (data.header.cidade) rows.push(["Cidade:", data.header.cidade]);
+  rows.push(
+    ["Lote de origem:", `${data.header.lote} (#${data.header.codigoLote})`],
+    ["Categoria:", data.header.categoria],
+    ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
+    ["Data:", fmtDateTime(data.header.data)],
+    ["Total animais apartados:", String(data.totalGeral.quantidade)],
+    ["Peso total geral:", `${fmtN(data.totalGeral.peso_total, 2)} kg`],
+  );
+  doc.setFontSize(10);
+  for (const [l, v] of rows) {
+    doc.setFont("helvetica", "bold"); doc.setTextColor(INK);
+    doc.text(l, 15, y);
+    const lw = doc.getTextWidth(l);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(v), 15 + lw + 2, y);
+    y += 5.5;
+  }
+
+  y += 2;
+  doc.setDrawColor(LINE); doc.setLineWidth(0.4);
+  doc.line(15, y, W - 15, y);
+  y += 6;
+
+  for (const d of data.destinos) {
+    if (y > H - 60) { doc.addPage(); y = 20; }
+
+    // Título do destino
+    doc.setFillColor(31, 122, 77);
+    doc.rect(15, y - 4, W - 30, 8, "F");
+    doc.setTextColor("#ffffff");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    const nomeDest = d.codigo ? `${d.nome_lote}  (#${d.codigo})` : d.nome_lote;
+    doc.text(`Destino: ${nomeDest}`, 17, y + 1.5);
+    doc.setFontSize(9);
+    doc.text(`${d.quantidade} animais`, W - 17, y + 1.5, { align: "right" });
+    y += 8;
+
+    // Totais do destino
+    const tRows: [string, string][] = [
+      ["Peso total", `${fmtN(d.peso_total, 2)} kg`],
+      ["Peso médio", `${fmtN(d.peso_medio, 2)} kg`],
+    ];
+    if (d.peso_medio_anterior != null) {
+      tRows.push(["Peso médio anterior", `${fmtN(d.peso_medio_anterior, 2)} kg`]);
+      if (d.data_anterior) tRows.push(["Pesagem anterior", fmtDate(d.data_anterior)]);
+      if (d.dias != null) tRows.push(["Dias entre pesagens", String(d.dias)]);
+      if (d.gmd != null) tRows.push(["GMD do lote", `${fmtN(d.gmd, 3)} kg/dia`]);
+    }
+    autoTable(doc, {
+      startY: y + 2,
+      body: tRows,
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
+      columnStyles: {
+        0: { fontStyle: "bold", fillColor: [247, 244, 234] as any, cellWidth: 70 },
+        1: { halign: "right" },
+      },
+      margin: { left: 15, right: 15 },
+    });
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 4;
+
+    // Detalhe
+    if (d.identificado && d.identificados && d.identificados.length > 0) {
+      const body = d.identificados.map((r) => [
+        r.numero,
+        `${fmtN(r.peso_kg, 1)} kg`,
+        fmtDateTime(r.data),
+        r.gmd_individual != null ? `${fmtN(r.gmd_individual, 3)} kg/dia` : "—",
+      ]);
+      autoTable(doc, {
+        startY: y + 1,
+        head: [["Nº", "Peso", "Data/hora", "GMD"]],
+        body,
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 1.8, textColor: INK, lineColor: LINE },
+        headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
+        margin: { left: 15, right: 15 },
+      });
+      y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+    } else if (!d.identificado && d.semId && d.semId.length > 0) {
+      const cols = 4;
+      const colW = (W - 30) / cols;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(INK);
+      y += 4;
+      const rowsCount = Math.ceil(d.semId.length / cols);
+      for (let r = 0; r < rowsCount; r++) {
+        if (y > H - 15) { doc.addPage(); y = 20; }
+        for (let c = 0; c < cols; c++) {
+          const idx = r * cols + c;
+          if (idx >= d.semId.length) break;
+          const p = d.semId[idx];
+          doc.text(`${p.ordem}. ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
+        }
+        y += 5;
+      }
+      y += 4;
+    }
+  }
+
+  drawFooter(doc);
+  return doc.output("blob");
+}
