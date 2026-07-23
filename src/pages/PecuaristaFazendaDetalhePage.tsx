@@ -49,6 +49,8 @@ export default function PecuaristaFazendaDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingHasPesagens, setEditingHasPesagens] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     categoriaSlug: "boi_gordo" as string,
