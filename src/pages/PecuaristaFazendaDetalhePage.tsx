@@ -132,6 +132,35 @@ export default function PecuaristaFazendaDetalhePage() {
     throw new Error("Limite de 999 lotes atingido");
   }
 
+  function resetForm() {
+    setEditingId(null);
+    setEditingHasPesagens(false);
+    setForm({ nome: "", categoriaSlug: "boi_gordo", categoriaCustomizadaId: "", novaCategoria: "", criandoNova: false, identificado: "sim" });
+  }
+
+  function openCreate() {
+    resetForm();
+    setDialogOpen(true);
+  }
+
+  async function openEdit(l: Lote) {
+    const { count } = await supabase
+      .from("pesagens_lote_pecuarista")
+      .select("id", { count: "exact", head: true })
+      .eq("lote_id", l.id);
+    setEditingId(l.id);
+    setEditingHasPesagens((count ?? 0) > 0);
+    setForm({
+      nome: l.nome_lote,
+      categoriaSlug: l.categoria,
+      categoriaCustomizadaId: l.categoria_customizada_id ?? "",
+      novaCategoria: "",
+      criandoNova: false,
+      identificado: l.identificado ? "sim" : "nao",
+    });
+    setDialogOpen(true);
+  }
+
   async function handleSave() {
     if (!pecuaristaId || !fazendaId) return;
     if (!form.nome.trim()) return toast.error("Nome do lote é obrigatório");
@@ -157,22 +186,35 @@ export default function PecuaristaFazendaDetalhePage() {
         categoria_customizada_id = form.categoriaCustomizadaId;
       }
 
-      const codigo = await nextCodigo(pecuaristaId);
-
-      const { error } = await supabase.from("lotes_pecuarista").insert({
-        pecuarista_id: pecuaristaId,
-        fazenda_id: fazendaId,
-        nome_lote: form.nome.trim(),
-        codigo,
-        categoria,
-        categoria_customizada_id,
-        identificado: form.identificado === "sim",
-        status: "ativo",
-      });
-      if (error) throw error;
-      toast.success(`Lote ${codigo} criado!`);
+      if (editingId) {
+        const payload: any = {
+          nome_lote: form.nome.trim(),
+          categoria,
+          categoria_customizada_id,
+        };
+        if (!editingHasPesagens) {
+          payload.identificado = form.identificado === "sim";
+        }
+        const { error } = await supabase.from("lotes_pecuarista").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Lote atualizado!");
+      } else {
+        const codigo = await nextCodigo(pecuaristaId);
+        const { error } = await supabase.from("lotes_pecuarista").insert({
+          pecuarista_id: pecuaristaId,
+          fazenda_id: fazendaId,
+          nome_lote: form.nome.trim(),
+          codigo,
+          categoria,
+          categoria_customizada_id,
+          identificado: form.identificado === "sim",
+          status: "ativo",
+        });
+        if (error) throw error;
+        toast.success(`Lote ${codigo} criado!`);
+      }
       setDialogOpen(false);
-      setForm({ nome: "", categoriaSlug: "boi_gordo", categoriaCustomizadaId: "", novaCategoria: "", criandoNova: false, identificado: "sim" });
+      resetForm();
       await Promise.all([loadLotes(), loadCats(pecuaristaId)]);
     } catch (e: any) {
       toast.error("Erro: " + (e?.message || "desconhecido"));
@@ -191,7 +233,28 @@ export default function PecuaristaFazendaDetalhePage() {
     else { toast.success("Lote encerrado"); loadLotes(); }
   }
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  async function apagar(l: Lote) {
+    const { count } = await supabase
+      .from("pesagens_lote_pecuarista")
+      .select("id", { count: "exact", head: true })
+      .eq("lote_id", l.id);
+    if ((count ?? 0) > 0) {
+      toast.error("Lote com histórico de pesagem não pode ser apagado. Use o botão de encerrar para preservar o rastreamento de GMD.");
+      return;
+    }
+    if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
+    try {
+      // remove animais órfãos vinculados a este lote (sem pesagem)
+      await supabase.from("animais_pecuarista").delete().eq("lote_id", l.id);
+      const { error } = await supabase.from("lotes_pecuarista").delete().eq("id", l.id);
+      if (error) throw error;
+      toast.success("Lote apagado");
+      loadLotes();
+    } catch (e: any) {
+      toast.error("Erro ao apagar: " + (e?.message || "desconhecido"));
+    }
+  }
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
