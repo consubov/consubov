@@ -27,6 +27,7 @@ interface AuthContextType {
   role: UserRole;
   roleData: RoleData;
   loading: boolean;
+  roleResolved: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
