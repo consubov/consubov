@@ -325,6 +325,7 @@ const App = () => (
                 <Route path="fazendas/:fazendaId/lotes/:loteId" element={<PecuaristaLoteDetalhePage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/buscar" element={<PecuaristaBuscarAnimalPage />} />
                 <Route path="fazendas/:fazendaId/lotes/:loteId/pesagem/:pesagemId" element={<PecuaristaPesagemExecPage />} />
+                <Route path="fazendas/:fazendaId/lotes/:loteId/apartacao" element={<PecuaristaApartacaoPage />} />
                 <Route path="lotes" element={<PecuaristaDashboard />} />
               </Route>
 
