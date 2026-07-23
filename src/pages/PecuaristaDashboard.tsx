@@ -25,7 +25,7 @@ export default function PecuaristaDashboard() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-foreground">{greeting}{nome ? `, ${nome}` : ""}!</h1>
-        <p className="text-sm text-muted-foreground">Bem-vindo ao Consubov Pecuarista.</p>
+        <p className="text-sm text-muted-foreground">Bem-vindo ao Mais Arrobas.</p>
       </div>
       <Card><CardContent className="py-16 text-center text-muted-foreground">Em breve: indicadores do seu rebanho.</CardContent></Card>
     </div>
