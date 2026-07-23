@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
