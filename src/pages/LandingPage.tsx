@@ -390,7 +390,13 @@ export default function LandingPage() {
               <span className="text-[10px] tracking-[0.3em]" style={{ color: NEON }}>INTELIGÊNCIA NUTRICIONAL</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <span
+              className="hidden xs:inline-flex rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
+              style={{ background: "rgba(34,255,136,0.12)", color: NEON, border: `1px solid ${BORDER}` }}
+            >
+              v{APP_VERSION}
+            </span>
             <button
               type="button"
               onClick={() => {
@@ -398,29 +404,32 @@ export default function LandingPage() {
                 url.searchParams.set("__v", String(Date.now()));
                 window.location.replace(url.toString());
               }}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full transition hover:opacity-80"
+              className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full transition hover:opacity-80 shrink-0"
               style={{ background: NEON, color: "#03110A" }}
               aria-label="Atualizar aplicativo"
               title={`Atualizar app (v${APP_VERSION})`}
             >
-              <Lucide.RefreshCw className="w-4 h-4" />
+              <Lucide.RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             <Link
               to="/login"
-              className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
               Entrar
             </Link>
             <button
               onClick={scrollToForm}
-              className="glow-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider"
+              className="glow-btn flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap"
               style={{ background: NEON, color: "#03110A" }}
             >
-              Demonstração <ArrowRight className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Demonstração</span>
+              <span className="sm:hidden">Demo</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+
         </div>
       </header>
 
