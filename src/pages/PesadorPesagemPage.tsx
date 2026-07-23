@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileDown, Search } from "lucide-react";
+import { Loader2, FileDown, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { downloadPdfFromUrl } from "@/lib/downloadPdf";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -28,49 +33,82 @@ type PesagemRow = {
 
 const PAGE_SIZE = 20;
 
+function extractStoragePath(url: string, bucket: string): string | null {
+  const marker = `/${bucket}/`;
+  const i = url.indexOf(marker);
+  if (i === -1) return null;
+  return url.slice(i + marker.length).split("?")[0];
+}
+
 export default function PesadorPesagemPage() {
   const [loading, setLoading] = useState(true);
   const [pesagens, setPesagens] = useState<PesagemRow[]>([]);
   const [clienteNomes, setClienteNomes] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [toDelete, setToDelete] = useState<(PesagemRow & { produtor: string }) | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data: authUser } = await supabase.auth.getUser();
-      const uid = authUser.user?.id;
-      if (!uid) { setLoading(false); return; }
+  async function load() {
+    setLoading(true);
+    const { data: authUser } = await supabase.auth.getUser();
+    const uid = authUser.user?.id;
+    if (!uid) { setLoading(false); return; }
 
-      const { data: pes } = await supabase
-        .from("pesadores")
-        .select("id")
-        .eq("user_id", uid)
-        .maybeSingle();
-      const pesadorId = (pes as any)?.id as string | undefined;
-      if (!pesadorId) { setLoading(false); return; }
+    const { data: pes } = await supabase
+      .from("pesadores")
+      .select("id")
+      .eq("user_id", uid)
+      .maybeSingle();
+    const pesadorId = (pes as any)?.id as string | undefined;
+    if (!pesadorId) { setLoading(false); return; }
 
-      const { data: pAll } = await supabase
-        .from("pesagens_compra")
-        .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago, sem_valores")
-        .eq("pesador_id", pesadorId)
-        .not("finalizada_at", "is", null)
-        .order("finalizada_at", { ascending: false });
-      const rows = (pAll ?? []) as PesagemRow[];
-      setPesagens(rows);
+    const { data: pAll } = await supabase
+      .from("pesagens_compra")
+      .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago, sem_valores")
+      .eq("pesador_id", pesadorId)
+      .not("finalizada_at", "is", null)
+      .order("finalizada_at", { ascending: false });
+    const rows = (pAll ?? []) as PesagemRow[];
+    setPesagens(rows);
 
-      const clienteIds = Array.from(new Set(rows.map((r) => r.cliente_id)));
-      if (clienteIds.length > 0) {
-        const { data: cs } = await supabase
-          .from("clientes_pesador")
-          .select("id, nome")
-          .in("id", clienteIds);
-        const cmap: Record<string, string> = {};
-        for (const c of cs ?? []) cmap[(c as any).id] = (c as any).nome;
-        setClienteNomes(cmap);
+    const clienteIds = Array.from(new Set(rows.map((r) => r.cliente_id)));
+    if (clienteIds.length > 0) {
+      const { data: cs } = await supabase
+        .from("clientes_pesador")
+        .select("id, nome")
+        .in("id", clienteIds);
+      const cmap: Record<string, string> = {};
+      for (const c of cs ?? []) cmap[(c as any).id] = (c as any).nome;
+      setClienteNomes(cmap);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function handleDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      // filhos primeiro
+      await supabase.from("pesos_pesagem_compra").delete().eq("pesagem_id", toDelete.id);
+      await supabase.from("pesagens_compra_categorias").delete().eq("pesagem_id", toDelete.id);
+      const { error } = await supabase.from("pesagens_compra").delete().eq("id", toDelete.id);
+      if (error) throw error;
+      if (toDelete.pdf_url) {
+        const path = extractStoragePath(toDelete.pdf_url, "relatorios");
+        if (path) await supabase.storage.from("relatorios").remove([path]);
       }
-      setLoading(false);
-    })();
-  }, []);
+      toast.success("Pesagem excluída.");
+      setToDelete(null);
+      await load();
+    } catch (e: any) {
+      toast.error("Erro ao excluir: " + (e?.message || "desconhecido"));
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const items = useMemo(() => {
     return pesagens.map((p) => ({
@@ -135,15 +173,25 @@ export default function PesadorPesagemPage() {
                   <div className={`text-sm font-semibold ${p.sem_valores ? "text-muted-foreground italic" : "text-primary"}`}>
                     {p.sem_valores ? "Sem valores" : brl(p.totalValor)}
                   </div>
-                  {p.pdf_url && (
+                  <div className="flex items-center gap-2">
+                    {p.pdf_url && (
+                      <button
+                        type="button"
+                        onClick={() => void downloadPdfFromUrl(p.pdf_url!, `pesagem-${p.id}.pdf`)}
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
+                      >
+                        <FileDown className="w-3 h-3" /> PDF
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => void downloadPdfFromUrl(p.pdf_url!, `pesagem-${p.id}.pdf`)}
-                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
+                      onClick={() => setToDelete(p)}
+                      className="inline-flex items-center gap-1 text-[11px] text-destructive hover:text-destructive/80"
+                      aria-label="Excluir pesagem"
                     >
-                      <FileDown className="w-3 h-3" /> PDF
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -161,6 +209,28 @@ export default function PesadorPesagemPage() {
           </button>
         </div>
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pesagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja apagar esta pesagem de <strong>{toDelete?.produtor ?? "—"}</strong>?
+              Essa ação não pode ser desfeita e vai afetar os totais do Painel.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
