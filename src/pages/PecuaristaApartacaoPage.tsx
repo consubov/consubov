@@ -31,8 +31,8 @@ interface CatCustom { id: string; nome: string; }
 interface LoteExistente { id: string; nome_lote: string; codigo: string; identificado: boolean; status: string; }
 
 type DestinoConfig =
-  | { modo: "novo"; nome: string; categoriaSlug: string; categoriaCustomId: string; novaCategoria: string; criandoNova: boolean }
-  | { modo: "existente"; loteExistenteId: string };
+  | { modo: "novo"; nome: string; categoriaSlug: string; categoriaCustomId: string; novaCategoria: string; criandoNova: boolean; pesoMin: string; pesoMax: string }
+  | { modo: "existente"; loteExistenteId: string; pesoMin: string; pesoMax: string };
 
 interface Destino {
   id: string;                 // apartacao_lotes.id
@@ -40,6 +40,30 @@ interface Destino {
   nome_lote: string;
   codigo: string;
   identificado: boolean;
+  peso_min: number | null;
+  peso_max: number | null;
+}
+
+function parseRange(pMin: string, pMax: string): { min: number | null; max: number | null } | { error: string } {
+  const trim = (s: string) => s.trim().replace(",", ".");
+  const min = trim(pMin) === "" ? null : Number(trim(pMin));
+  const max = trim(pMax) === "" ? null : Number(trim(pMax));
+  if (min !== null && (!Number.isFinite(min) || min < 0)) return { error: "Peso mínimo inválido" };
+  if (max !== null && (!Number.isFinite(max) || max < 0)) return { error: "Peso máximo inválido" };
+  if (min !== null && max !== null && min > max) return { error: "Peso mínimo maior que peso máximo" };
+  return { min, max };
+}
+function rangesOverlap(a: { min: number | null; max: number | null }, b: { min: number | null; max: number | null }): boolean {
+  const aMin = a.min ?? -Infinity, aMax = a.max ?? Infinity;
+  const bMin = b.min ?? -Infinity, bMax = b.max ?? Infinity;
+  return aMin <= bMax && bMin <= aMax;
+}
+function destinoParaPeso(destinos: Destino[], peso: number): Destino | null {
+  const matches = destinos.filter(d =>
+    (d.peso_min == null || peso >= d.peso_min) &&
+    (d.peso_max == null || peso <= d.peso_max)
+  );
+  return matches.length === 1 ? matches[0] : null;
 }
 
 type LinhaId = {
@@ -73,8 +97,8 @@ export default function PecuaristaApartacaoPage() {
   // Config
   const [qtd, setQtd] = useState<2 | 3>(2);
   const [confs, setConfs] = useState<DestinoConfig[]>([
-    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false },
-    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false },
+    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" },
+    { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" },
   ]);
   const [preparando, setPreparando] = useState(false);
 
@@ -123,7 +147,7 @@ export default function PecuaristaApartacaoPage() {
     setQtd(n);
     setConfs(prev => {
       const next = [...prev];
-      while (next.length < n) next.push({ modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false });
+      while (next.length < n) next.push({ modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: "", pesoMax: "" });
       return next.slice(0, n);
     });
   }
@@ -143,12 +167,25 @@ export default function PecuaristaApartacaoPage() {
   async function preparar() {
     if (!lote) return;
     // Validate configs
+    const ranges: Array<{ min: number | null; max: number | null }> = [];
     for (let i = 0; i < qtd; i++) {
       const c = confs[i];
       if (c.modo === "novo" && !c.nome.trim()) return toast.error(`Destino ${i + 1}: informe o nome do novo lote.`);
       if (c.modo === "novo" && c.criandoNova && !c.novaCategoria.trim()) return toast.error(`Destino ${i + 1}: informe o nome da nova categoria.`);
       if (c.modo === "novo" && !c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return toast.error(`Destino ${i + 1}: selecione a categoria personalizada.`);
       if (c.modo === "existente" && !c.loteExistenteId) return toast.error(`Destino ${i + 1}: selecione um lote existente.`);
+      const r = parseRange(c.pesoMin, c.pesoMax);
+      if ("error" in r) return toast.error(`Destino ${i + 1}: ${r.error}.`);
+      ranges.push(r);
+    }
+    // Validate no overlap between ranges (only among destinos that defined at least one bound)
+    for (let i = 0; i < ranges.length; i++) {
+      for (let j = i + 1; j < ranges.length; j++) {
+        const a = ranges[i], b = ranges[j];
+        if (a.min == null && a.max == null) continue;
+        if (b.min == null && b.max == null) continue;
+        if (rangesOverlap(a, b)) return toast.error(`As faixas de peso dos destinos ${i + 1} e ${j + 1} se sobrepõem.`);
+      }
     }
     setPreparando(true);
     try {
@@ -210,12 +247,25 @@ export default function PecuaristaApartacaoPage() {
         }).select("id").single();
         if (e3) throw e3;
 
+        // apartacao_destinos_pecuarista: faixa de peso por destino
+        const r = ranges[i];
+        const { error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
+          apartacao_id: apId,
+          lote_destino_id: destLote.id,
+          peso_min: r.min,
+          peso_max: r.max,
+          ordem: i + 1,
+        });
+        if (eDest) throw eDest;
+
         destinosFeitos.push({
           id: (alRow as any).id,
           lote_id: destLote.id,
           nome_lote: destLote.nome_lote,
           codigo: destLote.codigo,
           identificado: destLote.identificado,
+          peso_min: r.min,
+          peso_max: r.max,
         });
       }
 
@@ -500,9 +550,11 @@ export default function PecuaristaApartacaoPage() {
             <div className="font-semibold">Destino {i + 1}</div>
             <RadioGroup value={c.modo} onValueChange={(v) => setConfs(prev => {
               const next = [...prev];
+              const keepMin = (next[i] as any).pesoMin ?? "";
+              const keepMax = (next[i] as any).pesoMax ?? "";
               next[i] = v === "novo"
-                ? { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false }
-                : { modo: "existente", loteExistenteId: "" };
+                ? { modo: "novo", nome: "", categoriaSlug: "boi_gordo", categoriaCustomId: "", novaCategoria: "", criandoNova: false, pesoMin: keepMin, pesoMax: keepMax }
+                : { modo: "existente", loteExistenteId: "", pesoMin: keepMin, pesoMax: keepMax };
               return next;
             })}>
               <div className="flex items-center gap-2"><RadioGroupItem value="novo" id={`m-novo-${i}`} /><Label htmlFor={`m-novo-${i}`} className="font-normal cursor-pointer">Criar novo lote</Label></div>
@@ -561,6 +613,27 @@ export default function PecuaristaApartacaoPage() {
                 )}
               </div>
             )}
+
+            <div className="pt-2 border-t space-y-2">
+              <Label className="text-sm">Faixa de peso (kg) — opcional</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Peso mínimo</Label>
+                  <Input type="number" inputMode="decimal" placeholder="ex: 401"
+                    value={(c as any).pesoMin}
+                    onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMin = e.target.value; return n; })} />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Peso máximo</Label>
+                  <Input type="number" inputMode="decimal" placeholder="ex: 500"
+                    value={(c as any).pesoMax}
+                    onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMax = e.target.value; return n; })} />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Deixe em branco para "sem limite". As faixas não podem se sobrepor entre os destinos.
+              </div>
+            </div>
           </Card>
         ))}
 
@@ -633,23 +706,53 @@ export default function PecuaristaApartacaoPage() {
               </Button>
             </>
           )}
-          {step === "destino" && (
-            <>
-              <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
-              <div className="text-xs text-muted-foreground">Nº {prev?.numero} · {parseFloat(pesoAtual.replace(",", ".")).toFixed(1)} kg</div>
-              <div className="flex flex-wrap gap-2">
-                {destinos.map(d => (
-                  <button key={d.lote_id} type="button"
-                    onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                    onClick={() => escolherDestinoId(d.lote_id)}
-                    className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
-                    {d.nome_lote}
-                    <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          {step === "destino" && (() => {
+            const peso = parseFloat(pesoAtual.replace(",", "."));
+            const sugerido = destinoParaPeso(destinos, peso);
+            return (
+              <>
+                <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
+                <div className="text-xs text-muted-foreground">Nº {prev?.numero} · {peso.toFixed(1)} kg</div>
+                {sugerido ? (
+                  <>
+                    <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
+                      onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                      onClick={() => escolherDestinoId(sugerido.lote_id)}>
+                      <Check className="w-5 h-5 mr-2" />
+                      Confirmar {sugerido.nome_lote}
+                    </Button>
+                    <div className="text-xs text-muted-foreground text-center">ou trocar manualmente:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {destinos.filter(d => d.lote_id !== sugerido.lote_id).map(d => (
+                        <button key={d.lote_id} type="button"
+                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                          onClick={() => escolherDestinoId(d.lote_id)}
+                          className="flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 border-muted-foreground/30 bg-background text-foreground text-sm hover:bg-muted transition">
+                          {d.nome_lote}
+                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {destinos.map(d => (
+                        <button key={d.lote_id} type="button"
+                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                          onClick={() => escolherDestinoId(d.lote_id)}
+                          className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
+                          {d.nome_lote}
+                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : (
         <div className="space-y-3">
@@ -668,23 +771,53 @@ export default function PecuaristaApartacaoPage() {
               </Button>
             </>
           )}
-          {step === "destino" && (
-            <>
-              <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
-              <div className="text-xs text-muted-foreground">{parseFloat(pesoAtual.replace(",", ".")).toFixed(1)} kg</div>
-              <div className="flex flex-wrap gap-2">
-                {destinos.map(d => (
-                  <button key={d.lote_id} type="button"
-                    onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                    onClick={() => escolherDestinoSem(d.lote_id)}
-                    className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
-                    {d.nome_lote}
-                    <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          {step === "destino" && (() => {
+            const peso = parseFloat(pesoAtual.replace(",", "."));
+            const sugerido = destinoParaPeso(destinos, peso);
+            return (
+              <>
+                <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
+                <div className="text-xs text-muted-foreground">{peso.toFixed(1)} kg</div>
+                {sugerido ? (
+                  <>
+                    <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
+                      onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                      onClick={() => escolherDestinoSem(sugerido.lote_id)}>
+                      <Check className="w-5 h-5 mr-2" />
+                      Confirmar {sugerido.nome_lote}
+                    </Button>
+                    <div className="text-xs text-muted-foreground text-center">ou trocar manualmente:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {destinos.filter(d => d.lote_id !== sugerido.lote_id).map(d => (
+                        <button key={d.lote_id} type="button"
+                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                          onClick={() => escolherDestinoSem(d.lote_id)}
+                          className="flex-1 min-w-[100px] px-3 py-3 rounded-lg border-2 border-muted-foreground/30 bg-background text-foreground text-sm hover:bg-muted transition">
+                          {d.nome_lote}
+                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {destinos.map(d => (
+                        <button key={d.lote_id} type="button"
+                          onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
+                          onClick={() => escolherDestinoSem(d.lote_id)}
+                          className="flex-1 min-w-[100px] px-4 py-4 rounded-lg border-2 border-primary bg-primary/10 text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition">
+                          {d.nome_lote}
+                          <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
