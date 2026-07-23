@@ -391,6 +391,21 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("__v", String(Date.now()));
+                window.location.replace(url.toString());
+              }}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full transition hover:opacity-80"
+              style={{ background: NEON, color: "#03110A" }}
+              aria-label="Atualizar aplicativo"
+              title={`Atualizar app (v${APP_VERSION})`}
+            >
+              <Lucide.RefreshCw className="w-4 h-4" />
+            </button>
+
             <Link
               to="/login"
               className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
