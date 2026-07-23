@@ -2793,8 +2793,9 @@ export type Database = {
           preco_fixo_animal: number | null
           preco_kg: number | null
           preco_valor: number | null
+          sem_valores: boolean
           status: string
-          tipo_preco: string
+          tipo_preco: string | null
           valor_total_pago: number | null
         }
         Insert: {
@@ -2811,8 +2812,9 @@ export type Database = {
           preco_fixo_animal?: number | null
           preco_kg?: number | null
           preco_valor?: number | null
+          sem_valores?: boolean
           status?: string
-          tipo_preco: string
+          tipo_preco?: string | null
           valor_total_pago?: number | null
         }
         Update: {
@@ -2829,8 +2831,9 @@ export type Database = {
           preco_fixo_animal?: number | null
           preco_kg?: number | null
           preco_valor?: number | null
+          sem_valores?: boolean
           status?: string
-          tipo_preco?: string
+          tipo_preco?: string | null
           valor_total_pago?: number | null
         }
         Relationships: [
