@@ -31,6 +31,7 @@ export default function PecuaristaLoteDetalhePage() {
   const [ultima, setUltima] = useState<UltimaPesagem | null>(null);
   const [loading, setLoading] = useState(true);
   const [iniciando, setIniciando] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
 
   useEffect(() => {
     if (!loteId) return;
