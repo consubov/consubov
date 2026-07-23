@@ -68,7 +68,7 @@ export default function PecuaristaLayout() {
             <Landmark className="w-5 h-5" /> Fazendas
           </NavLink>
           <NavLink to="/pecuarista/lotes" className={({ isActive }) => cn("flex flex-col items-center gap-1 py-2.5 text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
-            <Layers className="w-5 h-5" /> Lotes
+            <History className="w-5 h-5" /> Histórico
           </NavLink>
         </div>
         <div className="text-center pb-1">
