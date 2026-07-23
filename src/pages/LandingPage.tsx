@@ -976,6 +976,7 @@ export default function LandingPage() {
               >
                 <Lucide.RefreshCw className="w-3 h-3" /> Atualizar app
               </button>
+
             </div>
           </div>
         </div>
