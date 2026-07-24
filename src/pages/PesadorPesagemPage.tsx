@@ -91,8 +91,9 @@ export default function PesadorPesagemPage() {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      // filhos primeiro
+      // filhos primeiro (ordem correta)
       await supabase.from("pesos_pesagem_compra").delete().eq("pesagem_id", toDelete.id);
+      await supabase.from("leituras_balancao_pesador").delete().eq("pesagem_id", toDelete.id);
       await supabase.from("pesagens_compra_categorias").delete().eq("pesagem_id", toDelete.id);
       const { error } = await supabase.from("pesagens_compra").delete().eq("id", toDelete.id);
       if (error) throw error;
