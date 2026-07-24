@@ -68,6 +68,8 @@ export default function PecuaristaLoteDetalhePage() {
         lote_id: loteId,
         data_pesagem: new Date().toISOString(),
         peso_total: 0, quantidade_animais: 0, peso_medio: 0,
+        tipo_balanca: tipoBalanca,
+        quantidade_padrao_balancao: tipoBalanca === "balancao" ? qtdBalancao : null,
       })
       .select("id")
       .single();
