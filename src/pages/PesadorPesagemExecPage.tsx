@@ -446,7 +446,60 @@ export default function PesadorPesagemExecPage() {
         </div>
       </div>
 
-      {subStep === "categoria" ? (
+      {isBalancao ? (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">
+            Leitura em Balanção — Peso TOTAL (kg)
+          </div>
+          <Input
+            ref={inputRef}
+            type="number"
+            inputMode="decimal"
+            placeholder="Peso total da leitura (kg)"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commitBalancaoLeitura();
+              }
+            }}
+            className="text-xl h-14 text-center"
+            autoFocus
+          />
+          <div className="flex gap-2 items-center">
+            <select
+              value={qtdBalancaoAtual}
+              onChange={(e) => setQtdBalancaoAtual(Number(e.target.value))}
+              className="h-12 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {[2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{n} animais</option>
+              ))}
+            </select>
+            <Button
+              className="flex-1 h-12"
+              onMouseDown={(e) => e.preventDefault()}
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => void commitBalancaoLeitura()}
+              disabled={
+                !current ||
+                parseFloat(current.replace(",", ".")) <= 0 ||
+                salvandoLeitura
+              }
+            >
+              {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Scale className="w-4 h-4 mr-2" />}
+              Próximo ➜
+            </Button>
+          </div>
+          {current && parseFloat(current.replace(",", ".")) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Peso individual: {(parseFloat(current.replace(",", ".")) / qtdBalancaoAtual).toFixed(1).replace(".", ",")} kg
+              × {qtdBalancaoAtual} animais
+            </p>
+          )}
+        </div>
+      ) : subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
             Animal {animalNum} — Categoria ({pendingPeso} kg)
