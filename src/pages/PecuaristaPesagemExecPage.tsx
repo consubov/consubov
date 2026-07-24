@@ -498,7 +498,72 @@ export default function PecuaristaPesagemExecPage() {
         </div>
       </div>
 
-      {lote.identificado ? (
+      {tipoBalanca === "balancao" ? (
+        <div className="space-y-3">
+          {pendingLeituraId && pendingRestante > 0 ? (
+            <>
+              <div className="text-sm font-medium">
+                Leitura em andamento — informar Nº {(qtdBalancaoAtual /* not used */, pendingPesoIndiv)?.toFixed?.(1)} kg/animal • faltam {pendingRestante}
+              </div>
+              <Input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                placeholder="Número do animal"
+                value={numeroAtual}
+                onChange={(e) => setNumeroAtual(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void confirmarNumeroBalancao(); } }}
+                className="text-xl h-14 text-center"
+                autoFocus
+              />
+              <Button
+                className="w-full h-12"
+                onClick={() => void confirmarNumeroBalancao()}
+                disabled={!numeroAtual.trim()}
+              >
+                Confirmar animal
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-medium">Nova leitura em Balanção — Peso total (kg)</div>
+              <div className="flex gap-2">
+                <Input
+                  ref={inputRef}
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="Peso total (kg)"
+                  value={pesoBalancao}
+                  onChange={(e) => setPesoBalancao(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void iniciarLeituraBalancao(); } }}
+                  className="text-xl h-14 text-center flex-1"
+                  autoFocus
+                />
+                <select
+                  value={qtdBalancaoAtual}
+                  onChange={(e) => setQtdBalancaoAtual(Number(e.target.value))}
+                  className="h-14 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
+                </select>
+              </div>
+              <Button
+                className="w-full h-12"
+                onClick={() => void iniciarLeituraBalancao()}
+                disabled={!pesoBalancao || parseFloat(pesoBalancao.replace(",", ".")) <= 0 || salvandoLeitura}
+              >
+                {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Próximo ➜
+              </Button>
+              {leiturasBalancao.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {leiturasBalancao.length} leitura(s) • {leiturasBalancao.reduce((s, l) => s + l.quantidade_animais, 0)} animais
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : lote.identificado ? (
         <div className="space-y-3">
           {step === "numero" ? (
             <>
