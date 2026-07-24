@@ -119,6 +119,8 @@ export default function PesadorPesagemExecPage() {
         return;
       }
       setPesagem(p as Pesagem);
+      const qDef = (p as any).quantidade_padrao_balancao;
+      if (qDef && qDef >= 2 && qDef <= 5) setQtdBalancaoAtual(qDef);
       if ((p as Pesagem).tipo_preco === "misto") {
         const { data: cats } = await supabase
           .from("pesagens_compra_categorias")
