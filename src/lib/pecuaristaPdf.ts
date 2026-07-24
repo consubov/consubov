@@ -542,6 +542,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     const tRows: [string, string][] = [
       ["Peso total", `${fmtN(d.peso_total, 2)} kg`],
       ["Peso médio", `${fmtN(d.peso_medio, 2)} kg`],
+      ["Peso médio (@)", `${fmtN(d.peso_medio / 30, 2)} @`],
     ];
     if (d.peso_medio_anterior != null) {
       tRows.push(["Peso médio anterior", `${fmtN(d.peso_medio_anterior, 2)} kg`]);
@@ -562,17 +563,20 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     });
     y = ((doc as any).lastAutoTable?.finalY ?? y) + 4;
 
+    let pesosDest: number[] = [];
+
     // Detalhe
     if (d.identificado && d.identificados && d.identificados.length > 0) {
       const body = d.identificados.map((r) => [
         r.numero,
         `${fmtN(r.peso_kg, 1)} kg`,
+        `${fmtN(r.peso_kg / 30, 2)} @`,
         fmtDateTime(r.data),
         r.gmd_individual != null ? `${fmtN(r.gmd_individual, 3)} kg/dia` : "—",
       ]);
       autoTable(doc, {
         startY: y + 1,
-        head: [["Nº", "Peso", "Data/hora", "GMD"]],
+        head: [["Nº", "Peso", "@", "Data/hora", "GMD"]],
         body,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 1.8, textColor: INK, lineColor: LINE },
@@ -580,6 +584,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         margin: { left: 15, right: 15 },
       });
       y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+      pesosDest = d.identificados.map((r) => r.peso_kg);
     } else if (!d.identificado && d.semId && d.semId.length > 0) {
       const cols = 4;
       const colW = (W - 30) / cols;
@@ -597,8 +602,14 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         y += 5;
       }
       y += 4;
+      pesosDest = d.semId.map((r) => r.peso_kg);
+    }
+
+    if (pesosDest.length > 0) {
+      y = drawPesosChart(doc, pesosDest, W, H, y, `Gráfico de Pesos — ${d.nome_lote} (1 a ${pesosDest.length})`);
     }
   }
+
 
   drawFooter(doc);
   return doc.output("blob");
