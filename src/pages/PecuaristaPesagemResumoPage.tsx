@@ -136,27 +136,32 @@ export default function PecuaristaPesagemResumoPage() {
         )}
       </Card>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground">Animais</div>
           <div className="text-xl font-bold">{data.quantidade}</div>
         </Card>
         <Card className="p-3 text-center">
-          <div className="text-xs text-muted-foreground">Peso médio</div>
-          <div className="text-xl font-bold">{fmt(data.peso_medio, 1)} kg</div>
-        </Card>
-        <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground">Peso total</div>
           <div className="text-xl font-bold">{fmt(data.peso_total, 1)} kg</div>
         </Card>
+        <Card className="p-3 text-center">
+          <div className="text-xs text-muted-foreground">Peso médio (kg)</div>
+          <div className="text-xl font-bold">{fmt(data.peso_medio, 1)} kg</div>
+        </Card>
+        <Card className="p-3 text-center">
+          <div className="text-xs text-muted-foreground">Peso médio (@)</div>
+          <div className="text-xl font-bold">{fmt(data.peso_medio / 30, 2)} @</div>
+        </Card>
         {data.gmd != null && (
-          <Card className="p-3 text-center col-span-3 bg-primary/10 border-primary/30">
+          <Card className="p-3 text-center col-span-2 bg-primary/10 border-primary/30">
             <div className="text-xs text-muted-foreground">GMD do lote</div>
             <div className="text-2xl font-bold text-primary">{fmt(data.gmd, 3)} kg/dia</div>
             {data.dias != null && <div className="text-xs text-muted-foreground mt-1">{data.dias} dias desde pesagem anterior</div>}
           </Card>
         )}
       </div>
+
 
       {data.identificado && data.identificados && data.identificados.length > 0 && (
         <Card className="p-3">
