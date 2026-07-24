@@ -295,9 +295,31 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     }
   }
 
+  if (data.leiturasBalancao && data.leiturasBalancao.length > 0) {
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Leituras em Balanção", 15, 20);
+    autoTable(doc, {
+      startY: 26,
+      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"]],
+      body: data.leiturasBalancao.map((l) => [
+        `#${l.ordem}`,
+        fmtN(l.peso_total, 2),
+        String(l.quantidade_animais),
+        fmtN(l.peso_individual, 2),
+      ]),
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
+      margin: { left: 15, right: 15 },
+    });
+  }
+
   drawFooter(doc);
   return doc.output("blob");
 }
+
 
 // ============================================================
 // APARTAÇÃO
