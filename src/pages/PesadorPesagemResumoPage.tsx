@@ -39,6 +39,7 @@ export default function PesadorPesagemResumoPage() {
   const [valorTotalPago, setValorTotalPago] = useState<number | null>(null);
   const [semValores, setSemValores] = useState(false);
   const [pesos, setPesos] = useState<PesoAnimal[]>([]);
+  const [leiturasBalancao, setLeiturasBalancao] = useState<Array<{ ordem: number; peso_total: number; quantidade_animais: number; peso_individual: number }>>([]);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
