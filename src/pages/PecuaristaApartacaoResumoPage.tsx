@@ -133,20 +133,25 @@ export default function PecuaristaApartacaoResumoPage() {
               <div className="font-bold">{d.quantidade}</div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="grid grid-cols-2 gap-2 text-center text-xs">
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground">Peso total</div>
               <div className="font-semibold">{fmt(d.peso_total, 1)} kg</div>
             </div>
             <div className="rounded bg-muted p-2">
-              <div className="text-muted-foreground">Peso médio</div>
+              <div className="text-muted-foreground">Peso médio (kg)</div>
               <div className="font-semibold">{fmt(d.peso_medio, 1)} kg</div>
+            </div>
+            <div className="rounded bg-muted p-2">
+              <div className="text-muted-foreground">Peso médio (@)</div>
+              <div className="font-semibold">{fmt(d.peso_medio / 30, 2)} @</div>
             </div>
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground">GMD</div>
               <div className="font-semibold">{d.gmd != null ? `${fmt(d.gmd, 3)}` : "—"}</div>
             </div>
           </div>
+
           {d.identificado && d.identificados && d.identificados.length > 0 && (
             <div className="max-h-48 overflow-y-auto text-xs mt-2">
               <div className="grid grid-cols-[1fr_auto_auto] gap-2 font-semibold border-b py-1">
