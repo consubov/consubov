@@ -189,6 +189,28 @@ export default function PecuaristaPesagemResumoPage() {
         </Card>
       )}
 
+      {leiturasBalancao.length > 0 && (
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground mb-2">Leituras em Balanção</div>
+          <div className="max-h-60 overflow-y-auto text-xs">
+            <div className="grid grid-cols-4 gap-2 font-semibold border-b py-1">
+              <span>Ordem</span>
+              <span className="text-right">Peso total</span>
+              <span className="text-right">Qtd</span>
+              <span className="text-right">Individual</span>
+            </div>
+            {leiturasBalancao.map((l) => (
+              <div key={l.ordem} className="grid grid-cols-4 gap-2 border-b border-border/40 py-1">
+                <span>#{l.ordem}</span>
+                <span className="text-right">{fmt(l.peso_total, 1)} kg</span>
+                <span className="text-right">{l.quantidade_animais}</span>
+                <span className="text-right">{fmt(l.peso_individual, 1)} kg</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <div
         className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t space-y-2 z-50 shadow-lg"
         style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
