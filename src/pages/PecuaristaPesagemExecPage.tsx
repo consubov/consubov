@@ -75,6 +75,17 @@ export default function PecuaristaPesagemExecPage() {
 
   const [horaInicio, setHoraInicio] = useState<string | null>(null);
 
+  // Balanção
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancaoDefault, setQtdBalancaoDefault] = useState<number>(2);
+  const [qtdBalancaoAtual, setQtdBalancaoAtual] = useState<number>(2);
+  const [pesoBalancao, setPesoBalancao] = useState("");
+  const [pendingLeituraId, setPendingLeituraId] = useState<string | null>(null);
+  const [pendingPesoIndiv, setPendingPesoIndiv] = useState<number | null>(null);
+  const [pendingRestante, setPendingRestante] = useState<number>(0);
+  const [salvandoLeitura, setSalvandoLeitura] = useState(false);
+  const [leiturasBalancao, setLeiturasBalancao] = useState<LeituraBalancao[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function marcarInicioSePreciso() {
