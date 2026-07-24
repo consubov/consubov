@@ -225,6 +225,8 @@ export default function PesadorPesagemNovoPage() {
         status: "em_andamento",
       };
     }
+    payload.tipo_balanca = tipoBalanca;
+    payload.quantidade_padrao_balancao = isBalancao ? qtdBalancao : null;
 
     const { data, error } = await supabase
       .from("pesagens_compra")
