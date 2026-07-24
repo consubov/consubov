@@ -49,6 +49,7 @@ type Peso = {
   percentual_individual: number | null;
   tipo_preco_individual: TipoInd | null;
   categoria_individual: string | null;
+  leitura_balancao_id: string | null;
 };
 
 type SubStep = "peso" | "categoria" | "tipo_pagamento" | "percentual";
