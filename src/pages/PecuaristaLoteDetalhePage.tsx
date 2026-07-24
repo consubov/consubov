@@ -32,6 +32,8 @@ export default function PecuaristaLoteDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [iniciando, setIniciando] = useState(false);
   const [choiceOpen, setChoiceOpen] = useState(false);
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
 
   useEffect(() => {
     if (!loteId) return;
