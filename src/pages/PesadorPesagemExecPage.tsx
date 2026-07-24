@@ -20,6 +20,8 @@ type Pesagem = {
   preco_fixo_animal: number | null;
   sem_valores: boolean;
   status: string;
+  tipo_balanca: "individual" | "balancao" | null;
+  quantidade_padrao_balancao: number | null;
 };
 
 type TipoInd = "arroba" | "kg" | "fixo_animal";
