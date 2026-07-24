@@ -139,8 +139,9 @@ export default function PesadorPesagemNovoPage() {
 
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
+    // Balanção não é compatível com lote misto nem rendimento aleatório
+    if (isBalancao && isAleatoria) return false;
     if (isRotina) {
-      // Rendimento é obrigatório para calcular a Média de @ por animal.
       if (!rendimentoRotina.trim()) return false;
       const r = parseNum(rendimentoRotina);
       if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
@@ -161,13 +162,14 @@ export default function PesadorPesagemNovoPage() {
     if (!Number.isFinite(preco) || preco <= 0) return false;
     if (tipoPreco === "arroba") {
       if (!modoPercentual) return false;
+      if (isBalancao && modoPercentual === "aleatorio") return false;
       if (modoPercentual === "fixo") {
         const pct = parseNum(percentualFixo);
         if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return false;
       }
     }
     return true;
-  }, [isRotina, rendimentoRotina, isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas]);
+  }, [isRotina, rendimentoRotina, isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas, isBalancao]);
 
   async function handleIniciar() {
     if (!pesadorId || !clienteId || !canSubmit) return;
