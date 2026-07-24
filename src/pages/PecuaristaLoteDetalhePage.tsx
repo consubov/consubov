@@ -117,15 +117,17 @@ export default function PecuaristaLoteDetalhePage() {
       </div>
 
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Tipo de pesagem</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 gap-0 max-h-[90vh] flex flex-col">
+          <DialogHeader className="sticky top-0 z-10 bg-background px-4 py-3 border-b">
+            <DialogTitle>Tipo de pesagem</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 overflow-y-auto p-4">
             <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
               <label className="text-xs font-medium text-muted-foreground">Tipo de balança</label>
               <select
                 value={tipoBalanca}
                 onChange={(e) => setTipoBalanca(e.target.value as any)}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
               >
                 <option value="individual">Balança individual</option>
                 <option value="balancao">Balanção (vários animais por leitura)</option>
@@ -136,7 +138,7 @@ export default function PecuaristaLoteDetalhePage() {
                   <select
                     value={qtdBalancao}
                     onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
                   >
                     {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
                   </select>
@@ -145,12 +147,12 @@ export default function PecuaristaLoteDetalhePage() {
             </div>
             <Button
               size="lg"
-              className="h-16 justify-start bg-primary hover:bg-primary/90"
+              className="h-auto min-h-16 justify-start bg-primary hover:bg-primary/90 py-3 whitespace-normal"
               disabled={iniciando}
               onClick={() => { setChoiceOpen(false); void iniciarPesagem(); }}
             >
-              {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Scale className="w-5 h-5 mr-2" />}
-              <div className="text-left">
+              {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin shrink-0" /> : <Scale className="w-5 h-5 mr-2 shrink-0" />}
+              <div className="text-left min-w-0">
                 <div className="font-semibold">Pesagem simples</div>
                 <div className="text-xs opacity-90 font-normal">Só pesa o lote atual.</div>
               </div>
@@ -158,11 +160,11 @@ export default function PecuaristaLoteDetalhePage() {
             <Button
               size="lg"
               variant="outline"
-              className="h-16 justify-start"
+              className="h-auto min-h-16 justify-start py-3 whitespace-normal"
               onClick={() => { setChoiceOpen(false); navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao`); }}
             >
-              <Split className="w-5 h-5 mr-2" />
-              <div className="text-left">
+              <Split className="w-5 h-5 mr-2 shrink-0" />
+              <div className="text-left min-w-0">
                 <div className="font-semibold">Pesagem + Apartação</div>
                 <div className="text-xs text-muted-foreground font-normal">Pesa e distribui em 2 ou 3 lotes de destino. (Apenas balança individual.)</div>
               </div>
