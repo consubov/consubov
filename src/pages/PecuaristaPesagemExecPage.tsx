@@ -96,16 +96,28 @@ export default function PecuaristaPesagemExecPage() {
   }
 
   useEffect(() => {
-    if (!loteId) return;
+    if (!loteId || !pesagemId) return;
     (async () => {
-      const { data } = await supabase
-        .from("lotes_pecuarista")
-        .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
-        .eq("id", loteId).maybeSingle();
+      const [{ data }, { data: pes }] = await Promise.all([
+        supabase
+          .from("lotes_pecuarista")
+          .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
+          .eq("id", loteId).maybeSingle(),
+        supabase
+          .from("pesagens_lote_pecuarista")
+          .select("tipo_balanca, quantidade_padrao_balancao")
+          .eq("id", pesagemId).maybeSingle(),
+      ]);
       setLote(data as Lote);
+      const tb = ((pes as any)?.tipo_balanca as "individual" | "balancao" | null) ?? "individual";
+      setTipoBalanca(tb);
+      const q = Number((pes as any)?.quantidade_padrao_balancao ?? 2);
+      const qSafe = q >= 2 && q <= 5 ? q : 2;
+      setQtdBalancaoDefault(qSafe);
+      setQtdBalancaoAtual(qSafe);
       setLoading(false);
     })();
-  }, [loteId]);
+  }, [loteId, pesagemId]);
 
   useEffect(() => {
     if (!loading) setTimeout(() => inputRef.current?.focus(), 80);
