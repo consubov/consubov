@@ -538,6 +538,29 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.text(fmtBRL(data.valorTotalOverride ?? tot.totalValor), 22, finalY + 26);
   }
 
+  // Leituras em Balanção
+  if (data.leiturasBalancao && data.leiturasBalancao.length > 0) {
+    doc.addPage();
+    doc.setTextColor(INK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Leituras em Balanção", 15, 20);
+    autoTable(doc, {
+      startY: 26,
+      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"]],
+      body: data.leiturasBalancao.map((l) => [
+        `#${l.ordem}`,
+        fmtNum(l.peso_total, 2),
+        String(l.quantidade_animais),
+        fmtNum(l.peso_individual, 2),
+      ]),
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
+      headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
+      margin: { left: 15, right: 15 },
+    });
+  }
+
   drawFooter(doc);
   return doc.output("blob");
 }
