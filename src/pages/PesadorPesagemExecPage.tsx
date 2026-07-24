@@ -164,6 +164,7 @@ export default function PesadorPesagemExecPage() {
       percentual_individual: p.percentual_individual,
       tipo_preco_individual: p.tipo_preco_individual,
       categoria_individual: p.categoria_individual,
+      leitura_balancao_id: p.leitura_balancao_id,
     });
     if (error) {
       toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
@@ -178,6 +179,7 @@ export default function PesadorPesagemExecPage() {
     tipo: TipoInd | null,
     pct: number | null,
     categoria: string | null,
+    leituraBalancaoId: string | null = null,
   ) {
     const ordem = pesos.length + 1;
     const novo: Peso = {
@@ -186,6 +188,7 @@ export default function PesadorPesagemExecPage() {
       percentual_individual: pct,
       tipo_preco_individual: tipo,
       categoria_individual: categoria,
+      leitura_balancao_id: leituraBalancaoId,
     };
     setPesos((prev) => [...prev, novo]);
     setCurrent("");
