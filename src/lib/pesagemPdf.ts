@@ -18,6 +18,13 @@ export interface PesagemPdfHeader {
   formaPagamento: string;
 }
 
+export interface LeituraBalancaoPdf {
+  ordem: number;
+  peso_total: number;
+  quantidade_animais: number;
+  peso_individual: number;
+}
+
 export interface PesagemPdfData {
   header: PesagemPdfHeader;
   cfg: PesagemCompraCfg;
@@ -28,6 +35,7 @@ export interface PesagemPdfData {
   valorTotalOverride?: number | null;
   semValores?: boolean;
   rendimentoEstimado?: number | null;
+  leiturasBalancao?: LeituraBalancaoPdf[];
 }
 
 function fmtBRL(v: number) {

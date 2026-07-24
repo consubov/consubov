@@ -104,6 +104,19 @@ export default function PesadorPesagemResumoPage() {
         });
         setCfg((prev) => (prev ? { ...prev, categorias_map: map } : prev));
       }
+      const { data: lts } = await supabase
+        .from("leituras_balancao_pesador")
+        .select("ordem, peso_total, quantidade_animais, peso_individual")
+        .eq("pesagem_id", pesagemId)
+        .order("ordem", { ascending: true });
+      setLeiturasBalancao(
+        (lts ?? []).map((r: any) => ({
+          ordem: Number(r.ordem),
+          peso_total: Number(r.peso_total),
+          quantidade_animais: Number(r.quantidade_animais),
+          peso_individual: Number(r.peso_individual),
+        }))
+      );
       setLoading(false);
     })();
   }, [pesagemId]);
@@ -217,6 +230,7 @@ export default function PesadorPesagemResumoPage() {
         valorTotalOverride: valorTotalPago,
         semValores,
         rendimentoEstimado: rendimentoRotina,
+        leiturasBalancao: leiturasBalancao.length ? leiturasBalancao : undefined,
       });
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
@@ -371,6 +385,28 @@ export default function PesadorPesagemResumoPage() {
           ))}
         </div>
       </div>
+
+      {leiturasBalancao.length > 0 && (
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-xs text-muted-foreground mb-2">Leituras em Balanção</div>
+          <div className="max-h-56 overflow-y-auto text-xs">
+            <div className="grid grid-cols-4 gap-2 font-semibold border-b py-1">
+              <span>Ordem</span>
+              <span className="text-right">Peso total</span>
+              <span className="text-right">Qtd</span>
+              <span className="text-right">Peso indiv.</span>
+            </div>
+            {leiturasBalancao.map((l) => (
+              <div key={l.ordem} className="grid grid-cols-4 gap-2 border-b border-border/40 py-1">
+                <span>#{l.ordem}</span>
+                <span className="text-right">{l.peso_total.toString().replace(".", ",")} kg</span>
+                <span className="text-right">{l.quantidade_animais}</span>
+                <span className="text-right">{l.peso_individual.toString().replace(".", ",")} kg</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t space-y-2">
         {pdfUrl ? (
