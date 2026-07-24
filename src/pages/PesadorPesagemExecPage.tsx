@@ -99,6 +99,8 @@ export default function PesadorPesagemExecPage() {
   const [pendingTipo, setPendingTipo] = useState<TipoInd | null>(null);
   const [pendingCategoria, setPendingCategoria] = useState<string | null>(null);
   const [categoriasLote, setCategoriasLote] = useState<CategoriaCfg[]>([]);
+  const [qtdBalancaoAtual, setQtdBalancaoAtual] = useState<number>(2);
+  const [salvandoLeitura, setSalvandoLeitura] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
