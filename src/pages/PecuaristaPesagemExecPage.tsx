@@ -32,9 +32,12 @@ type LinhaId = {
   gmd_individual: number | null;
   dias: number | null;
   pesoRowId: string;
+  leitura_balancao_id?: string | null;
 };
 
-type LinhaSem = { ordem: number; peso_kg: number; rowId: string };
+type LinhaSem = { ordem: number; peso_kg: number; rowId: string; leitura_balancao_id?: string | null };
+
+type LeituraBalancao = { id: string; ordem: number; peso_total: number; quantidade_animais: number; peso_individual: number };
 
 type Step = "numero" | "peso";
 type PrevInfo = {
