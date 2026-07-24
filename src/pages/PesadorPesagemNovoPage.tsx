@@ -84,12 +84,15 @@ export default function PesadorPesagemNovoPage() {
   const [modoPercentual, setModoPercentual] = useState<ModoPercentual | "">("");
   const [percentualFixo, setPercentualFixo] = useState<string>("");
   const [rendimentoRotina, setRendimentoRotina] = useState<string>("");
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
 
   // Configuração por categoria para lote misto ("Aleatória")
   const [categoriasMistas, setCategoriasMistas] = useState<Record<string, CategoriaMistaCfg>>({});
 
   const isAleatoria = categoria === "aleatoria";
   const isRotina = modo === "rotina";
+  const isBalancao = tipoBalanca === "balancao";
 
   useEffect(() => {
     (async () => {
