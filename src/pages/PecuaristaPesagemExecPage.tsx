@@ -119,6 +119,116 @@ export default function PecuaristaPesagemExecPage() {
     })();
   }, [loteId, pesagemId]);
 
+  async function iniciarLeituraBalancao() {
+    if (!pesagemId || !lote || salvandoLeitura) return;
+    const total = parseFloat(pesoBalancao.replace(",", "."));
+    if (!Number.isFinite(total) || total <= 0) return toast.error("Informe o peso total.");
+    const qtd = qtdBalancaoAtual;
+    if (!qtd || qtd < 2) return;
+    setSalvandoLeitura(true);
+    try {
+      const pesoIndiv = Math.round((total / qtd) * 100) / 100;
+      const ordem = leiturasBalancao.length + 1;
+      const { data: leituraRow, error: eL } = await supabase
+        .from("leituras_balancao_pecuarista")
+        .insert({
+          pesagem_id: pesagemId,
+          ordem,
+          peso_total: total,
+          quantidade_animais: qtd,
+          peso_individual: pesoIndiv,
+        })
+        .select("id")
+        .single();
+      if (eL || !leituraRow) return toast.error("Erro: " + (eL?.message ?? ""));
+      const leituraId = (leituraRow as any).id as string;
+
+      if (!lote.identificado) {
+        // Cria N linhas sem identificação diretamente
+        const base = linhasSem.length;
+        const novos: LinhaSem[] = [];
+        for (let i = 0; i < qtd; i++) {
+          novos.push({ ordem: base + i + 1, peso_kg: pesoIndiv, rowId: crypto.randomUUID(), leitura_balancao_id: leituraId });
+        }
+        setLinhasSem((prev) => [...prev, ...novos]);
+        setLeiturasBalancao((prev) => [...prev, { id: leituraId, ordem, peso_total: total, quantidade_animais: qtd, peso_individual: pesoIndiv }]);
+        setPesoBalancao("");
+        setQtdBalancaoAtual(qtdBalancaoDefault);
+        void marcarInicioSePreciso();
+      } else {
+        // Fluxo de coleta de números
+        setPendingLeituraId(leituraId);
+        setPendingPesoIndiv(pesoIndiv);
+        setPendingRestante(qtd);
+        setLeiturasBalancao((prev) => [...prev, { id: leituraId, ordem, peso_total: total, quantidade_animais: qtd, peso_individual: pesoIndiv }]);
+        setPesoBalancao("");
+        setQtdBalancaoAtual(qtdBalancaoDefault);
+        setNumeroAtual("");
+        setTimeout(() => inputRef.current?.focus(), 60);
+      }
+    } finally {
+      setSalvandoLeitura(false);
+    }
+  }
+
+  async function confirmarNumeroBalancao() {
+    if (!pesagemId || !lote || !pendingLeituraId || pendingPesoIndiv == null) return;
+    const numero = numeroAtual.trim();
+    if (!numero) return;
+    // cria/associa animal
+    let animalId: string | null = null;
+    const { data: an } = await supabase
+      .from("animais_pecuarista")
+      .select("id")
+      .eq("pecuarista_id", lote.pecuarista_id)
+      .eq("numero", numero)
+      .maybeSingle();
+    if (an) {
+      animalId = (an as any).id;
+      await supabase.from("animais_pecuarista").update({ lote_atual_id: lote.id }).eq("id", animalId);
+    } else {
+      const { data: novo, error: eA } = await supabase
+        .from("animais_pecuarista")
+        .insert({ pecuarista_id: lote.pecuarista_id, numero, lote_atual_id: lote.id })
+        .select("id").single();
+      if (eA || !novo) return toast.error("Erro ao cadastrar animal: " + (eA?.message ?? ""));
+      animalId = (novo as any).id;
+    }
+    const agora = new Date().toISOString();
+    const { data: pRow, error: eP } = await supabase
+      .from("pesos_animais_pecuarista")
+      .insert({
+        pesagem_lote_id: pesagemId,
+        animal_id: animalId,
+        peso_kg: pendingPesoIndiv,
+        gmd_individual: null,
+        leitura_balancao_id: pendingLeituraId,
+      })
+      .select("id").single();
+    if (eP || !pRow) return toast.error("Erro ao salvar peso: " + (eP?.message ?? ""));
+    void marcarInicioSePreciso();
+    setLinhasId((prev) => [
+      ...prev,
+      {
+        animal_id: animalId!, numero, peso_kg: pendingPesoIndiv, data: agora,
+        peso_anterior_kg: null, data_anterior: null, lote_anterior: null,
+        gmd_individual: null, dias: null,
+        pesoRowId: (pRow as any).id,
+        leitura_balancao_id: pendingLeituraId,
+      },
+    ]);
+    setNumeroAtual("");
+    const rest = pendingRestante - 1;
+    if (rest <= 0) {
+      setPendingLeituraId(null);
+      setPendingPesoIndiv(null);
+      setPendingRestante(0);
+    } else {
+      setPendingRestante(rest);
+    }
+    setTimeout(() => inputRef.current?.focus(), 40);
+  }
+
   useEffect(() => {
     if (!loading) setTimeout(() => inputRef.current?.focus(), 80);
   }, [loading, step, linhasId.length, linhasSem.length]);
