@@ -443,6 +443,10 @@ export default function PecuaristaPesagemExecPage() {
         },
         identificados: isId ? identificados : undefined,
         semId: !isId ? semId : undefined,
+        leiturasBalancao: leiturasBalancao.length ? leiturasBalancao.map((l) => ({
+          ordem: l.ordem, peso_total: l.peso_total,
+          quantidade_animais: l.quantidade_animais, peso_individual: l.peso_individual,
+        })) : undefined,
       });
       const path = `pecuarista/pesagens/${pesagemId}-${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from("relatorios")
