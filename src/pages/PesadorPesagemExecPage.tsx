@@ -335,6 +335,17 @@ export default function PesadorPesagemExecPage() {
   }
 
   async function handleDesfazer() {
+    if (isBalancao) {
+      const last = pesos[pesos.length - 1];
+      if (!last || !last.leitura_balancao_id) return;
+      const leituraId = last.leitura_balancao_id;
+      const doGrupo = pesos.filter((p) => p.leitura_balancao_id === leituraId);
+      setPesos((prev) => prev.filter((p) => p.leitura_balancao_id !== leituraId));
+      await supabase.from("pesos_pesagem_compra").delete()
+        .eq("pesagem_id", pesagemId!).in("ordem", doGrupo.map((p) => p.ordem));
+      await supabase.from("leituras_balancao_pesador").delete().eq("id", leituraId);
+      return;
+    }
     if (subStep !== "peso") {
       setSubStep("peso");
       setPendingPeso(null);
