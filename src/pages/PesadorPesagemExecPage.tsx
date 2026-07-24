@@ -20,6 +20,8 @@ type Pesagem = {
   preco_fixo_animal: number | null;
   sem_valores: boolean;
   status: string;
+  tipo_balanca: "individual" | "balancao" | null;
+  quantidade_padrao_balancao: number | null;
 };
 
 type TipoInd = "arroba" | "kg" | "fixo_animal";
@@ -47,6 +49,7 @@ type Peso = {
   percentual_individual: number | null;
   tipo_preco_individual: TipoInd | null;
   categoria_individual: string | null;
+  leitura_balancao_id: string | null;
 };
 
 type SubStep = "peso" | "categoria" | "tipo_pagamento" | "percentual";
@@ -96,6 +99,8 @@ export default function PesadorPesagemExecPage() {
   const [pendingTipo, setPendingTipo] = useState<TipoInd | null>(null);
   const [pendingCategoria, setPendingCategoria] = useState<string | null>(null);
   const [categoriasLote, setCategoriasLote] = useState<CategoriaCfg[]>([]);
+  const [qtdBalancaoAtual, setQtdBalancaoAtual] = useState<number>(2);
+  const [salvandoLeitura, setSalvandoLeitura] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,7 +109,7 @@ export default function PesadorPesagemExecPage() {
       const { data: p, error } = await supabase
         .from("pesagens_compra")
         .select(
-          "id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, sem_valores, status"
+          "id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, sem_valores, status, tipo_balanca, quantidade_padrao_balancao"
         )
         .eq("id", pesagemId)
         .maybeSingle();
@@ -114,6 +119,8 @@ export default function PesadorPesagemExecPage() {
         return;
       }
       setPesagem(p as Pesagem);
+      const qDef = (p as any).quantidade_padrao_balancao;
+      if (qDef && qDef >= 2 && qDef <= 5) setQtdBalancaoAtual(qDef);
       if ((p as Pesagem).tipo_preco === "misto") {
         const { data: cats } = await supabase
           .from("pesagens_compra_categorias")
@@ -152,6 +159,83 @@ export default function PesadorPesagemExecPage() {
   const isMisto = !semValores && pesagem?.tipo_preco === "misto";
   const modoAleatorio =
     !semValores && pesagem?.tipo_preco === "arroba" && pesagem.modo_percentual === "aleatorio";
+  const isBalancao = pesagem?.tipo_balanca === "balancao";
+
+  async function commitBalancaoLeitura() {
+    if (!pesagem || salvandoLeitura) return;
+    const total = parseFloat(current.replace(",", "."));
+    if (!Number.isFinite(total) || total <= 0) return;
+    const qtd = qtdBalancaoAtual;
+    if (!qtd || qtd < 2) return;
+    setSalvandoLeitura(true);
+    try {
+      const pesoIndiv = Math.round((total / qtd) * 100) / 100;
+      // ordem da leitura = qtde atual de leituras + 1
+      const { count } = await supabase
+        .from("leituras_balancao_pesador")
+        .select("id", { count: "exact", head: true })
+        .eq("pesagem_id", pesagem.id);
+      const ordemLeitura = (count ?? 0) + 1;
+      const { data: leituraRow, error: eL } = await supabase
+        .from("leituras_balancao_pesador")
+        .insert({
+          pesagem_id: pesagem.id,
+          ordem: ordemLeitura,
+          peso_total: total,
+          quantidade_animais: qtd,
+          peso_individual: pesoIndiv,
+        })
+        .select("id")
+        .single();
+      if (eL || !leituraRow) {
+        toast({ title: "Erro ao salvar leitura", description: eL?.message, variant: "destructive" });
+        return;
+      }
+      const leituraId = (leituraRow as any).id as string;
+      // percentual padrão para arroba+fixo
+      const pctPadrao =
+        pesagem.tipo_preco === "arroba" && pesagem.modo_percentual === "fixo"
+          ? pesagem.percentual_fixo
+          : null;
+      const base = pesos.length;
+      const novos: Peso[] = [];
+      for (let i = 0; i < qtd; i++) {
+        novos.push({
+          ordem: base + i + 1,
+          peso_kg: pesoIndiv,
+          percentual_individual: pctPadrao,
+          tipo_preco_individual: null,
+          categoria_individual: null,
+          leitura_balancao_id: leituraId,
+        });
+      }
+      setPesos((prev) => [...prev, ...novos]);
+      setCurrent("");
+      // reset qtd to default
+      const qDef = pesagem.quantidade_padrao_balancao ?? 2;
+      setQtdBalancaoAtual(qDef >= 2 && qDef <= 5 ? qDef : 2);
+      // persist all
+      const { error: ePe } = await supabase.from("pesos_pesagem_compra").insert(
+        novos.map((n) => ({
+          pesagem_id: pesagem.id,
+          ordem: n.ordem,
+          peso_kg: n.peso_kg,
+          percentual_individual: n.percentual_individual,
+          tipo_preco_individual: n.tipo_preco_individual,
+          categoria_individual: n.categoria_individual,
+          leitura_balancao_id: n.leitura_balancao_id,
+        }))
+      );
+      if (ePe) {
+        toast({ title: "Erro ao salvar pesos", description: ePe.message, variant: "destructive" });
+        // rollback state
+        setPesos((prev) => prev.filter((x) => x.leitura_balancao_id !== leituraId));
+      }
+      inputRef.current?.focus();
+    } finally {
+      setSalvandoLeitura(false);
+    }
+  }
 
   async function persistirPeso(p: Peso) {
     const { error } = await supabase.from("pesos_pesagem_compra").insert({
@@ -161,6 +245,7 @@ export default function PesadorPesagemExecPage() {
       percentual_individual: p.percentual_individual,
       tipo_preco_individual: p.tipo_preco_individual,
       categoria_individual: p.categoria_individual,
+      leitura_balancao_id: p.leitura_balancao_id,
     });
     if (error) {
       toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
@@ -175,6 +260,7 @@ export default function PesadorPesagemExecPage() {
     tipo: TipoInd | null,
     pct: number | null,
     categoria: string | null,
+    leituraBalancaoId: string | null = null,
   ) {
     const ordem = pesos.length + 1;
     const novo: Peso = {
@@ -183,6 +269,7 @@ export default function PesadorPesagemExecPage() {
       percentual_individual: pct,
       tipo_preco_individual: tipo,
       categoria_individual: categoria,
+      leitura_balancao_id: leituraBalancaoId,
     };
     setPesos((prev) => [...prev, novo]);
     setCurrent("");
@@ -248,6 +335,17 @@ export default function PesadorPesagemExecPage() {
   }
 
   async function handleDesfazer() {
+    if (isBalancao) {
+      const last = pesos[pesos.length - 1];
+      if (!last || !last.leitura_balancao_id) return;
+      const leituraId = last.leitura_balancao_id;
+      const doGrupo = pesos.filter((p) => p.leitura_balancao_id === leituraId);
+      setPesos((prev) => prev.filter((p) => p.leitura_balancao_id !== leituraId));
+      await supabase.from("pesos_pesagem_compra").delete()
+        .eq("pesagem_id", pesagemId!).in("ordem", doGrupo.map((p) => p.ordem));
+      await supabase.from("leituras_balancao_pesador").delete().eq("id", leituraId);
+      return;
+    }
     if (subStep !== "peso") {
       setSubStep("peso");
       setPendingPeso(null);
@@ -359,7 +457,60 @@ export default function PesadorPesagemExecPage() {
         </div>
       </div>
 
-      {subStep === "categoria" ? (
+      {isBalancao ? (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">
+            Leitura em Balanção — Peso TOTAL (kg)
+          </div>
+          <Input
+            ref={inputRef}
+            type="number"
+            inputMode="decimal"
+            placeholder="Peso total da leitura (kg)"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commitBalancaoLeitura();
+              }
+            }}
+            className="text-xl h-14 text-center"
+            autoFocus
+          />
+          <div className="flex gap-2 items-center">
+            <select
+              value={qtdBalancaoAtual}
+              onChange={(e) => setQtdBalancaoAtual(Number(e.target.value))}
+              className="h-12 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {[2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>{n} animais</option>
+              ))}
+            </select>
+            <Button
+              className="flex-1 h-12"
+              onMouseDown={(e) => e.preventDefault()}
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => void commitBalancaoLeitura()}
+              disabled={
+                !current ||
+                parseFloat(current.replace(",", ".")) <= 0 ||
+                salvandoLeitura
+              }
+            >
+              {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Scale className="w-4 h-4 mr-2" />}
+              Próximo ➜
+            </Button>
+          </div>
+          {current && parseFloat(current.replace(",", ".")) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Peso individual: {(parseFloat(current.replace(",", ".")) / qtdBalancaoAtual).toFixed(1).replace(".", ",")} kg
+              × {qtdBalancaoAtual} animais
+            </p>
+          )}
+        </div>
+      ) : subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
             Animal {animalNum} — Categoria ({pendingPeso} kg)

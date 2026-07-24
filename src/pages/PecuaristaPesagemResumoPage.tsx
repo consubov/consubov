@@ -52,6 +52,22 @@ export default function PecuaristaPesagemResumoPage() {
   const [data, setData] = useState<NavState | null>(stateData);
   const [pdfUrl, setPdfUrl] = useState<string | null>(stateData?.pdfUrl ?? null);
   const [sharing, setSharing] = useState(false);
+  const [leiturasBalancao, setLeiturasBalancao] = useState<Array<{ ordem: number; peso_total: number; quantidade_animais: number; peso_individual: number }>>([]);
+
+  useEffect(() => {
+    if (!pesagemId) return;
+    (async () => {
+      const { data: ls } = await supabase
+        .from("leituras_balancao_pecuarista")
+        .select("ordem, peso_total, quantidade_animais, peso_individual")
+        .eq("pesagem_lote_id", pesagemId)
+        .order("ordem", { ascending: true });
+      setLeiturasBalancao(((ls as any[]) ?? []).map((l) => ({
+        ordem: Number(l.ordem), peso_total: Number(l.peso_total),
+        quantidade_animais: Number(l.quantidade_animais), peso_individual: Number(l.peso_individual),
+      })));
+    })();
+  }, [pesagemId]);
 
   useEffect(() => {
     if (data) return;
@@ -167,6 +183,28 @@ export default function PecuaristaPesagemResumoPage() {
             {data.semId.map(p => (
               <div key={p.ordem} className="border-b border-border/40 py-1">
                 {p.ordem} - {fmt(p.peso_kg, 1)} kg
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {leiturasBalancao.length > 0 && (
+        <Card className="p-3">
+          <div className="text-xs text-muted-foreground mb-2">Leituras em Balanção</div>
+          <div className="max-h-60 overflow-y-auto text-xs">
+            <div className="grid grid-cols-4 gap-2 font-semibold border-b py-1">
+              <span>Ordem</span>
+              <span className="text-right">Peso total</span>
+              <span className="text-right">Qtd</span>
+              <span className="text-right">Individual</span>
+            </div>
+            {leiturasBalancao.map((l) => (
+              <div key={l.ordem} className="grid grid-cols-4 gap-2 border-b border-border/40 py-1">
+                <span>#{l.ordem}</span>
+                <span className="text-right">{fmt(l.peso_total, 1)} kg</span>
+                <span className="text-right">{l.quantidade_animais}</span>
+                <span className="text-right">{fmt(l.peso_individual, 1)} kg</span>
               </div>
             ))}
           </div>

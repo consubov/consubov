@@ -84,12 +84,15 @@ export default function PesadorPesagemNovoPage() {
   const [modoPercentual, setModoPercentual] = useState<ModoPercentual | "">("");
   const [percentualFixo, setPercentualFixo] = useState<string>("");
   const [rendimentoRotina, setRendimentoRotina] = useState<string>("");
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
 
   // Configuração por categoria para lote misto ("Aleatória")
   const [categoriasMistas, setCategoriasMistas] = useState<Record<string, CategoriaMistaCfg>>({});
 
   const isAleatoria = categoria === "aleatoria";
   const isRotina = modo === "rotina";
+  const isBalancao = tipoBalanca === "balancao";
 
   useEffect(() => {
     (async () => {
@@ -136,8 +139,9 @@ export default function PesadorPesagemNovoPage() {
 
   const canSubmit = useMemo(() => {
     if (!categoria) return false;
+    // Balanção não é compatível com lote misto nem rendimento aleatório
+    if (isBalancao && isAleatoria) return false;
     if (isRotina) {
-      // Rendimento é obrigatório para calcular a Média de @ por animal.
       if (!rendimentoRotina.trim()) return false;
       const r = parseNum(rendimentoRotina);
       if (!Number.isFinite(r) || r <= 0 || r > 100) return false;
@@ -158,13 +162,14 @@ export default function PesadorPesagemNovoPage() {
     if (!Number.isFinite(preco) || preco <= 0) return false;
     if (tipoPreco === "arroba") {
       if (!modoPercentual) return false;
+      if (isBalancao && modoPercentual === "aleatorio") return false;
       if (modoPercentual === "fixo") {
         const pct = parseNum(percentualFixo);
         if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return false;
       }
     }
     return true;
-  }, [isRotina, rendimentoRotina, isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas]);
+  }, [isRotina, rendimentoRotina, isAleatoria, categoria, tipoPreco, precoValor, modoPercentual, percentualFixo, categoriasMistas, isBalancao]);
 
   async function handleIniciar() {
     if (!pesadorId || !clienteId || !canSubmit) return;
@@ -220,6 +225,8 @@ export default function PesadorPesagemNovoPage() {
         status: "em_andamento",
       };
     }
+    payload.tipo_balanca = tipoBalanca;
+    payload.quantidade_padrao_balancao = isBalancao ? qtdBalancao : null;
 
     const { data, error } = await supabase
       .from("pesagens_compra")
@@ -303,6 +310,39 @@ export default function PesadorPesagemNovoPage() {
           <p className="text-xs text-muted-foreground">
             Uso para conferência (ex.: antes do frigorífico). Nenhum valor será calculado.
           </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="tipo-balanca">Tipo de balança</Label>
+        <select
+          id="tipo-balanca"
+          value={tipoBalanca}
+          onChange={(e) => setTipoBalanca(e.target.value as "individual" | "balancao")}
+          className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="individual">Balança individual (1 animal por leitura)</option>
+          <option value="balancao">Balanção (vários animais por leitura)</option>
+        </select>
+        {isBalancao && (
+          <>
+            <Label htmlFor="qtd-balancao" className="pt-2 block">Quantidade padrão por leitura</Label>
+            <select
+              id="qtd-balancao"
+              value={qtdBalancao}
+              onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
+              className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value={2}>2 animais</option>
+              <option value={3}>3 animais</option>
+              <option value={4}>4 animais</option>
+              <option value={5}>5 animais</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              O peso digitado será o TOTAL da leitura, dividido pelo número de animais. Você poderá ajustar a quantidade a cada leitura.
+              Modo incompatível com lote misto (Aleatória) e com rendimento aleatório.
+            </p>
+          </>
         )}
       </div>
 

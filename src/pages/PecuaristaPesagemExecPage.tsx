@@ -32,9 +32,12 @@ type LinhaId = {
   gmd_individual: number | null;
   dias: number | null;
   pesoRowId: string;
+  leitura_balancao_id?: string | null;
 };
 
-type LinhaSem = { ordem: number; peso_kg: number; rowId: string };
+type LinhaSem = { ordem: number; peso_kg: number; rowId: string; leitura_balancao_id?: string | null };
+
+type LeituraBalancao = { id: string; ordem: number; peso_total: number; quantidade_animais: number; peso_individual: number };
 
 type Step = "numero" | "peso";
 type PrevInfo = {
@@ -72,6 +75,17 @@ export default function PecuaristaPesagemExecPage() {
 
   const [horaInicio, setHoraInicio] = useState<string | null>(null);
 
+  // Balanção
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancaoDefault, setQtdBalancaoDefault] = useState<number>(2);
+  const [qtdBalancaoAtual, setQtdBalancaoAtual] = useState<number>(2);
+  const [pesoBalancao, setPesoBalancao] = useState("");
+  const [pendingLeituraId, setPendingLeituraId] = useState<string | null>(null);
+  const [pendingPesoIndiv, setPendingPesoIndiv] = useState<number | null>(null);
+  const [pendingRestante, setPendingRestante] = useState<number>(0);
+  const [salvandoLeitura, setSalvandoLeitura] = useState(false);
+  const [leiturasBalancao, setLeiturasBalancao] = useState<LeituraBalancao[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function marcarInicioSePreciso() {
@@ -82,16 +96,138 @@ export default function PecuaristaPesagemExecPage() {
   }
 
   useEffect(() => {
-    if (!loteId) return;
+    if (!loteId || !pesagemId) return;
     (async () => {
-      const { data } = await supabase
-        .from("lotes_pecuarista")
-        .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
-        .eq("id", loteId).maybeSingle();
+      const [{ data }, { data: pes }] = await Promise.all([
+        supabase
+          .from("lotes_pecuarista")
+          .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
+          .eq("id", loteId).maybeSingle(),
+        supabase
+          .from("pesagens_lote_pecuarista")
+          .select("tipo_balanca, quantidade_padrao_balancao")
+          .eq("id", pesagemId).maybeSingle(),
+      ]);
       setLote(data as Lote);
+      const tb = ((pes as any)?.tipo_balanca as "individual" | "balancao" | null) ?? "individual";
+      setTipoBalanca(tb);
+      const q = Number((pes as any)?.quantidade_padrao_balancao ?? 2);
+      const qSafe = q >= 2 && q <= 5 ? q : 2;
+      setQtdBalancaoDefault(qSafe);
+      setQtdBalancaoAtual(qSafe);
       setLoading(false);
     })();
-  }, [loteId]);
+  }, [loteId, pesagemId]);
+
+  async function iniciarLeituraBalancao() {
+    if (!pesagemId || !lote || salvandoLeitura) return;
+    const total = parseFloat(pesoBalancao.replace(",", "."));
+    if (!Number.isFinite(total) || total <= 0) return toast.error("Informe o peso total.");
+    const qtd = qtdBalancaoAtual;
+    if (!qtd || qtd < 2) return;
+    setSalvandoLeitura(true);
+    try {
+      const pesoIndiv = Math.round((total / qtd) * 100) / 100;
+      const ordem = leiturasBalancao.length + 1;
+      const { data: leituraRow, error: eL } = await supabase
+        .from("leituras_balancao_pecuarista")
+        .insert({
+          pesagem_lote_id: pesagemId,
+          ordem,
+          peso_total: total,
+          quantidade_animais: qtd,
+          peso_individual: pesoIndiv,
+        })
+        .select("id")
+        .single();
+      if (eL || !leituraRow) return toast.error("Erro: " + (eL?.message ?? ""));
+      const leituraId = (leituraRow as any).id as string;
+
+      if (!lote.identificado) {
+        // Cria N linhas sem identificação diretamente
+        const base = linhasSem.length;
+        const novos: LinhaSem[] = [];
+        for (let i = 0; i < qtd; i++) {
+          novos.push({ ordem: base + i + 1, peso_kg: pesoIndiv, rowId: crypto.randomUUID(), leitura_balancao_id: leituraId });
+        }
+        setLinhasSem((prev) => [...prev, ...novos]);
+        setLeiturasBalancao((prev) => [...prev, { id: leituraId, ordem, peso_total: total, quantidade_animais: qtd, peso_individual: pesoIndiv }]);
+        setPesoBalancao("");
+        setQtdBalancaoAtual(qtdBalancaoDefault);
+        void marcarInicioSePreciso();
+      } else {
+        // Fluxo de coleta de números
+        setPendingLeituraId(leituraId);
+        setPendingPesoIndiv(pesoIndiv);
+        setPendingRestante(qtd);
+        setLeiturasBalancao((prev) => [...prev, { id: leituraId, ordem, peso_total: total, quantidade_animais: qtd, peso_individual: pesoIndiv }]);
+        setPesoBalancao("");
+        setQtdBalancaoAtual(qtdBalancaoDefault);
+        setNumeroAtual("");
+        setTimeout(() => inputRef.current?.focus(), 60);
+      }
+    } finally {
+      setSalvandoLeitura(false);
+    }
+  }
+
+  async function confirmarNumeroBalancao() {
+    if (!pesagemId || !lote || !pendingLeituraId || pendingPesoIndiv == null) return;
+    const numero = numeroAtual.trim();
+    if (!numero) return;
+    // cria/associa animal
+    let animalId: string | null = null;
+    const { data: an } = await supabase
+      .from("animais_pecuarista")
+      .select("id")
+      .eq("pecuarista_id", lote.pecuarista_id)
+      .eq("numero", numero)
+      .maybeSingle();
+    if (an) {
+      animalId = (an as any).id;
+      await supabase.from("animais_pecuarista").update({ lote_atual_id: lote.id }).eq("id", animalId);
+    } else {
+      const { data: novo, error: eA } = await supabase
+        .from("animais_pecuarista")
+        .insert({ pecuarista_id: lote.pecuarista_id, numero, lote_atual_id: lote.id })
+        .select("id").single();
+      if (eA || !novo) return toast.error("Erro ao cadastrar animal: " + (eA?.message ?? ""));
+      animalId = (novo as any).id;
+    }
+    const agora = new Date().toISOString();
+    const { data: pRow, error: eP } = await supabase
+      .from("pesos_animais_pecuarista")
+      .insert({
+        pesagem_lote_id: pesagemId,
+        animal_id: animalId,
+        peso_kg: pendingPesoIndiv,
+        gmd_individual: null,
+        leitura_balancao_id: pendingLeituraId,
+      })
+      .select("id").single();
+    if (eP || !pRow) return toast.error("Erro ao salvar peso: " + (eP?.message ?? ""));
+    void marcarInicioSePreciso();
+    setLinhasId((prev) => [
+      ...prev,
+      {
+        animal_id: animalId!, numero, peso_kg: pendingPesoIndiv, data: agora,
+        peso_anterior_kg: null, data_anterior: null, lote_anterior: null,
+        gmd_individual: null, dias: null,
+        pesoRowId: (pRow as any).id,
+        leitura_balancao_id: pendingLeituraId,
+      },
+    ]);
+    setNumeroAtual("");
+    const rest = pendingRestante - 1;
+    if (rest <= 0) {
+      setPendingLeituraId(null);
+      setPendingPesoIndiv(null);
+      setPendingRestante(0);
+    } else {
+      setPendingRestante(rest);
+    }
+    setTimeout(() => inputRef.current?.focus(), 40);
+  }
 
   useEffect(() => {
     if (!loading) setTimeout(() => inputRef.current?.focus(), 80);
@@ -307,6 +443,10 @@ export default function PecuaristaPesagemExecPage() {
         },
         identificados: isId ? identificados : undefined,
         semId: !isId ? semId : undefined,
+        leiturasBalancao: leiturasBalancao.length ? leiturasBalancao.map((l) => ({
+          ordem: l.ordem, peso_total: l.peso_total,
+          quantidade_animais: l.quantidade_animais, peso_individual: l.peso_individual,
+        })) : undefined,
       });
       const path = `pecuarista/pesagens/${pesagemId}-${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from("relatorios")
@@ -362,7 +502,72 @@ export default function PecuaristaPesagemExecPage() {
         </div>
       </div>
 
-      {lote.identificado ? (
+      {tipoBalanca === "balancao" ? (
+        <div className="space-y-3">
+          {pendingLeituraId && pendingRestante > 0 ? (
+            <>
+              <div className="text-sm font-medium">
+                Leitura em andamento — {pendingPesoIndiv?.toFixed(1)} kg/animal • faltam {pendingRestante}
+              </div>
+              <Input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                placeholder="Número do animal"
+                value={numeroAtual}
+                onChange={(e) => setNumeroAtual(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void confirmarNumeroBalancao(); } }}
+                className="text-xl h-14 text-center"
+                autoFocus
+              />
+              <Button
+                className="w-full h-12"
+                onClick={() => void confirmarNumeroBalancao()}
+                disabled={!numeroAtual.trim()}
+              >
+                Confirmar animal
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-medium">Nova leitura em Balanção — Peso total (kg)</div>
+              <div className="flex gap-2">
+                <Input
+                  ref={inputRef}
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="Peso total (kg)"
+                  value={pesoBalancao}
+                  onChange={(e) => setPesoBalancao(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void iniciarLeituraBalancao(); } }}
+                  className="text-xl h-14 text-center flex-1"
+                  autoFocus
+                />
+                <select
+                  value={qtdBalancaoAtual}
+                  onChange={(e) => setQtdBalancaoAtual(Number(e.target.value))}
+                  className="h-14 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
+                </select>
+              </div>
+              <Button
+                className="w-full h-12"
+                onClick={() => void iniciarLeituraBalancao()}
+                disabled={!pesoBalancao || parseFloat(pesoBalancao.replace(",", ".")) <= 0 || salvandoLeitura}
+              >
+                {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Próximo ➜
+              </Button>
+              {leiturasBalancao.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {leiturasBalancao.length} leitura(s) • {leiturasBalancao.reduce((s, l) => s + l.quantidade_animais, 0)} animais
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : lote.identificado ? (
         <div className="space-y-3">
           {step === "numero" ? (
             <>

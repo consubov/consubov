@@ -32,6 +32,8 @@ export default function PecuaristaLoteDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [iniciando, setIniciando] = useState(false);
   const [choiceOpen, setChoiceOpen] = useState(false);
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
 
   useEffect(() => {
     if (!loteId) return;
@@ -66,6 +68,8 @@ export default function PecuaristaLoteDetalhePage() {
         lote_id: loteId,
         data_pesagem: new Date().toISOString(),
         peso_total: 0, quantidade_animais: 0, peso_medio: 0,
+        tipo_balanca: tipoBalanca,
+        quantidade_padrao_balancao: tipoBalanca === "balancao" ? qtdBalancao : null,
       })
       .select("id")
       .single();
@@ -115,7 +119,30 @@ export default function PecuaristaLoteDetalhePage() {
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Tipo de pesagem</DialogTitle></DialogHeader>
-          <div className="grid gap-2">
+          <div className="grid gap-3">
+            <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
+              <label className="text-xs font-medium text-muted-foreground">Tipo de balança</label>
+              <select
+                value={tipoBalanca}
+                onChange={(e) => setTipoBalanca(e.target.value as any)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="individual">Balança individual</option>
+                <option value="balancao">Balanção (vários animais por leitura)</option>
+              </select>
+              {tipoBalanca === "balancao" && (
+                <>
+                  <label className="text-xs font-medium text-muted-foreground mt-1">Quantidade padrão por leitura</label>
+                  <select
+                    value={qtdBalancao}
+                    onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
+                  </select>
+                </>
+              )}
+            </div>
             <Button
               size="lg"
               className="h-16 justify-start bg-primary hover:bg-primary/90"
@@ -137,7 +164,7 @@ export default function PecuaristaLoteDetalhePage() {
               <Split className="w-5 h-5 mr-2" />
               <div className="text-left">
                 <div className="font-semibold">Pesagem + Apartação</div>
-                <div className="text-xs text-muted-foreground font-normal">Pesa e distribui em 2 ou 3 lotes de destino.</div>
+                <div className="text-xs text-muted-foreground font-normal">Pesa e distribui em 2 ou 3 lotes de destino. (Apenas balança individual.)</div>
               </div>
             </Button>
           </div>

@@ -2059,6 +2059,82 @@ export type Database = {
         }
         Relationships: []
       }
+      leituras_balancao_pecuarista: {
+        Row: {
+          created_at: string | null
+          id: string
+          ordem: number
+          pesagem_lote_id: string
+          peso_individual: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ordem: number
+          pesagem_lote_id: string
+          peso_individual: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ordem?: number
+          pesagem_lote_id?: string
+          peso_individual?: number
+          peso_total?: number
+          quantidade_animais?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leituras_balancao_pecuarista_pesagem_lote_id_fkey"
+            columns: ["pesagem_lote_id"]
+            isOneToOne: false
+            referencedRelation: "pesagens_lote_pecuarista"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leituras_balancao_pesador: {
+        Row: {
+          created_at: string | null
+          id: string
+          ordem: number
+          pesagem_id: string
+          peso_individual: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ordem: number
+          pesagem_id: string
+          peso_individual: number
+          peso_total: number
+          quantidade_animais: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ordem?: number
+          pesagem_id?: string
+          peso_individual?: number
+          peso_total?: number
+          quantidade_animais?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leituras_balancao_pesador_pesagem_id_fkey"
+            columns: ["pesagem_id"]
+            isOneToOne: false
+            referencedRelation: "pesagens_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linhas_mapa: {
         Row: {
           coordenadas: Json
@@ -2796,8 +2872,10 @@ export type Database = {
           preco_fixo_animal: number | null
           preco_kg: number | null
           preco_valor: number | null
+          quantidade_padrao_balancao: number | null
           sem_valores: boolean
           status: string
+          tipo_balanca: string
           tipo_preco: string | null
           valor_total_pago: number | null
         }
@@ -2815,8 +2893,10 @@ export type Database = {
           preco_fixo_animal?: number | null
           preco_kg?: number | null
           preco_valor?: number | null
+          quantidade_padrao_balancao?: number | null
           sem_valores?: boolean
           status?: string
+          tipo_balanca?: string
           tipo_preco?: string | null
           valor_total_pago?: number | null
         }
@@ -2834,8 +2914,10 @@ export type Database = {
           preco_fixo_animal?: number | null
           preco_kg?: number | null
           preco_valor?: number | null
+          quantidade_padrao_balancao?: number | null
           sem_valores?: boolean
           status?: string
+          tipo_balanca?: string
           tipo_preco?: string | null
           valor_total_pago?: number | null
         }
@@ -2904,6 +2986,8 @@ export type Database = {
           peso_medio: number
           peso_total: number
           quantidade_animais: number
+          quantidade_padrao_balancao: number | null
+          tipo_balanca: string
         }
         Insert: {
           apartacao_id?: string | null
@@ -2917,6 +3001,8 @@ export type Database = {
           peso_medio: number
           peso_total: number
           quantidade_animais: number
+          quantidade_padrao_balancao?: number | null
+          tipo_balanca?: string
         }
         Update: {
           apartacao_id?: string | null
@@ -2930,6 +3016,8 @@ export type Database = {
           peso_medio?: number
           peso_total?: number
           quantidade_animais?: number
+          quantidade_padrao_balancao?: number | null
+          tipo_balanca?: string
         }
         Relationships: [
           {
@@ -2954,6 +3042,7 @@ export type Database = {
           created_at: string | null
           gmd_individual: number | null
           id: string
+          leitura_balancao_id: string | null
           pesagem_lote_id: string
           peso_kg: number
         }
@@ -2962,6 +3051,7 @@ export type Database = {
           created_at?: string | null
           gmd_individual?: number | null
           id?: string
+          leitura_balancao_id?: string | null
           pesagem_lote_id: string
           peso_kg: number
         }
@@ -2970,6 +3060,7 @@ export type Database = {
           created_at?: string | null
           gmd_individual?: number | null
           id?: string
+          leitura_balancao_id?: string | null
           pesagem_lote_id?: string
           peso_kg?: number
         }
@@ -2979,6 +3070,13 @@ export type Database = {
             columns: ["animal_id"]
             isOneToOne: false
             referencedRelation: "animais_pecuarista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesos_animais_pecuarista_leitura_balancao_id_fkey"
+            columns: ["leitura_balancao_id"]
+            isOneToOne: false
+            referencedRelation: "leituras_balancao_pecuarista"
             referencedColumns: ["id"]
           },
           {
@@ -2995,6 +3093,7 @@ export type Database = {
           categoria_individual: string | null
           created_at: string | null
           id: string
+          leitura_balancao_id: string | null
           ordem: number
           percentual_individual: number | null
           pesagem_id: string
@@ -3005,6 +3104,7 @@ export type Database = {
           categoria_individual?: string | null
           created_at?: string | null
           id?: string
+          leitura_balancao_id?: string | null
           ordem: number
           percentual_individual?: number | null
           pesagem_id: string
@@ -3015,6 +3115,7 @@ export type Database = {
           categoria_individual?: string | null
           created_at?: string | null
           id?: string
+          leitura_balancao_id?: string | null
           ordem?: number
           percentual_individual?: number | null
           pesagem_id?: string
@@ -3022,6 +3123,13 @@ export type Database = {
           tipo_preco_individual?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pesos_pesagem_compra_leitura_balancao_id_fkey"
+            columns: ["leitura_balancao_id"]
+            isOneToOne: false
+            referencedRelation: "leituras_balancao_pesador"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pesos_pesagem_compra_pesagem_id_fkey"
             columns: ["pesagem_id"]
