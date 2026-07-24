@@ -503,7 +503,7 @@ export default function PecuaristaPesagemExecPage() {
           {pendingLeituraId && pendingRestante > 0 ? (
             <>
               <div className="text-sm font-medium">
-                Leitura em andamento — informar Nº {(qtdBalancaoAtual /* not used */, pendingPesoIndiv)?.toFixed?.(1)} kg/animal • faltam {pendingRestante}
+                Leitura em andamento — {pendingPesoIndiv?.toFixed(1)} kg/animal • faltam {pendingRestante}
               </div>
               <Input
                 ref={inputRef}
