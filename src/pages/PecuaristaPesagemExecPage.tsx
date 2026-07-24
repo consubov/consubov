@@ -569,67 +569,62 @@ export default function PecuaristaPesagemExecPage() {
         </div>
       ) : lote.identificado ? (
         <div className="space-y-3">
-          {step === "numero" ? (
-            <>
-              <div className="text-sm font-medium">Animal {animalNum} — Número</div>
-              <Input
-                ref={inputRef}
-                type="text"
-                inputMode="numeric"
-                placeholder="Número do animal"
-                value={numeroAtual}
-                onChange={(e) => setNumeroAtual(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleConfirmarNumero(); } }}
-                className="text-xl h-14 text-center"
-                autoFocus
-              />
-              <Button
-                className="w-full h-12"
-                onMouseDown={(e) => e.preventDefault()}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => void handleConfirmarNumero()}
-                disabled={!numeroAtual.trim() || buscandoAnimal}
-              >
-                {buscandoAnimal ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <History className="w-4 h-4 mr-2" />}
-                Continuar
-              </Button>
-            </>
-          ) : (
-            <>
-              <div className="text-sm font-medium">Animal {animalNum} — Peso (kg) — Nº {prev?.numero}</div>
-              {prev?.peso_anterior_kg != null && (
-                <Card className="p-3 bg-muted/50 text-sm">
-                  <div><strong>Pesagem anterior:</strong></div>
-                  <div>Peso: {prev.peso_anterior_kg.toFixed(1)} kg</div>
-                  {prev.lote_anterior && <div>Lote: {prev.lote_anterior}</div>}
-                  {prev.data_anterior && <div>Data: {new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
-                </Card>
-              )}
-              {prev?.peso_anterior_kg == null && (
-                <div className="text-xs text-muted-foreground">Primeira pesagem deste animal.</div>
-              )}
-              <Input
-                ref={inputRef}
-                type="number"
-                inputMode="decimal"
-                placeholder="Peso (kg)"
-                value={pesoAtual}
-                onChange={(e) => setPesoAtual(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleSalvarPesoId(); } }}
-                className="text-xl h-14 text-center"
-                autoFocus
-              />
-              <Button
-                className="w-full h-12"
-                onMouseDown={(e) => e.preventDefault()}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => void handleSalvarPesoId()}
-                disabled={!pesoAtual || parseFloat(pesoAtual.replace(",", ".")) <= 0}
-              >
-                <Scale className="w-4 h-4 mr-2" /> Próximo ➜
-              </Button>
-            </>
+          <div className="text-sm font-medium">
+            {step === "numero"
+              ? `Animal ${animalNum} — Número`
+              : `Animal ${animalNum} — Peso (kg) — Nº ${prev?.numero}`}
+          </div>
+          {step === "peso" && prev?.peso_anterior_kg != null && (
+            <Card className="p-3 bg-muted/50 text-sm">
+              <div><strong>Pesagem anterior:</strong></div>
+              <div>Peso: {prev.peso_anterior_kg.toFixed(1)} kg</div>
+              {prev.lote_anterior && <div>Lote: {prev.lote_anterior}</div>}
+              {prev.data_anterior && <div>Data: {new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
+            </Card>
           )}
+          {step === "peso" && prev?.peso_anterior_kg == null && (
+            <div className="text-xs text-muted-foreground">Primeira pesagem deste animal.</div>
+          )}
+          <Input
+            key="main-input-id"
+            ref={inputRef}
+            type={step === "numero" ? "text" : "number"}
+            inputMode={step === "numero" ? "numeric" : "decimal"}
+            placeholder={step === "numero" ? "Número do animal" : "Peso (kg)"}
+            value={step === "numero" ? numeroAtual : pesoAtual}
+            onChange={(e) => (step === "numero" ? setNumeroAtual(e.target.value) : setPesoAtual(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (step === "numero") void handleConfirmarNumero();
+                else void handleSalvarPesoId();
+              }
+            }}
+            className="text-xl h-14 text-center"
+            autoFocus
+          />
+          <Button
+            className="w-full h-12"
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => {
+              inputRef.current?.focus();
+              if (step === "numero") void handleConfirmarNumero();
+              else void handleSalvarPesoId();
+            }}
+            disabled={
+              step === "numero"
+                ? !numeroAtual.trim() || buscandoAnimal
+                : !pesoAtual || parseFloat(pesoAtual.replace(",", ".")) <= 0
+            }
+          >
+            {step === "numero" ? (
+              buscandoAnimal ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <History className="w-4 h-4 mr-2" />
+            ) : (
+              <Scale className="w-4 h-4 mr-2" />
+            )}
+            {step === "numero" ? "Continuar" : "Próximo ➜"}
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -649,13 +644,14 @@ export default function PecuaristaPesagemExecPage() {
             className="w-full h-12"
             onMouseDown={(e) => e.preventDefault()}
             onPointerDown={(e) => e.preventDefault()}
-            onClick={() => void handleSalvarPesoSem()}
+            onClick={() => { inputRef.current?.focus(); void handleSalvarPesoSem(); }}
             disabled={!pesoSem || parseFloat(pesoSem.replace(",", ".")) <= 0}
           >
             <Scale className="w-4 h-4 mr-2" /> Próximo ➜
           </Button>
         </div>
       )}
+
 
       {(linhasId.length > 0 || linhasSem.length > 0) && (
         <Card className="p-3">
