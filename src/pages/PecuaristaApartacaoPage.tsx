@@ -722,25 +722,14 @@ export default function PecuaristaApartacaoPage() {
 
       {lote.identificado ? (
         <div className="space-y-3">
-          {step === "numero" && (
+          {(step === "numero" || step === "peso") && (
             <>
-              <div className="text-sm font-medium">Animal {animalNum} — Número</div>
-              <Input ref={inputRef} type="text" inputMode="numeric" placeholder="Número do animal"
-                value={numeroAtual} onChange={e => setNumeroAtual(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleConfirmarNumero(); } }}
-                className="text-xl h-14 text-center" autoFocus />
-              <Button className="w-full h-12"
-                onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                onClick={() => void handleConfirmarNumero()} disabled={!numeroAtual.trim() || buscando}>
-                {buscando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Continuar
-              </Button>
-            </>
-          )}
-          {step === "peso" && (
-            <>
-              <div className="text-sm font-medium">Animal {animalNum} — Peso — Nº {prev?.numero}</div>
-              {prev?.peso_anterior_kg != null && (
+              <div className="text-sm font-medium">
+                {step === "numero"
+                  ? `Animal ${animalNum} — Número`
+                  : `Animal ${animalNum} — Peso — Nº ${prev?.numero}`}
+              </div>
+              {step === "peso" && prev?.peso_anterior_kg != null && (
                 <Card className="p-3 bg-muted/50 text-sm">
                   <div><strong>Pesagem anterior:</strong></div>
                   <div>Peso: {prev.peso_anterior_kg.toFixed(1)} kg</div>
@@ -748,18 +737,49 @@ export default function PecuaristaApartacaoPage() {
                   {prev.data_anterior && <div>Data: {new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
                 </Card>
               )}
-              <Input ref={inputRef} type="number" inputMode="decimal" placeholder="Peso (kg)"
-                value={pesoAtual} onChange={e => setPesoAtual(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleConfirmarPesoId(); } }}
-                className="text-xl h-14 text-center" autoFocus />
-              <Button className="w-full h-12"
-                onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
-                onClick={handleConfirmarPesoId}
-                disabled={!pesoAtual || parseFloat(pesoAtual.replace(",", ".")) <= 0}>
-                <Scale className="w-4 h-4 mr-2" /> Escolher destino ➜
+              <Input
+                key="apart-main-input-id"
+                ref={inputRef}
+                type={step === "numero" ? "text" : "number"}
+                inputMode={step === "numero" ? "numeric" : "decimal"}
+                placeholder={step === "numero" ? "Número do animal" : "Peso (kg)"}
+                value={step === "numero" ? numeroAtual : pesoAtual}
+                onChange={(e) => (step === "numero" ? setNumeroAtual(e.target.value) : setPesoAtual(e.target.value))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (step === "numero") void handleConfirmarNumero();
+                    else handleConfirmarPesoId();
+                  }
+                }}
+                className="text-xl h-14 text-center"
+                autoFocus
+              />
+              <Button
+                className="w-full h-12"
+                onMouseDown={(e) => e.preventDefault()}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  inputRef.current?.focus();
+                  if (step === "numero") void handleConfirmarNumero();
+                  else handleConfirmarPesoId();
+                }}
+                disabled={
+                  step === "numero"
+                    ? !numeroAtual.trim() || buscando
+                    : !pesoAtual || parseFloat(pesoAtual.replace(",", ".")) <= 0
+                }
+              >
+                {step === "numero" ? (
+                  buscando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null
+                ) : (
+                  <Scale className="w-4 h-4 mr-2" />
+                )}
+                {step === "numero" ? "Continuar" : "Escolher destino ➜"}
               </Button>
             </>
           )}
+
           {step === "destino" && (() => {
             const peso = parseFloat(pesoAtual.replace(",", "."));
             const sugerido = destinoParaPeso(destinos, peso);
