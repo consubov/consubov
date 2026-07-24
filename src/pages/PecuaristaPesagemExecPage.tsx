@@ -132,7 +132,7 @@ export default function PecuaristaPesagemExecPage() {
       const { data: leituraRow, error: eL } = await supabase
         .from("leituras_balancao_pecuarista")
         .insert({
-          pesagem_id: pesagemId,
+          pesagem_lote_id: pesagemId,
           ordem,
           peso_total: total,
           quantidade_animais: qtd,
