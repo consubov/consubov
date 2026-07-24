@@ -52,6 +52,22 @@ export default function PecuaristaPesagemResumoPage() {
   const [data, setData] = useState<NavState | null>(stateData);
   const [pdfUrl, setPdfUrl] = useState<string | null>(stateData?.pdfUrl ?? null);
   const [sharing, setSharing] = useState(false);
+  const [leiturasBalancao, setLeiturasBalancao] = useState<Array<{ ordem: number; peso_total: number; quantidade_animais: number; peso_individual: number }>>([]);
+
+  useEffect(() => {
+    if (!pesagemId) return;
+    (async () => {
+      const { data: ls } = await supabase
+        .from("leituras_balancao_pecuarista")
+        .select("ordem, peso_total, quantidade_animais, peso_individual")
+        .eq("pesagem_lote_id", pesagemId)
+        .order("ordem", { ascending: true });
+      setLeiturasBalancao(((ls as any[]) ?? []).map((l) => ({
+        ordem: Number(l.ordem), peso_total: Number(l.peso_total),
+        quantidade_animais: Number(l.quantidade_animais), peso_individual: Number(l.peso_individual),
+      })));
+    })();
+  }, [pesagemId]);
 
   useEffect(() => {
     if (data) return;
