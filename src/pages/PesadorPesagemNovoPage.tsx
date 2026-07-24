@@ -314,6 +314,39 @@ export default function PesadorPesagemNovoPage() {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="tipo-balanca">Tipo de balança</Label>
+        <select
+          id="tipo-balanca"
+          value={tipoBalanca}
+          onChange={(e) => setTipoBalanca(e.target.value as "individual" | "balancao")}
+          className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="individual">Balança individual (1 animal por leitura)</option>
+          <option value="balancao">Balanção (vários animais por leitura)</option>
+        </select>
+        {isBalancao && (
+          <>
+            <Label htmlFor="qtd-balancao" className="pt-2 block">Quantidade padrão por leitura</Label>
+            <select
+              id="qtd-balancao"
+              value={qtdBalancao}
+              onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
+              className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value={2}>2 animais</option>
+              <option value={3}>3 animais</option>
+              <option value={4}>4 animais</option>
+              <option value={5}>5 animais</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              O peso digitado será o TOTAL da leitura, dividido pelo número de animais. Você poderá ajustar a quantidade a cada leitura.
+              Modo incompatível com lote misto (Aleatória) e com rendimento aleatório.
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label>Categoria</Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((c) => (
