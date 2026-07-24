@@ -95,6 +95,116 @@ async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
   } catch { return null; }
 }
 
+// Gráfico de pesos: barras verdes + linha de tendência laranja (mesmo estilo do Pesador).
+function renderChartToDataUrl(pesos: number[]): string | null {
+  try {
+    const n = pesos.length;
+    if (n === 0) return null;
+    const W = 1400, H = 600;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    const padL = 70, padR = 30, padT = 40, padB = 60;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const max = Math.max(...pesos);
+    const min = Math.min(...pesos);
+    const yMax = Math.ceil(max / 50) * 50;
+    const yMin = Math.max(0, Math.floor(min / 50) * 50 - 50);
+    const yRange = yMax - yMin || 1;
+    ctx.font = "16px Helvetica";
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const y = padT + (chartH * i) / ySteps;
+      ctx.strokeStyle = "#EEEEEE";
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      const val = yMax - (yRange * i) / ySteps;
+      ctx.fillStyle = "#666666"; ctx.textAlign = "right";
+      ctx.fillText(`${Math.round(val)}`, padL - 8, y + 5);
+    }
+    const barSlot = chartW / n;
+    const barW = Math.max(1, barSlot * 0.7);
+    const showLabels = barSlot >= 22;
+    ctx.fillStyle = GREEN;
+    for (let i = 0; i < n; i++) {
+      const v = pesos[i];
+      const h = ((v - yMin) / yRange) * chartH;
+      const x = padL + i * barSlot + (barSlot - barW) / 2;
+      const y = padT + chartH - h;
+      ctx.fillRect(x, y, barW, h);
+    }
+    ctx.strokeStyle = "#E8863A"; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const v = pesos[i];
+      const h = ((v - yMin) / yRange) * chartH;
+      const x = padL + i * barSlot + barSlot / 2;
+      const y = padT + chartH - h;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "#E8863A";
+    for (let i = 0; i < n; i++) {
+      const v = pesos[i];
+      const h = ((v - yMin) / yRange) * chartH;
+      const x = padL + i * barSlot + barSlot / 2;
+      const y = padT + chartH - h;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    if (showLabels) {
+      ctx.fillStyle = "#333333"; ctx.font = "14px Helvetica"; ctx.textAlign = "center";
+      for (let i = 0; i < n; i++) {
+        const v = pesos[i];
+        const h = ((v - yMin) / yRange) * chartH;
+        const x = padL + i * barSlot + barSlot / 2;
+        const y = padT + chartH - h - 6;
+        ctx.fillText(`${Math.round(v)}`, x, y);
+      }
+    }
+    ctx.fillStyle = "#666666"; ctx.font = "14px Helvetica"; ctx.textAlign = "center";
+    const tickStep = Math.max(1, Math.ceil(n / 20));
+    for (let i = 0; i < n; i += tickStep) {
+      const x = padL + i * barSlot + barSlot / 2;
+      ctx.fillText(`${i + 1}`, x, padT + chartH + 20);
+    }
+    if ((n - 1) % tickStep !== 0) {
+      const x = padL + (n - 1) * barSlot + barSlot / 2;
+      ctx.fillText(`${n}`, x, padT + chartH + 20);
+    }
+    ctx.strokeStyle = "#999999";
+    ctx.beginPath(); ctx.moveTo(padL, padT + chartH); ctx.lineTo(W - padR, padT + chartH); ctx.stroke();
+    return canvas.toDataURL("image/jpeg", 0.9);
+  } catch { return null; }
+}
+
+// Desenha um gráfico de pesos dentro do espaço restante da página (nunca quebra).
+// Se não couber o mínimo, cria nova página. Retorna o novo y.
+function drawPesosChart(doc: jsPDF, pesos: number[], W: number, H: number, y: number, titulo: string): number {
+  const url = renderChartToDataUrl(pesos);
+  if (!url) return y;
+  const FOOTER_RES = 22;
+  const TITLE_H = 6;
+  const MIN_CHART_H = 35;
+  const MAX_CHART_H = 70;
+  let remaining = H - FOOTER_RES - y - TITLE_H - 2;
+  if (remaining < MIN_CHART_H) {
+    doc.addPage();
+    y = 20;
+    remaining = H - FOOTER_RES - y - TITLE_H - 2;
+  }
+  const imgW = W - 30;
+  const naturalH = imgW * (600 / 1400);
+  const chartH = Math.min(MAX_CHART_H, Math.max(MIN_CHART_H, Math.min(remaining, naturalH)));
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
+  doc.text(titulo, 15, y);
+  y += 2;
+  try { doc.addImage(url, "JPEG", 15, y, imgW, chartH); } catch { /* ignore */ }
+  return y + chartH + 4;
+}
+
+
 function drawFirstHeader(
   doc: jsPDF,
   opts: { line1: string; line2?: string | null; subtitle: string },
@@ -224,6 +334,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ["Animais pesados", String(t.quantidade)],
     ["Peso total", `${fmtN(t.peso_total, 2)} kg`],
     ["Peso médio", `${fmtN(t.peso_medio, 2)} kg`],
+    ["Peso médio (@)", `${fmtN(t.peso_medio / 30, 2)} @`],
   ];
   if (t.peso_medio_anterior != null) {
     totRows.push(["Peso médio anterior", `${fmtN(t.peso_medio_anterior, 2)} kg`]);
@@ -244,6 +355,9 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   });
   y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
 
+  const H = doc.internal.pageSize.getHeight();
+  let pesosParaGrafico: number[] = [];
+
   // Detalhe
   if (data.header.identificado && data.identificados && data.identificados.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
@@ -252,6 +366,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     const body = data.identificados.map((r) => [
       r.numero,
       `${fmtN(r.peso_kg, 1)} kg`,
+      `${fmtN(r.peso_kg / 30, 2)} @`,
       fmtDateTime(r.data),
       r.peso_anterior_kg != null ? `${fmtN(r.peso_anterior_kg, 1)} kg` : "—",
       r.data_anterior ? fmtDate(r.data_anterior) : "—",
@@ -260,18 +375,19 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ]);
     autoTable(doc, {
       startY: y + 2,
-      head: [["Nº", "Peso", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"]],
+      head: [["Nº", "Peso", "@", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"]],
       body,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
       headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
       margin: { left: 15, right: 15 },
     });
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+    pesosParaGrafico = data.identificados.map((r) => r.peso_kg);
   } else if (!data.header.identificado && data.semId && data.semId.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
     doc.text("Pesos registrados (peso vivo)", 15, y);
     y += 2;
-    // Grid dinâmica em 5-6 colunas
     const attempts = [
       { cols: 4, rowH: 5.2, fontSize: 9 },
       { cols: 5, rowH: 4.8, fontSize: 8.5 },
@@ -291,9 +407,16 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
         doc.text(`${p.ordem} - ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
       }
       y += rowH;
-      if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20; }
+      if (y > H - 20) { doc.addPage(); y = 20; }
     }
+    pesosParaGrafico = data.semId.map((r) => r.peso_kg);
   }
+
+  // Gráfico de pesos (sempre 1 página, comprime conforme necessário)
+  if (pesosParaGrafico.length > 0) {
+    y = drawPesosChart(doc, pesosParaGrafico, W, H, y + 2, `Gráfico de Pesos (1 a ${pesosParaGrafico.length})`);
+  }
+
 
   if (data.leiturasBalancao && data.leiturasBalancao.length > 0) {
     doc.addPage();
@@ -419,6 +542,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     const tRows: [string, string][] = [
       ["Peso total", `${fmtN(d.peso_total, 2)} kg`],
       ["Peso médio", `${fmtN(d.peso_medio, 2)} kg`],
+      ["Peso médio (@)", `${fmtN(d.peso_medio / 30, 2)} @`],
     ];
     if (d.peso_medio_anterior != null) {
       tRows.push(["Peso médio anterior", `${fmtN(d.peso_medio_anterior, 2)} kg`]);
@@ -439,17 +563,20 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     });
     y = ((doc as any).lastAutoTable?.finalY ?? y) + 4;
 
+    let pesosDest: number[] = [];
+
     // Detalhe
     if (d.identificado && d.identificados && d.identificados.length > 0) {
       const body = d.identificados.map((r) => [
         r.numero,
         `${fmtN(r.peso_kg, 1)} kg`,
+        `${fmtN(r.peso_kg / 30, 2)} @`,
         fmtDateTime(r.data),
         r.gmd_individual != null ? `${fmtN(r.gmd_individual, 3)} kg/dia` : "—",
       ]);
       autoTable(doc, {
         startY: y + 1,
-        head: [["Nº", "Peso", "Data/hora", "GMD"]],
+        head: [["Nº", "Peso", "@", "Data/hora", "GMD"]],
         body,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 1.8, textColor: INK, lineColor: LINE },
@@ -457,6 +584,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         margin: { left: 15, right: 15 },
       });
       y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+      pesosDest = d.identificados.map((r) => r.peso_kg);
     } else if (!d.identificado && d.semId && d.semId.length > 0) {
       const cols = 4;
       const colW = (W - 30) / cols;
@@ -474,8 +602,14 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         y += 5;
       }
       y += 4;
+      pesosDest = d.semId.map((r) => r.peso_kg);
+    }
+
+    if (pesosDest.length > 0) {
+      y = drawPesosChart(doc, pesosDest, W, H, y, `Gráfico de Pesos — ${d.nome_lote} (1 a ${pesosDest.length})`);
     }
   }
+
 
   drawFooter(doc);
   return doc.output("blob");

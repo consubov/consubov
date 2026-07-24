@@ -124,49 +124,58 @@ export default function PecuaristaDashboard() {
     return CATEGORIAS_PADRAO[l.categoria] ?? l.categoria;
   };
 
-  // Peso ponderado GMD por pesagem: usa média de gmd_individual (identificado) ou gmd (não identificado)
+  // GMD de uma pesagem: média dos gmd_individual (identificado) ou p.gmd (não identificado)
   const gmdDaPesagem = (p: Pesagem): number | null => {
     const lote = loteById[p.lote_id];
     if (lote?.identificado) {
       const arr = (pesosByPesagem[p.id] ?? []).filter(x => x.gmd_individual != null);
-      if (arr.length === 0) return p.gmd ?? null;
+      if (arr.length === 0) return p.gmd != null ? Number(p.gmd) : null;
       const soma = arr.reduce((s, x) => s + Number(x.gmd_individual), 0);
       return soma / arr.length;
     }
     return p.gmd != null ? Number(p.gmd) : null;
   };
 
+  // Helper: última pesagem por lote dentro de um subconjunto (com GMD válido)
+  const ultimaGmdPorLote = (pesagensSubset: Pesagem[]): Map<string, number> => {
+    // pesagens já vêm ordenadas desc por data_pesagem → o primeiro match por lote é o mais recente
+    const map = new Map<string, number>();
+    for (const p of pesagensSubset) {
+      if (map.has(p.lote_id)) continue;
+      const g = gmdDaPesagem(p);
+      if (g == null) continue;
+      map.set(p.lote_id, g);
+    }
+    return map;
+  };
+
   // KPIs (não usam filtros; refletem o rebanho atual e o mês corrente)
   const kpis = useMemo(() => {
     const lotesAtivos = lotes.filter(l => l.status === "ativo");
+    const lotesAtivosIds = new Set(lotesAtivos.map(l => l.id));
     const mesAtual = now.getMonth() + 1;
     const anoAtual = now.getFullYear();
 
-    // GMD médio ponderado mês atual
-    let somaGmdPeso = 0, somaAnim = 0;
-    let pesagensMes = 0;
-    pesagens.forEach(p => {
+    // GMD médio (mês) = média SIMPLES entre lotes ativos com pesagem válida no mês
+    const pesagensMesLotesAtivos = pesagens.filter(p => {
+      if (!lotesAtivosIds.has(p.lote_id)) return false;
       const d = new Date(p.data_pesagem);
-      if (d.getFullYear() === anoAtual && d.getMonth() + 1 === mesAtual) {
-        pesagensMes++;
-        const g = gmdDaPesagem(p);
-        if (g != null && p.quantidade_animais > 0) {
-          somaGmdPeso += g * p.quantidade_animais;
-          somaAnim += p.quantidade_animais;
-        }
-      }
+      return d.getFullYear() === anoAtual && d.getMonth() + 1 === mesAtual;
     });
-    const gmdMedio = somaAnim > 0 ? somaGmdPeso / somaAnim : 0;
+    const gmdPorLote = ultimaGmdPorLote(pesagensMesLotesAtivos);
+    const gmdValues = Array.from(gmdPorLote.values());
+    const gmdMedio = gmdValues.length > 0
+      ? gmdValues.reduce((s, v) => s + v, 0) / gmdValues.length
+      : 0;
+    const pesagensMes = pesagensMesLotesAtivos.length;
 
     // Total animais: última pesagem de cada lote ativo
     let totalAnimais = 0;
-    const lotesSemPesagem: string[] = [];
     const lotesAtrasados: string[] = [];
     const limite30 = new Date(); limite30.setDate(limite30.getDate() - 30);
     lotesAtivos.forEach(l => {
       const ps = pesagens.filter(p => p.lote_id === l.id);
-      if (ps.length === 0) { lotesSemPesagem.push(l.id); lotesAtrasados.push(l.id); return; }
-      // pesagens já vêm ordenadas desc
+      if (ps.length === 0) { lotesAtrasados.push(l.id); return; }
       const last = ps[0];
       totalAnimais += last.quantidade_animais || 0;
       if (new Date(last.data_pesagem) < limite30) lotesAtrasados.push(l.id);
@@ -195,56 +204,49 @@ export default function PecuaristaDashboard() {
     });
   }, [pesagens, loteById, aFazenda, aAno, aMes]);
 
-  // Gráfico linha: GMD médio por mês do ano selecionado (mesma fazenda)
+  // Gráfico linha: GMD médio SIMPLES por mês (média entre lotes com pesagem válida)
   const lineData = useMemo(() => {
-    const byMes: Record<number, { g: number; a: number }> = {};
-    for (let i = 1; i <= 12; i++) byMes[i] = { g: 0, a: 0 };
-    pesagens.forEach(p => {
-      const lote = loteById[p.lote_id];
-      if (!lote) return;
-      if (aFazenda !== "all" && lote.fazenda_id !== aFazenda) return;
-      const d = new Date(p.data_pesagem);
-      if (d.getFullYear() !== aAno) return;
-      const g = gmdDaPesagem(p);
-      if (g == null || !p.quantidade_animais) return;
-      const m = d.getMonth() + 1;
-      byMes[m].g += g * p.quantidade_animais;
-      byMes[m].a += p.quantidade_animais;
+    return MESES.map(m => {
+      const psMes = pesagens.filter(p => {
+        const lote = loteById[p.lote_id];
+        if (!lote) return false;
+        if (aFazenda !== "all" && lote.fazenda_id !== aFazenda) return false;
+        const d = new Date(p.data_pesagem);
+        return d.getFullYear() === aAno && d.getMonth() + 1 === m.v;
+      });
+      const gmdPorLote = ultimaGmdPorLote(psMes);
+      const arr = Array.from(gmdPorLote.values());
+      const gmd = arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+      return { mes: m.l.slice(0, 3), gmd: Math.round(gmd * 1000) / 1000 };
     });
-    return MESES.map(m => ({
-      mes: m.l.slice(0, 3),
-      gmd: byMes[m.v].a > 0 ? Math.round((byMes[m.v].g / byMes[m.v].a) * 1000) / 1000 : 0,
-    }));
   }, [pesagens, loteById, aFazenda, aAno, pesosByPesagem]);
 
-  // Agregações por categoria (para gráfico barras, pizza, lista)
+  // Agregações por categoria: GMD médio SIMPLES entre lotes daquela categoria
   const porCategoria = useMemo(() => {
-    const map: Record<string, { nome: string; somaGmdPeso: number; somaAnim: number; lotes: Set<string>; ultAnim: Record<string, number> }> = {};
-    filtered.forEach(p => {
-      const lote = loteById[p.lote_id];
-      if (!lote) return;
+    // Última pesagem por lote no período filtrado (para animais e GMD)
+    const latestPorLote = new Map<string, Pesagem>();
+    for (const p of filtered) {
+      if (!latestPorLote.has(p.lote_id)) latestPorLote.set(p.lote_id, p);
+    }
+    const map: Record<string, { nome: string; gmds: number[]; animais: number; lotes: number }> = {};
+    for (const [loteId, p] of latestPorLote) {
+      const lote = loteById[loteId];
+      if (!lote) continue;
       const nome = catLabel(lote);
       const g = gmdDaPesagem(p);
-      const item = (map[nome] ??= { nome, somaGmdPeso: 0, somaAnim: 0, lotes: new Set(), ultAnim: {} });
-      if (g != null && p.quantidade_animais > 0) {
-        item.somaGmdPeso += g * p.quantidade_animais;
-        item.somaAnim += p.quantidade_animais;
-      }
-      item.lotes.add(lote.id);
-      // guarda quantidade da última pesagem do lote no período (para pizza)
-      // como pesagens estão ordenadas desc, primeira ocorrência ganha
-      if (item.ultAnim[lote.id] === undefined) item.ultAnim[lote.id] = p.quantidade_animais;
-    });
-    return Object.values(map).map(v => {
-      const animaisAtuais = Object.values(v.ultAnim).reduce((s, n) => s + (n || 0), 0);
-      return {
-        nome: v.nome,
-        gmdMedio: v.somaAnim > 0 ? v.somaGmdPeso / v.somaAnim : 0,
-        animais: animaisAtuais,
-        lotes: v.lotes.size,
-      };
-    }).sort((a, b) => b.animais - a.animais);
+      const item = (map[nome] ??= { nome, gmds: [], animais: 0, lotes: 0 });
+      if (g != null) item.gmds.push(g);
+      item.animais += p.quantidade_animais || 0;
+      item.lotes += 1;
+    }
+    return Object.values(map).map(v => ({
+      nome: v.nome,
+      gmdMedio: v.gmds.length > 0 ? v.gmds.reduce((s, x) => s + x, 0) / v.gmds.length : 0,
+      animais: v.animais,
+      lotes: v.lotes,
+    })).sort((a, b) => b.animais - a.animais);
   }, [filtered, loteById, pesosByPesagem, customCats]);
+
 
   const aplicarFiltros = () => {
     setAFazenda(fFazenda);
