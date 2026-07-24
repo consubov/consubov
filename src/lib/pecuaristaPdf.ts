@@ -46,11 +46,19 @@ export interface PecuaristaPdfTotais {
   gmd?: number | null;
 }
 
+export interface PecuaristaLeituraBalancao {
+  ordem: number;
+  peso_total: number;
+  quantidade_animais: number;
+  peso_individual: number;
+}
+
 export interface PecuaristaPdfData {
   header: PecuaristaPdfHeader;
   totais: PecuaristaPdfTotais;
   identificados?: PecuaristaPesoIdentificado[];
   semId?: PecuaristaPesoSemId[];
+  leiturasBalancao?: PecuaristaLeituraBalancao[];
 }
 
 function fmtN(v: number, d = 2) {
