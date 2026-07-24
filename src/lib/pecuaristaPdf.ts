@@ -334,6 +334,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ["Animais pesados", String(t.quantidade)],
     ["Peso total", `${fmtN(t.peso_total, 2)} kg`],
     ["Peso médio", `${fmtN(t.peso_medio, 2)} kg`],
+    ["Peso médio (@)", `${fmtN(t.peso_medio / 30, 2)} @`],
   ];
   if (t.peso_medio_anterior != null) {
     totRows.push(["Peso médio anterior", `${fmtN(t.peso_medio_anterior, 2)} kg`]);
@@ -354,6 +355,9 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   });
   y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
 
+  const H = doc.internal.pageSize.getHeight();
+  let pesosParaGrafico: number[] = [];
+
   // Detalhe
   if (data.header.identificado && data.identificados && data.identificados.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
@@ -362,6 +366,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     const body = data.identificados.map((r) => [
       r.numero,
       `${fmtN(r.peso_kg, 1)} kg`,
+      `${fmtN(r.peso_kg / 30, 2)} @`,
       fmtDateTime(r.data),
       r.peso_anterior_kg != null ? `${fmtN(r.peso_anterior_kg, 1)} kg` : "—",
       r.data_anterior ? fmtDate(r.data_anterior) : "—",
@@ -370,18 +375,19 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ]);
     autoTable(doc, {
       startY: y + 2,
-      head: [["Nº", "Peso", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"]],
+      head: [["Nº", "Peso", "@", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"]],
       body,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
       headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
       margin: { left: 15, right: 15 },
     });
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+    pesosParaGrafico = data.identificados.map((r) => r.peso_kg);
   } else if (!data.header.identificado && data.semId && data.semId.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
     doc.text("Pesos registrados (peso vivo)", 15, y);
     y += 2;
-    // Grid dinâmica em 5-6 colunas
     const attempts = [
       { cols: 4, rowH: 5.2, fontSize: 9 },
       { cols: 5, rowH: 4.8, fontSize: 8.5 },
@@ -401,9 +407,16 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
         doc.text(`${p.ordem} - ${fmtN(p.peso_kg, 1)} kg`, 15 + c * colW, y);
       }
       y += rowH;
-      if (y > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); y = 20; }
+      if (y > H - 20) { doc.addPage(); y = 20; }
     }
+    pesosParaGrafico = data.semId.map((r) => r.peso_kg);
   }
+
+  // Gráfico de pesos (sempre 1 página, comprime conforme necessário)
+  if (pesosParaGrafico.length > 0) {
+    y = drawPesosChart(doc, pesosParaGrafico, W, H, y + 2, `Gráfico de Pesos (1 a ${pesosParaGrafico.length})`);
+  }
+
 
   if (data.leiturasBalancao && data.leiturasBalancao.length > 0) {
     doc.addPage();
