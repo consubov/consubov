@@ -622,6 +622,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       <VisitaTopicosSection
         visitaId={visita.id}
         onChange={setTopicos}
+        numeroMap={numeroMap}
       />
 
       {/* Título da seção final do PDF (opcional) */}
