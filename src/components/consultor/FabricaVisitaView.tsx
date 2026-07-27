@@ -282,6 +282,27 @@ export default function FabricaVisitaView({
         numeroMap={numeroMap}
       />
 
+      {/* Data e horário editáveis */}
+      <VisitaDateTimeEditor
+        horaInicio={visita.hora_inicio}
+        horaFim={visita.hora_fim}
+        onChange={async (patch) => {
+          setVisita(prev => ({ ...prev, ...patch } as Visita));
+          await offlineUpdate({
+            visitaId,
+            table: "visitas_tecnicas",
+            rowId: visitaId,
+            patch: patch as any,
+          });
+        }}
+      />
+
+      {/* Assinaturas — múltiplos consultores */}
+      <AssinaturasSection
+        visitaId={visitaId}
+        onChange={setAssinantes}
+      />
+
       <div className="sticky bottom-16 pt-2 space-y-2">
         {!online ? (
           <Button
