@@ -473,6 +473,11 @@ export default function RevisaoVisitaPage() {
             corporal: averageOf(p.samples.corporal),
             bebedouro: averageOf(p.samples.bebedouro),
           },
+          samples: {
+            fezes: p.samples.fezes.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+            corporal: p.samples.corporal.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+            bebedouro: p.samples.bebedouro.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+          },
           fotos,
         };
       }));

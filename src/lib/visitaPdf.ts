@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
+import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -39,6 +40,7 @@ export interface VisitaPdfPasto {
   consumo_real_kg?: number | null;
   observacao: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
   fotos: { id: string; url: string; ordem: number }[];
 }
 
@@ -617,6 +619,13 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       py += blockHeight + gap;
     }
   }
+
+  // Line charts — amostras individuais por tipo (uma página por gráfico com dados)
+  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", {
+    fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
+    corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
+    bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
+  });
 
   // DESENVOLVIMENTO — tópicos após pastos, em novas páginas
   if (devTopicos.length > 0) {
