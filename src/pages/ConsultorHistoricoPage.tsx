@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { listPendingVisitaIds } from "@/lib/consultorOffline/db";
 import { isVisitaDeleted, loadAllSnapshots, softDeleteVisita } from "@/lib/consultorOffline/snapshotStore";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
 interface VisitaItem {
   id: string;
@@ -37,6 +38,8 @@ export default function ConsultorHistoricoPage() {
   const [loading, setLoading] = useState(true);
   const [toDelete, setToDelete] = useState<VisitaItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
+
 
   useEffect(() => { if (roleData?.consultorId) load(); }, [roleData?.consultorId]);
 
@@ -174,10 +177,8 @@ export default function ConsultorHistoricoPage() {
 
               <div className="flex gap-2">
                 {v.status === "finalizada" && v.pdf_url && (
-                  <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-                    <a href={v.pdf_url} target="_blank" rel="noreferrer">
-                      <Download className="w-4 h-4" /> Baixar PDF
-                    </a>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => setPdfVisualizar({ url: v.pdf_url!, nome: v.fazendas_consultor?.nome_fazenda || "visita" })}>
+                    <Download className="w-4 h-4" /> Ver / Baixar PDF
                   </Button>
                 )}
                 {v._pendingLocal && (
@@ -219,6 +220,12 @@ export default function ConsultorHistoricoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <PdfViewerDialog
+        url={pdfVisualizar?.url ?? null}
+        fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
+        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        onClose={() => setPdfVisualizar(null)}
+      />
     </div>
   );
 }
