@@ -743,6 +743,7 @@ export default function RevisaoVisitaPage() {
               <PhotoManager
                 pasto={p}
                 readOnly={readOnly}
+                numeroMap={numeroMap}
                 onAdd={f => addFoto(p.id, f)}
                 onDelete={f => delFoto(p.id, f)}
                 onMove={(i, d) => moveFoto(p.id, i, d)}
