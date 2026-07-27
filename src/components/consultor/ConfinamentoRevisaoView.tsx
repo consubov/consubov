@@ -91,8 +91,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }, []);
 
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
