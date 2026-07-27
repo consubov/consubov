@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
+import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
