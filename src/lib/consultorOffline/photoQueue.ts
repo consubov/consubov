@@ -373,13 +373,62 @@ export async function syncNow() {
   );
 }
 
+/**
+ * Remove em cascata todas as fotos/mutações locais associadas a uma visita.
+ * Deve ser chamada quando o usuário exclui uma visita (soft delete).
+ */
+export async function purgeVisitaFromQueue(visitaId: string): Promise<{ fotos: number; mutations: number }> {
+  const [fotos, mutations] = await Promise.all([
+    deleteFotosByVisita(visitaId),
+    deleteMutationsByVisita(visitaId),
+  ]);
+  await refreshPendingCount();
+  return { fotos, mutations };
+}
+
+/**
+ * Higieniza a fila removendo itens órfãos: fotos cuja visita já foi
+ * marcada como excluída (deleted_at) no snapshot local. Executada uma vez
+ * na inicialização para limpar estado acumulado de sessões antigas.
+ */
+export async function purgeOrphanQueueItems(): Promise<number> {
+  try {
+    const [fotos, snapshots] = await Promise.all([listAllFotos(), listAllSnapshots()]);
+    const deletedIds = new Set<string>();
+    snapshots.forEach((snap) => {
+      if ((snap.data as any)?.visita?.deleted_at) deletedIds.add(snap.visitaId);
+    });
+    let removed = 0;
+    for (const f of fotos) {
+      if (f.visitaId && deletedIds.has(f.visitaId)) {
+        await deleteFoto(f.localId);
+        removed++;
+      }
+    }
+    for (const visitaId of deletedIds) {
+      await deleteMutationsByVisita(visitaId);
+    }
+    if (removed > 0) {
+      debugSync("fotos órfãs removidas da fila", { removed });
+      await refreshPendingCount();
+    }
+    return removed;
+  } catch (err) {
+    debugSync("falha ao remover órfãos da fila", { error: getErrorMessage(err) });
+    return 0;
+  }
+}
+
 // auto-drain on network reconnect
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => void drain().catch((err) => debugSync("auto-sync de fotos falhou", { error: getErrorMessage(err) })));
-  // initial drain
-  void drain().catch((err) => debugSync("sync inicial de fotos falhou", { error: getErrorMessage(err) }));
+  // limpeza única de órfãos + drain inicial
+  void purgeOrphanQueueItems()
+    .then(() => drain())
+    .catch((err) => debugSync("sync inicial de fotos falhou", { error: getErrorMessage(err) }));
 }
 
 export async function getPendingCount() {
   return countPendingFotos();
 }
+
