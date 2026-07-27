@@ -67,14 +67,14 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     if (f.lastError) item.photoErrors.push(`${f.parentKind}:${f.ordem}:${f.lastError}`);
   });
   const infos = Array.from(map.values());
-  const missingServerIds = infos
-    .filter((item) => !item.deleted && (!item.data || item.fazenda === "Fazenda não identificada" || item.tipo === "—"))
+  const serverLookupIds = infos
+    .filter((item) => !item.deleted)
     .map((item) => item.visitaId);
-  if (missingServerIds.length > 0 && (typeof navigator === "undefined" || navigator.onLine)) {
+  if (serverLookupIds.length > 0 && (typeof navigator === "undefined" || navigator.onLine)) {
     const { data } = await supabase
       .from("visitas_tecnicas")
       .select("id, tipo, hora_inicio, deleted_at, fazendas_consultor(nome_fazenda)")
-      .in("id", missingServerIds);
+      .in("id", serverLookupIds);
     ((data as any[]) || []).forEach((row) => {
       const item = map.get(row.id);
       if (!item) return;
