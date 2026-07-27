@@ -14,15 +14,17 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { listPendingVisitaIds } from "@/lib/consultorOffline/db";
-import { loadAllSnapshots } from "@/lib/consultorOffline/snapshotStore";
+import { isVisitaDeleted, loadAllSnapshots, softDeleteVisita } from "@/lib/consultorOffline/snapshotStore";
 
 interface VisitaItem {
   id: string;
   tipo: string;
   status: string;
   hora_inicio: string;
+  consultor_id: string;
   fazenda_consultor_id: string;
   pdf_url: string | null;
+  deleted_at?: string | null;
   fazendas_consultor: { nome_fazenda: string } | null;
   _pendingLocal?: boolean;
   _localOnly?: boolean;
@@ -48,8 +50,9 @@ export default function ConsultorHistoricoPage() {
         online
           ? supabase
               .from("visitas_tecnicas")
-              .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
+              .select("id, tipo, status, hora_inicio, consultor_id, fazenda_consultor_id, pdf_url, deleted_at, fazendas_consultor(nome_fazenda)")
               .eq("consultor_id", consultorId)
+              .is("deleted_at", null)
               .order("hora_inicio", { ascending: false })
           : Promise.resolve({ data: [] }),
         loadAllSnapshots(),
@@ -62,7 +65,12 @@ export default function ConsultorHistoricoPage() {
       });
       snapshots.forEach(({ visitaId, data: snap }) => {
         const visita = snap.visita as any;
-        if (!visita || visita.consultor_id !== consultorId) return;
+        if (!visita) return;
+        if (isVisitaDeleted(visita)) {
+          map.delete(visitaId);
+          return;
+        }
+        if (visita.consultor_id !== consultorId) return;
         const isPending = pending.has(visitaId);
         const existing = map.get(visitaId);
         if (!isPending && existing) return;
@@ -72,6 +80,7 @@ export default function ConsultorHistoricoPage() {
           tipo: visita.tipo || existing?.tipo || "rotina",
           status: visita.status || existing?.status || "rascunho",
           hora_inicio: visita.hora_inicio || existing?.hora_inicio || new Date().toISOString(),
+          consultor_id: visita.consultor_id || existing?.consultor_id || consultorId,
           fazenda_consultor_id: visita.fazenda_consultor_id || existing?.fazenda_consultor_id || "",
           pdf_url: visita.pdf_url || existing?.pdf_url || null,
           fazendas_consultor: {
@@ -103,14 +112,32 @@ export default function ConsultorHistoricoPage() {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", toDelete.id);
-      if (error) throw error;
-      toast.success("Visita excluída.");
+      const result = await softDeleteVisita({ visitaId: toDelete.id, visita: toDelete as any });
+      removeVisitFromCachedFarmLists(toDelete.id);
+      setVisitas(prev => prev.filter(v => v.id !== toDelete.id));
+      toast.success(result.queued ? "Visita excluída off-line. A exclusão será sincronizada." : "Visita excluída.");
       setToDelete(null);
       await load();
     } catch (err: any) {
       toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
     } finally { setDeleting(false); }
+  }
+
+  function removeVisitFromCachedFarmLists(visitaId: string) {
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key?.startsWith("consultor_offline_fazenda_")) continue;
+        const raw = window.localStorage.getItem(key);
+        if (!raw) continue;
+        const cached = JSON.parse(raw);
+        if (!Array.isArray(cached?.visitas)) continue;
+        const visitas = cached.visitas.filter((v: any) => v?.id !== visitaId);
+        window.localStorage.setItem(key, JSON.stringify({ ...cached, visitas }));
+      }
+    } catch {
+      /* cache local é best effort; IndexedDB permanece como fonte de verdade */
+    }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -177,7 +204,7 @@ export default function ConsultorHistoricoPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir visita?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Essa ação não pode ser desfeita. Todos os dados desta visita (pastos/currais, notas, fotos, PDF) serão removidos.
+              Tem certeza? A visita será ocultada do histórico e a exclusão será sincronizada entre este aparelho e o servidor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

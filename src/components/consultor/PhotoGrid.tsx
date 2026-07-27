@@ -157,6 +157,7 @@ export default function PhotoGrid({
         parentId: targetId,
         ordem,
         blob,
+        fileName: file.name,
       });
       if (visitaId) {
         const queuedId = queued.localId;

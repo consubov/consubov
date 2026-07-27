@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow } from "./photoQueue";
+import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
 import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
 import { listAllFotos, listAllMutations } from "./db";
 
@@ -9,6 +9,7 @@ export interface PendingVisitaDebugInfo {
   mutationTables: string[];
   photoIds: string[];
   photoParents: string[];
+  photoErrors: string[];
 }
 
 export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugInfo[]> {
@@ -23,6 +24,7 @@ export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugIn
       mutationTables: [],
       photoIds: [],
       photoParents: [],
+      photoErrors: [],
     };
     map.set(visitaId, created);
     return created;
@@ -39,6 +41,7 @@ export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugIn
     const item = ensure(f.visitaId);
     item.photoIds.push(f.localId);
     item.photoParents.push(`${f.parentKind}:${f.parentId}:${f.status}`);
+    if (f.lastError) item.photoErrors.push(`${f.parentKind}:${f.ordem}:${f.lastError}`);
   });
   return Array.from(map.values()).sort((a, b) => a.visitaId.localeCompare(b.visitaId));
 }
@@ -51,6 +54,7 @@ async function computePendingVisitas(): Promise<number> {
         visitaId: i.visitaId,
         mutations: i.mutationTables,
         photos: i.photoParents,
+        photoErrors: i.photoErrors,
       })));
     }
     return infos.length;
@@ -65,6 +69,7 @@ export function useSyncStatus() {
   const [photoSyncing, setPhotoSyncing] = useState(false);
   const [mutSyncing, setMutSyncing] = useState(false);
   const [visitasPending, setVisitasPending] = useState(0);
+  const [photoFailures, setPhotoFailures] = useState<PhotoFailureDetail[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -72,9 +77,10 @@ export function useSyncStatus() {
       const n = await computePendingVisitas();
       if (alive) setVisitasPending(n);
     };
-    const u1 = subscribePhotos((p, s) => {
+    const u1 = subscribePhotos((p, s, failures) => {
       setPhotoPending(p);
       setPhotoSyncing(s);
+      setPhotoFailures(failures);
       void refreshVisitas();
     });
     const u2 = subscribeMutationStatus((p, s) => {
@@ -99,6 +105,7 @@ export function useSyncStatus() {
     pending: visitasPending,
     photoPending,
     mutPending,
+    photoFailures,
     syncing: photoSyncing || mutSyncing,
     syncNow,
   };

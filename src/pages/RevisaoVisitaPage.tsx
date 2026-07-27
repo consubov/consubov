@@ -20,7 +20,7 @@ import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/component
 import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
@@ -117,6 +117,7 @@ interface Visita {
   objetivo_visita: string | null;
   resumo_executivo: string | null;
   indicadores_gerais: string | null;
+  deleted_at?: string | null;
 }
 
 async function signPath(path: string): Promise<string> {
@@ -163,7 +164,7 @@ export default function RevisaoVisitaPage() {
   useEffect(() => {
     if (!visitaId) return;
     (async () => {
-      const { data } = await supabase.from("visitas_tecnicas").select("tipo").eq("id", visitaId).maybeSingle();
+      const { data } = await supabase.from("visitas_tecnicas").select("tipo").eq("id", visitaId).is("deleted_at", null).maybeSingle();
       if (data?.tipo) {
         setTipoLoaded(data.tipo as string);
       } else {
@@ -189,9 +190,10 @@ export default function RevisaoVisitaPage() {
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && visitaId ? await hasPendingLocalChanges(visitaId) : false;
     const { data: v } = online && !preferLocal
-      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).is("deleted_at", null).maybeSingle()
       : { data: null };
     const visitaRow = preferLocal ? snap?.visita : (v as any) || snap?.visita;
+    if (isVisitaDeleted(visitaRow as any)) { setVisita(null); setLoading(false); return; }
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
     setObsGerais(visitaRow.observacoes_gerais || "");
@@ -359,7 +361,7 @@ export default function RevisaoVisitaPage() {
       const arr = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
       const blob = new Blob([arr], { type: mime });
-      const queued = await enqueuePhoto({ visitaId: visitaId!, parentKind: "pasto", parentId: pastoId, ordem, blob });
+      const queued = await enqueuePhoto({ visitaId: visitaId!, parentKind: "pasto", parentId: pastoId, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as Foto;
       updatePasto(pastoId, {
         fotos: [...p.fotos, data].sort((a, b) => a.ordem - b.ordem),

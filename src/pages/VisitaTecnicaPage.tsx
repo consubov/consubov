@@ -17,7 +17,7 @@ import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/Pa
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { hasPendingLocalChanges, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -29,6 +29,7 @@ interface Visita {
   conclusao: string | null;
   fazenda_consultor_id: string;
   pdf_url: string | null;
+  deleted_at?: string | null;
 }
 interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
 
@@ -65,9 +66,10 @@ export default function VisitaTecnicaPage() {
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId!);
     const vRes = online && !preferLocal
-      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).is("deleted_at", null).maybeSingle()
       : { data: null };
     const v = (preferLocal ? (snap?.visita as Visita | undefined) : (vRes.data as Visita | null) || (snap?.visita as Visita | undefined)) || null;
+    if (isVisitaDeleted(v as any)) { setVisita(null); setLoading(false); return; }
     setVisita(v);
     if (v) {
       setObsGerais(v.observacoes_gerais || "");

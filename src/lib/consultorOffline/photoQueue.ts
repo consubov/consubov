@@ -3,23 +3,67 @@ import {
   countPendingFotos,
   deleteFoto,
   getFoto,
+  listFailedFotos,
   listAllFotos,
   listFotosByParent,
   putFoto,
   purgeDeadFotos,
+  retryFoto,
   type FotoQueueItem,
 } from "./db";
 import { drainMutations } from "./mutationQueue";
-import { CONSULTOR_NETWORK_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 
-type Listener = (pending: number, syncing: boolean) => void;
+export interface PhotoFailureDetail {
+  localId: string;
+  visitaId: string;
+  parentKind: "pasto" | "curral" | "topico";
+  parentId: string;
+  ordem: number;
+  label: string;
+  mime: string;
+  size: number;
+  sizeLabel: string;
+  fileName?: string;
+  tries: number;
+  lastError: string;
+}
+
+type Listener = (pending: number, syncing: boolean, failures: PhotoFailureDetail[]) => void;
 const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
+let cachedFailures: PhotoFailureDetail[] = [];
 const MAX_AUTO_RETRIES = 3;
+
+function formatBytes(size = 0): string {
+  if (size <= 0) return "tamanho desconhecido";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function describeQueuedPhoto(item: FotoQueueItem): PhotoFailureDetail {
+  const tipo = item.parentKind === "curral" ? "curral" : item.parentKind === "topico" ? "tópico" : "pasto";
+  const size = item.size ?? item.blob?.size ?? 0;
+  return {
+    localId: item.localId,
+    visitaId: item.visitaId,
+    parentKind: item.parentKind,
+    parentId: item.parentId,
+    ordem: item.ordem,
+    label: `Foto ${item.ordem} do ${tipo}`,
+    mime: item.mime || "image/jpeg",
+    size,
+    sizeLabel: formatBytes(size),
+    fileName: item.fileName,
+    tries: item.tries ?? 0,
+    lastError: item.lastError || "falha desconhecida",
+  };
+}
 
 function debugSync(message: string, payload?: Record<string, unknown>) {
   if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
@@ -28,19 +72,30 @@ function debugSync(message: string, payload?: Record<string, unknown>) {
 async function refreshPendingCount() {
   await purgeDeadFotos();
   cachedPending = await countPendingFotos();
+  cachedFailures = (await listFailedFotos()).map(describeQueuedPhoto);
   emit();
 }
 
 function emit() {
-  listeners.forEach((l) => l(cachedPending, syncing));
+  listeners.forEach((l) => l(cachedPending, syncing, cachedFailures));
 }
 
 export function subscribeSyncStatus(listener: Listener) {
   listeners.add(listener);
   // fire immediately with current state
-  listener(cachedPending, syncing);
+  listener(cachedPending, syncing, cachedFailures);
   void refreshPendingCount();
   return () => listeners.delete(listener);
+}
+
+export async function getPhotoFailures() {
+  return (await listFailedFotos()).map(describeQueuedPhoto);
+}
+
+export async function retryQueuedPhoto(localId: string) {
+  await retryFoto(localId);
+  await refreshPendingCount();
+  if (typeof navigator === "undefined" || navigator.onLine) void drain();
 }
 
 export async function enqueuePhoto(params: {
@@ -49,6 +104,7 @@ export async function enqueuePhoto(params: {
   parentId: string;
   ordem: number;
   blob: Blob;
+  fileName?: string;
 }): Promise<FotoQueueItem> {
   const localId = `foto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const item: FotoQueueItem = {
@@ -59,6 +115,8 @@ export async function enqueuePhoto(params: {
     ordem: params.ordem,
     blob: params.blob,
     mime: params.blob.type || "image/jpeg",
+    fileName: params.fileName,
+    size: params.blob.size,
     createdAt: new Date().toISOString(),
     tries: 0,
     status: "pending",
@@ -82,14 +140,18 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && !navigator.onLine) return false;
     item.status = "uploading";
+    item.lastAttemptAt = new Date().toISOString();
     await putFoto(item);
-    emit();
+    await refreshPendingCount();
     debugSync("enviando foto", {
       localId: item.localId,
       visitaId: item.visitaId,
       parentKind: item.parentKind,
       parentId: item.parentId,
       ordem: item.ordem,
+      mime: item.mime,
+      size: item.size ?? item.blob.size,
+      fileName: item.fileName,
     });
 
     const folder = item.parentKind === "curral" ? "currais" : item.parentKind === "topico" ? "topicos" : "pastos";
@@ -98,7 +160,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       .from(BUCKET)
       .upload(path, item.blob, { upsert: true, contentType: item.mime }),
       `upload da foto ${item.ordem}`,
-      CONSULTOR_NETWORK_TIMEOUT_MS,
+      CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS,
     );
     if (upErr) throw upErr;
 
@@ -184,7 +246,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       current.lastError = getErrorMessage(err);
       await putFoto(current);
     }
-    emit();
+    await refreshPendingCount();
     return false;
   }
 }
@@ -205,23 +267,16 @@ export async function drain(): Promise<void> {
         debugSync("sincronização de dados antes das fotos falhou", { error: getErrorMessage(err) });
         return;
       }
-      // process in a loop until empty or all failing
-      let attempts = 0;
-      while (attempts < 50) {
-        const items = await listAllFotos();
-        const target = items.find((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
-        if (!target) break;
-        const ok = await uploadOne(target);
-        if (!ok) {
-          const remaining = await listAllFotos();
-          const current = remaining.find((i) => i.localId === target.localId);
-          if ((current?.tries ?? 0) >= MAX_AUTO_RETRIES || (typeof navigator !== "undefined" && !navigator.onLine)) {
-          // stop trying this one for now
-            break;
-          }
-          await sleep(650 * ((current?.tries ?? 0) || 1));
-        }
-        attempts++;
+      // Processa todas as fotos aptas; uma falha individual não bloqueia as demais.
+      let rounds = 0;
+      while (rounds < MAX_AUTO_RETRIES) {
+        const items = (await listAllFotos()).filter((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
+        if (!items.length) break;
+        const results = await Promise.all(items.map(uploadOne));
+        if (typeof navigator !== "undefined" && !navigator.onLine) break;
+        if (results.every(Boolean)) continue;
+        rounds++;
+        if (rounds < MAX_AUTO_RETRIES) await sleep(650 * rounds);
       }
     } finally {
       syncing = false;
@@ -246,7 +301,11 @@ export async function syncNow() {
       await putFoto(it);
     }
   }
-  await withConsultorTimeout(drain(), "sincronização das fotos", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
+  await withConsultorTimeout(
+    drain(),
+    "sincronização das fotos",
+    CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS * MAX_AUTO_RETRIES + 15_000,
+  );
 }
 
 // auto-drain on network reconnect

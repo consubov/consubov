@@ -220,7 +220,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
       const blob = dataUrl ? dataUrlToBlob(dataUrl) : file;
-      const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob });
+      const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as TopicoFoto;
       setTopicos(prev => prev.map(x => x.id === t.id
         ? { ...x, fotos: [...x.fotos, data].sort((a,b)=>a.ordem-b.ordem), signed: { ...x.signed, [data.id]: dataUrl || "" } }

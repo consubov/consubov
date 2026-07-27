@@ -11,7 +11,10 @@ export interface FotoQueueItem {
   ordem: number;
   blob: Blob;
   mime: string;
+  fileName?: string;
+  size?: number;
   createdAt: string;
+  lastAttemptAt?: string;
   tries: number;
   lastError?: string;
   status: "pending" | "uploading" | "error";
@@ -110,6 +113,21 @@ export async function listFotosByVisita(visitaId: string) {
   const db = await getDb();
   const items = await db.getAll("foto_queue");
   return items.filter((item) => item.visitaId === visitaId);
+}
+export async function listFailedFotos() {
+  const items = await listAllFotos();
+  return items.filter((item) => item.status === "error");
+}
+export async function retryFoto(localId: string) {
+  const current = await getFoto(localId);
+  if (!current) return;
+  await putFoto({
+    ...current,
+    status: "pending",
+    tries: 0,
+    lastError: undefined,
+    lastAttemptAt: undefined,
+  });
 }
 export async function countAllFotos() {
   const db = await getDb();

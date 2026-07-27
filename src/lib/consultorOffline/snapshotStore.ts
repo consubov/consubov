@@ -47,6 +47,10 @@ export async function loadAllSnapshots(): Promise<Array<{ visitaId: string; data
   return rows.map((row) => ({ visitaId: row.visitaId, data: row.data as VisitaSnapshotData, updatedAt: row.updatedAt }));
 }
 
+export function isVisitaDeleted(visita?: Record<string, any> | null): boolean {
+  return Boolean(visita?.deleted_at);
+}
+
 export async function hasPendingLocalChanges(visitaId: string): Promise<boolean> {
   try {
     const [mutations, fotos] = await Promise.all([
@@ -64,7 +68,15 @@ async function getPendingSummary(visitaId: string): Promise<Omit<SyncVisitaResul
     listMutationsByVisita(visitaId),
     listFotosByVisita(visitaId),
   ]);
-  const errors = [...mutations.map((m) => m.lastError), ...fotos.map((f) => f.lastError)]
+  const failedFotos = fotos
+    .filter((f) => f.status === "error")
+    .map((f) => {
+      const tipo = f.parentKind === "curral" ? "curral" : f.parentKind === "topico" ? "tópico" : "pasto";
+      const size = f.size ?? f.blob?.size ?? 0;
+      const sizeLabel = size > 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : size > 0 ? `${Math.round(size / 1024)} KB` : "tamanho desconhecido";
+      return `Foto ${f.ordem} do ${tipo} (${f.mime || "image/jpeg"}, ${sizeLabel}): ${f.lastError || "falha desconhecida"}`;
+    });
+  const errors = [...mutations.map((m) => m.lastError), ...failedFotos, ...fotos.map((f) => f.status !== "error" ? f.lastError : undefined)]
     .filter(Boolean)
     .map(String);
   const lastError = errors.length ? errors[errors.length - 1] : undefined;
@@ -72,6 +84,25 @@ async function getPendingSummary(visitaId: string): Promise<Omit<SyncVisitaResul
     ? `Ainda há ${mutations.length} alteração(ões) e ${fotos.length} foto(s) pendente(s).`
     : undefined);
   return { pendingFotos: fotos.length, pendingMutations: mutations.length, reason };
+}
+
+export async function softDeleteVisita(params: {
+  visitaId: string;
+  visita?: Record<string, any> | null;
+}): Promise<{ ok: boolean; queued: boolean; deletedAt: string }> {
+  const deletedAt = new Date().toISOString();
+  const visitaBase = params.visita ?? (await loadSnapshot(params.visitaId))?.visita ?? { id: params.visitaId };
+  const result = await offlineUpdate({
+    visitaId: params.visitaId,
+    table: "visitas_tecnicas",
+    rowId: params.visitaId,
+    patch: { deleted_at: deletedAt },
+    applyToSnapshot: (curr) => ({
+      ...curr,
+      visita: { ...(curr.visita || {}), ...visitaBase, id: params.visitaId, deleted_at: deletedAt },
+    }),
+  });
+  return { ...result, deletedAt };
 }
 
 /**
