@@ -102,8 +102,17 @@ export async function softDeleteVisita(params: {
       visita: { ...(curr.visita || {}), ...visitaBase, id: params.visitaId, deleted_at: deletedAt },
     }),
   });
+  // Cascade: remove itens locais da fila que pertencem a esta visita para
+  // não continuarem sendo contados/tentados após a exclusão.
+  try {
+    const { purgeVisitaFromQueue } = await import("./photoQueue");
+    await purgeVisitaFromQueue(params.visitaId);
+  } catch (err) {
+    console.warn("[softDeleteVisita] falha na limpeza em cascata:", err);
+  }
   return { ...result, deletedAt };
 }
+
 
 /**
  * Força uma sincronização e aguarda até que a visita informada não tenha mais
