@@ -1,15 +1,14 @@
 import { getSnapshot, listAllSnapshots, listFotosByVisita, listMutationsByVisita, putSnapshot } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMutation } from "./mutationQueue";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_SYNC_ATTEMPTS, getErrorMessage, retryDelayMs, sleep, withConsultorTimeout } from "./network";
 
-function withTimeout<T>(promise: PromiseLike<T>, ms = 8000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
-    Promise.resolve(promise).then(
-      (value) => { window.clearTimeout(t); resolve(value); },
-      (error) => { window.clearTimeout(t); reject(error); },
-    );
-  });
+export interface SyncVisitaResult {
+  ok: boolean;
+  attempts: number;
+  reason?: string;
+  pendingFotos: number;
+  pendingMutations: number;
 }
 
 /**
@@ -60,25 +59,74 @@ export async function hasPendingLocalChanges(visitaId: string): Promise<boolean>
   }
 }
 
+async function getPendingSummary(visitaId: string): Promise<Omit<SyncVisitaResult, "ok" | "attempts">> {
+  const [mutations, fotos] = await Promise.all([
+    listMutationsByVisita(visitaId),
+    listFotosByVisita(visitaId),
+  ]);
+  const lastError = [...mutations.map((m) => m.lastError), ...fotos.map((f) => f.lastError)]
+    .filter(Boolean)
+    .map(String)
+    .at(-1);
+  const reason = lastError || (mutations.length || fotos.length
+    ? `Ainda há ${mutations.length} alteração(ões) e ${fotos.length} foto(s) pendente(s).`
+    : undefined);
+  return { pendingFotos: fotos.length, pendingMutations: mutations.length, reason };
+}
+
 /**
  * Força uma sincronização e aguarda até que a visita informada não tenha mais
  * itens pendentes no cache local (fotos + mutações). Resolve `true` se tudo
  * foi sincronizado dentro do timeout; caso contrário resolve `false`.
  */
 export async function syncVisitaAndWait(visitaId: string, timeoutMs = 90000): Promise<boolean> {
+  const result = await syncVisitaWithRetries(visitaId, { totalTimeoutMs: timeoutMs });
+  return result.ok;
+}
+
+export async function syncVisitaWithRetries(
+  visitaId: string,
+  options?: { attempts?: number; perAttemptTimeoutMs?: number; totalTimeoutMs?: number },
+): Promise<SyncVisitaResult> {
+  const attempts = options?.attempts ?? CONSULTOR_SYNC_ATTEMPTS;
+  const perAttemptTimeoutMs = options?.perAttemptTimeoutMs ?? CONSULTOR_NETWORK_TIMEOUT_MS * 2;
+  const totalTimeoutMs = options?.totalTimeoutMs ?? 90_000;
+  const started = Date.now();
+  let lastReason: string | undefined;
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const summary = await getPendingSummary(visitaId);
+    return { ok: false, attempts: 0, ...summary, reason: "Sem conexão com a internet." };
+  }
+
   const { syncNow: syncPhotosNow } = await import("./photoQueue");
   const { retryFailedMutations } = await import("./mutationQueue");
-  // Dispara em paralelo — não bloqueia esperando cada drain aqui, pois eles
-  // possuem locks internos e o polling abaixo confirma o resultado real.
-  void retryFailedMutations().catch(() => {});
-  void syncPhotosNow().catch(() => {});
 
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (!(await hasPendingLocalChanges(visitaId))) return true;
-    await new Promise((r) => setTimeout(r, 500));
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    if (Date.now() - started >= totalTimeoutMs) break;
+    try {
+      await withConsultorTimeout(retryFailedMutations(), `sincronização de dados da visita (${attempt}/${attempts})`, perAttemptTimeoutMs);
+      await withConsultorTimeout(syncPhotosNow(), `sincronização de fotos da visita (${attempt}/${attempts})`, perAttemptTimeoutMs);
+    } catch (err) {
+      lastReason = getErrorMessage(err);
+    }
+
+    const summary = await getPendingSummary(visitaId);
+    if (summary.pendingFotos === 0 && summary.pendingMutations === 0) {
+      return { ok: true, attempts: attempt, pendingFotos: 0, pendingMutations: 0 };
+    }
+    lastReason = summary.reason || lastReason;
+    if (attempt < attempts) await sleep(retryDelayMs(attempt));
   }
-  return !(await hasPendingLocalChanges(visitaId));
+
+  const summary = await getPendingSummary(visitaId);
+  return {
+    ok: summary.pendingFotos === 0 && summary.pendingMutations === 0,
+    attempts,
+    pendingFotos: summary.pendingFotos,
+    pendingMutations: summary.pendingMutations,
+    reason: summary.reason || lastReason || "Tempo limite de sincronização excedido.",
+  };
 }
 
 /** Merge a partial patch into the current snapshot. Serialized per visitaId to avoid races. */
@@ -142,10 +190,12 @@ export async function offlineUpdate(params: {
 
   // 3. Tenta gravar online
   try {
-    const { error, count } = await withTimeout<any>((supabase as any)
+    const { error, count } = await withConsultorTimeout<any>((supabase as any)
       .from(params.table)
       .update(params.patch, { count: "exact" })
-      .eq("id", params.rowId));
+      .eq("id", params.rowId),
+      `salvamento em ${params.table}`,
+    );
     if (error) throw error;
     if (count === 0) throw new Error(`Servidor não confirmou atualização em ${params.table}`);
     return { ok: true, queued: false };
@@ -194,9 +244,11 @@ export async function offlineUpsert(params: {
   }
 
   try {
-    const { error, count } = await withTimeout<any>((supabase as any)
+    const { error, count } = await withConsultorTimeout<any>((supabase as any)
       .from(params.table)
-      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id", count: "exact" }));
+      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id", count: "exact" }),
+      `salvamento em ${params.table}`,
+    );
     if (error) throw error;
     if (count === 0) throw new Error(`Servidor não confirmou gravação em ${params.table}`);
     return { ok: true, queued: false };
@@ -241,7 +293,10 @@ export async function offlineDelete(params: {
   }
 
   try {
-    const { error, count } = await withTimeout<any>((supabase as any).from(params.table).delete({ count: "exact" }).eq("id", params.rowId));
+    const { error, count } = await withConsultorTimeout<any>(
+      (supabase as any).from(params.table).delete({ count: "exact" }).eq("id", params.rowId),
+      `exclusão em ${params.table}`,
+    );
     if (error) throw error;
     if (count === 0) throw new Error(`Servidor não confirmou exclusão em ${params.table}`);
     return { ok: true, queued: false };

@@ -7,24 +7,16 @@ import {
   purgeDeadMutations,
   type TextMutation,
 } from "./db";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 
 type Listener = (pending: number, syncing: boolean) => void;
 const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
+const MAX_AUTO_RETRIES = 3;
 
 function debugSync(message: string, payload?: Record<string, unknown>) {
   if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
-}
-
-function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
-    Promise.resolve(promise).then(
-      (value) => { window.clearTimeout(t); resolve(value); },
-      (error) => { window.clearTimeout(t); reject(error); },
-    );
-  });
 }
 
 async function refresh() {
@@ -122,26 +114,35 @@ async function flushOne(m: TextMutation): Promise<boolean> {
       operation,
     });
     if (operation === "upsert") {
-      const res: any = await withTimeout((supabase as any)
+      const res: any = await withConsultorTimeout((supabase as any)
         .from(m.table)
-        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id", count: "exact" }));
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id", count: "exact" }),
+        `sincronização de ${m.table}`,
+      );
       error = res.error;
       confirmed = res.count == null || res.count > 0;
     } else if (operation === "insert") {
-      const res: any = await withTimeout((supabase as any)
+      const res: any = await withConsultorTimeout((supabase as any)
         .from(m.table)
-        .insert({ id: m.rowId, ...m.patch }, { count: "exact" }));
+        .insert({ id: m.rowId, ...m.patch }, { count: "exact" }),
+        `sincronização de ${m.table}`,
+      );
       error = res.error;
       confirmed = res.count == null || res.count > 0;
     } else if (operation === "delete") {
-      const res: any = await withTimeout((supabase as any).from(m.table).delete({ count: "exact" }).eq("id", m.rowId));
+      const res: any = await withConsultorTimeout(
+        (supabase as any).from(m.table).delete({ count: "exact" }).eq("id", m.rowId),
+        `sincronização de exclusão em ${m.table}`,
+      );
       error = res.error;
       confirmed = res.count == null || res.count > 0;
     } else {
-      const res: any = await withTimeout((supabase as any)
+      const res: any = await withConsultorTimeout((supabase as any)
         .from(m.table)
         .update(m.patch, { count: "exact" })
-        .eq("id", m.rowId));
+        .eq("id", m.rowId),
+        `sincronização de ${m.table}`,
+      );
       error = res.error;
       confirmed = res.count == null || res.count > 0;
     }
@@ -163,11 +164,11 @@ async function flushOne(m: TextMutation): Promise<boolean> {
       visitaId: m.visitaId,
       table: m.table,
       rowId: m.rowId,
-      error: (err as Error)?.message || String(err),
+      error: getErrorMessage(err),
     });
     m.status = "error";
     m.tries = (m.tries ?? 0) + 1;
-    m.lastError = (err as Error)?.message || String(err);
+    m.lastError = getErrorMessage(err);
     await putMutation(m);
     emit();
     return false;
@@ -186,12 +187,15 @@ export async function drainMutations(): Promise<void> {
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllMutations();
-        const target = items.find((i) => i.status !== "error" || (i.tries ?? 0) < 3);
+        const target = items.find((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
         if (!target) break;
         const ok = await flushOne(target);
         if (!ok) {
-          if ((target.tries ?? 0) >= 3) break;
+          const remaining = await listAllMutations();
+          const current = remaining.find((i) => i.id === target.id);
+          if ((current?.tries ?? 0) >= MAX_AUTO_RETRIES) break;
           if (typeof navigator !== "undefined" && !navigator.onLine) break;
+          await sleep(650 * ((current?.tries ?? 0) || 1));
         }
         attempts++;
       }
@@ -217,10 +221,10 @@ export async function retryFailedMutations() {
       await putMutation(it);
     }
   }
-  await drainMutations();
+  await withConsultorTimeout(drainMutations(), "sincronização das alterações", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => void retryFailedMutations());
-  if (navigator.onLine) void drainMutations();
+  window.addEventListener("online", () => void retryFailedMutations().catch((err) => debugSync("auto-sync de mutações falhou", { error: getErrorMessage(err) })));
+  if (navigator.onLine) void drainMutations().catch((err) => debugSync("sync inicial de mutações falhou", { error: getErrorMessage(err) }));
 }

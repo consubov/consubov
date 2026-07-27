@@ -10,6 +10,7 @@ import {
   type FotoQueueItem,
 } from "./db";
 import { drainMutations } from "./mutationQueue";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
@@ -18,19 +19,10 @@ type Listener = (pending: number, syncing: boolean) => void;
 const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
+const MAX_AUTO_RETRIES = 3;
 
 function debugSync(message: string, payload?: Record<string, unknown>) {
   if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
-}
-
-function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
-    Promise.resolve(promise).then(
-      (value) => { window.clearTimeout(t); resolve(value); },
-      (error) => { window.clearTimeout(t); reject(error); },
-    );
-  });
 }
 
 async function refreshPendingCount() {
@@ -102,9 +94,12 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
 
     const folder = item.parentKind === "curral" ? "currais" : item.parentKind === "topico" ? "topicos" : "pastos";
     const path = `${folder}/${item.parentId}/${item.ordem}-${item.localId}.jpg`;
-    const { error: upErr } = await withTimeout(supabase.storage
+    const { error: upErr } = await withConsultorTimeout(supabase.storage
       .from(BUCKET)
-      .upload(path, item.blob, { upsert: true, contentType: item.mime }), 20000);
+      .upload(path, item.blob, { upsert: true, contentType: item.mime }),
+      `upload da foto ${item.ordem}`,
+      CONSULTOR_NETWORK_TIMEOUT_MS,
+    );
     if (upErr) throw upErr;
 
     const insertPayload: any = { url: path, ordem: item.ordem };
@@ -113,19 +108,25 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     else insertPayload.visita_pasto_id = item.parentId;
 
     const table = item.parentKind === "topico" ? "visita_topico_fotos" : "visita_fotos";
-    const existingRes: any = await withTimeout((supabase as any)
+    const existingRes: any = await withConsultorTimeout((supabase as any)
       .from(table)
       .select("*")
       .eq("url", path)
-      .maybeSingle(), 10000);
+      .maybeSingle(),
+      `confirmação da foto ${item.ordem}`,
+      CONSULTOR_NETWORK_TIMEOUT_MS,
+    );
     let inserted = existingRes.data;
     let insErr = existingRes.error;
     if (!inserted && !insErr) {
-      const insertRes: any = await withTimeout((supabase as any)
+      const insertRes: any = await withConsultorTimeout((supabase as any)
         .from(table)
         .insert(insertPayload)
         .select("*")
-        .single(), 10000);
+        .single(),
+        `registro da foto ${item.ordem}`,
+        CONSULTOR_NETWORK_TIMEOUT_MS,
+      );
       inserted = insertRes.data;
       insErr = insertRes.error;
     }
@@ -174,13 +175,13 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     debugSync("foto mantida no IndexedDB após falha", {
       localId: item.localId,
       visitaId: item.visitaId,
-      error: (err as Error)?.message || String(err),
+      error: getErrorMessage(err),
     });
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
       current.tries = (current.tries ?? 0) + 1;
-      current.lastError = (err as Error)?.message || String(err);
+      current.lastError = getErrorMessage(err);
       await putFoto(current);
     }
     emit();
@@ -198,17 +199,27 @@ export async function drain(): Promise<void> {
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
       // Primeiro sincroniza textos/linhas novas para evitar erro de FK nas fotos.
-      await drainMutations();
+      try {
+        await withConsultorTimeout(drainMutations(), "sincronização dos dados antes das fotos", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
+      } catch (err) {
+        debugSync("sincronização de dados antes das fotos falhou", { error: getErrorMessage(err) });
+        return;
+      }
       // process in a loop until empty or all failing
       let attempts = 0;
       while (attempts < 50) {
         const items = await listAllFotos();
-        const target = items.find((i) => i.status !== "error" || (i.tries ?? 0) < 3);
+        const target = items.find((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
         if (!target) break;
         const ok = await uploadOne(target);
-        if (!ok && ((target.tries ?? 0) >= 3 || (typeof navigator !== "undefined" && !navigator.onLine))) {
+        if (!ok) {
+          const remaining = await listAllFotos();
+          const current = remaining.find((i) => i.localId === target.localId);
+          if ((current?.tries ?? 0) >= MAX_AUTO_RETRIES || (typeof navigator !== "undefined" && !navigator.onLine)) {
           // stop trying this one for now
-          break;
+            break;
+          }
+          await sleep(650 * ((current?.tries ?? 0) || 1));
         }
         attempts++;
       }
@@ -235,14 +246,14 @@ export async function syncNow() {
       await putFoto(it);
     }
   }
-  await drain();
+  await withConsultorTimeout(drain(), "sincronização das fotos", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
 }
 
 // auto-drain on network reconnect
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => void drain());
+  window.addEventListener("online", () => void drain().catch((err) => debugSync("auto-sync de fotos falhou", { error: getErrorMessage(err) })));
   // initial drain
-  void drain();
+  void drain().catch((err) => debugSync("sync inicial de fotos falhou", { error: getErrorMessage(err) }));
 }
 
 export async function getPendingCount() {
