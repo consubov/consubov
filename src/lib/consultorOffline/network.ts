@@ -1,4 +1,5 @@
 export const CONSULTOR_NETWORK_TIMEOUT_MS = 30_000;
+export const CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS = 20_000;
 export const CONSULTOR_SYNC_ATTEMPTS = 3;
 
 export function getErrorMessage(error: unknown): string {
