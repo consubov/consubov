@@ -569,8 +569,10 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     doc.line(15, 16, pageW - 15, 16);
     let dy = 24;
     for (const t of devT) {
+      const txt = (t.texto || "").trim();
+      if (!txt && t.fotos.length === 0) continue;
       if (dy > pageH - 60) { doc.addPage(); dy = 20; }
-      dy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", dy);
+      if (txt) dy = drawTextBlock(doc, t.titulo.trim() || " ", txt, dy);
       dy = drawTopicoFotos(t, dy + 2) + 4;
     }
   }
