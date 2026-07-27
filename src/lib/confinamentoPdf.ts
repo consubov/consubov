@@ -39,6 +39,8 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
+  topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
+    fotos: { id: string; url: string; ordem: number }[] }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
