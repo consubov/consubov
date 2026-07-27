@@ -15,6 +15,7 @@ import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSam
 import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
 import AssinaturasSection, { fetchAssinantes, type Assinante } from "./AssinaturasSection";
 import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
+import IndicadoresZootecnicosSection, { fetchIndicadoresParaPdf } from "./IndicadoresZootecnicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -448,6 +449,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         curraisForPdf.map(c => ({ id: c.id, fotos: c.fotos })),
         topicosForPdf.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
       );
+      const indicadoresData = await fetchIndicadoresParaPdf(visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {
@@ -484,6 +486,22 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         },
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         topicos: topicosForPdf,
+        indicadoresZootecnicos: indicadoresData
+          ? {
+              indicador: indicadoresData.indicador
+                ? {
+                    currais_ocupados: indicadoresData.indicador.currais_ocupados ?? null,
+                    animais_ativos: indicadoresData.indicador.animais_ativos ?? null,
+                  }
+                : null,
+              faixas: indicadoresData.faixas.map(f => ({
+                faixa: f.faixa,
+                ordem: f.ordem,
+                quantidade_animais: f.quantidade_animais,
+                consumo_medio_pv: f.consumo_medio_pv,
+              })),
+            }
+          : null,
       });
       const pdfUrl = await withConsultorTimeout(
         uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id),
@@ -568,6 +586,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           <ScoreBlock label="Org. Insumos" value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
         </div>
       </div>
+
+      {/* Indicadores Zootécnicos (única por visita) */}
+      <IndicadoresZootecnicosSection visitaId={visita.id} readOnly={readOnly} />
 
       {/* Blocos de curral */}
       <div className="space-y-3">

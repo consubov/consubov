@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
@@ -216,6 +217,9 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         <FabricaScore label="Organização de Fábrica" value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
         <FabricaScore label="Organização de Insumos" value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
       </Card>
+
+      {/* Indicadores Zootécnicos (única por visita) */}
+      <IndicadoresZootecnicosSection visitaId={visitaId} readOnly={readOnly} />
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Currais avaliados ({currais.length})</h2>

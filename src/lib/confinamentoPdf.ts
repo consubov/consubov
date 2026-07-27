@@ -50,6 +50,10 @@ export interface ConfinamentoPdfData {
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   chartType?: "bars" | "lines" | "pie" | "radar";
   sampleChartTypes?: SampleChartTypes;
+  indicadoresZootecnicos?: {
+    indicador: { currais_ocupados: number | null; animais_ativos: number | null } | null;
+    faixas: { faixa: string; ordem: number; quantidade_animais: number | null; consumo_medio_pv: number | null }[];
+  } | null;
 }
 
 /** Selo numerado (canto sup. esquerdo da foto). */
@@ -607,6 +611,143 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
   return drawParagraphText(doc, text || "—", x, y + 15, w, 4.8);
 }
 
+const FAIXAS_ORDER = ["1-20", "21-40", "41-60", "61-80", "81-100", "101-120", "121+"] as const;
+const FAIXA_LABELS: Record<string, string> = {
+  "1-20": "1-20", "21-40": "21-40", "41-60": "41-60", "61-80": "61-80",
+  "81-100": "81-100", "101-120": "101-120", "121+": "121>>",
+};
+
+function drawSectionTitle(doc: jsPDF, title: string, y: number): number {
+  doc.setFillColor(GREEN_DARK);
+  doc.rect(15, y, 3, 10, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(title.toUpperCase(), 21, y + 7);
+  return y + 16;
+}
+
+function drawOcupacaoTable(
+  doc: jsPDF, y: number, currais: number | null, animais: number | null,
+): number {
+  const pageW = doc.internal.pageSize.getWidth();
+  const w = pageW - 30;
+  const rowH = 9;
+  const headerH = 8;
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.4);
+  // header
+  doc.setFillColor("#F3F1E8");
+  doc.rect(15, y, w, headerH, "F");
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Indicador", 18, y + 5.6);
+  doc.text("Quantidade", pageW - 18, y + 5.6, { align: "right" });
+  doc.rect(15, y, w, headerH, "S");
+  let ry = y + headerH;
+  const rows: [string, string][] = [];
+  if (currais != null) rows.push(["Currais Ocupados", String(currais)]);
+  if (animais != null) rows.push(["Animais Ativos", String(animais)]);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(INK);
+  doc.setFontSize(9.5);
+  for (const [label, val] of rows) {
+    doc.rect(15, ry, w, rowH, "S");
+    doc.text(label, 18, ry + 6);
+    doc.setFont("helvetica", "bold");
+    doc.text(val, pageW - 18, ry + 6, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    ry += rowH;
+  }
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "italic");
+  doc.text("Tabela 1 — Ocupação da Estrutura", 15, ry + 5);
+  return ry + 10;
+}
+
+function drawBarsChart(
+  doc: jsPDF,
+  y: number,
+  bars: { label: string; value: number; display: string }[],
+  color: string,
+  yAxisLabel: string,
+  xAxisLabel: string,
+  caption: string,
+): number {
+  const pageW = doc.internal.pageSize.getWidth();
+  const chartX = 28;
+  const chartY = y + 6;
+  const chartW = pageW - 15 - chartX;
+  const chartH = 90;
+
+  const maxV = Math.max(1, ...bars.map(b => b.value));
+  // "nice" upper bound
+  const niceMax = (() => {
+    const raw = maxV * 1.15;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = Math.ceil(raw / mag) * mag;
+    return n || 1;
+  })();
+
+  // Y-axis label (rotated)
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "normal");
+  doc.text(yAxisLabel, 12, chartY + chartH / 2, { align: "center", angle: 90 } as any);
+
+  // grid + Y labels
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.3);
+  const steps = 5;
+  for (let n = 0; n <= steps; n++) {
+    const gy = chartY + chartH - (chartH * n) / steps;
+    doc.line(chartX, gy, chartX + chartW, gy);
+    const val = (niceMax * n) / steps;
+    const txt = niceMax >= 10 ? String(Math.round(val)) : val.toFixed(1).replace(".", ",");
+    doc.setFontSize(7);
+    doc.setTextColor(INK_SOFT);
+    doc.text(txt, chartX - 2, gy + 1.2, { align: "right" });
+  }
+
+  // Bars
+  const gap = 4;
+  const barW = (chartW - gap * (bars.length + 1)) / bars.length;
+  bars.forEach((b, i) => {
+    const bx = chartX + gap + i * (barW + gap);
+    const bh = (chartH * b.value) / niceMax;
+    const by = chartY + chartH - bh;
+    doc.setFillColor(color);
+    doc.rect(bx, by, barW, bh, "F");
+    if (b.value > 0) {
+      doc.setFontSize(8);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.text(b.display, bx + barW / 2, by - 1.5, { align: "center" });
+    }
+    doc.setFontSize(7.5);
+    doc.setTextColor(INK);
+    doc.setFont("helvetica", "normal");
+    doc.text(b.label, bx + barW / 2, chartY + chartH + 5, { align: "center" });
+  });
+
+  // X-axis label
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "italic");
+  doc.text(xAxisLabel, chartX + chartW / 2, chartY + chartH + 11, { align: "center" });
+
+  // Caption
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(INK_SOFT);
+  doc.text(caption, pageW / 2, chartY + chartH + 20, { align: "center" });
+
+  return chartY + chartH + 26;
+}
+
+
 export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promise<{ blob: Blob; fileName: string }> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -771,6 +912,56 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   // DESENVOLVIMENTO — tópicos após currais, fluxo contínuo (sem quebra forçada)
   for (const t of devT) {
     y = renderTopicoAtomic(t, y, false);
+  }
+
+  // INDICADORES ZOOTÉCNICOS — só se algum campo estiver preenchido
+  const iz = data.indicadoresZootecnicos;
+  const izInd = iz?.indicador || null;
+  const izFaixas = (iz?.faixas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const hasOcup = !!izInd && (izInd.currais_ocupados != null || izInd.animais_ativos != null);
+  const faixasQtd = izFaixas.filter(f => f.quantidade_animais != null && (f.quantidade_animais as number) >= 0);
+  const faixasCons = izFaixas.filter(f => f.consumo_medio_pv != null);
+  const hasIndicadores = hasOcup || faixasQtd.length > 0 || faixasCons.length > 0;
+  if (hasIndicadores) {
+    doc.addPage();
+    let iy = slimHeader() + 2;
+    iy = drawSectionTitle(doc, "Indicadores Zootécnicos", iy);
+    if (hasOcup) {
+      iy = ensureRoom(iy, 40);
+      iy = drawOcupacaoTable(doc, iy, izInd!.currais_ocupados, izInd!.animais_ativos);
+    }
+    if (faixasQtd.length > 0) {
+      iy = ensureRoom(iy, 130);
+      const bars = FAIXAS_ORDER.map(k => {
+        const found = faixasQtd.find(f => f.faixa === k);
+        const v = found ? Number(found.quantidade_animais) : 0;
+        return { label: FAIXA_LABELS[k], value: v, display: v ? String(v) : "" };
+      }).filter(b => b.value > 0);
+      iy = drawBarsChart(
+        doc, iy, bars, "#3B3B3B",
+        "Quantidade de animais",
+        "Dias de Confinamento",
+        "Gráfico 1 – Distribuição do quantitativo de animais por tempo de confinamento",
+      );
+    }
+    if (faixasCons.length > 0) {
+      iy = ensureRoom(iy, 130);
+      const bars = FAIXAS_ORDER.map(k => {
+        const found = faixasCons.find(f => f.faixa === k);
+        const v = found ? Number(found.consumo_medio_pv) : 0;
+        return {
+          label: FAIXA_LABELS[k],
+          value: v,
+          display: v ? v.toFixed(2).replace(".", ",") : "",
+        };
+      }).filter(b => b.value > 0);
+      iy = drawBarsChart(
+        doc, iy, bars, "#1F7A4D",
+        "Consumo médio, últ. 5 dias %PV",
+        "Dias de Confinamento x Consumo",
+        "Gráfico 2 – Consumo segmentado por Confinamento",
+      );
+    }
   }
 
   // Gráficos — sempre em página nova
