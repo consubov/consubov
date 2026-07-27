@@ -7,14 +7,8 @@ async function computePendingVisitas(): Promise<number> {
   try {
     const [muts, fotos] = await Promise.all([listAllMutations(), listAllFotos()]);
     const set = new Set<string>();
-    muts.forEach((m) => {
-      if (m.status === "error" && (m.tries ?? 0) >= 3) return;
-      if (m.visitaId) set.add(m.visitaId);
-    });
-    fotos.forEach((f) => {
-      if (f.status === "error" && (f.tries ?? 0) >= 3) return;
-      if (f.visitaId) set.add(f.visitaId);
-    });
+    muts.forEach((m) => { if (m.visitaId) set.add(m.visitaId); });
+    fotos.forEach((f) => { if (f.visitaId) set.add(f.visitaId); });
     return set.size;
   } catch {
     return 0;

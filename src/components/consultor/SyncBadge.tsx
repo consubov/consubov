@@ -43,10 +43,8 @@ export default function SyncBadge({ className, compact }: Props) {
   const hasPending = pending > 0;
   const disabled = syncing || !hasPending || !online;
 
-  // Quando ON-LINE e o drain está acontecendo em segundo plano, não alarma o
-  // usuário — a sincronização é automática e instantânea. Só reaparece se
-  // travar (pendente sem estar sincronizando) ou estiver off-line.
-  if (online && hasPending && syncing) return null;
+  // Sempre visível: mesmo durante o drain, mostrar progresso para o usuário
+  // acompanhar quantas visitas estão sendo sincronizadas.
 
   const label = (() => {
     if (syncing) {
