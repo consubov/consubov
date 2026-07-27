@@ -50,6 +50,10 @@ export interface ConfinamentoPdfData {
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   chartType?: "bars" | "lines" | "pie" | "radar";
   sampleChartTypes?: SampleChartTypes;
+  indicadoresZootecnicos?: {
+    indicador: { currais_ocupados: number | null; animais_ativos: number | null } | null;
+    faixas: { faixa: string; ordem: number; quantidade_animais: number | null; consumo_medio_pv: number | null }[];
+  } | null;
 }
 
 /** Selo numerado (canto sup. esquerdo da foto). */
