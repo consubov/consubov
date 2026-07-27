@@ -512,6 +512,11 @@ export default function RevisaoVisitaPage() {
         };
       }));
 
+      const numeroMap = computeRotinaPhotoNumbering(
+        (topicosForPdf as any[]).map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+        (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
+      );
+
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
@@ -537,6 +542,7 @@ export default function RevisaoVisitaPage() {
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
         pastos: pastosForPdf,
+        numeroMap,
       });
 
 
