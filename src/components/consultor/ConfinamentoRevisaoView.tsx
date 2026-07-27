@@ -449,6 +449,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         curraisForPdf.map(c => ({ id: c.id, fotos: c.fotos })),
         topicosForPdf.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
       );
+      const indicadoresData = await fetchIndicadoresParaPdf(visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {
@@ -485,6 +486,22 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         },
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         topicos: topicosForPdf,
+        indicadoresZootecnicos: indicadoresData
+          ? {
+              indicador: indicadoresData.indicador
+                ? {
+                    currais_ocupados: indicadoresData.indicador.currais_ocupados ?? null,
+                    animais_ativos: indicadoresData.indicador.animais_ativos ?? null,
+                  }
+                : null,
+              faixas: indicadoresData.faixas.map(f => ({
+                faixa: f.faixa,
+                ordem: f.ordem,
+                quantidade_animais: f.quantidade_animais,
+                consumo_medio_pv: f.consumo_medio_pv,
+              })),
+            }
+          : null,
       });
       const pdfUrl = await withConsultorTimeout(
         uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id),
