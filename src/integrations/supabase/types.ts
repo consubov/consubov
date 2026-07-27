@@ -5463,6 +5463,7 @@ export type Database = {
           conclusao: string | null
           consultor_id: string
           created_at: string
+          deleted_at: string | null
           fazenda_consultor_id: string
           hora_fim: string | null
           hora_inicio: string
@@ -5480,6 +5481,7 @@ export type Database = {
           conclusao?: string | null
           consultor_id: string
           created_at?: string
+          deleted_at?: string | null
           fazenda_consultor_id: string
           hora_fim?: string | null
           hora_inicio?: string
@@ -5497,6 +5499,7 @@ export type Database = {
           conclusao?: string | null
           consultor_id?: string
           created_at?: string
+          deleted_at?: string | null
           fazenda_consultor_id?: string
           hora_fim?: string | null
           hora_inicio?: string
