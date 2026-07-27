@@ -17,6 +17,7 @@ import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 interface Visita {
   id: string; tipo: string; status: string;
@@ -141,12 +142,15 @@ export default function FabricaVisitaView({
     }
     if (await hasPendingLocalChanges(visitaId)) {
       const tSync = toast.loading("Sincronizando dados desta visita…");
-      const { syncVisitaAndWait } = await import("@/lib/consultorOffline/snapshotStore");
-      const ok = await syncVisitaAndWait(visitaId, 90000);
+      const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
+      const result = await syncVisitaWithRetries(visitaId, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
-      if (!ok) {
+      if (!result.ok) {
         setPendingThisVisit(true);
-        toast.error("Ainda há itens pendentes. Toque em Sincronizar e tente novamente.");
+        const motivo = result.reason || "Ainda há itens pendentes.";
+        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+          action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
+        });
         return;
       }
       setPendingThisVisit(false);
@@ -186,18 +190,21 @@ export default function FabricaVisitaView({
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
       });
-      const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visitaId);
-      const { error } = await supabase.from("visitas_tecnicas").update({
+      const pdfUrl = await withConsultorTimeout(
+        uploadVisitaPdf(blob, fileName, visita.consultor_id, visitaId),
+        "upload do PDF",
+      );
+      const { error } = await withConsultorTimeout(supabase.from("visitas_tecnicas").update({
         pdf_url: pdfUrl, status: "finalizada",
         hora_fim: visita.hora_fim || new Date().toISOString(),
-      }).eq("id", visitaId);
+      }).eq("id", visitaId), "finalização da visita");
       if (error) throw error;
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
       navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
+      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 

@@ -17,6 +17,7 @@ import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
@@ -376,12 +377,15 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     }
     if (await hasPendingLocalChanges(visita.id)) {
       const tSync = toast.loading("Sincronizando dados desta visita…");
-      const { syncVisitaAndWait } = await import("@/lib/consultorOffline/snapshotStore");
-      const ok = await syncVisitaAndWait(visita.id, 90000);
+      const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
+      const result = await syncVisitaWithRetries(visita.id, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
-      if (!ok) {
+      if (!result.ok) {
         setPendingThisVisit(true);
-        toast.error("Ainda há itens pendentes. Toque em Sincronizar e tente novamente.");
+        const motivo = result.reason || "Ainda há itens pendentes.";
+        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+          action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
+        });
         return;
       }
       setPendingThisVisit(false);
@@ -460,19 +464,22 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
         })),
       });
-      const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
-      const { error } = await supabase.from("visitas_tecnicas").update({
+      const pdfUrl = await withConsultorTimeout(
+        uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id),
+        "upload do PDF",
+      );
+      const { error } = await withConsultorTimeout(supabase.from("visitas_tecnicas").update({
         pdf_url: pdfUrl,
         status: "finalizada",
         hora_fim: visita.hora_fim || new Date().toISOString(),
-      }).eq("id", visita.id);
+      }).eq("id", visita.id), "finalização da visita");
       if (error) throw error;
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
       navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
+      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 

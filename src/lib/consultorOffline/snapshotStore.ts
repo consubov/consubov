@@ -64,10 +64,10 @@ async function getPendingSummary(visitaId: string): Promise<Omit<SyncVisitaResul
     listMutationsByVisita(visitaId),
     listFotosByVisita(visitaId),
   ]);
-  const lastError = [...mutations.map((m) => m.lastError), ...fotos.map((f) => f.lastError)]
+  const errors = [...mutations.map((m) => m.lastError), ...fotos.map((f) => f.lastError)]
     .filter(Boolean)
-    .map(String)
-    .at(-1);
+    .map(String);
+  const lastError = errors.length ? errors[errors.length - 1] : undefined;
   const reason = lastError || (mutations.length || fotos.length
     ? `Ainda há ${mutations.length} alteração(ões) e ${fotos.length} foto(s) pendente(s).`
     : undefined);
