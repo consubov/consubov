@@ -857,9 +857,9 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   const renderTopico = (t: NonNullable<typeof data.topicos>[number], yStart: number): number => {
     let yy = yStart;
     const tx = (t.texto || "").trim();
-    if (!t.titulo.trim() && !tx && t.fotos.length === 0) return yy;
-    if (t.titulo.trim() || tx) {
-      yy = drawIntroBlock(doc, t.titulo || "—", tx || "—", yy);
+    if (!tx && t.fotos.length === 0) return yy;
+    if (tx) {
+      yy = drawIntroBlock(doc, t.titulo.trim() || " ", tx, yy);
     }
     if (t.fotos.length > 0) {
       const wArea = pageW - 30;
