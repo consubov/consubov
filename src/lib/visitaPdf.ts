@@ -714,6 +714,7 @@ export interface VisitaFabricaPdfData {
   topicos: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
+  assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
