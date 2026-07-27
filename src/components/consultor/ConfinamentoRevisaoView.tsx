@@ -428,8 +428,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           organizacao_insumos_nota: insumosNota,
         },
         currais: await Promise.all(currais.map(async c => {
-          const { data: fresh } = await supabase.from("visita_fotos")
-            .select("*").eq("visita_curral_id", c.id).order("ordem");
+          const { data: fresh } = await withConsultorTimeout(supabase.from("visita_fotos")
+            .select("*").eq("visita_curral_id", c.id).order("ordem"), "busca de fotos dos currais");
           const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
           return {
             id: c.id,
@@ -458,8 +458,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         },
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         topicos: await Promise.all(topicos.map(async t => {
-          const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
-            .select("*").eq("visita_topico_id", t.id).order("ordem");
+          const { data: fresh } = await withConsultorTimeout((supabase as any).from("visita_topico_fotos")
+            .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
           const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
           return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
         })),

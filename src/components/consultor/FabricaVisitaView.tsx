@@ -160,9 +160,9 @@ export default function FabricaVisitaView({
     try {
       // Refetch fresh photos from Supabase (queued: URLs from local state won't resolve)
       const topicosFresh = await Promise.all(topicos.map(async t => {
-        const { data: fresh } = await (supabase as any)
+        const { data: fresh } = await withConsultorTimeout((supabase as any)
           .from("visita_topico_fotos")
-          .select("*").eq("visita_topico_id", t.id).order("ordem");
+          .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
         const list = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos: list };
       }));
