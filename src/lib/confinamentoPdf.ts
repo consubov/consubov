@@ -914,6 +914,56 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     y = renderTopicoAtomic(t, y, false);
   }
 
+  // INDICADORES ZOOTÉCNICOS — só se algum campo estiver preenchido
+  const iz = data.indicadoresZootecnicos;
+  const izInd = iz?.indicador || null;
+  const izFaixas = (iz?.faixas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const hasOcup = !!izInd && (izInd.currais_ocupados != null || izInd.animais_ativos != null);
+  const faixasQtd = izFaixas.filter(f => f.quantidade_animais != null && (f.quantidade_animais as number) >= 0);
+  const faixasCons = izFaixas.filter(f => f.consumo_medio_pv != null);
+  const hasIndicadores = hasOcup || faixasQtd.length > 0 || faixasCons.length > 0;
+  if (hasIndicadores) {
+    doc.addPage();
+    let iy = slimHeader() + 2;
+    iy = drawSectionTitle(doc, "Indicadores Zootécnicos", iy);
+    if (hasOcup) {
+      iy = ensureRoom(iy, 40);
+      iy = drawOcupacaoTable(doc, iy, izInd!.currais_ocupados, izInd!.animais_ativos);
+    }
+    if (faixasQtd.length > 0) {
+      iy = ensureRoom(iy, 130);
+      const bars = FAIXAS_ORDER.map(k => {
+        const found = faixasQtd.find(f => f.faixa === k);
+        const v = found ? Number(found.quantidade_animais) : 0;
+        return { label: FAIXA_LABELS[k], value: v, display: v ? String(v) : "" };
+      }).filter(b => b.value > 0);
+      iy = drawBarsChart(
+        doc, iy, bars, "#3B3B3B",
+        "Quantidade de animais",
+        "Dias de Confinamento",
+        "Gráfico 1 – Distribuição do quantitativo de animais por tempo de confinamento",
+      );
+    }
+    if (faixasCons.length > 0) {
+      iy = ensureRoom(iy, 130);
+      const bars = FAIXAS_ORDER.map(k => {
+        const found = faixasCons.find(f => f.faixa === k);
+        const v = found ? Number(found.consumo_medio_pv) : 0;
+        return {
+          label: FAIXA_LABELS[k],
+          value: v,
+          display: v ? v.toFixed(2).replace(".", ",") : "",
+        };
+      }).filter(b => b.value > 0);
+      iy = drawBarsChart(
+        doc, iy, bars, "#1F7A4D",
+        "Consumo médio, últ. 5 dias %PV",
+        "Dias de Confinamento x Consumo",
+        "Gráfico 2 – Consumo segmentado por Confinamento",
+      );
+    }
+  }
+
   // Gráficos — sempre em página nova
   doc.addPage();
   drawChartPage(doc, data);
