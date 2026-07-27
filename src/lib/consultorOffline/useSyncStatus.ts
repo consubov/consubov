@@ -125,22 +125,28 @@ export function useSyncStatus() {
   const [photoSyncing, setPhotoSyncing] = useState(false);
   const [mutSyncing, setMutSyncing] = useState(false);
   const [visitasPending, setVisitasPending] = useState(0);
+  const [activePhotoPending, setActivePhotoPending] = useState(0);
+  const [activeMutPending, setActiveMutPending] = useState(0);
   const [photoFailures, setPhotoFailures] = useState<PhotoFailureDetail[]>([]);
+  const [rawPhotoFailures, setRawPhotoFailures] = useState<PhotoFailureDetail[]>([]);
 
   useEffect(() => {
     let alive = true;
     const refreshVisitas = async () => {
-      const n = await computePendingVisitas();
-      if (alive) setVisitasPending(n);
+      const infos = await getPendingVisitaDebugInfos();
+      if (!alive) return;
+      const activeIds = new Set(infos.map((i) => i.visitaId));
+      setVisitasPending(infos.length);
+      setActiveMutPending(infos.reduce((total, item) => total + item.mutationIds.length, 0));
+      setActivePhotoPending(infos.reduce((total, item) => total + item.photoIds.length, 0));
+      setPhotoFailures(rawPhotoFailures.filter((failure) => activeIds.has(failure.visitaId)));
     };
     const u1 = subscribePhotos((p, s, failures) => {
-      setPhotoPending(p);
+      setRawPhotoFailures(failures);
       setPhotoSyncing(s);
-      setPhotoFailures(failures);
       void refreshVisitas();
     });
     const u2 = subscribeMutationStatus((p, s) => {
-      setMutPending(p);
       setMutSyncing(s);
       void refreshVisitas();
     });
@@ -149,7 +155,7 @@ export function useSyncStatus() {
       u1();
       u2();
     };
-  }, []);
+  }, [rawPhotoFailures]);
 
   const syncNow = async () => {
     await retryFailedMutations();
@@ -159,8 +165,8 @@ export function useSyncStatus() {
   return {
     // pending = número de VISITAS pendentes (não de itens internos)
     pending: visitasPending,
-    photoPending,
-    mutPending,
+    photoPending: activePhotoPending,
+    mutPending: activeMutPending,
     photoFailures,
     syncing: photoSyncing || mutSyncing,
     syncNow,
