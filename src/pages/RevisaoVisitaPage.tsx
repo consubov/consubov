@@ -496,6 +496,7 @@ export default function RevisaoVisitaPage() {
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
         topicos: topicosForPdf,
+        assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
