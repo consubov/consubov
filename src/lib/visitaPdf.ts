@@ -557,14 +557,20 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     }
   };
 
-  if (data.topicos && data.topicos.length > 0) {
-    const sorted = [...data.topicos].sort((a, b) => a.ordem - b.ordem);
-    const fixos = sorted.filter(t => t.ordem <= 3);
-    const customs = sorted.filter(t => t.ordem >= 5);
-    for (const t of fixos) drawTopico(t.titulo, t.texto, t.fotos);
-    drawTabela();
-    for (const t of customs) drawTopico(t.titulo, t.texto, t.fotos);
-  } else {
+  const sortedAll = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
+  const zonaOf = (t: typeof sortedAll[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introTopicos = sortedAll.filter(t => zonaOf(t) === "introducao");
+  const devTopicos = sortedAll.filter(t => zonaOf(t) === "desenvolvimento");
+  const conclusaoTopicos = sortedAll.filter(t => zonaOf(t) === "conclusao");
+
+  for (const t of introTopicos) drawTopico(t.titulo, t.texto, t.fotos);
+  // Legacy fallback: campos antigos como intro se não houver tópico de intro.
+  if (introTopicos.length === 0) {
     const intros: [string, string | null | undefined][] = [
       ["Objetivo da Visita", data.objetivo_visita],
       ["Resumo Executivo", data.resumo_executivo],
@@ -576,8 +582,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       if (y > pageH - 60) { doc.addPage(); y = 20; }
       y = drawIntroBlock(doc, title, t, y);
     }
-    drawTabela();
   }
+  drawTabela();
 
 
 
