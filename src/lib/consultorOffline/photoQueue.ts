@@ -2,10 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   countPendingFotos,
   deleteFoto,
+  deleteFotosByVisita,
+  deleteMutationsByVisita,
   getFoto,
   listFailedFotos,
   listAllFotos,
+  listAllSnapshots,
   listFotosByParent,
+  listFotosByParentRaw,
   putFoto,
   purgeDeadFotos,
   retryFoto,
@@ -14,7 +18,8 @@ import {
 import { drainMutations } from "./mutationQueue";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
-import { getBlobDiagnostic } from "./photoBlob";
+import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
+
 
 const BUCKET = "visitas-consultor-fotos";
 
