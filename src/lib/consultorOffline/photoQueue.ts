@@ -2,10 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   countPendingFotos,
   deleteFoto,
+  deleteFotosByVisita,
+  deleteMutationsByVisita,
   getFoto,
   listFailedFotos,
   listAllFotos,
+  listAllSnapshots,
   listFotosByParent,
+  listFotosByParentRaw,
   putFoto,
   purgeDeadFotos,
   retryFoto,
@@ -14,7 +18,8 @@ import {
 import { drainMutations } from "./mutationQueue";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
-import { getBlobDiagnostic } from "./photoBlob";
+import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
+
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -107,6 +112,17 @@ export async function enqueuePhoto(params: {
   blob: Blob;
   fileName?: string;
 }): Promise<FotoQueueItem> {
+  // De-duplica o mesmo slot (mesmo parent + mesma ordem): remove qualquer entrada
+  // pendente anterior antes de gravar a nova. Isso evita acúmulo de duplicatas
+  // quando o usuário substitui uma foto ou tenta reenviar.
+  try {
+    const existing = await listFotosByParentRaw(params.parentKind, params.parentId);
+    await Promise.all(existing
+      .filter((it) => it.ordem === params.ordem)
+      .map((it) => deleteFoto(it.localId)));
+  } catch (err) {
+    console.warn("[consultor-photo-queue] falha ao limpar duplicatas do slot", err);
+  }
   const localId = `foto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const item: FotoQueueItem = {
     localId,
@@ -138,22 +154,54 @@ export async function enqueuePhoto(params: {
     throw new Error(`Não foi possível salvar a foto ${params.ordem} no aparelho. Tente tirar ou selecionar a foto novamente.`);
   }
   await refreshPendingCount();
-  // Dá tempo para o componente persistir o preview no snapshot antes do upload
-  // começar; evita corrida em que o servidor confirma e depois o caller grava
-  // uma foto `queued:` obsoleta sobre o snapshot atualizado.
   if (typeof window !== "undefined" && (typeof navigator === "undefined" || navigator.onLine)) {
     window.setTimeout(() => void drain(), 250);
   }
   return item;
 }
 
+
 export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topico", id: string) {
   return listFotosByParent(kind, id);
 }
 
-async function uploadOne(item: FotoQueueItem): Promise<boolean> {
+async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+
+  // ETAPA 1: reler SEMPRE a foto fresca do IndexedDB. Nunca reusar Blob de
+  // sessão anterior — no Safari/iOS, referências antigas geram "Load failed"
+  // ao serem passadas ao fetch/upload.
+  let item: FotoQueueItem;
+  let uploadBlob: Blob;
   try {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+    const fresh = await getFoto(inputItem.localId);
+    if (!fresh) {
+      // Já foi removida (talvez confirmada por outra corrida). Nada a fazer.
+      return true;
+    }
+    item = fresh;
+    assertValidPhotoBlob(item.blob, `foto ${item.ordem}`);
+    // Reconstrói um Blob novinho a partir do ArrayBuffer. Isso força uma
+    // referência 100% em memória para o upload — evita blob "detached" no
+    // WebKit quando a página foi recarregada.
+    const { blob } = await clonePhotoBlob(item.blob, item.mime || "image/jpeg");
+    uploadBlob = blob;
+  } catch (readErr) {
+    const message = `Falha ao ler foto do armazenamento local: ${getErrorMessage(readErr)}`;
+    debugSync("erro ao ler foto do IndexedDB", { localId: inputItem.localId, error: message });
+    const current = await getFoto(inputItem.localId);
+    if (current) {
+      current.status = "error";
+      current.tries = (current.tries ?? 0) + 1;
+      current.lastError = message;
+      await putFoto(current).catch(() => null);
+    }
+    await refreshPendingCount();
+    return false;
+  }
+
+  // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
+  try {
     item.status = "uploading";
     item.lastAttemptAt = new Date().toISOString();
     await putFoto(item);
@@ -164,8 +212,8 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       parentKind: item.parentKind,
       parentId: item.parentId,
       ordem: item.ordem,
-      mime: item.mime,
-      size: item.size ?? item.blob.size,
+      mime: uploadBlob.type,
+      size: uploadBlob.size,
       fileName: item.fileName,
     });
 
@@ -173,11 +221,11 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     const path = `${folder}/${item.parentId}/${item.ordem}-${item.localId}.jpg`;
     const { error: upErr } = await withConsultorTimeout(supabase.storage
       .from(BUCKET)
-      .upload(path, item.blob, { upsert: true, contentType: item.mime }),
+      .upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || item.mime }),
       `upload da foto ${item.ordem}`,
       CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS,
     );
-    if (upErr) throw upErr;
+    if (upErr) throw new Error(`Falha ao enviar foto ao servidor: ${getErrorMessage(upErr)}`);
 
     const insertPayload: any = { url: path, ordem: item.ordem };
     if (item.parentKind === "curral") insertPayload.visita_curral_id = item.parentId;
@@ -207,7 +255,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       inserted = insertRes.data;
       insErr = insertRes.error;
     }
-    if (insErr) throw insErr;
+    if (insErr) throw new Error(`Falha ao registrar foto no banco: ${getErrorMessage(insErr)}`);
 
     debugSync("foto confirmada pelo servidor", {
       localId: item.localId,
@@ -249,22 +297,24 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     await refreshPendingCount();
     return true;
   } catch (err) {
-    debugSync("foto mantida no IndexedDB após falha", {
+    const message = getErrorMessage(err);
+    debugSync("foto mantida no IndexedDB após falha de upload", {
       localId: item.localId,
       visitaId: item.visitaId,
-      error: getErrorMessage(err),
+      error: message,
     });
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
       current.tries = (current.tries ?? 0) + 1;
-      current.lastError = getErrorMessage(err);
+      current.lastError = message;
       await putFoto(current);
     }
     await refreshPendingCount();
     return false;
   }
 }
+
 
 let drainPromise: Promise<void> | null = null;
 
@@ -323,13 +373,62 @@ export async function syncNow() {
   );
 }
 
+/**
+ * Remove em cascata todas as fotos/mutações locais associadas a uma visita.
+ * Deve ser chamada quando o usuário exclui uma visita (soft delete).
+ */
+export async function purgeVisitaFromQueue(visitaId: string): Promise<{ fotos: number; mutations: number }> {
+  const [fotos, mutations] = await Promise.all([
+    deleteFotosByVisita(visitaId),
+    deleteMutationsByVisita(visitaId),
+  ]);
+  await refreshPendingCount();
+  return { fotos, mutations };
+}
+
+/**
+ * Higieniza a fila removendo itens órfãos: fotos cuja visita já foi
+ * marcada como excluída (deleted_at) no snapshot local. Executada uma vez
+ * na inicialização para limpar estado acumulado de sessões antigas.
+ */
+export async function purgeOrphanQueueItems(): Promise<number> {
+  try {
+    const [fotos, snapshots] = await Promise.all([listAllFotos(), listAllSnapshots()]);
+    const deletedIds = new Set<string>();
+    snapshots.forEach((snap) => {
+      if ((snap.data as any)?.visita?.deleted_at) deletedIds.add(snap.visitaId);
+    });
+    let removed = 0;
+    for (const f of fotos) {
+      if (f.visitaId && deletedIds.has(f.visitaId)) {
+        await deleteFoto(f.localId);
+        removed++;
+      }
+    }
+    for (const visitaId of deletedIds) {
+      await deleteMutationsByVisita(visitaId);
+    }
+    if (removed > 0) {
+      debugSync("fotos órfãs removidas da fila", { removed });
+      await refreshPendingCount();
+    }
+    return removed;
+  } catch (err) {
+    debugSync("falha ao remover órfãos da fila", { error: getErrorMessage(err) });
+    return 0;
+  }
+}
+
 // auto-drain on network reconnect
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => void drain().catch((err) => debugSync("auto-sync de fotos falhou", { error: getErrorMessage(err) })));
-  // initial drain
-  void drain().catch((err) => debugSync("sync inicial de fotos falhou", { error: getErrorMessage(err) }));
+  // limpeza única de órfãos + drain inicial
+  void purgeOrphanQueueItems()
+    .then(() => drain())
+    .catch((err) => debugSync("sync inicial de fotos falhou", { error: getErrorMessage(err) }));
 }
 
 export async function getPendingCount() {
   return countPendingFotos();
 }
+

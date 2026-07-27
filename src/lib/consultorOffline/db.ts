@@ -185,6 +185,29 @@ export async function listFotosByParent(kind: "pasto" | "curral" | "topico", id:
   const db = await getDb();
   return hydrateFotos(await db.getAllFromIndex("foto_queue", "by-parent", [kind, id]));
 }
+export async function listFotosByParentRaw(kind: "pasto" | "curral" | "topico", id: string) {
+  const db = await getDb();
+  return db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
+}
+export async function deleteFotosByVisita(visitaId: string) {
+  const db = await getDb();
+  const keys = await db.getAllKeysFromIndex("foto_queue", "by-visita", visitaId);
+  await Promise.all(keys.map((k) => db.delete("foto_queue", k)));
+  return keys.length;
+}
+export async function deleteFotosByParent(kind: "pasto" | "curral" | "topico", id: string) {
+  const db = await getDb();
+  const items = await db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
+  await Promise.all(items.map((it) => db.delete("foto_queue", it.localId)));
+  return items.length;
+}
+export async function deleteMutationsByVisita(visitaId: string) {
+  const db = await getDb();
+  const keys = await db.getAllKeysFromIndex("text_mutations", "by-visita", visitaId);
+  await Promise.all(keys.map((k) => db.delete("text_mutations", k)));
+  return keys.length;
+}
+
 export async function listAllFotos() {
   const db = await getDb();
   return hydrateFotos(await db.getAll("foto_queue"));
