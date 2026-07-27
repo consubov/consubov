@@ -18,6 +18,7 @@ import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaVie
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
 interface Visita {
   id: string;
@@ -55,6 +56,7 @@ export default function VisitaTecnicaPage() {
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
   const [finalizando, setFinalizando] = useState(false);
+  const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
 
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
@@ -248,15 +250,13 @@ export default function VisitaTecnicaPage() {
             <FileText className="w-4 h-4 text-primary" /> Relatório em PDF disponível
           </div>
           <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-              <a href={visita.pdf_url} target="_blank" rel="noreferrer">
-                <FileText className="w-4 h-4" /> Ver
-              </a>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-              <a href={visita.pdf_url} download>
-                <Download className="w-4 h-4" /> Baixar
-              </a>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 gap-1.5"
+              onClick={() => setPdfVisualizar({ url: visita.pdf_url!, nome: fazenda?.nome_fazenda || "visita" })}
+            >
+              <FileText className="w-4 h-4" /> Ver / Baixar
             </Button>
             <Button
               size="sm"
@@ -331,6 +331,12 @@ export default function VisitaTecnicaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PdfViewerDialog
+        url={pdfVisualizar?.url ?? null}
+        fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
+        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        onClose={() => setPdfVisualizar(null)}
+      />
     </div>
   );
 }
