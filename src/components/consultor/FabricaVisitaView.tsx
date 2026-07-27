@@ -146,7 +146,7 @@ export default function FabricaVisitaView({
           .from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem");
         const list = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos: list };
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos: list };
       }));
       const numeroMapFresh = computeFabricaPhotoNumbering(
         topicosFresh.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos }))
