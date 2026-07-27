@@ -509,8 +509,10 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   let y = drawFarmBlock(doc, data, 50);
 
   for (const t of introT) {
+    const txt = (t.texto || "").trim();
+    if (!txt && t.fotos.length === 0) continue;
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    y = drawIntroBlock(doc, t.titulo || "—", t.texto || "—", y);
+    if (txt) y = drawIntroBlock(doc, t.titulo.trim() || " ", txt, y);
     y = drawTopicoFotos(t, y);
   }
   // Legacy fallback só quando não existir tópico de introdução.
