@@ -132,14 +132,21 @@ export default function FabricaVisitaView({
 
   async function gerarPdf() {
     if (!fazendaAtual || !consultor) { toast.error("Dados insuficientes"); return; }
-    if ((await hasPendingLocalChanges(visitaId)) || pendingUploads > 0) {
-      setPendingThisVisit(true);
-      toast.error("Sincronize os dados pendentes em Minhas Fazendas antes de gerar o PDF.");
-      return;
-    }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
       return;
+    }
+    if (await hasPendingLocalChanges(visitaId)) {
+      const tSync = toast.loading("Sincronizando dados desta visita…");
+      const { syncVisitaAndWait } = await import("@/lib/consultorOffline/snapshotStore");
+      const ok = await syncVisitaAndWait(visitaId, 90000);
+      toast.dismiss(tSync);
+      if (!ok) {
+        setPendingThisVisit(true);
+        toast.error("Ainda há itens pendentes. Toque em Sincronizar e tente novamente.");
+        return;
+      }
+      setPendingThisVisit(false);
     }
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
@@ -323,15 +330,12 @@ export default function FabricaVisitaView({
         ) : (
           <Button
             onClick={gerarPdf}
-            disabled={gerandoPdf || quantidadeAvaliadas === 0 || pendingUploads > 0 || pendingThisVisit}
+            disabled={gerandoPdf || quantidadeAvaliadas === 0}
             className="w-full gap-2 bg-primary hover:bg-primary/90"
-            title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
           >
             {gerandoPdf
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
-              : pendingUploads > 0 || pendingThisVisit
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronize {pendingUploads || 1} pendente{(pendingUploads || 1) === 1 ? "" : "s"}</>
-                : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}</>}
+              : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}</>}
           </Button>
         )}
       </div>

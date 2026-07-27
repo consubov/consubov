@@ -357,14 +357,21 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
 
   async function gerarPdf() {
     if (!visita || !fazenda || !consultor) return;
-    if ((await hasPendingLocalChanges(visita.id)) || pendingUploads > 0) {
-      setPendingThisVisit(true);
-      toast.error("Sincronize os dados pendentes em Minhas Fazendas antes de gerar o PDF.");
-      return;
-    }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
       return;
+    }
+    if (await hasPendingLocalChanges(visita.id)) {
+      const tSync = toast.loading("Sincronizando dados desta visita…");
+      const { syncVisitaAndWait } = await import("@/lib/consultorOffline/snapshotStore");
+      const ok = await syncVisitaAndWait(visita.id, 90000);
+      toast.dismiss(tSync);
+      if (!ok) {
+        setPendingThisVisit(true);
+        toast.error("Ainda há itens pendentes. Toque em Sincronizar e tente novamente.");
+        return;
+      }
+      setPendingThisVisit(false);
     }
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
@@ -644,15 +651,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           {(visita.status === "revisao" || visita.status === "finalizada") && online && (
             <Button
               onClick={gerarPdf}
-              disabled={gerandoPdf || pendingUploads > 0 || pendingThisVisit}
+              disabled={gerandoPdf}
               className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
-              title={pendingUploads > 0 ? "Sincronize as fotos antes de gerar o PDF" : undefined}
             >
               {gerandoPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              {pendingUploads > 0 || pendingThisVisit
-                ? `Sincronize ${pendingUploads || 1} pendente${(pendingUploads || 1) === 1 ? "" : "s"}`
-                : visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}
+              {visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}
             </Button>
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
