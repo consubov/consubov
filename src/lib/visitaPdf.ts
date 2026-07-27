@@ -39,6 +39,7 @@ export interface VisitaPdfPasto {
   consumo_real_kg?: number | null;
   observacao: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
+  samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
   fotos: { id: string; url: string; ordem: number }[];
 }
 
