@@ -416,35 +416,160 @@ function drawChartPage(doc: jsPDF, data: ConfinamentoPdfData) {
   const chartY = 45;
   const chartW = pageW - 50;
   const chartH = 130;
+  const kind = data.chartType || "bars";
 
-  doc.setDrawColor(LINE);
-  doc.setLineWidth(0.3);
-  for (let n = 0; n <= 5; n++) {
-    const gy = chartY + chartH - (chartH * n) / 5;
-    doc.line(chartX, gy, chartX + chartW, gy);
-    doc.setFontSize(7);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "normal");
-    doc.text(String(n), chartX - 3, gy + 1, { align: "right" });
+  if (kind === "bars") {
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.3);
+    for (let n = 0; n <= 5; n++) {
+      const gy = chartY + chartH - (chartH * n) / 5;
+      doc.line(chartX, gy, chartX + chartW, gy);
+      doc.setFontSize(7);
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(n), chartX - 3, gy + 1, { align: "right" });
+    }
+    const gap = 6;
+    const barW = (chartW - gap * (bars.length + 1)) / bars.length;
+    bars.forEach((b, i) => {
+      const bx = chartX + gap + i * (barW + gap);
+      const bh = (chartH * b.value) / 5;
+      const by = chartY + chartH - bh;
+      doc.setFillColor(GOLD);
+      doc.rect(bx, by, barW, bh, "F");
+      doc.setFontSize(9);
+      doc.setTextColor(GREEN_DARK);
+      doc.setFont("helvetica", "bold");
+      doc.text(b.value ? b.value.toFixed(1) : "—", bx + barW / 2, by - 2, { align: "center" });
+      doc.setFontSize(8);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.text(b.label, bx + barW / 2, chartY + chartH + 6, { align: "center" });
+    });
+  } else if (kind === "lines") {
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.3);
+    for (let n = 0; n <= 5; n++) {
+      const gy = chartY + chartH - (chartH * n) / 5;
+      doc.line(chartX, gy, chartX + chartW, gy);
+      doc.setFontSize(7);
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(n), chartX - 3, gy + 1, { align: "right" });
+    }
+    const step = bars.length > 1 ? chartW / (bars.length - 1) : 0;
+    const points = bars.map((b, i) => ({
+      x: chartX + i * step,
+      y: chartY + chartH - (chartH * b.value) / 5,
+      b,
+    }));
+    doc.setDrawColor(GOLD);
+    doc.setLineWidth(1.2);
+    for (let i = 0; i < points.length - 1; i++) {
+      doc.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
+    points.forEach(p => {
+      doc.setFillColor(GREEN_DARK);
+      doc.circle(p.x, p.y, 1.6, "F");
+      doc.setFontSize(9);
+      doc.setTextColor(GREEN_DARK);
+      doc.setFont("helvetica", "bold");
+      doc.text(p.b.value ? p.b.value.toFixed(1) : "—", p.x, p.y - 3, { align: "center" });
+      doc.setFontSize(8);
+      doc.setTextColor(INK);
+      doc.text(p.b.label, p.x, chartY + chartH + 6, { align: "center" });
+    });
+  } else if (kind === "pie") {
+    const cx = pageW / 2;
+    const cy = chartY + chartH / 2;
+    const r = Math.min(chartH / 2 - 6, 55);
+    const total = bars.reduce((s, b) => s + (b.value || 0), 0);
+    const palette = ["#C9A84C", "#14432B", "#1F7A4D", "#8A6D2E", "#4C8C68"];
+    if (total <= 0) {
+      doc.setDrawColor(LINE);
+      doc.circle(cx, cy, r, "S");
+      doc.setFontSize(9);
+      doc.setTextColor(INK_SOFT);
+      doc.text("Sem dados", cx, cy, { align: "center", baseline: "middle" });
+    } else {
+      let acc = -Math.PI / 2;
+      const steps = 60;
+      bars.forEach((b, idx) => {
+        const frac = (b.value || 0) / total;
+        if (frac <= 0) return;
+        const end = acc + frac * Math.PI * 2;
+        // build filled polygon approximating the sector
+        const pts: [number, number][] = [[cx, cy]];
+        const n = Math.max(2, Math.ceil(steps * frac));
+        for (let i = 0; i <= n; i++) {
+          const a = acc + (end - acc) * (i / n);
+          pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+        }
+        doc.setFillColor(palette[idx % palette.length]);
+        const lines: [number, number][] = pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]);
+        (doc as any).lines(lines, pts[0][0], pts[0][1], [1, 1], "F", true);
+        // label near mid-angle outside
+        const mid = (acc + end) / 2;
+        const lx = cx + Math.cos(mid) * (r + 10);
+        const ly = cy + Math.sin(mid) * (r + 10);
+        doc.setFontSize(8);
+        doc.setTextColor(INK);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${b.label}: ${b.value ? b.value.toFixed(1) : "—"}`, lx, ly, { align: "center" });
+        acc = end;
+      });
+    }
+  } else if (kind === "radar") {
+    const cx = pageW / 2;
+    const cy = chartY + chartH / 2;
+    const r = Math.min(chartH / 2 - 10, 55);
+    const N = bars.length;
+    const angle = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
+    // rings
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.3);
+    for (let g = 1; g <= 5; g++) {
+      const rr = (r * g) / 5;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < N; i++) pts.push([cx + Math.cos(angle(i)) * rr, cy + Math.sin(angle(i)) * rr]);
+      for (let i = 0; i < N; i++) {
+        const a = pts[i]; const b = pts[(i + 1) % N];
+        doc.line(a[0], a[1], b[0], b[1]);
+      }
+    }
+    // axes + labels
+    bars.forEach((b, i) => {
+      const ax = cx + Math.cos(angle(i)) * r;
+      const ay = cy + Math.sin(angle(i)) * r;
+      doc.setDrawColor(LINE);
+      doc.line(cx, cy, ax, ay);
+      const lx = cx + Math.cos(angle(i)) * (r + 10);
+      const ly = cy + Math.sin(angle(i)) * (r + 10);
+      doc.setFontSize(8);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.text(b.label, lx, ly, { align: "center", baseline: "middle" });
+    });
+    // data polygon
+    const dpts: [number, number][] = bars.map((b, i) => {
+      const rr = (r * (b.value || 0)) / 5;
+      return [cx + Math.cos(angle(i)) * rr, cy + Math.sin(angle(i)) * rr];
+    });
+    const rel: [number, number][] = dpts.slice(1).map((p, i) => [p[0] - dpts[i][0], p[1] - dpts[i][1]]);
+    rel.push([dpts[0][0] - dpts[dpts.length - 1][0], dpts[0][1] - dpts[dpts.length - 1][1]]);
+    doc.setFillColor(GOLD);
+    doc.setDrawColor(GREEN_DARK);
+    doc.setLineWidth(0.8);
+    (doc as any).lines(rel, dpts[0][0], dpts[0][1], [1, 1], "FD", true);
+    bars.forEach((b, i) => {
+      doc.setFillColor(GREEN_DARK);
+      doc.circle(dpts[i][0], dpts[i][1], 1.2, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(GREEN_DARK);
+      doc.text(b.value ? b.value.toFixed(1) : "—", dpts[i][0], dpts[i][1] - 2.5, { align: "center" });
+    });
   }
 
-  const gap = 6;
-  const barW = (chartW - gap * (bars.length + 1)) / bars.length;
-  bars.forEach((b, i) => {
-    const bx = chartX + gap + i * (barW + gap);
-    const bh = (chartH * b.value) / 5;
-    const by = chartY + chartH - bh;
-    doc.setFillColor(GOLD);
-    doc.rect(bx, by, barW, bh, "F");
-    doc.setFontSize(9);
-    doc.setTextColor(GREEN_DARK);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.value ? b.value.toFixed(1) : "—", bx + barW / 2, by - 2, { align: "center" });
-    doc.setFontSize(8);
-    doc.setTextColor(INK);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.label, bx + barW / 2, chartY + chartH + 6, { align: "center" });
-  });
 
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
