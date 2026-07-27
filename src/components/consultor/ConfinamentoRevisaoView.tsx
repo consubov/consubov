@@ -563,58 +563,22 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         ))}
       </div>
 
-      {/* Blocos introdutórios (opcionais) */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Introdução do Relatório (opcional)
-        </div>
-        {[
-          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
-          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
-          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
-        ].map(f => (
-          <div key={f.key}>
-            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
-            <Textarea
-              value={f.val}
-              onChange={e => f.set(e.target.value)}
-              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
-              rows={2}
-              className="mt-1 text-sm"
-            />
-          </div>
-        ))}
+      {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
+      <VisitaTopicosSection
+        visitaId={visita.id}
+        onChange={setTopicos}
+      />
+
+      {/* Título da seção final do PDF (opcional) */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
+        <Input
+          value={tituloEncerramento}
+          onChange={e => setTituloEncerramento(e.target.value)}
+          placeholder="Observações e Recomendações"
+        />
       </div>
 
-      {/* Observações & Conclusão */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
-          <Input
-            value={tituloEncerramento}
-            onChange={e => setTituloEncerramento(e.target.value)}
-            placeholder="Observações e Recomendações"
-          />
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Observações gerais</div>
-          <Textarea
-            value={obsGerais}
-            onChange={e => setObsGerais(e.target.value)}
-            onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3} className="mt-1"
-          />
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Conclusão</div>
-          <Textarea
-            value={conclusao}
-            onChange={e => setConclusao(e.target.value)}
-            onBlur={() => autosaveVisita({ conclusao })}
-            rows={3} className="mt-1"
-          />
-        </div>
-      </div>
 
 
       {/* Botão fixo — acima da nav */}
