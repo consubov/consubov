@@ -190,8 +190,7 @@ export async function listAllFotos() {
   return hydrateFotos(await db.getAll("foto_queue"));
 }
 export async function listFotosByVisita(visitaId: string) {
-  const db = await getDb();
-  const items = await db.getAll("foto_queue");
+  const items = await listAllFotos();
   return items.filter((item) => item.visitaId === visitaId);
 }
 export async function listFailedFotos() {
@@ -210,8 +209,8 @@ export async function retryFoto(localId: string) {
   });
 }
 export async function countAllFotos() {
-  const db = await getDb();
-  return db.count("foto_queue");
+  const items = await listAllFotos();
+  return items.length;
 }
 // Conta TODAS as fotos ainda no cache local. Uma foto só sai do cache quando é
 // confirmada no Supabase Storage — portanto qualquer item aqui é pendente.
