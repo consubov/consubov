@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
-import { loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaPastoRow {
   id: string;
@@ -113,17 +113,19 @@ export default function PastoVisitaModal({
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
       const online = typeof navigator === "undefined" || navigator.onLine;
-      const source = online
-        ? supabase.from("avaliacoes_score")
-            .select("id, tipo, nota")
-            .eq("visita_pasto_id", pasto.id)
-        : Promise.resolve({ data: [] });
-      source.then(async ({ data }) => {
+      (async () => {
+        const snap = await loadSnapshot(visitaId);
+        const snapPasto = (snap?.pastos || []).find((p: any) => p.id === pasto.id) as any;
+        const preferLocal = !!snapPasto?.samples && await hasPendingLocalChanges(visitaId);
+        if (preferLocal || !online) return { data: [], snap, snapPasto };
+        const res = await supabase.from("avaliacoes_score")
+          .select("id, tipo, nota")
+          .eq("visita_pasto_id", pasto.id);
+        return { ...res, snap, snapPasto };
+      })().then(async ({ data, snap, snapPasto }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
           let rows = (data as any[]) || [];
           if (rows.length === 0) {
-            const snap = await loadSnapshot(visitaId);
-            const snapPasto = (snap?.pastos || []).find((p: any) => p.id === pasto.id) as any;
             if (snapPasto?.samples) {
               setSamples({
                 fezes: snapPasto.samples.fezes || [],

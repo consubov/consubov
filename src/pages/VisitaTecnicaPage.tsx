@@ -17,7 +17,7 @@ import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/Pa
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -63,15 +63,16 @@ export default function VisitaTecnicaPage() {
     setLoading(true);
     const snap = await loadSnapshot(visitaId!);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const vRes = online
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId!);
+    const vRes = online && !preferLocal
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
       : { data: null };
-    const v = (vRes.data as Visita | null) || (snap?.visita as Visita | undefined) || null;
+    const v = (preferLocal ? (snap?.visita as Visita | undefined) : (vRes.data as Visita | null) || (snap?.visita as Visita | undefined)) || null;
     setVisita(v);
     if (v) {
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");
-      const [fRes, pRes] = online
+      const [fRes, pRes] = online && !preferLocal
         ? await Promise.all([
             supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
             supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
@@ -83,7 +84,7 @@ export default function VisitaTecnicaPage() {
       if (pastosData.length === 0 && snap?.pastos?.length) pastosData = snap.pastos as any[];
       const ids = pastosData.map(p => p.id);
       const samplesByPasto: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
-      if (ids.length > 0 && online) {
+      if (ids.length > 0 && online && !preferLocal) {
         const { data: scoresData } = await supabase.from("avaliacoes_score")
           .select("visita_pasto_id, tipo, nota")
           .in("visita_pasto_id", ids);
@@ -110,12 +111,14 @@ export default function VisitaTecnicaPage() {
         } as any;
       });
       setPastos(builtPastos);
-      void saveSnapshot(visitaId!, {
-        ...(snap || {}),
-        visita: v,
-        fazenda: fazendaData,
-        pastos: builtPastos,
-      }).catch(() => {});
+      if (!preferLocal) {
+        void saveSnapshot(visitaId!, {
+          ...(snap || {}),
+          visita: v,
+          fazenda: fazendaData,
+          pastos: builtPastos,
+        }).catch(() => {});
+      }
     }
     setLoading(false);
   }

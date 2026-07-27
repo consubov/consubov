@@ -19,6 +19,10 @@ const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
 
+function debugSync(message: string, payload?: Record<string, unknown>) {
+  if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
+}
+
 function withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
@@ -69,8 +73,12 @@ export async function enqueuePhoto(params: {
   };
   await putFoto(item);
   await refreshPendingCount();
-  // fire drain in background
-  if (typeof navigator === "undefined" || navigator.onLine) void drain();
+  // Dá tempo para o componente persistir o preview no snapshot antes do upload
+  // começar; evita corrida em que o servidor confirma e depois o caller grava
+  // uma foto `queued:` obsoleta sobre o snapshot atualizado.
+  if (typeof window !== "undefined" && (typeof navigator === "undefined" || navigator.onLine)) {
+    window.setTimeout(() => void drain(), 250);
+  }
   return item;
 }
 
@@ -84,6 +92,13 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     item.status = "uploading";
     await putFoto(item);
     emit();
+    debugSync("enviando foto", {
+      localId: item.localId,
+      visitaId: item.visitaId,
+      parentKind: item.parentKind,
+      parentId: item.parentId,
+      ordem: item.ordem,
+    });
 
     const folder = item.parentKind === "curral" ? "currais" : item.parentKind === "topico" ? "topicos" : "pastos";
     const path = `${folder}/${item.parentId}/${item.ordem}-${item.localId}.jpg`;
@@ -116,6 +131,13 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     }
     if (insErr) throw insErr;
 
+    debugSync("foto confirmada pelo servidor", {
+      localId: item.localId,
+      visitaId: item.visitaId,
+      table,
+      rowId: inserted?.id,
+      path,
+    });
     await deleteFoto(item.localId);
     await patchSnapshot(item.visitaId, (curr) => {
       const queuedUrl = `queued:${item.localId}`;
@@ -149,6 +171,11 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     await refreshPendingCount();
     return true;
   } catch (err) {
+    debugSync("foto mantida no IndexedDB após falha", {
+      localId: item.localId,
+      visitaId: item.visitaId,
+      error: (err as Error)?.message || String(err),
+    });
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";

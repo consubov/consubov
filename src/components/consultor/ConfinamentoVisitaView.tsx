@@ -16,7 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -60,14 +60,15 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const cRes = online
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
+    const cRes = online && !preferLocal
       ? await supabase.from("visita_currais").select("*").eq("visita_id", visitaId).order("ordem")
       : { data: null };
     let curraisData = (cRes.data as any[]) || [];
     if (curraisData.length === 0 && snap?.currais?.length) curraisData = snap.currais as any[];
     const ids = curraisData.map(c => c.id);
     const samplesByCurral: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
-    if (ids.length > 0 && online) {
+    if (ids.length > 0 && online && !preferLocal) {
       const { data: scoresData } = await supabase.from("avaliacoes_score")
         .select("visita_curral_id, tipo, nota")
         .in("visita_curral_id", ids);
@@ -96,7 +97,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     setCurrais(built);
 
     // load avaliacao fabrica
-    const { data: af } = online
+    const { data: af } = online && !preferLocal
       ? await (supabase as any).from("avaliacao_fabrica_visita")
           .select("id, organizacao_fabrica_nota, organizacao_insumos_nota")
           .eq("visita_id", visitaId).maybeSingle()
@@ -106,7 +107,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     setInsumosNota(afRow?.organizacao_insumos_nota ?? null);
 
     // refresh visita
-    const vRes = online
+    const vRes = online && !preferLocal
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle()
       : { data: null };
     if (vRes.data) {
@@ -115,13 +116,15 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");
     }
-    void saveSnapshot(visitaId, {
-      ...(snap || {}),
-      visita: vRes.data || snap?.visita || initialVisita,
-      fazenda: fazenda || snap?.fazenda,
-      currais: built,
-      avaliacao_fabrica_visita: afRow,
-    }).catch(() => {});
+    if (!preferLocal) {
+      void saveSnapshot(visitaId, {
+        ...(snap || {}),
+        visita: vRes.data || snap?.visita || initialVisita,
+        fazenda: fazenda || snap?.fazenda,
+        currais: built,
+        avaliacao_fabrica_visita: afRow,
+      }).catch(() => {});
+    }
     setLoading(false);
   }, [visitaId, fazenda, initialVisita]);
 

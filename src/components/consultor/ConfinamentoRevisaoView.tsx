@@ -19,7 +19,7 @@ import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
-import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
+import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
@@ -91,10 +91,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const { data: v } = online
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
+    const { data: v } = online && !preferLocal
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle()
       : { data: null };
-    const visitaRow = (v as any) || snap?.visita;
+    const visitaRow = preferLocal ? snap?.visita : (v as any) || snap?.visita;
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
     setObsGerais(visitaRow.observacoes_gerais || "");
@@ -103,7 +104,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
 
-    const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = online
+    const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = online && !preferLocal
       ? await Promise.all([
           supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
           supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
@@ -126,7 +127,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     const ids = rows.map(r => r.id);
     const samplesBy: Record<string, Record<ScoreKey, ScoreSample[]>> = {};
     const fotosBy: Record<string, Foto[]> = {};
-    if (ids.length && online) {
+    if (ids.length && online && !preferLocal) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_curral_id, tipo, nota").in("visita_curral_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_curral_id", ids).order("ordem"),
@@ -147,7 +148,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((rf: any) => rf.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapCurral?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !preferLocal && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         id: r.id, num_curral: r.num_curral, ordem: r.ordem,
@@ -157,14 +158,16 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     }));
     setCurrais(built);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId));
-    void saveSnapshot(visitaId, {
-      ...(snap || {}),
-      visita: visitaRow,
-      fazenda: fazendaRow,
-      consultor: consultorRow,
-      currais: built,
-      avaliacao_fabrica_visita: afRow,
-    }).catch(() => {});
+    if (!preferLocal) {
+      void saveSnapshot(visitaId, {
+        ...(snap || {}),
+        visita: visitaRow,
+        fazenda: fazendaRow,
+        consultor: consultorRow,
+        currais: built,
+        avaliacao_fabrica_visita: afRow,
+      }).catch(() => {});
+    }
     setLoading(false);
   }, [visitaId]);
 
@@ -300,7 +303,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       await patchSnapshot(visitaId, (curr) => ({
         ...curr,
         currais: (curr.currais || []).map((x: any) => x.id === curralId
-          ? { ...x, fotos: [...(x.fotos || []), data].sort((a: Foto, b: Foto) => a.ordem - b.ordem), signed: { ...(x.signed || {}), [data.id]: dataUrl } }
+          ? (() => {
+              const current = (x.fotos || []) as Foto[];
+              const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
+              const alreadyQueued = current.some((f) => f.id === data.id || f.url === data.url);
+              const fotos = alreadySyncedAtSlot || alreadyQueued ? current : [...current, data].sort((a: Foto, b: Foto) => a.ordem - b.ordem);
+              return { ...x, fotos, signed: { ...(x.signed || {}), [data.id]: dataUrl } };
+            })()
           : x),
       }));
       toast.info("Foto salva off-line. Sincronize quando houver internet.");
@@ -341,6 +350,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       currais: (curr.currais || []).map((x: any) => x.id === curralId ? { ...x, fotos: updates } : x),
     }));
     await Promise.all(updates
+      .filter(u => String(u.url).startsWith("queued:"))
+      .map(u => updateFotoOrdem(u.id, u.ordem))
+    );
+    await Promise.all(updates
       .filter(u => !String(u.url).startsWith("queued:"))
       .map(u => offlineUpdate({ visitaId, table: "visita_fotos", rowId: u.id, patch: { ordem: u.ordem } }))
     );
@@ -376,12 +389,18 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
-      await supabase.from("visitas_tecnicas").update({
-        observacoes_gerais: obsGerais, conclusao,
-        objetivo_visita: objetivo || null,
-        resumo_executivo: resumo || null,
-        indicadores_gerais: indicadores || null,
-      }).eq("id", visita.id);
+      const saveRes = await offlineUpdate({
+        visitaId: visita.id,
+        table: "visitas_tecnicas",
+        rowId: visita.id,
+        patch: {
+          observacoes_gerais: obsGerais, conclusao,
+          objetivo_visita: objetivo || null,
+          resumo_executivo: resumo || null,
+          indicadores_gerais: indicadores || null,
+        } as any,
+      });
+      if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {

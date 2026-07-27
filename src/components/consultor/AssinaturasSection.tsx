@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, PenLine } from "lucide-react";
 import { toast } from "sonner";
-import { offlineUpsert, offlineUpdate, offlineDelete, patchSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, offlineUpsert, offlineUpdate, offlineDelete, patchSnapshot, loadSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 export interface Assinante {
   id: string;
@@ -16,6 +16,10 @@ export interface Assinante {
 
 export async function fetchAssinantes(visitaId: string): Promise<Assinante[]> {
   const online = typeof navigator === "undefined" || navigator.onLine;
+  const snap = await loadSnapshot(visitaId);
+  const local = ((snap as any)?.assinantes as Assinante[]) || [];
+  const preferLocal = local.length > 0 && await hasPendingLocalChanges(visitaId);
+  if (preferLocal) return local;
   if (online) {
     const { data } = await (supabase as any)
       .from("visita_assinantes")
@@ -24,8 +28,7 @@ export async function fetchAssinantes(visitaId: string): Promise<Assinante[]> {
       .order("ordem", { ascending: true });
     if (data && data.length) return data as Assinante[];
   }
-  const snap = await loadSnapshot(visitaId);
-  return ((snap as any)?.assinantes as Assinante[]) || [];
+  return local;
 }
 
 export default function AssinaturasSection({
