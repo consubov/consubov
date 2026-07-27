@@ -178,7 +178,6 @@ function drawCoverHeader(
 }
 
 function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number {
-  const w = doc.internal.pageSize.getWidth();
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
@@ -192,29 +191,11 @@ function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-
-  const boxY = Math.max(y + 12, metaY + 2);
-  const boxW = (w - 30 - 10) / 3;
-  const boxes = [
-    { label: "CONSULTOR", value: data.consultor.nome || "—" },
-    { label: "INÍCIO", value: format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR }) },
-    { label: "TÉRMINO", value: data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—" },
-  ];
-  boxes.forEach((b, i) => {
-    const x = 15 + i * (boxW + 5);
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(x, boxY, boxW, 18, 2, 2, "S");
-    doc.setFontSize(7);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.label, x + 3, boxY + 6);
-    doc.setFontSize(10);
-    doc.setTextColor(INK);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.value, x + 3, boxY + 13);
-  });
-  return boxY + 24;
+  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
+  doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
+  return metaY + 6;
 }
 
 function drawParagraphText(
