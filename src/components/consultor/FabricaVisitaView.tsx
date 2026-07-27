@@ -78,7 +78,8 @@ export default function FabricaVisitaView({
     const snap = await loadSnapshot(visitaId);
     setFazendaAtual(fazenda || (snap?.fazenda as Fazenda | undefined) || null);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const [{ data: consultorData }, { data }] = online
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
+    const [{ data: consultorData }, { data }] = online && !preferLocal
       ? await Promise.all([
           supabase.from("consultores").select("*").eq("id", visita.consultor_id).maybeSingle(),
           (supabase as any).from("avaliacoes_fabrica_quesito").select("id, quesito, nota").eq("visita_id", visitaId),
@@ -93,13 +94,15 @@ export default function FabricaVisitaView({
     setNotas(map);
     setNotaIds(ids);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId));
-    void saveSnapshot(visitaId, {
-      ...(snap || {}),
-      visita,
-      fazenda: fazenda || snap?.fazenda,
-      consultor: consultorRow,
-      avaliacoes_fabrica: rows,
-    }).catch(() => {});
+    if (!preferLocal) {
+      void saveSnapshot(visitaId, {
+        ...(snap || {}),
+        visita,
+        fazenda: fazenda || snap?.fazenda,
+        consultor: consultorRow,
+        avaliacoes_fabrica: rows,
+      }).catch(() => {});
+    }
   }
 
   async function saveNota(quesito: string, nota: number) {

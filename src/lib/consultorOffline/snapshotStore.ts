@@ -1,4 +1,4 @@
-import { getSnapshot, listFotosByVisita, listMutationsByVisita, putSnapshot } from "./db";
+import { getSnapshot, listAllSnapshots, listFotosByVisita, listMutationsByVisita, putSnapshot } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMutation } from "./mutationQueue";
 
@@ -41,6 +41,11 @@ export async function saveSnapshot(visitaId: string, data: VisitaSnapshotData) {
     data,
     updatedAt: new Date().toISOString(),
   });
+}
+
+export async function loadAllSnapshots(): Promise<Array<{ visitaId: string; data: VisitaSnapshotData; updatedAt: string }>> {
+  const rows = await listAllSnapshots();
+  return rows.map((row) => ({ visitaId: row.visitaId, data: row.data as VisitaSnapshotData, updatedAt: row.updatedAt }));
 }
 
 export async function hasPendingLocalChanges(visitaId: string): Promise<boolean> {

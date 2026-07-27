@@ -124,6 +124,10 @@ export async function getSnapshot(visitaId: string) {
   const db = await getDb();
   return db.get("snapshots", visitaId);
 }
+export async function listAllSnapshots() {
+  const db = await getDb();
+  return db.getAll("snapshots");
+}
 export async function putSnapshot(snap: VisitaSnapshot) {
   const db = await getDb();
   await db.put("snapshots", snap);
@@ -156,4 +160,12 @@ export async function purgeDeadMutations() { /* no-op */ }
 export async function listMutationsByVisita(visitaId: string) {
   const db = await getDb();
   return db.getAllFromIndex("text_mutations", "by-visita", visitaId);
+}
+
+export async function listPendingVisitaIds() {
+  const [mutations, fotos] = await Promise.all([listAllMutations(), listAllFotos()]);
+  const ids = new Set<string>();
+  mutations.forEach((m) => { if (m.visitaId) ids.add(m.visitaId); });
+  fotos.forEach((f) => { if (f.visitaId) ids.add(f.visitaId); });
+  return Array.from(ids);
 }

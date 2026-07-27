@@ -186,10 +186,11 @@ export default function RevisaoVisitaPage() {
     setLoading(true);
     const snap = visitaId ? await loadSnapshot(visitaId) : null;
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const { data: v } = online
+    const preferLocal = !!snap?.visita && visitaId ? await hasPendingLocalChanges(visitaId) : false;
+    const { data: v } = online && !preferLocal
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).maybeSingle()
       : { data: null };
-    const visitaRow = (v as any) || snap?.visita;
+    const visitaRow = preferLocal ? snap?.visita : (v as any) || snap?.visita;
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
     setObsGerais(visitaRow.observacoes_gerais || "");
@@ -199,7 +200,7 @@ export default function RevisaoVisitaPage() {
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
 
-    const [{ data: fz }, { data: cs }, { data: ps }] = online
+    const [{ data: fz }, { data: cs }, { data: ps }] = online && !preferLocal
       ? await Promise.all([
           supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
           supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
@@ -215,7 +216,7 @@ export default function RevisaoVisitaPage() {
     const ids = pastoRows.map(p => p.id);
     const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
     const fotosByPasto: Record<string, Foto[]> = {};
-    if (ids.length && online) {
+    if (ids.length && online && !preferLocal) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
@@ -236,7 +237,7 @@ export default function RevisaoVisitaPage() {
       const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((r: any) => r.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !preferLocal && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
@@ -247,12 +248,15 @@ export default function RevisaoVisitaPage() {
     setPastos(built);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId!));
     // Snapshot local — permite reabrir a visita offline com dados pré-carregados
-    void saveSnapshot(visitaId!, {
-      visita: visitaRow,
-      fazenda: fazendaRow,
-      consultor: consultorRow,
-      pastos: built,
-    }).catch(() => {});
+    if (!preferLocal) {
+      void saveSnapshot(visitaId!, {
+        ...(snap || {}),
+        visita: visitaRow,
+        fazenda: fazendaRow,
+        consultor: consultorRow,
+        pastos: built,
+      }).catch(() => {});
+    }
     setLoading(false);
   }
 

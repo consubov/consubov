@@ -13,6 +13,8 @@ import { Loader2, ChevronRight, History, Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { listPendingVisitaIds } from "@/lib/consultorOffline/db";
+import { loadAllSnapshots } from "@/lib/consultorOffline/snapshotStore";
 
 interface VisitaItem {
   id: string;
@@ -22,6 +24,8 @@ interface VisitaItem {
   fazenda_consultor_id: string;
   pdf_url: string | null;
   fazendas_consultor: { nome_fazenda: string } | null;
+  _pendingLocal?: boolean;
+  _localOnly?: boolean;
 }
 
 export default function ConsultorHistoricoPage() {
@@ -36,12 +40,62 @@ export default function ConsultorHistoricoPage() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("visitas_tecnicas")
-      .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
-      .eq("consultor_id", roleData.consultorId!)
-      .order("hora_inicio", { ascending: false });
-    setVisitas((data as any as VisitaItem[]) || []);
+    const consultorId = roleData?.consultorId;
+    if (!consultorId) { setVisitas([]); setLoading(false); return; }
+    try {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      const [{ data }, snapshots, pendingIds] = await Promise.all([
+        online
+          ? supabase
+              .from("visitas_tecnicas")
+              .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
+              .eq("consultor_id", consultorId)
+              .order("hora_inicio", { ascending: false })
+          : Promise.resolve({ data: [] }),
+        loadAllSnapshots(),
+        listPendingVisitaIds(),
+      ]);
+      const pending = new Set(pendingIds);
+      const map = new Map<string, VisitaItem>();
+      ((data as any as VisitaItem[]) || []).forEach((row) => {
+        map.set(row.id, { ...row, _pendingLocal: pending.has(row.id) });
+      });
+      snapshots.forEach(({ visitaId, data: snap }) => {
+        const visita = snap.visita as any;
+        if (!visita || visita.consultor_id !== consultorId) return;
+        const isPending = pending.has(visitaId);
+        const existing = map.get(visitaId);
+        if (!isPending && existing) return;
+        if (!isPending && visita.status === "finalizada") return;
+        const localItem: VisitaItem = {
+          id: visitaId,
+          tipo: visita.tipo || existing?.tipo || "rotina",
+          status: visita.status || existing?.status || "rascunho",
+          hora_inicio: visita.hora_inicio || existing?.hora_inicio || new Date().toISOString(),
+          fazenda_consultor_id: visita.fazenda_consultor_id || existing?.fazenda_consultor_id || "",
+          pdf_url: visita.pdf_url || existing?.pdf_url || null,
+          fazendas_consultor: {
+            nome_fazenda: snap.fazenda?.nome_fazenda || existing?.fazendas_consultor?.nome_fazenda || "Visita salva off-line",
+          },
+          _pendingLocal: isPending,
+          _localOnly: !existing,
+        };
+        map.set(visitaId, localItem);
+      });
+      const merged = Array.from(map.values()).sort((a, b) => new Date(b.hora_inicio).getTime() - new Date(a.hora_inicio).getTime());
+      if (import.meta.env.DEV) {
+        console.debug("[consultor-sync] histórico mesclado", merged.map((v) => ({
+          visitaId: v.id,
+          status: v.status,
+          pending: !!v._pendingLocal,
+          localOnly: !!v._localOnly,
+        })));
+      }
+      setVisitas(merged);
+    } catch (err: any) {
+      toast.error("Erro ao carregar histórico: " + (err?.message || "desconhecido"));
+      setVisitas([]);
+    }
     setLoading(false);
   }
 
@@ -85,8 +139,8 @@ export default function ConsultorHistoricoPage() {
                     {v.tipo} · {format(new Date(v.hora_inicio), "dd 'de' MMM yyyy · HH:mm", { locale: ptBR })}
                   </div>
                 </div>
-                <Badge variant={v.status === "finalizada" ? "default" : "secondary"} className="capitalize shrink-0">
-                  {v.status}
+                <Badge variant={v.status === "finalizada" && !v._pendingLocal ? "default" : "secondary"} className="capitalize shrink-0">
+                  {v._pendingLocal ? "rascunho" : v.status}
                 </Badge>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
@@ -98,6 +152,11 @@ export default function ConsultorHistoricoPage() {
                       <Download className="w-4 h-4" /> Baixar PDF
                     </a>
                   </Button>
+                )}
+                {v._pendingLocal && (
+                  <Badge variant="outline" className="shrink-0">
+                    Sincronização pendente
+                  </Badge>
                 )}
                 <Button
                   size="sm"

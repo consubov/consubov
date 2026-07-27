@@ -13,6 +13,10 @@ const listeners = new Set<Listener>();
 let syncing = false;
 let cachedPending = 0;
 
+function debugSync(message: string, payload?: Record<string, unknown>) {
+  if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
+}
+
 function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = window.setTimeout(() => reject(new Error("Tempo limite de conexão excedido")), ms);
@@ -60,8 +64,23 @@ export async function enqueueMutation(params: {
     (m) => m.table === params.table && m.rowId === params.rowId && m.status !== "flushing",
   );
   if (existing) {
+    if (params.operation === "delete" && (existing.operation === "insert" || existing.operation === "upsert")) {
+      debugSync("cancelando mutação local antes de existir no servidor", {
+        mutationId: existing.id,
+        visitaId: existing.visitaId,
+        table: existing.table,
+        rowId: existing.rowId,
+      });
+      await deleteMutation(existing.id);
+      await refresh();
+      return;
+    }
     existing.patch = { ...existing.patch, ...params.patch };
-    existing.operation = existing.operation === "upsert" ? "upsert" : params.operation ?? existing.operation ?? "update";
+    existing.operation = params.operation === "delete"
+      ? "delete"
+      : existing.operation === "upsert"
+        ? "upsert"
+        : params.operation ?? existing.operation ?? "update";
     existing.onConflict = params.onConflict ?? existing.onConflict;
     existing.status = "pending";
     existing.tries = 0;
@@ -94,26 +113,64 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     emit();
     const operation = m.operation ?? "update";
     let error: any = null;
+    let confirmed: any = null;
+    debugSync("enviando mutação", {
+      mutationId: m.id,
+      visitaId: m.visitaId,
+      table: m.table,
+      rowId: m.rowId,
+      operation,
+    });
     if (operation === "upsert") {
       const res: any = await withTimeout((supabase as any)
         .from(m.table)
-        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" }));
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" })
+        .select("id")
+        .maybeSingle());
       error = res.error;
+      confirmed = res.data;
     } else if (operation === "insert") {
-      const res: any = await withTimeout((supabase as any).from(m.table).insert({ id: m.rowId, ...m.patch }));
+      const res: any = await withTimeout((supabase as any)
+        .from(m.table)
+        .insert({ id: m.rowId, ...m.patch })
+        .select("id")
+        .maybeSingle());
       error = res.error;
+      confirmed = res.data;
     } else if (operation === "delete") {
       const res: any = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
       error = res.error;
+      confirmed = { id: m.rowId, deleted: true };
     } else {
-      const res: any = await withTimeout((supabase as any).from(m.table).update(m.patch).eq("id", m.rowId));
+      const res: any = await withTimeout((supabase as any)
+        .from(m.table)
+        .update(m.patch)
+        .eq("id", m.rowId)
+        .select("id")
+        .maybeSingle());
       error = res.error;
+      confirmed = res.data;
     }
     if (error) throw error;
+    if (!confirmed) throw new Error(`Servidor não confirmou ${operation} em ${m.table}`);
+    debugSync("mutação confirmada pelo servidor", {
+      mutationId: m.id,
+      visitaId: m.visitaId,
+      table: m.table,
+      rowId: m.rowId,
+      operation,
+    });
     await deleteMutation(m.id);
     await refresh();
     return true;
   } catch (err) {
+    debugSync("mutação mantida no IndexedDB após falha", {
+      mutationId: m.id,
+      visitaId: m.visitaId,
+      table: m.table,
+      rowId: m.rowId,
+      error: (err as Error)?.message || String(err),
+    });
     m.status = "error";
     m.tries = (m.tries ?? 0) + 1;
     m.lastError = (err as Error)?.message || String(err);

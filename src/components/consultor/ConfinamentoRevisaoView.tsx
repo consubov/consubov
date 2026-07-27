@@ -91,10 +91,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const { data: v } = online
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
+    const { data: v } = online && !preferLocal
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle()
       : { data: null };
-    const visitaRow = (v as any) || snap?.visita;
+    const visitaRow = preferLocal ? snap?.visita : (v as any) || snap?.visita;
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
     setObsGerais(visitaRow.observacoes_gerais || "");
@@ -103,7 +104,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
 
-    const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = online
+    const [{ data: fz }, { data: cs }, { data: cr }, { data: af }] = online && !preferLocal
       ? await Promise.all([
           supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
           supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
@@ -126,7 +127,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     const ids = rows.map(r => r.id);
     const samplesBy: Record<string, Record<ScoreKey, ScoreSample[]>> = {};
     const fotosBy: Record<string, Foto[]> = {};
-    if (ids.length && online) {
+    if (ids.length && online && !preferLocal) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_curral_id, tipo, nota").in("visita_curral_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_curral_id", ids).order("ordem"),
@@ -147,7 +148,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((rf: any) => rf.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapCurral?.signed || {}), ...((r as any).signed || {}) };
       await Promise.all(fotos
-        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !preferLocal && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         id: r.id, num_curral: r.num_curral, ordem: r.ordem,
@@ -157,14 +158,16 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     }));
     setCurrais(built);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId));
-    void saveSnapshot(visitaId, {
-      ...(snap || {}),
-      visita: visitaRow,
-      fazenda: fazendaRow,
-      consultor: consultorRow,
-      currais: built,
-      avaliacao_fabrica_visita: afRow,
-    }).catch(() => {});
+    if (!preferLocal) {
+      void saveSnapshot(visitaId, {
+        ...(snap || {}),
+        visita: visitaRow,
+        fazenda: fazendaRow,
+        consultor: consultorRow,
+        currais: built,
+        avaliacao_fabrica_visita: afRow,
+      }).catch(() => {});
+    }
     setLoading(false);
   }, [visitaId]);
 

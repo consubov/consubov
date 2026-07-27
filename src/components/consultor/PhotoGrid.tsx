@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
+import { loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
@@ -71,17 +72,24 @@ export default function PhotoGrid({
 
   const reloadFotos = async () => {
     if (!targetId || !targetKind) { setFotos([]); return; }
+    const snap = visitaId ? await loadSnapshot(visitaId) : null;
+    const snapParent = targetKind === "curral"
+      ? (snap?.currais || []).find((c: any) => c.id === targetId)
+      : (snap?.pastos || []).find((p: any) => p.id === targetId);
+    const snapFotos = (snapParent?.fotos || []) as FotoRow[];
+    const snapSigned = (snapParent?.signed || {}) as Record<string, string>;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setFotos([]);
-      setSigned({});
+      setFotos(snapFotos.filter((f) => !String(f.url || "").startsWith("queued:")));
+      setSigned(snapSigned);
       return;
     }
     const col = targetKind === "curral" ? "visita_curral_id" : "visita_pasto_id";
     const { data } = await supabase.from("visita_fotos")
       .select("*").eq(col, targetId).order("ordem");
     const rows = (data as FotoRow[]) || [];
-    setFotos(rows);
-    const map: Record<string, string> = {};
+    const queuedLocal = snapFotos.filter((f) => String(f.url || "").startsWith("queued:"));
+    setFotos([...rows, ...queuedLocal.filter((q) => !rows.some((r) => r.ordem === q.ordem))]);
+    const map: Record<string, string> = { ...snapSigned };
     await Promise.all(rows.map(async r => { map[r.id] = await getSignedUrl(r.url); }));
     setSigned(map);
   };
@@ -150,6 +158,22 @@ export default function PhotoGrid({
         ordem,
         blob,
       });
+      if (visitaId) {
+        const queuedId = `foto_${Date.now()}`;
+        await patchSnapshot(visitaId, (curr) => {
+          const key = targetKind === "curral" ? "currais" : "pastos";
+          return {
+            ...curr,
+            [key]: ((curr as any)[key] || []).map((item: any) => item.id === targetId
+              ? {
+                  ...item,
+                  fotos: [...(item.fotos || []), { id: queuedId, url: `queued:${queuedId}`, ordem }].sort((a: FotoRow, b: FotoRow) => a.ordem - b.ordem),
+                  signed: { ...(item.signed || {}), [queuedId]: dataUrl },
+                }
+              : item),
+          };
+        });
+      }
       // Clear inline pending — the queue-driven refresh will render it
       setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
@@ -175,6 +199,17 @@ export default function PhotoGrid({
     const target = items.find(it => it.ordem === ordem);
     if (target) {
       await deleteQueuedFoto(target.localId);
+      if (visitaId) {
+        await patchSnapshot(visitaId, (curr) => {
+          const key = targetKind === "curral" ? "currais" : "pastos";
+          return {
+            ...curr,
+            [key]: ((curr as any)[key] || []).map((item: any) => item.id === targetId
+              ? { ...item, fotos: (item.fotos || []).filter((f: FotoRow) => f.id !== target.localId) }
+              : item),
+          };
+        });
+      }
       setQueuedPreviews(prev => {
         const cp = { ...prev };
         if (cp[ordem]) URL.revokeObjectURL(cp[ordem]);

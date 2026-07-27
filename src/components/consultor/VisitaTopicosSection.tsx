@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { enqueuePhoto, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,8 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
     setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const { data } = online
+    const preferLocal = !!snap?.topicos?.length && await hasPendingLocalChanges(visitaId);
+    const { data } = online && !preferLocal
       ? await (supabase as any).from("visita_topicos")
           .select("*").eq("visita_id", visitaId).order("ordem")
       : { data: null };
@@ -122,6 +123,9 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       return { ...r, zona, fotos, signed } as Topico;
     }));
     setTopicos(built.sort((a, b) => a.ordem - b.ordem));
+    if (!preferLocal) {
+      void patchSnapshot(visitaId, (curr) => ({ ...curr, topicos: built })).catch(() => {});
+    }
     setLoading(false);
   }
 

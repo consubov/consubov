@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
-import { loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 
 export interface VisitaCurralRow {
   id: string;
@@ -50,12 +50,42 @@ export default function CurralVisitaModal({
       setNumCurral(curral.num_curral);
       // load samples
       const online = typeof navigator === "undefined" || navigator.onLine;
-      const source = online
+      const source = (async () => {
+        const snap = await loadSnapshot(visitaId);
+        const snapCurral = (snap?.currais || []).find((c: any) => c.id === curral.id) as any;
+        if (snapCurral?.samples && await hasPendingLocalChanges(visitaId)) return { data: [], snap, snapCurral };
+        if (!online) return { data: [], snap, snapCurral };
+        return supabase.from("avaliacoes_score")
+          .select("id, tipo, nota")
+          .eq("visita_curral_id", curral.id)
+          .then((res) => ({ ...res, snap, snapCurral }));
+      })();
+      source.then(async ({ data, snap, snapCurral }) => {
+          const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
+          let rows = (data as any[]) || [];
+          if (rows.length === 0) {
+            if (snapCurral?.samples) {
+              setSamples({
+                fezes: snapCurral.samples.fezes || [],
+                corporal: snapCurral.samples.corporal || [],
+                bebedouro: snapCurral.samples.bebedouro || [],
+              });
+              return;
+            }
+            rows = ((snap?.avaliacoes_score as any[]) || []).filter((s: any) => s.visita_curral_id === curral.id);
+          }
+          rows.forEach((s: any) => {
+            if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
+          });
+          setSamples(next);
+        });
+      void online;
+      /* legacy block replaced by source above */
+      void (false && (online
         ? supabase.from("avaliacoes_score")
             .select("id, tipo, nota")
             .eq("visita_curral_id", curral.id)
-        : Promise.resolve({ data: [] });
-      source.then(async ({ data }) => {
+        : Promise.resolve({ data: [] })).then(async ({ data }) => {
           const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
           let rows = (data as any[]) || [];
           if (rows.length === 0) {
@@ -75,7 +105,7 @@ export default function CurralVisitaModal({
             if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
           });
           setSamples(next);
-        });
+        }));
     } else {
       setCurralIdLocal(null);
       setNumCurral("");
