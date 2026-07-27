@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import { computeRotinaPhotoNumbering } from "@/lib/photoNumbering";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
@@ -511,6 +512,11 @@ export default function RevisaoVisitaPage() {
         };
       }));
 
+      const numeroMap = computeRotinaPhotoNumbering(
+        (topicosForPdf as any[]).map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+        (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
+      );
+
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
@@ -536,6 +542,7 @@ export default function RevisaoVisitaPage() {
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
         pastos: pastosForPdf,
+        numeroMap,
       });
 
 

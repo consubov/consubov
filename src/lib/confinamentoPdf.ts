@@ -45,8 +45,20 @@ export interface ConfinamentoPdfData {
   currais: ConfinamentoPdfCurral[];
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
+  numeroMap?: Record<string, number>;
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
+}
+
+/** Selo numerado (canto sup. esquerdo da foto). */
+function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
+  const r = 3.4;
+  doc.setFillColor(GREEN_DARK);
+  doc.circle(x + r, y + r, r, "F");
+  doc.setTextColor(GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(String(n), x + r, y + r, { align: "center", baseline: "middle" });
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
@@ -299,6 +311,7 @@ function drawScoreRow(
 async function drawCurralBlock(
   doc: jsPDF, c: ConfinamentoPdfCurral, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
+  numeroMap?: Record<string, number>,
 ) {
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
@@ -362,6 +375,8 @@ async function drawCurralBlock(
       doc.setFillColor("#F3F1E8");
       doc.rect(fx, fy, fw, fh, "F");
     }
+    const num = numeroMap?.[foto.id];
+    if (num != null) drawNumeroBadge(doc, fx + 1.5, fy + 1.5, num);
   }
 }
 
@@ -484,36 +499,92 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const devT = allT.filter(t => zonaOf(t) === "desenvolvimento");
   const conclusaoT = allT.filter(t => zonaOf(t) === "conclusao");
 
-  const drawTopicoFotos = (t: typeof allT[number], startY: number): number => {
+  const numeroMap = data.numeroMap || {};
+
+  // ------- Helpers de fluxo contínuo -------
+  const slimHeader = (): number => {
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
+    return 24;
+  };
+  const ensureRoom = (currentY: number, needed: number): number => {
+    if (currentY + needed <= pageH - 20) return currentY;
+    doc.addPage();
+    return slimHeader();
+  };
+
+  // Mede altura de um bloco de tópico (título + texto + linha de fotos).
+  const measureTopicoBlock = (t: typeof allT[number], includeTitle = true): number => {
+    const w = pageW - 30;
+    let h = 0;
+    const txt = (t.texto || "").trim();
+    if (txt) {
+      if (includeTitle) h += 15; // barra + título
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(txt, w);
+      h += lines.length * 4.8 + 4;
+    }
+    if (t.fotos.length > 0) {
+      const cols = 5;
+      const gapF = 2;
+      const fw = (w - (cols - 1) * gapF) / cols;
+      h += fw + 8;
+    }
+    return h;
+  };
+
+  // Desenha grid de fotos do tópico com selos numerados.
+  const drawTopicoFotosAt = (t: typeof allT[number], startY: number): number => {
     if (t.fotos.length === 0) return startY;
     const wArea = pageW - 30;
     const cols = 5;
     const gapF = 2;
     const fw = (wArea - (cols - 1) * gapF) / cols;
     const fh = fw;
-    if (startY + fh > pageH - 30) { doc.addPage(); startY = 20; }
-    for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
+    const nF = Math.min(t.fotos.length, cols);
+    for (let i = 0; i < nF; i++) {
       const fx = 15 + i * (fw + gapF);
-      const dataUrl = fotosCache[t.fotos[i].id];
+      const foto = t.fotos[i];
+      const dataUrl = fotosCache[foto.id];
       if (dataUrl) {
         try { const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
           doc.addImage(dataUrl, fmt, fx, startY, fw, fh, undefined, "FAST"); }
         catch { doc.setDrawColor(LINE); doc.rect(fx, startY, fw, fh); }
       } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, startY, fw, fh, "F"); }
+      const num = numeroMap[foto.id];
+      if (num != null) drawNumeroBadge(doc, fx + 1.5, startY + 1.5, num);
     }
     return startY + fh + 6;
+  };
+
+  // Renderiza um tópico como bloco atômico (título+texto+fotos juntos na mesma página).
+  const renderTopicoAtomic = (t: typeof allT[number], y: number, useIntroStyle: boolean): number => {
+    const txt = (t.texto || "").trim();
+    if (!txt && t.fotos.length === 0) return y;
+    const h = measureTopicoBlock(t);
+    y = ensureRoom(y, h);
+    if (txt) {
+      y = useIntroStyle
+        ? drawIntroBlock(doc, t.titulo.trim() || " ", txt, y)
+        : drawTextBlock(doc, t.titulo.trim() || " ", txt, y) + 4;
+    }
+    if (t.fotos.length > 0) y = drawTopicoFotosAt(t, y + 2);
+    return y + 2;
   };
 
   // PAGE 1 — cover claro
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
+  // INTRODUÇÃO — tópicos (fluxo contínuo a partir da capa)
   for (const t of introT) {
-    const txt = (t.texto || "").trim();
-    if (!txt && t.fotos.length === 0) continue;
-    if (y > pageH - 60) { doc.addPage(); y = 20; }
-    if (txt) y = drawIntroBlock(doc, t.titulo.trim() || " ", txt, y);
-    y = drawTopicoFotos(t, y);
+    y = renderTopicoAtomic(t, y, true);
   }
   // Legacy fallback só quando não existir tópico de introdução.
   if (introT.length === 0) {
@@ -523,65 +594,47 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       ["Indicadores Gerais", data.indicadores_gerais],
     ];
     for (const [title, txt] of intros) {
-      const t = (txt || "").trim();
-      if (!t) continue;
-      if (y > pageH - 60) { doc.addPage(); y = 20; }
-      y = drawIntroBlock(doc, title, t, y);
+      const tt = (txt || "").trim();
+      if (!tt) continue;
+      // altura estimada
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      const lines = doc.splitTextToSize(tt, pageW - 30);
+      const h = 15 + lines.length * 4.8 + 4;
+      y = ensureRoom(y, h);
+      y = drawIntroBlock(doc, title, tt, y);
     }
   }
 
-  // Curral pages: 2 per page, cabeçalho enxuto
-  const perPage = 2;
+  // CURRAIS — fluxo contínuo, bloco atômico de 130mm
   const blockH = 130;
   const gap = 8;
-  for (let i = 0; i < data.currais.length; i += perPage) {
-    doc.addPage();
-    const pair = data.currais.slice(i, i + perPage);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.4);
-    doc.line(15, 16, pageW - 15, 16);
-
-    // Escala uma única vez por página de currais.
+  let scaleShown = false;
+  const showScaleOnce = () => {
     doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(INK_SOFT);
     doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
-
-    let cy = 24;
-    for (const c of pair) {
-      await drawCurralBlock(doc, c, fotosCache, 15, cy, pageW - 30, blockH);
-      cy += blockH + gap;
+  };
+  for (const c of data.currais) {
+    // se não couber, abre nova página com header slim
+    if (y + blockH > pageH - 20) {
+      doc.addPage();
+      y = slimHeader();
+      scaleShown = false;
     }
+    if (!scaleShown) { showScaleOnce(); scaleShown = true; }
+    await drawCurralBlock(doc, c, fotosCache, 15, y, pageW - 30, blockH, numeroMap);
+    y += blockH + gap;
   }
 
-  // DESENVOLVIMENTO — tópicos após currais
-  if (devT.length > 0) {
-    doc.addPage();
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-    doc.setDrawColor(LINE);
-    doc.line(15, 16, pageW - 15, 16);
-    let dy = 24;
-    for (const t of devT) {
-      const txt = (t.texto || "").trim();
-      if (!txt && t.fotos.length === 0) continue;
-      if (dy > pageH - 60) { doc.addPage(); dy = 20; }
-      if (txt) dy = drawTextBlock(doc, t.titulo.trim() || " ", txt, dy);
-      dy = drawTopicoFotos(t, dy + 2) + 4;
-    }
+  // DESENVOLVIMENTO — tópicos após currais, fluxo contínuo (sem quebra forçada)
+  for (const t of devT) {
+    y = renderTopicoAtomic(t, y, false);
   }
 
-  // Bar chart (Médias por Classificação) — sempre primeiro
+  // Gráficos — sempre em página nova
   doc.addPage();
   drawChartPage(doc, data);
-
-  // Line charts — amostras individuais (Fezes / Corporal / Bebedouro), uma página cada
   const series = {
     fezes: data.currais.flatMap(c => c.samples?.fezes || []),
     corporal: data.currais.flatMap(c => c.samples?.corporal || []),
@@ -589,47 +642,33 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   };
   drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series);
 
+  // SEÇÃO FINAL (Observações e Recomendações) — só renderiza se houver conteúdo.
+  const hasConclusaoTopicos = conclusaoT.some(t => (t.texto || "").trim() || t.fotos.length > 0);
+  const obs = (data.observacoes_gerais || "").trim();
+  const conc = (data.conclusao || "").trim();
+  const hasLegacy = introT.length === 0 && conclusaoT.length === 0 && (obs || conc);
+  if (hasConclusaoTopicos || hasLegacy) {
+    doc.addPage();
+    let fy = slimHeader() + 2;
+    const tituloEnc = (data.titulo_encerramento || "Observações e Recomendações").trim() || "Observações e Recomendações";
+    doc.setFillColor(GREEN_DARK);
+    doc.rect(15, fy, 3, 10, "F");
+    doc.setTextColor(GREEN_DARK);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
+    fy += 16;
 
-
-  // Final page
-  doc.addPage();
-  doc.setTextColor(INK_SOFT);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-  doc.setDrawColor(LINE);
-  doc.line(15, 16, pageW - 15, 16);
-
-  let fy = 26;
-  // Título editável da seção final
-  const tituloEnc = (data.titulo_encerramento || "Observações e Recomendações").trim() || "Observações e Recomendações";
-  doc.setFillColor(GREEN_DARK);
-  doc.rect(15, fy, 3, 10, "F");
-  doc.setTextColor(GREEN_DARK);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
-  fy += 16;
-
-  if (conclusaoT.length > 0) {
-    for (const t of conclusaoT) {
-      const txt = (t.texto || "").trim();
-      if (!txt && t.fotos.length === 0) continue;
-      if (fy > pageH - 60) { doc.addPage(); fy = 20; }
-      if (txt) fy = drawTextBlock(doc, t.titulo.trim() || " ", txt, fy);
-      fy = drawTopicoFotos(t, fy + 2) + 4;
-    }
-  } else {
-    const obs = (data.observacoes_gerais || "").trim();
-    const conc = (data.conclusao || "").trim();
-    if (obs) {
-      fy = drawTextBlock(doc, "Observações Gerais", obs, fy);
-      fy = Math.max(fy + 8, 140);
-    }
-    if (conc) {
-      drawTextBlock(doc, "Conclusão da Visita", conc, fy);
+    if (hasConclusaoTopicos) {
+      for (const t of conclusaoT) {
+        fy = renderTopicoAtomic(t, fy, false);
+      }
+    } else {
+      if (obs) fy = drawTextBlock(doc, "Observações Gerais", obs, fy) + 8;
+      if (conc) drawTextBlock(doc, "Conclusão da Visita", conc, fy);
     }
   }
+
 
   drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 

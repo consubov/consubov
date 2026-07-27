@@ -60,6 +60,7 @@ export interface VisitaPdfData {
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
+  numeroMap?: Record<string, number>;
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
@@ -317,6 +318,7 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
 async function drawPastoBlock(
   doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
+  numeroMap?: Record<string, number>,
 ) {
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
@@ -455,6 +457,8 @@ async function drawPastoBlock(
         doc.setFillColor("#F3F1E8");
         doc.rect(fx, fotosStartY, fw, fh, "F");
       }
+      const num = numeroMap?.[foto.id];
+      if (num != null) drawNumeroBadge(doc, fx + 1.5, fotosStartY + 1.5, num);
     } else {
       doc.setDrawColor(LINE);
       doc.setFillColor("#FAF8F0");
@@ -501,11 +505,30 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   // PAGE 1 — cover header claro + fazenda + intro blocks
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Rotina", logos);
   let y = drawFarmBlock(doc, data, 50);
+  const numeroMap = data.numeroMap || {};
+
+  // Helpers de fluxo contínuo
+  const slimHeader = (): number => {
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
+    return 24;
+  };
+  const ensureRoom = (currentY: number, needed: number): number => {
+    if (currentY + needed <= pageH - 20) return currentY;
+    doc.addPage();
+    return slimHeader();
+  };
 
   const drawTabela = () => {
     const tabela = (data.indicadores_tabela || []).filter(r => (r.value || "").trim() && r.value !== "—");
     if (!tabela.length) return;
-    if (y > pageH - (14 + tabela.length * 7)) { doc.addPage(); y = 20; }
+    const needed = 14 + tabela.length * 7;
+    y = ensureRoom(y, needed);
     doc.setFillColor(GREEN_DARK);
     doc.rect(15, y, 2.5, 6, "F");
     doc.setTextColor(GREEN_DARK);
@@ -533,20 +556,39 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     y += 6;
   };
 
-  const drawTopico = (titulo: string, texto: string | null, fotos: { id: string; ordem: number }[]) => {
+  // Mede a altura total de um bloco de tópico (título + texto + linha de fotos).
+  const measureTopico = (titulo: string, texto: string | null, fotos: { id: string }[]): number => {
     const t = (texto || "").trim();
-    if (!t && fotos.length === 0) return;
-    if (y > pageH - 60) { doc.addPage(); y = 20; }
+    let h = 0;
     if (t) {
-      y = drawIntroBlock(doc, titulo.trim() || " ", t, y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(t, pageW - 30);
+      h += 11 + lines.length * 4.6 + 4;
     }
     if (fotos.length > 0) {
       const wArea = pageW - 30;
       const cols = 5;
       const gap = 2;
       const fw = (wArea - (cols - 1) * gap) / cols;
+      h += fw + 6;
+    }
+    return h || 2;
+  };
+
+  // Tópico atômico: título + texto + fotos sempre juntos na mesma página.
+  const drawTopico = (titulo: string, texto: string | null, fotos: { id: string; ordem: number }[]) => {
+    const t = (texto || "").trim();
+    if (!t && fotos.length === 0) return;
+    const h = measureTopico(titulo, texto, fotos);
+    y = ensureRoom(y, h);
+    if (t) y = drawIntroBlock(doc, titulo.trim() || " ", t, y);
+    if (fotos.length > 0) {
+      const wArea = pageW - 30;
+      const cols = 5;
+      const gap = 2;
+      const fw = (wArea - (cols - 1) * gap) / cols;
       const fh = fw;
-      if (y + fh > pageH - 20) { doc.addPage(); y = 20; }
       for (let i = 0; i < Math.min(fotos.length, cols); i++) {
         const fx = 15 + i * (fw + gap);
         const foto = fotos[i];
@@ -555,12 +597,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
           try {
             const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
             doc.addImage(dataUrl, fmt, fx, y, fw, fh, undefined, "FAST");
-          } catch {
-            doc.setDrawColor(LINE); doc.rect(fx, y, fw, fh);
-          }
-        } else {
-          doc.setFillColor("#F3F1E8"); doc.rect(fx, y, fw, fh, "F");
-        }
+          } catch { doc.setDrawColor(LINE); doc.rect(fx, y, fw, fh); }
+        } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, y, fw, fh, "F"); }
+        const num = numeroMap[foto.id];
+        if (num != null) drawNumeroBadge(doc, fx + 1.5, y + 1.5, num);
       }
       y += fh + 6;
     } else {
@@ -588,43 +628,34 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       ["Indicadores Gerais", data.indicadores_gerais],
     ];
     for (const [title, txt] of intros) {
-      const t = (txt || "").trim();
-      if (!t) continue;
-      if (y > pageH - 60) { doc.addPage(); y = 20; }
-      y = drawIntroBlock(doc, title, t, y);
+      const tt = (txt || "").trim();
+      if (!tt) continue;
+      const h = measureTopico(title, tt, []);
+      y = ensureRoom(y, h);
+      y = drawIntroBlock(doc, title, tt, y);
     }
   }
   drawTabela();
 
-
-
-  // PAGES: 2 pastos por página — cabeçalho enxuto só com nome da fazenda
-  const pastosPorPagina = 2;
+  // PASTOS — fluxo contínuo (bloco atômico de 100mm). Não força mais 2/página.
   const blockHeight = 100;
   const gap = 8;
-
-  for (let i = 0; i < data.pastos.length; i += pastosPorPagina) {
-    doc.addPage();
-    const pair = data.pastos.slice(i, i + pastosPorPagina);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.4);
-    doc.line(15, 16, pageW - 15, 16);
-
-    // Escala de scores impressa UMA VEZ por página de pastos (rodapé do cabeçalho).
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(INK_SOFT);
-    doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
-
-    let py = 24;
-    for (const p of pair) {
-      await drawPastoBlock(doc, p, fotosCache, 15, py, pageW - 30, blockHeight);
-      py += blockHeight + gap;
+  let pastoScaleShown = false;
+  for (const p of data.pastos) {
+    if (y + blockHeight > pageH - 20) {
+      doc.addPage();
+      y = slimHeader();
+      pastoScaleShown = false;
     }
+    if (!pastoScaleShown) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(INK_SOFT);
+      doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+      pastoScaleShown = true;
+    }
+    await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    y += blockHeight + gap;
   }
 
   // Line charts — amostras individuais por tipo (uma página por gráfico com dados)
@@ -634,70 +665,31 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
   });
 
-  // DESENVOLVIMENTO — tópicos após pastos, em novas páginas
+  // DESENVOLVIMENTO — tópicos após pastos, fluxo contínuo (bloco atômico).
   if (devTopicos.length > 0) {
+    // Começa em nova página apenas se houver conteúdo. Reinicia y.
     doc.addPage();
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-    doc.setDrawColor(LINE);
-    doc.line(15, 16, pageW - 15, 16);
-    y = 24;
+    y = slimHeader();
     for (const t of devTopicos) drawTopico(t.titulo, t.texto, t.fotos);
   }
 
-  // ÚLTIMA PÁGINA: conclusão + assinatura
-  doc.addPage();
-  doc.setTextColor(INK_SOFT);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-  doc.setDrawColor(LINE);
-  doc.line(15, 16, pageW - 15, 16);
+  // ÚLTIMA PÁGINA — só se houver conteúdo real (conclusao topicos OU legacy obs/conc)
+  const hasConclusaoTopicos = conclusaoTopicos.some(t => (t.texto || "").trim() || t.fotos.length > 0);
+  const obsLegacy = (data.observacoes_gerais || "").trim();
+  const concLegacy = (data.conclusao || "").trim();
+  const hasLegacy = introTopicos.length === 0 && conclusaoTopicos.length === 0 && (obsLegacy || concLegacy);
 
-  let fy = 26;
-  if (conclusaoTopicos.length > 0) {
-    for (const t of conclusaoTopicos) {
-      const txt = (t.texto || "").trim();
-      if (!txt && t.fotos.length === 0) continue;
-      if (fy > pageH - 80) { doc.addPage(); fy = 20; }
-      if (txt) {
-        fy = drawTextBlock(doc, t.titulo.trim() || " ", txt, fy);
-      }
-      if (t.fotos.length > 0) {
-        const wArea = pageW - 30;
-        const cols = 5;
-        const gapF = 2;
-        const fw = (wArea - (cols - 1) * gapF) / cols;
-        const fh = fw;
-        if (fy + fh > pageH - 60) { doc.addPage(); fy = 20; }
-        fy += 4;
-        for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
-          const fx = 15 + i * (fw + gapF);
-          const dataUrl = fotosCache[t.fotos[i].id];
-          if (dataUrl) {
-            try {
-              const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
-              doc.addImage(dataUrl, fmt, fx, fy, fw, fh, undefined, "FAST");
-            } catch { doc.setDrawColor(LINE); doc.rect(fx, fy, fw, fh); }
-          } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, fy, fw, fh, "F"); }
-        }
-        fy += fh + 6;
-      }
-      fy += 6;
-    }
-  } else {
-    const obs = (data.observacoes_gerais || "").trim();
-    const conc = (data.conclusao || "").trim();
-    if (obs) {
-      fy = drawTextBlock(doc, "Observações Gerais", obs, fy);
-      fy = Math.max(fy + 8, 130);
-    }
-    if (conc) {
-      drawTextBlock(doc, "Conclusão da Visita", conc, fy);
+  if (hasConclusaoTopicos || hasLegacy) {
+    doc.addPage();
+    y = slimHeader() + 2;
+    if (hasConclusaoTopicos) {
+      for (const t of conclusaoTopicos) drawTopico(t.titulo, t.texto, t.fotos);
+    } else {
+      if (obsLegacy) { y = drawTextBlock(doc, "Observações Gerais", obsLegacy, y) + 8; }
+      if (concLegacy) { drawTextBlock(doc, "Conclusão da Visita", concLegacy, y); }
     }
   }
+
 
   drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 
@@ -891,9 +883,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     return yy;
   };
 
-  // Paginação Fábrica:
-  // Página 1 = header + Avaliação + 1º tópico
-  // A partir da página 2 = 2 tópicos por página
+  // Paginação Fábrica — fluxo contínuo, blocos atômicos.
   const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
     .filter(t => (t.texto || "").trim() || t.fotos.length > 0);
   const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
@@ -916,20 +906,45 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     doc.line(15, 16, pageW - 15, 16);
   };
 
-  for (const t of introT) y = renderTopico(t, y);
-  for (const group of [devT, conclusaoT]) {
-    if (group.length === 0) continue;
-    for (let i = 0; i < group.length; i += 2) {
-      doc.addPage();
-      drawSlimHeader();
-      let py = 24;
-      py = renderTopico(group[i], py);
-      if (i + 1 < group.length) {
-        py += 4;
-        py = renderTopico(group[i + 1], py);
-      }
+  const measureTopicoF = (t: typeof allT[number]): number => {
+    const tx = (t.texto || "").trim();
+    let h = 0;
+    if (tx) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(tx, pageW - 30);
+      h += 11 + lines.length * 4.6 + 4;
     }
-  }
+    if (t.fotos.length > 0) {
+      const wArea = pageW - 30;
+      const cols = 5;
+      const gap = 2;
+      const fw = (wArea - (cols - 1) * gap) / cols;
+      h += fw + 6;
+    }
+    return h;
+  };
+
+  const flowRender = (list: typeof allT, startNewPage: boolean) => {
+    if (list.length === 0) return;
+    if (startNewPage) { doc.addPage(); drawSlimHeader(); y = 24; }
+    for (const t of list) {
+      const h = measureTopicoF(t);
+      if (h > 0 && y + h > pageH - 20) {
+        doc.addPage(); drawSlimHeader(); y = 24;
+      }
+      y = renderTopico(t, y) + 2;
+    }
+  };
+
+  // Introdução: continua na mesma página da capa.
+  flowRender(introT, false);
+  // Desenvolvimento: começa em nova página se houver.
+  flowRender(devT, devT.length > 0);
+  // Conclusão: só cria nova página se houver conteúdo real.
+  flowRender(conclusaoT, conclusaoT.length > 0);
+
+
 
 
   // Assinatura
