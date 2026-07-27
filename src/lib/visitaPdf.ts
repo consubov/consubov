@@ -616,7 +616,20 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     }
   }
 
-  // ÚLTIMA PÁGINA: encerramento (footer topicos) + assinatura
+  // DESENVOLVIMENTO — tópicos após pastos, em novas páginas
+  if (devTopicos.length > 0) {
+    doc.addPage();
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.line(15, 16, pageW - 15, 16);
+    y = 24;
+    for (const t of devTopicos) drawTopico(t.titulo, t.texto, t.fotos);
+  }
+
+  // ÚLTIMA PÁGINA: conclusão + assinatura
   doc.addPage();
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
@@ -626,32 +639,27 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   doc.line(15, 16, pageW - 15, 16);
 
   let fy = 26;
-  const footer = (data.topicos || []).filter(t => t.ordem >= 1001).sort((a,b)=>a.ordem-b.ordem);
-  if (footer.length > 0) {
-    for (const t of footer) {
+  if (conclusaoTopicos.length > 0) {
+    for (const t of conclusaoTopicos) {
       if (fy > pageH - 80) { doc.addPage(); fy = 20; }
       fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
       if (t.fotos.length > 0) {
         const wArea = pageW - 30;
         const cols = 5;
-        const gap = 2;
-        const fw = (wArea - (cols - 1) * gap) / cols;
+        const gapF = 2;
+        const fw = (wArea - (cols - 1) * gapF) / cols;
         const fh = fw;
         if (fy + fh > pageH - 60) { doc.addPage(); fy = 20; }
         fy += 4;
         for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
-          const fx = 15 + i * (fw + gap);
+          const fx = 15 + i * (fw + gapF);
           const dataUrl = fotosCache[t.fotos[i].id];
           if (dataUrl) {
             try {
               const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
               doc.addImage(dataUrl, fmt, fx, fy, fw, fh, undefined, "FAST");
-            } catch {
-              doc.setDrawColor(LINE); doc.rect(fx, fy, fw, fh);
-            }
-          } else {
-            doc.setFillColor("#F3F1E8"); doc.rect(fx, fy, fw, fh, "F");
-          }
+            } catch { doc.setDrawColor(LINE); doc.rect(fx, fy, fw, fh); }
+          } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, fy, fw, fh, "F"); }
         }
         fy += fh + 6;
       }
