@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
@@ -63,6 +63,7 @@ export interface VisitaPdfData {
   numeroMap?: Record<string, number>;
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
+  sampleChartTypes?: SampleChartTypes;
 }
 
 async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Promise<string> {
@@ -663,7 +664,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
     corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
     bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
-  });
+  }, data.sampleChartTypes);
 
   // DESENVOLVIMENTO — tópicos após pastos, fluxo contínuo (bloco atômico).
   if (devTopicos.length > 0) {

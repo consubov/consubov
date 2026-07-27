@@ -64,10 +64,14 @@ export async function hasPendingLocalChanges(visitaId: string): Promise<boolean>
 }
 
 async function getPendingSummary(visitaId: string): Promise<Omit<SyncVisitaResult, "ok" | "attempts">> {
-  const [mutations, fotos] = await Promise.all([
+  const [allMutations, fotos] = await Promise.all([
     listMutationsByVisita(visitaId),
     listFotosByVisita(visitaId),
   ]);
+  // Delete mutations não afetam o conteúdo do PDF (apenas removem algo que já
+  // sumiu da UI). Não devem bloquear a geração do relatório — continuam sendo
+  // tentadas em background pela fila.
+  const mutations = allMutations.filter((m) => (m.operation ?? "update") !== "delete");
   const failedFotos = fotos
     .filter((f) => f.status === "error")
     .map((f) => {
@@ -338,7 +342,8 @@ export async function offlineDelete(params: {
       `exclusão em ${params.table}`,
     );
     if (error) throw error;
-    if (count === 0) throw new Error(`Servidor não confirmou exclusão em ${params.table}`);
+    // count === 0 significa que o registro já não existe no servidor (nunca foi
+    // sincronizado ou já foi apagado). Consideramos idempotente: sucesso.
     return { ok: true, queued: false };
   } catch (err) {
     console.warn("[offlineDelete] direct delete failed, enqueueing:", err);
