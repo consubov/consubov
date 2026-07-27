@@ -20,6 +20,7 @@ export interface ConfinamentoPdfCurral {
   num_curral: string;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   sampleCounts?: { fezes: number; corporal: number; bebedouro: number };
+  samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
   fotos: { id: string; url: string; ordem: number }[];
 }
 
