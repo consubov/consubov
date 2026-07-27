@@ -895,7 +895,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   // Página 1 = header + Avaliação + 1º tópico
   // A partir da página 2 = 2 tópicos por página
   const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
-    .filter(t => t.titulo.trim() || (t.texto || "").trim() || t.fotos.length > 0);
+    .filter(t => (t.texto || "").trim() || t.fotos.length > 0);
   const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
     if (t.zona) return t.zona;
     if (t.ordem >= 1001) return "conclusao";
