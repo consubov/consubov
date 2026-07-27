@@ -39,6 +39,8 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
+  topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
+    fotos: { id: string; url: string; ordem: number }[] }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
@@ -178,7 +180,6 @@ function drawCoverHeader(
 }
 
 function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number {
-  const w = doc.internal.pageSize.getWidth();
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
@@ -192,29 +193,11 @@ function drawFarmBlock(doc: jsPDF, data: ConfinamentoPdfData, y: number): number
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-
-  const boxY = Math.max(y + 12, metaY + 2);
-  const boxW = (w - 30 - 10) / 3;
-  const boxes = [
-    { label: "CONSULTOR", value: data.consultor.nome || "—" },
-    { label: "INÍCIO", value: format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR }) },
-    { label: "TÉRMINO", value: data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—" },
-  ];
-  boxes.forEach((b, i) => {
-    const x = 15 + i * (boxW + 5);
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(x, boxY, boxW, 18, 2, 2, "S");
-    doc.setFontSize(7);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.label, x + 3, boxY + 6);
-    doc.setFontSize(10);
-    doc.setTextColor(INK);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.value, x + 3, boxY + 13);
-  });
-  return boxY + 24;
+  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
+  doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
+  return metaY + 6;
 }
 
 function drawParagraphText(
@@ -472,23 +455,65 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   ]);
   const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
-  const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
+  const allFotos = [
+    ...data.currais.flatMap(c => c.fotos.slice(0, 5)),
+    ...((data.topicos || []).flatMap(t => t.fotos.slice(0, 5))),
+  ];
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+
+  const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
+  const zonaOf = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introT = allT.filter(t => zonaOf(t) === "introducao");
+  const devT = allT.filter(t => zonaOf(t) === "desenvolvimento");
+  const conclusaoT = allT.filter(t => zonaOf(t) === "conclusao");
+
+  const drawTopicoFotos = (t: typeof allT[number], startY: number): number => {
+    if (t.fotos.length === 0) return startY;
+    const wArea = pageW - 30;
+    const cols = 5;
+    const gapF = 2;
+    const fw = (wArea - (cols - 1) * gapF) / cols;
+    const fh = fw;
+    if (startY + fh > pageH - 30) { doc.addPage(); startY = 20; }
+    for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
+      const fx = 15 + i * (fw + gapF);
+      const dataUrl = fotosCache[t.fotos[i].id];
+      if (dataUrl) {
+        try { const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+          doc.addImage(dataUrl, fmt, fx, startY, fw, fh, undefined, "FAST"); }
+        catch { doc.setDrawColor(LINE); doc.rect(fx, startY, fw, fh); }
+      } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, startY, fw, fh, "F"); }
+    }
+    return startY + fh + 6;
+  };
 
   // PAGE 1 — cover claro
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
-  const intros: [string, string | null | undefined][] = [
-    ["Objetivo da Visita", data.objetivo_visita],
-    ["Resumo Executivo", data.resumo_executivo],
-    ["Indicadores Gerais", data.indicadores_gerais],
-  ];
-  for (const [title, txt] of intros) {
-    const t = (txt || "").trim();
-    if (!t) continue;
+  for (const t of introT) {
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    y = drawIntroBlock(doc, title, t, y);
+    y = drawIntroBlock(doc, t.titulo || "—", t.texto || "—", y);
+    y = drawTopicoFotos(t, y);
+  }
+  // Legacy fallback só quando não existir tópico de introdução.
+  if (introT.length === 0) {
+    const intros: [string, string | null | undefined][] = [
+      ["Objetivo da Visita", data.objetivo_visita],
+      ["Resumo Executivo", data.resumo_executivo],
+      ["Indicadores Gerais", data.indicadores_gerais],
+    ];
+    for (const [title, txt] of intros) {
+      const t = (txt || "").trim();
+      if (!t) continue;
+      if (y > pageH - 60) { doc.addPage(); y = 20; }
+      y = drawIntroBlock(doc, title, t, y);
+    }
   }
 
   // Curral pages: 2 per page, cabeçalho enxuto
@@ -519,6 +544,23 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     }
   }
 
+  // DESENVOLVIMENTO — tópicos após currais
+  if (devT.length > 0) {
+    doc.addPage();
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.line(15, 16, pageW - 15, 16);
+    let dy = 24;
+    for (const t of devT) {
+      if (dy > pageH - 60) { doc.addPage(); dy = 20; }
+      dy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", dy);
+      dy = drawTopicoFotos(t, dy + 2) + 4;
+    }
+  }
+
   // Chart page
   doc.addPage();
   drawChartPage(doc, data);
@@ -543,9 +585,17 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
   fy += 16;
 
-  fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-  fy = Math.max(fy + 8, 140);
-  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+  if (conclusaoT.length > 0) {
+    for (const t of conclusaoT) {
+      if (fy > pageH - 60) { doc.addPage(); fy = 20; }
+      fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
+      fy = drawTopicoFotos(t, fy + 2) + 4;
+    }
+  } else {
+    fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
+    fy = Math.max(fy + 8, 140);
+    drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+  }
 
   const sigY = pageH - 40;
   doc.setDrawColor(INK_SOFT);

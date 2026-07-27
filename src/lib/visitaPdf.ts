@@ -53,7 +53,7 @@ export interface VisitaPdfData {
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
   indicadores_tabela?: { key: string; label: string; value: string }[];
-  topicos?: { id: string; titulo: string; texto: string | null; ordem: number;
+  topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
@@ -218,7 +218,6 @@ function drawCoverHeader(
 }
 
 function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
-  const w = doc.internal.pageSize.getWidth();
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
@@ -232,29 +231,12 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-
-  const boxY = Math.max(y + 12, metaY + 2);
-  const boxW = (w - 30 - 10) / 3;
-  const boxes = [
-    { label: "CONSULTOR", value: data.consultor.nome || "—" },
-    { label: "INÍCIO", value: format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR }) },
-    { label: "TÉRMINO", value: data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—" },
-  ];
-  boxes.forEach((b, i) => {
-    const x = 15 + i * (boxW + 5);
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(x, boxY, boxW, 18, 2, 2, "S");
-    doc.setFontSize(7);
-    doc.setTextColor(INK_SOFT);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.label, x + 3, boxY + 6);
-    doc.setFontSize(10);
-    doc.setTextColor(INK);
-    doc.setFont("helvetica", "bold");
-    doc.text(b.value, x + 3, boxY + 13);
-  });
-  return boxY + 24;
+  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
+  doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
+  metaY += 6;
+  return metaY;
 }
 
 /**
@@ -575,14 +557,20 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     }
   };
 
-  if (data.topicos && data.topicos.length > 0) {
-    const sorted = [...data.topicos].sort((a, b) => a.ordem - b.ordem);
-    const fixos = sorted.filter(t => t.ordem <= 3);
-    const customs = sorted.filter(t => t.ordem >= 5);
-    for (const t of fixos) drawTopico(t.titulo, t.texto, t.fotos);
-    drawTabela();
-    for (const t of customs) drawTopico(t.titulo, t.texto, t.fotos);
-  } else {
+  const sortedAll = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
+  const zonaOf = (t: typeof sortedAll[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introTopicos = sortedAll.filter(t => zonaOf(t) === "introducao");
+  const devTopicos = sortedAll.filter(t => zonaOf(t) === "desenvolvimento");
+  const conclusaoTopicos = sortedAll.filter(t => zonaOf(t) === "conclusao");
+
+  for (const t of introTopicos) drawTopico(t.titulo, t.texto, t.fotos);
+  // Legacy fallback: campos antigos como intro se não houver tópico de intro.
+  if (introTopicos.length === 0) {
     const intros: [string, string | null | undefined][] = [
       ["Objetivo da Visita", data.objetivo_visita],
       ["Resumo Executivo", data.resumo_executivo],
@@ -594,8 +582,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       if (y > pageH - 60) { doc.addPage(); y = 20; }
       y = drawIntroBlock(doc, title, t, y);
     }
-    drawTabela();
   }
+  drawTabela();
 
 
 
@@ -628,7 +616,20 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     }
   }
 
-  // ÚLTIMA PÁGINA: encerramento (footer topicos) + assinatura
+  // DESENVOLVIMENTO — tópicos após pastos, em novas páginas
+  if (devTopicos.length > 0) {
+    doc.addPage();
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.line(15, 16, pageW - 15, 16);
+    y = 24;
+    for (const t of devTopicos) drawTopico(t.titulo, t.texto, t.fotos);
+  }
+
+  // ÚLTIMA PÁGINA: conclusão + assinatura
   doc.addPage();
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
@@ -638,32 +639,27 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   doc.line(15, 16, pageW - 15, 16);
 
   let fy = 26;
-  const footer = (data.topicos || []).filter(t => t.ordem >= 1001).sort((a,b)=>a.ordem-b.ordem);
-  if (footer.length > 0) {
-    for (const t of footer) {
+  if (conclusaoTopicos.length > 0) {
+    for (const t of conclusaoTopicos) {
       if (fy > pageH - 80) { doc.addPage(); fy = 20; }
       fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
       if (t.fotos.length > 0) {
         const wArea = pageW - 30;
         const cols = 5;
-        const gap = 2;
-        const fw = (wArea - (cols - 1) * gap) / cols;
+        const gapF = 2;
+        const fw = (wArea - (cols - 1) * gapF) / cols;
         const fh = fw;
         if (fy + fh > pageH - 60) { doc.addPage(); fy = 20; }
         fy += 4;
         for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
-          const fx = 15 + i * (fw + gap);
+          const fx = 15 + i * (fw + gapF);
           const dataUrl = fotosCache[t.fotos[i].id];
           if (dataUrl) {
             try {
               const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
               doc.addImage(dataUrl, fmt, fx, fy, fw, fh, undefined, "FAST");
-            } catch {
-              doc.setDrawColor(LINE); doc.rect(fx, fy, fw, fh);
-            }
-          } else {
-            doc.setFillColor("#F3F1E8"); doc.rect(fx, fy, fw, fh, "F");
-          }
+            } catch { doc.setDrawColor(LINE); doc.rect(fx, fy, fw, fh); }
+          } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, fy, fw, fh, "F"); }
         }
         fy += fh + 6;
       }
@@ -722,7 +718,7 @@ export interface VisitaFabricaPdfData {
   hora_inicio: string;
   hora_fim: string | null;
   quesitos: { chave: string; rotulo: string; nota: number | null }[];
-  topicos: { id: string; titulo: string; texto: string | null; ordem: number;
+  topicos: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
@@ -878,25 +874,39 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   // Paginação Fábrica:
   // Página 1 = header + Avaliação + 1º tópico
   // A partir da página 2 = 2 tópicos por página
-  const sortedTopicos = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
+  const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
     .filter(t => t.titulo.trim() || (t.texto || "").trim() || t.fotos.length > 0);
+  const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introT = allT.filter(t => zonaOfF(t) === "introducao");
+  const devT = allT.filter(t => zonaOfF(t) === "desenvolvimento");
+  const conclusaoT = allT.filter(t => zonaOfF(t) === "conclusao");
 
-  if (sortedTopicos.length > 0) {
-    y = renderTopico(sortedTopicos[0], y);
-    for (let i = 1; i < sortedTopicos.length; i += 2) {
+  const drawSlimHeader = () => {
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
+  };
+
+  for (const t of introT) y = renderTopico(t, y);
+  for (const group of [devT, conclusaoT]) {
+    if (group.length === 0) continue;
+    for (let i = 0; i < group.length; i += 2) {
       doc.addPage();
-      doc.setTextColor(INK_SOFT);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-      doc.setDrawColor(LINE);
-      doc.setLineWidth(0.4);
-      doc.line(15, 16, pageW - 15, 16);
+      drawSlimHeader();
       let py = 24;
-      py = renderTopico(sortedTopicos[i], py);
-      if (i + 1 < sortedTopicos.length) {
+      py = renderTopico(group[i], py);
+      if (i + 1 < group.length) {
         py += 4;
-        py = renderTopico(sortedTopicos[i + 1], py);
+        py = renderTopico(group[i + 1], py);
       }
     }
   }

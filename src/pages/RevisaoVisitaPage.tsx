@@ -450,7 +450,7 @@ export default function RevisaoVisitaPage() {
         const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos };
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
@@ -703,18 +703,12 @@ export default function RevisaoVisitaPage() {
         ))}
       </div>
 
-      {/* Introdução do Relatório — tópicos editáveis */}
-      <div className="space-y-2">
-        <div className="text-[11px] uppercase tracking-wide font-bold px-1" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Introdução do Relatório
-        </div>
-        <VisitaTopicosSection
-          visitaId={visitaId!}
-          seedFrom={{ objetivo: visita.objetivo_visita, resumo: visita.resumo_executivo, indicadores: visita.indicadores_gerais, observacoes: visita.observacoes_gerais, conclusao: visita.conclusao }}
-          onNotifyEdit={notifyEdit}
-          onChange={setTopicos}
-        />
-      </div>
+      {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
+      <VisitaTopicosSection
+        visitaId={visitaId!}
+        onNotifyEdit={notifyEdit}
+        onChange={setTopicos}
+      />
 
 
       {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}

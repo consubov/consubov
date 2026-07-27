@@ -146,7 +146,7 @@ export default function FabricaVisitaView({
           .from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem");
         const list = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos: list };
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos: list };
       }));
       const numeroMapFresh = computeFabricaPhotoNumbering(
         topicosFresh.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos }))
@@ -273,7 +273,6 @@ export default function FabricaVisitaView({
 
       <VisitaTopicosSection
         visitaId={visitaId}
-        mode="fabrica"
         onChange={setTopicos}
         numeroMap={numeroMap}
       />
@@ -317,8 +316,9 @@ export default function FabricaVisitaView({
             <FileText className="w-4 h-4 text-primary" /> Relatório em PDF
           </div>
           <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-              <a href={visita.pdf_url} target="_blank" rel="noreferrer"><FileText className="w-4 h-4" /> Ver</a>
+            <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+              onClick={() => import("@/lib/openPdfBlob").then(m => m.openPdfBlobUrl(visita.pdf_url!))}>
+              <FileText className="w-4 h-4" /> Ver
             </Button>
             <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
               <a href={visita.pdf_url} download><Download className="w-4 h-4" /> Baixar</a>

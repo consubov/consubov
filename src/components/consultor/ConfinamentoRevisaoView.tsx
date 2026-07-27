@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
+import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -64,6 +65,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
@@ -416,6 +418,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
+        topicos: await Promise.all(topicos.map(async t => {
+          const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
+            .select("*").eq("visita_topico_id", t.id).order("ordem");
+          const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+          return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
+        })),
       });
       const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
       const { error } = await supabase.from("visitas_tecnicas").update({
@@ -555,58 +563,22 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         ))}
       </div>
 
-      {/* Blocos introdutórios (opcionais) */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Introdução do Relatório (opcional)
-        </div>
-        {[
-          { label: "Objetivo da Visita", val: objetivo, set: setObjetivo, key: "objetivo_visita" as const },
-          { label: "Resumo Executivo", val: resumo, set: setResumo, key: "resumo_executivo" as const },
-          { label: "Indicadores Gerais", val: indicadores, set: setIndicadores, key: "indicadores_gerais" as const },
-        ].map(f => (
-          <div key={f.key}>
-            <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>{f.label}</div>
-            <Textarea
-              value={f.val}
-              onChange={e => f.set(e.target.value)}
-              onBlur={() => autosaveVisita({ [f.key]: f.val || null } as any)}
-              rows={2}
-              className="mt-1 text-sm"
-            />
-          </div>
-        ))}
+      {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
+      <VisitaTopicosSection
+        visitaId={visita.id}
+        onChange={setTopicos}
+      />
+
+      {/* Título da seção final do PDF (opcional) */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
+        <Input
+          value={tituloEncerramento}
+          onChange={e => setTituloEncerramento(e.target.value)}
+          placeholder="Observações e Recomendações"
+        />
       </div>
 
-      {/* Observações & Conclusão */}
-      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
-          <Input
-            value={tituloEncerramento}
-            onChange={e => setTituloEncerramento(e.target.value)}
-            placeholder="Observações e Recomendações"
-          />
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Observações gerais</div>
-          <Textarea
-            value={obsGerais}
-            onChange={e => setObsGerais(e.target.value)}
-            onBlur={() => autosaveVisita({ observacoes_gerais: obsGerais })}
-            rows={3} className="mt-1"
-          />
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>Conclusão</div>
-          <Textarea
-            value={conclusao}
-            onChange={e => setConclusao(e.target.value)}
-            onBlur={() => autosaveVisita({ conclusao })}
-            rows={3} className="mt-1"
-          />
-        </div>
-      </div>
 
 
       {/* Botão fixo — acima da nav */}
