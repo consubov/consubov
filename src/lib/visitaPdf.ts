@@ -641,9 +641,11 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   // PASTOS — fluxo contínuo (bloco atômico de 100mm). Não força mais 2/página.
   const blockHeight = 100;
   const gap = 8;
+  const scaleH = 6;
   let pastoScaleShown = false;
   for (const p of data.pastos) {
-    if (y + blockHeight > pageH - 20) {
+    const need = blockHeight + (pastoScaleShown ? 0 : scaleH);
+    if (y + need > pageH - 20) {
       doc.addPage();
       y = slimHeader();
       pastoScaleShown = false;
@@ -652,7 +654,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.setFontSize(7);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(INK_SOFT);
-      doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+      doc.text(SCORE_SCALE_HINT, 15, y);
+      y += scaleH;
       pastoScaleShown = true;
     }
     await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
