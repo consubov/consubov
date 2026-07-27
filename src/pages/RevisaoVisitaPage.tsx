@@ -876,6 +876,15 @@ export default function RevisaoVisitaPage() {
           </div>
         </div>
       </div>
+      <PdfViewerDialog
+        url={pdfVisualizar?.url ?? null}
+        fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
+        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        onClose={() => {
+          setPdfVisualizar(null);
+          if (visita?.status === "finalizada") navigate("/consultor/historico");
+        }}
+      />
     </div>
   );
 }
