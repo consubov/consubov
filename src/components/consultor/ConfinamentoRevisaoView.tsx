@@ -414,6 +414,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               corporal: c.samples.corporal.length,
               bebedouro: c.samples.bebedouro.length,
             },
+            samples: {
+              fezes: [...c.samples.fezes],
+              corporal: [...c.samples.corporal],
+              bebedouro: [...c.samples.bebedouro],
+            },
             fotos,
           };
         })),
