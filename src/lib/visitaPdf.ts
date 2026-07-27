@@ -457,6 +457,8 @@ async function drawPastoBlock(
         doc.setFillColor("#F3F1E8");
         doc.rect(fx, fotosStartY, fw, fh, "F");
       }
+      const num = numeroMap?.[foto.id];
+      if (num != null) drawNumeroBadge(doc, fx + 1.5, fotosStartY + 1.5, num);
     } else {
       doc.setDrawColor(LINE);
       doc.setFillColor("#FAF8F0");
