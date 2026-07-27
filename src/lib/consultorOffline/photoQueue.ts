@@ -112,6 +112,17 @@ export async function enqueuePhoto(params: {
   blob: Blob;
   fileName?: string;
 }): Promise<FotoQueueItem> {
+  // De-duplica o mesmo slot (mesmo parent + mesma ordem): remove qualquer entrada
+  // pendente anterior antes de gravar a nova. Isso evita acúmulo de duplicatas
+  // quando o usuário substitui uma foto ou tenta reenviar.
+  try {
+    const existing = await listFotosByParentRaw(params.parentKind, params.parentId);
+    await Promise.all(existing
+      .filter((it) => it.ordem === params.ordem)
+      .map((it) => deleteFoto(it.localId)));
+  } catch (err) {
+    console.warn("[consultor-photo-queue] falha ao limpar duplicatas do slot", err);
+  }
   const localId = `foto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const item: FotoQueueItem = {
     localId,
@@ -143,14 +154,12 @@ export async function enqueuePhoto(params: {
     throw new Error(`Não foi possível salvar a foto ${params.ordem} no aparelho. Tente tirar ou selecionar a foto novamente.`);
   }
   await refreshPendingCount();
-  // Dá tempo para o componente persistir o preview no snapshot antes do upload
-  // começar; evita corrida em que o servidor confirma e depois o caller grava
-  // uma foto `queued:` obsoleta sobre o snapshot atualizado.
   if (typeof window !== "undefined" && (typeof navigator === "undefined" || navigator.onLine)) {
     window.setTimeout(() => void drain(), 250);
   }
   return item;
 }
+
 
 export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topico", id: string) {
   return listFotosByParent(kind, id);
