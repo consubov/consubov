@@ -401,6 +401,41 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         } as any,
       });
       if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
+      const curraisForPdf = await Promise.all(currais.map(async c => {
+        const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
+          .select("*").eq("visita_curral_id", c.id).order("ordem"), "busca de fotos dos currais");
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return {
+          id: c.id,
+          num_curral: c.num_curral,
+          scores: {
+            fezes: averageOf(c.samples.fezes),
+            corporal: averageOf(c.samples.corporal),
+            bebedouro: averageOf(c.samples.bebedouro),
+          },
+          sampleCounts: {
+            fezes: c.samples.fezes.length,
+            corporal: c.samples.corporal.length,
+            bebedouro: c.samples.bebedouro.length,
+          },
+          samples: {
+            fezes: c.samples.fezes.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
+            corporal: c.samples.corporal.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
+            bebedouro: c.samples.bebedouro.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
+          },
+          fotos,
+        };
+      }));
+      const topicosForPdf = await Promise.all(topicos.map(async t => {
+        const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
+          .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
+      }));
+      const numeroMap = computeConfinamentoPhotoNumbering(
+        curraisForPdf.map(c => ({ id: c.id, fotos: c.fotos })),
+        topicosForPdf.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+      );
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {
@@ -423,42 +458,14 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           organizacao_fabrica_nota: fabricaNota,
           organizacao_insumos_nota: insumosNota,
         },
-        currais: await Promise.all(currais.map(async c => {
-          const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
-            .select("*").eq("visita_curral_id", c.id).order("ordem"), "busca de fotos dos currais");
-          const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-          return {
-            id: c.id,
-            num_curral: c.num_curral,
-            scores: {
-              fezes: averageOf(c.samples.fezes),
-              corporal: averageOf(c.samples.corporal),
-              bebedouro: averageOf(c.samples.bebedouro),
-            },
-            sampleCounts: {
-              fezes: c.samples.fezes.length,
-              corporal: c.samples.corporal.length,
-              bebedouro: c.samples.bebedouro.length,
-            },
-            samples: {
-              fezes: c.samples.fezes.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
-              corporal: c.samples.corporal.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
-              bebedouro: c.samples.bebedouro.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
-            },
-            fotos,
-          };
-        })),
+        currais: curraisForPdf,
+        numeroMap,
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
-        topicos: await Promise.all(topicos.map(async t => {
-          const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
-            .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
-          const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-          return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
-        })),
+        topicos: topicosForPdf,
       });
       const pdfUrl = await withConsultorTimeout(
         uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id),
