@@ -535,10 +535,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
   const drawTopico = (titulo: string, texto: string | null, fotos: { id: string; ordem: number }[]) => {
     const t = (texto || "").trim();
-    if (!titulo.trim() && !t && fotos.length === 0) return;
+    if (!t && fotos.length === 0) return;
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    if (titulo.trim() || t) {
-      y = drawIntroBlock(doc, titulo || "—", t || "—", y);
+    if (t) {
+      y = drawIntroBlock(doc, titulo.trim() || " ", t, y);
     }
     if (fotos.length > 0) {
       const wArea = pageW - 30;
@@ -659,8 +659,12 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   let fy = 26;
   if (conclusaoTopicos.length > 0) {
     for (const t of conclusaoTopicos) {
+      const txt = (t.texto || "").trim();
+      if (!txt && t.fotos.length === 0) continue;
       if (fy > pageH - 80) { doc.addPage(); fy = 20; }
-      fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
+      if (txt) {
+        fy = drawTextBlock(doc, t.titulo.trim() || " ", txt, fy);
+      }
       if (t.fotos.length > 0) {
         const wArea = pageW - 30;
         const cols = 5;
@@ -684,9 +688,15 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       fy += 6;
     }
   } else {
-    fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-    fy = Math.max(fy + 8, 130);
-    drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+    const obs = (data.observacoes_gerais || "").trim();
+    const conc = (data.conclusao || "").trim();
+    if (obs) {
+      fy = drawTextBlock(doc, "Observações Gerais", obs, fy);
+      fy = Math.max(fy + 8, 130);
+    }
+    if (conc) {
+      drawTextBlock(doc, "Conclusão da Visita", conc, fy);
+    }
   }
 
   drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
@@ -847,9 +857,9 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   const renderTopico = (t: NonNullable<typeof data.topicos>[number], yStart: number): number => {
     let yy = yStart;
     const tx = (t.texto || "").trim();
-    if (!t.titulo.trim() && !tx && t.fotos.length === 0) return yy;
-    if (t.titulo.trim() || tx) {
-      yy = drawIntroBlock(doc, t.titulo || "—", tx || "—", yy);
+    if (!tx && t.fotos.length === 0) return yy;
+    if (tx) {
+      yy = drawIntroBlock(doc, t.titulo.trim() || " ", tx, yy);
     }
     if (t.fotos.length > 0) {
       const wArea = pageW - 30;
@@ -885,7 +895,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   // Página 1 = header + Avaliação + 1º tópico
   // A partir da página 2 = 2 tópicos por página
   const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
-    .filter(t => t.titulo.trim() || (t.texto || "").trim() || t.fotos.length > 0);
+    .filter(t => (t.texto || "").trim() || t.fotos.length > 0);
   const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
     if (t.zona) return t.zona;
     if (t.ordem >= 1001) return "conclusao";

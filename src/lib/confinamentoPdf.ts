@@ -509,8 +509,10 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   let y = drawFarmBlock(doc, data, 50);
 
   for (const t of introT) {
+    const txt = (t.texto || "").trim();
+    if (!txt && t.fotos.length === 0) continue;
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    y = drawIntroBlock(doc, t.titulo || "—", t.texto || "—", y);
+    if (txt) y = drawIntroBlock(doc, t.titulo.trim() || " ", txt, y);
     y = drawTopicoFotos(t, y);
   }
   // Legacy fallback só quando não existir tópico de introdução.
@@ -567,8 +569,10 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     doc.line(15, 16, pageW - 15, 16);
     let dy = 24;
     for (const t of devT) {
+      const txt = (t.texto || "").trim();
+      if (!txt && t.fotos.length === 0) continue;
       if (dy > pageH - 60) { doc.addPage(); dy = 20; }
-      dy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", dy);
+      if (txt) dy = drawTextBlock(doc, t.titulo.trim() || " ", txt, dy);
       dy = drawTopicoFotos(t, dy + 2) + 4;
     }
   }
@@ -609,14 +613,22 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
 
   if (conclusaoT.length > 0) {
     for (const t of conclusaoT) {
+      const txt = (t.texto || "").trim();
+      if (!txt && t.fotos.length === 0) continue;
       if (fy > pageH - 60) { doc.addPage(); fy = 20; }
-      fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
+      if (txt) fy = drawTextBlock(doc, t.titulo.trim() || " ", txt, fy);
       fy = drawTopicoFotos(t, fy + 2) + 4;
     }
   } else {
-    fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-    fy = Math.max(fy + 8, 140);
-    drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+    const obs = (data.observacoes_gerais || "").trim();
+    const conc = (data.conclusao || "").trim();
+    if (obs) {
+      fy = drawTextBlock(doc, "Observações Gerais", obs, fy);
+      fy = Math.max(fy + 8, 140);
+    }
+    if (conc) {
+      drawTextBlock(doc, "Conclusão da Visita", conc, fy);
+    }
   }
 
   drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
