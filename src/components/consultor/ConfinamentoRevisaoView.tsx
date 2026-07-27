@@ -418,6 +418,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
+        topicos: await Promise.all(topicos.map(async t => {
+          const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
+            .select("*").eq("visita_topico_id", t.id).order("ordem");
+          const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+          return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
+        })),
       });
       const pdfUrl = await uploadConfinamentoPdf(blob, fileName, visita.consultor_id, visita.id);
       const { error } = await supabase.from("visitas_tecnicas").update({
