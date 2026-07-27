@@ -874,25 +874,39 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   // Paginação Fábrica:
   // Página 1 = header + Avaliação + 1º tópico
   // A partir da página 2 = 2 tópicos por página
-  const sortedTopicos = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
+  const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
     .filter(t => t.titulo.trim() || (t.texto || "").trim() || t.fotos.length > 0);
+  const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introT = allT.filter(t => zonaOfF(t) === "introducao");
+  const devT = allT.filter(t => zonaOfF(t) === "desenvolvimento");
+  const conclusaoT = allT.filter(t => zonaOfF(t) === "conclusao");
 
-  if (sortedTopicos.length > 0) {
-    y = renderTopico(sortedTopicos[0], y);
-    for (let i = 1; i < sortedTopicos.length; i += 2) {
+  const drawSlimHeader = () => {
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.4);
+    doc.line(15, 16, pageW - 15, 16);
+  };
+
+  for (const t of introT) y = renderTopico(t, y);
+  for (const group of [devT, conclusaoT]) {
+    if (group.length === 0) continue;
+    for (let i = 0; i < group.length; i += 2) {
       doc.addPage();
-      doc.setTextColor(INK_SOFT);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(data.fazenda.nome_fazenda || "", 15, 12);
-      doc.setDrawColor(LINE);
-      doc.setLineWidth(0.4);
-      doc.line(15, 16, pageW - 15, 16);
+      drawSlimHeader();
       let py = 24;
-      py = renderTopico(sortedTopicos[i], py);
-      if (i + 1 < sortedTopicos.length) {
+      py = renderTopico(group[i], py);
+      if (i + 1 < group.length) {
         py += 4;
-        py = renderTopico(sortedTopicos[i + 1], py);
+        py = renderTopico(group[i + 1], py);
       }
     }
   }
