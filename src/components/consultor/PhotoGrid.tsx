@@ -7,6 +7,7 @@ import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/l
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { loadSnapshot, offlineDelete, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
@@ -38,8 +39,7 @@ interface Pending {
 }
 
 async function getSignedUrl(path: string) {
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);
-  return data?.signedUrl || "";
+  return getCachedSignedUrl(path);
 }
 
 export default function PhotoGrid({
@@ -131,9 +131,7 @@ export default function PhotoGrid({
     }
     const ordem = slotRef.current;
     try {
-      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, {
-        maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
-      });
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file);
       // Optimistic preview immediately
       setPendings(prev => ({
         ...prev,
