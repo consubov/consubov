@@ -186,9 +186,17 @@ export async function listMutationsByVisita(visitaId: string) {
 }
 
 export async function listPendingVisitaIds() {
-  const [mutations, fotos] = await Promise.all([listAllMutations(), listAllFotos()]);
+  const [mutations, fotos, snapshots] = await Promise.all([listAllMutations(), listAllFotos(), listAllSnapshots()]);
+  const deletedIds = new Set<string>();
+  snapshots.forEach((snap) => {
+    if ((snap.data as any)?.visita?.deleted_at) deletedIds.add(snap.visitaId);
+  });
+  mutations.forEach((m) => {
+    const id = m.visitaId || m.rowId;
+    if (m.table === "visitas_tecnicas" && id && m.patch?.deleted_at) deletedIds.add(id);
+  });
   const ids = new Set<string>();
-  mutations.forEach((m) => { if (m.visitaId) ids.add(m.visitaId); });
-  fotos.forEach((f) => { if (f.visitaId) ids.add(f.visitaId); });
+  mutations.forEach((m) => { if (m.visitaId && !deletedIds.has(m.visitaId)) ids.add(m.visitaId); });
+  fotos.forEach((f) => { if (f.visitaId && !deletedIds.has(f.visitaId)) ids.add(f.visitaId); });
   return Array.from(ids);
 }
