@@ -3,10 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Camera, X, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { loadSnapshot, offlineDelete, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
@@ -40,15 +40,6 @@ interface Pending {
 async function getSignedUrl(path: string) {
   const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);
   return data?.signedUrl || "";
-}
-
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [meta, b64] = dataUrl.split(",");
-  const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
-  const bin = atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: mime });
 }
 
 export default function PhotoGrid({
@@ -140,11 +131,9 @@ export default function PhotoGrid({
     }
     const ordem = slotRef.current;
     try {
-      const dataUrl = await compressImageFileToDataUrl(file, {
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, {
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
-      if (!dataUrl) throw new Error("Falha ao processar imagem");
-      const blob = dataUrlToBlob(dataUrl);
       // Optimistic preview immediately
       setPendings(prev => ({
         ...prev,
@@ -183,6 +172,7 @@ export default function PhotoGrid({
       // Clear inline pending — the queue-driven refresh will render it
       setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
+      setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
       toast.error("Erro ao preparar foto: " + (err?.message || "desconhecido"));
     } finally {
       if (inputRef.current) inputRef.current.value = "";

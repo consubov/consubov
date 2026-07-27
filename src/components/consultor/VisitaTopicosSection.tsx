@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Camera, ChevronDown, ChevronUp, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 5;
@@ -70,15 +71,6 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
     return () => { unsub(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visitaId]);
-
-  function dataUrlToBlob(dataUrl: string): Blob {
-    const [meta, b64] = dataUrl.split(",");
-    const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
-    const bin = atob(b64);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return new Blob([arr], { type: mime });
-  }
 
   async function load() {
     setLoading(true);
@@ -215,15 +207,13 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       const usadas = new Set(t.fotos.map(f => f.ordem));
       let ordem = 1;
       while (usadas.has(ordem) && ordem <= MAX_FOTOS) ordem++;
-      const { compressImageFileToDataUrl } = await import("@/lib/imageCompression");
-      const dataUrl = await compressImageFileToDataUrl(file, {
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, {
         maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
       });
-      const blob = dataUrl ? dataUrlToBlob(dataUrl) : file;
       const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as TopicoFoto;
       setTopicos(prev => prev.map(x => x.id === t.id
-        ? { ...x, fotos: [...x.fotos, data].sort((a,b)=>a.ordem-b.ordem), signed: { ...x.signed, [data.id]: dataUrl || "" } }
+        ? { ...x, fotos: [...x.fotos, data].sort((a,b)=>a.ordem-b.ordem), signed: { ...x.signed, [data.id]: dataUrl } }
         : x));
       await patchSnapshot(visitaId, (curr) => ({
         ...curr,
@@ -233,7 +223,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
               const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
               const alreadyQueued = current.some((f) => f.id === data.id || f.url === data.url);
               const fotos = alreadySyncedAtSlot || alreadyQueued ? current : [...current, data].sort((a, b) => a.ordem - b.ordem);
-              return { ...x, fotos, signed: { ...(x.signed || {}), [data.id]: dataUrl || "" } };
+              return { ...x, fotos, signed: { ...(x.signed || {}), [data.id]: dataUrl } };
             })()
           : x),
       }));
