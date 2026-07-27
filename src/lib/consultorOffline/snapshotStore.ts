@@ -55,6 +55,27 @@ export async function hasPendingLocalChanges(visitaId: string): Promise<boolean>
   }
 }
 
+/**
+ * Força uma sincronização e aguarda até que a visita informada não tenha mais
+ * itens pendentes no cache local (fotos + mutações). Resolve `true` se tudo
+ * foi sincronizado dentro do timeout; caso contrário resolve `false`.
+ */
+export async function syncVisitaAndWait(visitaId: string, timeoutMs = 90000): Promise<boolean> {
+  const { syncNow: syncPhotosNow } = await import("./photoQueue");
+  const { retryFailedMutations } = await import("./mutationQueue");
+  // Dispara em paralelo — não bloqueia esperando cada drain aqui, pois eles
+  // possuem locks internos e o polling abaixo confirma o resultado real.
+  void retryFailedMutations().catch(() => {});
+  void syncPhotosNow().catch(() => {});
+
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (!(await hasPendingLocalChanges(visitaId))) return true;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return !(await hasPendingLocalChanges(visitaId));
+}
+
 /** Merge a partial patch into the current snapshot. Serialized per visitaId to avoid races. */
 const patchLocks = new Map<string, Promise<void>>();
 export async function patchSnapshot(
