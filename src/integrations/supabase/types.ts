@@ -5329,6 +5329,7 @@ export type Database = {
           texto: string | null
           titulo: string
           visita_id: string
+          zona: string
         }
         Insert: {
           created_at?: string
@@ -5337,6 +5338,7 @@ export type Database = {
           texto?: string | null
           titulo?: string
           visita_id: string
+          zona?: string
         }
         Update: {
           created_at?: string
@@ -5345,6 +5347,7 @@ export type Database = {
           texto?: string | null
           titulo?: string
           visita_id?: string
+          zona?: string
         }
         Relationships: [
           {
