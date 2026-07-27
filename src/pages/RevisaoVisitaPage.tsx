@@ -159,6 +159,10 @@ export default function RevisaoVisitaPage() {
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [salvandoOffline, setSalvandoOffline] = useState(false);
   const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
+  type SCK = "bars" | "lines" | "pie" | "radar";
+  const [sampleChartFezes, setSampleChartFezes] = useState<SCK>("lines");
+  const [sampleChartCorporal, setSampleChartCorporal] = useState<SCK>("lines");
+  const [sampleChartBebedouro, setSampleChartBebedouro] = useState<SCK>("lines");
 
   useEffect(() => {
     const on = () => setOnline(true);
@@ -550,6 +554,11 @@ export default function RevisaoVisitaPage() {
         },
         pastos: pastosForPdf,
         numeroMap,
+        sampleChartTypes: {
+          fezes: sampleChartFezes,
+          corporal: sampleChartCorporal,
+          bebedouro: sampleChartBebedouro,
+        },
       });
 
 
