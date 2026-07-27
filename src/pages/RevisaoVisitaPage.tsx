@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import { computeRotinaPhotoNumbering } from "@/lib/photoNumbering";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
