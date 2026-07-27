@@ -176,12 +176,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setLoading(false);
   }, [visitaId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(false); }, [load]);
   useEffect(() => {
     if (pendingUploads > 0) setHadPendingUploads(true);
     if (pendingUploads === 0 && hadPendingUploads) {
       setHadPendingUploads(false);
-      void load();
+      void load(true);
     }
   }, [pendingUploads, hadPendingUploads, load]);
 
