@@ -177,18 +177,18 @@ export default function RevisaoVisitaPage() {
     })();
   }, [visitaId]);
 
-  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(); }, [visitaId, tipoLoaded]);
+  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(false); }, [visitaId, tipoLoaded]);
   useEffect(() => {
     if (pendingUploads > 0) setHadPendingUploads(true);
     if (pendingUploads === 0 && hadPendingUploads && visitaId && tipoLoaded && tipoLoaded !== "confinamento") {
       setHadPendingUploads(false);
-      void load();
+      void load(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingUploads, hadPendingUploads, visitaId, tipoLoaded]);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     const snap = visitaId ? await loadSnapshot(visitaId) : null;
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && visitaId ? await hasPendingLocalChanges(visitaId) : false;
