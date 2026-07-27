@@ -149,6 +149,28 @@ export default function ConsultorFazendaDetalhePage() {
         payload,
         applyToSnapshot: (curr, p) => ({ ...curr, visita: { ...(curr.visita || {}), id, ...p } }),
       });
+      // Cria o 1º assinante automaticamente (nome do consultor logado)
+      const consultorNome =
+        (cached?.consultor?.nome as string | undefined) ||
+        (typeof roleData?.consultorNome === "string" ? roleData.consultorNome : "") ||
+        "";
+      const assinanteId = crypto.randomUUID();
+      const assinantePayload = {
+        visita_id: id,
+        nome: consultorNome,
+        cargo_funcao: "Consultor Técnico",
+        ordem: 1,
+      };
+      await offlineUpsert({
+        visitaId: id,
+        table: "visita_assinantes",
+        rowId: assinanteId,
+        payload: assinantePayload,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          assinantes: [{ id: assinanteId, ...assinantePayload }],
+        }),
+      });
       if (res.queued) toast.info("Visita salva off-line. Sincronize quando a internet voltar.");
       try {
         const nextVisitas = [{ id, tipo, status: "rascunho", hora_inicio: payload.hora_inicio, hora_fim: null }, ...visitas];
