@@ -228,7 +228,13 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       await patchSnapshot(visitaId, (curr) => ({
         ...curr,
         topicos: (curr.topicos || []).map((x: any) => x.id === t.id
-          ? { ...x, fotos: [...(x.fotos || []), data], signed: { ...(x.signed || {}), [(data as any).id]: dataUrl || "" } }
+          ? (() => {
+              const current = (x.fotos || []) as TopicoFoto[];
+              const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
+              const alreadyQueued = current.some((f) => f.id === data.id || f.url === data.url);
+              const fotos = alreadySyncedAtSlot || alreadyQueued ? current : [...current, data].sort((a, b) => a.ordem - b.ordem);
+              return { ...x, fotos, signed: { ...(x.signed || {}), [data.id]: dataUrl || "" } };
+            })()
           : x),
       }));
       if (typeof navigator !== "undefined" && !navigator.onLine) {

@@ -73,8 +73,12 @@ export async function enqueuePhoto(params: {
   };
   await putFoto(item);
   await refreshPendingCount();
-  // fire drain in background
-  if (typeof navigator === "undefined" || navigator.onLine) void drain();
+  // Dá tempo para o componente persistir o preview no snapshot antes do upload
+  // começar; evita corrida em que o servidor confirma e depois o caller grava
+  // uma foto `queued:` obsoleta sobre o snapshot atualizado.
+  if (typeof window !== "undefined" && (typeof navigator === "undefined" || navigator.onLine)) {
+    window.setTimeout(() => void drain(), 250);
+  }
   return item;
 }
 

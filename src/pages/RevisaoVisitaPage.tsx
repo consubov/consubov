@@ -367,7 +367,13 @@ export default function RevisaoVisitaPage() {
       await patchSnapshot(visitaId!, (curr) => ({
         ...curr,
         pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
-          ? { ...x, fotos: [...(x.fotos || []), data].sort((a: Foto, b: Foto) => a.ordem - b.ordem), signed: { ...(x.signed || {}), [data.id]: dataUrl } }
+          ? (() => {
+              const current = (x.fotos || []) as Foto[];
+              const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
+              const alreadyQueued = current.some((f) => f.id === data.id || f.url === data.url);
+              const fotos = alreadySyncedAtSlot || alreadyQueued ? current : [...current, data].sort((a: Foto, b: Foto) => a.ordem - b.ordem);
+              return { ...x, fotos, signed: { ...(x.signed || {}), [data.id]: dataUrl } };
+            })()
           : x),
       }));
       toast.info("Foto salva off-line. Sincronize quando houver internet.");

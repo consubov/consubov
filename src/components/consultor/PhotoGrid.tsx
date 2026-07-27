@@ -165,11 +165,15 @@ export default function PhotoGrid({
           return {
             ...curr,
             [key]: ((curr as any)[key] || []).map((item: any) => item.id === targetId
-              ? {
-                  ...item,
-                  fotos: [...(item.fotos || []), { id: queuedId, url: `queued:${queuedId}`, ordem }].sort((a: FotoRow, b: FotoRow) => a.ordem - b.ordem),
-                  signed: { ...(item.signed || {}), [queuedId]: dataUrl },
-                }
+              ? (() => {
+                  const current = (item.fotos || []) as FotoRow[];
+                  const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
+                  const alreadyQueued = current.some((f) => f.id === queuedId || f.url === `queued:${queuedId}`);
+                  const fotos = alreadySyncedAtSlot || alreadyQueued
+                    ? current
+                    : [...current, { id: queuedId, url: `queued:${queuedId}`, ordem }].sort((a: FotoRow, b: FotoRow) => a.ordem - b.ordem);
+                  return { ...item, fotos, signed: { ...(item.signed || {}), [queuedId]: dataUrl } };
+                })()
               : item),
           };
         });
