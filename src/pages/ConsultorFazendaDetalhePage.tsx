@@ -150,10 +150,13 @@ export default function ConsultorFazendaDetalhePage() {
         applyToSnapshot: (curr, p) => ({ ...curr, visita: { ...(curr.visita || {}), id, ...p } }),
       });
       // Cria o 1º assinante automaticamente (nome do consultor logado)
-      const consultorNome =
-        (cached?.consultor?.nome as string | undefined) ||
-        (typeof roleData?.consultorNome === "string" ? roleData.consultorNome : "") ||
-        "";
+      let consultorNome: string = (cached?.consultor?.nome as string | undefined) || "";
+      if (!consultorNome && roleData?.consultorId) {
+        try {
+          const { data } = await supabase.from("consultores").select("nome").eq("id", roleData.consultorId).maybeSingle();
+          consultorNome = (data?.nome as string | undefined) || "";
+        } catch { /* offline: nome fica vazio, consultor edita depois */ }
+      }
       const assinanteId = crypto.randomUUID();
       const assinantePayload = {
         visita_id: id,
