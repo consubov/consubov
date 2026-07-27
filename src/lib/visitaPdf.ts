@@ -883,9 +883,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     return yy;
   };
 
-  // Paginação Fábrica:
-  // Página 1 = header + Avaliação + 1º tópico
-  // A partir da página 2 = 2 tópicos por página
+  // Paginação Fábrica — fluxo contínuo, blocos atômicos.
   const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem)
     .filter(t => (t.texto || "").trim() || t.fotos.length > 0);
   const zonaOfF = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
@@ -908,20 +906,45 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     doc.line(15, 16, pageW - 15, 16);
   };
 
-  for (const t of introT) y = renderTopico(t, y);
-  for (const group of [devT, conclusaoT]) {
-    if (group.length === 0) continue;
-    for (let i = 0; i < group.length; i += 2) {
-      doc.addPage();
-      drawSlimHeader();
-      let py = 24;
-      py = renderTopico(group[i], py);
-      if (i + 1 < group.length) {
-        py += 4;
-        py = renderTopico(group[i + 1], py);
-      }
+  const measureTopicoF = (t: typeof allT[number]): number => {
+    const tx = (t.texto || "").trim();
+    let h = 0;
+    if (tx) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(tx, pageW - 30);
+      h += 11 + lines.length * 4.6 + 4;
     }
-  }
+    if (t.fotos.length > 0) {
+      const wArea = pageW - 30;
+      const cols = 5;
+      const gap = 2;
+      const fw = (wArea - (cols - 1) * gap) / cols;
+      h += fw + 6;
+    }
+    return h;
+  };
+
+  const flowRender = (list: typeof allT, startNewPage: boolean) => {
+    if (list.length === 0) return;
+    if (startNewPage) { doc.addPage(); drawSlimHeader(); y = 24; }
+    for (const t of list) {
+      const h = measureTopicoF(t);
+      if (h > 0 && y + h > pageH - 20) {
+        doc.addPage(); drawSlimHeader(); y = 24;
+      }
+      y = renderTopico(t, y) + 2;
+    }
+  };
+
+  // Introdução: continua na mesma página da capa.
+  flowRender(introT, false);
+  // Desenvolvimento: começa em nova página se houver.
+  flowRender(devT, devT.length > 0);
+  // Conclusão: só cria nova página se houver conteúdo real.
+  flowRender(conclusaoT, conclusaoT.length > 0);
+
+
 
 
   // Assinatura
