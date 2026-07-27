@@ -758,6 +758,7 @@ export default function RevisaoVisitaPage() {
         visitaId={visitaId!}
         onNotifyEdit={notifyEdit}
         onChange={setTopicos}
+        numeroMap={numeroMap}
       />
 
 
