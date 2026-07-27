@@ -319,22 +319,33 @@ async function drawCurralBlock(
   doc.setLineWidth(0.4);
   doc.roundedRect(x, y, width, height, 2, 2, "S");
 
-  const badgeW = 20;
+  const label = c.num_curral || "?";
+  doc.setFont("helvetica", "bold");
+  const MAX_BADGE_W = 44;
+  const MIN_BADGE_W = 20;
+  let badgeFont = 11;
+  doc.setFontSize(badgeFont);
+  let textW = doc.getTextWidth(label);
+  while (textW + 4 > MAX_BADGE_W && badgeFont > 6) {
+    badgeFont -= 1;
+    doc.setFontSize(badgeFont);
+    textW = doc.getTextWidth(label);
+  }
+  const badgeW = Math.min(MAX_BADGE_W, Math.max(MIN_BADGE_W, textW + 4));
   doc.setFillColor(GREEN_DARK);
   doc.roundedRect(x + 4, y + 4, badgeW, 12, 2, 2, "F");
   doc.setTextColor(GOLD);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(c.num_curral || "?", x + 4 + badgeW / 2, y + 12, { align: "center" });
+  doc.text(label, x + 4 + badgeW / 2, y + 12, { align: "center" });
 
+  const titleX = x + 4 + badgeW + 4;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(`Curral ${c.num_curral || "—"}`, x + badgeW + 8, y + 10);
+  doc.text(`Curral ${label}`, titleX, y + 10);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text("Avaliação", x + badgeW + 8, y + 14);
+  doc.text("Avaliação", titleX, y + 14);
 
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 20, x + width - 3, y + 20);

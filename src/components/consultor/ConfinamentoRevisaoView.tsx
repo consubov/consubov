@@ -575,8 +575,14 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           <div key={c.id} className="rounded-lg border bg-card" style={{ borderColor: "#E7E3D6" }}>
             <div className="flex items-center gap-3 p-3 border-b" style={{ borderColor: "#E7E3D6" }}>
               <div
-                className="min-w-11 h-11 px-2 rounded-lg flex items-center justify-center font-extrabold text-base"
-                style={{ background: "#14432B", color: "#C9A84C", fontFamily: "'Manrope', sans-serif" }}
+                className="min-w-11 max-w-[110px] min-h-11 px-2 py-1 rounded-lg flex items-center justify-center font-extrabold text-center leading-tight break-words shrink-0"
+                style={{
+                  background: "#14432B",
+                  color: "#C9A84C",
+                  fontFamily: "'Manrope', sans-serif",
+                  fontSize: (c.num_curral?.length ?? 0) > 6 ? "0.7rem" : (c.num_curral?.length ?? 0) > 3 ? "0.85rem" : "1rem",
+                }}
+                title={c.num_curral}
               >
                 {c.num_curral}
               </div>

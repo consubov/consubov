@@ -239,7 +239,11 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
               onClick={() => { setEditing(c); setModalOpen(true); }}
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 text-sm">
+                <div
+                  className="min-w-10 max-w-[96px] min-h-10 px-1.5 py-1 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 text-center leading-tight break-words"
+                  style={{ fontSize: (c.num_curral?.length ?? 0) > 6 ? "0.65rem" : (c.num_curral?.length ?? 0) > 3 ? "0.75rem" : "0.875rem" }}
+                  title={c.num_curral}
+                >
                   {c.num_curral}
                 </div>
                 <div className="flex-1 min-w-0 space-y-1">
