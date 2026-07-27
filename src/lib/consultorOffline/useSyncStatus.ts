@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
 import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
 import { listAllFotos, listAllMutations, listAllSnapshots, putSnapshot } from "./db";
@@ -102,51 +102,48 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     .sort((a, b) => (b.data || "").localeCompare(a.data || "") || a.visitaId.localeCompare(b.visitaId));
 }
 
-async function computePendingVisitas(): Promise<number> {
-  try {
-    const infos = await getPendingVisitaDebugInfos();
-    if (import.meta.env.DEV) {
-      console.debug("[consultor-sync] visitas pendentes", infos.map((i) => ({
-        visitaId: i.visitaId,
-        mutations: i.mutationTables,
-        photos: i.photoParents,
-        photoErrors: i.photoErrors,
-      })));
-    }
-    return infos.length;
-  } catch {
-    return 0;
-  }
-}
-
 export function useSyncStatus() {
-  const [photoPending, setPhotoPending] = useState(0);
-  const [mutPending, setMutPending] = useState(0);
   const [photoSyncing, setPhotoSyncing] = useState(false);
   const [mutSyncing, setMutSyncing] = useState(false);
   const [visitasPending, setVisitasPending] = useState(0);
   const [activePhotoPending, setActivePhotoPending] = useState(0);
   const [activeMutPending, setActiveMutPending] = useState(0);
   const [photoFailures, setPhotoFailures] = useState<PhotoFailureDetail[]>([]);
-  const [rawPhotoFailures, setRawPhotoFailures] = useState<PhotoFailureDetail[]>([]);
+  const rawPhotoFailuresRef = useRef<PhotoFailureDetail[]>([]);
 
   useEffect(() => {
     let alive = true;
     const refreshVisitas = async () => {
-      const infos = await getPendingVisitaDebugInfos();
-      if (!alive) return;
-      const activeIds = new Set(infos.map((i) => i.visitaId));
-      setVisitasPending(infos.length);
-      setActiveMutPending(infos.reduce((total, item) => total + item.mutationIds.length, 0));
-      setActivePhotoPending(infos.reduce((total, item) => total + item.photoIds.length, 0));
-      setPhotoFailures(rawPhotoFailures.filter((failure) => activeIds.has(failure.visitaId)));
+      try {
+        const infos = await getPendingVisitaDebugInfos();
+        if (!alive) return;
+        if (import.meta.env.DEV) {
+          console.debug("[consultor-sync] visitas pendentes", infos.map((i) => ({
+            visitaId: i.visitaId,
+            mutations: i.mutationTables,
+            photos: i.photoParents,
+            photoErrors: i.photoErrors,
+          })));
+        }
+        const activeIds = new Set(infos.map((i) => i.visitaId));
+        setVisitasPending(infos.length);
+        setActiveMutPending(infos.reduce((total, item) => total + item.mutationIds.length, 0));
+        setActivePhotoPending(infos.reduce((total, item) => total + item.photoIds.length, 0));
+        setPhotoFailures(rawPhotoFailuresRef.current.filter((failure) => activeIds.has(failure.visitaId)));
+      } catch {
+        if (!alive) return;
+        setVisitasPending(0);
+        setActiveMutPending(0);
+        setActivePhotoPending(0);
+        setPhotoFailures([]);
+      }
     };
-    const u1 = subscribePhotos((p, s, failures) => {
-      setRawPhotoFailures(failures);
+    const u1 = subscribePhotos((_pending, s, failures) => {
+      rawPhotoFailuresRef.current = failures;
       setPhotoSyncing(s);
       void refreshVisitas();
     });
-    const u2 = subscribeMutationStatus((p, s) => {
+    const u2 = subscribeMutationStatus((_pending, s) => {
       setMutSyncing(s);
       void refreshVisitas();
     });
@@ -155,7 +152,7 @@ export function useSyncStatus() {
       u1();
       u2();
     };
-  }, [rawPhotoFailures]);
+  }, []);
 
   const syncNow = async () => {
     await retryFailedMutations();
