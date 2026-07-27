@@ -427,7 +427,7 @@ export default function RevisaoVisitaPage() {
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada. Pronta para gerar o PDF.");
-      await load();
+      await load(true);
     } finally { setConfirmando(false); }
   }
 
