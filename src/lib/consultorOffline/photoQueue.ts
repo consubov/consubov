@@ -165,9 +165,43 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
   return listFotosByParent(kind, id);
 }
 
-async function uploadOne(item: FotoQueueItem): Promise<boolean> {
+async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+
+  // ETAPA 1: reler SEMPRE a foto fresca do IndexedDB. Nunca reusar Blob de
+  // sessão anterior — no Safari/iOS, referências antigas geram "Load failed"
+  // ao serem passadas ao fetch/upload.
+  let item: FotoQueueItem;
+  let uploadBlob: Blob;
   try {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+    const fresh = await getFoto(inputItem.localId);
+    if (!fresh) {
+      // Já foi removida (talvez confirmada por outra corrida). Nada a fazer.
+      return true;
+    }
+    item = fresh;
+    assertValidPhotoBlob(item.blob, `foto ${item.ordem}`);
+    // Reconstrói um Blob novinho a partir do ArrayBuffer. Isso força uma
+    // referência 100% em memória para o upload — evita blob "detached" no
+    // WebKit quando a página foi recarregada.
+    const { blob } = await clonePhotoBlob(item.blob, item.mime || "image/jpeg");
+    uploadBlob = blob;
+  } catch (readErr) {
+    const message = `Falha ao ler foto do armazenamento local: ${getErrorMessage(readErr)}`;
+    debugSync("erro ao ler foto do IndexedDB", { localId: inputItem.localId, error: message });
+    const current = await getFoto(inputItem.localId);
+    if (current) {
+      current.status = "error";
+      current.tries = (current.tries ?? 0) + 1;
+      current.lastError = message;
+      await putFoto(current).catch(() => null);
+    }
+    await refreshPendingCount();
+    return false;
+  }
+
+  // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
+  try {
     item.status = "uploading";
     item.lastAttemptAt = new Date().toISOString();
     await putFoto(item);
@@ -178,8 +212,8 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       parentKind: item.parentKind,
       parentId: item.parentId,
       ordem: item.ordem,
-      mime: item.mime,
-      size: item.size ?? item.blob.size,
+      mime: uploadBlob.type,
+      size: uploadBlob.size,
       fileName: item.fileName,
     });
 
@@ -187,11 +221,11 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     const path = `${folder}/${item.parentId}/${item.ordem}-${item.localId}.jpg`;
     const { error: upErr } = await withConsultorTimeout(supabase.storage
       .from(BUCKET)
-      .upload(path, item.blob, { upsert: true, contentType: item.mime }),
+      .upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || item.mime }),
       `upload da foto ${item.ordem}`,
       CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS,
     );
-    if (upErr) throw upErr;
+    if (upErr) throw new Error(`Falha ao enviar foto ao servidor: ${getErrorMessage(upErr)}`);
 
     const insertPayload: any = { url: path, ordem: item.ordem };
     if (item.parentKind === "curral") insertPayload.visita_curral_id = item.parentId;
@@ -221,7 +255,7 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
       inserted = insertRes.data;
       insErr = insertRes.error;
     }
-    if (insErr) throw insErr;
+    if (insErr) throw new Error(`Falha ao registrar foto no banco: ${getErrorMessage(insErr)}`);
 
     debugSync("foto confirmada pelo servidor", {
       localId: item.localId,
@@ -263,22 +297,24 @@ async function uploadOne(item: FotoQueueItem): Promise<boolean> {
     await refreshPendingCount();
     return true;
   } catch (err) {
-    debugSync("foto mantida no IndexedDB após falha", {
+    const message = getErrorMessage(err);
+    debugSync("foto mantida no IndexedDB após falha de upload", {
       localId: item.localId,
       visitaId: item.visitaId,
-      error: getErrorMessage(err),
+      error: message,
     });
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
       current.tries = (current.tries ?? 0) + 1;
-      current.lastError = getErrorMessage(err);
+      current.lastError = message;
       await putFoto(current);
     }
     await refreshPendingCount();
     return false;
   }
 }
+
 
 let drainPromise: Promise<void> | null = null;
 
