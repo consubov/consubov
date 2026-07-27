@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useMemo(
+    () => computeConfinamentoPhotoNumbering(
+      currais.map(c => ({ id: c.id, fotos: c.fotos })),
+      topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+    ),
+    [currais, topicos],
+  );
   const [chartType, setChartType] = useState<"bars" | "lines" | "pie" | "radar">("bars");
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
@@ -91,8 +98,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }, []);
 
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const snap = await loadSnapshot(visitaId);
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
@@ -176,12 +183,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setLoading(false);
   }, [visitaId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(false); }, [load]);
   useEffect(() => {
     if (pendingUploads > 0) setHadPendingUploads(true);
     if (pendingUploads === 0 && hadPendingUploads) {
       setHadPendingUploads(false);
-      void load();
+      void load(true);
     }
   }, [pendingUploads, hadPendingUploads, load]);
 
@@ -362,7 +369,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada.");
-      await load();
+      await load(true);
     } finally { setConfirmando(false); }
   }
 
@@ -601,6 +608,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               <PhotoManager
                 curral={c}
                 readOnly={readOnly}
+                numeroMap={numeroMap}
                 onAdd={f => addFoto(c.id, f)}
                 onDelete={f => delFoto(c.id, f)}
                 onMove={(i, d) => moveFoto(c.id, i, d)}
@@ -614,6 +622,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       <VisitaTopicosSection
         visitaId={visita.id}
         onChange={setTopicos}
+        numeroMap={numeroMap}
       />
 
       {/* Título da seção final do PDF (opcional) */}
@@ -782,8 +791,8 @@ function ScoreBlock({ label, value, onChange, disabled }: { label: string; value
   );
 }
 
-function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
-  curral: Curral; readOnly?: boolean;
+function PhotoManager({ curral, readOnly, numeroMap, onAdd, onDelete, onMove }: {
+  curral: Curral; readOnly?: boolean; numeroMap?: Record<string, number>;
   onAdd: (f: File) => void; onDelete: (f: Foto) => void; onMove: (i: number, d: -1 | 1) => void;
 }) {
   const inputId = `photo-curral-${curral.id}`;
@@ -798,6 +807,11 @@ function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
             {curral.signed[f.id]
               ? <img src={curral.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
+            {numeroMap?.[f.id] != null && (
+              <div className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background: "#14432B" }}>
+                {numeroMap[f.id]}
+              </div>
+            )}
             {!readOnly && (
               <>
                 <button type="button" onClick={() => onDelete(f)}

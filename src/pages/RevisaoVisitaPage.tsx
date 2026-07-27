@@ -145,6 +145,13 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useMemo(
+    () => computeRotinaPhotoNumbering(
+      topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+      pastos.map(p => ({ id: p.id, fotos: p.fotos })),
+    ),
+    [topicos, pastos],
+  );
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
@@ -177,18 +184,18 @@ export default function RevisaoVisitaPage() {
     })();
   }, [visitaId]);
 
-  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(); }, [visitaId, tipoLoaded]);
+  useEffect(() => { if (visitaId && tipoLoaded && tipoLoaded !== "confinamento") load(false); }, [visitaId, tipoLoaded]);
   useEffect(() => {
     if (pendingUploads > 0) setHadPendingUploads(true);
     if (pendingUploads === 0 && hadPendingUploads && visitaId && tipoLoaded && tipoLoaded !== "confinamento") {
       setHadPendingUploads(false);
-      void load();
+      void load(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingUploads, hadPendingUploads, visitaId, tipoLoaded]);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     const snap = visitaId ? await loadSnapshot(visitaId) : null;
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && visitaId ? await hasPendingLocalChanges(visitaId) : false;
@@ -427,7 +434,7 @@ export default function RevisaoVisitaPage() {
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada. Pronta para gerar o PDF.");
-      await load();
+      await load(true);
     } finally { setConfirmando(false); }
   }
 
@@ -743,6 +750,7 @@ export default function RevisaoVisitaPage() {
               <PhotoManager
                 pasto={p}
                 readOnly={readOnly}
+                numeroMap={numeroMap}
                 onAdd={f => addFoto(p.id, f)}
                 onDelete={f => delFoto(p.id, f)}
                 onMove={(i, d) => moveFoto(p.id, i, d)}
@@ -757,6 +765,7 @@ export default function RevisaoVisitaPage() {
         visitaId={visitaId!}
         onNotifyEdit={notifyEdit}
         onChange={setTopicos}
+        numeroMap={numeroMap}
       />
 
 
@@ -933,8 +942,8 @@ function ScoreBlock({ label, value, onChange, disabled }: { label: string; value
   );
 }
 
-function PhotoManager({ pasto, readOnly, onAdd, onDelete, onMove }: {
-  pasto: Pasto; readOnly?: boolean;
+function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
+  pasto: Pasto; readOnly?: boolean; numeroMap?: Record<string, number>;
   onAdd: (f: File) => void; onDelete: (f: Foto) => void; onMove: (i: number, d: -1 | 1) => void;
 }) {
   const inputId = `photo-${pasto.id}`;
@@ -949,6 +958,11 @@ function PhotoManager({ pasto, readOnly, onAdd, onDelete, onMove }: {
             {pasto.signed[f.id]
               ? <img src={pasto.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
+            {numeroMap?.[f.id] != null && (
+              <div className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background: "#14432B" }}>
+                {numeroMap[f.id]}
+              </div>
+            )}
             {!readOnly && (
               <>
                 <button type="button" onClick={() => onDelete(f)}
