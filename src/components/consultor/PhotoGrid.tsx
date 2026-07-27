@@ -159,7 +159,7 @@ export default function PhotoGrid({
         blob,
       });
       if (visitaId) {
-        const queuedId = `foto_${Date.now()}`;
+        const queuedId = queued.localId;
         await patchSnapshot(visitaId, (curr) => {
           const key = targetKind === "curral" ? "currais" : "pastos";
           return {
