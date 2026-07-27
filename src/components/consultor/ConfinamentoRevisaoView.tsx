@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
+import { computeConfinamentoPhotoNumbering } from "@/lib/photoNumbering";
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
 import AssinaturasSection, { fetchAssinantes, type Assinante } from "./AssinaturasSection";
