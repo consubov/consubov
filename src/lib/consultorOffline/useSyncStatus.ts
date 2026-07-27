@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
 import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
-import { listAllFotos, listAllMutations } from "./db";
+import { listAllFotos, listAllMutations, listAllSnapshots } from "./db";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface PendingVisitaDebugInfo {
   visitaId: string;
+  fazenda: string;
+  tipo: string;
+  data: string;
+  deleted: boolean;
+  deletedAt?: string | null;
   mutationIds: string[];
   mutationTables: string[];
   photoIds: string[];
@@ -12,14 +18,23 @@ export interface PendingVisitaDebugInfo {
   photoErrors: string[];
 }
 
-export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugInfo[]> {
-  const [muts, fotos] = await Promise.all([listAllMutations(), listAllFotos()]);
+export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: boolean }): Promise<PendingVisitaDebugInfo[]> {
+  const [muts, fotos, snapshots] = await Promise.all([listAllMutations(), listAllFotos(), listAllSnapshots()]);
+  const snapshotById = new Map(snapshots.map((snap) => [snap.visitaId, snap.data as any]));
   const map = new Map<string, PendingVisitaDebugInfo>();
   const ensure = (visitaId: string) => {
     const existing = map.get(visitaId);
     if (existing) return existing;
+    const snap = snapshotById.get(visitaId);
+    const visita = snap?.visita ?? {};
+    const deletedAt = visita.deleted_at ?? null;
     const created: PendingVisitaDebugInfo = {
       visitaId,
+      fazenda: snap?.fazenda?.nome_fazenda || visita.fazenda_nome || visita.fazenda_consultor_nome || "Fazenda não identificada",
+      tipo: visita.tipo || "—",
+      data: visita.hora_inicio || visita.data_visita || "",
+      deleted: Boolean(deletedAt),
+      deletedAt,
       mutationIds: [],
       mutationTables: [],
       photoIds: [],
@@ -35,6 +50,14 @@ export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugIn
     const item = ensure(m.visitaId);
     item.mutationIds.push(m.id);
     item.mutationTables.push(`${m.table}:${m.operation ?? "update"}:${m.status}`);
+    if (m.table === "visitas_tecnicas" && m.patch?.deleted_at) {
+      item.deleted = true;
+      item.deletedAt = String(m.patch.deleted_at);
+    }
+    if (m.table === "visitas_tecnicas") {
+      if (m.patch?.tipo) item.tipo = String(m.patch.tipo);
+      if (m.patch?.hora_inicio) item.data = String(m.patch.hora_inicio);
+    }
   });
   fotos.forEach((f) => {
     if (!f.visitaId) return;
@@ -43,7 +66,28 @@ export async function getPendingVisitaDebugInfos(): Promise<PendingVisitaDebugIn
     item.photoParents.push(`${f.parentKind}:${f.parentId}:${f.status}`);
     if (f.lastError) item.photoErrors.push(`${f.parentKind}:${f.ordem}:${f.lastError}`);
   });
-  return Array.from(map.values()).sort((a, b) => a.visitaId.localeCompare(b.visitaId));
+  const infos = Array.from(map.values());
+  const missingServerIds = infos
+    .filter((item) => !item.deleted && (!item.data || item.fazenda === "Fazenda não identificada" || item.tipo === "—"))
+    .map((item) => item.visitaId);
+  if (missingServerIds.length > 0 && (typeof navigator === "undefined" || navigator.onLine)) {
+    const { data } = await supabase
+      .from("visitas_tecnicas")
+      .select("id, tipo, hora_inicio, deleted_at, fazendas_consultor(nome_fazenda)")
+      .in("id", missingServerIds);
+    ((data as any[]) || []).forEach((row) => {
+      const item = map.get(row.id);
+      if (!item) return;
+      item.fazenda = row.fazendas_consultor?.nome_fazenda || item.fazenda;
+      item.tipo = row.tipo || item.tipo;
+      item.data = row.hora_inicio || item.data;
+      item.deleted = Boolean(row.deleted_at) || item.deleted;
+      item.deletedAt = row.deleted_at || item.deletedAt;
+    });
+  }
+  return infos
+    .filter((item) => options?.includeDeleted || !item.deleted)
+    .sort((a, b) => (b.data || "").localeCompare(a.data || "") || a.visitaId.localeCompare(b.visitaId));
 }
 
 async function computePendingVisitas(): Promise<number> {
