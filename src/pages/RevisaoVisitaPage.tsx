@@ -450,7 +450,7 @@ export default function RevisaoVisitaPage() {
         const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, fotos };
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
