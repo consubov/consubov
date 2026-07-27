@@ -79,6 +79,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     [currais, topicos],
   );
   const [chartType, setChartType] = useState<"bars" | "lines" | "pie" | "radar">("bars");
+  type SCK = "bars" | "lines" | "pie" | "radar";
+  const [sampleChartFezes, setSampleChartFezes] = useState<SCK>("lines");
+  const [sampleChartCorporal, setSampleChartCorporal] = useState<SCK>("lines");
+  const [sampleChartBebedouro, setSampleChartBebedouro] = useState<SCK>("lines");
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
@@ -469,6 +473,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         currais: curraisForPdf,
         numeroMap,
         chartType,
+        sampleChartTypes: {
+          fezes: sampleChartFezes,
+          corporal: sampleChartCorporal,
+          bebedouro: sampleChartBebedouro,
+        },
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
