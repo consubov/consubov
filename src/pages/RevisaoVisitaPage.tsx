@@ -482,14 +482,14 @@ export default function RevisaoVisitaPage() {
       // Refetch fresh fotos direct from Supabase — local state may still carry
       // queued: URLs from photos that just synced.
       const topicosForPdf = await Promise.all(topicos.map(async t => {
-        const { data: fresh } = await withConsultorTimeout((supabase as any).from("visita_topico_fotos")
+        const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
-        const { data: fresh } = await withConsultorTimeout(supabase.from("visita_fotos")
+        const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
           .select("*").eq("visita_pasto_id", p.id).order("ordem"), "busca de fotos dos pastos");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return {
