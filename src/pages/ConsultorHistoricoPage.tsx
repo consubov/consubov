@@ -80,6 +80,7 @@ export default function ConsultorHistoricoPage() {
           tipo: visita.tipo || existing?.tipo || "rotina",
           status: visita.status || existing?.status || "rascunho",
           hora_inicio: visita.hora_inicio || existing?.hora_inicio || new Date().toISOString(),
+          consultor_id: visita.consultor_id || existing?.consultor_id || consultorId,
           fazenda_consultor_id: visita.fazenda_consultor_id || existing?.fazenda_consultor_id || "",
           pdf_url: visita.pdf_url || existing?.pdf_url || null,
           fazendas_consultor: {
