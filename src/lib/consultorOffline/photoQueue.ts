@@ -14,6 +14,7 @@ import {
 import { drainMutations } from "./mutationQueue";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
+import { getBlobDiagnostic } from "./photoBlob";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -121,7 +122,21 @@ export async function enqueuePhoto(params: {
     tries: 0,
     status: "pending",
   };
-  await putFoto(item);
+  try {
+    await putFoto(item);
+  } catch (err) {
+    console.error("[consultor-photo-queue] foto não foi adicionada à fila local", {
+      localId,
+      visitaId: params.visitaId,
+      parentKind: params.parentKind,
+      parentId: params.parentId,
+      ordem: params.ordem,
+      fileName: params.fileName,
+      blob: getBlobDiagnostic(params.blob),
+      error: getErrorMessage(err),
+    }, err);
+    throw new Error(`Não foi possível salvar a foto ${params.ordem} no aparelho. Tente tirar ou selecionar a foto novamente.`);
+  }
   await refreshPendingCount();
   // Dá tempo para o componente persistir o preview no snapshot antes do upload
   // começar; evita corrida em que o servidor confirma e depois o caller grava

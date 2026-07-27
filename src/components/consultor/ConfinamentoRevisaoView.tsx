@@ -18,9 +18,9 @@ import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
-import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
+import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
@@ -289,14 +289,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     let ordem = 1;
     while (usadas.has(ordem) && ordem <= MAX_FOTOS) ordem++;
     try {
-      const dataUrl = await compressImageFileToDataUrl(file, { maxDimension: 1600, quality: 0.78, maxBytes: 900_000 });
-      if (!dataUrl) throw new Error("Falha ao processar imagem");
-      const [meta, b64] = dataUrl.split(",");
-      const mime = /data:(.*?);base64/.exec(meta)?.[1] || "image/jpeg";
-      const bin = atob(b64);
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      const blob = new Blob([arr], { type: mime });
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, { maxDimension: 1600, quality: 0.78, maxBytes: 900_000 });
       const queued = await enqueuePhoto({ visitaId, parentKind: "curral", parentId: curralId, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as Foto;
       updateCurral(curralId, {

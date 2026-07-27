@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
 
 const DB_NAME = "consubov-consultor-offline";
 const DB_VERSION = 2;
@@ -19,6 +20,12 @@ export interface FotoQueueItem {
   lastError?: string;
   status: "pending" | "uploading" | "error";
 }
+
+type StoredFotoQueueItem = Omit<FotoQueueItem, "blob"> & {
+  blob?: Blob;
+  blobBuffer?: ArrayBuffer;
+  blobType?: string;
+};
 
 export interface VisitaSnapshot {
   visitaId: string;
@@ -43,7 +50,7 @@ export interface TextMutation {
 interface ConsultorSchema extends DBSchema {
   foto_queue: {
     key: string;
-    value: FotoQueueItem;
+    value: StoredFotoQueueItem;
     indexes: { "by-visita": string; "by-parent": [string, string] };
   };
   snapshots: {
@@ -58,6 +65,50 @@ interface ConsultorSchema extends DBSchema {
 }
 
 let dbp: Promise<IDBPDatabase<ConsultorSchema>> | null = null;
+
+function isBlobPreparationError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err || "");
+  const name = err instanceof Error ? err.name : "";
+  return /Blob\/File data|DataCloneError|structured clone|could not be cloned/i.test(`${name} ${message}`);
+}
+
+function describePhotoWrite(item: Pick<FotoQueueItem, "localId" | "visitaId" | "parentKind" | "parentId" | "ordem" | "mime" | "size" | "fileName" | "status">, blobValue?: unknown) {
+  return {
+    localId: item.localId,
+    visitaId: item.visitaId,
+    parentKind: item.parentKind,
+    parentId: item.parentId,
+    ordem: item.ordem,
+    fileName: item.fileName,
+    mime: item.mime,
+    size: item.size,
+    status: item.status,
+    blob: getBlobDiagnostic(blobValue),
+  };
+}
+
+async function hydrateFoto(item: StoredFotoQueueItem): Promise<FotoQueueItem> {
+  if (item.blob) {
+    assertValidPhotoBlob(item.blob, `foto ${item.ordem}`);
+    return { ...item, blob: item.blob } as FotoQueueItem;
+  }
+  if (item.blobBuffer) {
+    const blob = new Blob([item.blobBuffer.slice(0)], { type: item.blobType || item.mime || "image/jpeg" });
+    assertValidPhotoBlob(blob, `foto ${item.ordem}`);
+    return { ...item, blob } as FotoQueueItem;
+  }
+  console.error("[consultor-photo-idb] item de foto sem Blob armazenável", describePhotoWrite(item as FotoQueueItem, undefined));
+  throw new Error(`Foto ${item.ordem}: dados locais ausentes`);
+}
+
+async function hydrateFotos(items: StoredFotoQueueItem[]): Promise<FotoQueueItem[]> {
+  const settled = await Promise.allSettled(items.map(hydrateFoto));
+  return settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.error("[consultor-photo-idb] foto ignorada por dados locais inválidos", describePhotoWrite(items[index] as FotoQueueItem, (items[index] as StoredFotoQueueItem).blob), result.reason);
+    return [];
+  });
+}
 
 export function getDb() {
   if (!dbp) {
@@ -86,7 +137,35 @@ export function getDb() {
 // ===== Photo queue =====
 export async function putFoto(item: FotoQueueItem) {
   const db = await getDb();
-  await db.put("foto_queue", item);
+  const { blob, buffer } = await clonePhotoBlob(item.blob, item.mime || "image/jpeg");
+  const normalized: StoredFotoQueueItem = {
+    ...item,
+    blob,
+    mime: blob.type || item.mime || "image/jpeg",
+    size: item.size ?? blob.size,
+  };
+  try {
+    await db.put("foto_queue", normalized);
+  } catch (err) {
+    console.error("[consultor-photo-idb] falha ao gravar foto no IndexedDB", describePhotoWrite(normalized as FotoQueueItem, normalized.blob), err);
+    if (!isBlobPreparationError(err)) throw err;
+
+    // WebKit/iOS pode rejeitar Blob/File genuíno no IndexedDB. Para não criar
+    // pendência fantasma, persistimos os bytes clonáveis e reidratamos Blob ao ler.
+    const fallback: StoredFotoQueueItem = {
+      ...normalized,
+      blob: undefined,
+      blobBuffer: buffer.slice(0),
+      blobType: normalized.mime,
+    };
+    try {
+      await db.put("foto_queue", fallback);
+      console.warn("[consultor-photo-idb] foto salva com fallback ArrayBuffer após rejeição de Blob/File", describePhotoWrite(fallback as FotoQueueItem, blob));
+    } catch (fallbackErr) {
+      console.error("[consultor-photo-idb] fallback ArrayBuffer também falhou; foto não entrou na fila", describePhotoWrite(fallback as FotoQueueItem, blob), fallbackErr);
+      throw fallbackErr;
+    }
+  }
 }
 export async function deleteFoto(localId: string) {
   const db = await getDb();
@@ -94,7 +173,8 @@ export async function deleteFoto(localId: string) {
 }
 export async function getFoto(localId: string) {
   const db = await getDb();
-  return db.get("foto_queue", localId);
+  const item = await db.get("foto_queue", localId);
+  return item ? hydrateFoto(item) : undefined;
 }
 export async function updateFotoOrdem(localId: string, ordem: number) {
   const current = await getFoto(localId);
@@ -103,15 +183,14 @@ export async function updateFotoOrdem(localId: string, ordem: number) {
 }
 export async function listFotosByParent(kind: "pasto" | "curral" | "topico", id: string) {
   const db = await getDb();
-  return db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
+  return hydrateFotos(await db.getAllFromIndex("foto_queue", "by-parent", [kind, id]));
 }
 export async function listAllFotos() {
   const db = await getDb();
-  return db.getAll("foto_queue");
+  return hydrateFotos(await db.getAll("foto_queue"));
 }
 export async function listFotosByVisita(visitaId: string) {
-  const db = await getDb();
-  const items = await db.getAll("foto_queue");
+  const items = await listAllFotos();
   return items.filter((item) => item.visitaId === visitaId);
 }
 export async function listFailedFotos() {
@@ -130,8 +209,8 @@ export async function retryFoto(localId: string) {
   });
 }
 export async function countAllFotos() {
-  const db = await getDb();
-  return db.count("foto_queue");
+  const items = await listAllFotos();
+  return items.length;
 }
 // Conta TODAS as fotos ainda no cache local. Uma foto só sai do cache quando é
 // confirmada no Supabase Storage — portanto qualquer item aqui é pendente.
