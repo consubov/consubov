@@ -71,6 +71,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [chartType, setChartType] = useState<"bars" | "lines" | "pie" | "radar">("bars");
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
