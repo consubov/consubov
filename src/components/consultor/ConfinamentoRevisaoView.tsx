@@ -608,6 +608,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               <PhotoManager
                 curral={c}
                 readOnly={readOnly}
+                numeroMap={numeroMap}
                 onAdd={f => addFoto(c.id, f)}
                 onDelete={f => delFoto(c.id, f)}
                 onMove={(i, d) => moveFoto(c.id, i, d)}
