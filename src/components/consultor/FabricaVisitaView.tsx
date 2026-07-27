@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/components/consultor/AssinaturasSection";
+import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
@@ -50,6 +52,8 @@ export default function FabricaVisitaView({
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [notaIds, setNotaIds] = useState<Record<string, string>>({});
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [assinantes, setAssinantes] = useState<Assinante[]>([]);
+  void assinantes;
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
@@ -166,6 +170,7 @@ export default function FabricaVisitaView({
         quesitos: QUESITOS.map(q => ({ chave: q.key, rotulo: q.label, nota: notas[q.key] ?? null })),
         topicos: topicosFresh,
         numeroMap: numeroMapFresh,
+        assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
@@ -275,6 +280,27 @@ export default function FabricaVisitaView({
         visitaId={visitaId}
         onChange={setTopicos}
         numeroMap={numeroMap}
+      />
+
+      {/* Data e horário editáveis */}
+      <VisitaDateTimeEditor
+        horaInicio={visita.hora_inicio}
+        horaFim={visita.hora_fim}
+        onChange={async (patch) => {
+          setVisita(prev => ({ ...prev, ...patch } as Visita));
+          await offlineUpdate({
+            visitaId,
+            table: "visitas_tecnicas",
+            rowId: visitaId,
+            patch: patch as any,
+          });
+        }}
+      />
+
+      {/* Assinaturas — múltiplos consultores */}
+      <AssinaturasSection
+        visitaId={visitaId}
+        onChange={setAssinantes}
       />
 
       <div className="sticky bottom-16 pt-2 space-y-2">

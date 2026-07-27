@@ -16,6 +16,8 @@ import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
+import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/components/consultor/AssinaturasSection";
+import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -139,6 +141,7 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
@@ -493,6 +496,7 @@ export default function RevisaoVisitaPage() {
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
         topicos: topicosForPdf,
+        assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
@@ -739,6 +743,23 @@ export default function RevisaoVisitaPage() {
           });
         })()}
       </div>
+
+      {/* Data e horário editáveis */}
+      <VisitaDateTimeEditor
+        horaInicio={visita.hora_inicio}
+        horaFim={visita.hora_fim}
+        onChange={async (patch) => {
+          setVisita(prev => prev ? { ...prev, ...patch } as Visita : prev);
+          await autosaveVisita(patch as any);
+        }}
+      />
+
+      {/* Assinaturas — múltiplos consultores */}
+      <AssinaturasSection
+        visitaId={visitaId!}
+        onNotifyEdit={notifyEdit}
+        onChange={setAssinantes}
+      />
 
 
       {/* Botão fixo por status — acima da nav */}

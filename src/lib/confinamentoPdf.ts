@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
+import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -41,6 +42,7 @@ export interface ConfinamentoPdfData {
   currais: ConfinamentoPdfCurral[];
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
+  assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
 }
 
@@ -597,16 +599,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
   }
 
-  const sigY = pageH - 40;
-  doc.setDrawColor(INK_SOFT);
-  doc.setLineWidth(0.3);
-  doc.line(pageW / 2 - 40, sigY, pageW / 2 + 40, sigY);
-  doc.setTextColor(INK_SOFT);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.consultor.nome || "Consultor", pageW / 2, sigY + 5, { align: "center" });
-  doc.setFontSize(8);
-  doc.text("Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
+  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {

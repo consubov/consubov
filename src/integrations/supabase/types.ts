@@ -5150,6 +5150,44 @@ export type Database = {
           },
         ]
       }
+      visita_assinantes: {
+        Row: {
+          cargo_funcao: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+          visita_id: string
+        }
+        Insert: {
+          cargo_funcao?: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+          visita_id: string
+        }
+        Update: {
+          cargo_funcao?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_assinantes_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visita_currais: {
         Row: {
           created_at: string

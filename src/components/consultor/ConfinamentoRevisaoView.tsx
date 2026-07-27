@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
+import AssinaturasSection, { fetchAssinantes, type Assinante } from "./AssinaturasSection";
+import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -66,6 +68,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
@@ -418,6 +421,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
         },
+        assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         topicos: await Promise.all(topicos.map(async t => {
           const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
             .select("*").eq("visita_topico_id", t.id).order("ordem");
@@ -578,6 +582,23 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           placeholder="Observações e Recomendações"
         />
       </div>
+
+      {/* Data e horário editáveis */}
+      <VisitaDateTimeEditor
+        horaInicio={visita.hora_inicio}
+        horaFim={visita.hora_fim}
+        onChange={async (patch) => {
+          setVisita(prev => prev ? { ...prev, ...patch } as Visita : prev);
+          await autosaveVisita(patch as any);
+        }}
+      />
+
+      {/* Assinaturas — múltiplos consultores */}
+      <AssinaturasSection
+        visitaId={visita.id}
+        onNotifyEdit={notifyEdit}
+        onChange={setAssinantes}
+      />
 
 
 
