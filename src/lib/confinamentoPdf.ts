@@ -48,6 +48,7 @@ export interface ConfinamentoPdfData {
   numeroMap?: Record<string, number>;
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
+  chartType?: "bars" | "lines" | "pie" | "radar";
 }
 
 /** Selo numerado (canto sup. esquerdo da foto). */
