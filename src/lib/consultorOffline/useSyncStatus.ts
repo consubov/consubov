@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
 import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
-import { listAllFotos, listAllMutations, listAllSnapshots } from "./db";
+import { listAllFotos, listAllMutations, listAllSnapshots, putSnapshot } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface PendingVisitaDebugInfo {
@@ -71,19 +71,31 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     .filter((item) => !item.deleted)
     .map((item) => item.visitaId);
   if (serverLookupIds.length > 0 && (typeof navigator === "undefined" || navigator.onLine)) {
-    const { data } = await supabase
-      .from("visitas_tecnicas")
-      .select("id, tipo, hora_inicio, deleted_at, fazendas_consultor(nome_fazenda)")
-      .in("id", serverLookupIds);
-    ((data as any[]) || []).forEach((row) => {
-      const item = map.get(row.id);
-      if (!item) return;
-      item.fazenda = row.fazendas_consultor?.nome_fazenda || item.fazenda;
-      item.tipo = row.tipo || item.tipo;
-      item.data = row.hora_inicio || item.data;
-      item.deleted = Boolean(row.deleted_at) || item.deleted;
-      item.deletedAt = row.deleted_at || item.deletedAt;
-    });
+    try {
+      const { data } = await supabase
+        .from("visitas_tecnicas")
+        .select("id, tipo, hora_inicio, deleted_at, fazendas_consultor(nome_fazenda)")
+        .in("id", serverLookupIds);
+      await Promise.all(((data as any[]) || []).map(async (row) => {
+        const item = map.get(row.id);
+        if (!item) return;
+        item.fazenda = row.fazendas_consultor?.nome_fazenda || item.fazenda;
+        item.tipo = row.tipo || item.tipo;
+        item.data = row.hora_inicio || item.data;
+        item.deleted = Boolean(row.deleted_at) || item.deleted;
+        item.deletedAt = row.deleted_at || item.deletedAt;
+        if (row.deleted_at) {
+          const snap = snapshotById.get(row.id) ?? {};
+          await putSnapshot({
+            visitaId: row.id,
+            data: { ...snap, visita: { ...(snap.visita || {}), id: row.id, deleted_at: row.deleted_at } },
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }));
+    } catch (err) {
+      if (import.meta.env.DEV) console.debug("[consultor-sync] consulta de deleted_at falhou", err);
+    }
   }
   return infos
     .filter((item) => options?.includeDeleted || !item.deleted)
