@@ -218,6 +218,9 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         <FabricaScore label="Organização de Insumos" value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
       </Card>
 
+      {/* Indicadores Zootécnicos (única por visita) */}
+      <IndicadoresZootecnicosSection visitaId={visitaId} readOnly={readOnly} />
+
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Currais avaliados ({currais.length})</h2>
         {!readOnly && (

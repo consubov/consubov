@@ -15,6 +15,7 @@ import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSam
 import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
 import AssinaturasSection, { fetchAssinantes, type Assinante } from "./AssinaturasSection";
 import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
+import IndicadoresZootecnicosSection, { fetchIndicadoresParaPdf } from "./IndicadoresZootecnicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -568,6 +569,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           <ScoreBlock label="Org. Insumos" value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
         </div>
       </div>
+
+      {/* Indicadores Zootécnicos (única por visita) */}
+      <IndicadoresZootecnicosSection visitaId={visita.id} readOnly={readOnly} />
 
       {/* Blocos de curral */}
       <div className="space-y-3">
