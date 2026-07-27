@@ -6,6 +6,7 @@ import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
+import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -90,9 +91,12 @@ async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Pro
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
   try {
-    const { data } = await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60);
+    const { data } = await withConsultorTimeout(
+      supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60),
+      "assinatura da foto do relatório",
+    );
     if (!data?.signedUrl) return null;
-    const res = await fetch(data.signedUrl);
+    const res = await fetchWithConsultorTimeout(data.signedUrl, "download da foto do relatório");
     const blob = await res.blob();
     return await compressImageBlob(blob);
   } catch { return null; }
@@ -100,7 +104,7 @@ async function fetchFotoDataUrl(path: string): Promise<string | null> {
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetchWithConsultorTimeout(url, "download do asset do relatório");
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
@@ -128,11 +132,14 @@ async function fetchLogoAsset(path: string | null | undefined): Promise<LogoAsse
   try {
     let res: Response;
     if (/^https?:\/\//i.test(path)) {
-      res = await fetch(path);
+      res = await fetchWithConsultorTimeout(path, "download da logo do relatório");
     } else {
-      const { data } = await supabase.storage.from(BUCKET_LOGOS).createSignedUrl(path, 60 * 60);
+      const { data } = await withConsultorTimeout(
+        supabase.storage.from(BUCKET_LOGOS).createSignedUrl(path, 60 * 60),
+        "assinatura da logo do relatório",
+      );
       if (!data?.signedUrl) return null;
-      res = await fetch(data.signedUrl);
+      res = await fetchWithConsultorTimeout(data.signedUrl, "download da logo do relatório");
     }
     const blob = await res.blob();
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -701,9 +708,9 @@ export async function uploadVisitaPdf(
   blob: Blob, fileName: string, consultorId: string, visitaId: string,
 ): Promise<string> {
   const path = `visitas-consultor/${consultorId}/${visitaId}/${fileName}`;
-  const { error } = await supabase.storage
+  const { error } = await withConsultorTimeout(supabase.storage
     .from(BUCKET_RELATORIOS)
-    .upload(path, blob, { upsert: true, contentType: "application/pdf" });
+    .upload(path, blob, { upsert: true, contentType: "application/pdf" }), "upload do PDF");
   if (error) throw error;
   const { data } = supabase.storage.from(BUCKET_RELATORIOS).getPublicUrl(path);
   return data.publicUrl;

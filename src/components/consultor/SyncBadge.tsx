@@ -3,6 +3,8 @@ import { Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/consultorOffline/network";
 
 interface Props {
   className?: string;
@@ -43,6 +45,17 @@ export default function SyncBadge({ className, compact }: Props) {
   const hasPending = pending > 0;
   const disabled = syncing || !hasPending || !online;
 
+  const handleSync = async () => {
+    try {
+      await syncNow();
+    } catch (err) {
+      const motivo = getErrorMessage(err);
+      toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+        action: { label: "Tentar novamente", onClick: () => void handleSync() },
+      });
+    }
+  };
+
   // Sempre visível: mesmo durante o drain, mostrar progresso para o usuário
   // acompanhar quantas visitas estão sendo sincronizadas.
 
@@ -67,7 +80,7 @@ export default function SyncBadge({ className, compact }: Props) {
 
   return (
     <Button
-      onClick={() => void syncNow()}
+      onClick={() => void handleSync()}
       disabled={disabled}
       className={cn(
         "w-full gap-2 font-semibold text-white shadow-sm",

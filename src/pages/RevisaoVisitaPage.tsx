@@ -21,6 +21,7 @@ import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
@@ -441,12 +442,15 @@ export default function RevisaoVisitaPage() {
     // Se houver pendências desta visita, sincroniza primeiro e aguarda concluir.
     if (await hasPendingLocalChanges(visita.id)) {
       const tSync = toast.loading("Sincronizando dados desta visita…");
-      const { syncVisitaAndWait } = await import("@/lib/consultorOffline/snapshotStore");
-      const ok = await syncVisitaAndWait(visita.id, 90000);
+      const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
+      const result = await syncVisitaWithRetries(visita.id, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
-      if (!ok) {
+      if (!result.ok) {
         setPendingThisVisit(true);
-        toast.error("Ainda há itens pendentes. Toque em Sincronizar e tente novamente.");
+        const motivo = result.reason || "Ainda há itens pendentes.";
+        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+          action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
+        });
         return;
       }
       setPendingThisVisit(false);
@@ -478,15 +482,15 @@ export default function RevisaoVisitaPage() {
       // Refetch fresh fotos direct from Supabase — local state may still carry
       // queued: URLs from photos that just synced.
       const topicosForPdf = await Promise.all(topicos.map(async t => {
-        const { data: fresh } = await (supabase as any).from("visita_topico_fotos")
-          .select("*").eq("visita_topico_id", t.id).order("ordem");
+        const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
+          .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
-        const { data: fresh } = await supabase.from("visita_fotos")
-          .select("*").eq("visita_pasto_id", p.id).order("ordem");
+        const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
+          .select("*").eq("visita_pasto_id", p.id).order("ordem"), "busca de fotos dos pastos");
         const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
@@ -538,12 +542,15 @@ export default function RevisaoVisitaPage() {
       });
 
 
-      const pdfUrl = await uploadVisitaPdf(blob, fileName, visita.consultor_id, visita.id);
-      const { error } = await supabase.from("visitas_tecnicas").update({
+      const pdfUrl = await withConsultorTimeout(
+        uploadVisitaPdf(blob, fileName, visita.consultor_id, visita.id),
+        "upload do PDF",
+      );
+      const { error } = await withConsultorTimeout(supabase.from("visitas_tecnicas").update({
         pdf_url: pdfUrl,
         status: "finalizada",
         hora_fim: visita.hora_fim || new Date().toISOString(),
-      }).eq("id", visita.id);
+      }).eq("id", visita.id), "finalização da visita");
       if (error) throw error;
 
       toast.dismiss(t);
@@ -551,7 +558,7 @@ export default function RevisaoVisitaPage() {
       navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + (err?.message || "desconhecido"));
+      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 
