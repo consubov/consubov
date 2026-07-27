@@ -16,7 +16,7 @@ import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { hasPendingLocalChanges, loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 interface Visita {
@@ -24,6 +24,7 @@ interface Visita {
   hora_inicio: string; hora_fim: string | null;
   fazenda_consultor_id: string; pdf_url: string | null;
   consultor_id: string;
+  deleted_at?: string | null;
 }
 interface Fazenda {
   id: string; nome_fazenda: string;
@@ -77,6 +78,7 @@ export default function FabricaVisitaView({
 
   async function loadDados() {
     const snap = await loadSnapshot(visitaId);
+    if (isVisitaDeleted(snap?.visita as any)) return;
     setFazendaAtual(fazenda || (snap?.fazenda as Fazenda | undefined) || null);
     const online = typeof navigator === "undefined" || navigator.onLine;
     const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);

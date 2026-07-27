@@ -16,7 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { hasPendingLocalChanges, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -27,6 +27,7 @@ interface Visita {
   observacoes_gerais: string | null;
   conclusao: string | null;
   fazenda_consultor_id: string;
+  deleted_at?: string | null;
 }
 interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
 
@@ -108,10 +109,11 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
 
     // refresh visita
     const vRes = online && !preferLocal
-      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).maybeSingle()
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).is("deleted_at", null).maybeSingle()
       : { data: null };
     if (vRes.data) {
       const v = vRes.data as Visita;
+      if (isVisitaDeleted(v as any)) { setLoading(false); return; }
       setVisita(v);
       setObsGerais(v.observacoes_gerais || "");
       setConclusao(v.conclusao || "");

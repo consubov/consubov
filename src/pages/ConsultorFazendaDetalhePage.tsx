@@ -30,6 +30,7 @@ interface Visita {
   status: string;
   hora_inicio: string;
   hora_fim: string | null;
+  deleted_at?: string | null;
 }
 
 export default function ConsultorFazendaDetalhePage() {
@@ -55,6 +56,7 @@ export default function ConsultorFazendaDetalhePage() {
             supabase.from("fazendas_consultor").select("*").eq("id", fazendaId!).maybeSingle(),
             supabase.from("visitas_tecnicas").select("id, tipo, status, hora_inicio, hora_fim")
               .eq("fazenda_consultor_id", fazendaId!)
+              .is("deleted_at", null)
               .order("hora_inicio", { ascending: false }),
           ])
         : [{ data: null }, { data: null }];
@@ -67,14 +69,14 @@ export default function ConsultorFazendaDetalhePage() {
         window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ ...(cached || {}), fazenda: fazendaRow }));
       }
       setFazenda(fazendaRow);
-      setVisitas((vRes.data as Visita[]) || cached?.visitas || []);
+      setVisitas(((vRes.data as Visita[]) || cached?.visitas || []).filter((v: Visita) => !v.deleted_at));
     } catch {
       const cached = (() => {
         try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
         catch { return null; }
       })();
       setFazenda(cached?.fazenda || null);
-      setVisitas(cached?.visitas || []);
+      setVisitas((cached?.visitas || []).filter((v: Visita) => !v.deleted_at));
     }
     setLoading(false);
   }

@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/consultorOffline/network";
+import { retryQueuedPhoto } from "@/lib/consultorOffline/photoQueue";
 
 interface Props {
   className?: string;
@@ -17,7 +18,7 @@ interface Props {
  * Auto-sincroniza em segundo plano ao detectar internet; o clique força/repete.
  */
 export default function SyncBadge({ className, compact }: Props) {
-  const { pending, photoPending, mutPending, syncing, syncNow } = useSyncStatus();
+  const { pending, photoPending, mutPending, photoFailures, syncing, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -44,10 +45,17 @@ export default function SyncBadge({ className, compact }: Props) {
 
   const hasPending = pending > 0;
   const disabled = syncing || !hasPending || !online;
+  const hasPhotoFailures = photoFailures.length > 0;
 
   const handleSync = async () => {
     try {
       await syncNow();
+      if (photoFailures.length > 0) {
+        const first = photoFailures[0];
+        toast.error(`${photoFailures.length} foto(s) com falha. ${first.label}: ${first.lastError} (${first.mime}, ${first.sizeLabel}).`, {
+          action: { label: `Reenviar ${first.ordem}`, onClick: () => void retryQueuedPhoto(first.localId) },
+        });
+      }
     } catch (err) {
       const motivo = getErrorMessage(err);
       toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
@@ -64,6 +72,7 @@ export default function SyncBadge({ className, compact }: Props) {
       const total = pending || 1;
       return `Sincronizando… ${total} visita${total === 1 ? "" : "s"} pendente${total === 1 ? "" : "s"}`;
     }
+    if (hasPhotoFailures) return `${photoFailures.length} foto${photoFailures.length === 1 ? "" : "s"} com falha`;
     if (!online && hasPending) return `Sem conexão · ${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`;
     if (hasPending) return `Sincronizar (${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"})`;
     if (showDone) return "Sincronização concluída ✓";
@@ -72,6 +81,8 @@ export default function SyncBadge({ className, compact }: Props) {
 
   const Icon = syncing
     ? Loader2
+    : hasPhotoFailures
+      ? AlertCircle
     : !online && hasPending
       ? WifiOff
       : hasPending
@@ -91,6 +102,11 @@ export default function SyncBadge({ className, compact }: Props) {
     >
       <Icon className={cn("w-4 h-4", syncing && "animate-spin")} />
       <span className="truncate">{label}</span>
+      {hasPhotoFailures && !compact && (
+        <span className="sr-only">
+          {photoFailures.map(f => `${f.label}: ${f.lastError}`).join("; ")}
+        </span>
+      )}
     </Button>
   );
 }

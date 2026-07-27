@@ -65,6 +65,7 @@ export default function ConsultorPainelPage() {
         .from("visitas_tecnicas")
         .select("id, fazenda_consultor_id, hora_inicio, status, tipo")
         .eq("consultor_id", consultorId)
+        .is("deleted_at", null)
         .gte("hora_inicio", iniISO)
         .lte("hora_inicio", fimISO + "T23:59:59");
       setVisitas(vs ?? []);

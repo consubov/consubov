@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { listPendingVisitaIds } from "@/lib/consultorOffline/db";
-import { loadAllSnapshots } from "@/lib/consultorOffline/snapshotStore";
+import { isVisitaDeleted, loadAllSnapshots, softDeleteVisita } from "@/lib/consultorOffline/snapshotStore";
 
 interface VisitaItem {
   id: string;
@@ -23,6 +23,7 @@ interface VisitaItem {
   hora_inicio: string;
   fazenda_consultor_id: string;
   pdf_url: string | null;
+  deleted_at?: string | null;
   fazendas_consultor: { nome_fazenda: string } | null;
   _pendingLocal?: boolean;
   _localOnly?: boolean;
@@ -48,8 +49,9 @@ export default function ConsultorHistoricoPage() {
         online
           ? supabase
               .from("visitas_tecnicas")
-              .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, fazendas_consultor(nome_fazenda)")
+              .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, deleted_at, fazendas_consultor(nome_fazenda)")
               .eq("consultor_id", consultorId)
+              .is("deleted_at", null)
               .order("hora_inicio", { ascending: false })
           : Promise.resolve({ data: [] }),
         loadAllSnapshots(),
@@ -63,6 +65,10 @@ export default function ConsultorHistoricoPage() {
       snapshots.forEach(({ visitaId, data: snap }) => {
         const visita = snap.visita as any;
         if (!visita || visita.consultor_id !== consultorId) return;
+        if (isVisitaDeleted(visita)) {
+          map.delete(visitaId);
+          return;
+        }
         const isPending = pending.has(visitaId);
         const existing = map.get(visitaId);
         if (!isPending && existing) return;
@@ -103,9 +109,9 @@ export default function ConsultorHistoricoPage() {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", toDelete.id);
-      if (error) throw error;
-      toast.success("Visita excluída.");
+      const result = await softDeleteVisita({ visitaId: toDelete.id, visita: toDelete as any });
+      setVisitas(prev => prev.filter(v => v.id !== toDelete.id));
+      toast.success(result.queued ? "Visita excluída off-line. A exclusão será sincronizada." : "Visita excluída.");
       setToDelete(null);
       await load();
     } catch (err: any) {
@@ -177,7 +183,7 @@ export default function ConsultorHistoricoPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir visita?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Essa ação não pode ser desfeita. Todos os dados desta visita (pastos/currais, notas, fotos, PDF) serão removidos.
+              Tem certeza? A visita será ocultada do histórico e a exclusão será sincronizada entre este aparelho e o servidor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
