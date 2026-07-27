@@ -48,7 +48,7 @@ export function dataUrlToPhotoBlob(dataUrl: string): Blob {
   const bin = atob(b64);
   const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  const blob = new Blob([arr.buffer], { type: mime });
+  const blob = new Blob([arr], { type: mime });
   assertValidPhotoBlob(blob, "foto processada");
   return blob;
 }
