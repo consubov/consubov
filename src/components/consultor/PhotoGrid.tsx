@@ -174,6 +174,7 @@ export default function PhotoGrid({
           };
         });
       }
+      setQueuedPreviews(prev => ({ ...prev, [ordem]: dataUrl }));
       // Clear inline pending — the queue-driven refresh will render it
       setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
