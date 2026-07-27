@@ -746,21 +746,24 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   // CURRAIS — fluxo contínuo, bloco atômico de 130mm
   const blockH = 130;
   const gap = 8;
+  const scaleH = 6;
   let scaleShown = false;
-  const showScaleOnce = () => {
+  const showScaleInline = () => {
     doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(INK_SOFT);
-    doc.text(SCORE_SCALE_HINT, pageW - 15, 20, { align: "right" });
+    doc.text(SCORE_SCALE_HINT, 15, y);
+    y += scaleH;
   };
   for (const c of data.currais) {
+    const need = blockH + (scaleShown ? 0 : scaleH);
     // se não couber, abre nova página com header slim
-    if (y + blockH > pageH - 20) {
+    if (y + need > pageH - 20) {
       doc.addPage();
       y = slimHeader();
       scaleShown = false;
     }
-    if (!scaleShown) { showScaleOnce(); scaleShown = true; }
+    if (!scaleShown) { showScaleInline(); scaleShown = true; }
     await drawCurralBlock(doc, c, fotosCache, 15, y, pageW - 30, blockH, numeroMap);
     y += blockH + gap;
   }
