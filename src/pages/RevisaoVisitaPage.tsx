@@ -150,6 +150,7 @@ export default function RevisaoVisitaPage() {
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [salvandoOffline, setSalvandoOffline] = useState(false);
+  const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
 
   useEffect(() => {
     const on = () => setOnline(true);
@@ -558,7 +559,8 @@ export default function RevisaoVisitaPage() {
 
       toast.dismiss(t);
       toast.success("PDF gerado e visita finalizada!");
-      navigate("/consultor/historico");
+      setVisita(v => v ? { ...v, pdf_url: pdfUrl, status: "finalizada" } : v);
+      setPdfVisualizar({ url: pdfUrl, nome: fazenda.nome_fazenda || "visita" });
     } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
@@ -859,10 +861,12 @@ export default function RevisaoVisitaPage() {
           )}
           {visita.status === "finalizada" && visita.pdf_url && (
             <>
-              <Button asChild variant="outline" className="flex-1 gap-1.5">
-                <a href={visita.pdf_url} download>
-                  <Download className="w-4 h-4" /> Baixar
-                </a>
+              <Button
+                variant="outline"
+                className="flex-1 gap-1.5"
+                onClick={() => setPdfVisualizar({ url: visita.pdf_url!, nome: fazenda?.nome_fazenda || "visita" })}
+              >
+                <FileText className="w-4 h-4" /> Ver PDF
               </Button>
               <Button onClick={compartilhar} className="flex-1 gap-1.5" style={{ background: "#1F7A4D", color: "white" }}>
                 <Share2 className="w-4 h-4" /> Enviar
