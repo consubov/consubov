@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
