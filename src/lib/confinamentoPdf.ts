@@ -455,23 +455,65 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   ]);
   const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
-  const allFotos = data.currais.flatMap(c => c.fotos.slice(0, 5));
+  const allFotos = [
+    ...data.currais.flatMap(c => c.fotos.slice(0, 5)),
+    ...((data.topicos || []).flatMap(t => t.fotos.slice(0, 5))),
+  ];
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+
+  const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
+  const zonaOf = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
+    if (t.zona) return t.zona;
+    if (t.ordem >= 1001) return "conclusao";
+    if (t.ordem >= 5 && t.ordem <= 1000) return "desenvolvimento";
+    return "introducao";
+  };
+  const introT = allT.filter(t => zonaOf(t) === "introducao");
+  const devT = allT.filter(t => zonaOf(t) === "desenvolvimento");
+  const conclusaoT = allT.filter(t => zonaOf(t) === "conclusao");
+
+  const drawTopicoFotos = (t: typeof allT[number], startY: number): number => {
+    if (t.fotos.length === 0) return startY;
+    const wArea = pageW - 30;
+    const cols = 5;
+    const gapF = 2;
+    const fw = (wArea - (cols - 1) * gapF) / cols;
+    const fh = fw;
+    if (startY + fh > pageH - 30) { doc.addPage(); startY = 20; }
+    for (let i = 0; i < Math.min(t.fotos.length, cols); i++) {
+      const fx = 15 + i * (fw + gapF);
+      const dataUrl = fotosCache[t.fotos[i].id];
+      if (dataUrl) {
+        try { const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+          doc.addImage(dataUrl, fmt, fx, startY, fw, fh, undefined, "FAST"); }
+        catch { doc.setDrawColor(LINE); doc.rect(fx, startY, fw, fh); }
+      } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, startY, fw, fh, "F"); }
+    }
+    return startY + fh + 6;
+  };
 
   // PAGE 1 — cover claro
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Confinamento", logos);
   let y = drawFarmBlock(doc, data, 50);
 
-  const intros: [string, string | null | undefined][] = [
-    ["Objetivo da Visita", data.objetivo_visita],
-    ["Resumo Executivo", data.resumo_executivo],
-    ["Indicadores Gerais", data.indicadores_gerais],
-  ];
-  for (const [title, txt] of intros) {
-    const t = (txt || "").trim();
-    if (!t) continue;
+  for (const t of introT) {
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    y = drawIntroBlock(doc, title, t, y);
+    y = drawIntroBlock(doc, t.titulo || "—", t.texto || "—", y);
+    y = drawTopicoFotos(t, y);
+  }
+  // Legacy fallback só quando não existir tópico de introdução.
+  if (introT.length === 0) {
+    const intros: [string, string | null | undefined][] = [
+      ["Objetivo da Visita", data.objetivo_visita],
+      ["Resumo Executivo", data.resumo_executivo],
+      ["Indicadores Gerais", data.indicadores_gerais],
+    ];
+    for (const [title, txt] of intros) {
+      const t = (txt || "").trim();
+      if (!t) continue;
+      if (y > pageH - 60) { doc.addPage(); y = 20; }
+      y = drawIntroBlock(doc, title, t, y);
+    }
   }
 
   // Curral pages: 2 per page, cabeçalho enxuto
