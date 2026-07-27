@@ -19,7 +19,7 @@ import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
-import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
+import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 10;
@@ -350,6 +350,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       currais: (curr.currais || []).map((x: any) => x.id === curralId ? { ...x, fotos: updates } : x),
     }));
     await Promise.all(updates
+      .filter(u => String(u.url).startsWith("queued:"))
+      .map(u => updateFotoOrdem(u.id, u.ordem))
+    );
+    await Promise.all(updates
       .filter(u => !String(u.url).startsWith("queued:"))
       .map(u => offlineUpdate({ visitaId, table: "visita_fotos", rowId: u.id, patch: { ordem: u.ordem } }))
     );
@@ -385,12 +389,18 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
-      await supabase.from("visitas_tecnicas").update({
-        observacoes_gerais: obsGerais, conclusao,
-        objetivo_visita: objetivo || null,
-        resumo_executivo: resumo || null,
-        indicadores_gerais: indicadores || null,
-      }).eq("id", visita.id);
+      const saveRes = await offlineUpdate({
+        visitaId: visita.id,
+        table: "visitas_tecnicas",
+        rowId: visita.id,
+        patch: {
+          observacoes_gerais: obsGerais, conclusao,
+          objetivo_visita: objetivo || null,
+          resumo_executivo: resumo || null,
+          indicadores_gerais: indicadores || null,
+        } as any,
+      });
+      if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
         fazenda: {

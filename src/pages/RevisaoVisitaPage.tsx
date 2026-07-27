@@ -23,7 +23,7 @@ import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
-import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
+import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -262,7 +262,7 @@ export default function RevisaoVisitaPage() {
 
   async function notifyEdit() {
     if (!visita || visita.status !== "finalizada") return;
-    await supabase.from("visitas_tecnicas").update({ pdf_url: null, status: "revisao" }).eq("id", visita.id);
+    await offlineUpdate({ visitaId: visita.id, table: "visitas_tecnicas", rowId: visita.id, patch: { pdf_url: null, status: "revisao" } });
     setVisita(prev => prev ? { ...prev, pdf_url: null, status: "revisao" } : prev);
   }
 
@@ -414,6 +414,10 @@ export default function RevisaoVisitaPage() {
       pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, fotos: updates } : x),
     }));
     await Promise.all(updates
+      .filter(u => String(u.url).startsWith("queued:"))
+      .map(u => updateFotoOrdem(u.id, u.ordem))
+    );
+    await Promise.all(updates
       .filter(u => !String(u.url).startsWith("queued:"))
       .map(u => offlineUpdate({ visitaId: visitaId!, table: "visita_fotos", rowId: u.id, patch: { ordem: u.ordem } }))
     );
@@ -451,13 +455,19 @@ export default function RevisaoVisitaPage() {
     const t = toast.loading("Gerando PDF...");
     try {
       // Salva últimas edições antes
-      await supabase.from("visitas_tecnicas").update({
-        observacoes_gerais: obsGerais, conclusao,
-        objetivo_visita: objetivo || null,
-        resumo_executivo: resumo || null,
-        indicadores_gerais: indicadores || null,
-        indicadores_tabela: indicadoresTabela as any,
-      } as any).eq("id", visita.id);
+      const saveRes = await offlineUpdate({
+        visitaId: visita.id,
+        table: "visitas_tecnicas",
+        rowId: visita.id,
+        patch: {
+          observacoes_gerais: obsGerais, conclusao,
+          objetivo_visita: objetivo || null,
+          resumo_executivo: resumo || null,
+          indicadores_gerais: indicadores || null,
+          indicadores_tabela: indicadoresTabela as any,
+        } as any,
+      });
+      if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
 
       const autoInd = computeIndicadoresAuto(pastos);
       const tabelaFinal: IndicadorRow[] = INDICADOR_LABELS.map(({ key, label }) => ({

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
-import { loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { loadSnapshot, offlineDelete, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 const BUCKET = "visitas-consultor-fotos";
 const DEFAULT_MAX = 5;
@@ -189,10 +189,27 @@ export default function PhotoGrid({
   }
 
   async function handleDelete(f: FotoRow) {
+    if (!targetId || !targetKind) return;
     try {
-      await supabase.storage.from(BUCKET).remove([f.url]);
-      await supabase.from("visita_fotos").delete().eq("id", f.id);
+      if (String(f.url).startsWith("queued:")) {
+        await deleteQueuedFoto(f.id);
+      } else {
+        if (typeof navigator === "undefined" || navigator.onLine) await supabase.storage.from(BUCKET).remove([f.url]);
+        if (visitaId) await offlineDelete({ visitaId, table: "visita_fotos", rowId: f.id });
+        else await supabase.from("visita_fotos").delete().eq("id", f.id);
+      }
       setFotos(prev => prev.filter(x => x.id !== f.id));
+      if (visitaId) {
+        await patchSnapshot(visitaId, (curr) => {
+          const key = targetKind === "curral" ? "currais" : "pastos";
+          return {
+            ...curr,
+            [key]: ((curr as any)[key] || []).map((item: any) => item.id === targetId
+              ? { ...item, fotos: (item.fotos || []).filter((foto: FotoRow) => foto.id !== f.id) }
+              : item),
+          };
+        });
+      }
     } catch {
       toast.error("Erro ao remover foto");
     }

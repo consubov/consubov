@@ -93,6 +93,11 @@ export async function getFoto(localId: string) {
   const db = await getDb();
   return db.get("foto_queue", localId);
 }
+export async function updateFotoOrdem(localId: string, ordem: number) {
+  const current = await getFoto(localId);
+  if (!current) return;
+  await putFoto({ ...current, ordem });
+}
 export async function listFotosByParent(kind: "pasto" | "curral" | "topico", id: string) {
   const db = await getDb();
   return db.getAllFromIndex("foto_queue", "by-parent", [kind, id]);
