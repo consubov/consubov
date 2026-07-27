@@ -744,6 +744,23 @@ export default function RevisaoVisitaPage() {
         })()}
       </div>
 
+      {/* Data e horário editáveis */}
+      <VisitaDateTimeEditor
+        horaInicio={visita.hora_inicio}
+        horaFim={visita.hora_fim}
+        onChange={async (patch) => {
+          setVisita(prev => prev ? { ...prev, ...patch } as Visita : prev);
+          await autosaveVisita(patch as any);
+        }}
+      />
+
+      {/* Assinaturas — múltiplos consultores */}
+      <AssinaturasSection
+        visitaId={visitaId!}
+        onNotifyEdit={notifyEdit}
+        onChange={setAssinantes}
+      />
+
 
       {/* Botão fixo por status — acima da nav */}
       <div className="fixed bottom-16 left-0 right-0 p-3 bg-background border-t z-50">
