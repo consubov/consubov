@@ -25,6 +25,7 @@ import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/ne
 import { compressImageFileToDataUrl } from "@/lib/imageCompression";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
 const BUCKET = "visitas-consultor-fotos";
 
