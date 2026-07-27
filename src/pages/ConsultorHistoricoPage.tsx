@@ -174,10 +174,8 @@ export default function ConsultorHistoricoPage() {
 
               <div className="flex gap-2">
                 {v.status === "finalizada" && v.pdf_url && (
-                  <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-                    <a href={v.pdf_url} target="_blank" rel="noreferrer">
-                      <Download className="w-4 h-4" /> Baixar PDF
-                    </a>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => setPdfVisualizar({ url: v.pdf_url!, nome: v.fazendas_consultor?.nome_fazenda || "visita" })}>
+                    <Download className="w-4 h-4" /> Ver / Baixar PDF
                   </Button>
                 )}
                 {v._pendingLocal && (
