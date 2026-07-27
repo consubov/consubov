@@ -791,8 +791,8 @@ function ScoreBlock({ label, value, onChange, disabled }: { label: string; value
   );
 }
 
-function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
-  curral: Curral; readOnly?: boolean;
+function PhotoManager({ curral, readOnly, numeroMap, onAdd, onDelete, onMove }: {
+  curral: Curral; readOnly?: boolean; numeroMap?: Record<string, number>;
   onAdd: (f: File) => void; onDelete: (f: Foto) => void; onMove: (i: number, d: -1 | 1) => void;
 }) {
   const inputId = `photo-curral-${curral.id}`;
@@ -807,6 +807,11 @@ function PhotoManager({ curral, readOnly, onAdd, onDelete, onMove }: {
             {curral.signed[f.id]
               ? <img src={curral.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
+            {numeroMap?.[f.id] != null && (
+              <div className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background: "#14432B" }}>
+                {numeroMap[f.id]}
+              </div>
+            )}
             {!readOnly && (
               <>
                 <button type="button" onClick={() => onDelete(f)}
