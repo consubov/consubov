@@ -45,8 +45,20 @@ export interface ConfinamentoPdfData {
   currais: ConfinamentoPdfCurral[];
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
+  numeroMap?: Record<string, number>;
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
+}
+
+/** Selo numerado (canto sup. esquerdo da foto). */
+function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
+  const r = 3.4;
+  doc.setFillColor(GREEN_DARK);
+  doc.circle(x + r, y + r, r, "F");
+  doc.setTextColor(GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(String(n), x + r, y + r, { align: "center", baseline: "middle" });
 }
 
 async function fetchFotoDataUrl(path: string): Promise<string | null> {
