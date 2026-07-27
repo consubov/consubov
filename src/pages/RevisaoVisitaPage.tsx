@@ -145,6 +145,13 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useMemo(
+    () => computeRotinaPhotoNumbering(
+      topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+      pastos.map(p => ({ id: p.id, fotos: p.fotos })),
+    ),
+    [topicos, pastos],
+  );
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
