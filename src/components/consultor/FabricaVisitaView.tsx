@@ -273,7 +273,6 @@ export default function FabricaVisitaView({
 
       <VisitaTopicosSection
         visitaId={visitaId}
-        mode="fabrica"
         onChange={setTopicos}
         numeroMap={numeroMap}
       />
