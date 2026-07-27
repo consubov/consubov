@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
