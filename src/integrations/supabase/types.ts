@@ -1829,6 +1829,82 @@ export type Database = {
           },
         ]
       }
+      indicadores_zootecnicos: {
+        Row: {
+          animais_ativos: number | null
+          created_at: string
+          currais_ocupados: number | null
+          id: string
+          updated_at: string
+          visita_id: string
+        }
+        Insert: {
+          animais_ativos?: number | null
+          created_at?: string
+          currais_ocupados?: number | null
+          id?: string
+          updated_at?: string
+          visita_id: string
+        }
+        Update: {
+          animais_ativos?: number | null
+          created_at?: string
+          currais_ocupados?: number | null
+          id?: string
+          updated_at?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicadores_zootecnicos_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: true
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicadores_zootecnicos_faixa: {
+        Row: {
+          consumo_medio_pv: number | null
+          created_at: string
+          faixa: string
+          id: string
+          indicadores_zootecnicos_id: string
+          ordem: number
+          quantidade_animais: number | null
+          updated_at: string
+        }
+        Insert: {
+          consumo_medio_pv?: number | null
+          created_at?: string
+          faixa: string
+          id?: string
+          indicadores_zootecnicos_id: string
+          ordem: number
+          quantidade_animais?: number | null
+          updated_at?: string
+        }
+        Update: {
+          consumo_medio_pv?: number | null
+          created_at?: string
+          faixa?: string
+          id?: string
+          indicadores_zootecnicos_id?: string
+          ordem?: number
+          quantidade_animais?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicadores_zootecnicos_faixa_indicadores_zootecnicos_id_fkey"
+            columns: ["indicadores_zootecnicos_id"]
+            isOneToOne: false
+            referencedRelation: "indicadores_zootecnicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventarios_fabrica: {
         Row: {
           criado_em: string | null
