@@ -311,6 +311,7 @@ function drawScoreRow(
 async function drawCurralBlock(
   doc: jsPDF, c: ConfinamentoPdfCurral, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
+  numeroMap?: Record<string, number>,
 ) {
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
@@ -374,6 +375,8 @@ async function drawCurralBlock(
       doc.setFillColor("#F3F1E8");
       doc.rect(fx, fy, fw, fh, "F");
     }
+    const num = numeroMap?.[foto.id];
+    if (num != null) drawNumeroBadge(doc, fx + 1.5, fy + 1.5, num);
   }
 }
 
