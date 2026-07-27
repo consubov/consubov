@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
+import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -325,33 +326,34 @@ async function drawCurralBlock(
   drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
   drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
 
+  // Grid até 10 fotos: 2 linhas × 5 colunas
   const fotosStartY = y + 54;
   const fotoAreaH = height - (fotosStartY - y) - 4;
   const cols = 5;
+  const rows = 2;
   const gap = 2;
   const fw = (width - 6 - (cols - 1) * gap) / cols;
-  const fh = Math.min(fw, fotoAreaH);
-  for (let i = 0; i < cols; i++) {
-    const fx = x + 3 + i * (fw + gap);
+  const fh = (fotoAreaH - (rows - 1) * gap) / rows;
+  const maxFotos = cols * rows; // 10
+  const nFotos = Math.min(c.fotos.length, maxFotos);
+  for (let i = 0; i < nFotos; i++) {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const fx = x + 3 + col * (fw + gap);
+    const fy = fotosStartY + row * (fh + gap);
     const foto = c.fotos[i];
-    if (foto) {
-      const dataUrl = fotosCache[foto.id];
-      if (dataUrl) {
-        try {
-          const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
-          doc.addImage(dataUrl, fmt, fx, fotosStartY, fw, fh, undefined, "FAST");
-        } catch {
-          doc.setDrawColor(LINE);
-          doc.rect(fx, fotosStartY, fw, fh);
-        }
-      } else {
-        doc.setFillColor("#F3F1E8");
-        doc.rect(fx, fotosStartY, fw, fh, "F");
+    const dataUrl = fotosCache[foto.id];
+    if (dataUrl) {
+      try {
+        const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+        doc.addImage(dataUrl, fmt, fx, fy, fw, fh, undefined, "FAST");
+      } catch {
+        doc.setDrawColor(LINE);
+        doc.rect(fx, fy, fw, fh);
       }
     } else {
-      doc.setDrawColor(LINE);
-      doc.setFillColor("#FAF8F0");
-      doc.roundedRect(fx, fotosStartY, fw, fh, 1, 1, "FD");
+      doc.setFillColor("#F3F1E8");
+      doc.rect(fx, fy, fw, fh, "F");
     }
   }
 }
@@ -459,7 +461,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
   const allFotos = [
-    ...data.currais.flatMap(c => c.fotos.slice(0, 5)),
+    ...data.currais.flatMap(c => c.fotos.slice(0, 10)),
     ...((data.topicos || []).flatMap(t => t.fotos.slice(0, 5))),
   ];
   await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
@@ -521,7 +523,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
 
   // Curral pages: 2 per page, cabeçalho enxuto
   const perPage = 2;
-  const blockH = 100;
+  const blockH = 130;
   const gap = 8;
   for (let i = 0; i < data.currais.length; i += perPage) {
     doc.addPage();
@@ -564,9 +566,19 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     }
   }
 
-  // Chart page
+  // Bar chart (Médias por Classificação) — sempre primeiro
   doc.addPage();
   drawChartPage(doc, data);
+
+  // Line charts — amostras individuais (Fezes / Corporal / Bebedouro), uma página cada
+  const series = {
+    fezes: data.currais.flatMap(c => c.samples?.fezes || []),
+    corporal: data.currais.flatMap(c => c.samples?.corporal || []),
+    bebedouro: data.currais.flatMap(c => c.samples?.bebedouro || []),
+  };
+  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series);
+
+
 
   // Final page
   doc.addPage();
