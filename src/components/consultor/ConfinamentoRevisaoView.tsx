@@ -415,9 +415,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               bebedouro: c.samples.bebedouro.length,
             },
             samples: {
-              fezes: [...c.samples.fezes],
-              corporal: [...c.samples.corporal],
-              bebedouro: [...c.samples.bebedouro],
+              fezes: c.samples.fezes.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
+              corporal: c.samples.corporal.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
+              bebedouro: c.samples.bebedouro.map(s => (s as any).nota).filter((n: any) => Number.isFinite(n)),
             },
             fotos,
           };
