@@ -21,6 +21,7 @@ interface VisitaItem {
   tipo: string;
   status: string;
   hora_inicio: string;
+  consultor_id: string;
   fazenda_consultor_id: string;
   pdf_url: string | null;
   deleted_at?: string | null;
@@ -49,7 +50,7 @@ export default function ConsultorHistoricoPage() {
         online
           ? supabase
               .from("visitas_tecnicas")
-              .select("id, tipo, status, hora_inicio, fazenda_consultor_id, pdf_url, deleted_at, fazendas_consultor(nome_fazenda)")
+              .select("id, tipo, status, hora_inicio, consultor_id, fazenda_consultor_id, pdf_url, deleted_at, fazendas_consultor(nome_fazenda)")
               .eq("consultor_id", consultorId)
               .is("deleted_at", null)
               .order("hora_inicio", { ascending: false })
@@ -64,11 +65,12 @@ export default function ConsultorHistoricoPage() {
       });
       snapshots.forEach(({ visitaId, data: snap }) => {
         const visita = snap.visita as any;
-        if (!visita || visita.consultor_id !== consultorId) return;
+        if (!visita) return;
         if (isVisitaDeleted(visita)) {
           map.delete(visitaId);
           return;
         }
+        if (visita.consultor_id !== consultorId) return;
         const isPending = pending.has(visitaId);
         const existing = map.get(visitaId);
         if (!isPending && existing) return;

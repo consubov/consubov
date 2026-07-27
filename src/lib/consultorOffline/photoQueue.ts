@@ -301,7 +301,11 @@ export async function syncNow() {
       await putFoto(it);
     }
   }
-  await withConsultorTimeout(drain(), "sincronização das fotos", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
+  await withConsultorTimeout(
+    drain(),
+    "sincronização das fotos",
+    CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS * MAX_AUTO_RETRIES + 15_000,
+  );
 }
 
 // auto-drain on network reconnect
