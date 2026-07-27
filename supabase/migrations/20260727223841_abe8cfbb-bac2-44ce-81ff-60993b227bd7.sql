@@ -1,0 +1,4 @@
+DROP TRIGGER IF EXISTS trg_indicadores_zootecnicos_updated_at ON public.indicadores_zootecnicos;
+CREATE TRIGGER trg_indicadores_zootecnicos_updated_at
+BEFORE UPDATE ON public.indicadores_zootecnicos
+FOR EACH ROW EXECUTE FUNCTION public.update_slm_updated_at();
