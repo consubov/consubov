@@ -362,7 +362,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada.");
-      await load();
+      await load(true);
     } finally { setConfirmando(false); }
   }
 
