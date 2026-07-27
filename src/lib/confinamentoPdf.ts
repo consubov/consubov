@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
@@ -49,6 +49,7 @@ export interface ConfinamentoPdfData {
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   chartType?: "bars" | "lines" | "pie" | "radar";
+  sampleChartTypes?: SampleChartTypes;
 }
 
 /** Selo numerado (canto sup. esquerdo da foto). */
@@ -766,7 +767,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     corporal: data.currais.flatMap(c => c.samples?.corporal || []),
     bebedouro: data.currais.flatMap(c => c.samples?.bebedouro || []),
   };
-  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series);
+  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series, data.sampleChartTypes);
 
   // SEÇÃO FINAL (Observações e Recomendações) — só renderiza se houver conteúdo.
   const hasConclusaoTopicos = conclusaoT.some(t => (t.texto || "").trim() || t.fotos.length > 0);

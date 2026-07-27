@@ -79,6 +79,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     [currais, topicos],
   );
   const [chartType, setChartType] = useState<"bars" | "lines" | "pie" | "radar">("bars");
+  type SCK = "bars" | "lines" | "pie" | "radar";
+  const [sampleChartFezes, setSampleChartFezes] = useState<SCK>("lines");
+  const [sampleChartCorporal, setSampleChartCorporal] = useState<SCK>("lines");
+  const [sampleChartBebedouro, setSampleChartBebedouro] = useState<SCK>("lines");
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
@@ -469,6 +473,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         currais: curraisForPdf,
         numeroMap,
         chartType,
+        sampleChartTypes: {
+          fezes: sampleChartFezes,
+          corporal: sampleChartCorporal,
+          bebedouro: sampleChartBebedouro,
+        },
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
@@ -662,6 +671,44 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           ))}
         </div>
       </div>
+
+      {/* Tipo de gráfico dos 3 gráficos de amostras individuais (no PDF) */}
+      <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
+          Gráficos de amostras individuais (no PDF)
+        </div>
+        {([
+          { label: "Fezes", value: sampleChartFezes, set: setSampleChartFezes },
+          { label: "Escore Corporal", value: sampleChartCorporal, set: setSampleChartCorporal },
+          { label: "Bebedouro", value: sampleChartBebedouro, set: setSampleChartBebedouro },
+        ] as { label: string; value: SCK; set: (v: SCK) => void }[]).map(row => (
+          <div key={row.label}>
+            <div className="text-[11px] font-semibold mb-1" style={{ color: "#14432B" }}>{row.label}</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { k: "bars", label: "Colunas" },
+                { k: "lines", label: "Linhas" },
+                { k: "pie", label: "Pizza" },
+                { k: "radar", label: "Radar" },
+              ] as { k: SCK; label: string }[]).map(opt => (
+                <button
+                  key={opt.k}
+                  type="button"
+                  onClick={() => row.set(opt.k)}
+                  className={cn(
+                    "h-9 rounded-md text-xs font-semibold border transition-colors",
+                    row.value === opt.k ? "" : "bg-muted text-muted-foreground border-transparent"
+                  )}
+                  style={row.value === opt.k ? { background: "#14432B", color: "white", borderColor: "#14432B" } : {}}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
 
 
       {/* Data e horário editáveis */}

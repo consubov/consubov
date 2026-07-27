@@ -135,7 +135,9 @@ async function flushOne(m: TextMutation): Promise<boolean> {
         `sincronização de exclusão em ${m.table}`,
       );
       error = res.error;
-      confirmed = res.count == null || res.count > 0;
+      // Idempotente: se count === 0, o registro já não existe (nunca chegou ao
+      // servidor ou já foi apagado). Consideramos confirmado.
+      confirmed = true;
     } else {
       const res: any = await withConsultorTimeout((supabase as any)
         .from(m.table)
