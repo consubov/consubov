@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/components/consultor/AssinaturasSection";
+import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 import { computeFabricaPhotoNumbering } from "@/lib/photoNumbering";
 import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
@@ -50,6 +52,8 @@ export default function FabricaVisitaView({
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [notaIds, setNotaIds] = useState<Record<string, string>>({});
   const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [assinantes, setAssinantes] = useState<Assinante[]>([]);
+  void assinantes;
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const { pending: pendingUploads } = useSyncStatus();
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
