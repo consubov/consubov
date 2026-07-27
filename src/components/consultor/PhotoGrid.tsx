@@ -151,7 +151,7 @@ export default function PhotoGrid({
         [ordem]: { ordem, previewUrl: dataUrl, file: blob, ext: "jpg", status: "uploading" },
       }));
       // Persist to IndexedDB queue — survives app close, uploads in background
-      await enqueuePhoto({
+      const queued = await enqueuePhoto({
         visitaId: visitaId || targetId,
         parentKind: targetKind,
         parentId: targetId,
