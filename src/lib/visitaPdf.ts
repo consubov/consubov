@@ -535,10 +535,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
   const drawTopico = (titulo: string, texto: string | null, fotos: { id: string; ordem: number }[]) => {
     const t = (texto || "").trim();
-    if (!titulo.trim() && !t && fotos.length === 0) return;
+    if (!t && fotos.length === 0) return;
     if (y > pageH - 60) { doc.addPage(); y = 20; }
-    if (titulo.trim() || t) {
-      y = drawIntroBlock(doc, titulo || "—", t || "—", y);
+    if (t) {
+      y = drawIntroBlock(doc, titulo.trim() || " ", t, y);
     }
     if (fotos.length > 0) {
       const wArea = pageW - 30;
