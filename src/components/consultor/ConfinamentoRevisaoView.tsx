@@ -461,6 +461,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         },
         currais: curraisForPdf,
         numeroMap,
+        chartType,
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
