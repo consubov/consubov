@@ -544,6 +544,23 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     }
   }
 
+  // DESENVOLVIMENTO — tópicos após currais
+  if (devT.length > 0) {
+    doc.addPage();
+    doc.setTextColor(INK_SOFT);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(data.fazenda.nome_fazenda || "", 15, 12);
+    doc.setDrawColor(LINE);
+    doc.line(15, 16, pageW - 15, 16);
+    let dy = 24;
+    for (const t of devT) {
+      if (dy > pageH - 60) { doc.addPage(); dy = 20; }
+      dy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", dy);
+      dy = drawTopicoFotos(t, dy + 2) + 4;
+    }
+  }
+
   // Chart page
   doc.addPage();
   drawChartPage(doc, data);
@@ -568,9 +585,17 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   doc.text(tituloEnc.toUpperCase(), 21, fy + 7);
   fy += 16;
 
-  fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
-  fy = Math.max(fy + 8, 140);
-  drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+  if (conclusaoT.length > 0) {
+    for (const t of conclusaoT) {
+      if (fy > pageH - 60) { doc.addPage(); fy = 20; }
+      fy = drawTextBlock(doc, t.titulo || "—", t.texto || "—", fy);
+      fy = drawTopicoFotos(t, fy + 2) + 4;
+    }
+  } else {
+    fy = drawTextBlock(doc, "Observações Gerais", data.observacoes_gerais || "—", fy);
+    fy = Math.max(fy + 8, 140);
+    drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
+  }
 
   const sigY = pageH - 40;
   doc.setDrawColor(INK_SOFT);
