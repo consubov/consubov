@@ -170,6 +170,7 @@ export default function FabricaVisitaView({
         quesitos: QUESITOS.map(q => ({ chave: q.key, rotulo: q.label, nota: notas[q.key] ?? null })),
         topicos: topicosFresh,
         numeroMap: numeroMapFresh,
+        assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
           esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
           direitaPath: (consultor as any)?.logo_direita_url || null,
