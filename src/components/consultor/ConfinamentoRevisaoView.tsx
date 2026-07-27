@@ -626,6 +626,35 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         />
       </div>
 
+      {/* Tipo de gráfico das Médias por Classificação (no PDF) */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
+          Gráfico "Médias por Classificação" (no PDF)
+        </div>
+        <div className="grid grid-cols-4 gap-1.5">
+          {([
+            { k: "bars", label: "Colunas" },
+            { k: "lines", label: "Linhas" },
+            { k: "pie", label: "Pizza" },
+            { k: "radar", label: "Radar" },
+          ] as { k: typeof chartType; label: string }[]).map(opt => (
+            <button
+              key={opt.k}
+              type="button"
+              onClick={() => setChartType(opt.k)}
+              className={cn(
+                "h-9 rounded-md text-xs font-semibold border transition-colors",
+                chartType === opt.k ? "" : "bg-muted text-muted-foreground border-transparent"
+              )}
+              style={chartType === opt.k ? { background: "#14432B", color: "white", borderColor: "#14432B" } : {}}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+
       {/* Data e horário editáveis */}
       <VisitaDateTimeEditor
         horaInicio={visita.hora_inicio}
