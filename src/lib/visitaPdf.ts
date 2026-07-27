@@ -673,16 +673,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     drawTextBlock(doc, "Conclusão da Visita", data.conclusao || "—", fy);
   }
 
-  const sigY = pageH - 40;
-  doc.setDrawColor(INK_SOFT);
-  doc.setLineWidth(0.3);
-  doc.line(pageW / 2 - 40, sigY, pageW / 2 + 40, sigY);
-  doc.setTextColor(INK_SOFT);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.consultor.nome || "Consultor", pageW / 2, sigY + 5, { align: "center" });
-  doc.setFontSize(8);
-  doc.text("Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
+  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
