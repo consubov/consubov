@@ -718,7 +718,7 @@ export interface VisitaFabricaPdfData {
   hora_inicio: string;
   hora_fim: string | null;
   quesitos: { chave: string; rotulo: string; nota: number | null }[];
-  topicos: { id: string; titulo: string; texto: string | null; ordem: number;
+  topicos: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
