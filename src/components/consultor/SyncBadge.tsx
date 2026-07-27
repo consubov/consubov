@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/consultorOffline/network";
-import { retryQueuedPhoto } from "@/lib/consultorOffline/photoQueue";
+import { getPhotoFailures, retryQueuedPhoto } from "@/lib/consultorOffline/photoQueue";
 
 interface Props {
   className?: string;
@@ -44,15 +44,16 @@ export default function SyncBadge({ className, compact }: Props) {
   }, [pending, wasPending]);
 
   const hasPending = pending > 0;
-  const disabled = syncing || !hasPending || !online;
   const hasPhotoFailures = photoFailures.length > 0;
+  const disabled = syncing || (!hasPending && !hasPhotoFailures) || !online;
 
   const handleSync = async () => {
     try {
       await syncNow();
-      if (photoFailures.length > 0) {
-        const first = photoFailures[0];
-        toast.error(`${photoFailures.length} foto(s) com falha. ${first.label}: ${first.lastError} (${first.mime}, ${first.sizeLabel}).`, {
+      const failures = await getPhotoFailures();
+      if (failures.length > 0) {
+        const first = failures[0];
+        toast.error(`${failures.length} foto(s) com falha. ${first.label}: ${first.lastError} (${first.mime}, ${first.sizeLabel}).`, {
           action: { label: `Reenviar ${first.ordem}`, onClick: () => void retryQueuedPhoto(first.localId) },
         });
       }

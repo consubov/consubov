@@ -110,6 +110,7 @@ export default function ConsultorHistoricoPage() {
     setDeleting(true);
     try {
       const result = await softDeleteVisita({ visitaId: toDelete.id, visita: toDelete as any });
+      removeVisitFromCachedFarmLists(toDelete.id);
       setVisitas(prev => prev.filter(v => v.id !== toDelete.id));
       toast.success(result.queued ? "Visita excluída off-line. A exclusão será sincronizada." : "Visita excluída.");
       setToDelete(null);
@@ -117,6 +118,23 @@ export default function ConsultorHistoricoPage() {
     } catch (err: any) {
       toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
     } finally { setDeleting(false); }
+  }
+
+  function removeVisitFromCachedFarmLists(visitaId: string) {
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key?.startsWith("consultor_offline_fazenda_")) continue;
+        const raw = window.localStorage.getItem(key);
+        if (!raw) continue;
+        const cached = JSON.parse(raw);
+        if (!Array.isArray(cached?.visitas)) continue;
+        const visitas = cached.visitas.filter((v: any) => v?.id !== visitaId);
+        window.localStorage.setItem(key, JSON.stringify({ ...cached, visitas }));
+      }
+    } catch {
+      /* cache local é best effort; IndexedDB permanece como fonte de verdade */
+    }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
