@@ -316,8 +316,9 @@ export default function FabricaVisitaView({
             <FileText className="w-4 h-4 text-primary" /> Relatório em PDF
           </div>
           <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-              <a href={visita.pdf_url} target="_blank" rel="noreferrer"><FileText className="w-4 h-4" /> Ver</a>
+            <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+              onClick={() => import("@/lib/openPdfBlob").then(m => m.openPdfBlobUrl(visita.pdf_url!))}>
+              <FileText className="w-4 h-4" /> Ver
             </Button>
             <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
               <a href={visita.pdf_url} download><Download className="w-4 h-4" /> Baixar</a>
