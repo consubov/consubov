@@ -66,7 +66,17 @@ export interface VisitaPdfData {
   sampleChartTypes?: SampleChartTypes;
 }
 
-async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.72): Promise<string> {
+async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.6): Promise<string> {
+  // Se a foto já está bem pequena (<=350KB), reaproveita direto sem
+  // recomprimir — poupa tempo de CPU na geração do PDF.
+  if (blob.size <= 350 * 1024) {
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
   const bitmapUrl = URL.createObjectURL(blob);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {

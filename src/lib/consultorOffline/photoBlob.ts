@@ -62,9 +62,17 @@ export async function clonePhotoBlob(value: Blob, mimeFallback = "image/jpeg"): 
   return { blob, buffer };
 }
 
+// Compressão mais agressiva (~30% menor que antes): dimensão máx 1280 e
+// qualidade JPEG 0.55. Ainda mantém legibilidade técnica (fezes, escore).
+export const CONSULTOR_PHOTO_COMPRESSION: ImageCompressionOptions = {
+  maxDimension: 1280,
+  quality: 0.55,
+  maxBytes: 600_000,
+};
+
 export async function prepareConsultorPhotoFile(
   file: File,
-  options: ImageCompressionOptions = { maxDimension: 1600, quality: 0.78, maxBytes: 900_000 },
+  options: ImageCompressionOptions = CONSULTOR_PHOTO_COMPRESSION,
 ): Promise<PreparedConsultorPhoto> {
   assertValidPhotoBlob(file, file.name || "foto selecionada");
   const dataUrl = await compressImageFileToDataUrl(file, options);

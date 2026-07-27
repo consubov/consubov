@@ -884,9 +884,10 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     }
   }
 
-  // CURRAIS — fluxo contínuo, bloco atômico de 130mm
-  const blockH = 130;
-  const gap = 8;
+  // CURRAIS — fluxo contínuo, bloco atômico de 118mm.
+  // Dimensionado para caber 2 currais por página (6+118+6+118=248 ≤ 253mm úteis).
+  const blockH = 118;
+  const gap = 6;
   const scaleH = 6;
   let scaleShown = false;
   const showScaleInline = () => {

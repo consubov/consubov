@@ -42,9 +42,9 @@ const ZONA_HINTS: Record<TopicoZona, string> = {
   conclusao: "Fecha o relatório, junto com Observações e Recomendações.",
 };
 
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
 async function signPath(path: string): Promise<string> {
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);
-  return data?.signedUrl || "";
+  return getCachedSignedUrl(path);
 }
 
 interface Props {
@@ -207,9 +207,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       const usadas = new Set(t.fotos.map(f => f.ordem));
       let ordem = 1;
       while (usadas.has(ordem) && ordem <= MAX_FOTOS) ordem++;
-      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, {
-        maxDimension: 1600, quality: 0.78, maxBytes: 900_000,
-      });
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file);
       const queued = await enqueuePhoto({ visitaId, parentKind: "topico", parentId: t.id, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as TopicoFoto;
       setTopicos(prev => prev.map(x => x.id === t.id

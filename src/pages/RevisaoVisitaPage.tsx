@@ -122,9 +122,9 @@ interface Visita {
   deleted_at?: string | null;
 }
 
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
 async function signPath(path: string): Promise<string> {
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);
-  return data?.signedUrl || "";
+  return getCachedSignedUrl(path);
 }
 
 export default function RevisaoVisitaPage() {
@@ -367,7 +367,7 @@ export default function RevisaoVisitaPage() {
     let ordem = 1;
     while (usadas.has(ordem) && ordem <= 5) ordem++;
     try {
-      const { dataUrl, blob } = await prepareConsultorPhotoFile(file, { maxDimension: 1600, quality: 0.78, maxBytes: 900_000 });
+      const { dataUrl, blob } = await prepareConsultorPhotoFile(file);
       const queued = await enqueuePhoto({ visitaId: visitaId!, parentKind: "pasto", parentId: pastoId, ordem, blob, fileName: file.name });
       const data = { id: queued.localId, url: `queued:${queued.localId}`, ordem } as Foto;
       updatePasto(pastoId, {
