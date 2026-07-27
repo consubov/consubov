@@ -142,11 +142,12 @@ export async function offlineUpdate(params: {
 
   // 3. Tenta gravar online
   try {
-    const { error } = await withTimeout<any>((supabase as any)
+    const { error, count } = await withTimeout<any>((supabase as any)
       .from(params.table)
-      .update(params.patch)
+      .update(params.patch, { count: "exact" })
       .eq("id", params.rowId));
     if (error) throw error;
+    if (count === 0) throw new Error(`Servidor não confirmou atualização em ${params.table}`);
     return { ok: true, queued: false };
   } catch (err) {
     console.warn("[offlineUpdate] direct write failed, enqueueing:", err);
@@ -193,10 +194,11 @@ export async function offlineUpsert(params: {
   }
 
   try {
-    const { error } = await withTimeout<any>((supabase as any)
+    const { error, count } = await withTimeout<any>((supabase as any)
       .from(params.table)
-      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id" }));
+      .upsert({ id: params.rowId, ...params.payload }, { onConflict: params.onConflict ?? "id", count: "exact" }));
     if (error) throw error;
+    if (count === 0) throw new Error(`Servidor não confirmou gravação em ${params.table}`);
     return { ok: true, queued: false };
   } catch (err) {
     console.warn("[offlineUpsert] direct write failed, enqueueing:", err);
@@ -239,8 +241,9 @@ export async function offlineDelete(params: {
   }
 
   try {
-    const { error } = await withTimeout<any>((supabase as any).from(params.table).delete().eq("id", params.rowId));
+    const { error, count } = await withTimeout<any>((supabase as any).from(params.table).delete({ count: "exact" }).eq("id", params.rowId));
     if (error) throw error;
+    if (count === 0) throw new Error(`Servidor não confirmou exclusão em ${params.table}`);
     return { ok: true, queued: false };
   } catch (err) {
     console.warn("[offlineDelete] direct delete failed, enqueueing:", err);

@@ -113,7 +113,7 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     emit();
     const operation = m.operation ?? "update";
     let error: any = null;
-    let confirmed: any = null;
+    let confirmed = false;
     debugSync("enviando mutação", {
       mutationId: m.id,
       visitaId: m.visitaId,
@@ -124,32 +124,26 @@ async function flushOne(m: TextMutation): Promise<boolean> {
     if (operation === "upsert") {
       const res: any = await withTimeout((supabase as any)
         .from(m.table)
-        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id" })
-        .select("id")
-        .maybeSingle());
+        .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id", count: "exact" }));
       error = res.error;
-      confirmed = res.data;
+      confirmed = res.count == null || res.count > 0;
     } else if (operation === "insert") {
       const res: any = await withTimeout((supabase as any)
         .from(m.table)
-        .insert({ id: m.rowId, ...m.patch })
-        .select("id")
-        .maybeSingle());
+        .insert({ id: m.rowId, ...m.patch }, { count: "exact" }));
       error = res.error;
-      confirmed = res.data;
+      confirmed = res.count == null || res.count > 0;
     } else if (operation === "delete") {
-      const res: any = await withTimeout((supabase as any).from(m.table).delete().eq("id", m.rowId));
+      const res: any = await withTimeout((supabase as any).from(m.table).delete({ count: "exact" }).eq("id", m.rowId));
       error = res.error;
-      confirmed = { id: m.rowId, deleted: true };
+      confirmed = res.count == null || res.count > 0;
     } else {
       const res: any = await withTimeout((supabase as any)
         .from(m.table)
-        .update(m.patch)
-        .eq("id", m.rowId)
-        .select("id")
-        .maybeSingle());
+        .update(m.patch, { count: "exact" })
+        .eq("id", m.rowId));
       error = res.error;
-      confirmed = res.data;
+      confirmed = res.count == null || res.count > 0;
     }
     if (error) throw error;
     if (!confirmed) throw new Error(`Servidor não confirmou ${operation} em ${m.table}`);
