@@ -79,33 +79,6 @@ export default function CurralVisitaModal({
           });
           setSamples(next);
         });
-      void online;
-      /* legacy block replaced by source above */
-      void (false && (online
-        ? supabase.from("avaliacoes_score")
-            .select("id, tipo, nota")
-            .eq("visita_curral_id", curral.id)
-        : Promise.resolve({ data: [] })).then(async ({ data }) => {
-          const next: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
-          let rows = (data as any[]) || [];
-          if (rows.length === 0) {
-            const snap = await loadSnapshot(visitaId);
-            const snapCurral = (snap?.currais || []).find((c: any) => c.id === curral.id) as any;
-            if (snapCurral?.samples) {
-              setSamples({
-                fezes: snapCurral.samples.fezes || [],
-                corporal: snapCurral.samples.corporal || [],
-                bebedouro: snapCurral.samples.bebedouro || [],
-              });
-              return;
-            }
-            rows = ((snap?.avaliacoes_score as any[]) || []).filter((s: any) => s.visita_curral_id === curral.id);
-          }
-          rows.forEach((s: any) => {
-            if (s.tipo in next) next[s.tipo as keyof SamplesState].push({ id: s.id, nota: s.nota });
-          });
-          setSamples(next);
-        }));
     } else {
       setCurralIdLocal(null);
       setNumCurral("");
