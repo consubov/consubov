@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
-import logoConsubov from "@/assets/logo-consubov.jpeg";
+import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
@@ -30,9 +30,9 @@ export default function ConsultorLayout() {
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-3 py-2">
           <button onClick={() => navigate("/consultor")} className="flex items-center gap-2">
-            <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-md object-cover" />
+            <img src={relattoLogo.url} alt="Relatto" className="w-9 h-9 rounded-md object-contain bg-white" />
             <div className="text-left">
-              <div className="text-sm font-bold leading-tight">Consubov</div>
+              <div className="text-sm font-bold leading-tight">Relatto</div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">
                 Consultor
               </div>
