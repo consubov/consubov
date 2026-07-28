@@ -189,47 +189,49 @@ export default function ConsultorFazendasPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <Landmark className="w-5 h-5" /> Minhas Fazendas
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setLogoDialogOpen(true)}
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            title="Personalizar logo do relatório"
-          >
-            <ImageIcon className="w-4 h-4" />
-          </Button>
-          <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4" /> Nova
-          </Button>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Landmark className="w-5 h-5" /> Minhas Fazendas
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setLogoDialogOpen(true)}
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              title="Personalizar logo do relatório"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </Button>
+            <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4" /> Nova
+            </Button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar fazenda..."
+            className="pl-9 pr-9"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
+              aria-label="Limpar busca"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-        <Input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar fazenda..."
-          className="pl-9 pr-9"
-        />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
-            aria-label="Limpar busca"
-          >
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
-        )}
-      </div>
-
-      <SyncBadge />
+      <SyncBadge hideWhenIdle />
 
       {fazendas.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">

@@ -6,6 +6,7 @@ import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
+import SyncHeaderIndicator from "@/components/consultor/SyncHeaderIndicator";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -40,6 +41,7 @@ export default function ConsultorLayout() {
           </button>
           <div className="flex items-center gap-1">
             <UserNotificationToggle />
+            <SyncHeaderIndicator />
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </Button>
