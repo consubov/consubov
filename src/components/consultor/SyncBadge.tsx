@@ -1,17 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
-import { getPendingVisitaDebugInfos, type PendingVisitaDebugInfo, useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
+import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/consultorOffline/network";
 import { getPhotoFailures, retryQueuedPhoto } from "@/lib/consultorOffline/photoQueue";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import SyncQueueDialog from "./SyncQueueDialog";
 
 interface Props {
   className?: string;
   compact?: boolean;
+  /** Quando true, não renderiza nada no estado "tudo sincronizado". */
+  hideWhenIdle?: boolean;
 }
 
 /**
