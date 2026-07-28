@@ -195,9 +195,11 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.line(15, h - 12, w - 15, h - 12);
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "bold");
+  doc.text("Relatto\u00AE", 15, h - 9);
   doc.setFont("helvetica", "normal");
-  doc.text("Gerado por Consubov.com.br", 15, h - 6);
-  doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 6, { align: "right" });
+  doc.text("Gerado por Consubov.com.br", 15, h - 5);
+  doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 5, { align: "right" });
 }
 
 function drawCoverHeader(
