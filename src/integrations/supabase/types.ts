@@ -1562,6 +1562,7 @@ export type Database = {
         Row: {
           consultor_id: string
           created_at: string
+          deleted_at: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -1574,6 +1575,7 @@ export type Database = {
         Insert: {
           consultor_id: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -1586,6 +1588,7 @@ export type Database = {
         Update: {
           consultor_id?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null

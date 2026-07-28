@@ -162,7 +162,8 @@ export async function fetchNotaCochoConsultor(
     const { data: fc } = await supabase
       .from("fazendas_consultor")
       .select("id")
-      .ilike("nome_fazenda", fazendaNome);
+      .ilike("nome_fazenda", fazendaNome)
+      .is("deleted_at", null);
     if (!fc || fc.length === 0) return null;
     const fcIds = fc.map((r: any) => r.id);
 
