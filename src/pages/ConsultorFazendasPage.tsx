@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,11 @@ import { Card } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MapPin, ChevronRight, Landmark, Image as ImageIcon, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Loader2, MapPin, ChevronRight, Landmark, Image as ImageIcon, Trash2, Search, X, Pencil } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import SyncBadge from "@/components/consultor/SyncBadge";
@@ -37,6 +41,10 @@ interface Form {
 
 const emptyForm: Form = { nome_fazenda: "", proprietario: "", responsavel: "", municipio: "", uf: "", latitude: "", longitude: "" };
 
+function normalize(s: string | null | undefined): string {
+  return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 export default function ConsultorFazendasPage() {
   const { roleData } = useAuth();
   const navigate = useNavigate();
@@ -45,7 +53,11 @@ export default function ConsultorFazendasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Fazenda | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (roleData?.consultorId) load(); }, [roleData?.consultorId]);
 
@@ -58,6 +70,7 @@ export default function ConsultorFazendasPage() {
             .from("fazendas_consultor")
             .select("*")
             .eq("consultor_id", roleData.consultorId!)
+            .is("deleted_at" as any, null)
             .order("nome_fazenda")
         : { data: null };
       const rows = (data as Fazenda[]) || [];
@@ -75,12 +88,31 @@ export default function ConsultorFazendasPage() {
     setLoading(false);
   }
 
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(f: Fazenda) {
+    setEditingId(f.id);
+    setForm({
+      nome_fazenda: f.nome_fazenda || "",
+      proprietario: f.proprietario || "",
+      responsavel: f.responsavel || "",
+      municipio: f.municipio || "",
+      uf: f.uf || "",
+      latitude: f.latitude != null ? String(f.latitude) : "",
+      longitude: f.longitude != null ? String(f.longitude) : "",
+    });
+    setDialogOpen(true);
+  }
+
   async function handleSave() {
     if (!form.nome_fazenda.trim()) return toast.error("Nome da fazenda é obrigatório");
     setSaving(true);
     try {
-      const { error } = await supabase.from("fazendas_consultor").insert({
-        consultor_id: roleData.consultorId!,
+      const payload = {
         nome_fazenda: form.nome_fazenda.trim(),
         proprietario: form.proprietario.trim() || null,
         responsavel: form.responsavel.trim() || null,
@@ -88,16 +120,70 @@ export default function ConsultorFazendasPage() {
         uf: form.uf.trim().toUpperCase() || null,
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
-      });
-      if (error) throw error;
-      toast.success("Fazenda cadastrada!");
+      };
+      if (editingId) {
+        const { error } = await supabase.from("fazendas_consultor").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Fazenda atualizada!");
+      } else {
+        const { error } = await supabase.from("fazendas_consultor").insert({
+          consultor_id: roleData.consultorId!,
+          ...payload,
+        });
+        if (error) throw error;
+        toast.success("Fazenda cadastrada!");
+      }
       setDialogOpen(false);
+      setEditingId(null);
       setForm(emptyForm);
       load();
     } catch (err: any) {
       toast.error("Erro: " + (err?.message || "desconhecido"));
     } finally { setSaving(false); }
   }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      // Verifica se há visitas vinculadas (qualquer status)
+      const { count } = await supabase
+        .from("visitas_tecnicas")
+        .select("id", { count: "exact", head: true })
+        .eq("fazenda_consultor_id", deleteTarget.id);
+
+      if ((count ?? 0) > 0) {
+        // Soft delete — preserva histórico
+        const { error } = await supabase
+          .from("fazendas_consultor")
+          .update({ deleted_at: new Date().toISOString() } as any)
+          .eq("id", deleteTarget.id);
+        if (error) throw error;
+        toast.success("Fazenda arquivada. Histórico de visitas preservado.");
+      } else {
+        // Delete físico
+        const { error } = await supabase.from("fazendas_consultor").delete().eq("id", deleteTarget.id);
+        if (error) throw error;
+        toast.success("Fazenda excluída.");
+      }
+      setDeleteTarget(null);
+      load();
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } finally { setDeleting(false); }
+  }
+
+  const filtered = useMemo(() => {
+    const q = normalize(search).trim();
+    if (!q) return fazendas;
+    return fazendas.filter(f => {
+      const hay = [
+        f.nome_fazenda, f.proprietario, f.responsavel, f.municipio, f.uf,
+        `${f.municipio || ""}/${f.uf || ""}`,
+      ].map(normalize).join(" | ");
+      return hay.includes(q);
+    });
+  }, [fazendas, search]);
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
@@ -117,10 +203,30 @@ export default function ConsultorFazendasPage() {
           >
             <ImageIcon className="w-4 h-4" />
           </Button>
-          <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
+          <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
             <Plus className="w-4 h-4" /> Nova
           </Button>
         </div>
+      </div>
+
+      <div className="relative">
+        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar fazenda..."
+          className="pl-9 pr-9"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
+            aria-label="Limpar busca"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       <SyncBadge />
@@ -129,18 +235,27 @@ export default function ConsultorFazendasPage() {
         <Card className="p-8 text-center text-muted-foreground text-sm">
           Nenhuma fazenda cadastrada ainda.<br />Toque em "Nova" para começar.
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground text-sm">
+          Nenhuma fazenda encontrada.
+        </Card>
       ) : (
         <div className="space-y-2">
-          {fazendas.map(f => (
+          {filtered.map(f => (
             <Card
               key={f.id}
-              className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => navigate(`/consultor/fazendas/${f.id}`)}
+              className="p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
             >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <div
+                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 cursor-pointer"
+                onClick={() => navigate(`/consultor/fazendas/${f.id}`)}
+              >
                 <Landmark className="w-5 h-5 text-primary" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => navigate(`/consultor/fazendas/${f.id}`)}
+              >
                 <div className="font-semibold text-foreground truncate">{f.nome_fazenda}</div>
                 <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                   {f.proprietario && <span>{f.proprietario}</span>}
@@ -153,17 +268,39 @@ export default function ConsultorFazendasPage() {
                   )}
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => { e.stopPropagation(); openEdit(f); }}
+                  aria-label="Editar fazenda"
+                >
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(f); }}
+                  aria-label="Excluir fazenda"
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+                <ChevronRight className="w-4 h-4 text-muted-foreground ml-0.5" />
+              </div>
             </Card>
           ))}
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Fazenda</DialogTitle>
-            <DialogDescription>Cadastre uma fazenda que você atende como consultor.</DialogDescription>
+            <DialogTitle>{editingId ? "Editar Fazenda" : "Nova Fazenda"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Atualize os dados desta fazenda." : "Cadastre uma fazenda que você atende como consultor."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div><Label>Nome da fazenda *</Label><Input value={form.nome_fazenda} onChange={e => setForm(f => ({ ...f, nome_fazenda: e.target.value }))} /></div>
@@ -187,6 +324,27 @@ export default function ConsultorFazendasPage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir fazenda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Isso também afetará o histórico de visitas desta fazenda. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <PersonalizarLogoModal
         open={logoDialogOpen}
         onOpenChange={setLogoDialogOpen}
@@ -195,6 +353,7 @@ export default function ConsultorFazendasPage() {
     </div>
   );
 }
+
 
 // ============================================================================
 // Modal — Personalizar Logo do Relatório (2 slots independentes)
