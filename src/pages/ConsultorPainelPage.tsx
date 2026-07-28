@@ -54,7 +54,7 @@ export default function ConsultorPainelPage() {
       const consultorId = cons?.id;
       if (!consultorId) { setLoading(false); return; }
 
-      const { data: vinc } = await supabase.from("fazendas_consultor").select("id, nome_fazenda").eq("consultor_id", consultorId);
+      const { data: vinc } = await supabase.from("fazendas_consultor").select("id, nome_fazenda").eq("consultor_id", consultorId).is("deleted_at", null);
       const listaFaz = vinc ?? [];
       setFazendas(listaFaz);
 
