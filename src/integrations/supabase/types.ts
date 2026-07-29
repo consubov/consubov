@@ -2585,6 +2585,7 @@ export type Database = {
           id: string
           lida: boolean
           mensagem: string | null
+          modulo: string
           tipo: string
           titulo: string
         }
@@ -2595,6 +2596,7 @@ export type Database = {
           id?: string
           lida?: boolean
           mensagem?: string | null
+          modulo?: string
           tipo?: string
           titulo: string
         }
@@ -2605,6 +2607,7 @@ export type Database = {
           id?: string
           lida?: boolean
           mensagem?: string | null
+          modulo?: string
           tipo?: string
           titulo?: string
         }

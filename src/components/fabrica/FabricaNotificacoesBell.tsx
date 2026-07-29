@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { modulosVisiveis } from "@/lib/avisosModulo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,6 +31,7 @@ export default function FabricaNotificacoesBell({ fabricaId }: { fabricaId: stri
     const { data } = await supabase.from("notificacoes")
       .select("id, titulo, mensagem, criado_em, lida, tipo, dados")
       .contains("dados", { fabrica_id: fabricaId })
+      .in("modulo", modulosVisiveis("consubov"))
       .order("criado_em", { ascending: false })
       .limit(20);
     setItems((data as Notif[]) || []);

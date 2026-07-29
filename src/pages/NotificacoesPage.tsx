@@ -3,10 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Bell, Check, Eye } from "lucide-react";
+import { Bell, Check, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MODULOS_AVISO, type ModuloAviso } from "@/lib/avisosModulo";
+import { toast } from "sonner";
 
 interface Notificacao {
   id: string;
@@ -16,12 +22,27 @@ interface Notificacao {
   dados: Record<string, string> | null;
   lida: boolean;
   criado_em: string;
+  modulo: ModuloAviso | null;
 }
+
+const MODULO_LABEL: Record<string, string> = {
+  geral: "Geral",
+  consubov: "Consubov",
+  relatto: "Relatto",
+  mais_arrobas: "Mais Arrobas",
+};
 
 export default function NotificacoesPage() {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Notificacao | null>(null);
+
+  // Criação de aviso
+  const [novoOpen, setNovoOpen] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [modulo, setModulo] = useState<ModuloAviso>("geral");
+  const [salvando, setSalvando] = useState(false);
 
   const fetchNotificacoes = async () => {
     const { data } = await supabase
@@ -39,16 +60,35 @@ export default function NotificacoesPage() {
     setNotificacoes((prev) => prev.map((n) => n.id === id ? { ...n, lida: true } : n));
   };
 
+  const criarAviso = async () => {
+    if (!titulo.trim()) { toast.error("Informe o título do aviso."); return; }
+    setSalvando(true);
+    const { error } = await supabase.from("notificacoes").insert({
+      tipo: "aviso",
+      titulo: titulo.trim(),
+      mensagem: mensagem.trim() || null,
+      modulo,
+    });
+    setSalvando(false);
+    if (error) { toast.error("Não foi possível criar o aviso."); return; }
+    toast.success("Aviso publicado.");
+    setTitulo(""); setMensagem(""); setModulo("geral"); setNovoOpen(false);
+    fetchNotificacoes();
+  };
+
   const naoLidas = notificacoes.filter((n) => !n.lida).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Notificações</h1>
           {naoLidas > 0 && <Badge variant="destructive">{naoLidas} nova{naoLidas > 1 ? "s" : ""}</Badge>}
         </div>
+        <Button size="sm" onClick={() => setNovoOpen(true)}>
+          <Plus className="w-4 h-4 mr-1" /> Novo aviso
+        </Button>
       </div>
 
       <Card>
@@ -66,6 +106,7 @@ export default function NotificacoesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Status</TableHead>
+                    <TableHead>Módulo</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead className="hidden md:table-cell">E-mail</TableHead>
                     <TableHead className="hidden md:table-cell">Telefone</TableHead>
@@ -80,6 +121,11 @@ export default function NotificacoesPage() {
                       <TableCell>
                         <Badge variant={n.lida ? "secondary" : "default"} className="text-xs">
                           {n.lida ? "Lida" : "Nova"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {MODULO_LABEL[n.modulo ?? "geral"] ?? "Geral"}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{n.dados?.nome || n.titulo}</TableCell>
@@ -110,6 +156,43 @@ export default function NotificacoesPage() {
         </CardContent>
       </Card>
 
+      {/* Novo aviso */}
+      <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo aviso de atualização</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="aviso-titulo">Título</Label>
+              <Input id="aviso-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Novidades da versão" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="aviso-mensagem">Mensagem</Label>
+              <Textarea id="aviso-mensagem" value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Módulo</Label>
+              <Select value={modulo} onValueChange={(v) => setModulo(v as ModuloAviso)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MODULOS_AVISO.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Somente usuários do módulo escolhido verão este aviso. "Geral" aparece para todos.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNovoOpen(false)}>Cancelar</Button>
+            <Button onClick={criarAviso} disabled={salvando}>{salvando ? "Publicando..." : "Publicar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Detail dialog */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
         <DialogContent>
@@ -118,11 +201,12 @@ export default function NotificacoesPage() {
           </DialogHeader>
           {selected && (
             <div className="space-y-3 text-sm">
+              <div><strong>Módulo:</strong> {MODULO_LABEL[selected.modulo ?? "geral"] ?? "Geral"}</div>
               <div><strong>Nome:</strong> {selected.dados?.nome}</div>
               <div><strong>E-mail:</strong> {selected.dados?.email}</div>
               <div><strong>Telefone:</strong> {selected.dados?.telefone}</div>
               <div><strong>WhatsApp:</strong> {selected.dados?.whatsapp}</div>
-              <div><strong>Mensagem:</strong> {selected.dados?.mensagem || "Sem mensagem"}</div>
+              <div><strong>Mensagem:</strong> {selected.dados?.mensagem || selected.mensagem || "Sem mensagem"}</div>
               <div><strong>Data:</strong> {format(new Date(selected.criado_em), "dd/MM/yyyy HH:mm:ss")}</div>
               {!selected.lida && (
                 <Button size="sm" onClick={() => { marcarLida(selected.id); setSelected({ ...selected, lida: true }); }}>

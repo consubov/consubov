@@ -17,6 +17,7 @@ import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanne
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { modulosVisiveis } from "@/lib/avisosModulo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { pdf } from "@react-pdf/renderer";
@@ -121,7 +122,8 @@ export default function EscritorioLayout() {
         .from("notificacoes")
         .select("id, dados")
         .eq("tipo", "mortalidade")
-        .eq("lida", false);
+        .eq("lida", false)
+        .in("modulo", modulosVisiveis("consubov"));
       return (data || []).filter((n: any) => (n.dados as any)?.fazenda_id === fazendaId).length;
     },
     enabled: !!fazendaId,
@@ -541,6 +543,7 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         .select("id, lida, criado_em, dados")
         .eq("tipo", "mortalidade")
         .eq("lida", false)
+        .in("modulo", modulosVisiveis("consubov"))
         .order("criado_em", { ascending: false });
       return (data || []).filter((n: any) => {
         const d = n.dados as Record<string, any> | null;
