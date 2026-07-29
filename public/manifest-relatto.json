@@ -1,0 +1,17 @@
+{
+  "name": "Relatto",
+  "short_name": "Relatto",
+  "description": "Relatórios técnicos de consultoria pecuária",
+  "start_url": "/relatto",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1B4332",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-relatto-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-relatto-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-relatto-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-relatto-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
