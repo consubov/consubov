@@ -25,14 +25,16 @@
             isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
           } catch (e) {}
 
-          // Correção específica do Relatto: alguns webclips/PWAs reaproveitam o
-          // start_url antigo da raiz mesmo após instalar pela rota /relatto. Se
-          // o usuário instalou/visitou o Relatto e o app instalado abrir em "/",
-          // redireciona antes do React renderizar a landing da Consubov.
+          // Correção específica do Relatto: iOS/Android podem reaproveitar um
+          // webclip antigo com start_url "/" mesmo instalado pela rota /relatto.
+          // Em modo instalado, a raiz nunca deve renderizar a landing Consubov
+          // quando o perfil Relatto já foi detectado — redireciona antes do React.
           if ((p === '/' || p === '/index.html') && isStandalone) {
             var lastPwa = null;
+            var hasRelattoCookie = false;
             try { lastPwa = localStorage.getItem('relatto:pwa-profile'); } catch (e) {}
-            if (lastPwa === 'relatto') {
+            try { hasRelattoCookie = /(?:^|;\s*)relatto_pwa_profile=relatto(?:;|$)/.test(document.cookie || ''); } catch (e) {}
+            if (lastPwa === 'relatto' || hasRelattoCookie || location.search.indexOf('pwa=relatto') !== -1) {
               location.replace('/relatto');
               return;
             }
@@ -56,6 +58,7 @@
           if (t) t.setAttribute('content', m.title);
           if (m.id === 'relatto') {
             try { localStorage.setItem('relatto:pwa-profile', 'relatto'); } catch (e) {}
+            try { document.cookie = 'relatto_pwa_profile=relatto; Max-Age=31536000; Path=/; SameSite=Lax'; } catch (e) {}
           }
         } catch (e) {}
       })();

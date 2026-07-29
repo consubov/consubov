@@ -107,6 +107,11 @@ export function applyPwaProfile(pathname: string) {
     } catch {
       /* ignore */
     }
+    try {
+      document.cookie = "relatto_pwa_profile=relatto; Max-Age=31536000; Path=/; SameSite=Lax";
+    } catch {
+      /* ignore */
+    }
   }
   setMeta("apple-mobile-web-app-title", profile.appleTitle);
   setMeta("theme-color", profile.themeColor);
