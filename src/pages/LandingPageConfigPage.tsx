@@ -381,14 +381,17 @@ function SectionCard({
   section,
   values,
   setValues,
+  landingSlug,
 }: {
   section: SectionDef;
   values: Record<string, string>;
   setValues: (next: Record<string, string>) => void;
+  landingSlug: string;
 }) {
-  const [open, setOpen] = useState(section.id === "hero");
+  const [open, setOpen] = useState(section.id === "hero" || section.id === "relatto_hero");
   const [saving, setSaving] = useState(false);
   const folder = section.id;
+
 
   const setField = (key: string, value: string) => {
     setValues({ ...values, [key]: value });
