@@ -221,6 +221,73 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
+const RELATTO_SECTIONS: SectionDef[] = [
+  {
+    id: "relatto_hero",
+    title: "1. Topo (hero)",
+    description: "Marca, headline, subheadline e botão.",
+    fields: [
+      { key: "relatto_tag_marca", label: "Tag abaixo da logo", type: "text", placeholder: "uma marca Consubov" },
+      { key: "relatto_headline", label: "Headline", type: "text", placeholder: "Relatório técnico profissional, direto do campo." },
+      { key: "relatto_subheadline", label: "Subheadline", type: "textarea" },
+      { key: "relatto_cta_entrar", label: "Texto do botão", type: "text", placeholder: "Entrar" },
+    ],
+  },
+  {
+    id: "relatto_oque",
+    title: "2. O que é o Relatto",
+    fields: [
+      { key: "relatto_oque_titulo", label: "Título", type: "text", placeholder: "O que é o Relatto" },
+      { key: "relatto_oque_texto", label: "Texto", type: "textarea" },
+    ],
+  },
+  {
+    id: "relatto_como",
+    title: "3. Como funciona",
+    fields: [
+      { key: "relatto_como_titulo", label: "Título", type: "text", placeholder: "Como funciona" },
+      {
+        key: "relatto_passos",
+        label: "Passos (numerados)",
+        type: "json",
+        itemFields: [
+          { key: "titulo", label: "Título do passo", type: "text" },
+          { key: "descricao", label: "Descrição", type: "textarea" },
+        ],
+        newItem: { titulo: "", descricao: "" },
+      },
+    ],
+  },
+  {
+    id: "relatto_recursos",
+    title: "4. Recursos",
+    fields: [
+      { key: "relatto_recursos_titulo", label: "Título", type: "text", placeholder: "Recursos" },
+      {
+        key: "relatto_recursos",
+        label: "Lista de recursos",
+        type: "json",
+        itemFields: [
+          { key: "titulo", label: "Título", type: "text" },
+          { key: "descricao", label: "Descrição", type: "textarea" },
+        ],
+        newItem: { titulo: "", descricao: "" },
+      },
+    ],
+  },
+  {
+    id: "relatto_parceiros",
+    title: "5. Parceiros",
+    fields: [{ key: "relatto_parceiros_titulo", label: "Título da seção", type: "text", placeholder: "Parceiros" }],
+  },
+  {
+    id: "relatto_footer",
+    title: "6. Rodapé",
+    fields: [{ key: "relatto_footer_texto", label: "Texto do rodapé", type: "text", placeholder: "Relatto é uma marca Consubov." }],
+  },
+];
+
+
 /* ------------------- Helpers ------------------- */
 
 const BUCKET = "landing";
