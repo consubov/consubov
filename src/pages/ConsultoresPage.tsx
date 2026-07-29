@@ -21,10 +21,14 @@ interface Consultor {
   user_id: string;
   ativo: boolean | null;
   created_at: string;
+  profissao: string | null;
+  modulo_despesas_ativo: boolean | null;
 }
 
-interface Form { nome: string; email: string; senha: string; ativo: boolean; }
-const emptyForm: Form = { nome: "", email: "", senha: "", ativo: true };
+const PROFISSOES = ["Zootecnista", "Médico(a) Veterinário(a)", "Agrônomo(a)"];
+
+interface Form { nome: string; email: string; senha: string; ativo: boolean; profissao: string; profissaoOutro: string; despesasAtivo: boolean; }
+const emptyForm: Form = { nome: "", email: "", senha: "", ativo: true, profissao: "", profissaoOutro: "", despesasAtivo: false };
 
 export default function ConsultoresPage() {
   const [consultores, setConsultores] = useState<Consultor[]>([]);
@@ -46,7 +50,14 @@ export default function ConsultoresPage() {
   function openNew() { setEditingId(null); setForm(emptyForm); setDialogOpen(true); }
   function openEdit(c: Consultor) {
     setEditingId(c.id);
-    setForm({ nome: c.nome, email: "", senha: "", ativo: c.ativo ?? true });
+    const prof = c.profissao ?? "";
+    const isPreset = PROFISSOES.includes(prof);
+    setForm({
+      nome: c.nome, email: "", senha: "", ativo: c.ativo ?? true,
+      profissao: prof ? (isPreset ? prof : "Outro") : "",
+      profissaoOutro: prof && !isPreset ? prof : "",
+      despesasAtivo: c.modulo_despesas_ativo ?? false,
+    });
     setDialogOpen(true);
   }
 
@@ -57,10 +68,14 @@ export default function ConsultoresPage() {
       if (form.senha.length < 6) return toast.error("Senha mínima de 6 caracteres");
     }
     setSaving(true);
+    const profissaoFinal = form.profissao === "Outro"
+      ? (form.profissaoOutro.trim() || null)
+      : (form.profissao.trim() || null);
     try {
       if (editingId) {
         const { error } = await supabase.from("consultores").update({
           nome: form.nome.trim(), ativo: form.ativo,
+          profissao: profissaoFinal, modulo_despesas_ativo: form.despesasAtivo,
         }).eq("id", editingId);
         if (error) throw error;
         toast.success("Consultor atualizado!");
@@ -76,6 +91,7 @@ export default function ConsultoresPage() {
 
         const { error } = await supabase.from("consultores").insert({
           nome: form.nome.trim(), user_id: userId, ativo: form.ativo,
+          profissao: profissaoFinal, modulo_despesas_ativo: form.despesasAtivo,
         });
         if (error) throw error;
         toast.success("Consultor criado!");
@@ -151,6 +167,33 @@ export default function ConsultoresPage() {
                 <div><Label>Senha *</Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
               </>
             )}
+            <div className="space-y-2">
+              <Label>Profissão</Label>
+              <div className="flex flex-wrap gap-2">
+                {[...PROFISSOES, "Outro"].map(op => (
+                  <Button
+                    key={op}
+                    type="button"
+                    size="sm"
+                    variant={form.profissao === op ? "default" : "outline"}
+                    onClick={() => setForm(f => ({ ...f, profissao: f.profissao === op ? "" : op }))}
+                  >
+                    {op}
+                  </Button>
+                ))}
+              </div>
+              {form.profissao === "Outro" && (
+                <Input
+                  placeholder="Digite a profissão"
+                  value={form.profissaoOutro}
+                  onChange={e => setForm(f => ({ ...f, profissaoOutro: e.target.value }))}
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.despesasAtivo} onCheckedChange={v => setForm(f => ({ ...f, despesasAtivo: v }))} />
+              <Label>Ativar módulo de Despesas de Combustível</Label>
+            </div>
             <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
           </div>
           <DialogFooter>

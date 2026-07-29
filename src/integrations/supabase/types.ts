@@ -1049,7 +1049,9 @@ export type Database = {
           logo_esquerda_url: string | null
           logo_modo: string
           logo_personalizada_url: string | null
+          modulo_despesas_ativo: boolean
           nome: string
+          profissao: string | null
           user_id: string
         }
         Insert: {
@@ -1060,7 +1062,9 @@ export type Database = {
           logo_esquerda_url?: string | null
           logo_modo?: string
           logo_personalizada_url?: string | null
+          modulo_despesas_ativo?: boolean
           nome: string
+          profissao?: string | null
           user_id: string
         }
         Update: {
@@ -1071,7 +1075,9 @@ export type Database = {
           logo_esquerda_url?: string | null
           logo_modo?: string
           logo_personalizada_url?: string | null
+          modulo_despesas_ativo?: boolean
           nome?: string
+          profissao?: string | null
           user_id?: string
         }
         Relationships: []

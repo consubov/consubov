@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Landmark, Calendar, Star, AlertTriangle, TrendingUp, Target } from "lucide-react";
+import { Landmark, Calendar, AlertTriangle, TrendingUp, Beef } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -26,8 +26,8 @@ export default function ConsultorPainelPage() {
 
   const [fazendas, setFazendas] = useState<any[]>([]);
   const [visitas, setVisitas] = useState<any[]>([]);
-  const [scoreMedio, setScoreMedio] = useState(0);
-  const [indiceMedio, setIndiceMedio] = useState(0);
+  const [nomeConsultor, setNomeConsultor] = useState("");
+  const [animaisAvaliados, setAnimaisAvaliados] = useState(0);
   const [evolucaoScore, setEvolucaoScore] = useState<{ data: string; score: number }[]>([]);
 
   useEffect(() => {
@@ -50,8 +50,9 @@ export default function ConsultorPainelPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: cons } = await supabase.from("consultores").select("id").eq("user_id", user.id).maybeSingle();
+      const { data: cons } = await supabase.from("consultores").select("id, nome").eq("user_id", user.id).maybeSingle();
       const consultorId = cons?.id;
+      setNomeConsultor((cons as any)?.nome ?? "");
       if (!consultorId) { setLoading(false); return; }
 
       const { data: vinc } = await supabase.from("fazendas_consultor").select("id, nome_fazenda").eq("consultor_id", consultorId).is("deleted_at", null);
@@ -70,29 +71,18 @@ export default function ConsultorPainelPage() {
         .lte("hora_inicio", fimISO + "T23:59:59");
       setVisitas(vs ?? []);
 
-      // Scores medios
+      // Animais avaliados no período (pastos/currais das visitas)
       const visitaIds = (vs ?? []).map((v: any) => v.id);
-      let scoreMean = 0;
       if (visitaIds.length) {
-        const { data: pastos } = await supabase.from("visita_pastos").select("id, visita_id, consumo_esperado_kg, consumo_real_kg").in("visita_id", visitaIds);
-        const pastoIds = (pastos ?? []).map((p: any) => p.id);
-        if (pastoIds.length) {
-          const { data: scores } = await supabase.from("avaliacoes_score").select("nota").in("visita_pasto_id", pastoIds);
-          const arr = (scores ?? []).map((s: any) => Number(s.nota)).filter((n) => !isNaN(n) && n > 0);
-          if (arr.length) scoreMean = arr.reduce((a, b) => a + b, 0) / arr.length;
-        }
-        // Indice meta
-        const idx: number[] = [];
-        (pastos ?? []).forEach((p: any) => {
-          const esp = Number(p.consumo_esperado_kg) || 0;
-          const rl = Number(p.consumo_real_kg) || 0;
-          if (esp > 0 && rl > 0) idx.push((rl / esp) * 100);
-        });
-        setIndiceMedio(idx.length ? idx.reduce((a, b) => a + b, 0) / idx.length : 0);
+        const { data: pastos } = await supabase
+          .from("visita_pastos")
+          .select("qtd_animais")
+          .in("visita_id", visitaIds);
+        const total = (pastos ?? []).reduce((acc: number, p: any) => acc + (Number(p.qtd_animais) || 0), 0);
+        setAnimaisAvaliados(total);
       } else {
-        setIndiceMedio(0);
+        setAnimaisAvaliados(0);
       }
-      setScoreMedio(scoreMean);
 
       // Evolução: pontos por visita ordenados
       const evo: { data: string; score: number }[] = [];
@@ -112,6 +102,13 @@ export default function ConsultorPainelPage() {
       setLoading(false);
     }
   }
+
+  const saudacao = useMemo(() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return "Bom dia";
+    if (h >= 12 && h < 18) return "Boa tarde";
+    return "Boa noite";
+  }, []);
 
   const now = new Date();
   const semanaIni = startOfWeek(now, { locale: ptBR });
@@ -142,7 +139,9 @@ export default function ConsultorPainelPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Painel do Consultor</h1>
+        <h1 className="text-xl font-bold text-foreground">
+          {saudacao}{nomeConsultor ? `, ${nomeConsultor.trim().split(/\s+/)[0]}` : ""}!
+        </h1>
         <p className="text-sm text-muted-foreground">Visão geral do período selecionado</p>
       </div>
 
@@ -172,7 +171,7 @@ export default function ConsultorPainelPage() {
           <MetricCard icon={<Landmark className="w-4 h-4" />} label="Fazendas" value={String(fazendas.length)} />
           <MetricCard icon={<Calendar className="w-4 h-4" />} label="Visitas (semana)" value={String(visitasSemana)} />
           <MetricCard icon={<Calendar className="w-4 h-4" />} label="Visitas (mês)" value={String(visitasMes)} />
-          <MetricCard icon={<Star className="w-4 h-4" />} label="Score médio" value={scoreMedio.toFixed(1)} suffix="/5" />
+          <MetricCard icon={<Beef className="w-4 h-4" />} label="Animais avaliados" value={animaisAvaliados.toLocaleString("pt-BR")} />
 
           <Card className="p-3 col-span-2">
             <div className="flex items-center gap-2 mb-2">
@@ -214,16 +213,6 @@ export default function ConsultorPainelPage() {
             )}
           </Card>
 
-          <Card className="p-3 col-span-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-4 h-4 text-primary" />
-              <div className="text-sm font-semibold">Índice de Meta médio</div>
-            </div>
-            <div className="text-3xl font-bold" style={{ color: indiceMedio >= 90 ? GREEN : indiceMedio >= 70 ? GOLD : RED }}>
-              {indiceMedio.toFixed(1)}%
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">Consumo real vs esperado nos pastos visitados</div>
-          </Card>
         </div>
       )}
     </div>
