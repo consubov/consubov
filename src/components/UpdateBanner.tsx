@@ -3,6 +3,7 @@ import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { APP_VERSION } from "@/lib/appVersion";
+import { useHasCriticalOperations } from "@/lib/criticalOperations";
 
 declare const __APP_BUILD_VERSION__: string;
 
