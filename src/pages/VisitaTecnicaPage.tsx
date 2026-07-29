@@ -339,6 +339,27 @@ export default function VisitaTecnicaPage() {
         readOnly={readOnly}
       />
 
+      <AlertDialog open={!!pastoExcluir} onOpenChange={(v) => { if (!v) setPastoExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Excluir pasto {pastoExcluir?.num_pasto || pastoExcluir?.letra}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            As informações e notas deste pasto serão removidas desta visita. Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoPasto}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleExcluirPasto(); }}
+              disabled={excluindoPasto}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoPasto ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
       <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <DialogContent>
           <DialogHeader>
