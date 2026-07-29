@@ -241,7 +241,9 @@ const App = () => (
             <Routes>
 
               <Route path="/" element={<LandingPage />} />
+              <Route path="/relatto" element={<RelattoLandingPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
+
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/login" element={<LoginRoute />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
