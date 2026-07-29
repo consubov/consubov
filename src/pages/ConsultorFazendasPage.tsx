@@ -90,9 +90,23 @@ export default function ConsultorFazendasPage() {
 
   function openNew() {
     setEditingId(null);
-    setForm(emptyForm);
+    const isDemo = typeof window !== "undefined" && window.localStorage.getItem("relatto_demo") === "1";
+    setForm(
+      isDemo
+        ? {
+            nome_fazenda: "Fazenda Modelo",
+            proprietario: "João da Silva",
+            responsavel: "Carlos Pereira",
+            municipio: "Araguaína",
+            uf: "TO",
+            latitude: "",
+            longitude: "",
+          }
+        : emptyForm,
+    );
     setDialogOpen(true);
   }
+
 
   function openEdit(f: Fazenda) {
     setEditingId(f.id);

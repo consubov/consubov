@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useLandingContent } from "@/hooks/useLandingContent";
+import { APP_VERSION } from "@/lib/appVersion";
+import RelattoDemoModal from "@/components/landing/RelattoDemoModal";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import {
   ClipboardList,
@@ -11,6 +13,8 @@ import {
   LayoutDashboard,
   CalendarDays,
   Fuel,
+  RefreshCw,
+  PlayCircle,
 } from "lucide-react";
 
 interface Parceiro {
@@ -18,6 +22,33 @@ interface Parceiro {
   nome: string | null;
   logo_url: string | null;
 }
+
+interface Slide {
+  titulo: string;
+  subtitulo: string;
+  imagem_url?: string;
+}
+
+const SLIDES_FALLBACK: Slide[] = [
+  {
+    titulo: "Relatório técnico profissional, direto do campo",
+    subtitulo:
+      "O Relatto transforma sua visita técnica em um relatório pronto, com fotos, notas e gráficos.",
+  },
+  {
+    titulo: "Funciona 100% sem internet",
+    subtitulo:
+      "Registre tudo em campo mesmo sem sinal. Quando reconectar, o app sincroniza sozinho.",
+  },
+  {
+    titulo: "Relatórios profissionais, prontos para o produtor",
+    subtitulo: "PDF organizado, com sua marca, fotos numeradas e gráficos de avaliação.",
+  },
+  {
+    titulo: "3 tipos de visita, um só aplicativo",
+    subtitulo: "Rotina, Confinamento e Fábrica, cada uma com sua avaliação específica.",
+  },
+];
 
 const PASSOS_FALLBACK = [
   { titulo: "Cadastre a fazenda", descricao: "Nome, localização, responsável, tudo em segundos" },
@@ -40,6 +71,8 @@ const RECURSO_ICONS = [ClipboardList, FileText, WifiOff, LayoutDashboard, Calend
 export default function RelattoLandingPage() {
   const { t, arr } = useLandingContent("relatto");
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   useEffect(() => {
     document.title = "Relatto — Relatório técnico profissional, direto do campo";
@@ -68,38 +101,123 @@ export default function RelattoLandingPage() {
     };
   }, []);
 
+  const slides = arr<Slide>("relatto_slides", SLIDES_FALLBACK).slice(0, 4);
   const passos = arr<{ titulo: string; descricao: string }>("relatto_passos", PASSOS_FALLBACK);
   const recursos = arr<{ titulo: string; descricao: string }>("relatto_recursos", RECURSOS_FALLBACK);
 
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const id = window.setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slides.length);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [slides.length]);
+
+  const handleRefresh = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("__v", String(Date.now()));
+    window.location.replace(url.toString());
+  };
+
+  const slide = slides[Math.min(slideIndex, slides.length - 1)] ?? SLIDES_FALLBACK[0];
+
   return (
     <div className="min-h-screen bg-white text-neutral-900">
-      {/* Hero */}
-      <header className="px-6 pt-14 pb-12 text-center max-w-3xl mx-auto">
-        <img
-          src={relattoLogo.url}
-          alt="Logo Relatto"
-          className="w-24 h-24 mx-auto object-contain"
-        />
-        <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-neutral-400">
-          {t("relatto_tag_marca", "uma marca Consubov")}
-        </p>
-
-        <h1 className="mt-8 text-3xl sm:text-4xl font-bold leading-tight text-neutral-900">
-          {t("relatto_headline", "Relatório técnico profissional, direto do campo.")}
-        </h1>
-        <p className="mt-4 text-base sm:text-lg text-neutral-600 leading-relaxed">
-          {t(
-            "relatto_subheadline",
-            "O Relatto transforma sua visita técnica em um relatório pronto, com fotos, notas e gráficos, mesmo sem internet.",
-          )}
-        </p>
-
-        <Link to="/login" className="inline-block mt-8">
-          <Button size="lg" className="px-10 rounded-full font-semibold">
-            {t("relatto_cta_entrar", "Entrar")}
-          </Button>
-        </Link>
+      {/* Cabeçalho */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-neutral-100">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={relattoLogo.url} alt="Logo Relatto" className="w-9 h-9 object-contain" />
+            <span className="text-lg font-bold tracking-tight">Relatto</span>
+            <span className="ml-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-mono font-semibold text-neutral-500">
+              v{APP_VERSION}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleRefresh}
+              aria-label="Atualizar página"
+              title="Atualizar"
+              className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-1.5"
+              onClick={() => setDemoOpen(true)}
+            >
+              <PlayCircle className="w-4 h-4" /> Demo
+            </Button>
+            <Link to="/login">
+              <Button size="sm" className="rounded-full font-semibold">
+                {t("relatto_cta_entrar", "Entrar")}
+              </Button>
+            </Link>
+          </div>
+        </div>
       </header>
+
+      {/* Carrossel do hero */}
+      <section className="px-4 pt-5">
+        <div className="max-w-5xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl min-h-[300px] sm:min-h-[380px] flex items-end">
+            {slide.imagem_url ? (
+              <img
+                src={slide.imagem_url}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-neutral-900" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/10" />
+
+            {!slide.imagem_url && (
+              <img
+                src={relattoLogo.url}
+                alt=""
+                aria-hidden="true"
+                className="absolute right-4 top-4 w-20 h-20 object-contain opacity-25"
+              />
+            )}
+
+            <div className="relative p-6 sm:p-10 text-white">
+              <h1 className="text-2xl sm:text-4xl font-bold leading-tight max-w-2xl">
+                {slide.titulo}
+              </h1>
+              <p className="mt-3 text-sm sm:text-base text-white/85 max-w-xl leading-relaxed">
+                {slide.subtitulo}
+              </p>
+            </div>
+          </div>
+
+          {slides.length > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  aria-label={`Ir para o slide ${i + 1}`}
+                  onClick={() => setSlideIndex(i)}
+                  className={`h-2 rounded-full transition-all ${
+                    i === slideIndex ? "w-6 bg-primary" : "w-2 bg-neutral-300"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="py-10 text-center">
+            <p className="text-4xl sm:text-5xl font-bold tracking-tight text-neutral-900">
+              Relatto<sup className="text-lg align-super">®</sup>
+            </p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-neutral-400">
+              {t("relatto_tag_marca", "uma marca Consubov")}
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* O que é */}
       <section className="px-6 py-14 bg-neutral-50 border-y border-neutral-100">
@@ -187,7 +305,10 @@ export default function RelattoLandingPage() {
         <p className="mt-3 text-sm text-neutral-500">
           {t("relatto_footer_texto", "Relatto é uma marca Consubov.")}
         </p>
+        <p className="mt-1 text-xs text-neutral-400">v{APP_VERSION}</p>
       </footer>
+
+      <RelattoDemoModal open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 }

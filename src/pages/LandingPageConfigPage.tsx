@@ -234,6 +234,26 @@ const RELATTO_SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: "relatto_slides",
+    title: "1.1 Carrossel do topo",
+    description: "Até 4 slides. Sem imagem, o slide usa o fundo verde da marca.",
+    fields: [
+      {
+        key: "relatto_slides",
+        label: "Slides (máx. 4)",
+        type: "json",
+        help: "A ordem da lista é a ordem de exibição. Imagem recomendada: 1600x900px.",
+        itemFields: [
+          { key: "titulo", label: "Título", type: "text" },
+          { key: "subtitulo", label: "Subtítulo", type: "textarea" },
+          { key: "imagem_url", label: "Imagem de fundo", type: "image" },
+        ],
+        newItem: { titulo: "", subtitulo: "", imagem_url: "" },
+      },
+    ],
+  },
+
+  {
     id: "relatto_oque",
     title: "2. O que é o Relatto",
     fields: [

@@ -9,6 +9,8 @@ import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import SyncHeaderIndicator from "@/components/consultor/SyncHeaderIndicator";
+import DemoTour from "@/components/consultor/DemoTour";
+
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -18,6 +20,7 @@ export default function ConsultorLayout() {
   const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
   const [despesasAtivo, setDespesasAtivo] = useState<boolean | null>(null);
+  const [demo, setDemo] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -25,13 +28,22 @@ export default function ConsultorLayout() {
     (async () => {
       const { data } = await supabase
         .from("consultores")
-        .select("modulo_despesas_ativo")
+        .select("id, modulo_despesas_ativo, is_demo")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (!cancel) setDespesasAtivo(Boolean((data as any)?.modulo_despesas_ativo));
+      if (cancel) return;
+      setDespesasAtivo(Boolean((data as any)?.modulo_despesas_ativo));
+      if ((data as any)?.is_demo) {
+        window.localStorage.setItem("relatto_demo", "1");
+        setDemo({ id: (data as any).id as string });
+      } else {
+        window.localStorage.removeItem("relatto_demo");
+        setDemo(null);
+      }
     })();
     return () => { cancel = true; };
   }, [user]);
+
 
 
   async function handleRefresh() {
@@ -79,6 +91,10 @@ export default function ConsultorLayout() {
           <Outlet />
         )}
       </main>
+
+      {demo && <DemoTour consultorId={demo.id} />}
+
+
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
