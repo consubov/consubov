@@ -69,6 +69,40 @@ export default function VisitaTecnicaPage() {
 
   const readOnly = false;
 
+  async function handleExcluirPasto() {
+    if (!pastoExcluir) return;
+    const alvo = pastoExcluir;
+    setExcluindoPasto(true);
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", alvo.id);
+      }
+
+      const { queued } = await offlineDelete({
+        visitaId: visitaId!,
+        table: "visita_pastos",
+        rowId: alvo.id,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          pastos: ((curr as any).pastos as any[] || []).filter((p: any) => p.id !== alvo.id),
+          avaliacoes_score: ((curr as any).avaliacoes_score as any[] || []).filter(
+            (s: any) => s.visita_pasto_id !== alvo.id,
+          ),
+        }) as any,
+      });
+
+      setPastos(prev => prev.filter(p => p.id !== alvo.id));
+      setPastoExcluir(null);
+      toast.success(queued ? "Pasto excluído (será sincronizado)" : "Pasto excluído");
+      await load();
+    } catch (err) {
+      console.error("[visita] excluir pasto", err);
+      toast.error("Não foi possível excluir o pasto.");
+    } finally {
+      setExcluindoPasto(false);
+    }
+  }
+
   async function load() {
     setLoading(true);
     const snap = await loadSnapshot(visitaId!);
