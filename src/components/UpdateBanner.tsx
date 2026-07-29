@@ -14,6 +14,7 @@ declare const __APP_BUILD_VERSION__: string;
  */
 export function UpdateBanner() {
   const { updateAvailable, applyUpdate } = useSWUpdate();
+  const busy = useHasCriticalOperations();
   const [remoteMismatch, setRemoteMismatch] = useState<string | null>(null);
 
   useEffect(() => {
