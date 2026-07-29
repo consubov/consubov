@@ -57,6 +57,8 @@ export default function VisitaTecnicaPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPasto, setEditingPasto] = useState<VisitaPastoRow | null>(null);
+  const [pastoExcluir, setPastoExcluir] = useState<VisitaPastoRow | null>(null);
+  const [excluindoPasto, setExcluindoPasto] = useState(false);
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
