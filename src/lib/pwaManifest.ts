@@ -87,8 +87,16 @@ function setMeta(name: string, content: string) {
 
 let applied: string | null = null;
 
+// Perfil derivado da URL de entrada. Rotas protegidas redirecionam para /login
+// antes da autenticação; nesses casos mantemos o módulo de origem.
+const initialProfile =
+  typeof window !== "undefined" ? profileForPath(window.location.pathname) : PROFILES.consubov;
+
 export function applyPwaProfile(pathname: string) {
-  const profile = profileForPath(pathname);
+  let profile = profileForPath(pathname);
+  if (profile.id === "consubov" && initialProfile.id !== "consubov") {
+    profile = initialProfile;
+  }
   if (applied === profile.id) return;
   applied = profile.id;
 
