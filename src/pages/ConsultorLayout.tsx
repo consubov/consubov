@@ -9,6 +9,8 @@ import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import SyncHeaderIndicator from "@/components/consultor/SyncHeaderIndicator";
+import DemoTour from "@/components/consultor/DemoTour";
+
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -89,6 +91,10 @@ export default function ConsultorLayout() {
           <Outlet />
         )}
       </main>
+
+      {demo && <DemoTour consultorId={demo.id} />}
+
+
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
