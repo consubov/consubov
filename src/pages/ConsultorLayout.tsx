@@ -1,4 +1,6 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
