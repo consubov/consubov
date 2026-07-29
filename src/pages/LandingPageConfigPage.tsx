@@ -404,10 +404,14 @@ function SectionCard({
       chave: f.key,
       valor: values[f.key] ?? "",
       atualizado_em: now,
+      landing_slug: landingSlug,
     }));
     let ok = true;
     for (const row of rows) {
-      const { error } = await supabase.from("landing_page_content").upsert(row, { onConflict: "chave" });
+      const { error } = await supabase
+        .from("landing_page_content")
+        .upsert(row, { onConflict: "landing_slug,chave" });
+
       if (error) {
         ok = false;
         toast.error(`Erro ao salvar ${row.chave}: ${error.message}`);
