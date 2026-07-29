@@ -1,3 +1,7 @@
 project_id = "zptkqeiyvkqogrimbvna"
 [functions.send-push-notification]
 verify_jwt = false
+[functions.relatto-demo-signup]
+verify_jwt = false
+[functions.cleanup-demo-accounts]
+verify_jwt = false
