@@ -1,17 +1,38 @@
 {
   "name": "SyncVet",
   "short_name": "SyncVet",
-  "description": "Gestão veterinária e reprodutiva",
+  "id": "/syncvet",
   "start_url": "/syncvet",
   "scope": "/",
+  "description": "Gestão veterinária e reprodutiva",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#1B4332",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icon-syncvet-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-syncvet-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-syncvet-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icon-syncvet-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icon-syncvet-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-syncvet-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-syncvet-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-syncvet-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

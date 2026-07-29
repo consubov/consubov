@@ -1,17 +1,38 @@
 {
   "name": "Mais Arrobas",
   "short_name": "Mais Arrobas",
-  "description": "Pesagem e gestão de lotes",
+  "id": "/maisarrobas",
   "start_url": "/app",
   "scope": "/",
+  "description": "Pesagem e gestão de lotes",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#1B4332",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icon-maisarrobas-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-maisarrobas-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-maisarrobas-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icon-maisarrobas-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icon-maisarrobas-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maisarrobas-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maisarrobas-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maisarrobas-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
