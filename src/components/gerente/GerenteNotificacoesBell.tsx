@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { modulosVisiveis } from "@/lib/avisosModulo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
     const { data } = await supabase.from("notificacoes")
       .select("id, tipo, titulo, mensagem, criado_em, lida, dados, fazenda_id")
       .eq("fazenda_id", fazendaId)
+      .in("modulo", modulosVisiveis("consubov"))
       .order("criado_em", { ascending: false })
       .limit(30);
     setItems((data as Notif[]) || []);
