@@ -49,7 +49,8 @@ export function UpdateBanner() {
     };
   }, []);
 
-  const show = updateAvailable || remoteMismatch !== null;
+  // Não interrompe o usuário no meio de uma operação crítica (visita aberta).
+  const show = (updateAvailable || remoteMismatch !== null) && !busy;
   if (!show) return null;
 
   const handleClick = () => {
