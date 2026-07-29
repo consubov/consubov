@@ -18,6 +18,7 @@ export default function ConsultorLayout() {
   const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
   const [despesasAtivo, setDespesasAtivo] = useState<boolean | null>(null);
+  const [demo, setDemo] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -25,13 +26,22 @@ export default function ConsultorLayout() {
     (async () => {
       const { data } = await supabase
         .from("consultores")
-        .select("modulo_despesas_ativo")
+        .select("id, modulo_despesas_ativo, is_demo")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (!cancel) setDespesasAtivo(Boolean((data as any)?.modulo_despesas_ativo));
+      if (cancel) return;
+      setDespesasAtivo(Boolean((data as any)?.modulo_despesas_ativo));
+      if ((data as any)?.is_demo) {
+        window.localStorage.setItem("relatto_demo", "1");
+        setDemo({ id: (data as any).id as string });
+      } else {
+        window.localStorage.removeItem("relatto_demo");
+        setDemo(null);
+      }
     })();
     return () => { cancel = true; };
   }, [user]);
+
 
 
   async function handleRefresh() {
