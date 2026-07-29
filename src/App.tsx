@@ -32,6 +32,8 @@ import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
 import EscritoriosPage from "./pages/EscritoriosPage";
 import AuditoriaConfigPage from "./pages/AuditoriaConfigPage";
 import LandingPage from "./pages/LandingPage";
+import RelattoLandingPage from "./pages/RelattoLandingPage";
+
 import EscritorioLayout from "./pages/EscritorioLayout";
 import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
 import NotFound from "./pages/NotFound";
