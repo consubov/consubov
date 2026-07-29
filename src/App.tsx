@@ -100,9 +100,18 @@ import SyncVetManejoExecucaoPage from "./pages/SyncVetManejoExecucaoPage";
 import SyncVetMeuPainelPage from "./pages/SyncVetMeuPainelPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { applyPwaProfile } from "@/lib/pwaManifest";
 
 function PushNotificationsBootstrap() {
   usePushNotifications();
+  return null;
+}
+
+function PwaProfileSync() {
+  const location = useLocation();
+  useEffect(() => {
+    applyPwaProfile(location.pathname);
+  }, [location.pathname]);
   return null;
 }
 
@@ -239,7 +248,9 @@ const App = () => (
       <BrowserRouter>
         <PainelPeriodoProvider>
           <AuthProvider>
+            <PwaProfileSync />
             <PushNotificationsBootstrap />
+
             <Routes>
 
               <Route path="/" element={<LandingPage />} />

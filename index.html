@@ -14,6 +14,32 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Consubov" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <script>
+      // Ajusta manifest/ícone/título por rota já na análise do HTML, para que o
+      // navegador capture os metadados corretos ao "Adicionar à Tela de Início".
+      (function () {
+        try {
+          var p = location.pathname.toLowerCase();
+          var m = null;
+          if (p === '/relatto' || p.indexOf('/relatto/') === 0 || p.indexOf('/consultor') === 0) {
+            m = { id: 'relatto', title: 'Relatto' };
+          } else if (p.indexOf('/maisarrobas') === 0 || p.indexOf('/mais-arrobas') === 0 || p.indexOf('/pecuarista') === 0 || p.indexOf('/pesador') === 0) {
+            m = { id: 'maisarrobas', title: 'Mais Arrobas' };
+          } else if (p.indexOf('/syncvet') === 0) {
+            m = { id: 'syncvet', title: 'SyncVet' };
+          }
+          if (!m) return;
+          document.title = m.title;
+          var man = document.querySelector('link[rel="manifest"]');
+          if (man) man.setAttribute('href', '/manifest-' + m.id + '.json');
+          var apple = document.querySelector('link[rel="apple-touch-icon"]');
+          if (apple) apple.setAttribute('href', '/icon-' + m.id + '-192.png');
+          var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (t) t.setAttribute('content', m.title);
+        } catch (e) {}
+      })();
+    </script>
+
 
     <!-- TODO: Update og:title to match your application name -->
     
