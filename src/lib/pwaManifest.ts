@@ -101,6 +101,13 @@ export function applyPwaProfile(pathname: string) {
   applied = profile.id;
 
   document.title = profile.title;
+  if (profile.id === "relatto") {
+    try {
+      window.localStorage.setItem("relatto:pwa-profile", "relatto");
+    } catch {
+      /* ignore */
+    }
+  }
   setMeta("apple-mobile-web-app-title", profile.appleTitle);
   setMeta("theme-color", profile.themeColor);
   setLink("apple-touch-icon", profile.appleIcon);
