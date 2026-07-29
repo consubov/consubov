@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type LandingContent = Record<string, string>;
+export type LandingSlug = "consubov" | "relatto";
 
-export function useLandingContent() {
+export function useLandingContent(slug: LandingSlug = "consubov") {
   const [data, setData] = useState<LandingContent>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
     supabase
       .from("landing_page_content")
       .select("chave, valor")
+      .eq("landing_slug", slug)
       .then(({ data: rows }) => {
         if (!mounted) return;
         const map: LandingContent = {};
@@ -24,7 +27,7 @@ export function useLandingContent() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [slug]);
 
   // Helper: get string with fallback
   const t = (key: string, fallback: string): string => {

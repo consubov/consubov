@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ParceirosEditor from "@/components/landing/ParceirosEditor";
 import { toast } from "sonner";
+
 import {
   Save,
   Globe,
@@ -218,6 +221,73 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
+const RELATTO_SECTIONS: SectionDef[] = [
+  {
+    id: "relatto_hero",
+    title: "1. Topo (hero)",
+    description: "Marca, headline, subheadline e botão.",
+    fields: [
+      { key: "relatto_tag_marca", label: "Tag abaixo da logo", type: "text", placeholder: "uma marca Consubov" },
+      { key: "relatto_headline", label: "Headline", type: "text", placeholder: "Relatório técnico profissional, direto do campo." },
+      { key: "relatto_subheadline", label: "Subheadline", type: "textarea" },
+      { key: "relatto_cta_entrar", label: "Texto do botão", type: "text", placeholder: "Entrar" },
+    ],
+  },
+  {
+    id: "relatto_oque",
+    title: "2. O que é o Relatto",
+    fields: [
+      { key: "relatto_oque_titulo", label: "Título", type: "text", placeholder: "O que é o Relatto" },
+      { key: "relatto_oque_texto", label: "Texto", type: "textarea" },
+    ],
+  },
+  {
+    id: "relatto_como",
+    title: "3. Como funciona",
+    fields: [
+      { key: "relatto_como_titulo", label: "Título", type: "text", placeholder: "Como funciona" },
+      {
+        key: "relatto_passos",
+        label: "Passos (numerados)",
+        type: "json",
+        itemFields: [
+          { key: "titulo", label: "Título do passo", type: "text" },
+          { key: "descricao", label: "Descrição", type: "textarea" },
+        ],
+        newItem: { titulo: "", descricao: "" },
+      },
+    ],
+  },
+  {
+    id: "relatto_recursos",
+    title: "4. Recursos",
+    fields: [
+      { key: "relatto_recursos_titulo", label: "Título", type: "text", placeholder: "Recursos" },
+      {
+        key: "relatto_recursos",
+        label: "Lista de recursos",
+        type: "json",
+        itemFields: [
+          { key: "titulo", label: "Título", type: "text" },
+          { key: "descricao", label: "Descrição", type: "textarea" },
+        ],
+        newItem: { titulo: "", descricao: "" },
+      },
+    ],
+  },
+  {
+    id: "relatto_parceiros",
+    title: "5. Parceiros",
+    fields: [{ key: "relatto_parceiros_titulo", label: "Título da seção", type: "text", placeholder: "Parceiros" }],
+  },
+  {
+    id: "relatto_footer",
+    title: "6. Rodapé",
+    fields: [{ key: "relatto_footer_texto", label: "Texto do rodapé", type: "text", placeholder: "Relatto é uma marca Consubov." }],
+  },
+];
+
+
 /* ------------------- Helpers ------------------- */
 
 const BUCKET = "landing";
@@ -381,14 +451,17 @@ function SectionCard({
   section,
   values,
   setValues,
+  landingSlug,
 }: {
   section: SectionDef;
   values: Record<string, string>;
   setValues: (next: Record<string, string>) => void;
+  landingSlug: string;
 }) {
-  const [open, setOpen] = useState(section.id === "hero");
+  const [open, setOpen] = useState(section.id === "hero" || section.id === "relatto_hero");
   const [saving, setSaving] = useState(false);
   const folder = section.id;
+
 
   const setField = (key: string, value: string) => {
     setValues({ ...values, [key]: value });
@@ -401,10 +474,14 @@ function SectionCard({
       chave: f.key,
       valor: values[f.key] ?? "",
       atualizado_em: now,
+      landing_slug: landingSlug,
     }));
     let ok = true;
     for (const row of rows) {
-      const { error } = await supabase.from("landing_page_content").upsert(row, { onConflict: "chave" });
+      const { error } = await supabase
+        .from("landing_page_content")
+        .upsert(row, { onConflict: "landing_slug,chave" });
+
       if (error) {
         ok = false;
         toast.error(`Erro ao salvar ${row.chave}: ${error.message}`);
@@ -497,14 +574,19 @@ function SectionCard({
 /* ------------------- Page ------------------- */
 
 export default function LandingPageConfigPage() {
+  const [landingSlug, setLandingSlug] = useState<"consubov" | "relatto">("consubov");
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingAll, setSavingAll] = useState(false);
 
+  const sections = landingSlug === "relatto" ? RELATTO_SECTIONS : SECTIONS;
+
   useEffect(() => {
+    setLoading(true);
     supabase
       .from("landing_page_content")
       .select("chave, valor")
+      .eq("landing_slug", landingSlug)
       .then(({ data }) => {
         const map: Record<string, string> = {};
         (data || []).forEach((r) => {
@@ -513,23 +595,24 @@ export default function LandingPageConfigPage() {
         setValues(map);
         setLoading(false);
       });
-  }, []);
+  }, [landingSlug]);
 
   const handleSaveAll = async () => {
     setSavingAll(true);
     const now = new Date().toISOString();
-    const allKeys = SECTIONS.flatMap((s) => s.fields.map((f) => f.key));
+    const allKeys = sections.flatMap((s) => s.fields.map((f) => f.key));
     const rows = allKeys.map((chave) => ({
       chave,
       valor: values[chave] ?? "",
       atualizado_em: now,
+      landing_slug: landingSlug,
     }));
     let okCount = 0;
     let errCount = 0;
     for (const row of rows) {
       const { error } = await supabase
         .from("landing_page_content")
-        .upsert(row, { onConflict: "chave" });
+        .upsert(row, { onConflict: "landing_slug,chave" });
       if (error) {
         errCount++;
       } else {
@@ -544,14 +627,6 @@ export default function LandingPageConfigPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-32">
       <div className="flex items-center gap-3">
@@ -562,16 +637,32 @@ export default function LandingPageConfigPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {SECTIONS.map((section) => (
-          <SectionCard
-            key={section.id}
-            section={section}
-            values={values}
-            setValues={setValues}
-          />
-        ))}
-      </div>
+      <Tabs value={landingSlug} onValueChange={(v) => setLandingSlug(v as "consubov" | "relatto")}>
+        <TabsList>
+          <TabsTrigger value="consubov">Consubov</TabsTrigger>
+          <TabsTrigger value="relatto">Relatto</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sections.map((section) => (
+            <SectionCard
+              key={`${landingSlug}-${section.id}`}
+              section={section}
+              values={values}
+              setValues={setValues}
+              landingSlug={landingSlug}
+            />
+          ))}
+          {landingSlug === "relatto" && <ParceirosEditor landingSlug="relatto" />}
+        </div>
+      )}
+
 
       {/* Botão flutuante: Salvar todas as alterações */}
       <div className="fixed bottom-6 right-6 z-50">
