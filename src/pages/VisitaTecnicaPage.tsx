@@ -24,6 +24,7 @@ import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 
 interface Visita {
   id: string;
@@ -68,6 +69,9 @@ export default function VisitaTecnicaPage() {
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
   const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-consultor");
 
   async function handleExcluirPasto() {
     if (!pastoExcluir) return;

@@ -22,6 +22,7 @@ import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/
 import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
@@ -62,6 +63,9 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
 
   const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-confinamento");
 
   useEffect(() => { load(); }, [visitaId]);
 
