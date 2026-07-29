@@ -7,6 +7,7 @@ import {
   clearAuthSession,
   buildSessionPayload,
 } from "@/lib/offlineSession";
+import { reconcileDemoSession, isDemoEmail } from "@/lib/demoSession";
 
 export type UserRole = "administrador" | "gerente" | "capataz" | "escritorio" | "operador_fabrica" | "consultor" | "pesador" | "pecuarista" | "syncvet" | null;
 
@@ -274,9 +275,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (currentSession?.user) {
           // Never block the first paint of /capataz on an IndexedDB write.
-          deferNonCritical(() => {
-            void saveAuthSession(buildSessionPayload(currentSession));
-          });
+          // Sessões de demonstração NUNCA são persistidas offline.
+          if (!isDemoEmail(currentSession.user.email)) {
+            deferNonCritical(() => {
+              void saveAuthSession(buildSessionPayload(currentSession));
+            });
+          }
 
         const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
 
@@ -320,7 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Persist session payload on every auth change so refresh tokens are
       // always up-to-date in IndexedDB even when the page reloads cold.
-      if (session) {
+      if (session && !isDemoEmail(session.user?.email)) {
         deferNonCritical(() => {
           void saveAuthSession(buildSessionPayload(session));
         });
@@ -341,6 +345,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //    IndexedDB-persisted session if we're offline / token expired.
     (async () => {
       try {
+        // Isola a sessão de demonstração antes de qualquer leitura de perfil.
+        await reconcileDemoSession();
         const { data: { session: liveSession } } = await supabase.auth.getSession();
         if (liveSession) {
           initializedRef.current = true;

@@ -3,6 +3,7 @@ import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { APP_VERSION } from "@/lib/appVersion";
+import { useHasCriticalOperations } from "@/lib/criticalOperations";
 
 declare const __APP_BUILD_VERSION__: string;
 
@@ -14,6 +15,7 @@ declare const __APP_BUILD_VERSION__: string;
  */
 export function UpdateBanner() {
   const { updateAvailable, applyUpdate } = useSWUpdate();
+  const busy = useHasCriticalOperations();
   const [remoteMismatch, setRemoteMismatch] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,7 +49,8 @@ export function UpdateBanner() {
     };
   }, []);
 
-  const show = updateAvailable || remoteMismatch !== null;
+  // Não interrompe o usuário no meio de uma operação crítica (visita aberta).
+  const show = (updateAvailable || remoteMismatch !== null) && !busy;
   if (!show) return null;
 
   const handleClick = () => {

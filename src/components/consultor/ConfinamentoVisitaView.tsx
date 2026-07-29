@@ -9,15 +9,21 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Loader2, Clock, FileCheck } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
+import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { useCriticalOperation } from "@/lib/criticalOperations";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -45,6 +51,8 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VisitaCurralRow | null>(null);
+  const [curralExcluir, setCurralExcluir] = useState<VisitaCurralRow | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [obsGerais, setObsGerais] = useState(initialVisita.observacoes_gerais || "");
   const [conclusao, setConclusao] = useState(initialVisita.conclusao || "");
@@ -55,6 +63,9 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [insumosNota, setInsumosNota] = useState<number | null>(null);
 
   const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-confinamento");
 
   useEffect(() => { load(); }, [visitaId]);
 
@@ -165,6 +176,41 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
     }
   }
 
+  async function handleExcluirCurral() {
+    if (!curralExcluir) return;
+    const alvo = curralExcluir;
+    setExcluindo(true);
+    try {
+      // Remove avaliações vinculadas (não há cascade no banco) — best-effort.
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await supabase.from("avaliacoes_score").delete().eq("visita_curral_id", alvo.id);
+      }
+
+      const { queued } = await offlineDelete({
+        visitaId,
+        table: "visita_currais",
+        rowId: alvo.id,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          currais: ((curr.currais as any[]) || []).filter((c: any) => c.id !== alvo.id),
+          avaliacoes_score: ((curr.avaliacoes_score as any[]) || []).filter(
+            (s: any) => s.visita_curral_id !== alvo.id,
+          ),
+        }),
+      });
+
+      setCurrais(prev => prev.filter(c => c.id !== alvo.id));
+      setCurralExcluir(null);
+      toast.success(queued ? "Curral excluído (será sincronizado)" : "Curral excluído");
+      await load();
+    } catch (err) {
+      console.error("[confinamento] excluir curral", err);
+      toast.error("Não foi possível excluir o curral.");
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
   async function handleFinalizar() {
     setFinalizando(true);
     try {
@@ -258,11 +304,36 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
                     <ScorePill label="B" avg={c.scores?.bebedouro} n={c.samples.bebedouro.length} />
                   </div>
                 </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar curral ${c.num_curral}`}
+                      onClick={(e) => { e.stopPropagation(); setEditing(c); setModalOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Excluir curral ${c.num_curral}`}
+                      onClick={(e) => { e.stopPropagation(); setCurralExcluir(c); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      <VisitaTopicosSection visitaId={visitaId} />
+
 
       {!readOnly && (
         <div className="sticky bottom-16 pt-2 space-y-2">
@@ -311,6 +382,29 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         onSaved={handleSavedFromModal}
         readOnly={readOnly}
       />
+
+      <AlertDialog open={!!curralExcluir} onOpenChange={(v) => { if (!v) setCurralExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir curral {curralExcluir?.num_curral}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As avaliações e notas deste curral serão removidas desta visita. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleExcluirCurral(); }}
+              disabled={excluindo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <DialogContent>

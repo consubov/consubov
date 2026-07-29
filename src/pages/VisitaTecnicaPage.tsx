@@ -9,16 +9,22 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
+import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 
 interface Visita {
   id: string;
@@ -52,6 +58,8 @@ export default function VisitaTecnicaPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPasto, setEditingPasto] = useState<VisitaPastoRow | null>(null);
+  const [pastoExcluir, setPastoExcluir] = useState<VisitaPastoRow | null>(null);
+  const [excluindoPasto, setExcluindoPasto] = useState(false);
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
@@ -61,6 +69,43 @@ export default function VisitaTecnicaPage() {
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
   const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-consultor");
+
+  async function handleExcluirPasto() {
+    if (!pastoExcluir) return;
+    const alvo = pastoExcluir;
+    setExcluindoPasto(true);
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", alvo.id);
+      }
+
+      const { queued } = await offlineDelete({
+        visitaId: visitaId!,
+        table: "visita_pastos",
+        rowId: alvo.id,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          pastos: ((curr as any).pastos as any[] || []).filter((p: any) => p.id !== alvo.id),
+          avaliacoes_score: ((curr as any).avaliacoes_score as any[] || []).filter(
+            (s: any) => s.visita_pasto_id !== alvo.id,
+          ),
+        }) as any,
+      });
+
+      setPastos(prev => prev.filter(p => p.id !== alvo.id));
+      setPastoExcluir(null);
+      toast.success(queued ? "Pasto excluído (será sincronizado)" : "Pasto excluído");
+      await load();
+    } catch (err) {
+      console.error("[visita] excluir pasto", err);
+      toast.error("Não foi possível excluir o pasto.");
+    } finally {
+      setExcluindoPasto(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -223,11 +268,36 @@ export default function VisitaTecnicaPage() {
                     <ScorePill label="B" nota={p.scores?.bebedouro} />
                   </div>
                 </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setEditingPasto(p); setModalOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Excluir pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setPastoExcluir(p); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      <VisitaTopicosSection visitaId={visitaId!} />
+
 
       {!readOnly && (
         <div className="sticky bottom-16 pt-2 space-y-2">
@@ -306,6 +376,27 @@ export default function VisitaTecnicaPage() {
         onSaved={load}
         readOnly={readOnly}
       />
+
+      <AlertDialog open={!!pastoExcluir} onOpenChange={(v) => { if (!v) setPastoExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Excluir pasto {pastoExcluir?.num_pasto || pastoExcluir?.letra}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            As informações e notas deste pasto serão removidas desta visita. Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoPasto}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleExcluirPasto(); }}
+              disabled={excluindoPasto}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoPasto ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
       <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <DialogContent>
