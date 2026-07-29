@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Registry of "critical operations" that must NOT be interrupted by an
@@ -58,4 +58,22 @@ export function useCriticalOperation(isActive: boolean, label = "op"): void {
     const id = beginCriticalOperation(label);
     return () => endCriticalOperation(id);
   }, [isActive, label]);
+}
+
+/**
+ * React hook: true enquanto existir alguma operação crítica em andamento
+ * (ex.: visita do consultor aberta). Usado para não interromper o usuário
+ * com banners/reloads de atualização ao voltar do segundo plano.
+ */
+export function useHasCriticalOperations(): boolean {
+  const [active, setActive] = useState(hasCriticalOperations());
+  useEffect(() => {
+    const handler = (count: number) => setActive(count > 0);
+    listeners.add(handler);
+    setActive(hasCriticalOperations());
+    return () => {
+      listeners.delete(handler);
+    };
+  }, []);
+  return active;
 }
