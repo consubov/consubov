@@ -301,8 +301,20 @@ const RELATTO_SECTIONS: SectionDef[] = [
     fields: [{ key: "relatto_parceiros_titulo", label: "Título da seção", type: "text", placeholder: "Parceiros" }],
   },
   {
+    id: "relatto_contato",
+    title: "6. Contato comercial",
+    fields: [
+      {
+        key: "relatto_whatsapp_comercial",
+        label: "WhatsApp comercial (botão “Falar com a equipe”)",
+        type: "text",
+        placeholder: "5563992004848 (DDI + DDD + número)",
+      },
+    ],
+  },
+  {
     id: "relatto_footer",
-    title: "6. Rodapé",
+    title: "7. Rodapé",
     fields: [{ key: "relatto_footer_texto", label: "Texto do rodapé", type: "text", placeholder: "Relatto é uma marca Consubov." }],
   },
 ];

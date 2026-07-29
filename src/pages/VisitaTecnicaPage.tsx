@@ -223,11 +223,36 @@ export default function VisitaTecnicaPage() {
                     <ScorePill label="B" nota={p.scores?.bebedouro} />
                   </div>
                 </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setEditingPasto(p); setModalOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Excluir pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setPastoExcluir(p); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      <VisitaTopicosSection visitaId={visitaId!} />
+
 
       {!readOnly && (
         <div className="sticky bottom-16 pt-2 space-y-2">

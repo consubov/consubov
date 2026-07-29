@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { beginDemoSession } from "@/lib/demoSession";
 
 interface Props {
   open: boolean;
@@ -40,13 +41,15 @@ export default function RelattoDemoModal({ open, onOpenChange }: Props) {
       const creds = data as { email?: string; senha?: string; error?: string };
       if (!creds?.email || !creds?.senha) throw new Error(creds?.error || "Falha ao criar demonstração");
 
+      // Preserva a sessão real (se houver) antes de logar na conta de demo.
+      await beginDemoSession();
+
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: creds.email,
         password: creds.senha,
       });
       if (signInError) throw signInError;
 
-      window.localStorage.setItem("relatto_demo", "1");
       onOpenChange(false);
       toast.success(`Bem-vindo, ${nome.trim()}! Siga os 3 passos da demonstração.`);
       navigate("/consultor");

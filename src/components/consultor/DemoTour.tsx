@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Check, ChevronDown, ChevronUp, PartyPopper, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { endDemoSession } from "@/lib/demoSession";
+import { useLandingContent } from "@/hooks/useLandingContent";
 
 interface StepState {
   fazenda: boolean;
@@ -19,7 +21,8 @@ interface StepState {
   pdf: boolean;
 }
 
-const CONTATO_WHATSAPP = "https://wa.me/5563992004848?text=Ol%C3%A1!%20Testei%20o%20Relatto%20e%20quero%20assinar.";
+const WHATSAPP_FALLBACK = "5563992004848";
+const WHATSAPP_MSG = "Ol%C3%A1!%20Testei%20o%20Relatto%20e%20quero%20assinar.";
 
 /**
  * Fluxo guiado exibido apenas para contas de demonstração (is_demo).
@@ -29,10 +32,16 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLandingContent("relatto");
   const [steps, setSteps] = useState<StepState>({ fazenda: false, visita: false, pdf: false });
   const [collapsed, setCollapsed] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
   const [endShownOnce, setEndShownOnce] = useState(false);
+
+  const contatoWhatsapp = `https://wa.me/${
+    (t("relatto_whatsapp_comercial", WHATSAPP_FALLBACK) || WHATSAPP_FALLBACK).replace(/\D/g, "") ||
+    WHATSAPP_FALLBACK
+  }?text=${WHATSAPP_MSG}`;
 
   const refresh = useCallback(async () => {
     const { data: fazendas } = await supabase
@@ -78,9 +87,14 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
   const concluidos = items.filter((i) => i.done).length;
 
   async function encerrar() {
-    window.localStorage.removeItem("relatto_demo");
-    await signOut();
-    navigate("/relatto");
+    // Restaura a sessão real (se o usuário já estava logado antes da demo).
+    const restaurada = await endDemoSession();
+    if (!restaurada) {
+      await signOut();
+      navigate("/relatto");
+      return;
+    }
+    navigate("/");
   }
 
   return (
@@ -144,7 +158,7 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <a href={CONTATO_WHATSAPP} target="_blank" rel="noopener noreferrer" className="block">
+            <a href={contatoWhatsapp} target="_blank" rel="noopener noreferrer" className="block">
               <Button className="w-full">Falar com a equipe</Button>
             </a>
             <Button variant="ghost" className="w-full" onClick={() => setShowEnd(false)}>
