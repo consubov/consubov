@@ -13,9 +13,26 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 export default function ConsultorLayout() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
+  const [despesasAtivo, setDespesasAtivo] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancel = false;
+    (async () => {
+      const { data } = await supabase
+        .from("consultores")
+        .select("modulo_despesas_ativo")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancel) setDespesasAtivo(Boolean((data as any)?.modulo_despesas_ativo));
+    })();
+    return () => { cancel = true; };
+  }, [user]);
+
 
   async function handleRefresh() {
     setRefreshing(true);
