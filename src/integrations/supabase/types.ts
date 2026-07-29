@@ -2098,19 +2098,55 @@ export type Database = {
           atualizado_em: string | null
           chave: string
           id: string
+          landing_slug: string
           valor: string | null
         }
         Insert: {
           atualizado_em?: string | null
           chave: string
           id?: string
+          landing_slug?: string
           valor?: string | null
         }
         Update: {
           atualizado_em?: string | null
           chave?: string
           id?: string
+          landing_slug?: string
           valor?: string | null
+        }
+        Relationships: []
+      }
+      landing_parceiros: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          landing_slug: string
+          logo_url: string | null
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          landing_slug?: string
+          logo_url?: string | null
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          landing_slug?: string
+          logo_url?: string | null
+          nome?: string
+          ordem?: number
+          updated_at?: string
         }
         Relationships: []
       }
