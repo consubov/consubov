@@ -9,15 +9,20 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
+import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
 interface Visita {
