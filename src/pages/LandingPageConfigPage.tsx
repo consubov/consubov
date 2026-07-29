@@ -504,14 +504,19 @@ function SectionCard({
 /* ------------------- Page ------------------- */
 
 export default function LandingPageConfigPage() {
+  const [landingSlug, setLandingSlug] = useState<"consubov" | "relatto">("consubov");
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingAll, setSavingAll] = useState(false);
 
+  const sections = landingSlug === "relatto" ? RELATTO_SECTIONS : SECTIONS;
+
   useEffect(() => {
+    setLoading(true);
     supabase
       .from("landing_page_content")
       .select("chave, valor")
+      .eq("landing_slug", landingSlug)
       .then(({ data }) => {
         const map: Record<string, string> = {};
         (data || []).forEach((r) => {
@@ -520,23 +525,24 @@ export default function LandingPageConfigPage() {
         setValues(map);
         setLoading(false);
       });
-  }, []);
+  }, [landingSlug]);
 
   const handleSaveAll = async () => {
     setSavingAll(true);
     const now = new Date().toISOString();
-    const allKeys = SECTIONS.flatMap((s) => s.fields.map((f) => f.key));
+    const allKeys = sections.flatMap((s) => s.fields.map((f) => f.key));
     const rows = allKeys.map((chave) => ({
       chave,
       valor: values[chave] ?? "",
       atualizado_em: now,
+      landing_slug: landingSlug,
     }));
     let okCount = 0;
     let errCount = 0;
     for (const row of rows) {
       const { error } = await supabase
         .from("landing_page_content")
-        .upsert(row, { onConflict: "chave" });
+        .upsert(row, { onConflict: "landing_slug,chave" });
       if (error) {
         errCount++;
       } else {
@@ -551,14 +557,6 @@ export default function LandingPageConfigPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-32">
       <div className="flex items-center gap-3">
@@ -569,16 +567,32 @@ export default function LandingPageConfigPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {SECTIONS.map((section) => (
-          <SectionCard
-            key={section.id}
-            section={section}
-            values={values}
-            setValues={setValues}
-          />
-        ))}
-      </div>
+      <Tabs value={landingSlug} onValueChange={(v) => setLandingSlug(v as "consubov" | "relatto")}>
+        <TabsList>
+          <TabsTrigger value="consubov">Consubov</TabsTrigger>
+          <TabsTrigger value="relatto">Relatto</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sections.map((section) => (
+            <SectionCard
+              key={`${landingSlug}-${section.id}`}
+              section={section}
+              values={values}
+              setValues={setValues}
+              landingSlug={landingSlug}
+            />
+          ))}
+          {landingSlug === "relatto" && <ParceirosEditor landingSlug="relatto" />}
+        </div>
+      )}
+
 
       {/* Botão flutuante: Salvar todas as alterações */}
       <div className="fixed bottom-6 right-6 z-50">
