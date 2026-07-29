@@ -20,6 +20,24 @@
       (function () {
         try {
           var p = location.pathname.toLowerCase();
+          var isStandalone = false;
+          try {
+            isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+          } catch (e) {}
+
+          // Correção específica do Relatto: alguns webclips/PWAs reaproveitam o
+          // start_url antigo da raiz mesmo após instalar pela rota /relatto. Se
+          // o usuário instalou/visitou o Relatto e o app instalado abrir em "/",
+          // redireciona antes do React renderizar a landing da Consubov.
+          if ((p === '/' || p === '/index.html') && isStandalone) {
+            var lastPwa = null;
+            try { lastPwa = localStorage.getItem('relatto:pwa-profile'); } catch (e) {}
+            if (lastPwa === 'relatto') {
+              location.replace('/relatto');
+              return;
+            }
+          }
+
           var m = null;
           if (p === '/relatto' || p.indexOf('/relatto/') === 0 || p.indexOf('/consultor') === 0) {
             m = { id: 'relatto', title: 'Relatto' };
@@ -36,6 +54,9 @@
           if (apple) apple.setAttribute('href', '/icon-' + m.id + '-192.png');
           var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
           if (t) t.setAttribute('content', m.title);
+          if (m.id === 'relatto') {
+            try { localStorage.setItem('relatto:pwa-profile', 'relatto'); } catch (e) {}
+          }
         } catch (e) {}
       })();
     </script>

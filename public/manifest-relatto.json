@@ -2,7 +2,7 @@
   "name": "Relatto",
   "short_name": "Relatto",
   "id": "/relatto",
-  "start_url": "/relatto",
+  "start_url": "/relatto?pwa=relatto",
   "scope": "/",
   "description": "Relatórios técnicos de consultoria pecuária",
   "display": "standalone",
