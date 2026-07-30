@@ -274,7 +274,7 @@ export function drawFezesCategoriaChartPages(
   for (const g of groups) {
     if ((g.samples || []).filter(n => Number.isFinite(n) && n > 0).length === 0) continue;
     doc.addPage();
-    drawSampleLineChartPage(doc, fazendaNome, g.categoria, g.samples, kind);
+    drawSampleLineChartPage(doc, fazendaNome, `Escore de Fezes - Amostras / ${g.categoria}`, g.samples, kind);
   }
 }
 
