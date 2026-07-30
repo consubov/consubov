@@ -255,7 +255,8 @@ export default function CurralVisitaModal({
         visitaId,
         table: "visita_currais",
         rowId: id,
-        patch: { num_curral: numCurral.trim() },
+        patch: { num_curral: numCurral.trim(), dieta_categoria: dietaCategoria || null },
+
         applyToSnapshot: (curr, patch) => ({
           ...curr,
           currais: (curr.currais || []).map((c: any) => c.id === id ? { ...c, ...patch } : c),
