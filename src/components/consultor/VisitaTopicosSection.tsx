@@ -377,8 +377,9 @@ function TopicoCard({
             {topico.fotos.map(f => (
               <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
                 className="aspect-square rounded-md overflow-hidden relative border"
+                style={{ borderColor: "#E7E3D6" }}
               >
-                <div className="absolute inset-0" style={{ borderColor: "#E7E3D6" }}>
+                <div className="absolute inset-0">
                 {topico.signed[f.id]
                   ? <img src={topico.signed[f.id]} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}

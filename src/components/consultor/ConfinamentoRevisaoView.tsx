@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import MentionTextarea from "@/components/consultor/MentionTextarea";
+import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -879,7 +881,10 @@ function PhotoManager({ curral, readOnly, numeroMap, onAdd, onDelete, onMove }: 
       </div>
       <div className="grid grid-cols-5 gap-1.5">
         {curral.fotos.map((f, i) => (
-          <div key={f.id} className="aspect-square rounded-md overflow-hidden relative border" style={{ borderColor: "#E7E3D6" }}>
+          <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
+            className="aspect-square rounded-md overflow-hidden relative border"
+            style={{ borderColor: "#E7E3D6" }}
+          >
             {curral.signed[f.id]
               ? <img src={curral.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
@@ -906,7 +911,7 @@ function PhotoManager({ curral, readOnly, numeroMap, onAdd, onDelete, onMove }: 
                 </div>
               </>
             )}
-          </div>
+          </MentionablePhoto>
         ))}
         {!readOnly && curral.fotos.length < MAX_FOTOS && (
           <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Quote } from "lucide-react";
@@ -8,13 +8,14 @@ interface Props {
   numero?: number | null;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }
 
 /**
  * Envolve uma foto numerada: registra a foto (para rolagem via chip) e,
  * quando existe um campo de texto ativo, oferece a ação "Mencionar".
  */
-export default function MentionablePhoto({ numero, children, className }: Props) {
+export default function MentionablePhoto({ numero, children, className, style }: Props) {
   const holderRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const target = useActiveMentionTarget();
@@ -25,7 +26,7 @@ export default function MentionablePhoto({ numero, children, className }: Props)
   }, [numero]);
 
   return (
-    <div ref={holderRef} className={className ?? "relative rounded-md"}>
+    <div ref={holderRef} className={className ?? "relative rounded-md"} style={style}>
       {children}
       {numero != null && target && (
         <Popover open={open} onOpenChange={setOpen}>

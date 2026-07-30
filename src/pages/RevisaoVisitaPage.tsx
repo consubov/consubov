@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import MentionTextarea from "@/components/consultor/MentionTextarea";
+import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -825,9 +827,12 @@ export default function RevisaoVisitaPage() {
               {/* Observação */}
               <div>
                 <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>Observação</div>
-                <Textarea
-                  defaultValue={p.observacao || ""}
-                  onBlur={e => { const v = e.target.value; updatePasto(p.id, { observacao: v || null }); autosavePasto(p.id, { observacao: v || null }); }}
+                <MentionTextarea
+                  fieldId={`pasto:${p.id}`}
+                  label="Observação do pasto"
+                  value={p.observacao || ""}
+                  onChange={v => updatePasto(p.id, { observacao: v || null })}
+                  onCommit={v => autosavePasto(p.id, { observacao: v || null })}
                   rows={2}
                   className="text-sm"
                   disabled={readOnly}
@@ -1080,7 +1085,10 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
       </div>
       <div className="grid grid-cols-5 gap-1.5">
         {pasto.fotos.map((f, i) => (
-          <div key={f.id} className="aspect-square rounded-md overflow-hidden relative border" style={{ borderColor: "#E7E3D6" }}>
+          <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
+            className="aspect-square rounded-md overflow-hidden relative border"
+            style={{ borderColor: "#E7E3D6" }}
+          >
             {pasto.signed[f.id]
               ? <img src={pasto.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
@@ -1107,7 +1115,7 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
                 </div>
               </>
             )}
-          </div>
+          </MentionablePhoto>
         ))}
         {!readOnly && pasto.fotos.length < 5 && (
           <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"
