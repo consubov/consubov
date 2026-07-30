@@ -316,6 +316,8 @@ const App = () => (
                 <Route path="historico" element={<ConsultorHistoricoPage />} />
                 <Route path="painel" element={<ConsultorPainelPage />} />
                 <Route path="despesas" element={<ConsultorDespesasPage />} />
+                <Route path="configuracoes" element={<ConsultorConfiguracoesPage />} />
+
               </Route>
 
               <Route path="/pesador" element={<ProtectedRoute allowedRoles={["pesador"]}><PesadorLayout /></ProtectedRoute>}>
