@@ -6,11 +6,18 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
 import { hasPendingLocalChanges, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { useAuth } from "@/hooks/useAuth";
+import { DIETA_CATEGORIAS_FIXAS, useDietaCategorias } from "@/hooks/useDietaCategorias";
+
+const OUTROS_VALUE = "__outros__";
 
 export interface VisitaCurralRow {
   id: string;
@@ -18,8 +25,10 @@ export interface VisitaCurralRow {
   organizacao_fabrica_nota: number | null;
   organizacao_insumos_nota: number | null;
   ordem: number;
+  dieta_categoria?: string | null;
   scores?: { fezes?: number; corporal?: number; bebedouro?: number }; // averages (legacy shape)
 }
+
 
 interface Props {
   open: boolean;
