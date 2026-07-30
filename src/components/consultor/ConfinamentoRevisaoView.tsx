@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateConfinamentoPdf, uploadConfinamentoPdf } from "@/lib/confinamentoPdf";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { computeConfinamentoPhotoNumbering } from "@/lib/photoNumbering";
 import ScoreSamplesInput, { ScoreSample, averageOf, formatAvg } from "./ScoreSamplesInput";
 import VisitaTopicosSection, { type Topico } from "./VisitaTopicosSection";
@@ -72,13 +73,12 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
-  const numeroMap = useMemo(
-    () => computeConfinamentoPhotoNumbering(
-      currais.map(c => ({ id: c.id, fotos: c.fotos })),
-      topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
-    ),
-    [currais, topicos],
-  );
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "confinamento",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+    itens: currais.map(c => ({ id: c.id, fotos: c.fotos })),
+  });
   const [chartType, setChartType] = useState<"bars" | "lines" | "pie" | "radar">("bars");
   type SCK = "bars" | "lines" | "pie" | "radar";
   const [sampleChartFezes, setSampleChartFezes] = useState<SCK>("lines");

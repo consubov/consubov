@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { generateVisitaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { computeRotinaPhotoNumbering } from "@/lib/photoNumbering";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
@@ -163,13 +164,12 @@ export default function RevisaoVisitaPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [topicos, setTopicos] = useState<Topico[]>([]);
-  const numeroMap = useMemo(
-    () => computeRotinaPhotoNumbering(
-      topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
-      pastos.map(p => ({ id: p.id, fotos: p.fotos })),
-    ),
-    [topicos, pastos],
-  );
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "rotina",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+    itens: pastos.map(p => ({ id: p.id, fotos: p.fotos })),
+  });
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);

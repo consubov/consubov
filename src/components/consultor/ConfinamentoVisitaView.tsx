@@ -19,7 +19,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
-import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
 import { useCriticalOperation } from "@/lib/criticalOperations";
@@ -57,6 +58,12 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   const [obsGerais, setObsGerais] = useState(initialVisita.observacoes_gerais || "");
   const [conclusao, setConclusao] = useState(initialVisita.conclusao || "");
   const [finalizando, setFinalizando] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "confinamento",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+  });
 
   // Avaliação da fábrica (por visita)
   const [fabricaNota, setFabricaNota] = useState<number | null>(null);
@@ -332,7 +339,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         </div>
       )}
 
-      <VisitaTopicosSection visitaId={visitaId} />
+      <VisitaTopicosSection visitaId={visitaId} onChange={setTopicos} numeroMap={numeroMap} />
 
 
       {!readOnly && (
@@ -353,6 +360,11 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
           >
             Salvar observações e conclusão
           </Button>
+          {currais.length === 0 && (
+            <p className="text-xs text-center text-muted-foreground">
+              Adicione pelo menos um curral para revisar
+            </p>
+          )}
         </div>
       )}
 
