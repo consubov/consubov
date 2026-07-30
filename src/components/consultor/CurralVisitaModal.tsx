@@ -271,6 +271,12 @@ export default function CurralVisitaModal({
   }
 
   const isNew = !curral;
+  const opcoesCategorias = Array.from(new Set([
+    ...DIETA_CATEGORIAS_FIXAS,
+    ...categorias.map(c => c.nome),
+    ...(dietaCategoria ? [dietaCategoria] : []),
+  ]));
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
