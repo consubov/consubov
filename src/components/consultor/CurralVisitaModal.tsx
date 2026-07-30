@@ -297,6 +297,44 @@ export default function CurralVisitaModal({
             </div>
           </div>
 
+          <div>
+            <Label>Categoria de Dieta</Label>
+            <Select
+              value={dietaCategoria || undefined}
+              onValueChange={handleCategoriaChange}
+              disabled={readOnly}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a categoria" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {opcoesCategorias.map(nome => (
+                  <SelectItem key={nome} value={nome}>{nome}</SelectItem>
+                ))}
+                <SelectItem value={OUTROS_VALUE}>Outros…</SelectItem>
+              </SelectContent>
+            </Select>
+            {mostrarNovaCategoria && !readOnly && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={novaCategoria}
+                  onChange={e => setNovaCategoria(e.target.value)}
+                  placeholder="Nome da nova categoria"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  onClick={() => void confirmarNovaCategoria()}
+                  disabled={salvandoCategoria || !novaCategoria.trim()}
+                >
+                  {salvandoCategoria && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Confirmar
+                </Button>
+              </div>
+            )}
+          </div>
+
+
+
           <div className="pt-2 border-t space-y-4">
             <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
             <ScoreSamplesInput
