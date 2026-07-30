@@ -55,6 +55,8 @@ import RevisaoVisitaPage from "./pages/RevisaoVisitaPage";
 import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
 import ConsultorPainelPage from "./pages/ConsultorPainelPage";
 import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
+import ConsultorConfiguracoesPage from "./pages/ConsultorConfiguracoesPage";
+
 import FormulasSistemaPage from "./pages/FormulasSistemaPage";
 import PesadorLayout from "./pages/PesadorLayout";
 import PesadorDashboard from "./pages/PesadorDashboard";
