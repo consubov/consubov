@@ -680,14 +680,14 @@ export default function RevisaoVisitaPage() {
             <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Rotina</div>
           </div>
         </div>
-        <div className="text-lg font-extrabold leading-tight">{fazenda?.nome_fazenda || "—"}</div>
+        <div className="text-lg font-extrabold leading-tight">{cabecalhoEfetivo().fazenda_nome || "—"}</div>
         <div className="text-xs opacity-80 mt-0.5">
-          {[fazenda?.proprietario, fazenda?.municipio, fazenda?.uf].filter(Boolean).join(" · ") || "—"}
+          {[cabecalhoEfetivo().proprietario, cabecalhoEfetivo().localizacao].filter(Boolean).join(" · ") || "—"}
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
           <div>
             <div className="opacity-60">Consultor</div>
-            <div className="font-semibold">{consultor?.nome || "—"}</div>
+            <div className="font-semibold">{cabecalhoEfetivo().consultor_nome || "—"}</div>
           </div>
           <div>
             <div className="opacity-60">Início</div>
