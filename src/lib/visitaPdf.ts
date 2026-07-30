@@ -47,7 +47,7 @@ export interface VisitaPdfPasto {
 
 export interface VisitaPdfData {
   visitaId: string;
-  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null };
+  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
   consultor: { nome: string };
   hora_inicio: string;
   hora_fim: string | null;
@@ -252,7 +252,8 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   doc.setTextColor(INK_SOFT);
 
   let metaY = y + 6;
-  const locStr = [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
+  const locStr = (data.fazenda.localizacao || "").trim()
+    || [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
@@ -740,7 +741,7 @@ export async function uploadVisitaPdf(
 
 export interface VisitaFabricaPdfData {
   visitaId: string;
-  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null };
+  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
   consultor: { nome: string };
   hora_inicio: string;
   hora_fim: string | null;
