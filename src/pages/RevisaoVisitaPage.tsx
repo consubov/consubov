@@ -119,8 +119,22 @@ interface Visita {
   objetivo_visita: string | null;
   resumo_executivo: string | null;
   indicadores_gerais: string | null;
+  fazenda_nome_override?: string | null;
+  localizacao_override?: string | null;
+  proprietario_override?: string | null;
+  responsavel_override?: string | null;
+  consultor_nome_override?: string | null;
   deleted_at?: string | null;
 }
+
+type CabecalhoKey = "fazenda_nome" | "localizacao" | "proprietario" | "responsavel" | "consultor_nome";
+const CABECALHO_FIELDS: { key: CabecalhoKey; label: string }[] = [
+  { key: "fazenda_nome", label: "Fazenda" },
+  { key: "localizacao", label: "Localização" },
+  { key: "proprietario", label: "Proprietário" },
+  { key: "responsavel", label: "Responsável" },
+  { key: "consultor_nome", label: "Consultor" },
+];
 
 import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
 async function signPath(path: string): Promise<string> {
