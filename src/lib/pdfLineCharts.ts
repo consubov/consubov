@@ -247,9 +247,10 @@ export function drawAllSampleChartPages(
   fazendaNome: string,
   series: SampleSeries,
   kinds?: SampleChartTypes,
+  options?: { skipFezes?: boolean },
 ) {
   const specs: [string, number[], SampleChartKind][] = [
-    ["Escore de Fezes — Amostras Individuais", series.fezes || [], kinds?.fezes || "lines"],
+    ...(options?.skipFezes ? [] : ([["Escore de Fezes — Amostras Individuais", series.fezes || [], kinds?.fezes || "lines"]] as [string, number[], SampleChartKind][])),
     ["Escore Corporal — Amostras Individuais", series.corporal || [], kinds?.corporal || "lines"],
     ["Condição de Bebedouro — Amostras Individuais", series.bebedouro || [], kinds?.bebedouro || "lines"],
   ];
@@ -259,3 +260,21 @@ export function drawAllSampleChartPages(
     drawSampleLineChartPage(doc, fazendaNome, title, samples, kind);
   }
 }
+
+/**
+ * Escore de fezes agrupado por categoria de dieta: um gráfico por categoria distinta.
+ * O título do gráfico é o nome da categoria.
+ */
+export function drawFezesCategoriaChartPages(
+  doc: jsPDF,
+  fazendaNome: string,
+  groups: { categoria: string; samples: number[] }[],
+  kind: SampleChartKind = "lines",
+) {
+  for (const g of groups) {
+    if ((g.samples || []).filter(n => Number.isFinite(n) && n > 0).length === 0) continue;
+    doc.addPage();
+    drawSampleLineChartPage(doc, fazendaNome, g.categoria, g.samples, kind);
+  }
+}
+

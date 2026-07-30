@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, drawFezesCategoriaChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
@@ -20,6 +20,7 @@ const LINE = "#E7E3D6";
 export interface ConfinamentoPdfCurral {
   id: string;
   num_curral: string;
+  dieta_categoria?: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   sampleCounts?: { fezes: number; corporal: number; bebedouro: number };
   samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
@@ -975,7 +976,21 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     corporal: data.currais.flatMap(c => c.samples?.corporal || []),
     bebedouro: data.currais.flatMap(c => c.samples?.bebedouro || []),
   };
-  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series, data.sampleChartTypes);
+  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series, data.sampleChartTypes, { skipFezes: true });
+
+  // Escore de fezes: um gráfico de linha por categoria de dieta distinta.
+  const fezesGroups: { categoria: string; samples: number[] }[] = [];
+  for (const c of data.currais) {
+    const cat = (c.dieta_categoria || "").trim() || "Sem categoria";
+    const vals = (c.samples?.fezes || []).filter(n => Number.isFinite(n) && n > 0);
+    if (vals.length === 0) continue;
+    const g = fezesGroups.find(x => x.categoria.toLowerCase() === cat.toLowerCase());
+    if (g) g.samples.push(...vals);
+    else fezesGroups.push({ categoria: cat, samples: [...vals] });
+  }
+  drawFezesCategoriaChartPages(
+    doc, data.fazenda.nome_fazenda || "", fezesGroups, data.sampleChartTypes?.fezes || "lines",
+  );
 
   // SEÇÃO FINAL (Observações e Recomendações) — só renderiza se houver conteúdo.
   const hasConclusaoTopicos = conclusaoT.some(t => (t.texto || "").trim() || t.fotos.length > 0);
