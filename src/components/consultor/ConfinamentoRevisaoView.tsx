@@ -33,6 +33,7 @@ interface Curral {
   id: string;
   num_curral: string;
   ordem: number;
+  dieta_categoria?: string | null;
   samples: Record<ScoreKey, ScoreSample[]>;
   fotos: Foto[];
   signed: Record<string, string>;
@@ -168,6 +169,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         id: r.id, num_curral: r.num_curral, ordem: r.ordem,
+        dieta_categoria: (r as any).dieta_categoria ?? snapCurral?.dieta_categoria ?? null,
         samples: samplesBy[r.id] || (r as any).samples || snapCurral?.samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       };
@@ -420,6 +422,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         return {
           id: c.id,
           num_curral: c.num_curral,
+          dieta_categoria: c.dieta_categoria ?? null,
           scores: {
             fezes: averageOf(c.samples.fezes),
             corporal: averageOf(c.samples.corporal),
