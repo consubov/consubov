@@ -6,11 +6,18 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PhotoGrid from "./PhotoGrid";
 import ScoreSamplesInput, { ScoreSample } from "./ScoreSamplesInput";
 import { hasPendingLocalChanges, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { useAuth } from "@/hooks/useAuth";
+import { DIETA_CATEGORIAS_FIXAS, useDietaCategorias } from "@/hooks/useDietaCategorias";
+
+const OUTROS_VALUE = "__outros__";
 
 export interface VisitaCurralRow {
   id: string;
@@ -18,8 +25,10 @@ export interface VisitaCurralRow {
   organizacao_fabrica_nota: number | null;
   organizacao_insumos_nota: number | null;
   ordem: number;
+  dieta_categoria?: string | null;
   scores?: { fezes?: number; corporal?: number; bebedouro?: number }; // averages (legacy shape)
 }
+
 
 interface Props {
   open: boolean;
@@ -37,17 +46,29 @@ const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
 export default function CurralVisitaModal({
   open, onOpenChange, visitaId, curral, proximaOrdem, onSaved, readOnly,
 }: Props) {
+  const { roleData } = useAuth();
+  const consultorId = roleData?.consultorId ?? null;
+  const { categorias, criar } = useDietaCategorias(consultorId);
   const [numCurral, setNumCurral] = useState("");
   const [curralIdLocal, setCurralIdLocal] = useState<string | null>(null);
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
+  const [dietaCategoria, setDietaCategoria] = useState<string>("");
+  const [novaCategoria, setNovaCategoria] = useState("");
+  const [mostrarNovaCategoria, setMostrarNovaCategoria] = useState(false);
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
+
   useEffect(() => {
     if (!open) return;
+    setMostrarNovaCategoria(false);
+    setNovaCategoria("");
     if (curral) {
       setCurralIdLocal(curral.id);
       setNumCurral(curral.num_curral);
+      setDietaCategoria(curral.dieta_categoria || "");
+
       // load samples
       const online = typeof navigator === "undefined" || navigator.onLine;
       const source = (async () => {
@@ -82,6 +103,7 @@ export default function CurralVisitaModal({
     } else {
       setCurralIdLocal(null);
       setNumCurral("");
+      setDietaCategoria("");
       setSamples(EMPTY_SAMPLES);
     }
   }, [open, curral]);
@@ -92,7 +114,12 @@ export default function CurralVisitaModal({
     setCreating(true);
     try {
       const id = crypto.randomUUID();
-      const payload = { visita_id: visitaId, num_curral: numCurral.trim(), ordem: proximaOrdem };
+      const payload = {
+        visita_id: visitaId,
+        num_curral: numCurral.trim(),
+        ordem: proximaOrdem,
+        dieta_categoria: dietaCategoria || null,
+      };
       const res = await offlineUpsert({
         visitaId,
         table: "visita_currais",
@@ -112,10 +139,56 @@ export default function CurralVisitaModal({
     } finally {
       setCreating(false);
     }
-  }, [curralIdLocal, numCurral, visitaId, proximaOrdem]);
+  }, [curralIdLocal, numCurral, visitaId, proximaOrdem, dietaCategoria]);
+
+  const persistDieta = useCallback(async (valor: string) => {
+    if (readOnly) return;
+    if (!curralIdLocal) return;
+    await offlineUpdate({
+      visitaId,
+      table: "visita_currais",
+      rowId: curralIdLocal,
+      patch: { dieta_categoria: valor || null },
+      applyToSnapshot: (curr, patch) => ({
+        ...curr,
+        currais: (curr.currais || []).map((c: any) => c.id === curralIdLocal ? { ...c, ...patch } : c),
+      }),
+    });
+  }, [curralIdLocal, readOnly, visitaId]);
+
+  function handleCategoriaChange(valor: string) {
+    if (valor === OUTROS_VALUE) {
+      setMostrarNovaCategoria(true);
+      return;
+    }
+    setMostrarNovaCategoria(false);
+    setDietaCategoria(valor);
+    void persistDieta(valor);
+  }
+
+  async function confirmarNovaCategoria() {
+    const nome = novaCategoria.trim();
+    if (!nome) return;
+    setSalvandoCategoria(true);
+    try {
+      const criada = await criar(nome);
+      if (!criada) {
+        toast.error("Não foi possível salvar a categoria. Verifique a conexão.");
+        return;
+      }
+      setDietaCategoria(criada.nome);
+      setMostrarNovaCategoria(false);
+      setNovaCategoria("");
+      await persistDieta(criada.nome);
+      toast.success("Categoria criada");
+    } finally {
+      setSalvandoCategoria(false);
+    }
+  }
 
   async function handleNumBlur() {
     if (readOnly) return;
+
     if (!curralIdLocal && numCurral.trim()) {
       await ensureCurral();
     } else if (curralIdLocal && numCurral.trim() && curral && numCurral.trim() !== curral.num_curral) {
@@ -182,7 +255,8 @@ export default function CurralVisitaModal({
         visitaId,
         table: "visita_currais",
         rowId: id,
-        patch: { num_curral: numCurral.trim() },
+        patch: { num_curral: numCurral.trim(), dieta_categoria: dietaCategoria || null },
+
         applyToSnapshot: (curr, patch) => ({
           ...curr,
           currais: (curr.currais || []).map((c: any) => c.id === id ? { ...c, ...patch } : c),
@@ -197,6 +271,12 @@ export default function CurralVisitaModal({
   }
 
   const isNew = !curral;
+  const opcoesCategorias = Array.from(new Set([
+    ...DIETA_CATEGORIAS_FIXAS,
+    ...categorias.map(c => c.nome),
+    ...(dietaCategoria ? [dietaCategoria] : []),
+  ]));
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -222,6 +302,44 @@ export default function CurralVisitaModal({
               )}
             </div>
           </div>
+
+          <div>
+            <Label>Categoria de Dieta</Label>
+            <Select
+              value={dietaCategoria || undefined}
+              onValueChange={handleCategoriaChange}
+              disabled={readOnly}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a categoria" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {opcoesCategorias.map(nome => (
+                  <SelectItem key={nome} value={nome}>{nome}</SelectItem>
+                ))}
+                <SelectItem value={OUTROS_VALUE}>Outros…</SelectItem>
+              </SelectContent>
+            </Select>
+            {mostrarNovaCategoria && !readOnly && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={novaCategoria}
+                  onChange={e => setNovaCategoria(e.target.value)}
+                  placeholder="Nome da nova categoria"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  onClick={() => void confirmarNovaCategoria()}
+                  disabled={salvandoCategoria || !novaCategoria.trim()}
+                >
+                  {salvandoCategoria && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Confirmar
+                </Button>
+              </div>
+            )}
+          </div>
+
+
 
           <div className="pt-2 border-t space-y-4">
             <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
