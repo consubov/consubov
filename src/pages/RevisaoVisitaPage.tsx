@@ -694,6 +694,27 @@ export default function RevisaoVisitaPage() {
         </div>
       </div>
 
+      {/* Dados do cabeçalho do relatório — editáveis nesta tela */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
+          Dados do cabeçalho do relatório
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {CABECALHO_FIELDS.map(({ key, label }) => (
+            <FieldInline
+              key={key}
+              label={label}
+              value={cabecalhoEfetivo()[key]}
+              onSave={v => void salvarOverride(key, v)}
+              disabled={readOnly}
+            />
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Alterações valem apenas para este relatório — os cadastros de fazenda e consultor não são modificados.
+        </p>
+      </div>
+
       {/* Blocos de pasto */}
       <div className="space-y-3">
         {pastos.map(p => (
