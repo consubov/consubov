@@ -73,9 +73,13 @@ export default function ConsultorLayout() {
           <div className="flex items-center gap-1">
             <UserNotificationToggle />
             <SyncHeaderIndicator />
+            <Button variant="ghost" size="icon" onClick={() => navigate("/consultor/configuracoes")} className="text-primary-foreground hover:bg-white/10" aria-label="Configurações">
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </Button>
+
             <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </Button>
