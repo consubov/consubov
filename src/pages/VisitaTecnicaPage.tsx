@@ -18,7 +18,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
-import VisitaTopicosSection from "@/components/consultor/VisitaTopicosSection";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
@@ -65,6 +66,12 @@ export default function VisitaTecnicaPage() {
   const [conclusao, setConclusao] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "rotina",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+  });
 
   useEffect(() => { if (visitaId) load(); }, [visitaId]);
 
@@ -296,7 +303,7 @@ export default function VisitaTecnicaPage() {
         </div>
       )}
 
-      <VisitaTopicosSection visitaId={visitaId!} />
+      <VisitaTopicosSection visitaId={visitaId!} onChange={setTopicos} numeroMap={numeroMap} />
 
 
       {!readOnly && (
@@ -310,6 +317,11 @@ export default function VisitaTecnicaPage() {
               ? <><FileText className="w-4 h-4" /> Continuar Revisão / Gerar PDF</>
               : <><FileCheck className="w-4 h-4" /> Revisar Visita</>}
           </Button>
+          {pastos.length === 0 && (
+            <p className="text-xs text-center text-muted-foreground">
+              Adicione pelo menos um pasto para revisar
+            </p>
+          )}
         </div>
       )}
 
