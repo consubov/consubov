@@ -499,7 +499,7 @@ async function drawPastoBlock(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK);
-    const lines = doc.splitTextToSize(pasto.observacao, width - 6);
+    const lines = doc.splitTextToSize(mentionsToText(pasto.observacao), width - 6);
     doc.text(lines.slice(0, 2), x + 3, y + 63);
   }
 
