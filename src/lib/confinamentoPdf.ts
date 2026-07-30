@@ -1017,7 +1017,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     corporal: data.currais.flatMap(c => c.samples?.corporal || []),
     bebedouro: data.currais.flatMap(c => c.samples?.bebedouro || []),
   };
-  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series, data.sampleChartTypes, { skipFezes: true });
+  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", series, data.sampleChartTypes);
 
   // Escore de fezes: um gráfico de linha por categoria de dieta distinta.
   const fezesGroups: { categoria: string; samples: number[] }[] = [];
