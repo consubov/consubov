@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import MentionTextarea from "@/components/consultor/MentionTextarea";
 import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Loader2, Camera, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";

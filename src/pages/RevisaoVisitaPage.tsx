@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import MentionTextarea from "@/components/consultor/MentionTextarea";
 import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 import { Input } from "@/components/ui/input";
