@@ -155,6 +155,9 @@ export default function RevisaoVisitaPage() {
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
   const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
+  const [overrides, setOverrides] = useState<Record<CabecalhoKey, string>>({
+    fazenda_nome: "", localizacao: "", proprietario: "", responsavel: "", consultor_nome: "",
+  });
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -230,6 +233,13 @@ export default function RevisaoVisitaPage() {
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
+    setOverrides({
+      fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
+      localizacao: (visitaRow as any).localizacao_override || "",
+      proprietario: (visitaRow as any).proprietario_override || "",
+      responsavel: (visitaRow as any).responsavel_override || "",
+      consultor_nome: (visitaRow as any).consultor_nome_override || "",
+    });
 
     const [{ data: fz }, { data: cs }, { data: ps }] = online && !preferLocal
       ? await Promise.all([
