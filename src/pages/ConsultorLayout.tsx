@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt } from "lucide-react";
+import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt, Settings } from "lucide-react";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { UpdateBanner } from "@/components/UpdateBanner";
