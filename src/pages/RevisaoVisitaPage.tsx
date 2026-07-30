@@ -623,6 +623,38 @@ export default function RevisaoVisitaPage() {
     } catch { /* user cancelou */ }
   }
 
+  function cabecalhoOriginais(): Record<CabecalhoKey, string> {
+    return {
+      fazenda_nome: fazenda?.nome_fazenda || "",
+      localizacao: [fazenda?.municipio, fazenda?.uf].filter(Boolean).join("/"),
+      proprietario: fazenda?.proprietario || "",
+      responsavel: (fazenda as any)?.responsavel || "",
+      consultor_nome: consultor?.nome || "",
+    };
+  }
+
+  function cabecalhoEfetivo(): Record<CabecalhoKey, string> {
+    const orig = cabecalhoOriginais();
+    const out = { ...orig };
+    (Object.keys(orig) as CabecalhoKey[]).forEach(k => {
+      const ov = (overrides[k] || "").trim();
+      if (ov) out[k] = ov;
+    });
+    return out;
+  }
+
+  async function salvarOverride(key: CabecalhoKey, raw: string) {
+    const valor = raw.trim();
+    const original = cabecalhoOriginais()[key];
+    // Só grava override quando o valor for realmente diferente do original.
+    const final = !valor || valor === original.trim() ? null : valor;
+    setOverrides(prev => ({ ...prev, [key]: final || "" }));
+    const column = `${key}_override` as const;
+    setVisita(prev => prev ? { ...prev, [column]: final } as Visita : prev);
+    await autosaveVisita({ [column]: final } as any);
+  }
+
+
   if (tipoLoaded === "confinamento") return <ConfinamentoRevisaoView visitaId={visitaId!} />;
   if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
