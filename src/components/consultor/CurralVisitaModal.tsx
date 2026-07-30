@@ -103,6 +103,7 @@ export default function CurralVisitaModal({
     } else {
       setCurralIdLocal(null);
       setNumCurral("");
+      setDietaCategoria("");
       setSamples(EMPTY_SAMPLES);
     }
   }, [open, curral]);
@@ -113,7 +114,12 @@ export default function CurralVisitaModal({
     setCreating(true);
     try {
       const id = crypto.randomUUID();
-      const payload = { visita_id: visitaId, num_curral: numCurral.trim(), ordem: proximaOrdem };
+      const payload = {
+        visita_id: visitaId,
+        num_curral: numCurral.trim(),
+        ordem: proximaOrdem,
+        dieta_categoria: dietaCategoria || null,
+      };
       const res = await offlineUpsert({
         visitaId,
         table: "visita_currais",
@@ -133,10 +139,56 @@ export default function CurralVisitaModal({
     } finally {
       setCreating(false);
     }
-  }, [curralIdLocal, numCurral, visitaId, proximaOrdem]);
+  }, [curralIdLocal, numCurral, visitaId, proximaOrdem, dietaCategoria]);
+
+  const persistDieta = useCallback(async (valor: string) => {
+    if (readOnly) return;
+    if (!curralIdLocal) return;
+    await offlineUpdate({
+      visitaId,
+      table: "visita_currais",
+      rowId: curralIdLocal,
+      patch: { dieta_categoria: valor || null },
+      applyToSnapshot: (curr, patch) => ({
+        ...curr,
+        currais: (curr.currais || []).map((c: any) => c.id === curralIdLocal ? { ...c, ...patch } : c),
+      }),
+    });
+  }, [curralIdLocal, readOnly, visitaId]);
+
+  function handleCategoriaChange(valor: string) {
+    if (valor === OUTROS_VALUE) {
+      setMostrarNovaCategoria(true);
+      return;
+    }
+    setMostrarNovaCategoria(false);
+    setDietaCategoria(valor);
+    void persistDieta(valor);
+  }
+
+  async function confirmarNovaCategoria() {
+    const nome = novaCategoria.trim();
+    if (!nome) return;
+    setSalvandoCategoria(true);
+    try {
+      const criada = await criar(nome);
+      if (!criada) {
+        toast.error("Não foi possível salvar a categoria. Verifique a conexão.");
+        return;
+      }
+      setDietaCategoria(criada.nome);
+      setMostrarNovaCategoria(false);
+      setNovaCategoria("");
+      await persistDieta(criada.nome);
+      toast.success("Categoria criada");
+    } finally {
+      setSalvandoCategoria(false);
+    }
+  }
 
   async function handleNumBlur() {
     if (readOnly) return;
+
     if (!curralIdLocal && numCurral.trim()) {
       await ensureCurral();
     } else if (curralIdLocal && numCurral.trim() && curral && numCurral.trim() !== curral.num_curral) {
