@@ -119,8 +119,22 @@ interface Visita {
   objetivo_visita: string | null;
   resumo_executivo: string | null;
   indicadores_gerais: string | null;
+  fazenda_nome_override?: string | null;
+  localizacao_override?: string | null;
+  proprietario_override?: string | null;
+  responsavel_override?: string | null;
+  consultor_nome_override?: string | null;
   deleted_at?: string | null;
 }
+
+type CabecalhoKey = "fazenda_nome" | "localizacao" | "proprietario" | "responsavel" | "consultor_nome";
+const CABECALHO_FIELDS: { key: CabecalhoKey; label: string }[] = [
+  { key: "fazenda_nome", label: "Fazenda" },
+  { key: "localizacao", label: "Localização" },
+  { key: "proprietario", label: "Proprietário" },
+  { key: "responsavel", label: "Responsável" },
+  { key: "consultor_nome", label: "Consultor" },
+];
 
 import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
 async function signPath(path: string): Promise<string> {
@@ -141,6 +155,9 @@ export default function RevisaoVisitaPage() {
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
   const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
+  const [overrides, setOverrides] = useState<Record<CabecalhoKey, string>>({
+    fazenda_nome: "", localizacao: "", proprietario: "", responsavel: "", consultor_nome: "",
+  });
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -216,6 +233,13 @@ export default function RevisaoVisitaPage() {
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
+    setOverrides({
+      fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
+      localizacao: (visitaRow as any).localizacao_override || "",
+      proprietario: (visitaRow as any).proprietario_override || "",
+      responsavel: (visitaRow as any).responsavel_override || "",
+      consultor_nome: (visitaRow as any).consultor_nome_override || "",
+    });
 
     const [{ data: fz }, { data: cs }, { data: ps }] = online && !preferLocal
       ? await Promise.all([
@@ -528,16 +552,18 @@ export default function RevisaoVisitaPage() {
         (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
       );
 
+      const cab = cabecalhoEfetivo();
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
-          nome_fazenda: fazenda.nome_fazenda,
-          proprietario: fazenda.proprietario,
-          responsavel: (fazenda as any).responsavel ?? null,
+          nome_fazenda: cab.fazenda_nome,
+          proprietario: cab.proprietario || null,
+          responsavel: cab.responsavel || null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
+          localizacao: cab.localizacao || null,
         },
-        consultor: { nome: consultor.nome },
+        consultor: { nome: cab.consultor_nome },
         hora_inicio: visita.hora_inicio,
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
@@ -599,6 +625,38 @@ export default function RevisaoVisitaPage() {
     } catch { /* user cancelou */ }
   }
 
+  function cabecalhoOriginais(): Record<CabecalhoKey, string> {
+    return {
+      fazenda_nome: fazenda?.nome_fazenda || "",
+      localizacao: [fazenda?.municipio, fazenda?.uf].filter(Boolean).join("/"),
+      proprietario: fazenda?.proprietario || "",
+      responsavel: (fazenda as any)?.responsavel || "",
+      consultor_nome: consultor?.nome || "",
+    };
+  }
+
+  function cabecalhoEfetivo(): Record<CabecalhoKey, string> {
+    const orig = cabecalhoOriginais();
+    const out = { ...orig };
+    (Object.keys(orig) as CabecalhoKey[]).forEach(k => {
+      const ov = (overrides[k] || "").trim();
+      if (ov) out[k] = ov;
+    });
+    return out;
+  }
+
+  async function salvarOverride(key: CabecalhoKey, raw: string) {
+    const valor = raw.trim();
+    const original = cabecalhoOriginais()[key];
+    // Só grava override quando o valor for realmente diferente do original.
+    const final = !valor || valor === original.trim() ? null : valor;
+    setOverrides(prev => ({ ...prev, [key]: final || "" }));
+    const column = `${key}_override` as const;
+    setVisita(prev => prev ? { ...prev, [column]: final } as Visita : prev);
+    await autosaveVisita({ [column]: final } as any);
+  }
+
+
   if (tipoLoaded === "confinamento") return <ConfinamentoRevisaoView visitaId={visitaId!} />;
   if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
@@ -622,20 +680,41 @@ export default function RevisaoVisitaPage() {
             <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Rotina</div>
           </div>
         </div>
-        <div className="text-lg font-extrabold leading-tight">{fazenda?.nome_fazenda || "—"}</div>
+        <div className="text-lg font-extrabold leading-tight">{cabecalhoEfetivo().fazenda_nome || "—"}</div>
         <div className="text-xs opacity-80 mt-0.5">
-          {[fazenda?.proprietario, fazenda?.municipio, fazenda?.uf].filter(Boolean).join(" · ") || "—"}
+          {[cabecalhoEfetivo().proprietario, cabecalhoEfetivo().localizacao].filter(Boolean).join(" · ") || "—"}
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
           <div>
             <div className="opacity-60">Consultor</div>
-            <div className="font-semibold">{consultor?.nome || "—"}</div>
+            <div className="font-semibold">{cabecalhoEfetivo().consultor_nome || "—"}</div>
           </div>
           <div>
             <div className="opacity-60">Início</div>
             <div className="font-semibold">{format(new Date(visita.hora_inicio), "dd/MM HH:mm", { locale: ptBR })}</div>
           </div>
         </div>
+      </div>
+
+      {/* Dados do cabeçalho do relatório — editáveis nesta tela */}
+      <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
+        <div className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
+          Dados do cabeçalho do relatório
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {CABECALHO_FIELDS.map(({ key, label }) => (
+            <FieldInline
+              key={key}
+              label={label}
+              value={cabecalhoEfetivo()[key]}
+              onSave={v => void salvarOverride(key, v)}
+              disabled={readOnly}
+            />
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Alterações valem apenas para este relatório — os cadastros de fazenda e consultor não são modificados.
+        </p>
       </div>
 
       {/* Blocos de pasto */}

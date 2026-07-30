@@ -5592,17 +5592,22 @@ export type Database = {
         Row: {
           conclusao: string | null
           consultor_id: string
+          consultor_nome_override: string | null
           created_at: string
           deleted_at: string | null
           fazenda_consultor_id: string
+          fazenda_nome_override: string | null
           hora_fim: string | null
           hora_inicio: string
           id: string
           indicadores_gerais: string | null
           indicadores_tabela: Json | null
+          localizacao_override: string | null
           objetivo_visita: string | null
           observacoes_gerais: string | null
           pdf_url: string | null
+          proprietario_override: string | null
+          responsavel_override: string | null
           resumo_executivo: string | null
           status: string
           tipo: string
@@ -5610,17 +5615,22 @@ export type Database = {
         Insert: {
           conclusao?: string | null
           consultor_id: string
+          consultor_nome_override?: string | null
           created_at?: string
           deleted_at?: string | null
           fazenda_consultor_id: string
+          fazenda_nome_override?: string | null
           hora_fim?: string | null
           hora_inicio?: string
           id?: string
           indicadores_gerais?: string | null
           indicadores_tabela?: Json | null
+          localizacao_override?: string | null
           objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null
+          proprietario_override?: string | null
+          responsavel_override?: string | null
           resumo_executivo?: string | null
           status?: string
           tipo?: string
@@ -5628,17 +5638,22 @@ export type Database = {
         Update: {
           conclusao?: string | null
           consultor_id?: string
+          consultor_nome_override?: string | null
           created_at?: string
           deleted_at?: string | null
           fazenda_consultor_id?: string
+          fazenda_nome_override?: string | null
           hora_fim?: string | null
           hora_inicio?: string
           id?: string
           indicadores_gerais?: string | null
           indicadores_tabela?: Json | null
+          localizacao_override?: string | null
           objetivo_visita?: string | null
           observacoes_gerais?: string | null
           pdf_url?: string | null
+          proprietario_override?: string | null
+          responsavel_override?: string | null
           resumo_executivo?: string | null
           status?: string
           tipo?: string
