@@ -46,11 +46,19 @@ const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
 export default function CurralVisitaModal({
   open, onOpenChange, visitaId, curral, proximaOrdem, onSaved, readOnly,
 }: Props) {
+  const { roleData } = useAuth();
+  const consultorId = roleData?.consultorId ?? null;
+  const { categorias, criar } = useDietaCategorias(consultorId);
   const [numCurral, setNumCurral] = useState("");
   const [curralIdLocal, setCurralIdLocal] = useState<string | null>(null);
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
+  const [dietaCategoria, setDietaCategoria] = useState<string>("");
+  const [novaCategoria, setNovaCategoria] = useState("");
+  const [mostrarNovaCategoria, setMostrarNovaCategoria] = useState(false);
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     if (!open) return;
