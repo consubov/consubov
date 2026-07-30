@@ -1133,6 +1133,35 @@ export type Database = {
           },
         ]
       }
+      dieta_categorias: {
+        Row: {
+          consultor_id: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          consultor_id: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          consultor_id?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dieta_categorias_consultor_id_fkey"
+            columns: ["consultor_id"]
+            isOneToOne: false
+            referencedRelation: "consultores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       elementos_mapa: {
         Row: {
           criado_em: string | null
@@ -5321,6 +5350,7 @@ export type Database = {
       visita_currais: {
         Row: {
           created_at: string
+          dieta_categoria: string | null
           id: string
           num_curral: string
           ordem: number
@@ -5330,6 +5360,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dieta_categoria?: string | null
           id?: string
           num_curral: string
           ordem?: number
@@ -5339,6 +5370,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dieta_categoria?: string | null
           id?: string
           num_curral?: string
           ordem?: number
