@@ -552,16 +552,18 @@ export default function RevisaoVisitaPage() {
         (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
       );
 
+      const cab = cabecalhoEfetivo();
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
-          nome_fazenda: fazenda.nome_fazenda,
-          proprietario: fazenda.proprietario,
-          responsavel: (fazenda as any).responsavel ?? null,
+          nome_fazenda: cab.fazenda_nome,
+          proprietario: cab.proprietario || null,
+          responsavel: cab.responsavel || null,
           municipio: fazenda.municipio,
           uf: fazenda.uf,
+          localizacao: cab.localizacao || null,
         },
-        consultor: { nome: consultor.nome },
+        consultor: { nome: cab.consultor_nome },
         hora_inicio: visita.hora_inicio,
         hora_fim: visita.hora_fim || new Date().toISOString(),
         observacoes_gerais: obsGerais,
