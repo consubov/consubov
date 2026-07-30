@@ -9,6 +9,7 @@ import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
+import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -66,54 +67,6 @@ export interface VisitaPdfData {
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   sampleChartTypes?: SampleChartTypes;
-}
-
-async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.6): Promise<string> {
-  // Se a foto já está bem pequena (<=350KB), reaproveita direto sem
-  // recomprimir — poupa tempo de CPU na geração do PDF.
-  if (blob.size <= 350 * 1024) {
-    return await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
-  }
-  const bitmapUrl = URL.createObjectURL(blob);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = reject;
-      im.src = bitmapUrl;
-    });
-    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-    const w = Math.max(1, Math.round(img.width * scale));
-    const h = Math.max(1, Math.round(img.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("no ctx");
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", quality);
-  } finally {
-    URL.revokeObjectURL(bitmapUrl);
-  }
-}
-
-async function fetchFotoDataUrl(path: string): Promise<string | null> {
-  try {
-    const { data } = await withConsultorTimeout(
-      supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60),
-      "assinatura da foto do relatório",
-    );
-    if (!data?.signedUrl) return null;
-    const res = await fetchWithConsultorTimeout(data.signedUrl, "download da foto do relatório");
-    const blob = await res.blob();
-    return await compressImageBlob(blob);
-  } catch { return null; }
 }
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
@@ -568,10 +521,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const fotosCache: Record<string, string | null> = {};
   const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
   const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
-  await Promise.all([
-    ...allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }),
-    ...allTopicoFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }),
-  ]);
+  Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, [...allFotos, ...allTopicoFotos]));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Rotina", logos);
@@ -839,7 +789,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
 
   const fotosCache: Record<string, string | null> = {};
   const allFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
-  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+  Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, allFotos));
 
   // PAGE 1
   drawCoverHeader(doc, logoDefault, "Visita Técnica - Fábrica", logos);

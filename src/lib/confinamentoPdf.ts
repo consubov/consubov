@@ -9,6 +9,7 @@ import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, drawFezesCategoriaChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
+import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -69,24 +70,6 @@ function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text(String(n), x + r, y + r, { align: "center", baseline: "middle" });
-}
-
-async function fetchFotoDataUrl(path: string): Promise<string | null> {
-  try {
-    const { data } = await withConsultorTimeout(
-      supabase.storage.from(BUCKET_FOTOS).createSignedUrl(path, 60 * 60),
-      "assinatura da foto do relatório",
-    );
-    if (!data?.signedUrl) return null;
-    const res = await fetchWithConsultorTimeout(data.signedUrl, "download da foto do relatório");
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
-  } catch { return null; }
 }
 
 const BUCKET_LOGOS = "logos-consultor";
@@ -826,7 +809,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     ...data.currais.flatMap(c => c.fotos.slice(0, 10)),
     ...((data.topicos || []).flatMap(t => t.fotos.slice(0, 5))),
   ];
-  await Promise.all(allFotos.map(async f => { fotosCache[f.id] = await fetchFotoDataUrl(f.url); }));
+  Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, allFotos));
 
   const allT = [...(data.topicos || [])].sort((a, b) => a.ordem - b.ordem);
   const zonaOf = (t: typeof allT[number]): "introducao" | "desenvolvimento" | "conclusao" => {
