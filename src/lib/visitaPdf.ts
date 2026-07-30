@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
+import { mentionsToText } from "@/lib/photoMentions";
+import { getActivePhotoLinks, setActivePhotoLinks, PhotoLinkCollector, currentPage } from "@/lib/pdfPhotoLinks";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
@@ -274,8 +276,44 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
 function drawParagraphText(
   doc: jsPDF, text: string, x: number, y: number, maxWidth: number, lineHeight = 4.6,
 ): number {
-  const raw = String(text ?? "");
+  const linker = getActivePhotoLinks();
+  const raw = mentionsToText(String(text ?? ""));
   const paragraphs = raw.split(/\r?\n/);
+
+  const drawWordsTracked = (words: string[], lineY: number, advance: (w: string) => number) => {
+    const isNum = (w: string) => /^\d+[.,;:)\]]?$/.test(w);
+    const partOfMention = new Set<number>();
+    const pairs: { i: number; numero: number }[] = [];
+    for (let i = 0; i < words.length - 1; i++) {
+      if (words[i] === "Imagem" && isNum(words[i + 1])) {
+        partOfMention.add(i); partOfMention.add(i + 1);
+        pairs.push({ i, numero: parseInt(words[i + 1], 10) });
+        i++;
+      }
+    }
+    const xs: number[] = [];
+    let cursorX = x;
+    words.forEach((word, i) => {
+      xs.push(cursorX);
+      if (partOfMention.has(i)) doc.setTextColor(GREEN_DARK);
+      doc.text(word, cursorX, lineY);
+      if (partOfMention.has(i)) doc.setTextColor(INK);
+      cursorX += advance(word);
+    });
+    for (const p of pairs) {
+      const x0 = xs[p.i];
+      const x1 = xs[p.i + 1] + doc.getTextWidth(words[p.i + 1]);
+      doc.setDrawColor(GREEN_DARK);
+      doc.setLineWidth(0.2);
+      doc.line(x0, lineY + 0.8, x1, lineY + 0.8);
+      linker?.addRef({
+        numero: p.numero, page: currentPage(doc),
+        x: x0, y: lineY - 3.2, w: Math.max(1, x1 - x0), h: 4.6,
+      });
+    }
+  };
+
+  const lineHasMention = (line: string) => /\bImagem\s+\d/.test(line);
 
   const drawJustifiedLine = (line: string, lineY: number) => {
     const clean = line.trim().replace(/\s+/g, " ");
@@ -283,14 +321,25 @@ function drawParagraphText(
     const lineWidth = doc.getTextWidth(clean);
 
     if (words.length < 4 || lineWidth < maxWidth * 0.82 || lineWidth >= maxWidth) {
-      doc.text(clean, x, lineY);
+      if (lineHasMention(clean)) {
+        const spaceW = doc.getTextWidth(" ");
+        drawWordsTracked(words, lineY, w => doc.getTextWidth(w) + spaceW);
+      } else doc.text(clean, x, lineY);
       return;
     }
 
     const totalWordsWidth = words.reduce((sum, word) => sum + doc.getTextWidth(word), 0);
     const gap = (maxWidth - totalWordsWidth) / (words.length - 1);
     if (!Number.isFinite(gap) || gap <= 0 || gap > 4) {
-      doc.text(clean, x, lineY);
+      if (lineHasMention(clean)) {
+        const spaceW = doc.getTextWidth(" ");
+        drawWordsTracked(words, lineY, w => doc.getTextWidth(w) + spaceW);
+      } else doc.text(clean, x, lineY);
+      return;
+    }
+
+    if (lineHasMention(clean)) {
+      drawWordsTracked(words, lineY, w => doc.getTextWidth(w) + gap);
       return;
     }
 
@@ -307,7 +356,13 @@ function drawParagraphText(
     const lines = doc.splitTextToSize(trimmed.replace(/\s+/g, " "), maxWidth) as string[];
     lines.forEach((line, index) => {
       if (index < lines.length - 1) drawJustifiedLine(line, y);
-      else doc.text(line.trim().replace(/\s+/g, " "), x, y);
+      else {
+        const clean = line.trim().replace(/\s+/g, " ");
+        if (lineHasMention(clean)) {
+          const spaceW = doc.getTextWidth(" ");
+          drawWordsTracked(clean.split(" ").filter(Boolean), y, w => doc.getTextWidth(w) + spaceW);
+        } else doc.text(clean, x, y);
+      }
       y += lineHeight;
     });
   }
@@ -444,7 +499,7 @@ async function drawPastoBlock(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK);
-    const lines = doc.splitTextToSize(pasto.observacao, width - 6);
+    const lines = doc.splitTextToSize(mentionsToText(pasto.observacao), width - 6);
     doc.text(lines.slice(0, 2), x + 3, y + 63);
   }
 
@@ -498,6 +553,8 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
 
 export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Blob; fileName: string }> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const photoLinks = new PhotoLinkCollector();
+  setActivePhotoLinks(photoLinks);
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
@@ -716,6 +773,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     drawFooter(doc, p, total);
   }
 
+  photoLinks.apply(doc);
+  setActivePhotoLinks(null);
   const blob = doc.output("blob");
   const stamp = format(new Date(), "yyyyMMdd-HHmm");
   const safeName = (data.fazenda.nome_fazenda || "fazenda").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
@@ -754,6 +813,7 @@ export interface VisitaFabricaPdfData {
 }
 
 function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
+  getActivePhotoLinks()?.setTarget(n, currentPage(doc), y);
   const r = 3.4;
   doc.setFillColor(GREEN_DARK);
   doc.circle(x + r, y + r, r, "F");
@@ -765,6 +825,8 @@ function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
 
 export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ blob: Blob; fileName: string }> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const photoLinks = new PhotoLinkCollector();
+  setActivePhotoLinks(photoLinks);
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const logoDefaultDataUrl = await fetchAssetDataUrl(logoAsset.url);
@@ -973,6 +1035,8 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     drawFooter(doc, p, total);
   }
 
+  photoLinks.apply(doc);
+  setActivePhotoLinks(null);
   const blob = doc.output("blob");
   const stamp = format(new Date(), "yyyyMMdd-HHmm");
   const safeName = (data.fazenda.nome_fazenda || "fazenda").replace(/[^a-z0-9]+/gi, "-").toLowerCase();

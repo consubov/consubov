@@ -12,6 +12,8 @@ import {
 import { Camera, ChevronDown, ChevronUp, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
+import MentionTextarea from "@/components/consultor/MentionTextarea";
+import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX_FOTOS = 5;
@@ -357,10 +359,12 @@ function TopicoCard({
         )}
       </div>
       <div className="p-3 space-y-3">
-        <Textarea
+        <MentionTextarea
+          fieldId={`topico:${topico.id}`}
+          label="Texto do tópico"
           value={topico.texto || ""}
-          onChange={e => onUpdate(topico.id, { texto: e.target.value })}
-          onBlur={() => onSave(topico.id, { texto: topico.texto })}
+          onChange={v => onUpdate(topico.id, { texto: v })}
+          onCommit={v => onSave(topico.id, { texto: v })}
           rows={3}
           className="text-sm"
           placeholder="Texto do tópico (opcional)"
@@ -371,7 +375,11 @@ function TopicoCard({
           </div>
           <div className="grid grid-cols-5 gap-1.5">
             {topico.fotos.map(f => (
-              <div key={f.id} className="aspect-square rounded-md overflow-hidden relative border" style={{ borderColor: "#E7E3D6" }}>
+              <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
+                className="aspect-square rounded-md overflow-hidden relative border"
+                style={{ borderColor: "#E7E3D6" }}
+              >
+                <div className="absolute inset-0">
                 {topico.signed[f.id]
                   ? <img src={topico.signed[f.id]} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
@@ -382,10 +390,11 @@ function TopicoCard({
                   </div>
                 )}
                 <button type="button" onClick={() => onDelFoto(topico, f)}
-                  className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
+                  className="absolute top-0.5 right-0.5 z-20 bg-destructive/90 rounded p-0.5">
                   <X className="w-3 h-3 text-destructive-foreground" />
                 </button>
-              </div>
+                </div>
+              </MentionablePhoto>
             ))}
             {topico.fotos.length < MAX_FOTOS && (
               <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"
