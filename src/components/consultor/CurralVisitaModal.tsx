@@ -62,9 +62,13 @@ export default function CurralVisitaModal({
 
   useEffect(() => {
     if (!open) return;
+    setMostrarNovaCategoria(false);
+    setNovaCategoria("");
     if (curral) {
       setCurralIdLocal(curral.id);
       setNumCurral(curral.num_curral);
+      setDietaCategoria(curral.dieta_categoria || "");
+
       // load samples
       const online = typeof navigator === "undefined" || navigator.onLine;
       const source = (async () => {
