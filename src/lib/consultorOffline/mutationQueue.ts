@@ -147,9 +147,33 @@ async function flushOne(m: TextMutation): Promise<boolean> {
       );
       error = res.error;
       confirmed = res.count == null || res.count > 0;
+      if (!error && !confirmed) {
+        // Linha não existe mais no servidor (ex.: tópico excluído ou nunca
+        // inserido). Tenta recriar via upsert; se não for possível (colunas
+        // obrigatórias ausentes), descarta a mutação órfã para não travar a fila.
+        const up: any = await withConsultorTimeout((supabase as any)
+          .from(m.table)
+          .upsert({ id: m.rowId, ...m.patch }, { onConflict: m.onConflict ?? "id", count: "exact" }),
+          `sincronização de ${m.table}`,
+        );
+        if (!up.error) {
+          confirmed = true;
+        } else {
+          debugSync("descartando mutação órfã (linha inexistente no servidor)", {
+            mutationId: m.id,
+            table: m.table,
+            rowId: m.rowId,
+            error: getErrorMessage(up.error),
+          });
+          await deleteMutation(m.id);
+          await refresh();
+          return true;
+        }
+      }
     }
     if (error) throw error;
     if (!confirmed) throw new Error(`Servidor não confirmou ${operation} em ${m.table}`);
+
     debugSync("mutação confirmada pelo servidor", {
       mutationId: m.id,
       visitaId: m.visitaId,
