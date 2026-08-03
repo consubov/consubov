@@ -85,6 +85,13 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       : { data: null };
     let rows = (data as any[]) || [];
     if (rows.length === 0 && snap?.topicos?.length) rows = snap.topicos as any[];
+    // Tópicos excluídos localmente (tombstone com deleted_at) nunca reaparecem,
+    // mesmo que a exclusão ainda não tenha sincronizado com o servidor.
+    const tombstoned = new Set(
+      (snap?.topicos || []).filter((t: any) => t?.deleted_at).map((t: any) => t.id),
+    );
+    rows = rows.filter((r: any) => !r?.deleted_at && !tombstoned.has(r.id));
+
 
     const ids = rows.map(r => r.id);
     const fotosByTopico: Record<string, TopicoFoto[]> = {};
