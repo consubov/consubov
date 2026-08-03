@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
-import { enqueuePhoto, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
+import { enqueuePhoto, subscribeSyncStatus, purgeTopicoFromQueue } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +125,15 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
     }));
     setTopicos(built.sort((a, b) => a.ordem - b.ordem));
     if (!preferLocal) {
-      void patchSnapshot(visitaId, (curr) => ({ ...curr, topicos: built })).catch(() => {});
+      void patchSnapshot(visitaId, (curr) => ({
+        ...curr,
+        // Preserva tombstones (deleted_at) para que a exclusão pendente não
+        // seja desfeita por uma releitura do servidor antes de sincronizar.
+        topicos: [
+          ...built,
+          ...((curr.topicos || []).filter((t: any) => t?.deleted_at)),
+        ],
+      })).catch(() => {});
     }
     setLoading(false);
   }
@@ -187,7 +195,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
     //    visita_topico_fotos são apagadas em cascata pelo DELETE do tópico).
     const remotas = t.fotos.filter(f => !String(f.url).startsWith("queued:"));
     if (remotas.length && (typeof navigator === "undefined" || navigator.onLine)) {
-      await supabase.storage.from(BUCKET).remove(remotas.map(f => f.url)).catch?.(() => {});
+      try { await supabase.storage.from(BUCKET).remove(remotas.map(f => f.url)); } catch { /* ignora */ }
     }
 
     // 3) Tombstone no snapshot local (deleted_at) + exclusão idempotente na fila
