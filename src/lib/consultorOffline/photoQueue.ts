@@ -3,6 +3,7 @@ import {
   countPendingFotos,
   deleteFoto,
   deleteFotosByVisita,
+  deleteFotosByParent,
   deleteMutationsByVisita,
   getFoto,
   listFailedFotos,
@@ -15,7 +16,7 @@ import {
   retryFoto,
   type FotoQueueItem,
 } from "./db";
-import { drainMutations } from "./mutationQueue";
+import { drainMutations, dropMutationsForRows } from "./mutationQueue";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
