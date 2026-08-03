@@ -14,6 +14,16 @@ import { purgeOrphanQueueItems, purgeTopicoFromQueue } from "@/lib/consultorOffl
 
 const VISITA = "visita-1";
 
+function makeBlob(): Blob {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const blob = new Blob([bytes], { type: "image/jpeg" });
+  // jsdom pode não implementar Blob.arrayBuffer
+  if (typeof (blob as any).arrayBuffer !== "function") {
+    (blob as any).arrayBuffer = async () => bytes.buffer.slice(0);
+  }
+  return blob;
+}
+
 function foto(localId: string, parentId: string) {
   return {
     localId,
@@ -21,7 +31,7 @@ function foto(localId: string, parentId: string) {
     parentKind: "topico" as const,
     parentId,
     ordem: 1,
-    blob: new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
+    blob: makeBlob(),
     mime: "image/jpeg",
     size: 3,
     createdAt: new Date().toISOString(),
