@@ -14,14 +14,20 @@ import { purgeOrphanQueueItems, purgeTopicoFromQueue } from "@/lib/consultorOffl
 
 const VISITA = "visita-1";
 
+// jsdom pode não implementar Blob.arrayBuffer
+if (typeof (Blob.prototype as any).arrayBuffer !== "function") {
+  (Blob.prototype as any).arrayBuffer = function () {
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this as Blob);
+    });
+  };
+}
+
 function makeBlob(): Blob {
-  const bytes = new Uint8Array([1, 2, 3]);
-  const blob = new Blob([bytes], { type: "image/jpeg" });
-  // jsdom pode não implementar Blob.arrayBuffer
-  if (typeof (blob as any).arrayBuffer !== "function") {
-    (blob as any).arrayBuffer = async () => bytes.buffer.slice(0);
-  }
-  return blob;
+  return new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
 }
 
 function foto(localId: string, parentId: string) {
