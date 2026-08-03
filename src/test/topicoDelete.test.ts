@@ -5,9 +5,8 @@ import {
   putFoto,
   putMutation,
   putSnapshot,
-  listAllFotos,
   listAllMutations,
-  listFotosByParent,
+  listFotosByParentRaw,
 } from "@/lib/consultorOffline/db";
 import { dropMutationsForRows } from "@/lib/consultorOffline/mutationQueue";
 import { purgeOrphanQueueItems, purgeTopicoFromQueue } from "@/lib/consultorOffline/photoQueue";
@@ -71,11 +70,11 @@ describe("exclusão de tópico offline", () => {
 
     await purgeTopicoFromQueue("topico-old", ["foto-row-old"]);
 
-    expect(await listFotosByParent("topico", "topico-old")).toHaveLength(0);
+    expect(await listFotosByParentRaw("topico", "topico-old")).toHaveLength(0);
     const restantes = (await listAllMutations()).map((m) => m.id).sort();
     // exclusão do tópico continua na fila; criação do novo tópico intacta
     expect(restantes).toEqual(["m-del", "m-new"]);
-    console.log("DEBUG", (await listAllFotos()).map((f) => f.localId));
+    expect((await listFotosByParentRaw("topico", "topico-new")).map((f) => f.localId)).toEqual(["f-new"]);
   });
 
   it("purgeOrphanQueueItems limpa fila de tópicos com deleted_at no snapshot", async () => {
@@ -95,7 +94,7 @@ describe("exclusão de tópico offline", () => {
 
     await purgeOrphanQueueItems();
 
-    expect(await listFotosByParent("topico", "topico-morto")).toHaveLength(0);
+    expect(await listFotosByParentRaw("topico", "topico-morto")).toHaveLength(0);
     expect((await listAllMutations()).some((m) => m.id === "m-orfa")).toBe(false);
   });
 
