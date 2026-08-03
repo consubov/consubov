@@ -230,3 +230,24 @@ if (typeof window !== "undefined") {
   window.addEventListener("online", () => void retryFailedMutations().catch((err) => debugSync("auto-sync de mutações falhou", { error: getErrorMessage(err) })));
   if (navigator.onLine) void drainMutations().catch((err) => debugSync("sync inicial de mutações falhou", { error: getErrorMessage(err) }));
 }
+
+/**
+ * Remove da fila local todas as mutações pendentes cujos rowIds pertencem a
+ * registros já excluídos (ex.: tópico apagado e suas fotos). Evita pendências
+ * fantasma que nunca conseguiriam sincronizar (FK inexistente no servidor).
+ * Nunca remove mutações de exclusão — elas continuam sendo tentadas.
+ */
+export async function dropMutationsForRows(rowIds: string[]): Promise<number> {
+  const targets = new Set(rowIds.filter(Boolean));
+  if (targets.size === 0) return 0;
+  const items = await listAllMutations();
+  let removed = 0;
+  for (const m of items) {
+    if (!targets.has(m.rowId)) continue;
+    if ((m.operation ?? "update") === "delete") continue;
+    await deleteMutation(m.id);
+    removed++;
+  }
+  if (removed > 0) await refresh();
+  return removed;
+}
