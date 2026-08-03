@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
-import { enqueuePhoto, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
+import { enqueuePhoto, subscribeSyncStatus, purgeTopicoFromQueue } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto } from "@/lib/consultorOffline/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +85,13 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       : { data: null };
     let rows = (data as any[]) || [];
     if (rows.length === 0 && snap?.topicos?.length) rows = snap.topicos as any[];
+    // Tópicos excluídos localmente (tombstone com deleted_at) nunca reaparecem,
+    // mesmo que a exclusão ainda não tenha sincronizado com o servidor.
+    const tombstoned = new Set(
+      (snap?.topicos || []).filter((t: any) => t?.deleted_at).map((t: any) => t.id),
+    );
+    rows = rows.filter((r: any) => !r?.deleted_at && !tombstoned.has(r.id));
+
 
     const ids = rows.map(r => r.id);
     const fotosByTopico: Record<string, TopicoFoto[]> = {};
@@ -118,7 +125,15 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
     }));
     setTopicos(built.sort((a, b) => a.ordem - b.ordem));
     if (!preferLocal) {
-      void patchSnapshot(visitaId, (curr) => ({ ...curr, topicos: built })).catch(() => {});
+      void patchSnapshot(visitaId, (curr) => ({
+        ...curr,
+        // Preserva tombstones (deleted_at) para que a exclusão pendente não
+        // seja desfeita por uma releitura do servidor antes de sincronizar.
+        topicos: [
+          ...built,
+          ...((curr.topicos || []).filter((t: any) => t?.deleted_at)),
+        ],
+      })).catch(() => {});
     }
     setLoading(false);
   }
@@ -170,18 +185,34 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
   async function deleteTopico(t: Topico) {
     if (!confirm("Remover este tópico?")) return;
     onNotifyEdit?.();
-    for (const f of t.fotos) {
-      if (String(f.url).startsWith("queued:")) await deleteQueuedFoto(f.id);
-      else if (typeof navigator === "undefined" || navigator.onLine) await supabase.storage.from(BUCKET).remove([f.url]);
+    const deletedAt = new Date().toISOString();
+
+    // 1) Cascata local: remove da fila TODAS as fotos do tópico (por parent, não
+    //    só as visíveis) e quaisquer mutações de criação/edição órfãs.
+    await purgeTopicoFromQueue(t.id, t.fotos.map(f => f.id));
+
+    // 2) Remove os arquivos já enviados ao Storage (as linhas em
+    //    visita_topico_fotos são apagadas em cascata pelo DELETE do tópico).
+    const remotas = t.fotos.filter(f => !String(f.url).startsWith("queued:"));
+    if (remotas.length && (typeof navigator === "undefined" || navigator.onLine)) {
+      try { await supabase.storage.from(BUCKET).remove(remotas.map(f => f.url)); } catch { /* ignora */ }
     }
+
+    // 3) Tombstone no snapshot local (deleted_at) + exclusão idempotente na fila
+    //    (dedupe por tabela+rowId — nunca duplica em tentativas repetidas).
     await offlineDelete({
       visitaId,
       table: "visita_topicos",
       rowId: t.id,
-      applyToSnapshot: (curr) => ({ ...curr, topicos: (curr.topicos || []).filter((x: any) => x.id !== t.id) }),
+      applyToSnapshot: (curr) => ({
+        ...curr,
+        topicos: (curr.topicos || []).map((x: any) =>
+          x.id === t.id ? { ...x, deleted_at: deletedAt, fotos: x.fotos || [] } : x),
+      }),
     });
     setTopicos(prev => prev.filter(x => x.id !== t.id));
   }
+
 
   async function move(t: Topico, dir: -1 | 1) {
     const inZone = topicos.filter(x => x.zona === t.zona).sort((a, b) => a.ordem - b.ordem);

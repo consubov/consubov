@@ -3,6 +3,8 @@ import {
   countPendingFotos,
   deleteFoto,
   deleteFotosByVisita,
+  deleteFotosByParent,
+  listAllFotosRaw,
   deleteMutationsByVisita,
   getFoto,
   listFailedFotos,
@@ -15,7 +17,7 @@ import {
   retryFoto,
   type FotoQueueItem,
 } from "./db";
-import { drainMutations } from "./mutationQueue";
+import { drainMutations, dropMutationsForRows } from "./mutationQueue";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
@@ -387,20 +389,46 @@ export async function purgeVisitaFromQueue(visitaId: string): Promise<{ fotos: n
 }
 
 /**
+ * Remove em cascata fotos e mutações locais de um tópico excluído.
+ * O DELETE do tópico no servidor cascateia `visita_topico_fotos`, então aqui
+ * limpamos apenas o estado local (fila de fotos + mutações de criação/edição
+ * que nunca poderiam sincronizar). A mutação de exclusão do tópico é preservada.
+ */
+export async function purgeTopicoFromQueue(topicoId: string, fotoRowIds: string[] = []): Promise<number> {
+  const fotos = await deleteFotosByParent("topico", topicoId);
+  await dropMutationsForRows([topicoId, ...fotoRowIds]);
+  await refreshPendingCount();
+  debugSync("fila higienizada após exclusão de tópico", { topicoId, fotos });
+  return fotos;
+}
+
+/**
  * Higieniza a fila removendo itens órfãos: fotos cuja visita já foi
- * marcada como excluída (deleted_at) no snapshot local. Executada uma vez
- * na inicialização para limpar estado acumulado de sessões antigas.
+ * marcada como excluída (deleted_at) no snapshot local, e fotos/mutações
+ * de tópicos marcados como excluídos (deleted_at) no snapshot da visita.
+ * Executada uma vez na inicialização para limpar estado acumulado.
  */
 export async function purgeOrphanQueueItems(): Promise<number> {
   try {
-    const [fotos, snapshots] = await Promise.all([listAllFotos(), listAllSnapshots()]);
+    const [fotos, snapshots] = await Promise.all([listAllFotosRaw(), listAllSnapshots()]);
     const deletedIds = new Set<string>();
+    const deletedTopicoIds = new Set<string>();
+    const orphanRowIds = new Set<string>();
     snapshots.forEach((snap) => {
-      if ((snap.data as any)?.visita?.deleted_at) deletedIds.add(snap.visitaId);
+      const data = snap.data as any;
+      if (data?.visita?.deleted_at) deletedIds.add(snap.visitaId);
+      (data?.topicos || []).forEach((t: any) => {
+        if (!t?.deleted_at) return;
+        deletedTopicoIds.add(t.id);
+        orphanRowIds.add(t.id);
+        (t.fotos || []).forEach((f: any) => { if (f?.id) orphanRowIds.add(f.id); });
+      });
     });
     let removed = 0;
     for (const f of fotos) {
-      if (f.visitaId && deletedIds.has(f.visitaId)) {
+      const orphanVisita = f.visitaId && deletedIds.has(f.visitaId);
+      const orphanTopico = f.parentKind === "topico" && deletedTopicoIds.has(f.parentId);
+      if (orphanVisita || orphanTopico) {
         await deleteFoto(f.localId);
         removed++;
       }
@@ -408,16 +436,18 @@ export async function purgeOrphanQueueItems(): Promise<number> {
     for (const visitaId of deletedIds) {
       await deleteMutationsByVisita(visitaId);
     }
+    await dropMutationsForRows(Array.from(orphanRowIds));
     if (removed > 0) {
       debugSync("fotos órfãs removidas da fila", { removed });
-      await refreshPendingCount();
     }
+    await refreshPendingCount();
     return removed;
   } catch (err) {
     debugSync("falha ao remover órfãos da fila", { error: getErrorMessage(err) });
     return 0;
   }
 }
+
 
 // auto-drain on network reconnect
 if (typeof window !== "undefined") {
