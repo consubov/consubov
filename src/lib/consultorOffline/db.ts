@@ -302,3 +302,10 @@ export async function listPendingVisitaIds() {
   fotos.forEach((f) => { if (f.visitaId && !deletedIds.has(f.visitaId)) ids.add(f.visitaId); });
   return Array.from(ids);
 }
+
+// Lista os itens crus da fila de fotos (sem hidratar Blob). Usado na limpeza de
+// órfãos para que itens com dados locais ilegíveis também possam ser removidos.
+export async function listAllFotosRaw() {
+  const db = await getDb();
+  return db.getAll("foto_queue");
+}

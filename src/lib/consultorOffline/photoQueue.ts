@@ -4,6 +4,7 @@ import {
   deleteFoto,
   deleteFotosByVisita,
   deleteFotosByParent,
+  listAllFotosRaw,
   deleteMutationsByVisita,
   getFoto,
   listFailedFotos,
@@ -409,7 +410,7 @@ export async function purgeTopicoFromQueue(topicoId: string, fotoRowIds: string[
  */
 export async function purgeOrphanQueueItems(): Promise<number> {
   try {
-    const [fotos, snapshots] = await Promise.all([listAllFotos(), listAllSnapshots()]);
+    const [fotos, snapshots] = await Promise.all([listAllFotosRaw(), listAllSnapshots()]);
     const deletedIds = new Set<string>();
     const deletedTopicoIds = new Set<string>();
     const orphanRowIds = new Set<string>();
