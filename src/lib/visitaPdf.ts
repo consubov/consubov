@@ -783,16 +783,17 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   drawTabela();
 
   // PASTOS — fluxo contínuo (bloco atômico de 100mm). Não força mais 2/página.
+  const isConferencia = data.modo === "conferencia";
   const blockHeight = 100;
   const gap = 8;
   const scaleH = 6;
-  let pastoScaleShown = false;
+  let pastoScaleShown = isConferencia;
   for (const p of data.pastos) {
     const need = blockHeight + (pastoScaleShown ? 0 : scaleH);
     if (y + need > pageH - 20) {
       doc.addPage();
       y = slimHeader();
-      pastoScaleShown = false;
+      pastoScaleShown = isConferencia;
     }
     if (!pastoScaleShown) {
       doc.setFontSize(7);
@@ -802,16 +803,23 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       y += scaleH;
       pastoScaleShown = true;
     }
-    await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    if (isConferencia) {
+      drawConferenciaPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    } else {
+      await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    }
     y += blockHeight + gap;
   }
 
   // Line charts — amostras individuais por tipo (uma página por gráfico com dados)
-  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", {
-    fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
-    corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
-    bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
-  }, data.sampleChartTypes);
+  if (!isConferencia) {
+    drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", {
+      fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
+      corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
+      bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
+    }, data.sampleChartTypes);
+  }
+
 
   // DESENVOLVIMENTO — tópicos após pastos, fluxo contínuo (bloco atômico).
   if (devTopicos.length > 0) {
