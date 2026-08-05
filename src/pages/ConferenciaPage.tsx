@@ -47,6 +47,7 @@ export default function ConferenciaPage() {
   const [registros, setRegistros] = useState<ConferenciaPastoRegistro[]>([]);
   const [savingPasto, setSavingPasto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [pdfGerado, setPdfGerado] = useState<{ url: string; fileName: string } | null>(null);
 
   useEffect(() => {
     // sincroniza checklists pendentes ao montar e ao reconectar
