@@ -1,0 +1,201 @@
+/**
+ * Conferência do Admin via QR Code.
+ * Reaproveita a estrutura de visitas do módulo Consultor (visitas_tecnicas /
+ * visita_pastos / visita_fotos) de forma ADITIVA: a visita é criada com
+ * `administrador_id` preenchido e `consultor_id` nulo, tipo "conferencia_admin".
+ * Nenhum fluxo do Consultor é alterado.
+ */
+import { supabase } from "@/integrations/supabase/client";
+
+const BUCKET_FOTOS = "visitas-consultor-fotos";
+export const TIPO_CONFERENCIA_ADMIN = "conferencia_admin";
+
+export interface ConferenciaVisita {
+  id: string;
+  hora_inicio: string;
+  fazenda_id: string | null;
+  fazenda_nome_override: string | null;
+}
+
+export interface ConferenciaPastoRegistro {
+  id: string;
+  ordem: number;
+  letra: string;
+  num_pasto: string | null;
+  fazenda_nome: string | null;
+  retiro_nome: string | null;
+  categoria: string | null;
+  sexo: string | null;
+  peso_medio_kg: number | null;
+  qtd_animais: number | null;
+  consumo_medio_g: number | null;
+  ultima_salga: string | null;
+  observacao: string | null;
+  fotos: { id: string; url: string; ordem: number }[];
+}
+
+const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const letraFor = (i: number) => LETRAS[i % 26] + (i >= 26 ? String(Math.floor(i / 26) + 1) : "");
+
+/** Busca a visita de conferência em andamento do admin (ou cria uma nova). */
+export async function getOrCreateConferenciaVisita(
+  administradorId: string,
+  fazendaId: string | null,
+  fazendaNome: string | null,
+): Promise<ConferenciaVisita> {
+  const { data: existing } = await supabase
+    .from("visitas_tecnicas")
+    .select("id, hora_inicio, fazenda_id, fazenda_nome_override")
+    .eq("administrador_id", administradorId)
+    .eq("tipo", TIPO_CONFERENCIA_ADMIN)
+    .eq("status", "em_andamento")
+    .is("deleted_at", null)
+    .order("hora_inicio", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return existing as ConferenciaVisita;
+
+  const { data, error } = await supabase
+    .from("visitas_tecnicas")
+    .insert({
+      administrador_id: administradorId,
+      consultor_id: null,
+      fazenda_consultor_id: null,
+      fazenda_id: fazendaId,
+      fazenda_nome_override: fazendaNome,
+      tipo: TIPO_CONFERENCIA_ADMIN,
+      status: "em_andamento",
+    } as any)
+    .select("id, hora_inicio, fazenda_id, fazenda_nome_override")
+    .single();
+
+  if (error) throw error;
+  return data as ConferenciaVisita;
+}
+
+export async function listConferenciaPastos(visitaId: string): Promise<ConferenciaPastoRegistro[]> {
+  const { data: pastos } = await supabase
+    .from("visita_pastos")
+    .select("*")
+    .eq("visita_id", visitaId)
+    .order("ordem");
+
+  const rows = (pastos as any[]) || [];
+  if (rows.length === 0) return [];
+
+  const { data: fotos } = await supabase
+    .from("visita_fotos")
+    .select("id, url, ordem, visita_pasto_id")
+    .in("visita_pasto_id", rows.map(r => r.id))
+    .order("ordem");
+
+  const byPasto: Record<string, { id: string; url: string; ordem: number }[]> = {};
+  ((fotos as any[]) || []).forEach(f => {
+    (byPasto[f.visita_pasto_id] ??= []).push({ id: f.id, url: f.url, ordem: f.ordem });
+  });
+
+  return rows.map(r => ({
+    id: r.id,
+    ordem: r.ordem,
+    letra: r.letra,
+    num_pasto: r.num_pasto ?? null,
+    fazenda_nome: r.fazenda_nome ?? null,
+    retiro_nome: r.retiro_nome ?? null,
+    categoria: r.categoria ?? null,
+    sexo: r.sexo ?? null,
+    peso_medio_kg: r.peso_medio_kg ?? null,
+    qtd_animais: r.qtd_animais ?? null,
+    consumo_medio_g: r.consumo_medio_g ?? null,
+    ultima_salga: r.ultima_salga ?? null,
+    observacao: r.observacao ?? null,
+    fotos: byPasto[r.id] || [],
+  }));
+}
+
+export interface SalvarPastoInput {
+  visitaId: string;
+  pasto_id: string;
+  num_pasto: string;
+  fazenda_nome: string | null;
+  retiro_nome: string | null;
+  categoria: string | null;
+  sexo: string | null;
+  peso_medio_kg: number | null;
+  qtd_animais: number | null;
+  consumo_medio_g: number | null;
+  ultima_salga: string | null;
+  observacao: string | null;
+  fotosDataUrls: string[];
+}
+
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const res = await fetch(dataUrl);
+  return res.blob();
+}
+
+/** Grava o pasto conferido na visita em andamento (novo registro por leitura de QR). */
+export async function salvarPastoConferencia(input: SalvarPastoInput): Promise<string> {
+  const { count } = await supabase
+    .from("visita_pastos")
+    .select("id", { count: "exact", head: true })
+    .eq("visita_id", input.visitaId);
+  const ordem = count ?? 0;
+
+  const { data, error } = await supabase
+    .from("visita_pastos")
+    .insert({
+      visita_id: input.visitaId,
+      ordem,
+      letra: letraFor(ordem),
+      pasto_id: input.pasto_id,
+      num_pasto: input.num_pasto,
+      fazenda_nome: input.fazenda_nome,
+      retiro_nome: input.retiro_nome,
+      categoria: input.categoria,
+      sexo: input.sexo,
+      peso_medio_kg: input.peso_medio_kg,
+      qtd_animais: input.qtd_animais,
+      consumo_medio_g: input.consumo_medio_g,
+      ultima_salga: input.ultima_salga,
+      observacao: input.observacao,
+    } as any)
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  const registroId = (data as any).id as string;
+
+  for (let i = 0; i < input.fotosDataUrls.slice(0, 5).length; i++) {
+    const blob = await dataUrlToBlob(input.fotosDataUrls[i]);
+    const path = `conferencia-admin/${input.visitaId}/${registroId}/${i}-${crypto.randomUUID()}.jpg`;
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET_FOTOS)
+      .upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+    if (upErr) continue;
+    await supabase.from("visita_fotos").insert({
+      visita_pasto_id: registroId,
+      url: path,
+      ordem: i,
+    });
+  }
+
+  return registroId;
+}
+
+export async function encerrarConferenciaVisita(visitaId: string, pdfUrl: string | null) {
+  await supabase
+    .from("visitas_tecnicas")
+    .update({ status: "finalizada", hora_fim: new Date().toISOString(), pdf_url: pdfUrl })
+    .eq("id", visitaId);
+}
+
+/** Numeração sequencial contínua de fotos ao longo de toda a visita. */
+export function numeroMapConferencia(pastos: ConferenciaPastoRegistro[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  let n = 1;
+  for (const p of pastos) {
+    for (const f of [...p.fotos].sort((a, b) => a.ordem - b.ordem)) map[f.id] = n++;
+  }
+  return map;
+}
