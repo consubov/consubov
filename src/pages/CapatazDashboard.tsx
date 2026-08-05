@@ -766,6 +766,9 @@ export default function CapatazDashboard() {
           intervaloDias,
           pesoAtual: peso,
           produtoNome: produtoAtivo.nome,
+          consumoPor100kg: consumo_por_100kg,
+          categoria,
+          pesoSacoKg: produtoAtivo.peso_saco_kg,
         });
       } else {
         setFormSugestao(null);
