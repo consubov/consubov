@@ -401,6 +401,25 @@ export default function ConferenciaPage() {
           <ScanLine className="w-5 h-5" />
           INICIAR CONFERÊNCIA
         </Button>
+
+        {isAdmin && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              Visita em andamento: {registros.length} pasto(s), {totalFotos} foto(s).
+            </p>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full gap-2"
+              disabled={gerandoPdf}
+              onClick={() => void handleEncerrarVisita()}
+            >
+              {gerandoPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
+              ENCERRAR VISITA E GERAR PDF
+            </Button>
+          </div>
+        )}
+
       </main>
     </div>
   );
