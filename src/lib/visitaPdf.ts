@@ -228,7 +228,7 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  doc.text(`${data.modo === "conferencia" ? "Responsável" : "Consultor"}: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
   const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
   const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
   doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
