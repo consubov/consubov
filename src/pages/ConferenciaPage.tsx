@@ -141,11 +141,21 @@ export default function ConferenciaPage() {
         consumo_medio_g: r.consumo_medio_g,
       }));
 
+      let responsavelNome: string | null = null;
+      if (user?.id) {
+        const { data: adm } = await supabase
+          .from("administradores")
+          .select("nome")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        responsavelNome = adm?.nome ?? null;
+      }
+
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         modo: "conferencia",
         fazenda: { nome_fazenda: registros[0]?.fazenda_nome || "Conferência" },
-        consultor: { nome: user?.email || "Administrador" },
+        consultor: { nome: responsavelNome || user?.email || "Administrador" },
         hora_inicio: visita.hora_inicio,
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,
