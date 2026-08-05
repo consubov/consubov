@@ -26,6 +26,9 @@ export interface SalgaSugestao {
   intervaloDias: number;
   pesoAtual: number;
   produtoNome: string;
+  consumoPor100kg?: number;
+  categoria?: string;
+  pesoSacoKg?: number;
 }
 
 interface SalgaFormProps {
@@ -238,6 +241,13 @@ export default function SalgaForm({
                   <p className="text-xs text-muted-foreground">
                     Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Peso médio: {Math.round(sugestao.pesoAtual)} kg
+                    {sugestao.categoria ? ` (${sugestao.categoria})` : ''}
+                    {sugestao.consumoPor100kg != null ? ` · Consumo: ${sugestao.consumoPor100kg} kg/100kg PV` : ''}
+                    {sugestao.pesoSacoKg != null ? ` · Saco: ${sugestao.pesoSacoKg} kg` : ''}
+                  </p>
+
                 </CardContent>
               </Card>
             ) : (
