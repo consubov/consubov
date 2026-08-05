@@ -20,6 +20,7 @@ import {
   type ConferenciaPastoRegistro,
 } from "@/lib/conferenciaAdminVisita";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
 type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form";
 
@@ -47,6 +48,8 @@ export default function ConferenciaPage() {
   const [registros, setRegistros] = useState<ConferenciaPastoRegistro[]>([]);
   const [savingPasto, setSavingPasto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [pdfGerado, setPdfGerado] = useState<{ url: string; fileName: string } | null>(null);
+  const [pdfAberto, setPdfAberto] = useState(false);
 
   useEffect(() => {
     // sincroniza checklists pendentes ao montar e ao reconectar
@@ -152,8 +155,7 @@ export default function ConferenciaPage() {
       });
 
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+      setPdfGerado({ url, fileName });
 
       await encerrarConferenciaVisita(visita.id, null);
       toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
@@ -429,6 +431,27 @@ export default function ConferenciaPage() {
             </Button>
           </div>
         )}
+
+        {isAdmin && pdfGerado && (
+          <div className="w-full space-y-2 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              PDF gerado: {pdfGerado.fileName}
+            </p>
+            <Button size="lg" className="w-full gap-2" onClick={() => setPdfAberto(true)}>
+              <FileText className="w-5 h-5" />
+              ABRIR PDF
+            </Button>
+          </div>
+        )}
+
+        <PdfViewerDialog
+          url={pdfAberto && pdfGerado ? pdfGerado.url : null}
+          fileName={pdfGerado?.fileName}
+          title="Visita de Rotina"
+          onClose={() => setPdfAberto(false)}
+        />
+
+
 
       </main>
     </div>
