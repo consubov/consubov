@@ -348,7 +348,19 @@ export default function ConferenciaPage() {
       <ConferenciaResultado
         dados={dados}
         onVoltar={() => { setDados(null); setEtapa("inicio"); }}
-        onRegistrarConferencia={() => setEtapa("checklist")}
+        onRegistrarConferencia={() => setEtapa(isAdmin ? "visita_form" : "checklist")}
+      />
+    );
+  }
+
+  if (etapa === "visita_form" && dados) {
+    return (
+      <ConferenciaVisitaPastoForm
+        dados={dados}
+        numeroInicial={totalFotos + 1}
+        saving={savingPasto}
+        onBack={() => setEtapa("resultado")}
+        onSalvar={(obs, fotos) => void handleSalvarPasto(obs, fotos)}
       />
     );
   }
@@ -364,6 +376,7 @@ export default function ConferenciaPage() {
       />
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
