@@ -216,7 +216,7 @@ export default function CapatazDashboard() {
   const [fecharMesPendente, setFecharMesPendente] = useState<FecharMesPendente | null>(null);
   const [produtoAtivo, setProdutoAtivo] = useState<ProdutoCache | undefined>();
   const [fazendaCache, setFazendaCache] = useState<FazendaCache | undefined>();
-  const [formSugestao, setFormSugestao] = useState<{ sacosSugeridos: number; numAnimais: number; intervaloDias: number; pesoAtual: number; produtoNome: string } | null>(null);
+  const [formSugestao, setFormSugestao] = useState<{ sacosSugeridos: number; numAnimais: number; intervaloDias: number; pesoAtual: number; produtoNome: string; consumoPor100kg?: number; categoria?: string; pesoSacoKg?: number } | null>(null);
 
   // Abate & Transfer
   const [abateOpen, setAbateOpen] = useState(false);
