@@ -152,8 +152,7 @@ export default function ConferenciaPage() {
       });
 
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+      setPdfGerado({ url, fileName });
 
       await encerrarConferenciaVisita(visita.id, null);
       toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
