@@ -847,13 +847,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   }
 
 
-  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  if (!isConferencia) drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    drawFooter(doc, p, total);
+    drawFooter(doc, p, total, data.modo);
   }
+
 
   photoLinks.apply(doc);
   setActivePhotoLinks(null);
