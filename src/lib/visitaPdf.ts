@@ -648,7 +648,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, [...allFotos, ...allTopicoFotos]));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDefault, "Visita Técnica - Rotina", logos);
+  drawCoverHeader(doc, logoDefault, data.modo === "conferencia" ? "Visita de Rotina" : "Visita Técnica - Rotina", logos);
   let y = drawFarmBlock(doc, data, 50);
   const numeroMap = data.numeroMap || {};
 
