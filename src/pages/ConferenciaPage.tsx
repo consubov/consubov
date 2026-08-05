@@ -66,7 +66,9 @@ export default function ConferenciaPage() {
         if (cancelled) return;
         setVisita(v);
         setRegistros(await listConferenciaPastos(v.id));
-      } catch { /* silencioso */ }
+      } catch (e: any) {
+        if (!cancelled) toast.error(e?.message || "Não foi possível iniciar a visita de conferência.");
+      }
     })();
     return () => { cancelled = true; };
   }, [isAdmin, roleData.roleId]);
@@ -74,11 +76,18 @@ export default function ConferenciaPage() {
   const totalFotos = registros.reduce((acc, r) => acc + r.fotos.length, 0);
 
   const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
-    if (!visita || !dados) return;
+    if (!dados) return;
     setSavingPasto(true);
     try {
+      // Cria a visita sob demanda caso o efeito de montagem tenha falhado
+      let v = visita;
+      if (!v) {
+        if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
+        v = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
+        setVisita(v);
+      }
       await salvarPastoConferencia({
-        visitaId: visita.id,
+        visitaId: v.id,
         pasto_id: dados.pasto.id,
         num_pasto: dados.pasto.nome,
         fazenda_nome: dados.fazenda.nome,
@@ -92,10 +101,11 @@ export default function ConferenciaPage() {
         observacao: observacao || null,
         fotosDataUrls,
       });
-      setRegistros(await listConferenciaPastos(visita.id));
+      setRegistros(await listConferenciaPastos(v.id));
       toast.success("Pasto registrado na visita.");
       setDados(null);
       setEtapa("inicio");
+
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível salvar o registro.");
     } finally {
