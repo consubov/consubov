@@ -5435,48 +5435,66 @@ export type Database = {
           categoria: string | null
           consumo_esperado_kg: number | null
           consumo_kg_dia: number | null
+          consumo_medio_g: number | null
           consumo_real_kg: number | null
+          fazenda_nome: string | null
           id: string
           letra: string
           num_pasto: string | null
           observacao: string | null
           ordem: number
+          pasto_id: string | null
           percentual_pv: string | null
           peso_medio_kg: number | null
           qtd_animais: number | null
+          retiro_nome: string | null
+          sexo: string | null
           tipo_produto: string | null
+          ultima_salga: string | null
           visita_id: string
         }
         Insert: {
           categoria?: string | null
           consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null
+          consumo_medio_g?: number | null
           consumo_real_kg?: number | null
+          fazenda_nome?: string | null
           id?: string
           letra: string
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
+          pasto_id?: string | null
           percentual_pv?: string | null
           peso_medio_kg?: number | null
           qtd_animais?: number | null
+          retiro_nome?: string | null
+          sexo?: string | null
           tipo_produto?: string | null
+          ultima_salga?: string | null
           visita_id: string
         }
         Update: {
           categoria?: string | null
           consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null
+          consumo_medio_g?: number | null
           consumo_real_kg?: number | null
+          fazenda_nome?: string | null
           id?: string
           letra?: string
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
+          pasto_id?: string | null
           percentual_pv?: string | null
           peso_medio_kg?: number | null
           qtd_animais?: number | null
+          retiro_nome?: string | null
+          sexo?: string | null
           tipo_produto?: string | null
+          ultima_salga?: string | null
           visita_id?: string
         }
         Relationships: [
@@ -5622,12 +5640,14 @@ export type Database = {
       }
       visitas_tecnicas: {
         Row: {
+          administrador_id: string | null
           conclusao: string | null
-          consultor_id: string
+          consultor_id: string | null
           consultor_nome_override: string | null
           created_at: string
           deleted_at: string | null
-          fazenda_consultor_id: string
+          fazenda_consultor_id: string | null
+          fazenda_id: string | null
           fazenda_nome_override: string | null
           hora_fim: string | null
           hora_inicio: string
@@ -5645,12 +5665,14 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          administrador_id?: string | null
           conclusao?: string | null
-          consultor_id: string
+          consultor_id?: string | null
           consultor_nome_override?: string | null
           created_at?: string
           deleted_at?: string | null
-          fazenda_consultor_id: string
+          fazenda_consultor_id?: string | null
+          fazenda_id?: string | null
           fazenda_nome_override?: string | null
           hora_fim?: string | null
           hora_inicio?: string
@@ -5668,12 +5690,14 @@ export type Database = {
           tipo?: string
         }
         Update: {
+          administrador_id?: string | null
           conclusao?: string | null
-          consultor_id?: string
+          consultor_id?: string | null
           consultor_nome_override?: string | null
           created_at?: string
           deleted_at?: string | null
-          fazenda_consultor_id?: string
+          fazenda_consultor_id?: string | null
+          fazenda_id?: string | null
           fazenda_nome_override?: string | null
           hora_fim?: string | null
           hora_inicio?: string
@@ -5692,6 +5716,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "visitas_tecnicas_administrador_id_fkey"
+            columns: ["administrador_id"]
+            isOneToOne: false
+            referencedRelation: "administradores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "visitas_tecnicas_consultor_id_fkey"
             columns: ["consultor_id"]
             isOneToOne: false
@@ -5703,6 +5734,13 @@ export type Database = {
             columns: ["fazenda_consultor_id"]
             isOneToOne: false
             referencedRelation: "fazendas_consultor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitas_tecnicas_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
             referencedColumns: ["id"]
           },
         ]
