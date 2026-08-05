@@ -26,6 +26,9 @@ export interface SalgaSugestao {
   intervaloDias: number;
   pesoAtual: number;
   produtoNome: string;
+  consumoPor100kg?: number;
+  categoria?: string;
+  pesoSacoKg?: number;
 }
 
 interface SalgaFormProps {
