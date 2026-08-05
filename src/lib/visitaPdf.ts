@@ -152,7 +152,7 @@ function drawLogoFitted(
   try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
 
-function drawFooter(doc: jsPDF, page: number, totalPages: number) {
+function drawFooter(doc: jsPDF, page: number, totalPages: number, modo?: "consultor" | "conferencia") {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   doc.setDrawColor(LINE);
@@ -160,12 +160,18 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.line(15, h - 12, w - 15, h - 12);
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.setFont("helvetica", "bold");
-  doc.text("Relatto\u00AE", 15, h - 9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Gerado por Consubov.com.br", 15, h - 5);
+  if (modo === "conferencia") {
+    doc.setFont("helvetica", "normal");
+    doc.text("consubov.com.br", 15, h - 5);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text("Relatto\u00AE", 15, h - 9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Gerado por Consubov.com.br", 15, h - 5);
+  }
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 5, { align: "right" });
 }
+
 
 function drawCoverHeader(
   doc: jsPDF,
