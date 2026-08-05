@@ -46,6 +46,13 @@ export interface VisitaPdfPasto {
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
   fotos: { id: string; url: string; ordem: number }[];
+  // Campos usados apenas no modo "conferencia" (Admin). Opcionais e ignorados
+  // pelo fluxo do Consultor.
+  fazenda_nome?: string | null;
+  retiro_nome?: string | null;
+  sexo?: string | null;
+  ultima_salga?: string | null;
+  consumo_medio_g?: number | null;
 }
 
 export interface VisitaPdfData {
@@ -67,7 +74,10 @@ export interface VisitaPdfData {
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   sampleChartTypes?: SampleChartTypes;
+  /** "conferencia" = Conferência do Admin via QR Code (aditivo). */
+  modo?: "consultor" | "conferencia";
 }
+
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
   try {
