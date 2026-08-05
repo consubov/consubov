@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ScanLine, Loader2 } from "lucide-react";
+import { ArrowLeft, ScanLine, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
 import ConferenciaResultado, { type DadosConferencia, type HistoricoEvento } from "@/components/conferencia/ConferenciaResultado";
 import ConferenciaChecklist from "@/components/conferencia/ConferenciaChecklist";
+import ConferenciaVisitaPastoForm from "@/components/conferencia/ConferenciaVisitaPastoForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
+import {
+  getOrCreateConferenciaVisita,
+  listConferenciaPastos,
+  salvarPastoConferencia,
+  encerrarConferenciaVisita,
+  numeroMapConferencia,
+  type ConferenciaVisita,
+  type ConferenciaPastoRegistro,
+} from "@/lib/conferenciaAdminVisita";
+import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 
-type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist";
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form";
 
 function diasEntre(iso: string | null): number | null {
   if (!iso) return null;
@@ -28,9 +39,14 @@ function extractQrUuid(raw: string): string | null {
 
 export default function ConferenciaPage() {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, roleData } = useAuth();
+  const isAdmin = role === "administrador";
   const [etapa, setEtapa] = useState<Etapa>("inicio");
   const [dados, setDados] = useState<DadosConferencia | null>(null);
+  const [visita, setVisita] = useState<ConferenciaVisita | null>(null);
+  const [registros, setRegistros] = useState<ConferenciaPastoRegistro[]>([]);
+  const [savingPasto, setSavingPasto] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => {
     // sincroniza checklists pendentes ao montar e ao reconectar
@@ -39,6 +55,111 @@ export default function ConferenciaPage() {
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
   }, []);
+
+  // Retoma visita de conferência em andamento do Admin
+  useEffect(() => {
+    if (!isAdmin || !roleData.roleId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await getOrCreateConferenciaVisita(roleData.roleId!, null, null);
+        if (cancelled) return;
+        setVisita(v);
+        setRegistros(await listConferenciaPastos(v.id));
+      } catch { /* silencioso */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, roleData.roleId]);
+
+  const totalFotos = registros.reduce((acc, r) => acc + r.fotos.length, 0);
+
+  const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
+    if (!visita || !dados) return;
+    setSavingPasto(true);
+    try {
+      await salvarPastoConferencia({
+        visitaId: visita.id,
+        pasto_id: dados.pasto.id,
+        num_pasto: dados.pasto.nome,
+        fazenda_nome: dados.fazenda.nome,
+        retiro_nome: dados.retiro.nome,
+        categoria: dados.categoria,
+        sexo: dados.sexo,
+        peso_medio_kg: dados.peso_medio_kg,
+        qtd_animais: dados.num_animais,
+        consumo_medio_g: dados.consumo_medio_g,
+        ultima_salga: dados.ultima_salga_data,
+        observacao: observacao || null,
+        fotosDataUrls,
+      });
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success("Pasto registrado na visita.");
+      setDados(null);
+      setEtapa("inicio");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível salvar o registro.");
+    } finally {
+      setSavingPasto(false);
+    }
+  };
+
+  const handleEncerrarVisita = async () => {
+    if (!visita || registros.length === 0) return;
+    setGerandoPdf(true);
+    try {
+      const numeroMap = numeroMapConferencia(registros);
+      const pastos: VisitaPdfPasto[] = registros.map(r => ({
+        id: r.id,
+        letra: r.letra,
+        num_pasto: r.num_pasto,
+        qtd_animais: r.qtd_animais,
+        tipo_produto: null,
+        percentual_pv: null,
+        consumo_kg_dia: null,
+        categoria: r.categoria,
+        peso_medio_kg: r.peso_medio_kg,
+        observacao: r.observacao,
+        scores: {},
+        fotos: r.fotos,
+        fazenda_nome: r.fazenda_nome,
+        retiro_nome: r.retiro_nome,
+        sexo: r.sexo,
+        ultima_salga: r.ultima_salga,
+        consumo_medio_g: r.consumo_medio_g,
+      }));
+
+      const { blob, fileName } = await generateVisitaPdf({
+        visitaId: visita.id,
+        modo: "conferencia",
+        fazenda: { nome_fazenda: registros[0]?.fazenda_nome || "Conferência" },
+        consultor: { nome: user?.email || "Administrador" },
+        hora_inicio: visita.hora_inicio,
+        hora_fim: new Date().toISOString(),
+        observacoes_gerais: null,
+        conclusao: null,
+        pastos,
+        numeroMap,
+      });
+
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+
+      await encerrarConferenciaVisita(visita.id, null);
+      toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
+      setVisita(null);
+      setRegistros([]);
+      if (roleData.roleId) {
+        const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
+        setVisita(nova);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível gerar o PDF.");
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
 
   const handleScan = async (raw: string) => {
     const qrUuid = extractQrUuid(raw);
@@ -227,7 +348,19 @@ export default function ConferenciaPage() {
       <ConferenciaResultado
         dados={dados}
         onVoltar={() => { setDados(null); setEtapa("inicio"); }}
-        onRegistrarConferencia={() => setEtapa("checklist")}
+        onRegistrarConferencia={() => setEtapa(isAdmin ? "visita_form" : "checklist")}
+      />
+    );
+  }
+
+  if (etapa === "visita_form" && dados) {
+    return (
+      <ConferenciaVisitaPastoForm
+        dados={dados}
+        numeroInicial={totalFotos + 1}
+        saving={savingPasto}
+        onBack={() => setEtapa("resultado")}
+        onSalvar={(obs, fotos) => void handleSalvarPasto(obs, fotos)}
       />
     );
   }
@@ -243,6 +376,7 @@ export default function ConferenciaPage() {
       />
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -267,6 +401,25 @@ export default function ConferenciaPage() {
           <ScanLine className="w-5 h-5" />
           INICIAR CONFERÊNCIA
         </Button>
+
+        {isAdmin && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              Visita em andamento: {registros.length} pasto(s), {totalFotos} foto(s).
+            </p>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full gap-2"
+              disabled={gerandoPdf}
+              onClick={() => void handleEncerrarVisita()}
+            >
+              {gerandoPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
+              ENCERRAR VISITA E GERAR PDF
+            </Button>
+          </div>
+        )}
+
       </main>
     </div>
   );

@@ -46,6 +46,13 @@ export interface VisitaPdfPasto {
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
   fotos: { id: string; url: string; ordem: number }[];
+  // Campos usados apenas no modo "conferencia" (Admin). Opcionais e ignorados
+  // pelo fluxo do Consultor.
+  fazenda_nome?: string | null;
+  retiro_nome?: string | null;
+  sexo?: string | null;
+  ultima_salga?: string | null;
+  consumo_medio_g?: number | null;
 }
 
 export interface VisitaPdfData {
@@ -67,7 +74,10 @@ export interface VisitaPdfData {
   assinantes?: { nome: string; cargo_funcao: string }[];
   logoOverride?: { esquerdaPath: string | null; direitaPath: string | null } | null;
   sampleChartTypes?: SampleChartTypes;
+  /** "conferencia" = Conferência do Admin via QR Code (aditivo). */
+  modo?: "consultor" | "conferencia";
 }
+
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
   try {
@@ -142,7 +152,7 @@ function drawLogoFitted(
   try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
 
-function drawFooter(doc: jsPDF, page: number, totalPages: number) {
+function drawFooter(doc: jsPDF, page: number, totalPages: number, modo?: "consultor" | "conferencia") {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   doc.setDrawColor(LINE);
@@ -150,12 +160,18 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number) {
   doc.line(15, h - 12, w - 15, h - 12);
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.setFont("helvetica", "bold");
-  doc.text("Relatto\u00AE", 15, h - 9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Gerado por Consubov.com.br", 15, h - 5);
+  if (modo === "conferencia") {
+    doc.setFont("helvetica", "normal");
+    doc.text("consubov.com.br", 15, h - 5);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text("Relatto\u00AE", 15, h - 9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Gerado por Consubov.com.br", 15, h - 5);
+  }
   doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 5, { align: "right" });
 }
+
 
 function drawCoverHeader(
   doc: jsPDF,
@@ -212,7 +228,7 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  doc.text(`${data.modo === "conferencia" ? "Responsável" : "Consultor"}: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
   const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
   const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
   doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
@@ -489,7 +505,115 @@ async function drawPastoBlock(
   }
 }
 
+/**
+ * Bloco de pasto no modo "Conferência do Admin": mostra os dados da situação
+ * atual do pasto + observação + fotos numeradas. Não usa escores.
+ */
+function drawConferenciaPastoBlock(
+  doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
+  x: number, y: number, width: number, height: number,
+  numeroMap?: Record<string, number>,
+) {
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(x, y, width, height, 2, 2, "S");
+
+  doc.setFillColor(GREEN_DARK);
+  doc.circle(x + 10, y + 10, 6, "F");
+  doc.setTextColor(GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(pasto.letra || "?", x + 10, y + 12, { align: "center" });
+
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(`Pasto ${pasto.num_pasto || "—"}`, x + 20, y + 8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.text(
+    [pasto.fazenda_nome || null, pasto.retiro_nome ? `Retiro ${pasto.retiro_nome}` : null]
+      .filter(Boolean).join(" · ") || "—",
+    x + 20, y + 13,
+  );
+
+  doc.setDrawColor(LINE);
+  doc.line(x + 3, y + 18, x + width - 3, y + 18);
+
+  const cellW = (width - 6) / 3;
+  const salgaTxt = pasto.ultima_salga
+    ? format(new Date(pasto.ultima_salga), "dd/MM/yyyy", { locale: ptBR })
+    : "—";
+  const rows: { label: string; value: string }[][] = [
+    [
+      { label: "ANIMAIS", value: pasto.qtd_animais != null ? String(pasto.qtd_animais) : "—" },
+      { label: "CATEGORIA", value: pasto.categoria || "—" },
+      { label: "SEXO", value: pasto.sexo || "—" },
+    ],
+    [
+      { label: "PESO MÉDIO", value: pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg` : "—" },
+      { label: "CONSUMO MÉDIO", value: pasto.consumo_medio_g ? `${pasto.consumo_medio_g} g/cab/dia` : "—" },
+      { label: "ÚLTIMA SALGA", value: salgaTxt },
+    ],
+  ];
+  rows.forEach((cells, r) => {
+    const rowY = y + 24 + r * 10;
+    cells.forEach((c, i) => {
+      const cx = x + 3 + i * cellW;
+      doc.setFontSize(6.5);
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "bold");
+      doc.text(c.label, cx, rowY);
+      doc.setFontSize(9);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.text(doc.splitTextToSize(c.value, cellW - 3)[0] || "—", cx, rowY + 5);
+    });
+  });
+
+  if (pasto.observacao) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(INK_SOFT);
+    doc.text("OBSERVAÇÃO", x + 3, y + 50);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(INK);
+    const lines = doc.splitTextToSize(mentionsToText(pasto.observacao), width - 6);
+    doc.text(lines.slice(0, 4), x + 3, y + 55);
+  }
+
+  const fotosStartY = y + 72;
+  const fotoAreaH = height - (fotosStartY - y) - 4;
+  const cols = 5;
+  const gap = 2;
+  const fw = (width - 6 - (cols - 1) * gap) / cols;
+  const fh = Math.min(fw, fotoAreaH);
+  for (let i = 0; i < cols; i++) {
+    const fx = x + 3 + i * (fw + gap);
+    const foto = pasto.fotos[i];
+    if (!foto) continue;
+    const dataUrl = fotosCache[foto.id];
+    if (dataUrl) {
+      try {
+        const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+        doc.addImage(dataUrl, fmt, fx, fotosStartY, fw, fh, undefined, "FAST");
+      } catch {
+        doc.setDrawColor(LINE);
+        doc.rect(fx, fotosStartY, fw, fh);
+      }
+    } else {
+      doc.setFillColor("#F3F1E8");
+      doc.rect(fx, fotosStartY, fw, fh, "F");
+    }
+    const num = numeroMap?.[foto.id];
+    if (num != null) drawNumeroBadge(doc, fx + 1.5, fotosStartY + 1.5, num);
+  }
+}
+
 function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 15): number {
+
   const w = doc.internal.pageSize.getWidth() - 30;
   doc.setFillColor(GREEN_DARK);
   doc.rect(x, y, 3, 8, "F");
@@ -524,7 +648,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, [...allFotos, ...allTopicoFotos]));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDefault, "Visita Técnica - Rotina", logos);
+  drawCoverHeader(doc, logoDefault, data.modo === "conferencia" ? "Visita de Rotina" : "Visita Técnica - Rotina", logos);
   let y = drawFarmBlock(doc, data, 50);
   const numeroMap = data.numeroMap || {};
 
@@ -659,16 +783,17 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   drawTabela();
 
   // PASTOS — fluxo contínuo (bloco atômico de 100mm). Não força mais 2/página.
+  const isConferencia = data.modo === "conferencia";
   const blockHeight = 100;
   const gap = 8;
   const scaleH = 6;
-  let pastoScaleShown = false;
+  let pastoScaleShown = isConferencia;
   for (const p of data.pastos) {
     const need = blockHeight + (pastoScaleShown ? 0 : scaleH);
     if (y + need > pageH - 20) {
       doc.addPage();
       y = slimHeader();
-      pastoScaleShown = false;
+      pastoScaleShown = isConferencia;
     }
     if (!pastoScaleShown) {
       doc.setFontSize(7);
@@ -678,16 +803,23 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       y += scaleH;
       pastoScaleShown = true;
     }
-    await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    if (isConferencia) {
+      drawConferenciaPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    } else {
+      await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+    }
     y += blockHeight + gap;
   }
 
   // Line charts — amostras individuais por tipo (uma página por gráfico com dados)
-  drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", {
-    fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
-    corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
-    bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
-  }, data.sampleChartTypes);
+  if (!isConferencia) {
+    drawAllSampleChartPages(doc, data.fazenda.nome_fazenda || "", {
+      fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
+      corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
+      bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
+    }, data.sampleChartTypes);
+  }
+
 
   // DESENVOLVIMENTO — tópicos após pastos, fluxo contínuo (bloco atômico).
   if (devTopicos.length > 0) {
@@ -715,13 +847,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   }
 
 
-  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  if (!isConferencia) drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    drawFooter(doc, p, total);
+    drawFooter(doc, p, total, data.modo);
   }
+
 
   photoLinks.apply(doc);
   setActivePhotoLinks(null);
