@@ -505,7 +505,115 @@ async function drawPastoBlock(
   }
 }
 
+/**
+ * Bloco de pasto no modo "Conferência do Admin": mostra os dados da situação
+ * atual do pasto + observação + fotos numeradas. Não usa escores.
+ */
+function drawConferenciaPastoBlock(
+  doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
+  x: number, y: number, width: number, height: number,
+  numeroMap?: Record<string, number>,
+) {
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(x, y, width, height, 2, 2, "S");
+
+  doc.setFillColor(GREEN_DARK);
+  doc.circle(x + 10, y + 10, 6, "F");
+  doc.setTextColor(GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(pasto.letra || "?", x + 10, y + 12, { align: "center" });
+
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(`Pasto ${pasto.num_pasto || "—"}`, x + 20, y + 8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.text(
+    [pasto.fazenda_nome || null, pasto.retiro_nome ? `Retiro ${pasto.retiro_nome}` : null]
+      .filter(Boolean).join(" · ") || "—",
+    x + 20, y + 13,
+  );
+
+  doc.setDrawColor(LINE);
+  doc.line(x + 3, y + 18, x + width - 3, y + 18);
+
+  const cellW = (width - 6) / 3;
+  const salgaTxt = pasto.ultima_salga
+    ? format(new Date(pasto.ultima_salga), "dd/MM/yyyy", { locale: ptBR })
+    : "—";
+  const rows: { label: string; value: string }[][] = [
+    [
+      { label: "ANIMAIS", value: pasto.qtd_animais != null ? String(pasto.qtd_animais) : "—" },
+      { label: "CATEGORIA", value: pasto.categoria || "—" },
+      { label: "SEXO", value: pasto.sexo || "—" },
+    ],
+    [
+      { label: "PESO MÉDIO", value: pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg` : "—" },
+      { label: "CONSUMO MÉDIO", value: pasto.consumo_medio_g ? `${pasto.consumo_medio_g} g/cab/dia` : "—" },
+      { label: "ÚLTIMA SALGA", value: salgaTxt },
+    ],
+  ];
+  rows.forEach((cells, r) => {
+    const rowY = y + 24 + r * 10;
+    cells.forEach((c, i) => {
+      const cx = x + 3 + i * cellW;
+      doc.setFontSize(6.5);
+      doc.setTextColor(INK_SOFT);
+      doc.setFont("helvetica", "bold");
+      doc.text(c.label, cx, rowY);
+      doc.setFontSize(9);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.text(doc.splitTextToSize(c.value, cellW - 3)[0] || "—", cx, rowY + 5);
+    });
+  });
+
+  if (pasto.observacao) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(INK_SOFT);
+    doc.text("OBSERVAÇÃO", x + 3, y + 50);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(INK);
+    const lines = doc.splitTextToSize(mentionsToText(pasto.observacao), width - 6);
+    doc.text(lines.slice(0, 4), x + 3, y + 55);
+  }
+
+  const fotosStartY = y + 72;
+  const fotoAreaH = height - (fotosStartY - y) - 4;
+  const cols = 5;
+  const gap = 2;
+  const fw = (width - 6 - (cols - 1) * gap) / cols;
+  const fh = Math.min(fw, fotoAreaH);
+  for (let i = 0; i < cols; i++) {
+    const fx = x + 3 + i * (fw + gap);
+    const foto = pasto.fotos[i];
+    if (!foto) continue;
+    const dataUrl = fotosCache[foto.id];
+    if (dataUrl) {
+      try {
+        const fmt = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+        doc.addImage(dataUrl, fmt, fx, fotosStartY, fw, fh, undefined, "FAST");
+      } catch {
+        doc.setDrawColor(LINE);
+        doc.rect(fx, fotosStartY, fw, fh);
+      }
+    } else {
+      doc.setFillColor("#F3F1E8");
+      doc.rect(fx, fotosStartY, fw, fh, "F");
+    }
+    const num = numeroMap?.[foto.id];
+    if (num != null) drawNumeroBadge(doc, fx + 1.5, fotosStartY + 1.5, num);
+  }
+}
+
 function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 15): number {
+
   const w = doc.internal.pageSize.getWidth() - 30;
   doc.setFillColor(GREEN_DARK);
   doc.rect(x, y, 3, 8, "F");
