@@ -1071,7 +1071,7 @@ export default function PainelInteligenciaPage() {
                   {rankingFazendas.map((f, i) => {
                     const idx = consumoEsperado > 0 ? f.consumoMedio / consumoEsperado : 0;
                     const st = consumoEsperado > 0
-                      ? getStatusColor(idx)
+                      ? getStatusColor(idx, formulas.classificacao)
                       : { emoji: "", color: "", label: "" };
                     return (
                       <TableRow key={f.id}>
