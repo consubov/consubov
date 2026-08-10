@@ -56,10 +56,13 @@ const ESTADOS_BR: Record<string, { x: number; y: number }> = {
   SP: { x: 460, y: 440 }, SE: { x: 610, y: 300 }, TO: { x: 440, y: 290 },
 };
 
-function getStatusColor(indice: number): { color: string; label: string; emoji: string } {
+function getStatusColor(
+  indice: number,
+  limites: { limiteBaixo: number; limiteAlto: number } = { limiteBaixo: 0.9, limiteAlto: 1.1 },
+): { color: string; label: string; emoji: string } {
   if (indice <= 0) return { color: "text-muted-foreground", label: "Sem dados", emoji: "⚪" };
-  if (indice < 0.8) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
-  if (indice > 1.2) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
+  if (indice < limites.limiteBaixo) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
+  if (indice > limites.limiteAlto) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
   return { color: "text-yellow-500", label: "Ideal", emoji: "🟡" };
 }
 
