@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ArrowLeft, TreePine, AlertTriangle, Map,
+  BarChart3, FileDown, RefreshCw, Loader2, ArrowLeft, TreePine, AlertTriangle, Map, Gauge, Scale,
 } from "lucide-react";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
@@ -142,6 +143,7 @@ export default function AdminRetiroPainelPage() {
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
   const formulas = useFormulasSistema();
+  const { painelMae, refresh: refreshPainelMae } = usePainelMae(activeFazendaId || null, retiroId ?? null, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
@@ -236,7 +238,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshMortalidades()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades()]);
     setRefreshing(false);
   };
 
@@ -305,13 +307,15 @@ export default function AdminRetiroPainelPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metricsPeriodo.totalAnimais)} />
-        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metricsPeriodo.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={Target} label="Pastos na Meta" value={`${metricsPeriodo.pastosNaMeta}/${metricsPeriodo.totalPastos}`}
-          sub={metricsPeriodo.totalPastos > 0 ? `${fmtNum((metricsPeriodo.pastosNaMeta / metricsPeriodo.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Droplets} label="Consumo Real" value={fmtNum(painelMae.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+        <MetricCard icon={Gauge} label="Consumo Global" value={fmtNum(painelMae.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`}
+          sub={painelMae.pastos_na_meta_den > 0 ? `${fmtNum((painelMae.pastos_na_meta_num / painelMae.pastos_na_meta_den) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
         <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metricsPeriodo.sacosUtilizados)} />
         <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metricsPeriodo.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
         <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metricsPeriodo.custoMensal)} />
-        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metricsPeriodo.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metricsPeriodo.gmdMedio, 3)} sub="kg/dia" />
         <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>

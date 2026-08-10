@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useAbatesData } from "@/hooks/useAbatesData";
@@ -22,7 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
-  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu,
+  Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu, Gauge, Scale,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -99,6 +100,7 @@ export default function GerenteDashboard() {
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
+  const { painelMae } = usePainelMae(roleData.fazendaId ?? null, null, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
   const {
@@ -344,12 +346,14 @@ export default function GerenteDashboard() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Painel da Fazenda</h2>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelData.totalAnimais)} />
-            <MetricCard icon={Droplets} label="Consumo Médio" value={`${fmtNum(painelData.consumoMedio, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelData.pastosNaMeta}/${painelData.totalPastos}`} sub={painelData.totalPastos > 0 ? `${fmtNum((painelData.pastosNaMeta / painelData.totalPastos) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Droplets} label="Consumo Real" value={`${fmtNum(painelMae.consumo_real_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-primary" />
+            <MetricCard icon={Gauge} label="Consumo Global" value={`${fmtNum(painelMae.consumo_global_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`} sub={painelMae.pastos_na_meta_den > 0 ? `${fmtNum((painelMae.pastos_na_meta_num / painelMae.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
             <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelData.sacosUtilizados)} />
             <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelData.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
             <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelData.custoMensal)} />
-            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelData.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
             <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelData.gmdMedio, 3)} sub="kg/dia" />
             <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
             <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
