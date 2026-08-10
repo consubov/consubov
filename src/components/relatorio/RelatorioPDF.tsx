@@ -604,9 +604,6 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
     </View>
   );
 }
-    </View>
-  );
-}
 
 // ---------- Main Document ----------
 export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
