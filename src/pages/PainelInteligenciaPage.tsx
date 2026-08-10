@@ -17,6 +17,7 @@ import {
   classificarCategoria,
   calcIndiceConsumo,
 } from "@/lib/consumoCalc";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
 import { toast } from "sonner";
