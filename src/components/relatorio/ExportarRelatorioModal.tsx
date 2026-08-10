@@ -328,17 +328,12 @@ export default function ExportarRelatorioModal({
           sacosUtilizados,
           consumoMedio,
           gmd,
+          pesoMedioKg: painelMaeByRetiro[ret.id]?.peso_medio_kg ?? 0,
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: (() => {
-            let effSum = 0, effCount = 0;
-            for (const l of rLanc) {
-              const idx = Number(l.indice_consumo ?? 0);
-              if (idx > 0) { effSum += formulas.eficiencia.compute(idx); effCount++; }
-            }
-            return effCount > 0 ? effSum / effCount : 0;
-          })(),
+          // Eficiência: fonte única get_painel_mae (ponderada por cab-dias).
+          eficiencia: painelMaeByRetiro[ret.id]?.eficiencia ?? 0,
           custoDiario,
           score: Number(scoreCalc.scoreTotal.toFixed(1)),
           scoreMeta: Number(scoreCalc.scoreMeta.toFixed(1)),
