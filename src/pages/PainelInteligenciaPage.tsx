@@ -612,6 +612,18 @@ export default function PainelInteligenciaPage() {
               </Select>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Comparar com</label>
+              <Select value={filtroComparar} onValueChange={setFiltroComparar} disabled={filtroFazenda === "all"}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {fazendas.filter(f => f.id !== filtroFazenda).map(f => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Estado</label>
               <Select value={filtroEstado} onValueChange={v => { setFiltroEstado(v); setFiltroCidade("all"); }}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
