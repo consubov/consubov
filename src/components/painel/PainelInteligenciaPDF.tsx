@@ -167,6 +167,31 @@ function KPIs({ data }: { data: PainelPDFData }) {
           <Text style={s.kpiUnit}>dias entre salgas</Text>
         </View>
       </View>
+      {(data.painelConsumoReal != null || data.painelConsumoGlobal != null ||
+        data.painelEficiencia != null || data.painelPesoMedio != null) && (
+        <View style={s.kpiRow}>
+          <View style={s.kpiCard}>
+            <Text style={s.kpiLabel}>Consumo Real</Text>
+            <Text style={s.kpiValue}>{data.painelConsumoReal ? fmtNum(data.painelConsumoReal, 1) : "—"}</Text>
+            <Text style={s.kpiUnit}>g/cab/dia</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <Text style={s.kpiLabel}>Consumo Global</Text>
+            <Text style={s.kpiValue}>{data.painelConsumoGlobal ? fmtNum(data.painelConsumoGlobal, 1) : "—"}</Text>
+            <Text style={s.kpiUnit}>g/cab/dia</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <Text style={s.kpiLabel}>Eficiência</Text>
+            <Text style={s.kpiValue}>{data.painelEficiencia ? `${fmtNum(data.painelEficiencia, 1)}%` : "—"}</Text>
+            <Text style={s.kpiUnit}>ponderada por cab-dias</Text>
+          </View>
+          <View style={s.kpiCard}>
+            <Text style={s.kpiLabel}>Peso Médio</Text>
+            <Text style={s.kpiValue}>{data.painelPesoMedio ? fmtNum(data.painelPesoMedio, 1) : "—"}</Text>
+            <Text style={s.kpiUnit}>kg</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
