@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, TrendingDown, TrendingUp, Activity, BarChart3, MapPin, Package, Users, Beef, DollarSign, Droplets, FileDown, Loader2, Gauge, Scale } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell,
+  BarChart, Bar, Cell, Legend,
 } from "recharts";
 import {
   classificarCategoria,
@@ -89,7 +89,10 @@ export default function PainelInteligenciaPage() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [filtroComparar, setFiltroComparar] = useState("none");
   const { painelMae } = usePainelMae(filtroFazenda !== "all" ? filtroFazenda : null, null, filtroMes, filtroAno);
+  const { painelMae: painelMaeB } = usePainelMae(filtroComparar !== "none" ? filtroComparar : null, null, filtroMes, filtroAno);
+  const comparando = filtroFazenda !== "all" && filtroComparar !== "none" && filtroComparar !== filtroFazenda;
   const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
@@ -364,6 +367,64 @@ export default function PainelInteligenciaPage() {
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
   }, [consumosPorLanc]);
 
+  // ===== COMPARAÇÃO DE 2 FAZENDAS (somente quando "Comparar com" está ativo) =====
+  const fazendaANome = fazendaById[filtroFazenda]?.nome ?? "Fazenda A";
+  const fazendaBNome = fazendaById[filtroComparar]?.nome ?? "Fazenda B";
+
+  // Lançamentos de uma fazenda no ano do filtro (demais filtros mantidos, exceto fazenda/mês)
+  const lancsDaFazenda = useCallback((fid: string) => {
+    return lancamentos.filter(l => {
+      if (l.fazenda_id !== fid) return false;
+      if (l.ano_referencia !== filtroAno) return false;
+      if (filtroProduto !== "all" && getEffectiveProdutoId(l) !== filtroProduto) return false;
+      if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
+      if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
+      return true;
+    });
+  }, [lancamentos, filtroAno, filtroProduto, filtroCategoria, filtroSexo, getEffectiveProdutoId]);
+
+  const mediaPonderada = (lancs: Lancamento[]) => {
+    let ws = 0, tot = 0;
+    for (const l of lancs) {
+      const c = Number(l.consumo_g_cab_dia ?? 0);
+      const a = Number(l.num_animais ?? 0);
+      if (c > 0 && a > 0) { ws += c * a; tot += a; }
+    }
+    return tot > 0 ? Math.round((ws / tot) * 100) / 100 : 0;
+  };
+
+  const tendenciaComparacao = useMemo(() => {
+    if (!comparando) return [] as { periodo: string; a: number; b: number }[];
+    const la = lancsDaFazenda(filtroFazenda);
+    const lb = lancsDaFazenda(filtroComparar);
+    const periodos = [...new Set([...la, ...lb].map(l => `${l.ano_referencia}-${String(l.mes_referencia).padStart(2, "0")}`))].sort();
+    return periodos.map(p => {
+      const mes = Number(p.slice(5));
+      return {
+        periodo: p,
+        a: mediaPonderada(la.filter(l => l.mes_referencia === mes)),
+        b: mediaPonderada(lb.filter(l => l.mes_referencia === mes)),
+      };
+    });
+  }, [comparando, filtroFazenda, filtroComparar, lancsDaFazenda]);
+
+  const categoriasComparacao = useMemo(() => {
+    if (!comparando) return [] as { categoria: string; a: number; b: number }[];
+    const cats = ["Recria 1", "Recria 2", "Engorda"];
+    const doMes = (fid: string) => lancsDaFazenda(fid).filter(l => l.mes_referencia === filtroMes);
+    const la = doMes(filtroFazenda);
+    const lb = doMes(filtroComparar);
+    const catOf = (l: Lancamento) =>
+      l.categoria || classificarCategoria(Number(l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0));
+    return cats.map(c => ({
+      categoria: c,
+      a: mediaPonderada(la.filter(l => catOf(l) === c)),
+      b: mediaPonderada(lb.filter(l => catOf(l) === c)),
+    }));
+  }, [comparando, filtroFazenda, filtroComparar, filtroMes, lancsDaFazenda, pastoById]);
+
+
+
   // 6. Alerts
   const alertas = useMemo(() => {
     const msgs: { tipo: "warning" | "info"; texto: string }[] = [];
@@ -551,6 +612,18 @@ export default function PainelInteligenciaPage() {
               </Select>
             </div>
             <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Comparar com</label>
+              <Select value={filtroComparar} onValueChange={setFiltroComparar} disabled={filtroFazenda === "all"}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {fazendas.filter(f => f.id !== filtroFazenda).map(f => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Estado</label>
               <Select value={filtroEstado} onValueChange={v => { setFiltroEstado(v); setFiltroCidade("all"); }}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
@@ -698,53 +771,90 @@ export default function PainelInteligenciaPage() {
         </Card>
       </div>
 
-      {/* PAINEL MÃE — Consumo Real / Global / Peso Médio */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
-              <Activity className="w-4 h-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
+      {/* PAINEL MÃE — Consumo Real / Global / Eficiência / Peso Médio */}
+      {comparando ? (
+        <div className="grid md:grid-cols-2 gap-4">
+          {[
+            { nome: fazendaANome, dados: painelMae, accent: "text-primary", border: "border-l-4 border-l-primary" },
+            { nome: fazendaBNome, dados: painelMaeB, accent: "text-secondary", border: "border-l-4 border-l-secondary" },
+          ].map((bloco) => (
+            <Card key={bloco.nome} className={bloco.border}>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className={`text-sm font-semibold ${bloco.accent}`}>{bloco.nome}</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Consumo Real</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_real_g_cab_dia.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Consumo Global</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_global_g_cab_dia.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Eficiência</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.eficiencia.toFixed(0)}%</p>
+                  <p className="text-[10px] text-muted-foreground">índice</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Peso Médio</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.peso_medio_kg.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">kg</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
+                <Activity className="w-4 h-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
-              <Gauge className="w-4 h-4 text-secondary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
+                <Gauge className="w-4 h-4 text-secondary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
-              <Scale className="w-4 h-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
+                <Scale className="w-4 h-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* TREND CHART */}
       <Card>
@@ -755,7 +865,23 @@ export default function PainelInteligenciaPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {tendencia.length > 0 ? (
+          {comparando ? (
+            tendenciaComparacao.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={tendenciaComparacao}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)} g/cab/dia`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="a" name={fazendaANome} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="b" name={fazendaBNome} stroke="hsl(var(--secondary))" strokeWidth={2} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            )
+          ) : tendencia.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={tendencia}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -877,6 +1003,35 @@ export default function PainelInteligenciaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* CONSUMO POR CATEGORIA — COMPARAÇÃO ENTRE FAZENDAS */}
+      {comparando && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-primary" />
+              Consumo por Categoria — Comparação
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {categoriasComparacao.some(c => c.a > 0 || c.b > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={categoriasComparacao}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="categoria" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)} g/cab/dia`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="a" name={fazendaANome} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="b" name={fazendaBNome} fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* MÉTRICAS POR CATEGORIA ANIMAL */}
       <MetricasPorCategoria
