@@ -771,53 +771,90 @@ export default function PainelInteligenciaPage() {
         </Card>
       </div>
 
-      {/* PAINEL MÃE — Consumo Real / Global / Peso Médio */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
-              <Activity className="w-4 h-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
+      {/* PAINEL MÃE — Consumo Real / Global / Eficiência / Peso Médio */}
+      {comparando ? (
+        <div className="grid md:grid-cols-2 gap-4">
+          {[
+            { nome: fazendaANome, dados: painelMae, accent: "text-primary", border: "border-l-4 border-l-primary" },
+            { nome: fazendaBNome, dados: painelMaeB, accent: "text-secondary", border: "border-l-4 border-l-secondary" },
+          ].map((bloco) => (
+            <Card key={bloco.nome} className={bloco.border}>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className={`text-sm font-semibold ${bloco.accent}`}>{bloco.nome}</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Consumo Real</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_real_g_cab_dia.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Consumo Global</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_global_g_cab_dia.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Eficiência</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.eficiencia.toFixed(0)}%</p>
+                  <p className="text-[10px] text-muted-foreground">índice</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Peso Médio</p>
+                  <p className="text-2xl font-bold text-foreground">{bloco.dados.peso_medio_kg.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">kg</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
+                <Activity className="w-4 h-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
-              <Gauge className="w-4 h-4 text-secondary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
+                <Gauge className="w-4 h-4 text-secondary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
-              <Scale className="w-4 h-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold text-foreground">
-              {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
+                <Scale className="w-4 h-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-2xl font-bold text-foreground">
+                {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* TREND CHART */}
       <Card>
@@ -828,7 +865,23 @@ export default function PainelInteligenciaPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {tendencia.length > 0 ? (
+          {comparando ? (
+            tendenciaComparacao.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={tendenciaComparacao}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)} g/cab/dia`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="a" name={fazendaANome} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="b" name={fazendaBNome} stroke="hsl(var(--secondary))" strokeWidth={2} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            )
+          ) : tendencia.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={tendencia}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
