@@ -68,8 +68,8 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
   const indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
 
   // Classification based on product margin
-  // margem is in kg/cab/dia → convert to g/cab/dia for comparison
-  const margem_g = margem * 1000;
+  // margem is per 100kg PV → escala pelo peso médio: margem × peso_medio_kg × 10 (g/cab/dia)
+  const margem_g = margem * peso_medio_kg * 10;
   let status_consumo: string;
   if (margem_g > 0) {
     // Margin-based: compare g/cab/dia against expected ± margin (in g)
