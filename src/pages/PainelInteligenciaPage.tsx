@@ -1004,6 +1004,35 @@ export default function PainelInteligenciaPage() {
         </Card>
       </div>
 
+      {/* CONSUMO POR CATEGORIA — COMPARAÇÃO ENTRE FAZENDAS */}
+      {comparando && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Droplets className="w-5 h-5 text-primary" />
+              Consumo por Categoria — Comparação
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {categoriasComparacao.some(c => c.a > 0 || c.b > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={categoriasComparacao}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="categoria" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => `${Number(v).toFixed(1)} g/cab/dia`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="a" name={fazendaANome} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="b" name={fazendaBNome} fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* MÉTRICAS POR CATEGORIA ANIMAL */}
       <MetricasPorCategoria
         filteredLancamentos={filteredLancamentos}
