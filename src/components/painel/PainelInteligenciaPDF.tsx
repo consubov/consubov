@@ -43,6 +43,11 @@ export interface PainelPDFData {
   consumoEsperado: number;
   desvioPercent: number;
   intervaloMedio: number;
+  // Fonte única (get_painel_mae) — opcional quando não há fazenda selecionada
+  painelConsumoReal?: number | null;
+  painelConsumoGlobal?: number | null;
+  painelEficiencia?: number | null;
+  painelPesoMedio?: number | null;
   // Alerts
   alertas: AlertaPDF[];
   // Metrics by category
