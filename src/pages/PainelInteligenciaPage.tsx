@@ -263,7 +263,7 @@ export default function PainelInteligenciaPage() {
 
   const indiceConsumo = consumoEsperado > 0 ? calcIndiceConsumo(consumoMedioReal, consumoEsperado) : 0;
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
-  const statusConsumo = getStatusColor(indiceConsumo);
+  const statusConsumo = getStatusColor(indiceConsumo, formulas.classificacao);
 
   // Lancamentos matching all filters EXCEPT mes/ano — used to compute real intervals
   // between consecutive salgas (intervals naturally span across months).
