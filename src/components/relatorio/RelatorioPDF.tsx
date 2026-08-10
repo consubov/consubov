@@ -48,6 +48,7 @@ export interface RetiroReportData {
   consumoMedio: number;
   gmd: number;
   pesoMedioKg?: number;
+  data: string;
   produtoNome: string;
   precoKg: number;
   eficiencia: number;
