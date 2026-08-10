@@ -106,9 +106,40 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
-      // Total Animais, Consumo Médio e Eficiência do retiro passam a ser
-      // derivados diretamente dos lançamentos do mês/ano (mesma fonte do Painel),
-      // garantindo consistência entre painel e PDF. RPC não é mais usada aqui.
+      // Fonte única de verdade dos agregados do retiro: RPC get_painel_mae.
+      // Só é aplicável ao período mensal (a RPC recebe mês/ano).
+      const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number }> = {};
+      if (periodoSelecionado === "mensal") {
+        await Promise.all(retiroIds.map(async (rid) => {
+          const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
+            p_fazenda_id: fazendaId,
+            p_retiro_id: rid,
+            p_mes: mes,
+            p_ano: ano,
+          });
+          const row = Array.isArray(rows) ? rows[0] : rows;
+          if (row) {
+            painelMaeByRetiro[rid] = {
+              eficiencia: Number(row.eficiencia) || 0,
+              peso_medio_kg: Number(row.peso_medio_kg) || 0,
+            };
+          }
+        }));
+      }
+
+      // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
+      const painelPastoByPastoId: Record<string, any> = {};
+      if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
+        const { data: vpRows } = await (supabase as any)
+          .from("view_painel_mae_pasto")
+          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, consumo_global_g_cab_dia, indice_global, status_global")
+          .in("retiro_id", retiroIds)
+          .eq("mes_referencia", mes)
+          .eq("ano_referencia", ano);
+        for (const row of (vpRows ?? [])) painelPastoByPastoId[row.pasto_id] = row;
+      }
+
+
 
 
       const { data: pastosData } = await supabase.from("pastos")
