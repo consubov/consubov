@@ -89,7 +89,10 @@ export default function PainelInteligenciaPage() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [filtroComparar, setFiltroComparar] = useState("none");
   const { painelMae } = usePainelMae(filtroFazenda !== "all" ? filtroFazenda : null, null, filtroMes, filtroAno);
+  const { painelMae: painelMaeB } = usePainelMae(filtroComparar !== "none" ? filtroComparar : null, null, filtroMes, filtroAno);
+  const comparando = filtroFazenda !== "all" && filtroComparar !== "none" && filtroComparar !== filtroFazenda;
   const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
