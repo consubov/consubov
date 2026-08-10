@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle,
+  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle, Gauge, Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,12 +73,13 @@ export default function AdminFazendaPainelPage() {
   }), [fazendaId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
+  const { painelMae, refresh: refreshPainelMae } = usePainelMae(fazendaId, null, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(fazendaId, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(fazendaId, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshAbates(), refreshMortalidades()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshAbates(), refreshMortalidades()]);
     setRefreshing(false);
   };
 
@@ -133,18 +135,21 @@ export default function AdminFazendaPainelPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metrics.totalAnimais)} />
-        <MetricCard icon={Droplets} label="Consumo Médio" value={fmtNum(metrics.consumoMedio, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={Target} label="Pastos na Meta" value={`${metrics.pastosNaMeta}/${metrics.totalPastos}`}
-          sub={metrics.totalPastos > 0 ? `${fmtNum((metrics.pastosNaMeta / metrics.totalPastos) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Droplets} label="Consumo Real" value={fmtNum(painelMae.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+        <MetricCard icon={Gauge} label="Consumo Global" value={fmtNum(painelMae.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`}
+          sub={painelMae.pastos_na_meta_den > 0 ? `${fmtNum((painelMae.pastos_na_meta_num / painelMae.pastos_na_meta_den) * 100, 0)}%` : ""} iconColor="text-secondary" />
+        <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
         <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metrics.sacosUtilizados)} />
         <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metrics.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
         <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
-        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(metrics.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
         <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
         <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
         <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
         <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
+
 
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
         <Card>
