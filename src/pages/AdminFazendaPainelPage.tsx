@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelData } from "@/hooks/usePainelData";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Beef, Droplets, Target, Package, DollarSign, TrendingUp,
-  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle,
+  BarChart3, FileDown, RefreshCw, Loader2, ChevronRight, ArrowLeft, Skull, AlertTriangle, Gauge, Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,12 +73,13 @@ export default function AdminFazendaPainelPage() {
   }), [fazendaId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
+  const { painelMae, refresh: refreshPainelMae } = usePainelMae(fazendaId, null, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(fazendaId, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(fazendaId, ano);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshAbates(), refreshMortalidades()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshAbates(), refreshMortalidades()]);
     setRefreshing(false);
   };
 
