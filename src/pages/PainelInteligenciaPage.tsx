@@ -367,6 +367,64 @@ export default function PainelInteligenciaPage() {
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
   }, [consumosPorLanc]);
 
+  // ===== COMPARAÇÃO DE 2 FAZENDAS (somente quando "Comparar com" está ativo) =====
+  const fazendaANome = fazendaById[filtroFazenda]?.nome ?? "Fazenda A";
+  const fazendaBNome = fazendaById[filtroComparar]?.nome ?? "Fazenda B";
+
+  // Lançamentos de uma fazenda no ano do filtro (demais filtros mantidos, exceto fazenda/mês)
+  const lancsDaFazenda = useCallback((fid: string) => {
+    return lancamentos.filter(l => {
+      if (l.fazenda_id !== fid) return false;
+      if (l.ano_referencia !== filtroAno) return false;
+      if (filtroProduto !== "all" && getEffectiveProdutoId(l) !== filtroProduto) return false;
+      if (filtroCategoria !== "all" && l.categoria !== filtroCategoria) return false;
+      if (filtroSexo !== "all" && l.sexo !== filtroSexo) return false;
+      return true;
+    });
+  }, [lancamentos, filtroAno, filtroProduto, filtroCategoria, filtroSexo, getEffectiveProdutoId]);
+
+  const mediaPonderada = (lancs: Lancamento[]) => {
+    let ws = 0, tot = 0;
+    for (const l of lancs) {
+      const c = Number(l.consumo_g_cab_dia ?? 0);
+      const a = Number(l.num_animais ?? 0);
+      if (c > 0 && a > 0) { ws += c * a; tot += a; }
+    }
+    return tot > 0 ? Math.round((ws / tot) * 100) / 100 : 0;
+  };
+
+  const tendenciaComparacao = useMemo(() => {
+    if (!comparando) return [] as { periodo: string; a: number; b: number }[];
+    const la = lancsDaFazenda(filtroFazenda);
+    const lb = lancsDaFazenda(filtroComparar);
+    const periodos = [...new Set([...la, ...lb].map(l => `${l.ano_referencia}-${String(l.mes_referencia).padStart(2, "0")}`))].sort();
+    return periodos.map(p => {
+      const mes = Number(p.slice(5));
+      return {
+        periodo: p,
+        a: mediaPonderada(la.filter(l => l.mes_referencia === mes)),
+        b: mediaPonderada(lb.filter(l => l.mes_referencia === mes)),
+      };
+    });
+  }, [comparando, filtroFazenda, filtroComparar, lancsDaFazenda]);
+
+  const categoriasComparacao = useMemo(() => {
+    if (!comparando) return [] as { categoria: string; a: number; b: number }[];
+    const cats = ["Recria 1", "Recria 2", "Engorda"];
+    const doMes = (fid: string) => lancsDaFazenda(fid).filter(l => l.mes_referencia === filtroMes);
+    const la = doMes(filtroFazenda);
+    const lb = doMes(filtroComparar);
+    const catOf = (l: Lancamento) =>
+      l.categoria || classificarCategoria(Number(l.peso_medio_kg ?? pastoById[l.pasto_id]?.peso_medio_kg ?? 0));
+    return cats.map(c => ({
+      categoria: c,
+      a: mediaPonderada(la.filter(l => catOf(l) === c)),
+      b: mediaPonderada(lb.filter(l => catOf(l) === c)),
+    }));
+  }, [comparando, filtroFazenda, filtroComparar, filtroMes, lancsDaFazenda, pastoById]);
+
+
+
   // 6. Alerts
   const alertas = useMemo(() => {
     const msgs: { tipo: "warning" | "info"; texto: string }[] = [];
