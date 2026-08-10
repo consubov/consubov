@@ -275,13 +275,28 @@ export default function ExportarRelatorioModal({
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);
           const diasConsiderados = lastP ? Number(lastP.dias_no_pasto ?? 0) : 0;
+
+          // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
+          const vp = painelPastoByPastoId[p.id];
+          const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
+          const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+          const consumoGlobal = vp ? Number(vp.consumo_global_g_cab_dia ?? 0) : undefined;
+          const idxGlobal = vp ? Number(vp.indice_global ?? 0) : 0;
+          const statusGlobal = vp
+            ? (idxGlobal > 0 ? formulas.classificacao.classify(idxGlobal) : (vp.status_global ?? "—"))
+            : undefined;
+
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
             numSacos: pSacos,
-            consumoGCabDia: pConsumo,
-            status: pStatus,
-            pesoMedioKg: pesoMedio,
+            consumoGCabDia: consumoReal,
+            status: statusReal,
+            consumoRealGCabDia: consumoReal,
+            statusReal,
+            consumoGlobalGCabDia: consumoGlobal,
+            statusGlobal,
+            pesoMedioKg: vp ? Number(vp.peso_medio_kg ?? pesoMedio) : pesoMedio,
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
