@@ -106,9 +106,40 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
-      // Total Animais, Consumo Médio e Eficiência do retiro passam a ser
-      // derivados diretamente dos lançamentos do mês/ano (mesma fonte do Painel),
-      // garantindo consistência entre painel e PDF. RPC não é mais usada aqui.
+      // Fonte única de verdade dos agregados do retiro: RPC get_painel_mae.
+      // Só é aplicável ao período mensal (a RPC recebe mês/ano).
+      const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number }> = {};
+      if (periodoSelecionado === "mensal") {
+        await Promise.all(retiroIds.map(async (rid) => {
+          const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
+            p_fazenda_id: fazendaId,
+            p_retiro_id: rid,
+            p_mes: mes,
+            p_ano: ano,
+          });
+          const row = Array.isArray(rows) ? rows[0] : rows;
+          if (row) {
+            painelMaeByRetiro[rid] = {
+              eficiencia: Number(row.eficiencia) || 0,
+              peso_medio_kg: Number(row.peso_medio_kg) || 0,
+            };
+          }
+        }));
+      }
+
+      // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
+      const painelPastoByPastoId: Record<string, any> = {};
+      if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
+        const { data: vpRows } = await (supabase as any)
+          .from("view_painel_mae_pasto")
+          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, consumo_global_g_cab_dia, indice_global, status_global")
+          .in("retiro_id", retiroIds)
+          .eq("mes_referencia", mes)
+          .eq("ano_referencia", ano);
+        for (const row of (vpRows ?? [])) painelPastoByPastoId[row.pasto_id] = row;
+      }
+
+
 
 
       const { data: pastosData } = await supabase.from("pastos")
@@ -244,13 +275,28 @@ export default function ExportarRelatorioModal({
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);
           const diasConsiderados = lastP ? Number(lastP.dias_no_pasto ?? 0) : 0;
+
+          // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
+          const vp = painelPastoByPastoId[p.id];
+          const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
+          const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+          const consumoGlobal = vp ? Number(vp.consumo_global_g_cab_dia ?? 0) : undefined;
+          const idxGlobal = vp ? Number(vp.indice_global ?? 0) : 0;
+          const statusGlobal = vp
+            ? (idxGlobal > 0 ? formulas.classificacao.classify(idxGlobal) : (vp.status_global ?? "—"))
+            : undefined;
+
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
             numSacos: pSacos,
-            consumoGCabDia: pConsumo,
-            status: pStatus,
-            pesoMedioKg: pesoMedio,
+            consumoGCabDia: consumoReal,
+            status: statusReal,
+            consumoRealGCabDia: consumoReal,
+            statusReal,
+            consumoGlobalGCabDia: consumoGlobal,
+            statusGlobal,
+            pesoMedioKg: vp ? Number(vp.peso_medio_kg ?? pesoMedio) : pesoMedio,
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
@@ -282,17 +328,12 @@ export default function ExportarRelatorioModal({
           sacosUtilizados,
           consumoMedio,
           gmd,
+          pesoMedioKg: painelMaeByRetiro[ret.id]?.peso_medio_kg ?? 0,
           data: dataStr,
           produtoNome: prod?.nome ?? "—",
           precoKg,
-          eficiencia: (() => {
-            let effSum = 0, effCount = 0;
-            for (const l of rLanc) {
-              const idx = Number(l.indice_consumo ?? 0);
-              if (idx > 0) { effSum += formulas.eficiencia.compute(idx); effCount++; }
-            }
-            return effCount > 0 ? effSum / effCount : 0;
-          })(),
+          // Eficiência: fonte única get_painel_mae (ponderada por cab-dias).
+          eficiencia: painelMaeByRetiro[ret.id]?.eficiencia ?? 0,
           custoDiario,
           score: Number(scoreCalc.scoreTotal.toFixed(1)),
           scoreMeta: Number(scoreCalc.scoreMeta.toFixed(1)),

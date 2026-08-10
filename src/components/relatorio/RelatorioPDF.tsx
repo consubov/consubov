@@ -29,6 +29,10 @@ export interface PastoReportData {
   numSacos: number;
   consumoGCabDia: number;
   status: string;
+  consumoRealGCabDia?: number;
+  statusReal?: string;
+  consumoGlobalGCabDia?: number;
+  statusGlobal?: string;
   pesoMedioKg: number;
   gmdKgDia: number;
   pesoAbateMetaKg: number;
@@ -43,6 +47,7 @@ export interface RetiroReportData {
   sacosUtilizados: number;
   consumoMedio: number;
   gmd: number;
+  pesoMedioKg?: number;
   data: string;
   produtoNome: string;
   precoKg: number;
@@ -529,13 +534,15 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const alto = r.pastos.filter(p => p.status === "Alto");
 
   const cols = [
-    { label: "Pasto", width: "18%" },
-    { label: "Animais", width: "10%" },
-    { label: "Peso Médio (kg)", width: "14%" },
-    { label: "Sacos", width: "9%" },
-    { label: "Consumo (g/cab/dia)", width: "19%" },
-    { label: "Dias Considerados", width: "14%" },
-    { label: "Status", width: "16%" },
+    { label: "Pasto", width: "14%" },
+    { label: "Animais", width: "8%" },
+    { label: "Peso Médio (kg)", width: "11%" },
+    { label: "Sacos", width: "7%" },
+    { label: "Consumo Real", width: "12%" },
+    { label: "Status Real", width: "12%" },
+    { label: "Consumo Global", width: "12%" },
+    { label: "Status Global", width: "12%" },
+    { label: "Dias Cons.", width: "12%" },
   ];
 
   return (
@@ -550,18 +557,19 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
         <View style={s.card}><Text style={s.cardLabel}>Animais</Text><Text style={s.cardValue}>{r.totalAnimais}</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Sacos</Text><Text style={s.cardValue}>{r.sacosUtilizados}</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Consumo</Text><Text style={s.cardValue}>{fmtNum(r.consumoMedio, 1)}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}>Peso Médio</Text><Text style={s.cardValue}>{r.pesoMedioKg ? fmtNum(r.pesoMedioKg, 1) : "—"}</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Eficiência</Text><Text style={s.cardValue}>{fmtNum(r.eficiencia, 0)}%</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Custo R$/cab</Text><Text style={s.cardValue}>{fmtNum(r.custoDiario, 2)}</Text></View>
       </View>
 
       {baixo.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#C62828" }]}>[!] Baixo (índice &lt;0.8): {baixo.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#C62828" }]}>[!] Consumo Real Baixo: {baixo.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
       {alto.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#1565C0" }]}>[!] Alto (índice &gt;1.2): {alto.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#1565C0" }]}>[!] Consumo Real Alto: {alto.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
 
@@ -573,17 +581,22 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
         </View>
         {sortedPastos.map((p, i) => {
-          const st = p.status;
-          const sc = statusColor(st);
+          const stReal = p.statusReal ?? p.status;
+          const scReal = statusColor(stReal);
+          const stGlobal = p.statusGlobal ?? "—";
+          const scGlobal = statusColor(stGlobal);
+          const consumoReal = p.consumoRealGCabDia ?? p.consumoGCabDia;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
               <Text style={[s.tableCell, { width: cols[0].width }]}>{p.nome}</Text>
               <Text style={[s.tableCell, { width: cols[1].width }]}>{p.numAnimais}</Text>
               <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
               <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
-              <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(p.consumoGCabDia, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[5].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width, color: sc.color, fontFamily: "Helvetica-Bold" }]}>{st}</Text>
+              <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(consumoReal, 1)}</Text>
+              <Text style={[s.tableCell, { width: cols[5].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
+              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.consumoGlobalGCabDia != null ? fmtNum(p.consumoGlobalGCabDia, 1) : "—"}</Text>
+              <Text style={[s.tableCell, { width: cols[7].width, color: scGlobal.color, fontFamily: "Helvetica-Bold" }]}>{stGlobal}</Text>
+              <Text style={[s.tableCell, { width: cols[8].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
             </View>
           );
         })}

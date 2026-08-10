@@ -17,6 +17,7 @@ import {
   classificarCategoria,
   calcIndiceConsumo,
 } from "@/lib/consumoCalc";
+import { useFormulasSistema } from "@/lib/formulasSistema";
 import { pdf } from "@react-pdf/renderer";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
 import { toast } from "sonner";
@@ -56,10 +57,13 @@ const ESTADOS_BR: Record<string, { x: number; y: number }> = {
   SP: { x: 460, y: 440 }, SE: { x: 610, y: 300 }, TO: { x: 440, y: 290 },
 };
 
-function getStatusColor(indice: number): { color: string; label: string; emoji: string } {
+function getStatusColor(
+  indice: number,
+  limites: { limiteBaixo: number; limiteAlto: number } = { limiteBaixo: 0.9, limiteAlto: 1.1 },
+): { color: string; label: string; emoji: string } {
   if (indice <= 0) return { color: "text-muted-foreground", label: "Sem dados", emoji: "⚪" };
-  if (indice < 0.8) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
-  if (indice > 1.2) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
+  if (indice < limites.limiteBaixo) return { color: "text-red-500", label: "Abaixo do ideal", emoji: "🔴" };
+  if (indice > limites.limiteAlto) return { color: "text-green-600", label: "Acima (possível desperdício)", emoji: "🟢" };
   return { color: "text-yellow-500", label: "Ideal", emoji: "🟡" };
 }
 
@@ -93,6 +97,7 @@ export default function PainelInteligenciaPage() {
   const { painelMae } = usePainelMae(filtroFazenda !== "all" ? filtroFazenda : null, null, filtroMes, filtroAno);
   const { painelMae: painelMaeB } = usePainelMae(filtroComparar !== "none" ? filtroComparar : null, null, filtroMes, filtroAno);
   const comparando = filtroFazenda !== "all" && filtroComparar !== "none" && filtroComparar !== filtroFazenda;
+  const formulas = useFormulasSistema();
   const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
@@ -260,7 +265,7 @@ export default function PainelInteligenciaPage() {
 
   const indiceConsumo = consumoEsperado > 0 ? calcIndiceConsumo(consumoMedioReal, consumoEsperado) : 0;
   const desvioPercent = consumoEsperado > 0 ? ((consumoMedioReal - consumoEsperado) / consumoEsperado) * 100 : 0;
-  const statusConsumo = getStatusColor(indiceConsumo);
+  const statusConsumo = getStatusColor(indiceConsumo, formulas.classificacao);
 
   // Lancamentos matching all filters EXCEPT mes/ano — used to compute real intervals
   // between consecutive salgas (intervals naturally span across months).
@@ -546,6 +551,10 @@ export default function PainelInteligenciaPage() {
         consumoEsperado,
         desvioPercent,
         intervaloMedio,
+        painelConsumoReal: filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia : null,
+        painelConsumoGlobal: filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia : null,
+        painelEficiencia: filtroFazenda !== "all" ? painelMae.eficiencia : null,
+        painelPesoMedio: filtroFazenda !== "all" ? painelMae.peso_medio_kg : null,
         alertas,
         metricas: categoriasExibidas,
         tendencia,
@@ -1068,7 +1077,7 @@ export default function PainelInteligenciaPage() {
                   {rankingFazendas.map((f, i) => {
                     const idx = consumoEsperado > 0 ? f.consumoMedio / consumoEsperado : 0;
                     const st = consumoEsperado > 0
-                      ? getStatusColor(idx)
+                      ? getStatusColor(idx, formulas.classificacao)
                       : { emoji: "", color: "", label: "" };
                     return (
                       <TableRow key={f.id}>
