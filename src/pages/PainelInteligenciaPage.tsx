@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import MetricasPorCategoria from "@/components/painel/MetricasPorCategoria";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +89,7 @@ export default function PainelInteligenciaPage() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const { painelMae } = usePainelMae(filtroFazenda !== "all" ? filtroFazenda : null, null, filtroMes, filtroAno);
   const [exportingPDF, setExportingPDF] = useState(false);
 
   useEffect(() => {
@@ -692,6 +694,54 @@ export default function PainelInteligenciaPage() {
           <CardContent className="px-4 pb-4">
             <p className="text-2xl font-bold text-foreground">{intervaloMedio > 0 ? intervaloMedio.toFixed(1) : "—"}</p>
             <p className="text-xs text-muted-foreground">dias entre salgas</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PAINEL MÃE — Consumo Real / Global / Peso Médio */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
+              <Activity className="w-4 h-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="text-2xl font-bold text-foreground">
+              {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
+              <Gauge className="w-4 h-4 text-secondary" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="text-2xl font-bold text-foreground">
+              {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
+              <Scale className="w-4 h-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="text-2xl font-bold text-foreground">
+              {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
           </CardContent>
         </Card>
       </div>
