@@ -170,6 +170,14 @@ function calcDinamicoPasto(
   return { dias, pesoAtual: Math.round(pesoAtual * 10) / 10 };
 }
 
+/** Arredonda sacos sugeridos com margem de 0,4: abaixo arredonda para baixo, acima/igual para cima. Mínimo 1. */
+function arredondarSacosSugeridos(sacos: number): number {
+  const parteInteira = Math.floor(sacos);
+  const decimal = sacos - parteInteira;
+  const arredondado = decimal < 0.4 ? Math.floor(sacos) : Math.ceil(sacos);
+  return Math.max(1, arredondado);
+}
+
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
@@ -759,7 +767,7 @@ export default function CapatazDashboard() {
       if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
         const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
         const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
-        const sacos = Math.max(1, Math.ceil(consumo_periodo_kg / produtoAtivo.peso_saco_kg));
+        const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
         setFormSugestao({
           sacosSugeridos: sacos,
           numAnimais: pasto.num_animais,
