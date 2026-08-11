@@ -31,8 +31,6 @@ export interface PastoReportData {
   status: string;
   consumoRealGCabDia?: number;
   statusReal?: string;
-  consumoGlobalGCabDia?: number;
-  statusGlobal?: string;
   pesoMedioKg: number;
   gmdKgDia: number;
   pesoAbateMetaKg: number;

@@ -108,7 +108,7 @@ export default function ExportarRelatorioModal({
 
       // Fonte única de verdade dos agregados do retiro: RPC get_painel_mae.
       // Só é aplicável ao período mensal (a RPC recebe mês/ano).
-      const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number }> = {};
+      const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
       if (periodoSelecionado === "mensal") {
         await Promise.all(retiroIds.map(async (rid) => {
           const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
@@ -122,6 +122,7 @@ export default function ExportarRelatorioModal({
             painelMaeByRetiro[rid] = {
               eficiencia: Number(row.eficiencia) || 0,
               peso_medio_kg: Number(row.peso_medio_kg) || 0,
+              consumo_real_g_cab_dia: Number(row.consumo_real_g_cab_dia) || 0,
             };
           }
         }));
@@ -132,7 +133,7 @@ export default function ExportarRelatorioModal({
       if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
         const { data: vpRows } = await (supabase as any)
           .from("view_painel_mae_pasto")
-          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, consumo_global_g_cab_dia, indice_global, status_global")
+          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real")
           .in("retiro_id", retiroIds)
           .eq("mes_referencia", mes)
           .eq("ano_referencia", ano);
@@ -218,9 +219,11 @@ export default function ExportarRelatorioModal({
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
 
-        // Consumo Médio: fórmula canônica compartilhada com o Painel do Retiro
-        // (mesma lista rLanc, mesmo filtro por retiro_id + pastos ativos do mês/ano).
-        const consumoMedio = computeConsumoMedioPonderado(rLanc);
+        // Consumo Médio (Consumo Real): fonte única = RPC get_painel_mae
+        // (ponderado por cab-dias). Fallback local só fora do período mensal.
+        const consumoMedio = painelMaeByRetiro[ret.id]
+          ? painelMaeByRetiro[ret.id].consumo_real_g_cab_dia
+          : computeConsumoMedioPonderado(rLanc);
 
         const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
@@ -280,11 +283,6 @@ export default function ExportarRelatorioModal({
           const vp = painelPastoByPastoId[p.id];
           const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
           const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
-          const consumoGlobal = vp ? Number(vp.consumo_global_g_cab_dia ?? 0) : undefined;
-          const idxGlobal = vp ? Number(vp.indice_global ?? 0) : 0;
-          const statusGlobal = vp
-            ? (idxGlobal > 0 ? formulas.classificacao.classify(idxGlobal) : (vp.status_global ?? "—"))
-            : undefined;
 
           return {
             nome: p.nome,
@@ -294,8 +292,6 @@ export default function ExportarRelatorioModal({
             status: statusReal,
             consumoRealGCabDia: consumoReal,
             statusReal,
-            consumoGlobalGCabDia: consumoGlobal,
-            statusGlobal,
             pesoMedioKg: vp ? Number(vp.peso_medio_kg ?? pesoMedio) : pesoMedio,
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
