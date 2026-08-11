@@ -767,7 +767,7 @@ export default function CapatazDashboard() {
       if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
         const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
         const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
-        const sacos = Math.max(1, Math.ceil(consumo_periodo_kg / produtoAtivo.peso_saco_kg));
+        const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
         setFormSugestao({
           sacosSugeridos: sacos,
           numAnimais: pasto.num_animais,
