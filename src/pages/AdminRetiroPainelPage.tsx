@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
 import { usePainelMae } from "@/hooks/usePainelMae";
-import { useFormulasSistema } from "@/lib/formulasSistema";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
@@ -141,7 +140,6 @@ export default function AdminRetiroPainelPage() {
   }), [activeFazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
-  const formulas = useFormulasSistema();
   const { painelMae, refresh: refreshPainelMae } = usePainelMae(activeFazendaId || null, retiroId ?? null, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
 
@@ -237,7 +235,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae()]);
     setRefreshing(false);
   };
 
