@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
-import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // ---------- Types ----------
@@ -94,6 +93,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [extraLoading, setExtraLoading] = useState(true);
+  const [consumoRealByRetiro, setConsumoRealByRetiro] = useState<Record<string, number>>({});
 
   // ---------- Centralized RPC for consumption metrics ----------
   const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
@@ -147,9 +147,23 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
         ]);
         setPastos((pastosRes.data ?? []) as Pasto[]);
         setLancamentos(((lancRes.data as unknown) ?? []) as Lancamento[]);
+
+        // Consumo canônico por retiro: RPC get_painel_mae (ponderado por cab-dias)
+        const entries = await Promise.all(retiroIds.map(async (rid) => {
+          const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
+            p_fazenda_id: fazendaId,
+            p_retiro_id: rid,
+            p_mes: mes,
+            p_ano: ano,
+          });
+          const row = Array.isArray(rows) ? rows[0] : rows;
+          return [rid, Number(row?.consumo_real_g_cab_dia) || 0] as const;
+        }));
+        setConsumoRealByRetiro(Object.fromEntries(entries));
       } else {
         setPastos([]);
         setLancamentos([]);
+        setConsumoRealByRetiro({});
       }
     } catch (e) {
       console.error("usePainelData error:", e);
@@ -244,11 +258,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
       // com recálculo dinâmico do período aberto aplicado acima). Isso garante
       // que a Aba Retiros (lista) e o Painel de Detalhe mostrem exatamente o
       // mesmo número no mesmo instante.
-      const flatConsumo: { consumo_g_cab_dia: number | null; num_animais: number | null }[] = [];
-      for (const list of pastosConsumo.values()) {
-        for (const c of list) flatConsumo.push({ consumo_g_cab_dia: c.consumo_g_cab_dia, num_animais: c.num_animais });
-      }
-      const consumoMedioDinamico = computeConsumoMedioPonderado(flatConsumo);
+      const consumoMedioDinamico = consumoRealByRetiro[r.id] ?? 0;
 
       return {
         id: r.id,
@@ -264,7 +274,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
         pastosConsumo,
       };
     });
-  }, [retiros, pastos, lancamentos, consumoData]);
+  }, [retiros, pastos, lancamentos, consumoData, consumoRealByRetiro]);
 
   const refresh = useCallback(async () => {
     await Promise.all([loadExtraData(), refreshConsumo()]);
