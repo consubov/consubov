@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
 import { usePainelMae } from "@/hooks/usePainelMae";
-import { useFormulasSistema } from "@/lib/formulasSistema";
 import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
@@ -12,7 +11,6 @@ import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
@@ -142,9 +140,25 @@ export default function AdminRetiroPainelPage() {
   }), [activeFazendaId, retiroId, mes, ano]);
 
   const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
-  const formulas = useFormulasSistema();
   const { painelMae, refresh: refreshPainelMae } = usePainelMae(activeFazendaId || null, retiroId ?? null, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, retiroId);
+
+  // Fonte única por pasto: view_painel_mae_pasto (Consumo Real + Status Real)
+  const [pastoMae, setPastoMae] = useState<Record<string, any>>({});
+  const loadPastoMae = useCallback(async () => {
+    if (!retiroId) { setPastoMae({}); return; }
+    const { data, error } = await (supabase as any)
+      .from("view_painel_mae_pasto")
+      .select("pasto_id, consumo_real_g_cab_dia, indice_real, status_real, num_sacos, num_animais, peso_medio_kg")
+      .eq("retiro_id", retiroId)
+      .eq("mes_referencia", mes)
+      .eq("ano_referencia", ano);
+    if (error) { console.error("view_painel_mae_pasto error:", error); setPastoMae({}); return; }
+    const map: Record<string, any> = {};
+    for (const row of (data ?? [])) map[row.pasto_id] = row;
+    setPastoMae(map);
+  }, [retiroId, mes, ano]);
+  useEffect(() => { void loadPastoMae(); }, [loadPastoMae]);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
@@ -167,21 +181,11 @@ export default function AdminRetiroPainelPage() {
       .map(p => Number(p.gmd_kg_dia));
     const gmdMedio = gmdVals.length ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
+    // Distribuição de Status: fonte única = view_painel_mae_pasto (status_real),
+    // mesma fonte da lista de pastos abaixo e do PDF.
     let baixo = 0, ideal = 0, alto = 0;
-    // Consumo Médio: mesma fonte/filtro do PDF (Seção 6).
-    // Achata todos os lançamentos dos pastos ATIVOS do retiro no mês/ano
-    // e delega para a fórmula canônica em painelMetrics.
-    const flatLanc: Array<{ consumo_g_cab_dia: number | null; num_animais: number | null }> = [];
-    for (const p of pastosComLanc) {
-      const list = retiroData.pastosConsumo.get(p.id) ?? [];
-      for (const c of list) {
-        flatLanc.push({ consumo_g_cab_dia: c.consumo_g_cab_dia, num_animais: c.num_animais });
-      }
-      const latest = list[list.length - 1];
-      const idx = latest?.indice_consumo;
-      const status = idx != null && Number(idx) > 0
-        ? formulas.classificacao.classify(Number(idx))
-        : latest?.status_consumo ?? null;
+    for (const p of retiroData.pastos) {
+      const status = pastoMae[p.id]?.status_real ?? null;
       if (status === "Ideal") ideal++;
       else if (status === "Baixo") baixo++;
       else if (status === "Alto") alto++;
@@ -192,7 +196,7 @@ export default function AdminRetiroPainelPage() {
       ...metrics,
       totalAnimais,
       totalPastos,
-      consumoMedio: computeConsumoMedioPonderado(flatLanc),
+      consumoMedio: painelMae.consumo_real_g_cab_dia,
       gmdMedio,
       statusDist: {
         baixo, ideal, alto,
@@ -201,7 +205,7 @@ export default function AdminRetiroPainelPage() {
         altoPct: totalStatus > 0 ? (alto / totalStatus) * 100 : 0,
       },
     };
-  }, [retiroData, metrics, formulas]);
+  }, [retiroData, metrics, pastoMae, painelMae]);
 
   const handleBack = () => {
     if (isGerente) {
@@ -231,7 +235,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae()]);
     setRefreshing(false);
   };
 
@@ -340,29 +344,19 @@ export default function AdminRetiroPainelPage() {
           </h2>
           <div className="space-y-2">
             {retiroData.pastos.map(p => {
+              // Fonte única: view_painel_mae_pasto (Consumo Real + Status Real)
+              const vp = pastoMae[p.id];
               const consumoList = retiroData.pastosConsumo.get(p.id) ?? [];
-              const totalSacos = consumoList.reduce((s, c) => s + c.num_sacos, 0);
-              const numAnimais = consumoList.length > 0
-                ? Math.max(...consumoList.map(c => c.num_animais))
-                : p.num_animais;
+              const totalSacos = vp?.num_sacos != null
+                ? Number(vp.num_sacos)
+                : consumoList.reduce((s, c) => s + c.num_sacos, 0);
+              const numAnimais = vp?.num_animais != null
+                ? Number(vp.num_animais)
+                : (consumoList.length > 0 ? Math.max(...consumoList.map(c => c.num_animais)) : p.num_animais);
 
-              // Weighted average consumption by num_animais
-              let consumoGCabDia = 0;
-              let totalAnimaisConsumo = 0;
-              for (const c of consumoList) {
-                if (c.consumo_g_cab_dia > 0 && c.num_animais > 0) {
-                  consumoGCabDia += c.consumo_g_cab_dia * c.num_animais;
-                  totalAnimaisConsumo += c.num_animais;
-                }
-              }
-              consumoGCabDia = totalAnimaisConsumo > 0 ? consumoGCabDia / totalAnimaisConsumo : 0;
-
-              // Reclassifica pelo indice_consumo usando a fórmula da tabela formulas_sistema.
-              const latestConsumo = consumoList.length > 0 ? consumoList[consumoList.length - 1] : null;
-              const indiceConsumo = latestConsumo?.indice_consumo;
-              const statusConsumo = indiceConsumo != null && Number(indiceConsumo) > 0
-                ? formulas.classificacao.classify(Number(indiceConsumo))
-                : latestConsumo?.status_consumo ?? null;
+              const consumoGCabDia = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : 0;
+              const indiceConsumo = vp?.indice_real != null ? Number(vp.indice_real) : null;
+              const statusConsumo = vp?.status_real ?? null;
 
               return (
                 <Card key={p.id}>

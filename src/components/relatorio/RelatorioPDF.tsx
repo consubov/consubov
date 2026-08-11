@@ -31,8 +31,6 @@ export interface PastoReportData {
   status: string;
   consumoRealGCabDia?: number;
   statusReal?: string;
-  consumoGlobalGCabDia?: number;
-  statusGlobal?: string;
   pesoMedioKg: number;
   gmdKgDia: number;
   pesoAbateMetaKg: number;
@@ -534,15 +532,13 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const alto = r.pastos.filter(p => p.status === "Alto");
 
   const cols = [
-    { label: "Pasto", width: "14%" },
-    { label: "Animais", width: "8%" },
-    { label: "Peso Médio (kg)", width: "11%" },
-    { label: "Sacos", width: "7%" },
-    { label: "Consumo Real", width: "12%" },
-    { label: "Status Real", width: "12%" },
-    { label: "Consumo Global", width: "12%" },
-    { label: "Status Global", width: "12%" },
-    { label: "Dias Cons.", width: "12%" },
+    { label: "Pasto", width: "18%" },
+    { label: "Animais", width: "11%" },
+    { label: "Peso Médio (kg)", width: "15%" },
+    { label: "Sacos", width: "10%" },
+    { label: "Consumo Real", width: "16%" },
+    { label: "Status Real", width: "16%" },
+    { label: "Dias Cons.", width: "14%" },
   ];
 
   return (
@@ -583,8 +579,6 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
         {sortedPastos.map((p, i) => {
           const stReal = p.statusReal ?? p.status;
           const scReal = statusColor(stReal);
-          const stGlobal = p.statusGlobal ?? "—";
-          const scGlobal = statusColor(stGlobal);
           const consumoReal = p.consumoRealGCabDia ?? p.consumoGCabDia;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
@@ -594,9 +588,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
               <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
               <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(consumoReal, 1)}</Text>
               <Text style={[s.tableCell, { width: cols[5].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.consumoGlobalGCabDia != null ? fmtNum(p.consumoGlobalGCabDia, 1) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[7].width, color: scGlobal.color, fontFamily: "Helvetica-Bold" }]}>{stGlobal}</Text>
-              <Text style={[s.tableCell, { width: cols[8].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
             </View>
           );
         })}
