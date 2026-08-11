@@ -534,15 +534,13 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const alto = r.pastos.filter(p => p.status === "Alto");
 
   const cols = [
-    { label: "Pasto", width: "14%" },
-    { label: "Animais", width: "8%" },
-    { label: "Peso Médio (kg)", width: "11%" },
-    { label: "Sacos", width: "7%" },
-    { label: "Consumo Real", width: "12%" },
-    { label: "Status Real", width: "12%" },
-    { label: "Consumo Global", width: "12%" },
-    { label: "Status Global", width: "12%" },
-    { label: "Dias Cons.", width: "12%" },
+    { label: "Pasto", width: "18%" },
+    { label: "Animais", width: "11%" },
+    { label: "Peso Médio (kg)", width: "15%" },
+    { label: "Sacos", width: "10%" },
+    { label: "Consumo Real", width: "16%" },
+    { label: "Status Real", width: "16%" },
+    { label: "Dias Cons.", width: "14%" },
   ];
 
   return (
