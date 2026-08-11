@@ -170,6 +170,14 @@ function calcDinamicoPasto(
   return { dias, pesoAtual: Math.round(pesoAtual * 10) / 10 };
 }
 
+/** Arredonda sacos sugeridos com margem de 0,4: abaixo arredonda para baixo, acima/igual para cima. Mínimo 1. */
+function arredondarSacosSugeridos(sacos: number): number {
+  const parteInteira = Math.floor(sacos);
+  const decimal = sacos - parteInteira;
+  const arredondado = decimal < 0.4 ? Math.floor(sacos) : Math.ceil(sacos);
+  return Math.max(1, arredondado);
+}
+
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
