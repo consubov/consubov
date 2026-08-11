@@ -581,8 +581,6 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
         {sortedPastos.map((p, i) => {
           const stReal = p.statusReal ?? p.status;
           const scReal = statusColor(stReal);
-          const stGlobal = p.statusGlobal ?? "—";
-          const scGlobal = statusColor(stGlobal);
           const consumoReal = p.consumoRealGCabDia ?? p.consumoGCabDia;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
@@ -592,9 +590,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
               <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
               <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(consumoReal, 1)}</Text>
               <Text style={[s.tableCell, { width: cols[5].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.consumoGlobalGCabDia != null ? fmtNum(p.consumoGlobalGCabDia, 1) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[7].width, color: scGlobal.color, fontFamily: "Helvetica-Bold" }]}>{stGlobal}</Text>
-              <Text style={[s.tableCell, { width: cols[8].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
             </View>
           );
         })}
