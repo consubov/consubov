@@ -131,20 +131,25 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
 
     const filteredPastosMapa = pastosMapa.filter((pm) => pastoIds.includes(pm.pasto_id));
 
-    const [pastosRes, lancamentosRes, movimentacoesRes] = await Promise.all([
+    const [pastosRes, painelMaeRes, movimentacoesRes] = await Promise.all([
       supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo, data_fim_carencia").in("id", pastoIds),
-      supabase.from("lancamentos").select("pasto_id, consumo_g_cab_dia, status_consumo, created_at").in("pasto_id", pastoIds).eq("mes_referencia", mes).eq("ano_referencia", ano).order("created_at", { ascending: false }),
+      supabase.from("view_painel_mae_pasto_atual").select("pasto_id, consumo_global_g_cab_dia, status_global, ultima_salga_real_em").in("pasto_id", pastoIds),
       supabase.from("movimentacoes_animais").select("pasto_origem_id, pasto_destino_id, data").or(pastoIds.map((id) => `pasto_origem_id.eq.${id},pasto_destino_id.eq.${id}`).join(",")).order("data", { ascending: false }).limit(100),
     ]);
 
     const pastosMap = new Map((pastosRes.data ?? []).map((p) => [p.id, p]));
 
     const consumoMap = new Map<string, { consumo: number | null; status: string | null; data: string | null }>();
-    for (const l of lancamentosRes.data ?? []) {
-      if (!consumoMap.has(l.pasto_id)) {
-        consumoMap.set(l.pasto_id, { consumo: l.consumo_g_cab_dia, status: l.status_consumo, data: l.created_at });
+    for (const row of painelMaeRes.data ?? []) {
+      if (!consumoMap.has(row.pasto_id)) {
+        consumoMap.set(row.pasto_id, {
+          consumo: row.consumo_global_g_cab_dia,
+          status: row.status_global,
+          data: row.ultima_salga_real_em,
+        });
       }
     }
+
 
     const movMap = new Map<string, string>();
     for (const m of movimentacoesRes.data ?? []) {
