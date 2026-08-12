@@ -1381,7 +1381,7 @@ export default function CapatazDashboard() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Excluir este lançamento?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Salga de "{l.pasto_nome}" ({l.sacos} sacos) será removida. Esta ação não pode ser desfeita.
+                                Salga de "{l.pasto_nome}" ({l.cocho_cheio ? "C — cocho cheio" : `${l.sacos} sacos`}) será removida. Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

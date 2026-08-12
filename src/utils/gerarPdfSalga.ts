@@ -6,6 +6,8 @@ export interface PastoSalgaRow {
   numAnimais: number;
   pesoMedioKg: number;
   sacosUtilizados: number;
+  /** Number of "cocho cheio" launches (no salga) in the period */
+  cochoCheio?: number;
   /** Optional consumption status: ABAIXO | IDEAL | ACIMA */
   status?: "ABAIXO" | "IDEAL" | "ACIMA" | string;
 }
@@ -96,6 +98,13 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
 
   const totalAnimais = data.pastos.reduce((sum, p) => sum + p.numAnimais, 0);
   const totalSacos = data.pastos.reduce((sum, p) => sum + p.sacosUtilizados, 0);
+  const totalCochoCheio = data.pastos.reduce((sum, p) => sum + (p.cochoCheio ?? 0), 0);
+  const fmtSacos = (p: PastoSalgaRow) => {
+    const c = p.cochoCheio ?? 0;
+    if (c > 0 && p.sacosUtilizados === 0) return "C";
+    if (c > 0) return `${p.sacosUtilizados} + C`;
+    return String(p.sacosUtilizados);
+  };
 
   const hasStatusCol = data.pastos.some((p) => !!p.status);
 
@@ -108,14 +117,19 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
       p.nome,
       String(p.numAnimais),
       `${p.pesoMedioKg.toFixed(1)}`,
-      String(p.sacosUtilizados),
+      fmtSacos(p),
     ];
     if (hasStatusCol) base.push(p.status || "—");
     return base;
   });
 
   // Totals row
-  const totalRow = ["TOTAL", String(totalAnimais), "—", String(totalSacos)];
+  const totalRow = [
+    "TOTAL",
+    String(totalAnimais),
+    "—",
+    totalCochoCheio > 0 ? `${totalSacos} sacos · ${totalCochoCheio} cocho cheio` : String(totalSacos),
+  ];
   if (hasStatusCol) totalRow.push("—");
   tableBody.push(totalRow);
 

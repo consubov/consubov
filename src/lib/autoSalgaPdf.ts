@@ -52,7 +52,7 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
   // Fetch salga lancamentos in range for this retiro
   const { data: lancData, error } = await supabase
     .from("lancamentos")
-    .select("pasto_id, num_sacos, indice_consumo, status_consumo")
+    .select("pasto_id, num_sacos, indice_consumo, status_consumo, cocho_cheio")
     .eq("retiro_id", args.retiroId)
     .eq("fazenda_id", args.fazendaId)
     .gte("created_at", start.toISOString())
@@ -75,8 +75,10 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
   const sacosMap: Record<string, number> = {};
   const indiceMap: Record<string, number[]> = {};
   const statusMap: Record<string, string | null> = {};
+  const cochoMap: Record<string, number> = {};
   for (const l of lancData) {
     sacosMap[l.pasto_id] = (sacosMap[l.pasto_id] || 0) + (l.num_sacos || 0);
+    if ((l as any).cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
     if (l.indice_consumo != null) {
       (indiceMap[l.pasto_id] ||= []).push(Number(l.indice_consumo));
     }
@@ -98,6 +100,7 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
       numAnimais: p.num_animais || 0,
       pesoMedioKg: Number(p.peso_medio_kg ?? 0),
       sacosUtilizados: sacosMap[p.id] || 0,
+      cochoCheio: cochoMap[p.id] || 0,
       status: deriveStatus(avgIndice, statusMap[p.id]),
     };
   });

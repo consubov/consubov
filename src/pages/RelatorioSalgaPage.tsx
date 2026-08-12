@@ -44,6 +44,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
   const [generating, setGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [noData, setNoData] = useState(false);
+  const [resumo, setResumo] = useState<string | null>(null);
   const pdfBlobRef = useRef<Blob | null>(null);
   const fileNameRef = useRef<string>("");
 
@@ -127,6 +128,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
     setGenerating(true);
     setNoData(false);
     setPdfUrl(null);
+    setResumo(null);
     pdfBlobRef.current = null;
     toast.info("Gerando PDF…");
 
@@ -140,7 +142,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
       const { data: lancData, error } = await supabase
         .from("lancamentos")
-        .select("pasto_id, num_sacos")
+        .select("pasto_id, num_sacos, cocho_cheio")
         .eq("retiro_id", selectedRetiroId)
         .eq("fazenda_id", fazendaId)
         .gte("created_at", range.start.toISOString())
@@ -154,8 +156,10 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       }
 
       const pastoMap: Record<string, number> = {};
-      lancData.forEach((l) => {
+      const cochoMap: Record<string, number> = {};
+      lancData.forEach((l: any) => {
         pastoMap[l.pasto_id] = (pastoMap[l.pasto_id] || 0) + (l.num_sacos || 0);
+        if (l.cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
       });
 
       const pastoIds = Object.keys(pastoMap);
@@ -169,6 +173,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         numAnimais: p.num_animais || 0,
         pesoMedioKg: Number(p.peso_medio_kg ?? 0),
         sacosUtilizados: pastoMap[p.id] || 0,
+        cochoCheio: cochoMap[p.id] || 0,
       }));
 
       rows.sort((a, b) => a.nome.localeCompare(b.nome));
@@ -188,6 +193,14 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       await supabase.storage
         .from("relatorios")
         .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
+
+      const totalSacosReais = rows.reduce((s, r) => s + r.sacosUtilizados, 0);
+      const totalCocho = rows.reduce((s, r) => s + (r.cochoCheio ?? 0), 0);
+      setResumo(
+        totalCocho > 0
+          ? `${totalSacosReais} sacos · ${totalCocho} cocho cheio`
+          : `${totalSacosReais} sacos`
+      );
 
       const localUrl = URL.createObjectURL(blob);
       setPdfUrl(localUrl);
@@ -327,6 +340,12 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           )}
         </CardContent>
       </Card>
+
+      {resumo && (
+        <p className="text-sm text-center text-muted-foreground">
+          Total do período: <span className="font-semibold text-foreground">{resumo}</span>
+        </p>
+      )}
 
       <div className="flex gap-2">
         {!pdfUrl ? (
