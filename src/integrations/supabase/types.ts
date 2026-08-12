@@ -5990,6 +5990,7 @@ export type Database = {
           mes_referencia: number | null
           num_animais: number | null
           num_sacos: number | null
+          origem: string | null
           pasto_id: string | null
           peso_medio_kg: number | null
           retiro_id: string | null
