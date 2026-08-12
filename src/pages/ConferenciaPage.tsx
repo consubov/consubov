@@ -263,15 +263,31 @@ export default function ConferenciaPage() {
 
 
       // 4) responsável (nome) da última salga
+      // Ordem de resolução: 1) capataz por user_id; 2) gerente/admin por user_id;
+      // 3) capataz do retiro; 4) campo texto retiros.capataz. Nunca exibir e-mail.
       let respNome: string | null = null;
       if (ultLanc?.criado_por) {
-        const { data: g } = await supabase.from("gerentes").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
-        if (g?.nome) respNome = g.nome;
+        const { data: c } = await supabase.from("capatazes").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
+        if (c?.nome) respNome = c.nome;
+        if (!respNome) {
+          const { data: g } = await supabase.from("gerentes").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
+          if (g?.nome) respNome = g.nome;
+        }
         if (!respNome) {
           const { data: a } = await supabase.from("administradores").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
-          respNome = a?.nome ?? null;
+          if (a?.nome) respNome = a.nome;
         }
       }
+      if (!respNome && retiro?.id) {
+        const { data: cRet } = await supabase.from("capatazes").select("nome").eq("retiro_id", retiro.id).maybeSingle();
+        if (cRet?.nome) {
+          respNome = cRet.nome;
+        } else {
+          const { data: r } = await supabase.from("retiros").select("capataz").eq("id", retiro.id).maybeSingle();
+          if (r?.capataz && !r.capataz.includes("@")) respNome = r.capataz;
+        }
+      }
+      if (!respNome || respNome.includes("@")) respNome = null;
 
       // 5) últimas movimentações
       const { data: ultMov } = await supabase
