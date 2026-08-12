@@ -254,14 +254,11 @@ export default function ConferenciaPage() {
         .limit(1)
         .maybeSingle();
 
-      // 3b) consumo/status — fonte única: view_painel_mae_pasto (Consumo Global)
-      const agora = new Date();
+      // 3b) consumo/status — fonte única: view_painel_mae_pasto_atual (Consumo Global, sem filtro de mês)
       const { data: maePasto } = await supabase
-        .from("view_painel_mae_pasto")
+        .from("view_painel_mae_pasto_atual")
         .select("consumo_global_g_cab_dia, status_global")
         .eq("pasto_id", pasto.id)
-        .eq("mes_referencia", agora.getMonth() + 1)
-        .eq("ano_referencia", agora.getFullYear())
         .maybeSingle();
 
 
