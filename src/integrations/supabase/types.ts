@@ -6089,6 +6089,7 @@ export type Database = {
           retiro_id: string | null
           status_global: string | null
           status_real: string | null
+          ultima_salga_real_em: string | null
         }
         Relationships: [
           {

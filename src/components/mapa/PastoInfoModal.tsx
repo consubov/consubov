@@ -48,7 +48,7 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
             <InfoItem icon={Beef} label="Animais" value={String(pasto.num_animais)} />
             <InfoItem
               icon={Droplets}
-              label="Consumo médio"
+              label="Consumo global"
               value={pasto.consumo_medio != null ? `${fmtNum(pasto.consumo_medio, 1)} g` : "—"}
             />
             <InfoItem
