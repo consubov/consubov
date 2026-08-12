@@ -648,7 +648,7 @@ export default function GerenteDashboard() {
           onOpenChange={setRelatorioOpen}
           fazendaId={roleData.fazendaId}
           fazendaNome={fazendaNome}
-          geradoPor={user?.user_metadata?.nome || user?.email?.split('@')[0] || gerenteNome}
+          geradoPor={nomeGerentePdf || gerenteNome}
         />
       )}
     </div>

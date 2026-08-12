@@ -153,7 +153,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     setSubmitting(true);
     try {
       const totalSacos = filled.reduce((s, e) => s + e.sacos, 0);
-      const capatazNome = user.user_metadata?.nome || user.email?.split("@")[0] || "Capataz";
+      const capatazNome = nomeCapataz;
 
       const { data: solIns, error: solErr } = await (supabase as any)
         .from("solicitacoes_lancamento_manual")

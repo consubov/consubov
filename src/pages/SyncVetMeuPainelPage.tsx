@@ -218,7 +218,7 @@ export default function SyncVetMeuPainelPage() {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const nome = vetNome || user?.email?.split("@")[0] || "";
+  const nome = vetNome || "";
 
   return (
     <div className="space-y-4">

@@ -103,7 +103,8 @@ export default function FabricaDashboard() {
     }
   }
 
-  const nomeOperador = useMemo(() => operador?.nome ?? user?.email ?? "Operador", [operador, user]);
+  const nomeOperadorPapel = useNomeUsuario(["operadores_fabrica"], "Operador");
+  const nomeOperador = useMemo(() => operador?.nome ?? nomeOperadorPapel, [operador, nomeOperadorPapel]);
 
   if (loading) {
     return (

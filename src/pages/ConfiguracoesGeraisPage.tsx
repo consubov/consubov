@@ -219,7 +219,7 @@ export default function ConfiguracoesGeraisPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    const userName = user?.email || "admin";
+    const userName = nomeAdmin;
     try {
       for (const c of configs) {
         const edit = edits[c.id];
