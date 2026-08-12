@@ -152,7 +152,7 @@ export default function ExportarRelatorioModal({
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("view_consumo_tempo_real" as any)
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia, origem")
           .in("pasto_id", pastoIds);
 
         if (periodoSelecionado === "mensal") {
@@ -218,6 +218,9 @@ export default function ExportarRelatorioModal({
         const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
+        // Animais considerados no custo: apenas pastos com lançamento no período
+        // (mesmo universo do numerador de sacos).
+        const animaisNoPeriodo = pastosNoPeriodo.reduce((sum, p) => sum + (Number(p.num_animais) || 0), 0);
 
         // Consumo Médio (Consumo Real): fonte única = RPC get_painel_mae
         // (ponderado por cab-dias). Fallback local só fora do período mensal.
@@ -228,8 +231,16 @@ export default function ExportarRelatorioModal({
         const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
-        const custoTotal = sacosUtilizados * pesoSacoKg * precoKg;
-        const custoDiario = totalAnimais > 0 && numDias > 0 ? custoTotal / numDias / totalAnimais : 0;
+        // Custo por pasto: usa o produto do próprio pasto quando existir,
+        // caindo para o produto do retiro.
+        const custoTotal = pastosNoPeriodo.reduce((sum, p) => {
+          const pProd = produtosMap[(p as any).produto_id || (ret.produto_id ?? "")] ?? prod;
+          const pPeso = pProd?.peso_saco_kg ?? pesoSacoKg;
+          const pPreco = pProd?.preco_por_kg ?? precoKg;
+          const pSacos = rLanc.filter(l => l.pasto_id === p.id).reduce((a, l) => a + (l.num_sacos || 0), 0);
+          return sum + pSacos * pPeso * pPreco;
+        }, 0);
+        const custoDiario = animaisNoPeriodo > 0 && numDias > 0 ? custoTotal / numDias / animaisNoPeriodo : 0;
 
         // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
         // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
@@ -297,6 +308,7 @@ export default function ExportarRelatorioModal({
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
             diasConsiderados,
+            origemQr: pLanc.some(l => (l as any).origem === "qr"),
           };
         });
 
@@ -344,6 +356,7 @@ export default function ExportarRelatorioModal({
           pastos: pastoReport,
           consumoIdeal: Math.round(consumoIdeal),
           consumoMaximo: Math.round(consumoMaximo),
+          intervaloPadraoDias: diasIntervalo,
         };
       });
 

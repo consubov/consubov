@@ -36,6 +36,7 @@ export interface PastoReportData {
   pesoAbateMetaKg: number;
   categoria?: string;
   diasConsiderados?: number;
+  origemQr?: boolean;
 }
 
 export interface RetiroReportData {
@@ -64,6 +65,7 @@ export interface RetiroReportData {
   pastos: PastoReportData[];
   consumoIdeal?: number;
   consumoMaximo?: number;
+  intervaloPadraoDias?: number;
 }
 
 // ---------- Styles ----------
@@ -530,6 +532,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const sortedPastos = [...r.pastos].sort((a, b) => b.consumoGCabDia - a.consumoGCabDia);
   const baixo = r.pastos.filter(p => p.status === "Baixo");
   const alto = r.pastos.filter(p => p.status === "Alto");
+  const limiteDias = r.intervaloPadraoDias != null ? r.intervaloPadraoDias + 1 : null;
 
   const cols = [
     { label: "Pasto", width: "18%" },
@@ -555,7 +558,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
         <View style={s.card}><Text style={s.cardLabel}>Consumo</Text><Text style={s.cardValue}>{fmtNum(r.consumoMedio, 1)}</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Peso Médio</Text><Text style={s.cardValue}>{r.pesoMedioKg ? fmtNum(r.pesoMedioKg, 1) : "—"}</Text></View>
         <View style={s.card}><Text style={s.cardLabel}>Eficiência</Text><Text style={s.cardValue}>{fmtNum(r.eficiencia, 0)}%</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Custo R$/cab</Text><Text style={s.cardValue}>{fmtNum(r.custoDiario, 2)}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}>Custo R$/cab/dia</Text><Text style={s.cardValue}>{fmtNum(r.custoDiario, 2)}</Text></View>
       </View>
 
       {baixo.length > 0 && (
@@ -580,19 +583,24 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           const stReal = p.statusReal ?? p.status;
           const scReal = statusColor(stReal);
           const consumoReal = p.consumoRealGCabDia ?? p.consumoGCabDia;
+          const diasExcedido = limiteDias != null && p.diasConsiderados != null && p.diasConsiderados > limiteDias;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-              <Text style={[s.tableCell, { width: cols[0].width }]}>{p.nome}</Text>
+              <Text style={[s.tableCell, { width: cols[0].width }]}>{p.origemQr ? `\u2713 ${p.nome}` : p.nome}</Text>
               <Text style={[s.tableCell, { width: cols[1].width }]}>{p.numAnimais}</Text>
               <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
               <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
               <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(consumoReal, 1)}</Text>
               <Text style={[s.tableCell, { width: cols[5].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { width: cols[6].width }, diasExcedido ? { color: "#C62828", fontFamily: "Helvetica-Bold" } : {}]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
             </View>
           );
         })}
       </View>
+      <Text style={{ fontSize: 6, color: "#888", marginTop: 2 }}>
+        {"\u2713 = lançado via QR Code"}
+        {limiteDias != null ? ` · Dias Cons. em vermelho = acima do intervalo padrão (${limiteDias} dias)` : ""}
+      </Text>
     </View>
   );
 }
