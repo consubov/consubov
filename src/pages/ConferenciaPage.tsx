@@ -248,11 +248,22 @@ export default function ConferenciaPage() {
       // 3) último lançamento (salga) do pasto
       const { data: ultLanc } = await supabase
         .from("lancamentos")
-        .select("data_salga_informada, created_at, consumo_g_cab_dia, status_consumo, criado_por, mes_referencia, ano_referencia")
+        .select("data_salga_informada, created_at, criado_por, mes_referencia, ano_referencia")
         .eq("pasto_id", pasto.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // 3b) consumo/status — fonte única: view_painel_mae_pasto (Consumo Global)
+      const agora = new Date();
+      const { data: maePasto } = await supabase
+        .from("view_painel_mae_pasto")
+        .select("consumo_global_g_cab_dia, status_global")
+        .eq("pasto_id", pasto.id)
+        .eq("mes_referencia", agora.getMonth() + 1)
+        .eq("ano_referencia", agora.getFullYear())
+        .maybeSingle();
+
 
       // 4) responsável (nome) da última salga
       let respNome: string | null = null;
