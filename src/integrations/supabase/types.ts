@@ -6071,6 +6071,49 @@ export type Database = {
           },
         ]
       }
+      view_painel_mae_pasto_atual: {
+        Row: {
+          ano_referencia: number | null
+          cab_dias_global: number | null
+          cab_dias_real: number | null
+          consumo_global_g_cab_dia: number | null
+          consumo_real_g_cab_dia: number | null
+          eficiencia_pasto: number | null
+          fazenda_id: string | null
+          indice_global: number | null
+          indice_real: number | null
+          mes_referencia: number | null
+          num_animais: number | null
+          pasto_id: string | null
+          peso_medio_kg: number | null
+          retiro_id: string | null
+          status_global: string | null
+          status_real: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_manuais_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       ensure_ciclo: {
