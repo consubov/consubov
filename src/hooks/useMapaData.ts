@@ -12,12 +12,13 @@ export interface PastoMapaData {
   peso_medio_kg: number | null;
   categoria: string | null;
   sexo: string | null;
-  consumo_medio: number | null;
-  status_consumo: string | null;
+  consumo_medio: number | null; // consumo global g/cab/dia
+  status_consumo: string | null; // status global
   ultima_movimentacao: string | null;
-  ultima_salga: string | null;
+  ultima_salga: string | null; // ultima_salga_real_em
   data_fim_carencia: string | null;
 }
+
 
 export interface LinhaMapaData {
   id: string;
