@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +104,8 @@ export default function FabricaDashboard() {
     }
   }
 
-  const nomeOperador = useMemo(() => operador?.nome ?? user?.email ?? "Operador", [operador, user]);
+  const nomeOperadorPapel = useNomeUsuario(["operadores_fabrica"], "Operador");
+  const nomeOperador = useMemo(() => operador?.nome ?? nomeOperadorPapel, [operador, nomeOperadorPapel]);
 
   if (loading) {
     return (

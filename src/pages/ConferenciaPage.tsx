@@ -155,7 +155,7 @@ export default function ConferenciaPage() {
         visitaId: visita.id,
         modo: "conferencia",
         fazenda: { nome_fazenda: registros[0]?.fazenda_nome || "Conferência" },
-        consultor: { nome: responsavelNome || user?.email || "Administrador" },
+        consultor: { nome: responsavelNome || "Administrador" },
         hora_inicio: visita.hora_inicio,
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,

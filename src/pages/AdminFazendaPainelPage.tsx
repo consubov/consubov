@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import { usePainelData } from "@/hooks/usePainelData";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useAbatesData } from "@/hooks/useAbatesData";
@@ -46,6 +47,7 @@ export default function AdminFazendaPainelPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const nomeAdmin = useNomeUsuario(["administradores"], "Administrador");
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -207,7 +209,7 @@ export default function AdminFazendaPainelPage() {
         onOpenChange={setRelatorioOpen}
         fazendaId={fazendaId!}
         fazendaNome={fazendaNome}
-        geradoPor={user?.user_metadata?.nome || user?.email?.split('@')[0] || "Administrador"}
+        geradoPor={nomeAdmin}
         initialMes={mes}
         initialAno={ano}
       />

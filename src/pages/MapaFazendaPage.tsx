@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useMapaData } from "@/hooks/useMapaData";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
 import MonthScroller from "@/components/MonthScroller";
@@ -32,7 +33,8 @@ export default function MapaFazendaPage() {
   const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
   const navigate = useNavigate();
   const { role, user } = useAuth();
-  const userName = (user?.user_metadata as any)?.nome || user?.email || "";
+  const nomePapel = useNomeUsuario(["administradores", "gerentes", "capatazes"], "");
+  const userName = (user?.user_metadata as any)?.nome || nomePapel || "";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 
   const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);

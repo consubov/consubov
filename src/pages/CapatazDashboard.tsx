@@ -251,7 +251,7 @@ export default function CapatazDashboard() {
   const [lancManualOpen, setLancManualOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const [userName, setUserName] = useState(user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Capataz');
+  const [userName, setUserName] = useState<string>(user?.user_metadata?.nome && !String(user.user_metadata.nome).includes('@') ? user.user_metadata.nome : 'Capataz');
 
   // Fetch real name from capatazes table
   useEffect(() => {
@@ -264,9 +264,8 @@ export default function CapatazDashboard() {
       .maybeSingle()
       .then(({ data }) => {
         if (data?.nome) setUserName(data.nome);
-        else if (user.email) setUserName(user.email.split('@')[0]);
       });
-  }, [backgroundBootReady, user?.id, user?.email]);
+  }, [backgroundBootReady, user?.id]);
 
   const { pendingCount: pesagemPendingCount, syncing: pesagemSyncing, refreshCount: refreshPesagemCount } = useOfflinePesagemSync(() => {
     loadLocalData();
