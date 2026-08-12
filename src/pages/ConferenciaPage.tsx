@@ -300,7 +300,7 @@ export default function ConferenciaPage() {
 
       // 7) histórico rápido (5 últimos eventos combinados)
       const [lancHist, mortHist, movHist] = await Promise.all([
-        supabase.from("lancamentos").select("created_at, num_sacos, data_salga_informada").eq("pasto_id", pasto.id).order("created_at", { ascending: false }).limit(5),
+        supabase.from("lancamentos").select("created_at, num_sacos, data_salga_informada, cocho_cheio").eq("pasto_id", pasto.id).order("created_at", { ascending: false }).limit(5),
         supabase.from("mortalidades").select("created_at, data, quantidade").eq("pasto_id", pasto.id).order("created_at", { ascending: false }).limit(5),
         supabase.from("movimentacoes_animais").select("created_at, data, quantidade, pasto_origem_id, pasto_destino_id").or(`pasto_origem_id.eq.${pasto.id},pasto_destino_id.eq.${pasto.id}`).order("created_at", { ascending: false }).limit(5),
       ]);
@@ -309,7 +309,7 @@ export default function ConferenciaPage() {
       lancHist.data?.forEach((l: any) => historico.push({
         tipo: "salga",
         data: l.data_salga_informada ?? l.created_at,
-        descricao: `${l.num_sacos ?? 0} saco(s)`,
+        descricao: l.cocho_cheio ? "C (cheio)" : `${l.num_sacos ?? 0} saco(s)`,
       }));
       mortHist.data?.forEach((m: any) => historico.push({
         tipo: "morte",
