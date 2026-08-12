@@ -12,6 +12,7 @@ import { Loader2, Save, Plus, RotateCcw, History, FlaskConical, AlertTriangle, C
 import { Switch } from "@/components/ui/switch";
 import { APP_VERSION } from "@/lib/appVersion";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 
 
 interface Configuracao {
@@ -119,6 +120,7 @@ function testFormula(formula: string): { result: number | null; error?: string }
 
 export default function ConfiguracoesGeraisPage() {
   const { user } = useAuth();
+  const nomeAdmin = useNomeUsuario(["administradores"], "admin");
   const [configs, setConfigs] = useState<Configuracao[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

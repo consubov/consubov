@@ -20,6 +20,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Landmark, Map, FileDown, BarC
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 
 type Fazenda = Tables<"fazendas">;
@@ -41,6 +42,7 @@ export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const nomeAdmin = useNomeUsuario(["administradores", "gerentes"], "Administrador");
   const [fazenda, setFazenda] = useState<Fazenda | null>(null);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [retiros, setRetiros] = useState<Retiro[]>([]);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import { supabase } from "@/integrations/supabase/client";
 import { usePainelData } from "@/hooks/usePainelData";
 import { usePainelMae } from "@/hooks/usePainelMae";
@@ -47,6 +48,7 @@ export default function AdminRetiroPainelPage() {
   const navigate = useNavigate();
   const { user, role, roleData } = useAuth();
   const isGerente = role === "gerente";
+  const nomeGeradoPor = useNomeUsuario(isGerente ? ["gerentes"] : ["administradores"], isGerente ? "Gerente" : "Administrador");
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

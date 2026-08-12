@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
@@ -79,6 +80,7 @@ function scoreColor(score: number) {
 
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
+  const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 

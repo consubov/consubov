@@ -10,6 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Loader2, Send, Clock, CheckCircle2, XCircle, CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import { toast } from "sonner";
 import { sendPushToAll } from "@/lib/pushService";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ type PastoEntry = { sacos: string; data: Date };
 
 export default function LancamentoManualModal({ open, onOpenChange, pastos, retiroId, fazendaId }: Props) {
   const { user } = useAuth();
+  const nomeCapataz = useNomeUsuario(["capatazes"], "Capataz");
   const [tab, setTab] = useState<"novo" | "historico">("novo");
   const [dataGeral, setDataGeral] = useState<Date>(() => new Date());
   const [entries, setEntries] = useState<Record<string, PastoEntry>>({});
