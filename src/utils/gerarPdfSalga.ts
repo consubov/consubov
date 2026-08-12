@@ -8,6 +8,8 @@ export interface PastoSalgaRow {
   sacosUtilizados: number;
   /** Number of "cocho cheio" launches (no salga) in the period */
   cochoCheio?: number;
+  /** True when at least one launch in the period came from a QR Code scan */
+  origemQr?: boolean;
   /** Optional consumption status: ABAIXO | IDEAL | ACIMA */
   status?: "ABAIXO" | "IDEAL" | "ACIMA" | string;
 }
@@ -114,7 +116,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
 
   const tableBody = data.pastos.map((p) => {
     const base = [
-      p.nome,
+      p.origemQr ? `\u2713 ${p.nome}` : p.nome,
       String(p.numAnimais),
       `${p.pesoMedioKg.toFixed(1)}`,
       fmtSacos(p),
@@ -184,7 +186,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.setFont("helvetica", "normal");
-      doc.text("Gerado por: Consubov", margin, pageHeight - 8);
+      doc.text("Gerado por: Consubov  |  \u2713 = lancado via QR Code", margin, pageHeight - 8);
       doc.text(nowFormatted(), pageWidth - margin, pageHeight - 8, { align: "right" });
     },
   });
