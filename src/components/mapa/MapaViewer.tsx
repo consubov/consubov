@@ -311,12 +311,12 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
 
   function getStatusColor(status: string | null | undefined, numAnimais: number) {
-    if (!status || numAnimais <= 0) return "hsl(0 0% 55%)";
+    if (!status || numAnimais <= 0) return "#9E9E9E";
     const s = status.toLowerCase();
-    if (s.includes("alto")) return "hsl(0 75% 50%)";
-    if (s.includes("ideal")) return "hsl(140 65% 40%)";
-    if (s.includes("baix")) return "hsl(45 95% 50%)";
-    return "hsl(0 0% 55%)";
+    if (s.includes("alto")) return "#E53935";
+    if (s.includes("ideal")) return "#43A047";
+    if (s.includes("baix")) return "#FDD835";
+    return "#9E9E9E";
   }
 
   function getFillColor(pasto: PastoMapaData) {
@@ -328,7 +328,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   function getFillOpacity(pastoId: string) {
     if (selectedPastoId === pastoId) return 0.75;
     if (selectingDestino && highlightDestinos && pastoId !== selectedPastoId) return 0.6;
-    return 0.4;
+    return 0.8;
   }
 
   function getStrokeWidth(pastoId: string) {
