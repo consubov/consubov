@@ -317,25 +317,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const detectedRole = await detectRole(currentSession.user.id);
-          const effectiveRole = detectedRole.role
-            ? detectedRole
-            : cachedCapatazRole && typeof navigator !== "undefined" && !navigator.onLine
-              ? cachedCapatazRole
-              : detectedRole;
+          const { roleData: detectedRole, queryFailed } = await detectRole(currentSession.user.id);
 
-          cacheCapatazRole(currentSession.user.id, effectiveRole);
-          if (!cancelled) {
-            setRoleData(effectiveRole);
-            setRoleResolved(true);
+          if (detectedRole.role) {
+            // Perfil encontrado.
+            cacheCapatazRole(currentSession.user.id, detectedRole);
+            if (!cancelled) {
+              setRoleData(detectedRole);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else if (!queryFailed) {
+            // Consultamos com sucesso as 9 tabelas e realmente não há perfil.
+            if (!cancelled) {
+              setRoleData(emptyRoleData);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else if (cachedCapatazRole) {
+            // Falha de consulta (rede/401/RLS) — usa o cache mesmo online.
+            console.warn("[useAuth] detectRole falhou; usando role em cache.");
+            if (!cancelled) {
+              setRoleData(cachedCapatazRole);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else {
+            // Falha de consulta e sem cache: NÃO declarar "sem perfil".
+            console.warn("[useAuth] detectRole falhou e não há cache; mantendo loading.");
+            if (!cancelled) {
+              setRoleData(emptyRoleData);
+              setRoleResolved(false);
+              setLoading(true);
+            }
           }
         } catch (e) {
           console.error("Error detecting role:", e);
           if (!cancelled) {
-            setRoleData(cachedCapatazRole ?? emptyRoleData);
-            setRoleResolved(true);
+            if (cachedCapatazRole) {
+              setRoleData(cachedCapatazRole);
+              setRoleResolved(true);
+              setLoading(false);
+            } else {
+              setRoleResolved(false);
+              setLoading(true);
+            }
           }
         }
+        return;
       } else {
         setRoleData(emptyRoleData);
         setRoleResolved(true);
@@ -343,6 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void clearAuthSession();
       }
       if (!cancelled) setLoading(false);
+
     }
 
     // 1. Set up listener FIRST
