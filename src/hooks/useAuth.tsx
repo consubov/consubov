@@ -133,12 +133,19 @@ function deferNonCritical(task: () => void) {
   run();
 }
 
-async function detectRole(userId: string): Promise<RoleData> {
+interface DetectRoleResult {
+  roleData: RoleData;
+  /** true quando ALGUMA consulta falhou (rede, 401, RLS, timeout). */
+  queryFailed: boolean;
+}
+
+async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   // Cada checagem é isolada: se uma tabela falhar (erro de rede, resposta
   // inesperada, permissão), NÃO interrompemos a cadeia — apenas registramos
-  // e seguimos para a próxima. Isso garante que um perfil válido em uma
-  // tabela mais abaixo (ex.: pecuaristas) não fique invisível por causa
-  // de um erro transitório numa tabela anterior.
+  // e seguimos para a próxima. Mas agora marcamos `queryFailed` para que o
+  // chamador saiba distinguir "não achei perfil" de "não consegui consultar".
+  let queryFailed = false;
+
   const probe = async <T,>(
     label: string,
     runner: () => Promise<{ data: T | null; error: unknown }>,
@@ -147,14 +154,19 @@ async function detectRole(userId: string): Promise<RoleData> {
       const { data, error } = await runner();
       if (error) {
         console.warn(`[detectRole] ${label} falhou:`, error);
+        queryFailed = true;
         return null;
       }
       return data;
     } catch (e) {
       console.warn(`[detectRole] ${label} exceção:`, e);
+      queryFailed = true;
       return null;
     }
   };
+
+  const found = (roleData: RoleData): DetectRoleResult => ({ roleData, queryFailed: false });
+
 
   // SyncVet team member
   const syncvetMember = await probe<{ id: string; empresa_id: string; perfil: string }>(
@@ -163,14 +175,14 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (syncvetMember) {
-    return {
+    return found({
       role: "syncvet",
       roleId: syncvetMember.id,
       fazendaId: null,
       retiroId: null,
       syncvetEmpresaId: syncvetMember.empresa_id,
       syncvetPerfil: syncvetMember.perfil,
-    };
+    });
   }
 
   // Consultor
@@ -180,7 +192,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (consultor) {
-    return { role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id };
+    return found({ role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id });
   }
 
   // Pesador
@@ -190,7 +202,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).maybeSingle() as any,
   );
   if (pesador) {
-    return { role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null };
+    return found({ role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null });
   }
 
   // Pecuarista
@@ -200,7 +212,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).maybeSingle() as any,
   );
   if (pecuarista) {
-    return { role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null };
+    return found({ role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null });
   }
 
   // Operador de fábrica
@@ -210,7 +222,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (operador) {
-    return { role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id };
+    return found({ role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id });
   }
 
   // Capataz
@@ -220,7 +232,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (capataz) {
-    return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
+    return found({ role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id });
   }
 
   // Gerente
@@ -230,7 +242,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (gerente) {
-    return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
+    return found({ role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null });
   }
 
   // Escritório
@@ -240,7 +252,7 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (escritorio) {
-    return { role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null };
+    return found({ role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null });
   }
 
   // Administrador
@@ -250,10 +262,23 @@ async function detectRole(userId: string): Promise<RoleData> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (admin) {
-    return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
+    return found({ role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null });
   }
 
-  return emptyRoleData;
+  return { roleData: emptyRoleData, queryFailed };
+}
+
+/** Executa detectRoleOnce com retry/backoff enquanto houver falha de consulta. */
+async function detectRole(userId: string, attempts = 3): Promise<DetectRoleResult> {
+  let last: DetectRoleResult = { roleData: emptyRoleData, queryFailed: true };
+  for (let i = 0; i < attempts; i++) {
+    last = await detectRoleOnce(userId);
+    if (last.roleData.role || !last.queryFailed) return last;
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, 600 * Math.pow(2, i)));
+    }
+  }
+  return last;
 }
 
 
@@ -264,6 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roleResolved, setRoleResolved] = useState(false);
   const initializedRef = useRef(false);
+  // true enquanto a detecção de perfil falhou por erro de consulta (sem cache).
+  const roleUnresolvedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,25 +319,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const detectedRole = await detectRole(currentSession.user.id);
-          const effectiveRole = detectedRole.role
-            ? detectedRole
-            : cachedCapatazRole && typeof navigator !== "undefined" && !navigator.onLine
-              ? cachedCapatazRole
-              : detectedRole;
+          const { roleData: detectedRole, queryFailed } = await detectRole(currentSession.user.id);
 
-          cacheCapatazRole(currentSession.user.id, effectiveRole);
-          if (!cancelled) {
-            setRoleData(effectiveRole);
-            setRoleResolved(true);
+          if (detectedRole.role) {
+            // Perfil encontrado.
+            cacheCapatazRole(currentSession.user.id, detectedRole);
+            if (!cancelled) {
+              roleUnresolvedRef.current = false;
+              setRoleData(detectedRole);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else if (!queryFailed) {
+            // Consultamos com sucesso as 9 tabelas e realmente não há perfil.
+            if (!cancelled) {
+              roleUnresolvedRef.current = false;
+              setRoleData(emptyRoleData);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else if (cachedCapatazRole) {
+            // Falha de consulta (rede/401/RLS) — usa o cache mesmo online.
+            console.warn("[useAuth] detectRole falhou; usando role em cache.");
+            if (!cancelled) {
+              roleUnresolvedRef.current = false;
+              setRoleData(cachedCapatazRole);
+              setRoleResolved(true);
+              setLoading(false);
+            }
+          } else {
+            // Falha de consulta e sem cache: NÃO declarar "sem perfil".
+            console.warn("[useAuth] detectRole falhou e não há cache; mantendo loading.");
+            if (!cancelled) {
+              roleUnresolvedRef.current = true;
+              setRoleData(emptyRoleData);
+              setRoleResolved(false);
+              setLoading(true);
+              // Continua tentando em background até conseguir consultar.
+              window.setTimeout(() => {
+                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+              }, 8000);
+            }
           }
         } catch (e) {
           console.error("Error detecting role:", e);
           if (!cancelled) {
-            setRoleData(cachedCapatazRole ?? emptyRoleData);
-            setRoleResolved(true);
+            if (cachedCapatazRole) {
+              roleUnresolvedRef.current = false;
+              setRoleData(cachedCapatazRole);
+              setRoleResolved(true);
+              setLoading(false);
+            } else {
+              roleUnresolvedRef.current = true;
+              setRoleResolved(false);
+              setLoading(true);
+              window.setTimeout(() => {
+                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+              }, 8000);
+            }
           }
         }
+        return;
       } else {
         setRoleData(emptyRoleData);
         setRoleResolved(true);
@@ -318,6 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void clearAuthSession();
       }
       if (!cancelled) setLoading(false);
+
     }
 
     // 1. Set up listener FIRST
@@ -406,10 +476,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    // Safety timeout
+    // Safety timeout — nunca libera a UI enquanto a detecção de perfil estiver
+    // pendente por falha de consulta (evita renderizar rotas com role vazia).
     const timeout = setTimeout(() => {
-      if (!cancelled) setLoading(false);
-    }, 5000);
+      if (!cancelled && !roleUnresolvedRef.current) setLoading(false);
+    }, 15000);
 
     return () => {
       cancelled = true;
