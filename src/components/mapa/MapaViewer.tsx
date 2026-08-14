@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { useMemo, useRef } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
-import satelliteBg from "@/assets/mapa-satelite-bg.jpg";
 
 
 interface Props {
