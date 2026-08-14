@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { useMemo, useRef } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
-import satelliteBg from "@/assets/mapa-satelite-bg.jpg";
 
 
 interface Props {
@@ -244,9 +243,6 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
       <svg className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet" style={{ background: MAP_COLORS.background }}>
 
-        {/* Fixed decorative satellite background */}
-        <image href={satelliteBg} x={viewBoxX} y={viewBoxY} width={viewBoxWidth} height={viewBoxHeight}
-          preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
 
         {/* Independent lines (rendered behind polygons) */}
         {(mapa.linhas ?? []).map((linha) => (
