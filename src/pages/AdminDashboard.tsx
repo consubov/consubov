@@ -118,18 +118,18 @@ export default function AdminDashboard() {
             key={c.title}
             className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer flex flex-col"
           >
-            <CardHeader className="pb-1 pt-4 px-4">
+            <CardHeader className="pb-0 pt-3 px-3">
               <div className="flex items-start gap-2">
-                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
-                  <c.icon className="w-4 h-4" />
+                <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
+                  <c.icon className="w-3.5 h-3.5" />
                 </div>
-                <CardTitle className="text-sm font-semibold text-foreground leading-tight">{c.title}</CardTitle>
+                <CardTitle className="text-xs font-semibold text-foreground leading-tight">{c.title}</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="px-4 pb-2">
-              <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
+            <CardContent className="px-3 pb-1">
+              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{c.description}</p>
             </CardContent>
-            <CardFooter className="pt-0 pb-4 px-4 mt-auto">
+            <CardFooter className="pt-0 pb-3 px-3 mt-auto">
               <Button
                 variant="ghost"
                 size="sm"
