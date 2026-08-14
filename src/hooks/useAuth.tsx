@@ -355,6 +355,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRoleData(emptyRoleData);
               setRoleResolved(false);
               setLoading(true);
+              // Continua tentando em background até conseguir consultar.
+              window.setTimeout(() => {
+                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+              }, 8000);
             }
           }
         } catch (e) {
@@ -369,6 +373,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               roleUnresolvedRef.current = true;
               setRoleResolved(false);
               setLoading(true);
+              window.setTimeout(() => {
+                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+              }, 8000);
             }
           }
         }
