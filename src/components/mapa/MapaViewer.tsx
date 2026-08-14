@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useMemo, useRef } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
+import satelliteBg from "@/assets/mapa-satelite-bg.jpg";
+
 
 interface Props {
   mapa: MapaData;
@@ -206,15 +208,30 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
 
   const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
 
-  function getFillColor(pastoId: string) {
-    if (selectedPastoId === pastoId) return "hsl(120 60% 90%)";
-    if (selectingDestino && highlightDestinos && pastoId !== selectedPastoId) return "hsl(200 60% 95%)";
-    return MAP_COLORS.background;
+  function getStatusColor(status: string | null | undefined, numAnimais: number) {
+    if (!status || numAnimais <= 0) return "hsl(0 0% 55%)";
+    const s = status.toLowerCase();
+    if (s.includes("alto")) return "hsl(0 75% 50%)";
+    if (s.includes("ideal")) return "hsl(140 65% 40%)";
+    if (s.includes("baix")) return "hsl(45 95% 50%)";
+    return "hsl(0 0% 55%)";
+  }
+
+  function getFillColor(pasto: PastoMapaData) {
+    if (selectedPastoId === pasto.pasto_id) return "hsl(120 60% 90%)";
+    if (selectingDestino && highlightDestinos && pasto.pasto_id !== selectedPastoId) return "hsl(200 60% 95%)";
+    return getStatusColor(pasto.status_consumo, pasto.num_animais);
+  }
+
+  function getFillOpacity(pastoId: string) {
+    if (selectedPastoId === pastoId) return 0.75;
+    if (selectingDestino && highlightDestinos && pastoId !== selectedPastoId) return 0.6;
+    return 0.4;
   }
 
   function getStrokeWidth(pastoId: string) {
-    if (selectedPastoId === pastoId) return 3.5;
-    return 2;
+    if (selectedPastoId === pastoId) return 1.5;
+    return 0.6;
   }
 
   return (
@@ -226,6 +243,10 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
       )}
       <svg className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet" style={{ background: MAP_COLORS.background }}>
+
+        {/* Fixed decorative satellite background */}
+        <image href={satelliteBg} x={viewBoxX} y={viewBoxY} width={viewBoxWidth} height={viewBoxHeight}
+          preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: "none" }} />
 
         {/* Independent lines (rendered behind polygons) */}
         {(mapa.linhas ?? []).map((linha) => (
@@ -240,16 +261,19 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
           let currentY = layout.centerY - totalTextHeight / 2;
           return (
             <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
-              <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto.pasto_id)}
-                stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : (pasto.cor || MAP_COLORS.line)}
+              <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto)}
+                fillOpacity={getFillOpacity(pasto.pasto_id)}
+                stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : "hsl(0 0% 100% / 0.6)"}
                 strokeWidth={getStrokeWidth(pasto.pasto_id)} />
+
               {layout.lines.map((line, index) => {
                 const y = currentY + line.fontSize;
                 currentY += line.fontSize * 1.08;
                 return (
                   <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
                     textAnchor="middle" fill={MAP_COLORS.text} fontSize={line.fontSize} fontWeight={line.fontWeight}
-                    style={{ pointerEvents: "none", userSelect: "none" }}>
+                    stroke="hsl(0 0% 100%)" strokeWidth={line.fontSize * 0.16} strokeLinejoin="round"
+                    style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }}>
                     {line.text}
                   </text>
                 );
