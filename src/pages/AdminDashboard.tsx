@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, UserPlus, Factory, FunctionSquare } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, Factory, ScanLine, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CriarAdminModal from "@/components/admin/CriarAdminModal";
 import AdminListSection from "@/components/admin/AdminListSection";
 
@@ -21,9 +21,10 @@ interface Stats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0, fabricas: 0 });
   const [loading, setLoading] = useState(true);
-  const [showCriarAdmin, setShowCriarAdmin] = useState(false);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const showCriarAdmin = searchParams.get("criar-admin") === "1";
 
   useEffect(() => {
     async function load() {
@@ -75,43 +76,71 @@ export default function AdminDashboard() {
     { label: "Fábricas", value: stats.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
   ];
 
+  const actionCards = [
+    {
+      title: "Inteligência Nutricional",
+      description: "Acompanhe o consumo e desempenho do seu rebanho.",
+      icon: Brain,
+      to: "/admin/inteligencia",
+      iconBg: "bg-primary",
+      iconColor: "text-primary-foreground",
+      buttonClass: "text-primary hover:bg-primary/10",
+    },
+    {
+      title: "Conferência",
+      description: "Escaneie QR Codes e valide informações em campo.",
+      icon: ScanLine,
+      to: "/conferencia",
+      iconBg: "bg-primary/20",
+      iconColor: "text-primary",
+      buttonClass: "text-primary hover:bg-primary/10",
+    },
+    {
+      title: "Gerar QR Codes",
+      description: "Gere QR Codes para pastos, retiros e locais.",
+      icon: QrCode,
+      to: "/admin/qrcodes",
+      iconBg: "bg-secondary",
+      iconColor: "text-secondary-foreground",
+      buttonClass: "text-secondary hover:bg-secondary/10",
+    },
+  ];
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
-        <div className="flex gap-2 flex-wrap justify-end">
-          <Button
-            onClick={() => setShowCriarAdmin(true)}
-            variant="outline"
-            className="font-semibold"
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {actionCards.map((c) => (
+          <Card
+            key={c.title}
+            className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer flex flex-col"
           >
-            <UserPlus className="w-5 h-5 mr-2" />
-            Criar Administrador
-          </Button>
-          <Button
-            onClick={() => navigate("/admin/inteligencia")}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
-          >
-            <Brain className="w-5 h-5 mr-2" />
-            Inteligência Nutricional
-          </Button>
-          <div className="flex flex-col gap-2">
-            <Button
-              onClick={() => navigate("/admin/qrcodes")}
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
-            >
-              <QrCode className="w-5 h-5 mr-2" />
-              Gerar QR Codes
-            </Button>
-            <Button
-              onClick={() => navigate("/admin/formulas-sistema")}
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold shadow-md w-full"
-            >
-              <FunctionSquare className="w-5 h-5 mr-2" />
-              Fórmulas do Sistema
-            </Button>
-          </div>
-        </div>
+            <CardHeader className="pb-2 pt-6 px-6">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
+                  <c.icon className="w-7 h-7" />
+                </div>
+                <CardTitle className="text-lg font-semibold text-foreground">{c.title}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-2 text-center">
+              <p className="text-sm text-muted-foreground">{c.description}</p>
+            </CardContent>
+            <CardFooter className="pt-2 pb-6 px-6 mt-auto">
+              <Button
+                variant="ghost"
+                className={`w-full font-semibold ${c.buttonClass}`}
+                onClick={() => navigate(c.to)}
+              >
+                Acessar
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
 
       {loading ? (
@@ -146,7 +175,7 @@ export default function AdminDashboard() {
 
       <CriarAdminModal
         open={showCriarAdmin}
-        onOpenChange={setShowCriarAdmin}
+        onOpenChange={(open) => { if (!open) navigate("/admin", { replace: true }); }}
         onCreated={() => setAdminRefreshKey((k) => k + 1)}
       />
     </div>

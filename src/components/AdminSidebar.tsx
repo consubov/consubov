@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale, Sparkles } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale, Sparkles, UserPlus, FunctionSquare } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -36,6 +36,7 @@ const menuItems = [
   { title: "Fábrica", url: "/admin/fabricas", icon: Factory },
   { title: "Consultores", url: "/admin/consultores", icon: Stethoscope },
   { title: "Pesadores", url: "/admin/pesadores", icon: Scale },
+  { title: "Fórmulas do Sistema", url: "/admin/formulas-sistema", icon: FunctionSquare },
 ];
 
 export function AdminSidebar() {
@@ -43,6 +44,7 @@ export function AdminSidebar() {
   const { user } = useAuth();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const [showSyncvetOnboarding, setShowSyncvetOnboarding] = useState(false);
 
   useEffect(() => {
@@ -67,6 +69,11 @@ export function AdminSidebar() {
   const handleNavClick = () => {
     setOpenMobile(false);
     setOpen(false);
+  };
+
+  const handleCriarAdmin = () => {
+    handleNavClick();
+    navigate("/admin?criar-admin=1");
   };
 
   return (
@@ -101,6 +108,15 @@ export function AdminSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleCriarAdmin}
+                  className="justify-start gap-3 px-3 py-2 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <UserPlus className="w-5 h-5 shrink-0" />
+                  <span>Criar Administrador</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
