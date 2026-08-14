@@ -367,7 +367,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
           const totalTextHeight = layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
           let currentY = layout.centerY - totalTextHeight / 2;
           return (
-            <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
+            <g key={pasto.id} className="cursor-pointer" onClick={() => handlePastoClick(pasto)}>
               <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto)}
                 fillOpacity={getFillOpacity(pasto.pasto_id)}
                 stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : "hsl(0 0% 100% / 0.6)"}
