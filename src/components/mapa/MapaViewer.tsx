@@ -272,7 +272,8 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
                 return (
                   <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
                     textAnchor="middle" fill={MAP_COLORS.text} fontSize={line.fontSize} fontWeight={line.fontWeight}
-                    style={{ pointerEvents: "none", userSelect: "none" }}>
+                    stroke="hsl(0 0% 100%)" strokeWidth={line.fontSize * 0.16} strokeLinejoin="round"
+                    style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }}>
                     {line.text}
                   </text>
                 );
