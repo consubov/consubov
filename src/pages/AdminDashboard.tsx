@@ -112,31 +112,32 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {actionCards.map((c) => (
           <Card
             key={c.title}
             className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer flex flex-col"
           >
-            <CardHeader className="pb-2 pt-6 px-6">
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
-                  <c.icon className="w-7 h-7" />
+            <CardHeader className="pb-1 pt-4 px-4">
+              <div className="flex items-start gap-2">
+                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
+                  <c.icon className="w-4 h-4" />
                 </div>
-                <CardTitle className="text-lg font-semibold text-foreground">{c.title}</CardTitle>
+                <CardTitle className="text-sm font-semibold text-foreground leading-tight">{c.title}</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="px-6 pb-2 text-center">
-              <p className="text-sm text-muted-foreground">{c.description}</p>
+            <CardContent className="px-4 pb-2">
+              <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
             </CardContent>
-            <CardFooter className="pt-2 pb-6 px-6 mt-auto">
+            <CardFooter className="pt-0 pb-4 px-4 mt-auto">
               <Button
                 variant="ghost"
-                className={`w-full font-semibold ${c.buttonClass}`}
+                size="sm"
+                className={`w-full h-auto py-1 px-2 text-xs font-semibold justify-between ${c.buttonClass}`}
                 onClick={() => navigate(c.to)}
               >
                 Acessar
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-3 h-3" />
               </Button>
             </CardFooter>
           </Card>
