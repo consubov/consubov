@@ -175,14 +175,14 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (syncvetMember) {
-    return {
+    return found({
       role: "syncvet",
       roleId: syncvetMember.id,
       fazendaId: null,
       retiroId: null,
       syncvetEmpresaId: syncvetMember.empresa_id,
       syncvetPerfil: syncvetMember.perfil,
-    };
+    });
   }
 
   // Consultor
@@ -192,7 +192,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (consultor) {
-    return { role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id };
+    return found({ role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id });
   }
 
   // Pesador
@@ -202,7 +202,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).maybeSingle() as any,
   );
   if (pesador) {
-    return { role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null };
+    return found({ role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null });
   }
 
   // Pecuarista
@@ -212,7 +212,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).maybeSingle() as any,
   );
   if (pecuarista) {
-    return { role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null };
+    return found({ role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null });
   }
 
   // Operador de fábrica
@@ -222,7 +222,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (operador) {
-    return { role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id };
+    return found({ role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id });
   }
 
   // Capataz
@@ -232,7 +232,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (capataz) {
-    return { role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id };
+    return found({ role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id });
   }
 
   // Gerente
@@ -242,7 +242,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (gerente) {
-    return { role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null };
+    return found({ role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null });
   }
 
   // Escritório
@@ -252,7 +252,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (escritorio) {
-    return { role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null };
+    return found({ role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null });
   }
 
   // Administrador
@@ -262,10 +262,23 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
       .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
   );
   if (admin) {
-    return { role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null };
+    return found({ role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null });
   }
 
-  return emptyRoleData;
+  return { roleData: emptyRoleData, queryFailed };
+}
+
+/** Executa detectRoleOnce com retry/backoff enquanto houver falha de consulta. */
+async function detectRole(userId: string, attempts = 3): Promise<DetectRoleResult> {
+  let last: DetectRoleResult = { roleData: emptyRoleData, queryFailed: true };
+  for (let i = 0; i < attempts; i++) {
+    last = await detectRoleOnce(userId);
+    if (last.roleData.role || !last.queryFailed) return last;
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, 600 * Math.pow(2, i)));
+    }
+  }
+  return last;
 }
 
 
