@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
@@ -228,7 +229,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
 
       let diasSemSalga: number | null = null;
       if (r.ultima_salga_em) {
-        diasSemSalga = Math.floor((now.getTime() - new Date(r.ultima_salga_em).getTime()) / 86400000);
+        diasSemSalga = diasCalendarioSP(r.ultima_salga_em, now);
       }
 
       // Build per-pasto consumption map from lancamentos (all values from DB)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ScanLine, Loader2, FileText } from "lucide-react";
@@ -26,8 +27,9 @@ type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "vis
 
 function diasEntre(iso: string | null): number | null {
   if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+  const dias = diasCalendarioSP(iso);
+  if (dias === null) return null;
+  return Math.max(0, dias);
 }
 
 function extractQrUuid(raw: string): string | null {

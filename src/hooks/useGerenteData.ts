@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
@@ -295,7 +296,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       const ultimaSalga = r.ultima_salga_em;
       let diasSemSalga: number | null = null;
       if (ultimaSalga) {
-        diasSemSalga = Math.floor((now.getTime() - new Date(ultimaSalga).getTime()) / 86400000);
+        diasSemSalga = diasCalendarioSP(ultimaSalga, now);
       }
 
       const horaAtual = now.getHours();
@@ -334,7 +335,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       let intScore = 0;
       if (dates.length >= 2) {
         const intervals: number[] = [];
-        for (let i = 1; i < dates.length; i++) intervals.push((dates[i] - dates[i - 1]) / 86400000);
+        for (let i = 1; i < dates.length; i++) intervals.push(diasCalendarioSP(dates[i - 1], dates[i]) ?? 0);
         const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
         intScore = avg <= 4 ? 2.5 : Math.max(0, 2.5 - (avg - 4) * 0.25);
       }
