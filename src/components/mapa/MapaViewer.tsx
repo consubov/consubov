@@ -414,4 +414,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
         </button>
       )}
     </div>
+  );
+}
+
 
