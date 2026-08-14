@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
 
 
