@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
@@ -150,7 +151,7 @@ function calcDinamicoPasto(
   if (!pasto.data_entrada) {
     return { dias: pasto.dias_no_pasto, pesoAtual: pasto.peso_medio_kg };
   }
-  const dias = Math.max(0, Math.floor((Date.now() - new Date(pasto.data_entrada).getTime()) / 86400000));
+  const dias = Math.max(0, diasCalendarioSP(pasto.data_entrada) ?? 0);
 
   const pesoEntrada = pasto.peso_entrada ?? pasto.peso_medio_kg;
   if (pesoEntrada == null) {
@@ -942,7 +943,7 @@ export default function CapatazDashboard() {
 
               if (dataAnterior) {
                 const dataAtual = new Date(l.data);
-                dias_intervalo = Math.round((dataAtual.getTime() - dataAnterior.getTime()) / 86400000);
+                dias_intervalo = diasCalendarioSP(dataAnterior, dataAtual) ?? 0;
 
                 if (dias_intervalo <= 0) {
                   status_consumo = 'ERRO';
@@ -1071,7 +1072,7 @@ export default function CapatazDashboard() {
         if (cicloParaFechar?.data_inicio) {
           const inicio = new Date(cicloParaFechar.data_inicio);
           const fim = new Date(dataFim);
-          duracaoDias = Math.max(1, Math.round((fim.getTime() - inicio.getTime()) / 86400000));
+          duracaoDias = Math.max(1, diasCalendarioSP(inicio, fim) ?? 1);
           numDiasReal = duracaoDias;
         } else if (cicloParaFechar && fazendaId) {
           const { data: lancDoCiclo } = await supabase.from("lancamentos")

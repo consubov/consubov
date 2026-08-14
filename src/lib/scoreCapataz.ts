@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 
 /**
  * Score do Capataz — lê pesos das 4 fórmulas em `formulas_sistema`
@@ -138,7 +139,7 @@ export function computeAtrasoMedioSalga(
     if (times.length < 2) continue;
     times.sort((a, b) => a - b);
     const gaps: number[] = [];
-    for (let i = 1; i < times.length; i++) gaps.push((times[i] - times[i - 1]) / 86400000);
+    for (let i = 1; i < times.length; i++) gaps.push(diasCalendarioSP(times[i - 1], times[i]) ?? 0);
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
     atrasos.push(Math.max(0, avgGap - diasIntervalo));
   }
