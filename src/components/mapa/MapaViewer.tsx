@@ -404,7 +404,14 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
             )}
           </g>
         ))}
+        </g>
       </svg>
+      {view.z > 1 && (
+        <button type="button"
+          onClick={() => setView({ z: 1, x: 0, y: 0 })}
+          className="absolute bottom-2 right-2 rounded-md border bg-background/90 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm">
+          Resetar zoom
+        </button>
+      )}
     </div>
-  );
-}
+
