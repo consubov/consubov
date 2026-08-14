@@ -133,12 +133,19 @@ function deferNonCritical(task: () => void) {
   run();
 }
 
-async function detectRole(userId: string): Promise<RoleData> {
+interface DetectRoleResult {
+  roleData: RoleData;
+  /** true quando ALGUMA consulta falhou (rede, 401, RLS, timeout). */
+  queryFailed: boolean;
+}
+
+async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   // Cada checagem é isolada: se uma tabela falhar (erro de rede, resposta
   // inesperada, permissão), NÃO interrompemos a cadeia — apenas registramos
-  // e seguimos para a próxima. Isso garante que um perfil válido em uma
-  // tabela mais abaixo (ex.: pecuaristas) não fique invisível por causa
-  // de um erro transitório numa tabela anterior.
+  // e seguimos para a próxima. Mas agora marcamos `queryFailed` para que o
+  // chamador saiba distinguir "não achei perfil" de "não consegui consultar".
+  let queryFailed = false;
+
   const probe = async <T,>(
     label: string,
     runner: () => Promise<{ data: T | null; error: unknown }>,
@@ -147,14 +154,19 @@ async function detectRole(userId: string): Promise<RoleData> {
       const { data, error } = await runner();
       if (error) {
         console.warn(`[detectRole] ${label} falhou:`, error);
+        queryFailed = true;
         return null;
       }
       return data;
     } catch (e) {
       console.warn(`[detectRole] ${label} exceção:`, e);
+      queryFailed = true;
       return null;
     }
   };
+
+  const found = (roleData: RoleData): DetectRoleResult => ({ roleData, queryFailed: false });
+
 
   // SyncVet team member
   const syncvetMember = await probe<{ id: string; empresa_id: string; perfil: string }>(
