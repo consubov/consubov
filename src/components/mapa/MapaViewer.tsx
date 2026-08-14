@@ -343,8 +343,16 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
           🎯 Clique no pasto de destino
         </div>
       )}
-      <svg className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
-        preserveAspectRatio="xMidYMid meet" style={{ background: MAP_COLORS.background }}>
+      <svg ref={svgRef} className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
+        preserveAspectRatio="xMidYMid meet"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+        onPointerLeave={endPointer}
+        style={{ background: MAP_COLORS.background, touchAction: "none", cursor: view.z > 1 ? "grab" : "default" }}>
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
+
 
 
         {/* Independent lines (rendered behind polygons) */}
