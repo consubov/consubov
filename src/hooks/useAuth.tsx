@@ -289,6 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roleResolved, setRoleResolved] = useState(false);
   const initializedRef = useRef(false);
+  // true enquanto a detecção de perfil falhou por erro de consulta (sem cache).
+  const roleUnresolvedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Perfil encontrado.
             cacheCapatazRole(currentSession.user.id, detectedRole);
             if (!cancelled) {
+              roleUnresolvedRef.current = false;
               setRoleData(detectedRole);
               setRoleResolved(true);
               setLoading(false);
@@ -330,6 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else if (!queryFailed) {
             // Consultamos com sucesso as 9 tabelas e realmente não há perfil.
             if (!cancelled) {
+              roleUnresolvedRef.current = false;
               setRoleData(emptyRoleData);
               setRoleResolved(true);
               setLoading(false);
@@ -338,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Falha de consulta (rede/401/RLS) — usa o cache mesmo online.
             console.warn("[useAuth] detectRole falhou; usando role em cache.");
             if (!cancelled) {
+              roleUnresolvedRef.current = false;
               setRoleData(cachedCapatazRole);
               setRoleResolved(true);
               setLoading(false);
@@ -346,6 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Falha de consulta e sem cache: NÃO declarar "sem perfil".
             console.warn("[useAuth] detectRole falhou e não há cache; mantendo loading.");
             if (!cancelled) {
+              roleUnresolvedRef.current = true;
               setRoleData(emptyRoleData);
               setRoleResolved(false);
               setLoading(true);
@@ -355,10 +361,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Error detecting role:", e);
           if (!cancelled) {
             if (cachedCapatazRole) {
+              roleUnresolvedRef.current = false;
               setRoleData(cachedCapatazRole);
               setRoleResolved(true);
               setLoading(false);
             } else {
+              roleUnresolvedRef.current = true;
               setRoleResolved(false);
               setLoading(true);
             }
@@ -461,10 +469,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    // Safety timeout
+    // Safety timeout — nunca libera a UI enquanto a detecção de perfil estiver
+    // pendente por falha de consulta (evita renderizar rotas com role vazia).
     const timeout = setTimeout(() => {
-      if (!cancelled) setLoading(false);
-    }, 5000);
+      if (!cancelled && !roleUnresolvedRef.current) setLoading(false);
+    }, 15000);
 
     return () => {
       cancelled = true;
