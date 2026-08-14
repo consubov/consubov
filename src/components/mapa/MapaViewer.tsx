@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
 
 
@@ -179,6 +179,108 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
 
 export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [view, setView] = useState({ z: 1, x: 0, y: 0 });
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const dragRef = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  const MIN_Z = 1;
+  const MAX_Z = 5;
+
+  // Convert client coords to SVG user coords (before our zoom transform)
+  const toSvgPoint = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = svg.createSVGPoint();
+    p.x = clientX;
+    p.y = clientY;
+    const r = p.matrixTransform(ctm.inverse());
+    return { x: r.x, y: r.y };
+  };
+
+  const zoomAt = (clientX: number, clientY: number, factor: number) => {
+    const { x: px, y: py } = toSvgPoint(clientX, clientY);
+    setView((v) => {
+      const next = Math.min(MAX_Z, Math.max(MIN_Z, v.z * factor));
+      const k = next / v.z;
+      if (next === v.z) return v;
+      return { z: next, x: px - (px - v.x) * k, y: py - (py - v.y) * k };
+    });
+  };
+
+  const zoomAtRef = useRef(zoomAt);
+  zoomAtRef.current = zoomAt;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      zoomAtRef.current(e.clientX, e.clientY, Math.exp(-dy * 0.0018));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      const [a, b] = Array.from(pointersRef.current.values());
+      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+      dragRef.current = null;
+      return;
+    }
+    const v = viewRef.current;
+    dragRef.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: v.x, oy: v.y, moved: false };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const [a, b] = Array.from(pointersRef.current.values());
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const cx = (a.x + b.x) / 2;
+      const cy = (a.y + b.y) / 2;
+      if (pinchRef.current.dist > 0) {
+        zoomAtRef.current(cx, cy, dist / pinchRef.current.dist);
+        suppressClickRef.current = true;
+      }
+      pinchRef.current = { dist, cx, cy };
+      return;
+    }
+
+    const drag = dragRef.current;
+    if (!drag || drag.id !== e.pointerId) return;
+    const dxScreen = e.clientX - drag.sx;
+    const dyScreen = e.clientY - drag.sy;
+    if (!drag.moved && Math.hypot(dxScreen, dyScreen) < 4) return;
+    drag.moved = true;
+    suppressClickRef.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    const p0 = toSvgPoint(drag.sx, drag.sy);
+    const p1 = toSvgPoint(e.clientX, e.clientY);
+    setView((v) => ({ ...v, x: drag.ox + (p1.x - p0.x), y: drag.oy + (p1.y - p0.y) }));
+  };
+
+  const endPointer = (e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (dragRef.current?.id === e.pointerId) dragRef.current = null;
+    setTimeout(() => { suppressClickRef.current = false; }, 0);
+  };
+
+  const handlePastoClick = (pasto: PastoMapaData) => {
+    if (suppressClickRef.current) return;
+    onPastoClick(pasto);
+  };
 
   const allCoords = [
     ...mapa.pastos.flatMap((p) => p.coordenadas),
@@ -194,6 +296,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   if (allCoords.length === 0) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Nenhum pasto desenhado no mapa.</div>;
   }
+
 
   const minX = Math.min(...allCoords.map(([x]) => x));
   const minY = Math.min(...allCoords.map(([, y]) => y));
@@ -240,8 +343,16 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
           🎯 Clique no pasto de destino
         </div>
       )}
-      <svg className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
-        preserveAspectRatio="xMidYMid meet" style={{ background: MAP_COLORS.background }}>
+      <svg ref={svgRef} className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
+        preserveAspectRatio="xMidYMid meet"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+        onPointerLeave={endPointer}
+        style={{ background: MAP_COLORS.background, touchAction: "none", cursor: view.z > 1 ? "grab" : "default" }}>
+        <g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
+
 
 
         {/* Independent lines (rendered behind polygons) */}
@@ -256,7 +367,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
           const totalTextHeight = layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
           let currentY = layout.centerY - totalTextHeight / 2;
           return (
-            <g key={pasto.id} className="cursor-pointer" onClick={() => onPastoClick(pasto)}>
+            <g key={pasto.id} className="cursor-pointer" onClick={() => handlePastoClick(pasto)}>
               <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto)}
                 fillOpacity={getFillOpacity(pasto.pasto_id)}
                 stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : "hsl(0 0% 100% / 0.6)"}
@@ -293,7 +404,17 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
             )}
           </g>
         ))}
+        </g>
       </svg>
+      {view.z > 1 && (
+        <button type="button"
+          onClick={() => setView({ z: 1, x: 0, y: 0 })}
+          className="absolute bottom-2 right-2 rounded-md border bg-background/90 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm">
+          Resetar zoom
+        </button>
+      )}
     </div>
   );
 }
+
+
