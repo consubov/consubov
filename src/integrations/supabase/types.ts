@@ -6295,6 +6295,10 @@ export type Database = {
         Returns: string
       }
       ensure_ciclo_atual: { Args: { p_fazenda_id: string }; Returns: string }
+      ensure_ciclo_retiro: {
+        Args: { p_ano?: number; p_mes?: number; p_retiro_id: string }
+        Returns: string
+      }
       get_consultor_id: { Args: { _user_id: string }; Returns: string }
       get_consumo_mineral: {
         Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
@@ -6358,6 +6362,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      resolver_ocupacao_ativa: {
+        Args: {
+          p_categoria: string
+          p_num_animais: number
+          p_pasto_id: string
+          p_peso_medio_kg: number
+        }
+        Returns: string
       }
       send_push_async: {
         Args: {

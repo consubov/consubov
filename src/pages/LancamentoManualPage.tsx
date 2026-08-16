@@ -211,9 +211,9 @@ export default function LancamentoManualPage() {
 
     setSaving(true);
     try {
-      // Ensure ciclo exists for selected month/year
-      const { data: cicloIdResult, error: cicloErr } = await supabase.rpc("ensure_ciclo", {
-        p_fazenda_id: fazendaId,
+      // Ensure ciclo exists for selected month/year (per-retiro cycle)
+      const { data: cicloIdResult, error: cicloErr } = await supabase.rpc("ensure_ciclo_retiro", {
+        p_retiro_id: retiroId,
         p_mes: mes,
         p_ano: ano,
       });
