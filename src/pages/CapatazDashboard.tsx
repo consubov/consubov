@@ -770,7 +770,7 @@ export default function CapatazDashboard() {
     // Compute suggestion
     const pasto = pastos.find(p => p.id === pastoId);
     if (pasto && produtoAtivo && fazendaCache) {
-      const { pesoAtual } = calcDinamicoPasto(pasto, retiro);
+      const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
       const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
       const categoria = pasto.categoria || 'Engorda';
       const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
@@ -921,7 +921,7 @@ export default function CapatazDashboard() {
           produto_id_final = pasto.produto_id || retiroProdutoId;
 
           // Use dynamic peso_atual for consumption calculation
-          const { pesoAtual: pesoAtualCalc } = calcDinamicoPasto(pasto, retiro);
+          const { pesoAtual: pesoAtualCalc } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
           const pesoParaConsumo = pesoAtualCalc ?? Number(pasto.peso_medio_kg) ?? 0;
 
           if (produto_id_final && pasto.num_animais > 0 && pesoParaConsumo > 0) {
@@ -1009,7 +1009,7 @@ export default function CapatazDashboard() {
           num_sacos: l.sacos,
           num_animais: pasto?.num_animais ?? 0,
           origem: "qr",
-          peso_medio_kg: pasto ? (calcDinamicoPasto(pasto, retiro).pesoAtual ?? pasto.peso_medio_kg ?? null) : null,
+          peso_medio_kg: pasto ? (calcDinamicoPasto(pasto, retiro, selectedCiclo).pesoAtual ?? pasto.peso_medio_kg ?? null) : null,
           dias_no_pasto: dias_intervalo ?? (pasto?.dias_no_pasto ?? 1),
           categoria: pasto?.categoria ?? null,
           sexo: pasto?.sexo ?? null,
@@ -1732,7 +1732,7 @@ export default function CapatazDashboard() {
             <div className="space-y-2">
               {pastos.map((p) => {
                 const cm = consumoMap[p.id];
-                const { dias, pesoAtual } = calcDinamicoPasto(p, retiro);
+                const { dias, pesoAtual } = calcDinamicoPasto(p, retiro, selectedCiclo);
                 return (
                   <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
                     <PastoCard
