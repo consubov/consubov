@@ -1063,6 +1063,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
+        const retiroId = roleData.retiroId;
         // Calcular num_dias real e duracao_dias a partir de data_inicio
         const cicloParaFechar = ciclos.find(c => c.id === fecharPend.ciclo_id);
         let numDiasReal = 30;
@@ -1074,10 +1075,10 @@ export default function CapatazDashboard() {
           const fim = new Date(dataFim);
           duracaoDias = Math.max(1, diasCalendarioSP(inicio, fim) ?? 1);
           numDiasReal = duracaoDias;
-        } else if (cicloParaFechar && fazendaId) {
+        } else if (cicloParaFechar && retiroId) {
           const { data: lancDoCiclo } = await supabase.from("lancamentos")
             .select("dias_no_pasto")
-            .eq("fazenda_id", fazendaId)
+            .eq("retiro_id", retiroId)
             .eq("mes_referencia", cicloParaFechar.mes)
             .eq("ano_referencia", cicloParaFechar.ano);
           if (lancDoCiclo && lancDoCiclo.length > 0) {
@@ -1094,28 +1095,11 @@ export default function CapatazDashboard() {
         } as any).eq("id", fecharPend.ciclo_id);
         if (errFechar) throw errFechar;
 
-        const cicloFechado = ciclos.find(c => c.id === fecharPend.ciclo_id);
-        if (cicloFechado && fazendaId) {
-          let nextMes = cicloFechado.mes + 1;
-          let nextAno = cicloFechado.ano;
-          if (nextMes > 12) { nextMes = 1; nextAno++; }
-
-          const { data: existente } = await supabase.from("ciclos")
-            .select("id")
-            .eq("fazenda_id", fazendaId)
-            .eq("mes", nextMes)
-            .eq("ano", nextAno)
-            .maybeSingle();
-
-          if (!existente) {
-            await supabase.from("ciclos").insert({
-              fazenda_id: fazendaId,
-              mes: nextMes,
-              ano: nextAno,
-              num_dias: 30,
-              fechado: false,
-            });
-          }
+        if (cicloParaFechar && retiroId) {
+          const { error: errProximo } = await supabase.rpc("ensure_ciclo_retiro", {
+            p_retiro_id: retiroId,
+          });
+          if (errProximo) throw errProximo;
         }
 
         await clearFecharMes();
@@ -1128,6 +1112,7 @@ export default function CapatazDashboard() {
         console.warn("[sync] Falha ao fechar mês, continuando:", errorMsg);
       }
     }
+
 
     const remaining = await getLancamentosPendentes();
     setPendingCount(remaining.length);
