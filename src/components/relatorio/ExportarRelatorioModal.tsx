@@ -296,7 +296,16 @@ export default function ExportarRelatorioModal({
 
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);
-          const diasConsiderados = lastP ? Number(lastP.dias_no_pasto ?? 0) : 0;
+          const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
+          let diasConsiderados = 0;
+          if (lastCiclo) {
+            if (lastCiclo.fechado) {
+              diasConsiderados = Number(lastCiclo.duracao_dias ?? 0);
+            } else {
+              const dataInicio = lastCiclo.data_inicio ?? new Date(lastCiclo.ano, lastCiclo.mes - 1, 1).toISOString();
+              diasConsiderados = Math.max(0, diasCalendarioSP(dataInicio) ?? 0);
+            }
+          }
 
           // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
           const vp = painelPastoByPastoId[p.id];
