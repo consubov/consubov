@@ -535,14 +535,18 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const limiteDias = r.intervaloPadraoDias != null ? r.intervaloPadraoDias + 1 : null;
 
   const cols = [
-    { label: "Pasto", width: "18%" },
-    { label: "Animais", width: "11%" },
-    { label: "Peso Médio (kg)", width: "15%" },
-    { label: "Sacos", width: "10%" },
-    { label: "Consumo Real", width: "16%" },
-    { label: "Status Real", width: "16%" },
-    { label: "Dias Cons.", width: "14%" },
+    { label: "Pasto", width: "14%" },
+    { label: "Categoria", width: "11%" },
+    { label: "Animais", width: "8%" },
+    { label: "Peso Médio (kg)", width: "10%" },
+    { label: "Consumo/100kg", width: "11%" },
+    { label: "Peso Saco (kg)", width: "10%" },
+    { label: "Sacos", width: "7%" },
+    { label: "Dias Cons.", width: "9%" },
+    { label: "Consumo Real", width: "10%" },
+    { label: "Status Real", width: "10%" },
   ];
+
 
   return (
     <View>
