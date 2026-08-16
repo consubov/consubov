@@ -206,6 +206,8 @@ export default function ExportarRelatorioModal({
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
         ...pastos.map(p => p.produto_id).filter(Boolean),
+        ...Object.values(ocupacaoProdutoByPasto),
+
       ])] as string[];
       const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
       if (produtoIds.length > 0) {
