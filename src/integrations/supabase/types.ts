@@ -773,6 +773,7 @@ export type Database = {
           id: string
           mes: number
           num_dias: number
+          retiro_id: string | null
         }
         Insert: {
           ano: number
@@ -786,6 +787,7 @@ export type Database = {
           id?: string
           mes: number
           num_dias?: number
+          retiro_id?: string | null
         }
         Update: {
           ano?: number
@@ -799,6 +801,7 @@ export type Database = {
           id?: string
           mes?: number
           num_dias?: number
+          retiro_id?: string | null
         }
         Relationships: [
           {
@@ -806,6 +809,13 @@ export type Database = {
             columns: ["fazenda_id"]
             isOneToOne: false
             referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclos_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
             referencedColumns: ["id"]
           },
         ]
@@ -2016,6 +2026,7 @@ export type Database = {
           aprovado_por: string | null
           categoria: string | null
           ciclo_id: string | null
+          ciclo_id_legado: string | null
           cocho_cheio: boolean
           consumo_g_cab_dia: number | null
           created_at: string
@@ -2031,6 +2042,7 @@ export type Database = {
           num_animais: number
           num_sacos: number
           observacao: string | null
+          ocupacao_id: string | null
           origem: string
           pasto_id: string
           peso_medio_kg: number | null
@@ -2045,6 +2057,7 @@ export type Database = {
           aprovado_por?: string | null
           categoria?: string | null
           ciclo_id?: string | null
+          ciclo_id_legado?: string | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
@@ -2060,6 +2073,7 @@ export type Database = {
           num_animais?: number
           num_sacos?: number
           observacao?: string | null
+          ocupacao_id?: string | null
           origem?: string
           pasto_id: string
           peso_medio_kg?: number | null
@@ -2074,6 +2088,7 @@ export type Database = {
           aprovado_por?: string | null
           categoria?: string | null
           ciclo_id?: string | null
+          ciclo_id_legado?: string | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
@@ -2089,6 +2104,7 @@ export type Database = {
           num_animais?: number
           num_sacos?: number
           observacao?: string | null
+          ocupacao_id?: string | null
           origem?: string
           pasto_id?: string
           peso_medio_kg?: number | null
@@ -2124,6 +2140,13 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_ocupacao_id_fkey"
+            columns: ["ocupacao_id"]
+            isOneToOne: false
+            referencedRelation: "ocupacoes_pasto"
             referencedColumns: ["id"]
           },
         ]
@@ -2325,6 +2348,70 @@ export type Database = {
             columns: ["mapa_id"]
             isOneToOne: false
             referencedRelation: "mapas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lotes: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          criado_em: string
+          encerrado_em: string | null
+          fazenda_id: string
+          id: string
+          num_animais: number | null
+          origem: string
+          pasto_id: string | null
+          peso_medio_kg: number | null
+          retiro_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          criado_em?: string
+          encerrado_em?: string | null
+          fazenda_id: string
+          id?: string
+          num_animais?: number | null
+          origem?: string
+          pasto_id?: string | null
+          peso_medio_kg?: number | null
+          retiro_id: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          criado_em?: string
+          encerrado_em?: string | null
+          fazenda_id?: string
+          id?: string
+          num_animais?: number | null
+          origem?: string
+          pasto_id?: string | null
+          peso_medio_kg?: number | null
+          retiro_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lotes_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lotes_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lotes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
             referencedColumns: ["id"]
           },
         ]
@@ -2702,6 +2789,91 @@ export type Database = {
           },
           {
             foreignKeyName: "observacoes_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ocupacoes_pasto: {
+        Row: {
+          ciclo_id: string | null
+          criado_em: string
+          data_entrada: string
+          data_saida: string | null
+          fazenda_id: string
+          id: string
+          lote_id: string
+          num_animais_entrada: number | null
+          pasto_id: string
+          produto_id: string | null
+          retiro_id: string
+        }
+        Insert: {
+          ciclo_id?: string | null
+          criado_em?: string
+          data_entrada: string
+          data_saida?: string | null
+          fazenda_id: string
+          id?: string
+          lote_id: string
+          num_animais_entrada?: number | null
+          pasto_id: string
+          produto_id?: string | null
+          retiro_id: string
+        }
+        Update: {
+          ciclo_id?: string | null
+          criado_em?: string
+          data_entrada?: string
+          data_saida?: string | null
+          fazenda_id?: string
+          id?: string
+          lote_id?: string
+          num_animais_entrada?: number | null
+          pasto_id?: string
+          produto_id?: string | null
+          retiro_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocupacoes_pasto_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocupacoes_pasto_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocupacoes_pasto_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocupacoes_pasto_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocupacoes_pasto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocupacoes_pasto_retiro_id_fkey"
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
