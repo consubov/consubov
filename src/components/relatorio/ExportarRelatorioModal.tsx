@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, classificarCategoria, getConsumoPorCategoria } from "@/lib/consumoCalc";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
@@ -157,6 +157,22 @@ export default function ExportarRelatorioModal({
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
 
+      // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
+      const ocupacaoProdutoByPasto: Record<string, string> = {};
+      if (pastoIds.length > 0) {
+        const { data: ocupData } = await supabase.from("ocupacoes_pasto")
+          .select("pasto_id, produto_id, data_entrada, data_saida")
+          .in("pasto_id", pastoIds)
+          .is("data_saida", null)
+          .order("data_entrada", { ascending: false });
+        for (const o of (ocupData ?? [])) {
+          if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
+            ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
+          }
+        }
+      }
+
+
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("view_consumo_tempo_real" as any)
@@ -190,6 +206,8 @@ export default function ExportarRelatorioModal({
       const produtoIds = [...new Set([
         ...retirosData.map(r => r.produto_id).filter(Boolean),
         ...pastos.map(p => p.produto_id).filter(Boolean),
+        ...Object.values(ocupacaoProdutoByPasto),
+
       ])] as string[];
       const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
       if (produtoIds.length > 0) {
@@ -312,6 +330,13 @@ export default function ExportarRelatorioModal({
           const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
           const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
 
+          // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
+          const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
+          const pProd = produtosMap[pProdId] ?? prod;
+          const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
+          const pesoSacoPasto = pProd?.peso_saco_kg ?? pesoSacoKg;
+
+
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
@@ -325,6 +350,9 @@ export default function ExportarRelatorioModal({
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
             diasConsiderados,
+            consumoPor100kg,
+            pesoSacoKg: pesoSacoPasto,
+
             origemQr: pLanc.some(l => (l as any).origem === "qr"),
           };
         });

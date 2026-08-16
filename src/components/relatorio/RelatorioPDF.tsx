@@ -36,6 +36,9 @@ export interface PastoReportData {
   pesoAbateMetaKg: number;
   categoria?: string;
   diasConsiderados?: number;
+  consumoPor100kg?: number;
+  pesoSacoKg?: number;
+
   origemQr?: boolean;
 }
 
@@ -535,14 +538,18 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   const limiteDias = r.intervaloPadraoDias != null ? r.intervaloPadraoDias + 1 : null;
 
   const cols = [
-    { label: "Pasto", width: "18%" },
-    { label: "Animais", width: "11%" },
-    { label: "Peso Médio (kg)", width: "15%" },
-    { label: "Sacos", width: "10%" },
-    { label: "Consumo Real", width: "16%" },
-    { label: "Status Real", width: "16%" },
-    { label: "Dias Cons.", width: "14%" },
+    { label: "Pasto", width: "14%" },
+    { label: "Categoria", width: "11%" },
+    { label: "Animais", width: "8%" },
+    { label: "Peso Médio (kg)", width: "10%" },
+    { label: "Consumo/100kg", width: "11%" },
+    { label: "Peso Saco (kg)", width: "10%" },
+    { label: "Sacos", width: "7%" },
+    { label: "Dias Cons.", width: "9%" },
+    { label: "Consumo Real", width: "10%" },
+    { label: "Status Real", width: "10%" },
   ];
+
 
   return (
     <View>
@@ -577,7 +584,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
 
       <View style={[s.table, { marginTop: 2 }]}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 6 }]}>{c.label}</Text>)}
         </View>
         {sortedPastos.map((p, i) => {
           const stReal = p.statusReal ?? p.status;
@@ -586,17 +593,21 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           const diasExcedido = limiteDias != null && p.diasConsiderados != null && p.diasConsiderados > limiteDias;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-              <Text style={[s.tableCell, { width: cols[0].width }]}>{p.origemQr ? `\u2713 ${p.nome}` : p.nome}</Text>
-              <Text style={[s.tableCell, { width: cols[1].width }]}>{p.numAnimais}</Text>
-              <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[3].width }]}>{p.numSacos}</Text>
-              <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(consumoReal, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[5].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width }, diasExcedido ? { color: "#C62828", fontFamily: "Helvetica-Bold" } : {}]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[0].width }]}>{p.origemQr ? `\u2713 ${p.nome}` : p.nome}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[1].width }]}>{p.categoria ?? "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[2].width }]}>{p.numAnimais}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[3].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[4].width }]}>{p.consumoPor100kg ? fmtNum(p.consumoPor100kg, 3) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[5].width }]}>{p.pesoSacoKg ? fmtNum(p.pesoSacoKg, 1) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[6].width }]}>{p.numSacos}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[7].width }, diasExcedido ? { color: "#C62828", fontFamily: "Helvetica-Bold" } : {}]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[8].width }]}>{fmtNum(consumoReal, 1)}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[9].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
             </View>
           );
         })}
       </View>
+
       <Text style={{ fontSize: 6, color: "#888", marginTop: 2 }}>
         {"\u2713 = lançado via QR Code"}
         {limiteDias != null ? ` · Dias Cons. em vermelho = acima do intervalo padrão (${limiteDias} dias)` : ""}
