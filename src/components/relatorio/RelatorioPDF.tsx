@@ -36,6 +36,9 @@ export interface PastoReportData {
   pesoAbateMetaKg: number;
   categoria?: string;
   diasConsiderados?: number;
+  consumoPor100kg?: number;
+  pesoSacoKg?: number;
+
   origemQr?: boolean;
 }
 
