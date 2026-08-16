@@ -350,6 +350,9 @@ export default function ExportarRelatorioModal({
             pesoAbateMetaKg: Number(p.peso_abate_meta_kg ?? 500),
             categoria: cat,
             diasConsiderados,
+            consumoPor100kg,
+            pesoSacoKg: pesoSacoPasto,
+
             origemQr: pLanc.some(l => (l as any).origem === "qr"),
           };
         });
