@@ -584,7 +584,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
 
       <View style={[s.table, { marginTop: 2 }]}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 6 }]}>{c.label}</Text>)}
         </View>
         {sortedPastos.map((p, i) => {
           const stReal = p.statusReal ?? p.status;
@@ -593,16 +593,16 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
           const diasExcedido = limiteDias != null && p.diasConsiderados != null && p.diasConsiderados > limiteDias;
           return (
             <View key={p.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-              <Text style={[s.tableCell, { width: cols[0].width }]}>{p.origemQr ? `\u2713 ${p.nome}` : p.nome}</Text>
-              <Text style={[s.tableCell, { width: cols[1].width }]}>{p.categoria ?? "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[2].width }]}>{p.numAnimais}</Text>
-              <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[4].width }]}>{p.consumoPor100kg ? fmtNum(p.consumoPor100kg, 3) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[5].width }]}>{p.pesoSacoKg ? fmtNum(p.pesoSacoKg, 1) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[6].width }]}>{p.numSacos}</Text>
-              <Text style={[s.tableCell, { width: cols[7].width }, diasExcedido ? { color: "#C62828", fontFamily: "Helvetica-Bold" } : {}]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
-              <Text style={[s.tableCell, { width: cols[8].width }]}>{fmtNum(consumoReal, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[9].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[0].width }]}>{p.origemQr ? `\u2713 ${p.nome}` : p.nome}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[1].width }]}>{p.categoria ?? "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[2].width }]}>{p.numAnimais}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[3].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[4].width }]}>{p.consumoPor100kg ? fmtNum(p.consumoPor100kg, 3) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[5].width }]}>{p.pesoSacoKg ? fmtNum(p.pesoSacoKg, 1) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[6].width }]}>{p.numSacos}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[7].width }, diasExcedido ? { color: "#C62828", fontFamily: "Helvetica-Bold" } : {}]}>{p.diasConsiderados != null ? fmtNum(p.diasConsiderados, 0) : "—"}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[8].width }]}>{fmtNum(consumoReal, 1)}</Text>
+              <Text style={[s.tableCell, { fontSize: 6, width: cols[9].width, color: scReal.color, fontFamily: "Helvetica-Bold" }]}>{stReal}</Text>
             </View>
           );
         })}
