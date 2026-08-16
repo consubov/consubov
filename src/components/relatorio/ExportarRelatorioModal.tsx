@@ -330,6 +330,13 @@ export default function ExportarRelatorioModal({
           const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
           const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
 
+          // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
+          const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
+          const pProd = produtosMap[pProdId] ?? prod;
+          const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
+          const pesoSacoPasto = pProd?.peso_saco_kg ?? pesoSacoKg;
+
+
           return {
             nome: p.nome,
             numAnimais: p.num_animais || 0,
