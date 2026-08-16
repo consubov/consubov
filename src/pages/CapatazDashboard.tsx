@@ -143,15 +143,27 @@ function buildSacosMap(lancamentos: LancamentoOffline[] | undefined | null, cicl
   }, {});
 }
 
-/** Calculate dynamic dias and peso_atual from data_entrada and GMD */
+/** Calculate dynamic dias and peso_atual based on the active cycle (or fallback to cached values). */
 function calcDinamicoPasto(
   pasto: PastoCache,
   retiro: RetiroCache | null,
+  ciclo: CicloCache | null,
 ): { dias: number | null; pesoAtual: number | null } {
-  if (!pasto.data_entrada) {
-    return { dias: pasto.dias_no_pasto, pesoAtual: pasto.peso_medio_kg };
+  let dias: number | null = null;
+  if (ciclo) {
+    if (ciclo.fechado) {
+      dias = ciclo.duracao_dias ?? null;
+    } else {
+      const dataInicio = ciclo.data_inicio ?? new Date(ciclo.ano, ciclo.mes - 1, 1).toISOString();
+      dias = diasCalendarioSP(dataInicio);
+    }
   }
-  const dias = Math.max(0, diasCalendarioSP(pasto.data_entrada) ?? 0);
+  if (dias == null) {
+    dias = pasto.dias_no_pasto;
+  }
+  if (dias == null) {
+    return { dias: null, pesoAtual: pasto.peso_medio_kg };
+  }
 
   const pesoEntrada = pasto.peso_entrada ?? pasto.peso_medio_kg;
   if (pesoEntrada == null) {
