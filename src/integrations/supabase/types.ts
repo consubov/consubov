@@ -2027,6 +2027,7 @@ export type Database = {
           categoria: string | null
           ciclo_id: string | null
           ciclo_id_legado: string | null
+          cobertura_dias_override: number | null
           cocho_cheio: boolean
           consumo_g_cab_dia: number | null
           created_at: string
@@ -2058,6 +2059,7 @@ export type Database = {
           categoria?: string | null
           ciclo_id?: string | null
           ciclo_id_legado?: string | null
+          cobertura_dias_override?: number | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
@@ -2089,6 +2091,7 @@ export type Database = {
           categoria?: string | null
           ciclo_id?: string | null
           ciclo_id_legado?: string | null
+          cobertura_dias_override?: number | null
           cocho_cheio?: boolean
           consumo_g_cab_dia?: number | null
           created_at?: string
@@ -6200,6 +6203,62 @@ export type Database = {
           },
         ]
       }
+      view_lancamento_consumo_real: {
+        Row: {
+          ano_referencia: number | null
+          cab_dias_assumidos: number | null
+          ciclo_id: string | null
+          created_at: string | null
+          fazenda_id: string | null
+          intervalo_padrao_dias: number | null
+          kg_fornecido: number | null
+          lancamento_id: string | null
+          mes_referencia: number | null
+          num_animais: number | null
+          num_sacos: number | null
+          ocupacao_id: string | null
+          pasto_id: string | null
+          peso_saco_kg: number | null
+          retiro_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_pasto_id_fkey"
+            columns: ["pasto_id"]
+            isOneToOne: false
+            referencedRelation: "pastos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_manuais_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_ocupacao_id_fkey"
+            columns: ["ocupacao_id"]
+            isOneToOne: false
+            referencedRelation: "ocupacoes_pasto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       view_painel_mae_pasto: {
         Row: {
           ano_referencia: number | null
@@ -6321,6 +6380,20 @@ export type Database = {
           total_pastos: number
           total_sacos: number
           total_salgas: number
+        }[]
+      }
+      get_consumo_real_v2: {
+        Args: {
+          p_ano?: number
+          p_mes?: number
+          p_pasto_id?: string
+          p_retiro_id: string
+        }
+        Returns: {
+          consumo_real_g_cab_dia: number
+          total_cab_dias: number
+          total_kg: number
+          total_sacos: number
         }[]
       }
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
