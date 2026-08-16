@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, classificarCategoria } from "@/lib/consumoCalc";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import {
@@ -106,6 +107,13 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
+      // Buscar ciclos dos retiros para calcular dias considerados corretamente.
+      const { data: ciclosData } = await supabase.from("ciclos")
+        .select("id, retiro_id, mes, ano, fechado, data_inicio, duracao_dias")
+        .in("retiro_id", retiroIds);
+      const ciclosById: Record<string, { id: string; retiro_id: string; mes: number; ano: number; fechado: boolean; data_inicio: string | null; duracao_dias: number | null }> = {};
+      for (const c of (ciclosData ?? [])) ciclosById[c.id] = c;
+
       // Fonte única de verdade dos agregados do retiro: RPC get_painel_mae.
       // Só é aplicável ao período mensal (a RPC recebe mês/ano).
       const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
@@ -152,7 +160,7 @@ export default function ExportarRelatorioModal({
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("view_consumo_tempo_real" as any)
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia, origem")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia, ciclo_id, origem")
           .in("pasto_id", pastoIds);
 
         if (periodoSelecionado === "mensal") {
@@ -288,7 +296,16 @@ export default function ExportarRelatorioModal({
 
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           const cat = (p as any).categoria || classificarCategoria(pesoMedio);
-          const diasConsiderados = lastP ? Number(lastP.dias_no_pasto ?? 0) : 0;
+          const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
+          let diasConsiderados = 0;
+          if (lastCiclo) {
+            if (lastCiclo.fechado) {
+              diasConsiderados = Number(lastCiclo.duracao_dias ?? 0);
+            } else {
+              const dataInicio = lastCiclo.data_inicio ?? new Date(lastCiclo.ano, lastCiclo.mes - 1, 1).toISOString();
+              diasConsiderados = Math.max(0, diasCalendarioSP(dataInicio) ?? 0);
+            }
+          }
 
           // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
           const vp = painelPastoByPastoId[p.id];
