@@ -157,6 +157,22 @@ export default function ExportarRelatorioModal({
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
 
+      // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
+      const ocupacaoProdutoByPasto: Record<string, string> = {};
+      if (pastoIds.length > 0) {
+        const { data: ocupData } = await supabase.from("ocupacoes_pasto")
+          .select("pasto_id, produto_id, data_entrada, data_saida")
+          .in("pasto_id", pastoIds)
+          .is("data_saida", null)
+          .order("data_entrada", { ascending: false });
+        for (const o of (ocupData ?? [])) {
+          if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
+            ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
+          }
+        }
+      }
+
+
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
         let lQuery = supabase.from("view_consumo_tempo_real" as any)
