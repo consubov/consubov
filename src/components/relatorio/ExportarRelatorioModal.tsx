@@ -106,6 +106,13 @@ export default function ExportarRelatorioModal({
 
       const retiroIds = retirosData.map(r => r.id);
 
+      // Buscar ciclos dos retiros para calcular dias considerados corretamente.
+      const { data: ciclosData } = await supabase.from("ciclos")
+        .select("id, retiro_id, mes, ano, fechado, data_inicio, duracao_dias")
+        .in("retiro_id", retiroIds);
+      const ciclosById: Record<string, { id: string; retiro_id: string; mes: number; ano: number; fechado: boolean; data_inicio: string | null; duracao_dias: number | null }> = {};
+      for (const c of (ciclosData ?? [])) ciclosById[c.id] = c;
+
       // Fonte única de verdade dos agregados do retiro: RPC get_painel_mae.
       // Só é aplicável ao período mensal (a RPC recebe mês/ano).
       const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
