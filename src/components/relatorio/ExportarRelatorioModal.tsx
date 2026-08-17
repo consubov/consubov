@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, classificarCategoria, getConsumoPorCategoria } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
