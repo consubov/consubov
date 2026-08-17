@@ -209,10 +209,10 @@ export default function ExportarRelatorioModal({
         ...Object.values(ocupacaoProdutoByPasto),
 
       ])] as string[];
-      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
+      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number; margem_recria1: number; margem_recria2: number; margem_engorda: number }> = {};
       if (produtoIds.length > 0) {
         const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
           .in("id", produtoIds);
         for (const p of (prodData ?? [])) {
           produtosMap[p.id] = {
@@ -222,6 +222,9 @@ export default function ExportarRelatorioModal({
             consumo_recria1: Number(p.consumo_recria1 ?? 0),
             consumo_recria2: Number(p.consumo_recria2 ?? 0),
             consumo_engorda: Number(p.consumo_engorda ?? 0),
+            margem_recria1: Number(p.margem_recria1 ?? 0),
+            margem_recria2: Number(p.margem_recria2 ?? 0),
+            margem_engorda: Number(p.margem_engorda ?? 0),
           };
         }
       }
