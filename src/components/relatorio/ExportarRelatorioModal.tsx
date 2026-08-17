@@ -347,16 +347,37 @@ export default function ExportarRelatorioModal({
             }
           }
 
-          // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
-          const vp = painelPastoByPastoId[p.id];
-          const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
-          const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
-
           // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
           const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
           const pProd = produtosMap[pProdId] ?? prod;
           const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
           const pesoSacoPasto = pProd?.peso_saco_kg ?? pesoSacoKg;
+
+          const vp = painelPastoByPastoId[p.id];
+
+          // Consumo real: RPC mensal (get_consumo_real_v2) usa intervalo_padrao_dias;
+          // fallback para não-mensal mantém o comportamento anterior.
+          const consumoRealV2 = periodoSelecionado === "mensal" ? consumoRealV2ByPasto[p.id] : undefined;
+          const consumoReal = consumoRealV2 !== undefined ? consumoRealV2 : pConsumo;
+
+          // Status recalculado a partir do consumo real e do produto usado (mensal)
+          let statusReal: string;
+          if (consumoRealV2 !== undefined) {
+            const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
+            const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
+            const margemGCabDia = margemPor100kg * pesoMedio * 10;
+            if (consumoEsperado <= 0) {
+              statusReal = "—";
+            } else if (consumoReal < (consumoEsperado - margemGCabDia)) {
+              statusReal = "Baixo";
+            } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
+              statusReal = "Alto";
+            } else {
+              statusReal = "Ideal";
+            }
+          } else {
+            statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+          }
 
 
           return {
