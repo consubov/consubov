@@ -361,11 +361,14 @@ export default function ExportarRelatorioModal({
           const consumoReal = consumoRealV2 !== undefined ? consumoRealV2 : pConsumo;
 
           // Status recalculado a partir do consumo real e do produto usado (mensal)
+          // Usa peso médio histórico da view (quando disponível) para não zerar
+          // o esperado/margem em pastos transferidos com 0 animais no momento.
           let statusReal: string;
           if (consumoRealV2 !== undefined) {
-            const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
+            const pesoMedioStatus = Number(vp?.peso_medio_kg ?? pesoMedio);
+            const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedioStatus);
             const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
-            const margemGCabDia = margemPor100kg * pesoMedio * 10;
+            const margemGCabDia = margemPor100kg * pesoMedioStatus * 10;
             if (consumoEsperado <= 0) {
               statusReal = "—";
             } else if (consumoReal < (consumoEsperado - margemGCabDia)) {
