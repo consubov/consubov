@@ -229,6 +229,25 @@ export default function ExportarRelatorioModal({
         }
       }
 
+      // Consumo real por pasto usando intervalo_padrao_dias como cobertura (somente mensal)
+      const consumoRealV2ByPasto: Record<string, number> = {};
+      if (periodoSelecionado === "mensal" && pastoIds.length > 0) {
+        await Promise.all(
+          pastos.map(async (p) => {
+            const { data: rows } = await (supabase as any).rpc("get_consumo_real_v2", {
+              p_retiro_id: p.retiro_id,
+              p_pasto_id: p.id,
+              p_mes: mes,
+              p_ano: ano,
+            });
+            const row = Array.isArray(rows) ? rows[0] : rows;
+            if (row) {
+              consumoRealV2ByPasto[p.id] = Number(row.consumo_real_g_cab_dia ?? 0);
+            }
+          }),
+        );
+      }
+
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
