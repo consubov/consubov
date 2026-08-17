@@ -1185,9 +1185,12 @@ export default function CapatazDashboard() {
   // Comando "Force Sync" do Admin/Gerente — único gatilho automático permitido.
   useRemoteSyncCommands(user?.id, () => sync.triggerSync({ force: true }), backgroundBootReady);
 
+  const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
+
   const getMonthName = (m: number) => {
     return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1];
   };
+
 
   if (startupError) {
     return (
@@ -1305,28 +1308,31 @@ export default function CapatazDashboard() {
 
   if (screen === 'form') {
     return (
-      <SalgaForm
-        pastoId={formPastoId}
-        pastoNome={formPastoNome}
-        retiroNome={retiro?.nome}
-        fazendaNome={retiro?.fazenda_nome}
-        cicloId={selectedCicloId}
-        tipo={formTipo}
-        justificativaFalhaQr={formJustificativa}
-        auditoriaExigida={formAuditoriaExigida}
-        initialDraft={formDraft}
-        onDraftChange={setFormDraft}
-        onSave={handleSaveSalga}
-        onBack={() => {
-          setFormDraft(null);
-          setFormSugestao(null);
-          setScreen('salga');
-        }}
-        numAnimais={pastos.find(p => p.id === formPastoId)?.num_animais ?? 0}
-        sugestao={formSugestao}
-      />
+      <Suspense fallback={<DeferredFallback label="Abrindo formulário..." />}>
+        <SalgaForm
+          pastoId={formPastoId}
+          pastoNome={formPastoNome}
+          retiroNome={retiro?.nome}
+          fazendaNome={retiro?.fazenda_nome}
+          cicloId={selectedCicloId}
+          tipo={formTipo}
+          justificativaFalhaQr={formJustificativa}
+          auditoriaExigida={formAuditoriaExigida}
+          initialDraft={formDraft}
+          onDraftChange={setFormDraft}
+          onSave={handleSaveSalga}
+          onBack={() => {
+            setFormDraft(null);
+            setFormSugestao(null);
+            setScreen('salga');
+          }}
+          numAnimais={pastos.find(p => p.id === formPastoId)?.num_animais ?? 0}
+          sugestao={formSugestao}
+        />
+      </Suspense>
     );
   }
+
 
   if (screen === 'salga') {
     const salgasHoje = lancamentosHoje;
@@ -1436,10 +1442,10 @@ export default function CapatazDashboard() {
   }
 
   // ============ HOME SCREEN ============
-  const selectedCiclo = ciclos.find(c => c.id === selectedCicloId);
 
   // Always use the current real date as the operational month
   const now = new Date();
+
   const mesOperacional = now.getMonth() + 1;
   const anoOperacional = now.getFullYear();
   const mesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesOperacional - 1];

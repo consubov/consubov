@@ -1,2 +1,3 @@
 // Versão semântica do app.
-export const APP_VERSION = "1.57.6";
+export const APP_VERSION = "1.57.7";
+
