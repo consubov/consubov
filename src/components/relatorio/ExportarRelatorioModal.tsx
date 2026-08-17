@@ -266,7 +266,7 @@ export default function ExportarRelatorioModal({
           const pSacos = rLanc.filter(l => l.pasto_id === p.id).reduce((a, l) => a + (l.num_sacos || 0), 0);
           return sum + pSacos * pPeso * pPreco;
         }, 0);
-        const custoDiario = animaisNoPeriodo > 0 && numDias > 0 ? custoTotal / numDias / animaisNoPeriodo : 0;
+        const custoDiario = consumoMedio > 0 && precoKg > 0 ? (consumoMedio / 1000) * precoKg : 0;
 
         // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
         // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
