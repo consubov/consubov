@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, classificarCategoria, getConsumoPorCategoria } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
@@ -209,10 +209,10 @@ export default function ExportarRelatorioModal({
         ...Object.values(ocupacaoProdutoByPasto),
 
       ])] as string[];
-      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number }> = {};
+      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number; margem_recria1: number; margem_recria2: number; margem_engorda: number }> = {};
       if (produtoIds.length > 0) {
         const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
           .in("id", produtoIds);
         for (const p of (prodData ?? [])) {
           produtosMap[p.id] = {
@@ -222,8 +222,30 @@ export default function ExportarRelatorioModal({
             consumo_recria1: Number(p.consumo_recria1 ?? 0),
             consumo_recria2: Number(p.consumo_recria2 ?? 0),
             consumo_engorda: Number(p.consumo_engorda ?? 0),
+            margem_recria1: Number(p.margem_recria1 ?? 0),
+            margem_recria2: Number(p.margem_recria2 ?? 0),
+            margem_engorda: Number(p.margem_engorda ?? 0),
           };
         }
+      }
+
+      // Consumo real por pasto usando intervalo_padrao_dias como cobertura (somente mensal)
+      const consumoRealV2ByPasto: Record<string, number> = {};
+      if (periodoSelecionado === "mensal" && pastoIds.length > 0) {
+        await Promise.all(
+          pastos.map(async (p) => {
+            const { data: rows } = await (supabase as any).rpc("get_consumo_real_v2", {
+              p_retiro_id: p.retiro_id,
+              p_pasto_id: p.id,
+              p_mes: mes,
+              p_ano: ano,
+            });
+            const row = Array.isArray(rows) ? rows[0] : rows;
+            if (row) {
+              consumoRealV2ByPasto[p.id] = Number(row.consumo_real_g_cab_dia ?? 0);
+            }
+          }),
+        );
       }
 
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
@@ -325,16 +347,37 @@ export default function ExportarRelatorioModal({
             }
           }
 
-          // Fonte única por pasto: view_painel_mae_pasto (real x global, pareados)
-          const vp = painelPastoByPastoId[p.id];
-          const consumoReal = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : pConsumo;
-          const statusReal = vp ? (vp.status_real ?? "—") : pStatus;
-
           // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
           const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
           const pProd = produtosMap[pProdId] ?? prod;
           const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
           const pesoSacoPasto = pProd?.peso_saco_kg ?? pesoSacoKg;
+
+          const vp = painelPastoByPastoId[p.id];
+
+          // Consumo real: RPC mensal (get_consumo_real_v2) usa intervalo_padrao_dias;
+          // fallback para não-mensal mantém o comportamento anterior.
+          const consumoRealV2 = periodoSelecionado === "mensal" ? consumoRealV2ByPasto[p.id] : undefined;
+          const consumoReal = consumoRealV2 !== undefined ? consumoRealV2 : pConsumo;
+
+          // Status recalculado a partir do consumo real e do produto usado (mensal)
+          let statusReal: string;
+          if (consumoRealV2 !== undefined) {
+            const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedio);
+            const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
+            const margemGCabDia = margemPor100kg * pesoMedio * 10;
+            if (consumoEsperado <= 0) {
+              statusReal = "—";
+            } else if (consumoReal < (consumoEsperado - margemGCabDia)) {
+              statusReal = "Baixo";
+            } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
+              statusReal = "Alto";
+            } else {
+              statusReal = "Ideal";
+            }
+          } else {
+            statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+          }
 
 
           return {
