@@ -154,6 +154,49 @@ export default function ConferenciaPage() {
     }
   };
 
+  /** Transforma a verificação livre em registro formal (tópicos + assinaturas liberados). */
+  const handleRegistrarConferencia = async () => {
+    setCriandoVisita(true);
+    try {
+      await garantirVisita();
+      toast.success("Conferência registrada. Os pastos escaneados entram no relatório.");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível registrar a conferência.");
+    } finally {
+      setCriandoVisita(false);
+    }
+  };
+
+  const abrirHistorico = async () => {
+    setEtapa("historico");
+    if (!roleData.roleId) return;
+    setLoadingHistorico(true);
+    try {
+      setHistorico(await listConferenciasHistorico(roleData.roleId));
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível carregar o histórico.");
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  const handleExcluirConferencia = async () => {
+    if (!confirmarExclusaoConf) return;
+    try {
+      await excluirConferencia(confirmarExclusaoConf.id);
+      setHistorico(prev => prev.filter(h => h.id !== confirmarExclusaoConf.id));
+      if (visita?.id === confirmarExclusaoConf.id) {
+        setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
+      }
+      toast.success("Conferência excluída.");
+      setConfirmarExclusaoConf(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível excluir a conferência.");
+    }
+  };
+
+
+
   const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
     if (!dados) return;
     setSavingPasto(true);
