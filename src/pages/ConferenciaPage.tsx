@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2, History as HistoryIcon, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
@@ -40,6 +43,23 @@ import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
 
 type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto" | "historico";
+
+/** Cabeçalho do PDF da Conferência — editável localmente, não altera o cadastro da fazenda. */
+type CabecalhoRelatorio = {
+  fazenda: string;
+  proprietario: string;
+  gerente: string;
+  consultor: string;
+  /** yyyy-MM-dd */
+  data: string;
+};
+
+const isoParaInputDate = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 
 
 function diasEntre(iso: string | null): number | null {
@@ -84,6 +104,8 @@ export default function ConferenciaPage() {
   const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
   const [adminNome, setAdminNome] = useState<string>("");
   const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
+  const [cabecalho, setCabecalho] = useState<CabecalhoRelatorio | null>(null);
+
   const [criandoVisita, setCriandoVisita] = useState(false);
   const [historico, setHistorico] = useState<ConferenciaHistoricoItem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
@@ -324,6 +346,50 @@ export default function ConferenciaPage() {
     }
   };
 
+  /** Busca os valores padrão do cabeçalho (fazenda, proprietário, gerente, data). */
+  const resolverCabecalhoPadrao = async (): Promise<CabecalhoRelatorio> => {
+    const fazendaNome = registros[0]?.fazenda_nome || "";
+    let fazendaId = fazendaIdConf;
+    if (!fazendaId && fazendaNome) {
+      const { data: f } = await supabase
+        .from("fazendas").select("id").eq("nome", fazendaNome).maybeSingle();
+      fazendaId = f?.id ?? null;
+    }
+    let proprietario = "";
+    let gerente = "";
+    if (fazendaId) {
+      const [{ data: faz }, { data: ger }] = await Promise.all([
+        supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+        supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+      ]);
+      gerente = ger?.nome ?? "";
+      if (faz?.administrador_id) {
+        const { data: adm } = await supabase
+          .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
+        proprietario = adm?.nome ?? "";
+      }
+    }
+    return {
+      fazenda: fazendaNome,
+      proprietario,
+      gerente,
+      consultor: adminNome || "",
+      data: isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    };
+  };
+
+  useEffect(() => {
+    if (!isAdmin || !registroFormalConfirmado || registros.length === 0 || cabecalho) return;
+    let cancelado = false;
+    void (async () => {
+      const c = await resolverCabecalhoPadrao();
+      if (!cancelado) setCabecalho(c);
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, registroFormalConfirmado, registros.length, cabecalho]);
+
+
   const handleEncerrarVisita = async () => {
     if (!visita || registros.length === 0) return;
     setGerandoPdf(true);
@@ -350,37 +416,21 @@ export default function ConferenciaPage() {
         consumo_medio_g: r.consumo_medio_g,
       }));
 
-      const responsavelNome: string | null = adminNome || null;
-
-      // Cabeçalho: fazenda, proprietário (administrador) e gerente.
-      const fazendaNome = registros[0]?.fazenda_nome || "Conferência";
-      let fazendaId = fazendaIdConf;
-      if (!fazendaId && registros[0]?.fazenda_nome) {
-        const { data: f } = await supabase
-          .from("fazendas").select("id").eq("nome", registros[0].fazenda_nome).maybeSingle();
-        fazendaId = f?.id ?? null;
-      }
-      let proprietario: string | null = null;
-      let gerente: string | null = null;
-      if (fazendaId) {
-        const [{ data: faz }, { data: ger }] = await Promise.all([
-          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
-          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
-        ]);
-        gerente = ger?.nome ?? null;
-        if (faz?.administrador_id) {
-          const { data: adm } = await supabase
-            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
-          proprietario = adm?.nome ?? null;
-        }
-      }
+      const cab = cabecalho ?? (await resolverCabecalhoPadrao());
+      const responsavelNome: string | null = (cab.consultor || adminNome || "").trim() || null;
+      const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         modo: "conferencia",
-        fazenda: { nome_fazenda: fazendaNome, proprietario, gerente },
+        fazenda: {
+          nome_fazenda: (cab.fazenda || "").trim() || "Conferência",
+          proprietario: (cab.proprietario || "").trim() || null,
+          gerente: (cab.gerente || "").trim() || null,
+        },
         consultor: { nome: responsavelNome || "Administrador" },
-        hora_inicio: visita.hora_inicio,
+        hora_inicio: dataIso,
+
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,
         conclusao: null,
@@ -851,6 +901,61 @@ export default function ConferenciaPage() {
           </div>
         )}
 
+        {isAdmin && registroFormalConfirmado && registros.length > 0 && cabecalho && (
+          <div className="w-full border-t pt-4 text-left space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide font-bold text-primary">Cabeçalho do relatório</p>
+              <p className="text-[11px] text-muted-foreground">
+                Edições valem apenas para este PDF — não alteram o cadastro da fazenda.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Fazenda</Label>
+                <Input
+                  value={cabecalho.fazenda}
+                  onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
+                  placeholder="Nome da fazenda"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Proprietário</Label>
+                <Input
+                  value={cabecalho.proprietario}
+                  onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
+                  placeholder="Proprietário"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Gerente</Label>
+                <Input
+                  value={cabecalho.gerente}
+                  onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
+                  placeholder="Gerente"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Responsável pela conferência</Label>
+                <Input
+                  value={cabecalho.consultor}
+                  onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
+                  placeholder="Responsável"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Data</Label>
+                <Input
+                  type="date"
+                  value={cabecalho.data}
+                  onChange={(e) => setCabecalho({ ...cabecalho, data: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
         {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full border-t pt-4 text-left">
             <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
@@ -902,7 +1007,7 @@ export default function ConferenciaPage() {
                 className="w-full gap-2"
                 onClick={() => {
                   setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]);
-                  setPdfGerado(null); setFazendaIdConf(null);
+                  setPdfGerado(null); setFazendaIdConf(null); setCabecalho(null);
                 }}
               >
                 <ClipboardCheck className="w-5 h-5" /> NOVA CONFERÊNCIA
