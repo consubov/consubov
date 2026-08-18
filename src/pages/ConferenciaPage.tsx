@@ -203,6 +203,7 @@ export default function ConferenciaPage() {
     if (!editando || !visita) return;
     setSavingPasto(true);
     try {
+      await invalidarPdf(visita);
       await atualizarPastoConferencia({
         registroId: editando.id,
         visitaId: visita.id,
