@@ -110,6 +110,9 @@ export default function ConferenciaVisitaPastoForm({
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">{titulo}</h1>
           <p className="text-xs opacity-90 truncate">{subtitulo}</p>
+          {infoUltimaSalga ? (
+            <p className="text-xs opacity-90 truncate">{infoUltimaSalga}</p>
+          ) : null}
         </div>
       </header>
 
