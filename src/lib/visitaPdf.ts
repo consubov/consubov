@@ -854,8 +854,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const concLegacy = (data.conclusao || "").trim();
   const hasLegacy = introTopicos.length === 0 && conclusaoTopicos.length === 0 && (obsLegacy || concLegacy);
 
+  let temPaginaConclusao = false;
   if (hasConclusaoTopicos || hasLegacy) {
     doc.addPage();
+    temPaginaConclusao = true;
     y = slimHeader() + 2;
     if (hasConclusaoTopicos) {
       for (const t of conclusaoTopicos) drawTopico(t.titulo, t.texto, t.fotos);
@@ -866,7 +868,16 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   }
 
 
-  if (!isConferencia) drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  if (!isConferencia) {
+    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  } else {
+    const temAssinantes = (data.assinantes || []).some(a => (a?.nome || "").trim());
+    if (temAssinantes) {
+      // Assinaturas ficam na última página (junto da conclusão, quando existir).
+      if (!temPaginaConclusao && y > pageH - 60) { doc.addPage(); slimHeader(); }
+      drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+    }
+  }
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
