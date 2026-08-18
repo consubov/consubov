@@ -55,7 +55,7 @@ const numOrNull = (v: string): number | null => {
 };
 
 export default function ConferenciaVisitaPastoForm({
-  titulo, subtitulo, numeroInicial, saving, edicao, initial, onBack, onSalvar,
+  titulo, subtitulo, numeroInicial, numerosExistentes, saving, edicao, initial, onBack, onSalvar,
 }: Props) {
   const [observacao, setObservacao] = useState(initial?.observacao ?? "");
   const [qtdAnimais, setQtdAnimais] = useState(initial?.qtd_animais != null ? String(initial.qtd_animais) : "");
