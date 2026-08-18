@@ -818,7 +818,11 @@ export default function ConferenciaPage() {
             <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
             <VisitaTopicosSection
               visitaId={visita.id}
-              onChange={setTopicos}
+              onChange={(t) => {
+                setTopicos(t);
+                if (topicosCarregados.current === visita.id) void invalidarPdf(visita);
+                else topicosCarregados.current = visita.id;
+              }}
               numeroMap={numeroMap}
             />
           </div>
@@ -829,7 +833,11 @@ export default function ConferenciaPage() {
             <ConferenciaAssinaturasSection
               visitaId={visita.id}
               nomePadrao={adminNome}
-              onChange={setAssinantes}
+              onChange={(a) => {
+                setAssinantes(a);
+                if (assinantesCarregados.current === visita.id) void invalidarPdf(visita);
+                else assinantesCarregados.current = visita.id;
+              }}
             />
           </div>
         )}
