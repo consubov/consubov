@@ -260,6 +260,8 @@ export default function ConferenciaPage() {
       toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
       setVisita(null);
       setRegistros([]);
+      setTopicos([]);
+
       if (roleData.roleId) {
         const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
         setVisita(nova);
