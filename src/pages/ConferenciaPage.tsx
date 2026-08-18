@@ -84,6 +84,8 @@ export default function ConferenciaPage() {
   const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
   const [adminNome, setAdminNome] = useState<string>("");
   const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
+  const [cabecalho, setCabecalho] = useState<CabecalhoRelatorio | null>(null);
+
   const [criandoVisita, setCriandoVisita] = useState(false);
   const [historico, setHistorico] = useState<ConferenciaHistoricoItem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
