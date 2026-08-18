@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2, History as HistoryIcon, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
