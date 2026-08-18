@@ -797,12 +797,12 @@ export default function ConferenciaPage() {
           ESCANEAR QR CODE
         </Button>
 
-        {isAdmin && !registroFormalConfirmado && (
+        {isAdmin && !registroFormalConfirmado && registros.length > 0 && (
           <Button
             size="lg"
             variant="secondary"
             className="w-full gap-2"
-            disabled={criandoVisita || registros.length === 0}
+            disabled={criandoVisita}
             onClick={() => void handleRegistrarConferencia()}
           >
             {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
