@@ -898,6 +898,61 @@ export default function ConferenciaPage() {
           </div>
         )}
 
+        {isAdmin && registroFormalConfirmado && registros.length > 0 && cabecalho && (
+          <div className="w-full border-t pt-4 text-left space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide font-bold text-primary">Cabeçalho do relatório</p>
+              <p className="text-[11px] text-muted-foreground">
+                Edições valem apenas para este PDF — não alteram o cadastro da fazenda.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Fazenda</Label>
+                <Input
+                  value={cabecalho.fazenda}
+                  onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
+                  placeholder="Nome da fazenda"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Proprietário</Label>
+                <Input
+                  value={cabecalho.proprietario}
+                  onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
+                  placeholder="Proprietário"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Gerente</Label>
+                <Input
+                  value={cabecalho.gerente}
+                  onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
+                  placeholder="Gerente"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Responsável pela conferência</Label>
+                <Input
+                  value={cabecalho.consultor}
+                  onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
+                  placeholder="Responsável"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Data</Label>
+                <Input
+                  type="date"
+                  value={cabecalho.data}
+                  onChange={(e) => setCabecalho({ ...cabecalho, data: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
         {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full border-t pt-4 text-left">
             <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
