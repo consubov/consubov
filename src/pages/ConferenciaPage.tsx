@@ -1007,7 +1007,7 @@ export default function ConferenciaPage() {
                 className="w-full gap-2"
                 onClick={() => {
                   setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]);
-                  setPdfGerado(null); setFazendaIdConf(null);
+                  setPdfGerado(null); setFazendaIdConf(null); setCabecalho(null);
                 }}
               >
                 <ClipboardCheck className="w-5 h-5" /> NOVA CONFERÊNCIA
