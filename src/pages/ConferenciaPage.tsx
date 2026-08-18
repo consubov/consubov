@@ -350,37 +350,21 @@ export default function ConferenciaPage() {
         consumo_medio_g: r.consumo_medio_g,
       }));
 
-      const responsavelNome: string | null = adminNome || null;
-
-      // Cabeçalho: fazenda, proprietário (administrador) e gerente.
-      const fazendaNome = registros[0]?.fazenda_nome || "Conferência";
-      let fazendaId = fazendaIdConf;
-      if (!fazendaId && registros[0]?.fazenda_nome) {
-        const { data: f } = await supabase
-          .from("fazendas").select("id").eq("nome", registros[0].fazenda_nome).maybeSingle();
-        fazendaId = f?.id ?? null;
-      }
-      let proprietario: string | null = null;
-      let gerente: string | null = null;
-      if (fazendaId) {
-        const [{ data: faz }, { data: ger }] = await Promise.all([
-          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
-          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
-        ]);
-        gerente = ger?.nome ?? null;
-        if (faz?.administrador_id) {
-          const { data: adm } = await supabase
-            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
-          proprietario = adm?.nome ?? null;
-        }
-      }
+      const cab = cabecalho ?? (await resolverCabecalhoPadrao());
+      const responsavelNome: string | null = (cab.consultor || adminNome || "").trim() || null;
+      const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         modo: "conferencia",
-        fazenda: { nome_fazenda: fazendaNome, proprietario, gerente },
+        fazenda: {
+          nome_fazenda: (cab.fazenda || "").trim() || "Conferência",
+          proprietario: (cab.proprietario || "").trim() || null,
+          gerente: (cab.gerente || "").trim() || null,
+        },
         consultor: { nome: responsavelNome || "Administrador" },
-        hora_inicio: visita.hora_inicio,
+        hora_inicio: dataIso,
+
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,
         conclusao: null,
