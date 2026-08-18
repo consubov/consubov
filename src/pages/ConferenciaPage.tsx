@@ -652,6 +652,16 @@ export default function ConferenciaPage() {
           </div>
         )}
 
+        {isAdmin && visita && (
+          <div className="w-full border-t pt-4 text-left">
+            <ConferenciaAssinaturasSection
+              visitaId={visita.id}
+              nomePadrao={adminNome}
+              onChange={setAssinantes}
+            />
+          </div>
+        )}
+
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
