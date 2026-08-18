@@ -240,8 +240,17 @@ export default function ConferenciaPage() {
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,
         conclusao: null,
+        topicos: topicos.map(t => ({
+          id: t.id,
+          titulo: t.titulo,
+          texto: t.texto,
+          ordem: t.ordem,
+          zona: t.zona,
+          fotos: t.fotos.map(f => ({ id: f.id, url: f.url, ordem: f.ordem, signedUrl: t.signed?.[f.id] })),
+        })),
         pastos,
         numeroMap,
+
       });
 
       const url = URL.createObjectURL(blob);
