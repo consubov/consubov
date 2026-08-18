@@ -1,43 +1,40 @@
-## Fluxo único "Novo Manejo" — SyncVet (Fase 10 UI)
+# Corrigir fluxo e Histórico da Conferência Admin QR
 
-Reaproveita o schema já criado (`syncvet_manejos.tipo_manejo`, `fonte_protocolo`, `fonte_semen`, `semen_id`, `semen_descricao_fazenda`, `hora_inicio` + trigger `syncvet_prenhez_historico`). Nenhuma migração nova.
+## Diagnóstico confirmado
 
-### 1. Ponto de entrada — tela de Fazenda › aba Lotes
-- Em `SyncVetFazendaDetalhePage.tsx`, adicionar botão fixo **"+ Novo manejo"** no topo da aba Lotes.
-- Abre `/syncvet/fazendas/:fazendaId/novo-manejo` (nova página).
+- O estado `visita` está sendo usado como sinônimo de “usuário clicou em Registrar Conferência”. Porém, ao salvar o primeiro pasto, `handleSalvarPasto` chama `garantirVisita()` e cria a visita automaticamente. Por isso tópicos/assinaturas são montados cedo e o botão explícito de registro desaparece.
+- Tópicos e assinaturas hoje dependem apenas de `isAdmin && visita`; falta exigir simultaneamente a intenção explícita de registro e `registros.length > 0`.
+- O Histórico só oferece “Ver/Baixar PDF” e “Excluir”; não existe ação para carregar a conferência finalizada no fluxo principal. Assim, os controles de edição nunca recebem seus dados.
+- O nome no Histórico depende apenas do relacionamento `fazendas` ou de `fazenda_nome_override`; conferências antigas sem esses campos não usam o nome já gravado em `visita_pastos` como fallback.
 
-### 2. Nova página `SyncVetNovoManejoPage.tsx` (wizard 4 etapas)
-- **Etapa A — Lotes + tipo por lote**: lista os lotes da fazenda com checkbox; para cada lote marcado, escolher tipo (`DG/US` | `IATF` | `Retirada`). Múltiplos lotes, tipos diferentes, mesma data.
-- **Etapa B — Configuração por tipo**:
-  - DG/US → só data.
-  - IATF/Retirada → `fonte_protocolo` (veterinário/fazenda) + `protocolo_id` (só se veterinário) + `fonte_semen` (veterinário/fazenda) + `semen_id` OU `semen_descricao_fazenda`.
-- **Etapa C — Data + responsável único** (equipe da empresa) para todo o batch.
-- **Etapa D — Resumo + "Salvar"**: cria 1 linha `syncvet_manejos` por lote com `tipo_manejo`, `fonte_*`, `data_prevista`, `responsavel_id`, `lote_id`, `fazenda_id`, `origem='novo_manejo'`, `status='pendente'`. Sem `lote_ciclo_id` (fluxo independente do ciclo). Aparece automaticamente na Agenda.
+## Implementação
 
-### 3. Execução (responsável)
-- Novo cartão de ação nos manejos com `tipo_manejo IN ('dg_us','iatf','retirada')` na `SyncVetAgendaPage`: botão **"Iniciar/Continuar"** abre `/syncvet/manejos/:id/executar`.
-- `SyncVetManejoExecucaoPage.tsx`:
-  - **Resumo inicial** (fazenda, lote, tipo, qtd animais) + botão **"Iniciar"** → `UPDATE syncvet_manejos SET hora_inicio=now(), status='em_andamento'`.
-  - **Execução**: input número do animal + Confirmar. Cria/reusa animal em `syncvet_animais` (via `lote_id` + `numero`).
-    - DG/US: botões **C** (prenha) / **V** (vazia) → insert em `syncvet_manejo_resultados`.
-    - IATF/Retirada: Confirmar já grava `resultado='realizado'`.
-  - Lista lateral dos já registrados; botão **"Próximo"** limpa e refoca o input.
-  - Rodapé com contadores e taxa de prenhez ao vivo (DG/US).
-- **Finalização**: dois botões:
-  - **"Finalizar Manejo"** → `status='concluido', data_execucao=now()` (dispara trigger de histórico de prenhez para DG/US).
-  - **"Finalizar e Gerar PDF"** → mesmo update + `syncvetManejoPdf.ts` gera PDF (identidade Consubov: verde `#14432B`, dourado `#C9A84C`) com fazenda, lote, tipo, responsável, tabela de animais (número/categoria/diagnóstico) e taxa de prenhez. Usa Web Share API quando disponível.
+### 1. Separar intenção de registro da existência técnica da visita
+- Em `ConferenciaPage.tsx`, criar estado explícito para indicar que “Registrar Conferência” foi acionado.
+- Manter esse estado independente de `visita`, evitando que a criação técnica feita ao salvar um pasto libere tópicos/assinaturas por engano.
+- Renderizar `VisitaTopicosSection` e `ConferenciaAssinaturasSection` somente quando todas forem verdadeiras: Admin, registro formal confirmado, visita carregada e ao menos um pasto registrado.
+- Manter os componentes totalmente desmontados antes disso (render condicional, sem ocultação CSS).
+- Ajustar o botão principal para o texto exato **“Escanear QR Code”**.
 
-### 4. Gráficos de prenhez
-- `SyncVetDashboardPage.tsx`: adicionar gráfico de linha (Recharts) por mês a partir de `syncvet_prenhez_historico` (empresa toda), respeitando filtros já existentes (fazenda/vet/protocolo).
-- "Meu Painel" do membro (dashboard restrito): idem, filtrado por `veterinario_id = ownEquipeId`. Perfil restrito continua caindo em `/syncvet/agenda` — Meu Painel fica opcional, mas gráfico é adicionado à agenda como card do topo para o restrito.
+### 2. Abrir e editar conferência finalizada pelo Histórico
+- Adicionar uma ação **Editar** em cada card do Histórico.
+- Ao acioná-la, carregar a visita finalizada selecionada e seus pastos, marcar o fluxo como conferência formal e voltar à tela principal com os controles existentes de pastos, tópicos e assinaturas.
+- Preservar a regra atual de invalidação: a primeira alteração muda `finalizada` para `revisao`, limpa `pdf_url`/PDF local e disponibiliza a geração de um novo PDF.
+- Resetar referências de carregamento de tópicos/assinaturas ao alternar entre conferências para que o carregamento inicial não seja confundido com edição.
 
-### 5. Vínculo com Agenda
-- Nenhuma nova tela — `SyncVetAgendaPage.tsx` já lê `syncvet_manejos` com filtro por responsável. Os manejos criados no wizard aparecem automaticamente. Ajuste mínimo: renderizar `tipo_manejo` (DG/US/IATF/Retirada) como badge quando `etapa_id` for null.
+### 3. Garantir nome da fazenda no Histórico
+- Em `conferenciaAdminVisita.ts`, complementar a listagem com fallback para `visita_pastos.fazenda_nome` quando `fazendas.nome` e `fazenda_nome_override` estiverem vazios.
+- Manter o card com nome em destaque, data/tipo abaixo e status ao lado.
+- Tratar e propagar erros das consultas em vez de converter falha silenciosamente em histórico vazio.
 
-### Detalhes técnicos
-- Nova rota em `App.tsx`: `/syncvet/fazendas/:fazendaId/novo-manejo`, `/syncvet/manejos/:id/executar`.
-- Novo lib `src/lib/syncvetManejoPdf.ts` (baseado em `syncvetServicoPdf.ts`).
-- `APP_VERSION` → `1.37.0`.
-- Nada em outros módulos é tocado.
+### 4. Versão e validação
+- Incrementar `APP_VERSION` conforme a regra do projeto.
+- Validar no preview que, na entrada, tópicos/assinaturas não existem no DOM; após um pasto registrado e o clique explícito, ambos são montados.
+- Validar um item finalizado do Histórico: nome da fazenda visível, abertura em modo de edição, edição de pasto invalidando o PDF anterior e botão para gerar novo PDF disponível.
 
-Aprova para eu implementar?
+## Arquivos restritos
+- `src/pages/ConferenciaPage.tsx`
+- `src/lib/conferenciaAdminVisita.ts`
+- `src/lib/appVersion.ts` (incremento obrigatório de versão)
+
+Nenhum arquivo do Consultor/Relatto ou de outros módulos será alterado; componentes compartilhados existentes serão apenas consumidos pela Conferência Admin.
