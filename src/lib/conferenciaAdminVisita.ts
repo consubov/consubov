@@ -30,6 +30,7 @@ export interface ConferenciaPastoRegistro {
   qtd_animais: number | null;
   consumo_medio_g: number | null;
   ultima_salga: string | null;
+  ultima_salga_sacos: number | null;
   observacao: string | null;
   fotos: { id: string; url: string; ordem: number }[];
 }
@@ -108,6 +109,7 @@ export async function listConferenciaPastos(visitaId: string): Promise<Conferenc
     qtd_animais: r.qtd_animais ?? null,
     consumo_medio_g: r.consumo_medio_g ?? null,
     ultima_salga: r.ultima_salga ?? null,
+    ultima_salga_sacos: (r as any).ultima_salga_sacos ?? null,
     observacao: r.observacao ?? null,
     fotos: byPasto[r.id] || [],
   }));
@@ -125,6 +127,7 @@ export interface SalvarPastoInput {
   qtd_animais: number | null;
   consumo_medio_g: number | null;
   ultima_salga: string | null;
+  ultima_salga_sacos?: number | null;
   observacao: string | null;
   fotosDataUrls: string[];
 }
@@ -158,6 +161,7 @@ export async function salvarPastoConferencia(input: SalvarPastoInput): Promise<s
       qtd_animais: input.qtd_animais,
       consumo_medio_g: input.consumo_medio_g,
       ultima_salga: input.ultima_salga,
+      ultima_salga_sacos: input.ultima_salga_sacos ?? null,
       observacao: input.observacao,
     } as any)
     .select("id")
