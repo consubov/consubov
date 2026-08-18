@@ -33,6 +33,7 @@ import {
   atualizarPastoConferencia,
   excluirPastoConferencia,
   encerrarConferenciaVisita,
+  salvarCabecalhoConferencia,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
   type ConferenciaHistoricoItem,
@@ -459,6 +460,7 @@ export default function ConferenciaPage() {
       }));
 
       const cab = cabecalho ?? (await resolverCabecalhoPadrao());
+      await persistirCabecalho(cab, visita);
       const responsavelNome: string | null = (cab.consultor || adminNome || "").trim() || null;
       const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
 
