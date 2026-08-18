@@ -230,6 +230,7 @@ export default function ConferenciaPage() {
     if (!confirmarExclusao || !visita) return;
     setExcluindo(true);
     try {
+      await invalidarPdf(visita);
       await excluirPastoConferencia(confirmarExclusao, visita.id);
       setRegistros(await listConferenciaPastos(visita.id));
       toast.success("Pasto removido da conferência.");
