@@ -38,7 +38,7 @@ import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
 
-type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto";
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto" | "historico";
 
 
 function diasEntre(iso: string | null): number | null {
