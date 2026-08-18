@@ -106,36 +106,49 @@ export default function ConferenciaPage() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  // Retoma visita de conferência em andamento do Admin
+  // Retoma (apenas leitura) a conferência formal já iniciada pelo Admin.
+  // Nada é criado aqui: o modo padrão é verificação livre.
   useEffect(() => {
     if (!isAdmin || !roleData.roleId) return;
     let cancelled = false;
     (async () => {
       try {
-        const v = await getOrCreateConferenciaVisita(roleData.roleId!, null, null);
-        if (cancelled) return;
+        const v = await findConferenciaAtiva(roleData.roleId!);
+        if (cancelled || !v) return;
         setVisita(v);
         setRegistros(await listConferenciaPastos(v.id));
-      } catch (e: any) {
-        if (!cancelled) toast.error(e?.message || "Não foi possível iniciar a visita de conferência.");
-      }
+      } catch { /* modo verificação livre segue disponível */ }
     })();
     return () => { cancelled = true; };
   }, [isAdmin, roleData.roleId]);
 
   const totalFotos = registros.reduce((acc, r) => acc + r.fotos.length, 0);
 
+  /** Garante o registro formal da conferência (cria sob demanda). */
+  const garantirVisita = async (): Promise<ConferenciaVisita> => {
+    if (visita) return visita;
+    if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
+    const v = await getOrCreateConferenciaVisita(roleData.roleId, fazendaIdConf, dados?.fazenda.nome ?? null);
+    setVisita(v);
+    setRegistros(await listConferenciaPastos(v.id));
+    return v;
+  };
+
+  /** Editou algo depois do PDF? Invalida o PDF antigo e volta para revisão. */
+  const invalidarPdf = async (v: ConferenciaVisita | null) => {
+    const reaberta = await reabrirConferenciaSeFinalizada(v);
+    if (reaberta && v) {
+      setVisita({ ...v, status: "revisao", pdf_url: null });
+      setPdfGerado(null);
+    }
+  };
+
   const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
     if (!dados) return;
     setSavingPasto(true);
     try {
-      // Cria a visita sob demanda caso o efeito de montagem tenha falhado
-      let v = visita;
-      if (!v) {
-        if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
-        v = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
-        setVisita(v);
-      }
+      const v = await garantirVisita();
+      await invalidarPdf(v);
       await salvarPastoConferencia({
         visitaId: v.id,
         pasto_id: dados.pasto.id,
