@@ -2,12 +2,19 @@ import { useEffect, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ScanLine, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
 import ConferenciaResultado, { type DadosConferencia, type HistoricoEvento } from "@/components/conferencia/ConferenciaResultado";
 import ConferenciaChecklist from "@/components/conferencia/ConferenciaChecklist";
-import ConferenciaVisitaPastoForm from "@/components/conferencia/ConferenciaVisitaPastoForm";
+import ConferenciaVisitaPastoForm, { type FotoExistente } from "@/components/conferencia/ConferenciaVisitaPastoForm";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import useNumeroMapFotos from "@/hooks/useNumeroMapFotos";
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
@@ -15,15 +22,17 @@ import {
   getOrCreateConferenciaVisita,
   listConferenciaPastos,
   salvarPastoConferencia,
+  atualizarPastoConferencia,
+  excluirPastoConferencia,
   encerrarConferenciaVisita,
-  numeroMapConferencia,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
 } from "@/lib/conferenciaAdminVisita";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
-type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form";
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto";
+
 
 function diasEntre(iso: string | null): number | null {
   if (!iso) return null;
@@ -52,6 +61,19 @@ export default function ConferenciaPage() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [pdfGerado, setPdfGerado] = useState<{ url: string; fileName: string } | null>(null);
   const [pdfAberto, setPdfAberto] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [editando, setEditando] = useState<ConferenciaPastoRegistro | null>(null);
+  const [fotosEdicao, setFotosEdicao] = useState<FotoExistente[]>([]);
+  const [confirmarExclusao, setConfirmarExclusao] = useState<ConferenciaPastoRegistro | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
+  const numeroMap = useNumeroMapFotos({
+    visitaId: visita?.id,
+    tipo: "rotina",
+    topicos,
+    itens: registros.map(r => ({ id: r.id, fotos: r.fotos.map(f => ({ id: f.id, ordem: f.ordem })) })),
+  });
+
 
   useEffect(() => {
     // sincroniza checklists pendentes ao montar e ao reconectar
@@ -118,11 +140,67 @@ export default function ConferenciaPage() {
     }
   };
 
+  const abrirEdicao = async (r: ConferenciaPastoRegistro) => {
+    setEditando(r);
+    setFotosEdicao(r.fotos.map(f => ({ id: f.id, url: f.url })));
+    setEtapa("editar_pasto");
+    const comSrc = await Promise.all(
+      [...r.fotos].sort((a, b) => a.ordem - b.ordem).map(async f => ({
+        id: f.id, url: f.url, src: await getCachedSignedUrl(f.url).catch(() => undefined),
+      })),
+    );
+    setFotosEdicao(comSrc);
+  };
+
+  const handleSalvarEdicao = async (values: {
+    observacao: string; qtd_animais: number | null; peso_medio_kg: number | null;
+    consumo_medio_g: number | null; novasFotos: string[]; fotosRemovidas: FotoExistente[];
+  }) => {
+    if (!editando || !visita) return;
+    setSavingPasto(true);
+    try {
+      await atualizarPastoConferencia({
+        registroId: editando.id,
+        visitaId: visita.id,
+        observacao: values.observacao || null,
+        qtd_animais: values.qtd_animais,
+        peso_medio_kg: values.peso_medio_kg,
+        consumo_medio_g: values.consumo_medio_g,
+        fotosRemovidas: values.fotosRemovidas.map(f => ({ id: f.id, url: f.url })),
+        novasFotosDataUrls: values.novasFotos,
+      });
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success("Pasto atualizado.");
+      setEditando(null);
+      setFotosEdicao([]);
+      setEtapa("inicio");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível salvar as alterações.");
+    } finally {
+      setSavingPasto(false);
+    }
+  };
+
+  const handleExcluirRegistro = async () => {
+    if (!confirmarExclusao || !visita) return;
+    setExcluindo(true);
+    try {
+      await excluirPastoConferencia(confirmarExclusao, visita.id);
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success("Pasto removido da conferência.");
+      setConfirmarExclusao(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível excluir o pasto.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   const handleEncerrarVisita = async () => {
     if (!visita || registros.length === 0) return;
     setGerandoPdf(true);
     try {
-      const numeroMap = numeroMapConferencia(registros);
+
       const pastos: VisitaPdfPasto[] = registros.map(r => ({
         id: r.id,
         letra: r.letra,
@@ -162,8 +240,17 @@ export default function ConferenciaPage() {
         hora_fim: new Date().toISOString(),
         observacoes_gerais: null,
         conclusao: null,
+        topicos: topicos.map(t => ({
+          id: t.id,
+          titulo: t.titulo,
+          texto: t.texto,
+          ordem: t.ordem,
+          zona: t.zona,
+          fotos: t.fotos.map(f => ({ id: f.id, url: f.url, ordem: f.ordem, signedUrl: t.signed?.[f.id] })),
+        })),
         pastos,
         numeroMap,
+
       });
 
       const url = URL.createObjectURL(blob);
@@ -173,6 +260,8 @@ export default function ConferenciaPage() {
       toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
       setVisita(null);
       setRegistros([]);
+      setTopicos([]);
+
       if (roleData.roleId) {
         const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
         setVisita(nova);
@@ -404,14 +493,37 @@ export default function ConferenciaPage() {
   if (etapa === "visita_form" && dados) {
     return (
       <ConferenciaVisitaPastoForm
-        dados={dados}
+        titulo={`Registrar ${dados.pasto.nome}`}
+        subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
         numeroInicial={totalFotos + 1}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
-        onSalvar={(obs, fotos) => void handleSalvarPasto(obs, fotos)}
+        onSalvar={(v) => void handleSalvarPasto(v.observacao, v.novasFotos)}
       />
     );
   }
+
+  if (etapa === "editar_pasto" && editando) {
+    return (
+      <ConferenciaVisitaPastoForm
+        titulo={`Editar ${editando.num_pasto || editando.letra}`}
+        subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
+        numeroInicial={1}
+        saving={savingPasto}
+        edicao
+        initial={{
+          observacao: editando.observacao,
+          qtd_animais: editando.qtd_animais,
+          peso_medio_kg: editando.peso_medio_kg,
+          consumo_medio_g: editando.consumo_medio_g,
+          fotos: fotosEdicao,
+        }}
+        onBack={() => { setEditando(null); setFotosEdicao([]); setEtapa("inicio"); }}
+        onSalvar={(v) => void handleSalvarEdicao(v)}
+      />
+    );
+  }
+
 
   if (etapa === "checklist" && dados && user) {
     return (
@@ -435,7 +547,7 @@ export default function ConferenciaPage() {
         <h1 className="text-lg font-bold">Conferência</h1>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 gap-6 text-center max-w-md mx-auto">
+      <main className="flex-1 flex flex-col items-center px-6 py-6 gap-6 text-center max-w-md mx-auto w-full">
         <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
           <ScanLine className="w-12 h-12 text-primary" />
         </div>
@@ -449,6 +561,57 @@ export default function ConferenciaPage() {
           <ScanLine className="w-5 h-5" />
           INICIAR CONFERÊNCIA
         </Button>
+
+        {isAdmin && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary">
+              Pastos registrados ({registros.length})
+            </p>
+            {registros.map(r => (
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                  {r.letra}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{r.num_pasto || "Pasto"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {[r.retiro_nome, r.fazenda_nome].filter(Boolean).join(" • ") || "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {r.qtd_animais ?? 0} animais · {r.fotos.length} foto(s)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Editar pasto"
+                  onClick={() => void abrirEdicao(r)}
+                  className="p-2 rounded hover:bg-muted"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Excluir pasto"
+                  onClick={() => setConfirmarExclusao(r)}
+                  className="p-2 rounded hover:bg-destructive/10 text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isAdmin && visita && (
+          <div className="w-full border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
+            <VisitaTopicosSection
+              visitaId={visita.id}
+              onChange={setTopicos}
+              numeroMap={numeroMap}
+            />
+          </div>
+        )}
 
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
@@ -467,6 +630,28 @@ export default function ConferenciaPage() {
             </Button>
           </div>
         )}
+
+        <AlertDialog open={!!confirmarExclusao} onOpenChange={(o) => { if (!o) setConfirmarExclusao(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita. O pasto {confirmarExclusao?.num_pasto || ""} e suas fotos serão
+                removidos desta conferência.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={excluindo}
+                onClick={(e) => { e.preventDefault(); void handleExcluirRegistro(); }}
+              >
+                {excluindo ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
 
         {isAdmin && pdfGerado && (
           <div className="w-full space-y-2 border-t pt-4">

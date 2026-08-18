@@ -183,6 +183,88 @@ export async function salvarPastoConferencia(input: SalvarPastoInput): Promise<s
   return registroId;
 }
 
+export interface AtualizarPastoInput {
+  registroId: string;
+  observacao: string | null;
+  qtd_animais: number | null;
+  peso_medio_kg: number | null;
+  consumo_medio_g: number | null;
+  /** Fotos existentes que devem ser removidas. */
+  fotosRemovidas: { id: string; url: string }[];
+  /** Novas fotos (dataURL) a anexar. */
+  novasFotosDataUrls: string[];
+  visitaId: string;
+}
+
+/** Edita um pasto já registrado na conferência (dados, observação e fotos). */
+export async function atualizarPastoConferencia(input: AtualizarPastoInput): Promise<void> {
+  const { error } = await supabase
+    .from("visita_pastos")
+    .update({
+      observacao: input.observacao,
+      qtd_animais: input.qtd_animais,
+      peso_medio_kg: input.peso_medio_kg,
+      consumo_medio_g: input.consumo_medio_g,
+    } as any)
+    .eq("id", input.registroId);
+  if (error) throw error;
+
+  if (input.fotosRemovidas.length) {
+    const paths = input.fotosRemovidas.map(f => f.url).filter(Boolean);
+    if (paths.length) {
+      try { await supabase.storage.from(BUCKET_FOTOS).remove(paths); } catch { /* ignora */ }
+    }
+    await supabase.from("visita_fotos").delete().in("id", input.fotosRemovidas.map(f => f.id));
+  }
+
+  if (input.novasFotosDataUrls.length) {
+    const { data: existentes } = await supabase
+      .from("visita_fotos")
+      .select("ordem")
+      .eq("visita_pasto_id", input.registroId);
+    let ordem = ((existentes as any[]) || []).reduce((m, r) => Math.max(m, (r.ordem ?? 0) + 1), 0);
+    for (const dataUrl of input.novasFotosDataUrls.slice(0, 5)) {
+      const blob = await dataUrlToBlob(dataUrl);
+      const path = `conferencia-admin/${input.visitaId}/${input.registroId}/${ordem}-${crypto.randomUUID()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET_FOTOS)
+        .upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+      if (upErr) continue;
+      await supabase.from("visita_fotos").insert({
+        visita_pasto_id: input.registroId,
+        url: path,
+        ordem,
+      });
+      ordem++;
+    }
+  }
+}
+
+/** Remove por completo um pasto registrado na conferência (fotos incluídas). */
+export async function excluirPastoConferencia(registro: ConferenciaPastoRegistro, visitaId: string): Promise<void> {
+  const paths = registro.fotos.map(f => f.url).filter(Boolean);
+  if (paths.length) {
+    try { await supabase.storage.from(BUCKET_FOTOS).remove(paths); } catch { /* ignora */ }
+  }
+  if (registro.fotos.length) {
+    await supabase.from("visita_fotos").delete().in("id", registro.fotos.map(f => f.id));
+  }
+  const { error } = await supabase.from("visita_pastos").delete().eq("id", registro.id);
+  if (error) throw error;
+
+  // Renumera ordem/letra dos remanescentes para manter a sequência A, B, C…
+  const { data: restantes } = await supabase
+    .from("visita_pastos")
+    .select("id, ordem")
+    .eq("visita_id", visitaId)
+    .order("ordem");
+  const rows = ((restantes as any[]) || []);
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].ordem === i) continue;
+    await supabase.from("visita_pastos").update({ ordem: i, letra: letraFor(i) } as any).eq("id", rows[i].id);
+  }
+}
+
 export async function encerrarConferenciaVisita(visitaId: string, pdfUrl: string | null) {
   await supabase
     .from("visitas_tecnicas")
@@ -199,3 +281,4 @@ export function numeroMapConferencia(pastos: ConferenciaPastoRegistro[]): Record
   }
   return map;
 }
+
