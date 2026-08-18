@@ -27,6 +27,8 @@ export interface ConferenciaPastoFormValues {
 interface Props {
   titulo: string;
   subtitulo: string;
+  /** Linha informativa extra (ex.: "Última salga: 10/08/2026 — 12 sacos"). */
+  infoUltimaSalga?: string | null;
   /** Número inicial da numeração sequencial contínua da visita. */
   numeroInicial: number;
   /** Números globais já atribuídos às fotos existentes (mesma ordem de `initial.fotos`). */
@@ -55,7 +57,7 @@ const numOrNull = (v: string): number | null => {
 };
 
 export default function ConferenciaVisitaPastoForm({
-  titulo, subtitulo, numeroInicial, numerosExistentes, saving, edicao, initial, onBack, onSalvar,
+  titulo, subtitulo, infoUltimaSalga, numeroInicial, numerosExistentes, saving, edicao, initial, onBack, onSalvar,
 }: Props) {
   const [observacao, setObservacao] = useState(initial?.observacao ?? "");
   const [qtdAnimais, setQtdAnimais] = useState(initial?.qtd_animais != null ? String(initial.qtd_animais) : "");
@@ -108,6 +110,9 @@ export default function ConferenciaVisitaPastoForm({
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">{titulo}</h1>
           <p className="text-xs opacity-90 truncate">{subtitulo}</p>
+          {infoUltimaSalga ? (
+            <p className="text-xs opacity-90 truncate">{infoUltimaSalga}</p>
+          ) : null}
         </div>
       </header>
 

@@ -5626,6 +5626,7 @@ export type Database = {
           sexo: string | null
           tipo_produto: string | null
           ultima_salga: string | null
+          ultima_salga_sacos: number | null
           visita_id: string
         }
         Insert: {
@@ -5648,6 +5649,7 @@ export type Database = {
           sexo?: string | null
           tipo_produto?: string | null
           ultima_salga?: string | null
+          ultima_salga_sacos?: number | null
           visita_id: string
         }
         Update: {
@@ -5670,6 +5672,7 @@ export type Database = {
           sexo?: string | null
           tipo_produto?: string | null
           ultima_salga?: string | null
+          ultima_salga_sacos?: number | null
           visita_id?: string
         }
         Relationships: [

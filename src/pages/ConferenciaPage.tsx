@@ -50,6 +50,12 @@ function extractQrUuid(raw: string): string | null {
   return match ? match[0] : null;
 }
 
+const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
+  if (!iso) return null;
+  const d = new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `Última salga: ${d}${sacos != null ? ` — ${sacos} sacos` : ""}`;
+};
+
 export default function ConferenciaPage() {
   const navigate = useNavigate();
   const { user, role, roleData } = useAuth();
@@ -142,6 +148,7 @@ export default function ConferenciaPage() {
         qtd_animais: dados.num_animais,
         consumo_medio_g: dados.consumo_medio_g,
         ultima_salga: dados.ultima_salga_data,
+        ultima_salga_sacos: dados.ultima_salga_sacos,
         observacao: observacao || null,
         fotosDataUrls,
       });
@@ -236,6 +243,7 @@ export default function ConferenciaPage() {
         retiro_nome: r.retiro_nome,
         sexo: r.sexo,
         ultima_salga: r.ultima_salga,
+        ultima_salga_sacos: r.ultima_salga_sacos,
         consumo_medio_g: r.consumo_medio_g,
       }));
 
@@ -377,7 +385,7 @@ export default function ConferenciaPage() {
       // 3) último lançamento (salga) do pasto
       const { data: ultLanc } = await supabase
         .from("lancamentos")
-        .select("data_salga_informada, created_at, criado_por, mes_referencia, ano_referencia")
+        .select("data_salga_informada, created_at, criado_por, mes_referencia, ano_referencia, num_sacos")
         .eq("pasto_id", pasto.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -480,6 +488,7 @@ export default function ConferenciaPage() {
         consumo_medio_g: maePasto?.consumo_global_g_cab_dia != null ? Number(maePasto.consumo_global_g_cab_dia) : null,
         status_consumo: maePasto?.status_global ?? null,
         ultima_salga_data: ultSalgaData,
+        ultima_salga_sacos: ultLanc?.num_sacos ?? null,
         ultima_salga_responsavel: respNome,
         ultima_movimentacao_data: ultMov?.data ?? null,
         dias_desde_salga: diasEntre(ultSalgaData),
@@ -533,6 +542,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Registrar ${dados.pasto.nome}`}
         subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
+        infoUltimaSalga={fmtSalgaInfo(dados.ultima_salga_data, dados.ultima_salga_sacos)}
         numeroInicial={proximoNumeroFoto}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
@@ -546,6 +556,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Editar ${editando.num_pasto || editando.letra}`}
         subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
+        infoUltimaSalga={fmtSalgaInfo(editando.ultima_salga, editando.ultima_salga_sacos)}
         numeroInicial={proximoNumeroFoto}
         numerosExistentes={fotosEdicao.map(f => numeroMap[f.id])}
         saving={savingPasto}
