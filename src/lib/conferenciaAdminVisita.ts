@@ -15,6 +15,8 @@ export interface ConferenciaVisita {
   hora_inicio: string;
   fazenda_id: string | null;
   fazenda_nome_override: string | null;
+  status?: string | null;
+  pdf_url?: string | null;
 }
 
 export interface ConferenciaPastoRegistro {
@@ -38,25 +40,32 @@ export interface ConferenciaPastoRegistro {
 const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const letraFor = (i: number) => LETRAS[i % 26] + (i >= 26 ? String(Math.floor(i / 26) + 1) : "");
 
-/** Busca a visita de conferência em andamento do admin (ou cria uma nova). */
-export async function getOrCreateConferenciaVisita(
-  administradorId: string,
-  fazendaId: string | null,
-  fazendaNome: string | null,
-): Promise<ConferenciaVisita> {
-  const { data: existing } = await supabase
+const SELECT_VISITA = "id, hora_inicio, fazenda_id, fazenda_nome_override, status, pdf_url";
+
+/**
+ * Busca a conferência ainda não encerrada (ou em revisão) do admin.
+ * NÃO cria nada — o registro formal só nasce quando o admin decide registrar.
+ */
+export async function findConferenciaAtiva(administradorId: string): Promise<ConferenciaVisita | null> {
+  const { data } = await supabase
     .from("visitas_tecnicas")
-    .select("id, hora_inicio, fazenda_id, fazenda_nome_override")
+    .select(SELECT_VISITA)
     .eq("administrador_id", administradorId)
     .eq("tipo", TIPO_CONFERENCIA_ADMIN)
-    .eq("status", "em_andamento")
+    .in("status", ["em_andamento", "revisao"])
     .is("deleted_at", null)
     .order("hora_inicio", { ascending: false })
     .limit(1)
     .maybeSingle();
+  return (data as any as ConferenciaVisita) ?? null;
+}
 
-  if (existing) return existing as ConferenciaVisita;
-
+/** Cria o registro formal da conferência (só após "Registrar Conferência"). */
+export async function criarConferenciaVisita(
+  administradorId: string,
+  fazendaId: string | null,
+  fazendaNome: string | null,
+): Promise<ConferenciaVisita> {
   const { data, error } = await supabase
     .from("visitas_tecnicas")
     .insert({
@@ -68,11 +77,69 @@ export async function getOrCreateConferenciaVisita(
       tipo: TIPO_CONFERENCIA_ADMIN,
       status: "em_andamento",
     } as any)
-    .select("id, hora_inicio, fazenda_id, fazenda_nome_override")
+    .select(SELECT_VISITA)
     .single();
 
   if (error) throw error;
-  return data as ConferenciaVisita;
+  return data as any as ConferenciaVisita;
+}
+
+/** Busca a conferência ativa do admin ou cria uma nova (usado ao registrar). */
+export async function getOrCreateConferenciaVisita(
+  administradorId: string,
+  fazendaId: string | null,
+  fazendaNome: string | null,
+): Promise<ConferenciaVisita> {
+  const existing = await findConferenciaAtiva(administradorId);
+  if (existing) return existing;
+  return criarConferenciaVisita(administradorId, fazendaId, fazendaNome);
+}
+
+/** Qualquer edição em conferência finalizada invalida o PDF antigo (mesma regra do Relatto). */
+export async function reabrirConferenciaSeFinalizada(visita: ConferenciaVisita | null): Promise<boolean> {
+  if (!visita || visita.status !== "finalizada") return false;
+  await supabase
+    .from("visitas_tecnicas")
+    .update({ status: "revisao", pdf_url: null })
+    .eq("id", visita.id);
+  return true;
+}
+
+export interface ConferenciaHistoricoItem {
+  id: string;
+  hora_inicio: string;
+  hora_fim: string | null;
+  status: string;
+  pdf_url: string | null;
+  fazenda_nome: string | null;
+}
+
+export async function listConferenciasHistorico(administradorId: string): Promise<ConferenciaHistoricoItem[]> {
+  const { data } = await supabase
+    .from("visitas_tecnicas")
+    .select("id, hora_inicio, hora_fim, status, pdf_url, fazenda_nome_override, fazendas(nome)")
+    .eq("administrador_id", administradorId)
+    .eq("tipo", TIPO_CONFERENCIA_ADMIN)
+    .eq("status", "finalizada")
+    .is("deleted_at", null)
+    .order("hora_inicio", { ascending: false });
+
+  return ((data as any[]) || []).map(r => ({
+    id: r.id,
+    hora_inicio: r.hora_inicio,
+    hora_fim: r.hora_fim ?? null,
+    status: r.status,
+    pdf_url: r.pdf_url ?? null,
+    fazenda_nome: r.fazendas?.nome ?? r.fazenda_nome_override ?? null,
+  }));
+}
+
+export async function excluirConferencia(visitaId: string): Promise<void> {
+  const { error } = await supabase
+    .from("visitas_tecnicas")
+    .update({ deleted_at: new Date().toISOString() } as any)
+    .eq("id", visitaId);
+  if (error) throw error;
 }
 
 export async function listConferenciaPastos(visitaId: string): Promise<ConferenciaPastoRegistro[]> {

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2, History as HistoryIcon, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
 import ConferenciaResultado, { type DadosConferencia, type HistoricoEvento } from "@/components/conferencia/ConferenciaResultado";
@@ -20,6 +20,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
 import {
   getOrCreateConferenciaVisita,
+  findConferenciaAtiva,
+  reabrirConferenciaSeFinalizada,
+  listConferenciasHistorico,
+  excluirConferencia,
   listConferenciaPastos,
   salvarPastoConferencia,
   atualizarPastoConferencia,
@@ -27,12 +31,14 @@ import {
   encerrarConferenciaVisita,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
+  type ConferenciaHistoricoItem,
 } from "@/lib/conferenciaAdminVisita";
+import { uploadVisitaPdf } from "@/lib/visitaPdf";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
 
-type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto";
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto" | "historico";
 
 
 function diasEntre(iso: string | null): number | null {
@@ -76,6 +82,13 @@ export default function ConferenciaPage() {
   const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
   const [adminNome, setAdminNome] = useState<string>("");
   const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
+  const [criandoVisita, setCriandoVisita] = useState(false);
+  const [historico, setHistorico] = useState<ConferenciaHistoricoItem[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [pdfHistorico, setPdfHistorico] = useState<{ url: string; nome: string } | null>(null);
+  const [confirmarExclusaoConf, setConfirmarExclusaoConf] = useState<ConferenciaHistoricoItem | null>(null);
+  const topicosCarregados = useRef<string | null>(null);
+  const assinantesCarregados = useRef<string | null>(null);
 
   const numeroMap = useNumeroMapFotos({
     visitaId: visita?.id,
@@ -106,36 +119,92 @@ export default function ConferenciaPage() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  // Retoma visita de conferência em andamento do Admin
+  // Retoma (apenas leitura) a conferência formal já iniciada pelo Admin.
+  // Nada é criado aqui: o modo padrão é verificação livre.
   useEffect(() => {
     if (!isAdmin || !roleData.roleId) return;
     let cancelled = false;
     (async () => {
       try {
-        const v = await getOrCreateConferenciaVisita(roleData.roleId!, null, null);
-        if (cancelled) return;
+        const v = await findConferenciaAtiva(roleData.roleId!);
+        if (cancelled || !v) return;
         setVisita(v);
         setRegistros(await listConferenciaPastos(v.id));
-      } catch (e: any) {
-        if (!cancelled) toast.error(e?.message || "Não foi possível iniciar a visita de conferência.");
-      }
+      } catch { /* modo verificação livre segue disponível */ }
     })();
     return () => { cancelled = true; };
   }, [isAdmin, roleData.roleId]);
 
   const totalFotos = registros.reduce((acc, r) => acc + r.fotos.length, 0);
 
+  /** Garante o registro formal da conferência (cria sob demanda). */
+  const garantirVisita = async (): Promise<ConferenciaVisita> => {
+    if (visita) return visita;
+    if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
+    const v = await getOrCreateConferenciaVisita(roleData.roleId, fazendaIdConf, dados?.fazenda.nome ?? null);
+    setVisita(v);
+    setRegistros(await listConferenciaPastos(v.id));
+    return v;
+  };
+
+  /** Editou algo depois do PDF? Invalida o PDF antigo e volta para revisão. */
+  const invalidarPdf = async (v: ConferenciaVisita | null) => {
+    const reaberta = await reabrirConferenciaSeFinalizada(v);
+    if (reaberta && v) {
+      setVisita({ ...v, status: "revisao", pdf_url: null });
+      setPdfGerado(null);
+    }
+  };
+
+  /** Transforma a verificação livre em registro formal (tópicos + assinaturas liberados). */
+  const handleRegistrarConferencia = async () => {
+    setCriandoVisita(true);
+    try {
+      await garantirVisita();
+      toast.success("Conferência registrada. Os pastos escaneados entram no relatório.");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível registrar a conferência.");
+    } finally {
+      setCriandoVisita(false);
+    }
+  };
+
+  const abrirHistorico = async () => {
+    setEtapa("historico");
+    if (!roleData.roleId) return;
+    setLoadingHistorico(true);
+    try {
+      setHistorico(await listConferenciasHistorico(roleData.roleId));
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível carregar o histórico.");
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  const handleExcluirConferencia = async () => {
+    if (!confirmarExclusaoConf) return;
+    try {
+      await excluirConferencia(confirmarExclusaoConf.id);
+      setHistorico(prev => prev.filter(h => h.id !== confirmarExclusaoConf.id));
+      if (visita?.id === confirmarExclusaoConf.id) {
+        setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
+      }
+      toast.success("Conferência excluída.");
+      setConfirmarExclusaoConf(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível excluir a conferência.");
+    }
+  };
+
+
+
   const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
     if (!dados) return;
     setSavingPasto(true);
     try {
-      // Cria a visita sob demanda caso o efeito de montagem tenha falhado
-      let v = visita;
-      if (!v) {
-        if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
-        v = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
-        setVisita(v);
-      }
+      const v = await garantirVisita();
+      await invalidarPdf(v);
       await salvarPastoConferencia({
         visitaId: v.id,
         pasto_id: dados.pasto.id,
@@ -184,6 +253,7 @@ export default function ConferenciaPage() {
     if (!editando || !visita) return;
     setSavingPasto(true);
     try {
+      await invalidarPdf(visita);
       await atualizarPastoConferencia({
         registroId: editando.id,
         visitaId: visita.id,
@@ -210,6 +280,7 @@ export default function ConferenciaPage() {
     if (!confirmarExclusao || !visita) return;
     setExcluindo(true);
     try {
+      await invalidarPdf(visita);
       await excluirPastoConferencia(confirmarExclusao, visita.id);
       setRegistros(await listConferenciaPastos(visita.id));
       toast.success("Pasto removido da conferência.");
@@ -299,19 +370,17 @@ export default function ConferenciaPage() {
       const url = URL.createObjectURL(blob);
       setPdfGerado({ url, fileName });
 
-      await encerrarConferenciaVisita(visita.id, null);
-      toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
-      setVisita(null);
-      setRegistros([]);
-      setTopicos([]);
-      setAssinantes([]);
-      setFazendaIdConf(null);
-
-
-      if (roleData.roleId) {
-        const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
-        setVisita(nova);
+      // Upload para o histórico (mesmo padrão do Relatto). Falha no upload não perde o PDF local.
+      let pdfUrl: string | null = null;
+      try {
+        pdfUrl = await uploadVisitaPdf(blob, fileName, roleData.roleId || "admin", visita.id);
+      } catch {
+        toast.error("PDF gerado, mas não foi possível enviá-lo ao histórico.");
       }
+
+      await encerrarConferenciaVisita(visita.id, pdfUrl);
+      setVisita({ ...visita, status: "finalizada", pdf_url: pdfUrl });
+      toast.success(`Conferência finalizada. PDF gerado: ${fileName}`);
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível gerar o PDF.");
     } finally {
@@ -588,13 +657,91 @@ export default function ConferenciaPage() {
   }
 
 
+  if (etapa === "historico") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setEtapa("inicio")} className="text-primary-foreground hover:bg-primary/80">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-lg font-bold">Histórico de Conferências</h1>
+        </header>
+
+        <main className="flex-1 px-4 py-4 max-w-md mx-auto w-full space-y-3">
+          {loadingHistorico ? (
+            <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : historico.length === 0 ? (
+            <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+              Nenhuma conferência registrada ainda.
+            </div>
+          ) : historico.map(h => (
+            <div key={h.id} className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{h.fazenda_nome || "Conferência"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <span className="text-[10px] uppercase font-bold rounded-full bg-primary/10 text-primary px-2 py-1 shrink-0">
+                  {h.status}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {h.pdf_url && (
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => setPdfHistorico({ url: h.pdf_url!, nome: h.fazenda_nome || "conferencia" })}>
+                    <FileText className="w-4 h-4" /> Ver / Baixar PDF
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 gap-1.5"
+                  onClick={() => setConfirmarExclusaoConf(h)}>
+                  <Trash2 className="w-4 h-4" /> Excluir
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          <AlertDialog open={!!confirmarExclusaoConf} onOpenChange={(o) => { if (!o) setConfirmarExclusaoConf(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir conferência?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza? Essa ação não pode ser desfeita e o relatório sairá do histórico.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleExcluirConferencia(); }}>
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <PdfViewerDialog
+            url={pdfHistorico?.url ?? null}
+            fileName={pdfHistorico ? `conferencia-${pdfHistorico.nome}.pdf` : undefined}
+            title={pdfHistorico ? `Conferência — ${pdfHistorico.nome}` : undefined}
+            onClose={() => setPdfHistorico(null)}
+          />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-primary-foreground hover:bg-primary/80">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-bold">Conferência</h1>
+        <h1 className="text-lg font-bold flex-1">Conferência</h1>
+        {isAdmin && (
+          <Button variant="ghost" size="sm" onClick={() => void abrirHistorico()} className="text-primary-foreground hover:bg-primary/80 gap-1.5">
+            <HistoryIcon className="w-4 h-4" /> Histórico
+          </Button>
+        )}
       </header>
 
       <main className="flex-1 flex flex-col items-center px-6 py-6 gap-6 text-center max-w-md mx-auto w-full">
@@ -604,13 +751,29 @@ export default function ConferenciaPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-foreground">Conferência via QR Code</h2>
           <p className="text-sm text-muted-foreground">
-            Aponte a câmera para o QR do pasto e consulte instantaneamente a situação atual do lote e da mineralização.
+            {visita
+              ? "Conferência registrada: os pastos escaneados entram no relatório."
+              : "Aponte a câmera para o QR do pasto e consulte a situação atual. Nada é registrado até você clicar em “Registrar Conferência”."}
           </p>
         </div>
         <Button size="lg" onClick={() => setEtapa("scan")} className="w-full gap-2">
           <ScanLine className="w-5 h-5" />
-          INICIAR CONFERÊNCIA
+          {visita ? "ESCANEAR PASTO" : "INICIAR VERIFICAÇÃO"}
         </Button>
+
+        {isAdmin && !visita && (
+          <Button
+            size="lg"
+            variant="secondary"
+            className="w-full gap-2"
+            disabled={criandoVisita}
+            onClick={() => void handleRegistrarConferencia()}
+          >
+            {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
+            REGISTRAR CONFERÊNCIA
+          </Button>
+        )}
+
 
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4 text-left">
@@ -657,7 +820,11 @@ export default function ConferenciaPage() {
             <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
             <VisitaTopicosSection
               visitaId={visita.id}
-              onChange={setTopicos}
+              onChange={(t) => {
+                setTopicos(t);
+                if (topicosCarregados.current === visita.id) void invalidarPdf(visita);
+                else topicosCarregados.current = visita.id;
+              }}
               numeroMap={numeroMap}
             />
           </div>
@@ -668,15 +835,19 @@ export default function ConferenciaPage() {
             <ConferenciaAssinaturasSection
               visitaId={visita.id}
               nomePadrao={adminNome}
-              onChange={setAssinantes}
+              onChange={(a) => {
+                setAssinantes(a);
+                if (assinantesCarregados.current === visita.id) void invalidarPdf(visita);
+                else assinantesCarregados.current = visita.id;
+              }}
             />
           </div>
         )}
 
-        {isAdmin && registros.length > 0 && (
+        {isAdmin && visita && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
-              Visita em andamento: {registros.length} pasto(s), {totalFotos} foto(s).
+              Conferência {visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} pasto(s), {totalFotos} foto(s).
             </p>
             <Button
               size="lg"
@@ -686,8 +857,21 @@ export default function ConferenciaPage() {
               onClick={() => void handleEncerrarVisita()}
             >
               {gerandoPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
-              ENCERRAR VISITA E GERAR PDF
+              {visita.status === "finalizada" ? "GERAR NOVO PDF" : "ENCERRAR E GERAR PDF"}
             </Button>
+            {visita.status === "finalizada" && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => {
+                  setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]);
+                  setPdfGerado(null); setFazendaIdConf(null);
+                }}
+              >
+                <ClipboardCheck className="w-5 h-5" /> NOVA CONFERÊNCIA
+              </Button>
+            )}
           </div>
         )}
 
