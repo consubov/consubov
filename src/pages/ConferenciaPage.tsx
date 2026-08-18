@@ -82,6 +82,11 @@ export default function ConferenciaPage() {
   const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
   const [adminNome, setAdminNome] = useState<string>("");
   const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
+  const [criandoVisita, setCriandoVisita] = useState(false);
+  const [historico, setHistorico] = useState<ConferenciaHistoricoItem[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [pdfHistorico, setPdfHistorico] = useState<{ url: string; nome: string } | null>(null);
+  const [confirmarExclusaoConf, setConfirmarExclusaoConf] = useState<ConferenciaHistoricoItem | null>(null);
 
   const numeroMap = useNumeroMapFotos({
     visitaId: visita?.id,
