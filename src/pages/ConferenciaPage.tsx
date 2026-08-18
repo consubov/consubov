@@ -67,6 +67,9 @@ export default function ConferenciaPage() {
   const [fotosEdicao, setFotosEdicao] = useState<FotoExistente[]>([]);
   const [confirmarExclusao, setConfirmarExclusao] = useState<ConferenciaPastoRegistro | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
+  const [adminNome, setAdminNome] = useState<string>("");
+  const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
 
   const numeroMap = useNumeroMapFotos({
     visitaId: visita?.id,
@@ -74,6 +77,19 @@ export default function ConferenciaPage() {
     topicos,
     itens: registros.map(r => ({ id: r.id, fotos: r.fotos.map(f => ({ id: f.id, ordem: f.ordem })) })),
   });
+
+  const proximoNumeroFoto = Object.values(numeroMap).reduce((m, n) => Math.max(m, n), 0) + 1;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("administradores").select("nome").eq("user_id", user.id).maybeSingle();
+      if (!cancelled) setAdminNome(data?.nome || "");
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
 
 
   useEffect(() => {
