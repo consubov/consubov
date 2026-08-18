@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
 import {
   getOrCreateConferenciaVisita,
+  getConferenciaById,
   findConferenciaAtiva,
   reabrirConferenciaSeFinalizada,
   listConferenciasHistorico,
@@ -69,6 +70,7 @@ export default function ConferenciaPage() {
   const [etapa, setEtapa] = useState<Etapa>("inicio");
   const [dados, setDados] = useState<DadosConferencia | null>(null);
   const [visita, setVisita] = useState<ConferenciaVisita | null>(null);
+  const [registroFormalConfirmado, setRegistroFormalConfirmado] = useState(false);
   const [registros, setRegistros] = useState<ConferenciaPastoRegistro[]>([]);
   const [savingPasto, setSavingPasto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
@@ -158,14 +160,44 @@ export default function ConferenciaPage() {
 
   /** Transforma a verificação livre em registro formal (tópicos + assinaturas liberados). */
   const handleRegistrarConferencia = async () => {
+    if (registros.length === 0) {
+      toast.error("Escaneie e registre pelo menos um pasto antes de registrar a conferência.");
+      return;
+    }
     setCriandoVisita(true);
     try {
       await garantirVisita();
+      setRegistroFormalConfirmado(true);
       toast.success("Conferência registrada. Os pastos escaneados entram no relatório.");
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível registrar a conferência.");
     } finally {
       setCriandoVisita(false);
+    }
+  };
+
+  const abrirConferenciaHistorico = async (item: ConferenciaHistoricoItem) => {
+    setLoadingHistorico(true);
+    try {
+      const [v, pastos] = await Promise.all([
+        getConferenciaById(item.id),
+        listConferenciaPastos(item.id),
+      ]);
+      setVisita(v);
+      setRegistros(pastos);
+      setFazendaIdConf(v.fazenda_id);
+      setRegistroFormalConfirmado(true);
+      setTopicos([]);
+      setAssinantes([]);
+      setPdfGerado(null);
+      setPdfHistorico(null);
+      topicosCarregados.current = null;
+      assinantesCarregados.current = null;
+      setEtapa("inicio");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível abrir a conferência para edição.");
+    } finally {
+      setLoadingHistorico(false);
     }
   };
 
@@ -188,7 +220,7 @@ export default function ConferenciaPage() {
       await excluirConferencia(confirmarExclusaoConf.id);
       setHistorico(prev => prev.filter(h => h.id !== confirmarExclusaoConf.id));
       if (visita?.id === confirmarExclusaoConf.id) {
-        setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
+        setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
       }
       toast.success("Conferência excluída.");
       setConfirmarExclusaoConf(null);
@@ -680,7 +712,7 @@ export default function ConferenciaPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{h.fazenda_nome || "Conferência"}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    Conferência via QR Code • {new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <span className="text-[10px] uppercase font-bold rounded-full bg-primary/10 text-primary px-2 py-1 shrink-0">
@@ -688,6 +720,10 @@ export default function ConferenciaPage() {
                 </span>
               </div>
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5"
+                  onClick={() => void abrirConferenciaHistorico(h)}>
+                  <Pencil className="w-4 h-4" /> Editar
+                </Button>
                 {h.pdf_url && (
                   <Button size="sm" variant="outline" className="flex-1 gap-1.5"
                     onClick={() => setPdfHistorico({ url: h.pdf_url!, nome: h.fazenda_nome || "conferencia" })}>
@@ -751,22 +787,22 @@ export default function ConferenciaPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-foreground">Conferência via QR Code</h2>
           <p className="text-sm text-muted-foreground">
-            {visita
+            {registroFormalConfirmado
               ? "Conferência registrada: os pastos escaneados entram no relatório."
               : "Aponte a câmera para o QR do pasto e consulte a situação atual. Nada é registrado até você clicar em “Registrar Conferência”."}
           </p>
         </div>
         <Button size="lg" onClick={() => setEtapa("scan")} className="w-full gap-2">
           <ScanLine className="w-5 h-5" />
-          {visita ? "ESCANEAR PASTO" : "INICIAR VERIFICAÇÃO"}
+          ESCANEAR QR CODE
         </Button>
 
-        {isAdmin && !visita && (
+        {isAdmin && !registroFormalConfirmado && (
           <Button
             size="lg"
             variant="secondary"
             className="w-full gap-2"
-            disabled={criandoVisita}
+            disabled={criandoVisita || registros.length === 0}
             onClick={() => void handleRegistrarConferencia()}
           >
             {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
@@ -815,7 +851,7 @@ export default function ConferenciaPage() {
           </div>
         )}
 
-        {isAdmin && visita && (
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full border-t pt-4 text-left">
             <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
             <VisitaTopicosSection
@@ -830,7 +866,7 @@ export default function ConferenciaPage() {
           </div>
         )}
 
-        {isAdmin && visita && (
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full border-t pt-4 text-left">
             <ConferenciaAssinaturasSection
               visitaId={visita.id}
@@ -844,7 +880,7 @@ export default function ConferenciaPage() {
           </div>
         )}
 
-        {isAdmin && visita && registros.length > 0 && (
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
               Conferência {visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} pasto(s), {totalFotos} foto(s).
@@ -865,7 +901,7 @@ export default function ConferenciaPage() {
                 variant="outline"
                 className="w-full gap-2"
                 onClick={() => {
-                  setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]);
+                  setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]);
                   setPdfGerado(null); setFazendaIdConf(null);
                 }}
               >
