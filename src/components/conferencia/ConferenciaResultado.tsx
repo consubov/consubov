@@ -15,6 +15,7 @@ export interface DadosConferencia {
   consumo_medio_g: number | null;
   status_consumo: string | null;
   ultima_salga_data: string | null;
+  ultima_salga_sacos: number | null;
   ultima_salga_responsavel: string | null;
   ultima_movimentacao_data: string | null;
   dias_desde_salga: number | null;
@@ -104,7 +105,7 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
           <CardContent className="p-4">
             <Linha icon={Package} label="Produto mineral" value={dados.produto_nome} />
             <Linha icon={Droplets} label="Consumo médio" value={dados.consumo_medio_g ? `${dados.consumo_medio_g} g/cab/dia` : "—"} />
-            <Linha icon={Calendar} label="Última salga" value={fmtDate(dados.ultima_salga_data)} />
+            <Linha icon={Calendar} label="Última salga" value={dados.ultima_salga_data ? `${fmtDate(dados.ultima_salga_data)}${dados.ultima_salga_sacos != null ? ` — ${dados.ultima_salga_sacos} sacos` : ""}` : "—"} />
             <Linha icon={User} label="Responsável" value={dados.ultima_salga_responsavel} />
             <Linha
               icon={Calendar}

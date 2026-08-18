@@ -52,6 +52,7 @@ export interface VisitaPdfPasto {
   retiro_nome?: string | null;
   sexo?: string | null;
   ultima_salga?: string | null;
+  ultima_salga_sacos?: number | null;
   consumo_medio_g?: number | null;
 }
 
@@ -555,8 +556,9 @@ function drawConferenciaPastoBlock(
   doc.line(x + 3, y + 18, x + width - 3, y + 18);
 
   const cellW = (width - 6) / 3;
+  const salgaSacos = pasto.ultima_salga_sacos;
   const salgaTxt = pasto.ultima_salga
-    ? format(new Date(pasto.ultima_salga), "dd/MM/yyyy", { locale: ptBR })
+    ? `${format(new Date(pasto.ultima_salga), "dd/MM/yyyy", { locale: ptBR })}${salgaSacos != null ? ` — ${salgaSacos} sacos` : ""}`
     : "—";
   const rows: { label: string; value: string }[][] = [
     [
