@@ -149,36 +149,39 @@ export default function ConferenciaVisitaPastoForm({
             <div className="flex items-center justify-between">
               <Label>Fotos ({total}/{MAX_FOTOS})</Label>
               <span className="text-xs text-muted-foreground">
-                Numeração: {numeroInicial}
-                {total > 1 ? `–${numeroInicial + total - 1}` : ""}
+                Numeração contínua do relatório
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              {existentes.map((f, i) => (
-                <div key={f.id} className="relative aspect-square rounded-lg overflow-hidden border">
-                  {f.src
-                    ? <img src={f.src} alt={`Foto ${numeroInicial + i}`} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-4 h-4 animate-spin" /></div>}
+              {existentes.map((f, i) => {
+                const n = numerosExistentes?.[i] ?? numeroInicial + i;
+                return (
+                  <div key={f.id} className="relative aspect-square rounded-lg overflow-hidden border">
+                    {f.src
+                      ? <img src={f.src} alt={`Foto ${n}`} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-4 h-4 animate-spin" /></div>}
+                    <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold rounded px-1.5">
+                      {n}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removerExistente(f)}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
+                      aria-label="Remover foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+              {fotos.map((src, i) => (
+                <div key={`nova-${i}`} className="relative aspect-square rounded-lg overflow-hidden border">
+                  <img src={src} alt={`Foto ${numeroInicial + i}`} className="w-full h-full object-cover" />
                   <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold rounded px-1.5">
                     {numeroInicial + i}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => removerExistente(f)}
-                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                    aria-label="Remover foto"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-              {fotos.map((src, i) => (
-                <div key={`nova-${i}`} className="relative aspect-square rounded-lg overflow-hidden border">
-                  <img src={src} alt={`Foto ${numeroInicial + existentes.length + i}`} className="w-full h-full object-cover" />
-                  <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold rounded px-1.5">
-                    {numeroInicial + existentes.length + i}
-                  </span>
+
                   <button
                     type="button"
                     onClick={() => setFotos((p) => p.filter((_, idx) => idx !== i))}
