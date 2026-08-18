@@ -20,6 +20,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
 import {
   getOrCreateConferenciaVisita,
+  findConferenciaAtiva,
+  reabrirConferenciaSeFinalizada,
+  listConferenciasHistorico,
+  excluirConferencia,
   listConferenciaPastos,
   salvarPastoConferencia,
   atualizarPastoConferencia,
@@ -27,7 +31,9 @@ import {
   encerrarConferenciaVisita,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
+  type ConferenciaHistoricoItem,
 } from "@/lib/conferenciaAdminVisita";
+import { uploadVisitaPdf } from "@/lib/visitaPdf";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
