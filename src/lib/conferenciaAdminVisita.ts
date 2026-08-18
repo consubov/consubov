@@ -15,6 +15,8 @@ export interface ConferenciaVisita {
   hora_inicio: string;
   fazenda_id: string | null;
   fazenda_nome_override: string | null;
+  status?: string | null;
+  pdf_url?: string | null;
 }
 
 export interface ConferenciaPastoRegistro {
