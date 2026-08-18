@@ -15,9 +15,37 @@ export interface ConferenciaVisita {
   hora_inicio: string;
   fazenda_id: string | null;
   fazenda_nome_override: string | null;
+  proprietario_override?: string | null;
+  responsavel_override?: string | null;
+  consultor_nome_override?: string | null;
+  data_override?: string | null;
   status?: string | null;
   pdf_url?: string | null;
 }
+
+export interface CabecalhoConferenciaInput {
+  fazenda_nome_override: string | null;
+  proprietario_override: string | null;
+  /** Gerente da fazenda (rótulo "Gerente" no PDF). */
+  responsavel_override: string | null;
+  /** Responsável pela conferência. */
+  consultor_nome_override: string | null;
+  /** yyyy-MM-dd */
+  data_override: string | null;
+}
+
+/** Persiste o cabeçalho editado do relatório (não altera o cadastro da fazenda). */
+export async function salvarCabecalhoConferencia(
+  visitaId: string,
+  cab: CabecalhoConferenciaInput,
+): Promise<void> {
+  const { error } = await supabase
+    .from("visitas_tecnicas")
+    .update(cab as any)
+    .eq("id", visitaId);
+  if (error) throw error;
+}
+
 
 export interface ConferenciaPastoRegistro {
   id: string;
