@@ -47,7 +47,7 @@ const SELECT_VISITA = "id, hora_inicio, fazenda_id, fazenda_nome_override, statu
  * NÃO cria nada — o registro formal só nasce quando o admin decide registrar.
  */
 export async function findConferenciaAtiva(administradorId: string): Promise<ConferenciaVisita | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("visitas_tecnicas")
     .select(SELECT_VISITA)
     .eq("administrador_id", administradorId)
@@ -57,7 +57,21 @@ export async function findConferenciaAtiva(administradorId: string): Promise<Con
     .order("hora_inicio", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as any as ConferenciaVisita) ?? null;
+}
+
+/** Carrega uma conferência específica, inclusive quando já finalizada. */
+export async function getConferenciaById(visitaId: string): Promise<ConferenciaVisita> {
+  const { data, error } = await supabase
+    .from("visitas_tecnicas")
+    .select(SELECT_VISITA)
+    .eq("id", visitaId)
+    .eq("tipo", TIPO_CONFERENCIA_ADMIN)
+    .is("deleted_at", null)
+    .single();
+  if (error) throw error;
+  return data as any as ConferenciaVisita;
 }
 
 /** Cria o registro formal da conferência (só após "Registrar Conferência"). */
@@ -98,10 +112,11 @@ export async function getOrCreateConferenciaVisita(
 /** Qualquer edição em conferência finalizada invalida o PDF antigo (mesma regra do Relatto). */
 export async function reabrirConferenciaSeFinalizada(visita: ConferenciaVisita | null): Promise<boolean> {
   if (!visita || visita.status !== "finalizada") return false;
-  await supabase
+  const { error } = await supabase
     .from("visitas_tecnicas")
     .update({ status: "revisao", pdf_url: null })
     .eq("id", visita.id);
+  if (error) throw error;
   return true;
 }
 
@@ -115,7 +130,7 @@ export interface ConferenciaHistoricoItem {
 }
 
 export async function listConferenciasHistorico(administradorId: string): Promise<ConferenciaHistoricoItem[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("visitas_tecnicas")
     .select("id, hora_inicio, hora_fim, status, pdf_url, fazenda_nome_override, fazendas(nome)")
     .eq("administrador_id", administradorId)
@@ -123,14 +138,33 @@ export async function listConferenciasHistorico(administradorId: string): Promis
     .eq("status", "finalizada")
     .is("deleted_at", null)
     .order("hora_inicio", { ascending: false });
+  if (error) throw error;
 
-  return ((data as any[]) || []).map(r => ({
+  const rows = (data as any[]) || [];
+  const semNome = rows.filter(r => !r.fazendas?.nome && !r.fazenda_nome_override).map(r => r.id);
+  const nomePorVisita: Record<string, string> = {};
+  if (semNome.length > 0) {
+    const { data: pastos, error: pastosError } = await supabase
+      .from("visita_pastos")
+      .select("visita_id, fazenda_nome, ordem")
+      .in("visita_id", semNome)
+      .not("fazenda_nome", "is", null)
+      .order("ordem");
+    if (pastosError) throw pastosError;
+    for (const pasto of (pastos as any[]) || []) {
+      if (pasto.fazenda_nome && !nomePorVisita[pasto.visita_id]) {
+        nomePorVisita[pasto.visita_id] = pasto.fazenda_nome;
+      }
+    }
+  }
+
+  return rows.map(r => ({
     id: r.id,
     hora_inicio: r.hora_inicio,
     hora_fim: r.hora_fim ?? null,
     status: r.status,
     pdf_url: r.pdf_url ?? null,
-    fazenda_nome: r.fazendas?.nome ?? r.fazenda_nome_override ?? null,
+    fazenda_nome: r.fazendas?.nome ?? r.fazenda_nome_override ?? nomePorVisita[r.id] ?? null,
   }));
 }
 
@@ -143,20 +177,22 @@ export async function excluirConferencia(visitaId: string): Promise<void> {
 }
 
 export async function listConferenciaPastos(visitaId: string): Promise<ConferenciaPastoRegistro[]> {
-  const { data: pastos } = await supabase
+  const { data: pastos, error: pastosError } = await supabase
     .from("visita_pastos")
     .select("*")
     .eq("visita_id", visitaId)
     .order("ordem");
+  if (pastosError) throw pastosError;
 
   const rows = (pastos as any[]) || [];
   if (rows.length === 0) return [];
 
-  const { data: fotos } = await supabase
+  const { data: fotos, error: fotosError } = await supabase
     .from("visita_fotos")
     .select("id, url, ordem, visita_pasto_id")
     .in("visita_pasto_id", rows.map(r => r.id))
     .order("ordem");
+  if (fotosError) throw fotosError;
 
   const byPasto: Record<string, { id: string; url: string; ordem: number }[]> = {};
   ((fotos as any[]) || []).forEach(f => {
