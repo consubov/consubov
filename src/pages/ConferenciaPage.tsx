@@ -61,6 +61,19 @@ export default function ConferenciaPage() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [pdfGerado, setPdfGerado] = useState<{ url: string; fileName: string } | null>(null);
   const [pdfAberto, setPdfAberto] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [editando, setEditando] = useState<ConferenciaPastoRegistro | null>(null);
+  const [fotosEdicao, setFotosEdicao] = useState<FotoExistente[]>([]);
+  const [confirmarExclusao, setConfirmarExclusao] = useState<ConferenciaPastoRegistro | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
+  const numeroMap = useNumeroMapFotos({
+    visitaId: visita?.id,
+    tipo: "rotina",
+    topicos,
+    itens: registros.map(r => ({ id: r.id, fotos: r.fotos.map(f => ({ id: f.id, ordem: f.ordem })) })),
+  });
+
 
   useEffect(() => {
     // sincroniza checklists pendentes ao montar e ao reconectar
