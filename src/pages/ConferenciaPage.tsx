@@ -607,13 +607,91 @@ export default function ConferenciaPage() {
   }
 
 
+  if (etapa === "historico") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setEtapa("inicio")} className="text-primary-foreground hover:bg-primary/80">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-lg font-bold">Histórico de Conferências</h1>
+        </header>
+
+        <main className="flex-1 px-4 py-4 max-w-md mx-auto w-full space-y-3">
+          {loadingHistorico ? (
+            <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : historico.length === 0 ? (
+            <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+              Nenhuma conferência registrada ainda.
+            </div>
+          ) : historico.map(h => (
+            <div key={h.id} className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{h.fazenda_nome || "Conferência"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <span className="text-[10px] uppercase font-bold rounded-full bg-primary/10 text-primary px-2 py-1 shrink-0">
+                  {h.status}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {h.pdf_url && (
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => setPdfHistorico({ url: h.pdf_url!, nome: h.fazenda_nome || "conferencia" })}>
+                    <FileText className="w-4 h-4" /> Ver / Baixar PDF
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 gap-1.5"
+                  onClick={() => setConfirmarExclusaoConf(h)}>
+                  <Trash2 className="w-4 h-4" /> Excluir
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          <AlertDialog open={!!confirmarExclusaoConf} onOpenChange={(o) => { if (!o) setConfirmarExclusaoConf(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir conferência?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza? Essa ação não pode ser desfeita e o relatório sairá do histórico.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleExcluirConferencia(); }}>
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <PdfViewerDialog
+            url={pdfHistorico?.url ?? null}
+            fileName={pdfHistorico ? `conferencia-${pdfHistorico.nome}.pdf` : undefined}
+            title={pdfHistorico ? `Conferência — ${pdfHistorico.nome}` : undefined}
+            onClose={() => setPdfHistorico(null)}
+          />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-primary-foreground hover:bg-primary/80">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-bold">Conferência</h1>
+        <h1 className="text-lg font-bold flex-1">Conferência</h1>
+        {isAdmin && (
+          <Button variant="ghost" size="sm" onClick={() => void abrirHistorico()} className="text-primary-foreground hover:bg-primary/80 gap-1.5">
+            <History className="w-4 h-4" /> Histórico
+          </Button>
+        )}
       </header>
 
       <main className="flex-1 flex flex-col items-center px-6 py-6 gap-6 text-center max-w-md mx-auto w-full">
@@ -623,13 +701,29 @@ export default function ConferenciaPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-foreground">Conferência via QR Code</h2>
           <p className="text-sm text-muted-foreground">
-            Aponte a câmera para o QR do pasto e consulte instantaneamente a situação atual do lote e da mineralização.
+            {visita
+              ? "Conferência registrada: os pastos escaneados entram no relatório."
+              : "Aponte a câmera para o QR do pasto e consulte a situação atual. Nada é registrado até você clicar em “Registrar Conferência”."}
           </p>
         </div>
         <Button size="lg" onClick={() => setEtapa("scan")} className="w-full gap-2">
           <ScanLine className="w-5 h-5" />
-          INICIAR CONFERÊNCIA
+          {visita ? "ESCANEAR PASTO" : "INICIAR VERIFICAÇÃO"}
         </Button>
+
+        {isAdmin && !visita && (
+          <Button
+            size="lg"
+            variant="secondary"
+            className="w-full gap-2"
+            disabled={criandoVisita}
+            onClick={() => void handleRegistrarConferencia()}
+          >
+            {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
+            REGISTRAR CONFERÊNCIA
+          </Button>
+        )}
+
 
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4 text-left">
