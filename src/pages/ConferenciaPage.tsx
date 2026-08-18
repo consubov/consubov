@@ -30,6 +30,7 @@ import {
 } from "@/lib/conferenciaAdminVisita";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
+import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
 
 type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto";
 
@@ -66,6 +67,9 @@ export default function ConferenciaPage() {
   const [fotosEdicao, setFotosEdicao] = useState<FotoExistente[]>([]);
   const [confirmarExclusao, setConfirmarExclusao] = useState<ConferenciaPastoRegistro | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
+  const [adminNome, setAdminNome] = useState<string>("");
+  const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
 
   const numeroMap = useNumeroMapFotos({
     visitaId: visita?.id,
@@ -73,6 +77,19 @@ export default function ConferenciaPage() {
     topicos,
     itens: registros.map(r => ({ id: r.id, fotos: r.fotos.map(f => ({ id: f.id, ordem: f.ordem })) })),
   });
+
+  const proximoNumeroFoto = Object.values(numeroMap).reduce((m, n) => Math.max(m, n), 0) + 1;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("administradores").select("nome").eq("user_id", user.id).maybeSingle();
+      if (!cancelled) setAdminNome(data?.nome || "");
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
 
 
   useEffect(() => {
@@ -128,6 +145,7 @@ export default function ConferenciaPage() {
         observacao: observacao || null,
         fotosDataUrls,
       });
+      if (dados.fazenda.id) setFazendaIdConf(dados.fazenda.id);
       setRegistros(await listConferenciaPastos(v.id));
       toast.success("Pasto registrado na visita.");
       setDados(null);
@@ -221,20 +239,35 @@ export default function ConferenciaPage() {
         consumo_medio_g: r.consumo_medio_g,
       }));
 
-      let responsavelNome: string | null = null;
-      if (user?.id) {
-        const { data: adm } = await supabase
-          .from("administradores")
-          .select("nome")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        responsavelNome = adm?.nome ?? null;
+      const responsavelNome: string | null = adminNome || null;
+
+      // Cabeçalho: fazenda, proprietário (administrador) e gerente.
+      const fazendaNome = registros[0]?.fazenda_nome || "Conferência";
+      let fazendaId = fazendaIdConf;
+      if (!fazendaId && registros[0]?.fazenda_nome) {
+        const { data: f } = await supabase
+          .from("fazendas").select("id").eq("nome", registros[0].fazenda_nome).maybeSingle();
+        fazendaId = f?.id ?? null;
+      }
+      let proprietario: string | null = null;
+      let gerente: string | null = null;
+      if (fazendaId) {
+        const [{ data: faz }, { data: ger }] = await Promise.all([
+          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+        ]);
+        gerente = ger?.nome ?? null;
+        if (faz?.administrador_id) {
+          const { data: adm } = await supabase
+            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
+          proprietario = adm?.nome ?? null;
+        }
       }
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         modo: "conferencia",
-        fazenda: { nome_fazenda: registros[0]?.fazenda_nome || "Conferência" },
+        fazenda: { nome_fazenda: fazendaNome, proprietario, gerente },
         consultor: { nome: responsavelNome || "Administrador" },
         hora_inicio: visita.hora_inicio,
         hora_fim: new Date().toISOString(),
@@ -250,7 +283,9 @@ export default function ConferenciaPage() {
         })),
         pastos,
         numeroMap,
-
+        assinantes: assinantes
+          .filter(a => (a.nome || "").trim())
+          .map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
       });
 
       const url = URL.createObjectURL(blob);
@@ -261,6 +296,9 @@ export default function ConferenciaPage() {
       setVisita(null);
       setRegistros([]);
       setTopicos([]);
+      setAssinantes([]);
+      setFazendaIdConf(null);
+
 
       if (roleData.roleId) {
         const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
@@ -495,7 +533,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Registrar ${dados.pasto.nome}`}
         subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
-        numeroInicial={totalFotos + 1}
+        numeroInicial={proximoNumeroFoto}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
         onSalvar={(v) => void handleSalvarPasto(v.observacao, v.novasFotos)}
@@ -508,7 +546,8 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Editar ${editando.num_pasto || editando.letra}`}
         subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
-        numeroInicial={1}
+        numeroInicial={proximoNumeroFoto}
+        numerosExistentes={fotosEdicao.map(f => numeroMap[f.id])}
         saving={savingPasto}
         edicao
         initial={{
@@ -609,6 +648,16 @@ export default function ConferenciaPage() {
               visitaId={visita.id}
               onChange={setTopicos}
               numeroMap={numeroMap}
+            />
+          </div>
+        )}
+
+        {isAdmin && visita && (
+          <div className="w-full border-t pt-4 text-left">
+            <ConferenciaAssinaturasSection
+              visitaId={visita.id}
+              nomePadrao={adminNome}
+              onChange={setAssinantes}
             />
           </div>
         )}

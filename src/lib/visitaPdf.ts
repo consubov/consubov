@@ -57,7 +57,7 @@ export interface VisitaPdfPasto {
 
 export interface VisitaPdfData {
   visitaId: string;
-  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
+  fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; gerente?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
   consultor: { nome: string };
   hora_inicio: string;
   hora_fim: string | null;
@@ -178,13 +178,14 @@ function drawCoverHeader(
   defaultLogo: LogoAsset,
   subtitle: string,
   logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
+  logoScale = 1,
 ) {
   const w = doc.internal.pageSize.getWidth();
-  const headerH = 32;
-  const logoH = 16;
-  const logoW = 60; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
+  const logoH = 16 * logoScale;
+  const logoW = 60 * logoScale; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
   const logoX = 15;
   const logoY = 10;
+  const headerH = Math.max(32, logoY + logoH + 4);
 
   const leftAsset = logos?.esquerda || defaultLogo;
   drawLogoFitted(doc, leftAsset, logoX, logoY, logoW, logoH, "left");
@@ -202,15 +203,16 @@ function drawCoverHeader(
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + 6);
+  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + logoH / 2 - 2);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(13);
-  doc.text(subtitle, dividerX + 4, logoY + 14);
+  doc.text(subtitle, dividerX + 4, logoY + logoH / 2 + 6);
 
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.line(15, headerH + 4, w - 15, headerH + 4);
+  return headerH + 4;
 }
 
 function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
@@ -223,12 +225,23 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   doc.setTextColor(INK_SOFT);
 
   let metaY = y + 6;
+
+  // Conferência do Admin: cabeçalho enxuto — Fazenda, Proprietário, Gerente, Data.
+  if (data.modo === "conferencia") {
+    if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
+    if (data.fazenda.gerente) { doc.text(`Gerente: ${data.fazenda.gerente}`, 15, metaY); metaY += 5; }
+    doc.text(`Responsável: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+    doc.text(`Data: ${format(new Date(data.hora_inicio), "dd/MM/yyyy", { locale: ptBR })}`, 15, metaY);
+    metaY += 6;
+    return metaY;
+  }
+
   const locStr = (data.fazenda.localizacao || "").trim()
     || [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-  doc.text(`${data.modo === "conferencia" ? "Responsável" : "Consultor"}: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
   const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
   const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
   doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
@@ -648,8 +661,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, [...allFotos, ...allTopicoFotos]));
 
   // PAGE 1 — cover header claro + fazenda + intro blocks
-  drawCoverHeader(doc, logoDefault, data.modo === "conferencia" ? "Visita de Rotina" : "Visita Técnica - Rotina", logos);
-  let y = drawFarmBlock(doc, data, 50);
+  const isConf = data.modo === "conferencia";
+  const headerBottom = drawCoverHeader(
+    doc, logoDefault,
+    isConf ? "Visita de Rotina" : "Visita Técnica - Rotina",
+    logos,
+    isConf ? 1.5 : 1, // Conferência: logo 50% maior
+  );
+  let y = drawFarmBlock(doc, data, Math.max(50, headerBottom + 10));
   const numeroMap = data.numeroMap || {};
 
   // Helpers de fluxo contínuo
@@ -835,8 +854,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const concLegacy = (data.conclusao || "").trim();
   const hasLegacy = introTopicos.length === 0 && conclusaoTopicos.length === 0 && (obsLegacy || concLegacy);
 
+  let temPaginaConclusao = false;
   if (hasConclusaoTopicos || hasLegacy) {
     doc.addPage();
+    temPaginaConclusao = true;
     y = slimHeader() + 2;
     if (hasConclusaoTopicos) {
       for (const t of conclusaoTopicos) drawTopico(t.titulo, t.texto, t.fotos);
@@ -847,7 +868,16 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   }
 
 
-  if (!isConferencia) drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  if (!isConferencia) {
+    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  } else {
+    const temAssinantes = (data.assinantes || []).some(a => (a?.nome || "").trim());
+    if (temAssinantes) {
+      // Assinaturas ficam na última página (junto da conclusão, quando existir).
+      if (!temPaginaConclusao && y > pageH - 60) { doc.addPage(); slimHeader(); }
+      drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+    }
+  }
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
