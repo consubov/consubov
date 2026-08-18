@@ -533,7 +533,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Registrar ${dados.pasto.nome}`}
         subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
-        numeroInicial={totalFotos + 1}
+        numeroInicial={proximoNumeroFoto}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
         onSalvar={(v) => void handleSalvarPasto(v.observacao, v.novasFotos)}
@@ -546,7 +546,8 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Editar ${editando.num_pasto || editando.letra}`}
         subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
-        numeroInicial={1}
+        numeroInicial={proximoNumeroFoto}
+        numerosExistentes={fotosEdicao.map(f => numeroMap[f.id])}
         saving={savingPasto}
         edicao
         initial={{
