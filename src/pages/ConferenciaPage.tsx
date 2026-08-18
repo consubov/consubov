@@ -41,6 +41,23 @@ import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/comp
 
 type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto" | "historico";
 
+/** Cabeçalho do PDF da Conferência — editável localmente, não altera o cadastro da fazenda. */
+type CabecalhoRelatorio = {
+  fazenda: string;
+  proprietario: string;
+  gerente: string;
+  consultor: string;
+  /** yyyy-MM-dd */
+  data: string;
+};
+
+const isoParaInputDate = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+
 
 function diasEntre(iso: string | null): number | null {
   if (!iso) return null;
