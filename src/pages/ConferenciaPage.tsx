@@ -959,6 +959,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.fazenda}
                   onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Nome da fazenda"
                 />
               </div>
@@ -967,6 +968,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.proprietario}
                   onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Proprietário"
                 />
               </div>
@@ -975,6 +977,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.gerente}
                   onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Gerente"
                 />
               </div>
@@ -983,6 +986,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.consultor}
                   onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Responsável"
                 />
               </div>
@@ -992,6 +996,7 @@ export default function ConferenciaPage() {
                   type="date"
                   value={cabecalho.data}
                   onChange={(e) => setCabecalho({ ...cabecalho, data: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                 />
               </div>
             </div>
