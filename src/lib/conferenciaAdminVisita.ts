@@ -68,7 +68,8 @@ export interface ConferenciaPastoRegistro {
 const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const letraFor = (i: number) => LETRAS[i % 26] + (i >= 26 ? String(Math.floor(i / 26) + 1) : "");
 
-const SELECT_VISITA = "id, hora_inicio, fazenda_id, fazenda_nome_override, status, pdf_url";
+const SELECT_VISITA =
+  "id, hora_inicio, fazenda_id, fazenda_nome_override, proprietario_override, responsavel_override, consultor_nome_override, data_override, status, pdf_url";
 
 /**
  * Busca a conferência ainda não encerrada (ou em revisão) do admin.
