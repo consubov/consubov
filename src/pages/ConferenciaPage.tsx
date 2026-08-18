@@ -491,14 +491,37 @@ export default function ConferenciaPage() {
   if (etapa === "visita_form" && dados) {
     return (
       <ConferenciaVisitaPastoForm
-        dados={dados}
+        titulo={`Registrar ${dados.pasto.nome}`}
+        subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
         numeroInicial={totalFotos + 1}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
-        onSalvar={(obs, fotos) => void handleSalvarPasto(obs, fotos)}
+        onSalvar={(v) => void handleSalvarPasto(v.observacao, v.novasFotos)}
       />
     );
   }
+
+  if (etapa === "editar_pasto" && editando) {
+    return (
+      <ConferenciaVisitaPastoForm
+        titulo={`Editar ${editando.num_pasto || editando.letra}`}
+        subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
+        numeroInicial={1}
+        saving={savingPasto}
+        edicao
+        initial={{
+          observacao: editando.observacao,
+          qtd_animais: editando.qtd_animais,
+          peso_medio_kg: editando.peso_medio_kg,
+          consumo_medio_g: editando.consumo_medio_g,
+          fotos: fotosEdicao,
+        }}
+        onBack={() => { setEditando(null); setFotosEdicao([]); setEtapa("inicio"); }}
+        onSalvar={(v) => void handleSalvarEdicao(v)}
+      />
+    );
+  }
+
 
   if (etapa === "checklist" && dados && user) {
     return (
