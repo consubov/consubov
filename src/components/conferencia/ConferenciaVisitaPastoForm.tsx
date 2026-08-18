@@ -29,6 +29,8 @@ interface Props {
   subtitulo: string;
   /** Número inicial da numeração sequencial contínua da visita. */
   numeroInicial: number;
+  /** Números globais já atribuídos às fotos existentes (mesma ordem de `initial.fotos`). */
+  numerosExistentes?: (number | undefined)[];
   saving: boolean;
   /** Modo edição: exibe fotos já salvas e campos numéricos editáveis. */
   edicao?: boolean;
