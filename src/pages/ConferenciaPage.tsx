@@ -239,20 +239,35 @@ export default function ConferenciaPage() {
         consumo_medio_g: r.consumo_medio_g,
       }));
 
-      let responsavelNome: string | null = null;
-      if (user?.id) {
-        const { data: adm } = await supabase
-          .from("administradores")
-          .select("nome")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        responsavelNome = adm?.nome ?? null;
+      const responsavelNome: string | null = adminNome || null;
+
+      // Cabeçalho: fazenda, proprietário (administrador) e gerente.
+      const fazendaNome = registros[0]?.fazenda_nome || "Conferência";
+      let fazendaId = fazendaIdConf;
+      if (!fazendaId && registros[0]?.fazenda_nome) {
+        const { data: f } = await supabase
+          .from("fazendas").select("id").eq("nome", registros[0].fazenda_nome).maybeSingle();
+        fazendaId = f?.id ?? null;
+      }
+      let proprietario: string | null = null;
+      let gerente: string | null = null;
+      if (fazendaId) {
+        const [{ data: faz }, { data: ger }] = await Promise.all([
+          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+        ]);
+        gerente = ger?.nome ?? null;
+        if (faz?.administrador_id) {
+          const { data: adm } = await supabase
+            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
+          proprietario = adm?.nome ?? null;
+        }
       }
 
       const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         modo: "conferencia",
-        fazenda: { nome_fazenda: registros[0]?.fazenda_nome || "Conferência" },
+        fazenda: { nome_fazenda: fazendaNome, proprietario, gerente },
         consultor: { nome: responsavelNome || "Administrador" },
         hora_inicio: visita.hora_inicio,
         hora_fim: new Date().toISOString(),
@@ -268,7 +283,9 @@ export default function ConferenciaPage() {
         })),
         pastos,
         numeroMap,
-
+        assinantes: assinantes
+          .filter(a => (a.nome || "").trim())
+          .map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
       });
 
       const url = URL.createObjectURL(blob);
@@ -279,6 +296,9 @@ export default function ConferenciaPage() {
       setVisita(null);
       setRegistros([]);
       setTopicos([]);
+      setAssinantes([]);
+      setFazendaIdConf(null);
+
 
       if (roleData.roleId) {
         const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
