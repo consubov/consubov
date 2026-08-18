@@ -343,6 +343,50 @@ export default function ConferenciaPage() {
     }
   };
 
+  /** Busca os valores padrão do cabeçalho (fazenda, proprietário, gerente, data). */
+  const resolverCabecalhoPadrao = async (): Promise<CabecalhoRelatorio> => {
+    const fazendaNome = registros[0]?.fazenda_nome || "";
+    let fazendaId = fazendaIdConf;
+    if (!fazendaId && fazendaNome) {
+      const { data: f } = await supabase
+        .from("fazendas").select("id").eq("nome", fazendaNome).maybeSingle();
+      fazendaId = f?.id ?? null;
+    }
+    let proprietario = "";
+    let gerente = "";
+    if (fazendaId) {
+      const [{ data: faz }, { data: ger }] = await Promise.all([
+        supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+        supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+      ]);
+      gerente = ger?.nome ?? "";
+      if (faz?.administrador_id) {
+        const { data: adm } = await supabase
+          .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
+        proprietario = adm?.nome ?? "";
+      }
+    }
+    return {
+      fazenda: fazendaNome,
+      proprietario,
+      gerente,
+      consultor: adminNome || "",
+      data: isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    };
+  };
+
+  useEffect(() => {
+    if (!isAdmin || !registroFormalConfirmado || registros.length === 0 || cabecalho) return;
+    let cancelado = false;
+    void (async () => {
+      const c = await resolverCabecalhoPadrao();
+      if (!cancelado) setCabecalho(c);
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, registroFormalConfirmado, registros.length, cabecalho]);
+
+
   const handleEncerrarVisita = async () => {
     if (!visita || registros.length === 0) return;
     setGerandoPdf(true);
