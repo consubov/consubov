@@ -178,13 +178,14 @@ function drawCoverHeader(
   defaultLogo: LogoAsset,
   subtitle: string,
   logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
+  logoScale = 1,
 ) {
   const w = doc.internal.pageSize.getWidth();
-  const headerH = 32;
-  const logoH = 16;
-  const logoW = 60; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
+  const logoH = 16 * logoScale;
+  const logoW = 60 * logoScale; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
   const logoX = 15;
   const logoY = 10;
+  const headerH = Math.max(32, logoY + logoH + 4);
 
   const leftAsset = logos?.esquerda || defaultLogo;
   drawLogoFitted(doc, leftAsset, logoX, logoY, logoW, logoH, "left");
@@ -202,15 +203,16 @@ function drawCoverHeader(
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + 6);
+  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + logoH / 2 - 2);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(13);
-  doc.text(subtitle, dividerX + 4, logoY + 14);
+  doc.text(subtitle, dividerX + 4, logoY + logoH / 2 + 6);
 
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.line(15, headerH + 4, w - 15, headerH + 4);
+  return headerH + 4;
 }
 
 function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
@@ -223,12 +225,23 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   doc.setTextColor(INK_SOFT);
 
   let metaY = y + 6;
+
+  // Conferência do Admin: cabeçalho enxuto — Fazenda, Proprietário, Gerente, Data.
+  if (data.modo === "conferencia") {
+    if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
+    if (data.fazenda.gerente) { doc.text(`Gerente: ${data.fazenda.gerente}`, 15, metaY); metaY += 5; }
+    doc.text(`Responsável: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+    doc.text(`Data: ${format(new Date(data.hora_inicio), "dd/MM/yyyy", { locale: ptBR })}`, 15, metaY);
+    metaY += 6;
+    return metaY;
+  }
+
   const locStr = (data.fazenda.localizacao || "").trim()
     || [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
   if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
   if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-  doc.text(`${data.modo === "conferencia" ? "Responsável" : "Consultor"}: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
   const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
   const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
   doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
