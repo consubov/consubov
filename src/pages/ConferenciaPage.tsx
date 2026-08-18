@@ -545,7 +545,7 @@ export default function ConferenciaPage() {
         <h1 className="text-lg font-bold">Conferência</h1>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 gap-6 text-center max-w-md mx-auto">
+      <main className="flex-1 flex flex-col items-center px-6 py-6 gap-6 text-center max-w-md mx-auto w-full">
         <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
           <ScanLine className="w-12 h-12 text-primary" />
         </div>
@@ -559,6 +559,57 @@ export default function ConferenciaPage() {
           <ScanLine className="w-5 h-5" />
           INICIAR CONFERÊNCIA
         </Button>
+
+        {isAdmin && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary">
+              Pastos registrados ({registros.length})
+            </p>
+            {registros.map(r => (
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                  {r.letra}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{r.num_pasto || "Pasto"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {[r.retiro_nome, r.fazenda_nome].filter(Boolean).join(" • ") || "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {r.qtd_animais ?? 0} animais · {r.fotos.length} foto(s)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Editar pasto"
+                  onClick={() => void abrirEdicao(r)}
+                  className="p-2 rounded hover:bg-muted"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Excluir pasto"
+                  onClick={() => setConfirmarExclusao(r)}
+                  className="p-2 rounded hover:bg-destructive/10 text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isAdmin && visita && (
+          <div className="w-full border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
+            <VisitaTopicosSection
+              visitaId={visita.id}
+              onChange={setTopicos}
+              numeroMap={numeroMap}
+            />
+          </div>
+        )}
 
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
@@ -577,6 +628,28 @@ export default function ConferenciaPage() {
             </Button>
           </div>
         )}
+
+        <AlertDialog open={!!confirmarExclusao} onOpenChange={(o) => { if (!o) setConfirmarExclusao(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita. O pasto {confirmarExclusao?.num_pasto || ""} e suas fotos serão
+                removidos desta conferência.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={excluindo}
+                onClick={(e) => { e.preventDefault(); void handleExcluirRegistro(); }}
+              >
+                {excluindo ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
 
         {isAdmin && pdfGerado && (
           <div className="w-full space-y-2 border-t pt-4">
