@@ -689,7 +689,7 @@ export default function ConferenciaPage() {
         <h1 className="text-lg font-bold flex-1">Conferência</h1>
         {isAdmin && (
           <Button variant="ghost" size="sm" onClick={() => void abrirHistorico()} className="text-primary-foreground hover:bg-primary/80 gap-1.5">
-            <History className="w-4 h-4" /> Histórico
+            <HistoryIcon className="w-4 h-4" /> Histórico
           </Button>
         )}
       </header>
