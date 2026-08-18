@@ -87,6 +87,8 @@ export default function ConferenciaPage() {
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [pdfHistorico, setPdfHistorico] = useState<{ url: string; nome: string } | null>(null);
   const [confirmarExclusaoConf, setConfirmarExclusaoConf] = useState<ConferenciaHistoricoItem | null>(null);
+  const topicosCarregados = useRef<string | null>(null);
+  const assinantesCarregados = useRef<string | null>(null);
 
   const numeroMap = useNumeroMapFotos({
     visitaId: visita?.id,
