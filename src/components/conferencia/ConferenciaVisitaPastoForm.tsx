@@ -27,6 +27,8 @@ export interface ConferenciaPastoFormValues {
 interface Props {
   titulo: string;
   subtitulo: string;
+  /** Linha informativa extra (ex.: "Última salga: 10/08/2026 — 12 sacos"). */
+  infoUltimaSalga?: string | null;
   /** Número inicial da numeração sequencial contínua da visita. */
   numeroInicial: number;
   /** Números globais já atribuídos às fotos existentes (mesma ordem de `initial.fotos`). */
