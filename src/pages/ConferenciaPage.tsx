@@ -320,19 +320,17 @@ export default function ConferenciaPage() {
       const url = URL.createObjectURL(blob);
       setPdfGerado({ url, fileName });
 
-      await encerrarConferenciaVisita(visita.id, null);
-      toast.success(`Visita encerrada. PDF gerado: ${fileName}`);
-      setVisita(null);
-      setRegistros([]);
-      setTopicos([]);
-      setAssinantes([]);
-      setFazendaIdConf(null);
-
-
-      if (roleData.roleId) {
-        const nova = await getOrCreateConferenciaVisita(roleData.roleId, null, null);
-        setVisita(nova);
+      // Upload para o histórico (mesmo padrão do Relatto). Falha no upload não perde o PDF local.
+      let pdfUrl: string | null = null;
+      try {
+        pdfUrl = await uploadVisitaPdf(blob, fileName, roleData.roleId || "admin", visita.id);
+      } catch {
+        toast.error("PDF gerado, mas não foi possível enviá-lo ao histórico.");
       }
+
+      await encerrarConferenciaVisita(visita.id, pdfUrl);
+      setVisita({ ...visita, status: "finalizada", pdf_url: pdfUrl });
+      toast.success(`Conferência finalizada. PDF gerado: ${fileName}`);
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível gerar o PDF.");
     } finally {
