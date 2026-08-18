@@ -145,6 +145,7 @@ export default function ConferenciaPage() {
         observacao: observacao || null,
         fotosDataUrls,
       });
+      if (dados.fazenda.id) setFazendaIdConf(dados.fazenda.id);
       setRegistros(await listConferenciaPastos(v.id));
       toast.success("Pasto registrado na visita.");
       setDados(null);
