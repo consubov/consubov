@@ -2,12 +2,19 @@ import { useEffect, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ScanLine, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import QrScanner from "@/components/capataz/QrScanner";
 import ConferenciaResultado, { type DadosConferencia, type HistoricoEvento } from "@/components/conferencia/ConferenciaResultado";
 import ConferenciaChecklist from "@/components/conferencia/ConferenciaChecklist";
-import ConferenciaVisitaPastoForm from "@/components/conferencia/ConferenciaVisitaPastoForm";
+import ConferenciaVisitaPastoForm, { type FotoExistente } from "@/components/conferencia/ConferenciaVisitaPastoForm";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import useNumeroMapFotos from "@/hooks/useNumeroMapFotos";
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
@@ -15,15 +22,17 @@ import {
   getOrCreateConferenciaVisita,
   listConferenciaPastos,
   salvarPastoConferencia,
+  atualizarPastoConferencia,
+  excluirPastoConferencia,
   encerrarConferenciaVisita,
-  numeroMapConferencia,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
 } from "@/lib/conferenciaAdminVisita";
 import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 
-type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form";
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto";
+
 
 function diasEntre(iso: string | null): number | null {
   if (!iso) return null;
