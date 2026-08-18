@@ -140,11 +140,67 @@ export default function ConferenciaPage() {
     }
   };
 
+  const abrirEdicao = async (r: ConferenciaPastoRegistro) => {
+    setEditando(r);
+    setFotosEdicao(r.fotos.map(f => ({ id: f.id, url: f.url })));
+    setEtapa("editar_pasto");
+    const comSrc = await Promise.all(
+      [...r.fotos].sort((a, b) => a.ordem - b.ordem).map(async f => ({
+        id: f.id, url: f.url, src: await getCachedSignedUrl(f.url).catch(() => undefined),
+      })),
+    );
+    setFotosEdicao(comSrc);
+  };
+
+  const handleSalvarEdicao = async (values: {
+    observacao: string; qtd_animais: number | null; peso_medio_kg: number | null;
+    consumo_medio_g: number | null; novasFotos: string[]; fotosRemovidas: FotoExistente[];
+  }) => {
+    if (!editando || !visita) return;
+    setSavingPasto(true);
+    try {
+      await atualizarPastoConferencia({
+        registroId: editando.id,
+        visitaId: visita.id,
+        observacao: values.observacao || null,
+        qtd_animais: values.qtd_animais,
+        peso_medio_kg: values.peso_medio_kg,
+        consumo_medio_g: values.consumo_medio_g,
+        fotosRemovidas: values.fotosRemovidas.map(f => ({ id: f.id, url: f.url })),
+        novasFotosDataUrls: values.novasFotos,
+      });
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success("Pasto atualizado.");
+      setEditando(null);
+      setFotosEdicao([]);
+      setEtapa("inicio");
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível salvar as alterações.");
+    } finally {
+      setSavingPasto(false);
+    }
+  };
+
+  const handleExcluirRegistro = async () => {
+    if (!confirmarExclusao || !visita) return;
+    setExcluindo(true);
+    try {
+      await excluirPastoConferencia(confirmarExclusao, visita.id);
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success("Pasto removido da conferência.");
+      setConfirmarExclusao(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível excluir o pasto.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   const handleEncerrarVisita = async () => {
     if (!visita || registros.length === 0) return;
     setGerandoPdf(true);
     try {
-      const numeroMap = numeroMapConferencia(registros);
+
       const pastos: VisitaPdfPasto[] = registros.map(r => ({
         id: r.id,
         letra: r.letra,
