@@ -33,6 +33,7 @@ import {
   atualizarPastoConferencia,
   excluirPastoConferencia,
   encerrarConferenciaVisita,
+  salvarCabecalhoConferencia,
   type ConferenciaVisita,
   type ConferenciaPastoRegistro,
   type ConferenciaHistoricoItem,
@@ -348,46 +349,88 @@ export default function ConferenciaPage() {
 
   /** Busca os valores padrão do cabeçalho (fazenda, proprietário, gerente, data). */
   const resolverCabecalhoPadrao = async (): Promise<CabecalhoRelatorio> => {
-    const fazendaNome = registros[0]?.fazenda_nome || "";
-    let fazendaId = fazendaIdConf;
-    if (!fazendaId && fazendaNome) {
-      const { data: f } = await supabase
-        .from("fazendas").select("id").eq("nome", fazendaNome).maybeSingle();
-      fazendaId = f?.id ?? null;
-    }
-    let proprietario = "";
-    let gerente = "";
-    if (fazendaId) {
-      const [{ data: faz }, { data: ger }] = await Promise.all([
-        supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
-        supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
-      ]);
-      gerente = ger?.nome ?? "";
-      if (faz?.administrador_id) {
-        const { data: adm } = await supabase
-          .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
-        proprietario = adm?.nome ?? "";
-      }
-    }
-    return {
-      fazenda: fazendaNome,
-      proprietario,
-      gerente,
-      consultor: adminNome || "",
-      data: isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    const base: CabecalhoRelatorio = {
+      fazenda: visita?.fazenda_nome_override || registros[0]?.fazenda_nome || "",
+      proprietario: visita?.proprietario_override || "",
+      gerente: visita?.responsavel_override || "",
+      consultor: visita?.consultor_nome_override || adminNome || "",
+      data: visita?.data_override || isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
     };
+
+    // Só busca no cadastro o que ainda não tem override salvo.
+    if (base.proprietario && base.gerente) return base;
+
+    try {
+      let fazendaId = fazendaIdConf;
+      if (!fazendaId && base.fazenda) {
+        const { data: f } = await supabase
+          .from("fazendas").select("id").eq("nome", base.fazenda).maybeSingle();
+        fazendaId = f?.id ?? null;
+      }
+      if (fazendaId) {
+        const [{ data: faz }, { data: ger }] = await Promise.all([
+          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+        ]);
+        if (!base.gerente) base.gerente = ger?.nome ?? "";
+        if (!base.proprietario && (faz as any)?.administrador_id) {
+          const { data: adm } = await supabase
+            .from("administradores").select("nome").eq("id", (faz as any).administrador_id).maybeSingle();
+          base.proprietario = adm?.nome ?? "";
+        }
+      }
+    } catch {
+      /* cadastro indisponível: mantém os campos editáveis em branco */
+    }
+    return base;
   };
 
+  // O cabeçalho precisa existir SEMPRE que a conferência estiver registrada.
+  // Preenche imediatamente com o que já temos e enriquece em seguida (sem travar a UI).
   useEffect(() => {
     if (!isAdmin || !registroFormalConfirmado || registros.length === 0 || cabecalho) return;
+    setCabecalho({
+      fazenda: visita?.fazenda_nome_override || registros[0]?.fazenda_nome || "",
+      proprietario: visita?.proprietario_override || "",
+      gerente: visita?.responsavel_override || "",
+      consultor: visita?.consultor_nome_override || adminNome || "",
+      data: visita?.data_override || isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    });
     let cancelado = false;
     void (async () => {
-      const c = await resolverCabecalhoPadrao();
-      if (!cancelado) setCabecalho(c);
+      try {
+        const c = await resolverCabecalhoPadrao();
+        if (!cancelado) setCabecalho(prev => (prev ? { ...c, ...Object.fromEntries(Object.entries(prev).filter(([, v]) => v)) } as CabecalhoRelatorio : c));
+      } catch { /* mantém o cabeçalho básico já preenchido */ }
     })();
     return () => { cancelado = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, registroFormalConfirmado, registros.length, cabecalho]);
+
+  /** Salva o cabeçalho editado no registro da conferência (não altera o cadastro). */
+  const persistirCabecalho = async (cab: CabecalhoRelatorio, v: ConferenciaVisita | null) => {
+    if (!v) return;
+    try {
+      await salvarCabecalhoConferencia(v.id, {
+        fazenda_nome_override: cab.fazenda.trim() || null,
+        proprietario_override: cab.proprietario.trim() || null,
+        responsavel_override: cab.gerente.trim() || null,
+        consultor_nome_override: cab.consultor.trim() || null,
+        data_override: cab.data || null,
+      });
+      setVisita(prev => prev ? {
+        ...prev,
+        fazenda_nome_override: cab.fazenda.trim() || null,
+        proprietario_override: cab.proprietario.trim() || null,
+        responsavel_override: cab.gerente.trim() || null,
+        consultor_nome_override: cab.consultor.trim() || null,
+        data_override: cab.data || null,
+      } : prev);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível salvar o cabeçalho do relatório.");
+    }
+  };
+
 
 
   const handleEncerrarVisita = async () => {
@@ -417,6 +460,7 @@ export default function ConferenciaPage() {
       }));
 
       const cab = cabecalho ?? (await resolverCabecalhoPadrao());
+      await persistirCabecalho(cab, visita);
       const responsavelNome: string | null = (cab.consultor || adminNome || "").trim() || null;
       const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
 
@@ -915,6 +959,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.fazenda}
                   onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Nome da fazenda"
                 />
               </div>
@@ -923,6 +968,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.proprietario}
                   onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Proprietário"
                 />
               </div>
@@ -931,6 +977,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.gerente}
                   onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Gerente"
                 />
               </div>
@@ -939,6 +986,7 @@ export default function ConferenciaPage() {
                 <Input
                   value={cabecalho.consultor}
                   onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                   placeholder="Responsável"
                 />
               </div>
@@ -948,6 +996,7 @@ export default function ConferenciaPage() {
                   type="date"
                   value={cabecalho.data}
                   onChange={(e) => setCabecalho({ ...cabecalho, data: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
                 />
               </div>
             </div>

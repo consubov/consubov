@@ -15,9 +15,37 @@ export interface ConferenciaVisita {
   hora_inicio: string;
   fazenda_id: string | null;
   fazenda_nome_override: string | null;
+  proprietario_override?: string | null;
+  responsavel_override?: string | null;
+  consultor_nome_override?: string | null;
+  data_override?: string | null;
   status?: string | null;
   pdf_url?: string | null;
 }
+
+export interface CabecalhoConferenciaInput {
+  fazenda_nome_override: string | null;
+  proprietario_override: string | null;
+  /** Gerente da fazenda (rótulo "Gerente" no PDF). */
+  responsavel_override: string | null;
+  /** Responsável pela conferência. */
+  consultor_nome_override: string | null;
+  /** yyyy-MM-dd */
+  data_override: string | null;
+}
+
+/** Persiste o cabeçalho editado do relatório (não altera o cadastro da fazenda). */
+export async function salvarCabecalhoConferencia(
+  visitaId: string,
+  cab: CabecalhoConferenciaInput,
+): Promise<void> {
+  const { error } = await supabase
+    .from("visitas_tecnicas")
+    .update(cab as any)
+    .eq("id", visitaId);
+  if (error) throw error;
+}
+
 
 export interface ConferenciaPastoRegistro {
   id: string;
@@ -40,7 +68,8 @@ export interface ConferenciaPastoRegistro {
 const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const letraFor = (i: number) => LETRAS[i % 26] + (i >= 26 ? String(Math.floor(i / 26) + 1) : "");
 
-const SELECT_VISITA = "id, hora_inicio, fazenda_id, fazenda_nome_override, status, pdf_url";
+const SELECT_VISITA =
+  "id, hora_inicio, fazenda_id, fazenda_nome_override, proprietario_override, responsavel_override, consultor_nome_override, data_override, status, pdf_url";
 
 /**
  * Busca a conferência ainda não encerrada (ou em revisão) do admin.

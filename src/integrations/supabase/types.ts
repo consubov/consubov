@@ -5823,6 +5823,7 @@ export type Database = {
           consultor_id: string | null
           consultor_nome_override: string | null
           created_at: string
+          data_override: string | null
           deleted_at: string | null
           fazenda_consultor_id: string | null
           fazenda_id: string | null
@@ -5848,6 +5849,7 @@ export type Database = {
           consultor_id?: string | null
           consultor_nome_override?: string | null
           created_at?: string
+          data_override?: string | null
           deleted_at?: string | null
           fazenda_consultor_id?: string | null
           fazenda_id?: string | null
@@ -5873,6 +5875,7 @@ export type Database = {
           consultor_id?: string | null
           consultor_nome_override?: string | null
           created_at?: string
+          data_override?: string | null
           deleted_at?: string | null
           fazenda_consultor_id?: string | null
           fazenda_id?: string | null
