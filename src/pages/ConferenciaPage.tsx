@@ -50,6 +50,12 @@ function extractQrUuid(raw: string): string | null {
   return match ? match[0] : null;
 }
 
+const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
+  if (!iso) return null;
+  const d = new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `Última salga: ${d}${sacos != null ? ` — ${sacos} sacos` : ""}`;
+};
+
 export default function ConferenciaPage() {
   const navigate = useNavigate();
   const { user, role, roleData } = useAuth();
@@ -536,6 +542,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Registrar ${dados.pasto.nome}`}
         subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
+        infoUltimaSalga={fmtSalgaInfo(dados.ultima_salga_data, dados.ultima_salga_sacos)}
         numeroInicial={proximoNumeroFoto}
         saving={savingPasto}
         onBack={() => setEtapa("resultado")}
@@ -549,6 +556,7 @@ export default function ConferenciaPage() {
       <ConferenciaVisitaPastoForm
         titulo={`Editar ${editando.num_pasto || editando.letra}`}
         subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
+        infoUltimaSalga={fmtSalgaInfo(editando.ultima_salga, editando.ultima_salga_sacos)}
         numeroInicial={proximoNumeroFoto}
         numerosExistentes={fotosEdicao.map(f => numeroMap[f.id])}
         saving={savingPasto}
