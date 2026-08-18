@@ -834,10 +834,10 @@ export default function ConferenciaPage() {
           </div>
         )}
 
-        {isAdmin && registros.length > 0 && (
+        {isAdmin && visita && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
-              Visita em andamento: {registros.length} pasto(s), {totalFotos} foto(s).
+              Conferência {visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} pasto(s), {totalFotos} foto(s).
             </p>
             <Button
               size="lg"
@@ -847,8 +847,21 @@ export default function ConferenciaPage() {
               onClick={() => void handleEncerrarVisita()}
             >
               {gerandoPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
-              ENCERRAR VISITA E GERAR PDF
+              {visita.status === "finalizada" ? "GERAR NOVO PDF" : "ENCERRAR E GERAR PDF"}
             </Button>
+            {visita.status === "finalizada" && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => {
+                  setVisita(null); setRegistros([]); setTopicos([]); setAssinantes([]);
+                  setPdfGerado(null); setFazendaIdConf(null);
+                }}
+              >
+                <ClipboardCheck className="w-5 h-5" /> NOVA CONFERÊNCIA
+              </Button>
+            )}
           </div>
         )}
 
