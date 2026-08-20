@@ -292,7 +292,9 @@ export function drawDualLineChartPage(
   serieA: { name: string; values: number[] },
   serieB: { name: string; values: number[] },
   axisLabel = "Pasto",
+  legenda?: { letra: string; nome: string }[],
 ): boolean {
+
   const n = Math.min(labels.length, serieA.values.length, serieB.values.length);
   if (n < 2) return false;
 
