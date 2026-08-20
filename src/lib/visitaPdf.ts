@@ -69,6 +69,7 @@ export interface VisitaPdfData {
   resumo_executivo?: string | null;
   indicadores_gerais?: string | null;
   indicadores_tabela?: { key: string; label: string; value: string }[];
+  nota_area?: string | null;
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number; signedUrl?: string }[] }[];
   pastos: VisitaPdfPasto[];
@@ -730,6 +731,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7);
       doc.setTextColor(INK_SOFT);
+      if (data.nota_area) { doc.text(data.nota_area, 15, y); y += 3.4; }
       doc.text("Valores de UA calculados com base apenas nos pastos avaliados nesta visita.", 15, y);
     }
     y += 6;
