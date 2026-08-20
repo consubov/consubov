@@ -343,31 +343,34 @@ export function drawDualLineChartPage(
   drawLine(serieA.values, GREEN_DARK);
   drawLine(serieB.values, GOLD);
 
-  // Rótulos de valor com fundo branco (halo), sempre na frente das linhas.
+  // Rótulos de valor com fundo branco (halo), centralizados no próprio ponto,
+  // sempre desenhados na frente das linhas.
   const valFont = n > 8 ? 5 : 6;
   const drawValueLabel = (text: string, cx: number, cy: number, color: string) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(valFont);
-    const w = doc.getTextWidth(text) + 1.6;
-    const h = valFont * 0.42 + 1.4;
+    const w = doc.getTextWidth(text) + 2;
+    const h = valFont * 0.5 + 1.6;
     doc.setFillColor("#FFFFFF");
-    doc.rect(cx - w / 2, cy - h + 1, w, h, "F");
+    doc.rect(cx - w / 2, cy - h + 1.1, w, h, "F");
     doc.setTextColor(color);
     doc.text(text, cx, cy, { align: "center" });
   };
 
   for (let i = 0; i < n; i++) {
-    const ya = py(serieA.values[i]);
-    const yb = py(serieB.values[i]);
-    // alterna posição quando os dois rótulos ficariam muito próximos
-    const close = Math.abs(ya - yb) < 7;
-    const aAbove = close ? ya <= yb : true;
-    const bAbove = close ? !aAbove : false;
+    const va = Number(serieA.values[i]);
+    const vb = Number(serieB.values[i]);
+    const ya = py(va);
+    const yb = py(vb);
+    // Maior valor -> rótulo acima do próprio ponto; menor -> abaixo. Empate: série A acima.
+    const aAbove = va >= vb;
+    const bAbove = !aAbove;
     const posY = (y0: number, above: boolean) =>
-      above ? Math.max(chartY + 3.5, y0 - 2.8) : Math.min(chartY + chartH - 0.8, y0 + 4.6);
-    drawValueLabel(fmt(serieA.values[i]), px(i), posY(ya, aAbove), GREEN_DARK);
-    drawValueLabel(fmt(serieB.values[i]), px(i), posY(yb, bAbove), GOLD);
+      above ? Math.max(chartY + 3.5, y0 - 2.8) : Math.min(chartY + chartH - 0.8, y0 + 5);
+    drawValueLabel(fmt(va), px(i), posY(ya, aAbove), GREEN_DARK);
+    drawValueLabel(fmt(vb), px(i), posY(yb, bAbove), GOLD);
   }
+
 
   // rótulos X — compactos, sem sobreposição, com linha conectora (leader line)
   const xFont = n > 10 ? 5 : n > 6 ? 5.5 : 6.5;
