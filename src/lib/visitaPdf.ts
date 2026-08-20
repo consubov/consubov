@@ -6,7 +6,7 @@ import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 import { mentionsToText } from "@/lib/photoMentions";
 import { getActivePhotoLinks, setActivePhotoLinks, PhotoLinkCollector, currentPage } from "@/lib/pdfPhotoLinks";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
-import { drawAssinaturas } from "@/lib/pdfAssinaturas";
+import { drawAssinaturas, measureAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, drawDualLineChartPage, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
