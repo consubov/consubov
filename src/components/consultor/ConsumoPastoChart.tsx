@@ -22,17 +22,17 @@ const OURO = "#A8871F";
 
 const fmt = (v: number) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
-/** Rótulo com halo branco, sempre renderizado na frente da linha. */
+/** Rótulo com halo branco, centralizado no próprio ponto e empilhado (maior acima, menor abaixo). */
 function valueLabel(color: string, dados: any[], serie: "real" | "esperado") {
   return (props: any) => {
     const { x, y, value, index } = props;
     if (value == null || x == null || y == null) return null;
     const d = dados[index];
-    const outra = serie === "real" ? d?.esperado : d?.real;
-    // Alterna acima/abaixo quando os valores das duas séries estão próximos.
-    const prox = d && Math.abs(Number(d.real) - Number(outra ?? 0)) / Math.max(1, Number(d.real)) < 0.08;
-    const acima = serie === "real" ? true : !prox ? false : false;
-    const dy = acima ? -8 : 14;
+    const outra = Number(serie === "real" ? d?.esperado : d?.real);
+    const atual = Number(value);
+    // Maior valor -> rótulo acima do ponto; menor -> abaixo. Empate: real acima.
+    const acima = atual > outra || (atual === outra && serie === "real");
+    const dy = acima ? -9 : 16;
     return (
       <text
         x={x}
@@ -42,8 +42,9 @@ function valueLabel(color: string, dados: any[], serie: "real" | "esperado") {
         fontWeight={700}
         fill={color}
         stroke="#FFFFFF"
-        strokeWidth={3}
+        strokeWidth={3.5}
         paintOrder="stroke"
+        strokeLinejoin="round"
         style={{ pointerEvents: "none" }}
       >
         {fmt(Number(value))}
@@ -51,6 +52,7 @@ function valueLabel(color: string, dados: any[], serie: "real" | "esperado") {
     );
   };
 }
+
 
 /** Tick do eixo X com linha conectora até o ponto. */
 function AxisTick(props: any) {
