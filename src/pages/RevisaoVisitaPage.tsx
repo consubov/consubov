@@ -184,6 +184,9 @@ export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
 
 
 interface Foto { id: string; url: string; ordem: number; }
+export function isRenderablePastoFoto(foto: Foto | null | undefined): foto is Foto {
+  return Boolean(foto?.id && typeof foto.url === "string" && foto.url.trim());
+}
 interface Pasto {
   id: string;
   letra: string;
@@ -1229,17 +1232,17 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
   pasto: Pasto; readOnly?: boolean; numeroMap?: Record<string, number>;
   onAdd: (f: File) => void; onDelete: (f: Foto) => void; onMove: (i: number, d: -1 | 1) => void;
 }) {
-  // Card de detalhe/revisão: exibe a seção de fotos apenas quando há fotos reais.
-  // Não mostra slots vazios/tracejados complementares — o grid de upload ativo
-  // (PastoVisitaModal durante o preenchimento) continua oferecendo o slot vazio.
-  if (pasto.fotos.length === 0) return null;
+  // O snapshot pode conter registros/slots sem URL. No card de revisão, eles não
+  // são fotos reais e não podem criar título, espaço reservado ou quadrados.
+  const fotosReais = pasto.fotos.filter(isRenderablePastoFoto).slice(0, 5);
+  if (fotosReais.length === 0) return null;
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
-        Fotos ({pasto.fotos.length}/5)
+        Fotos ({fotosReais.length}/5)
       </div>
-      <div className={cn("grid gap-1.5", pasto.fotos.length >= 5 ? "grid-cols-5" : "grid-cols-5")}>
-        {pasto.fotos.map((f, i) => (
+      <div className="grid grid-cols-5 gap-1.5">
+        {fotosReais.map((f, i) => (
           <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
             className="aspect-square rounded-md overflow-hidden relative border"
             style={{ borderColor: "#E7E3D6" }}
@@ -1263,7 +1266,7 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
                     className="bg-background/80 rounded p-0.5 disabled:opacity-30">
                     <ChevronUp className="w-3 h-3" />
                   </button>
-                  <button type="button" onClick={() => onMove(i, 1)} disabled={i === pasto.fotos.length - 1}
+                  <button type="button" onClick={() => onMove(pasto.fotos.indexOf(f), 1)} disabled={i === fotosReais.length - 1}
                     className="bg-background/80 rounded p-0.5 disabled:opacity-30">
                     <ChevronDown className="w-3 h-3" />
                   </button>

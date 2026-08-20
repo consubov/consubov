@@ -374,6 +374,9 @@ async function drawPastoBlock(
   x: number, y: number, width: number, height: number,
   numeroMap?: Record<string, number>,
 ) {
+  const fotosReais = pasto.fotos
+    .filter(foto => Boolean(foto?.id && typeof foto.url === "string" && foto.url.trim()))
+    .slice(0, 5);
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.roundedRect(x, y, width, height, 2, 2, "S");
@@ -493,16 +496,16 @@ async function drawPastoBlock(
     doc.text(lines.slice(0, 2), x + 3, y + 63);
   }
 
-  const fotosStartY = y + 72;
-  const fotoAreaH = height - (fotosStartY - y) - 4;
-  const cols = 5;
-  const gap = 2;
-  const fw = (width - 6 - (cols - 1) * gap) / cols;
-  const fh = Math.min(fw, fotoAreaH);
-  for (let i = 0; i < cols; i++) {
-    const fx = x + 3 + i * (fw + gap);
-    const foto = pasto.fotos[i];
-    if (foto) {
+  if (fotosReais.length > 0) {
+    const fotosStartY = y + 72;
+    const fotoAreaH = height - (fotosStartY - y) - 4;
+    const cols = 5;
+    const gap = 2;
+    const fw = (width - 6 - (cols - 1) * gap) / cols;
+    const fh = Math.min(fw, fotoAreaH);
+    for (let i = 0; i < fotosReais.length; i++) {
+      const fx = x + 3 + i * (fw + gap);
+      const foto = fotosReais[i];
       const dataUrl = fotosCache[foto.id];
       if (dataUrl) {
         try {
@@ -518,10 +521,6 @@ async function drawPastoBlock(
       }
       const num = numeroMap?.[foto.id];
       if (num != null) drawNumeroBadge(doc, fx + 1.5, fotosStartY + 1.5, num);
-    } else {
-      doc.setDrawColor(LINE);
-      doc.setFillColor("#FAF8F0");
-      doc.roundedRect(fx, fotosStartY, fw, fh, 1, 1, "FD");
     }
   }
 }
@@ -665,7 +664,9 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   ]);
   const logos = { esquerda, direita };
   const fotosCache: Record<string, string | null> = {};
-  const allFotos = data.pastos.flatMap(p => p.fotos.slice(0, 5));
+  const allFotos = data.pastos.flatMap(p => p.fotos
+    .filter(foto => Boolean(foto?.id && typeof foto.url === "string" && foto.url.trim()))
+    .slice(0, 5));
   const allTopicoFotos = (data.topicos || []).flatMap(t => t.fotos.slice(0, 5));
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, [...allFotos, ...allTopicoFotos]));
 
@@ -910,6 +911,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
 
   if (!isConferencia) {
+    // A assinatura é uma página documental própria. Assim, gráficos e tabelas
+    // anteriores permanecem blocos atômicos e nunca disputam a faixa inferior.
+    doc.addPage();
+    slimHeader();
     drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
   } else {
     const temAssinantes = (data.assinantes || []).some(a => (a?.nome || "").trim());

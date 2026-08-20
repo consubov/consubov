@@ -310,7 +310,8 @@ export function drawDualLineChartPage(
   const chartY = 45;
   // margem direita maior para o último rótulo não ser cortado
   const chartW = pageW - 30 - 26;
-  const chartH = 120;
+  // Mantém o conjunto gráfico + referência dentro de uma altura previsível.
+  const chartH = 108;
 
   const all = [...serieA.values.slice(0, n), ...serieB.values.slice(0, n)];
   const rawMax = Math.max(...all, 1);
@@ -416,32 +417,36 @@ export function drawDualLineChartPage(
   // Tabela de referência letra -> pasto
   const ref = (legenda || []).filter(r => r && r.letra);
   if (ref.length > 0) {
-    let ty = legY + 18;
+    let ty = legY + 16;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(GREEN_DARK);
     doc.text("Referência dos Pastos", 15, ty);
     ty += 5;
 
-    const colW = (pageW - 30) / 2;
-    const rows = Math.ceil(ref.length / 2);
+    // Acima de 16 pastos, usa três colunas para limitar o crescimento vertical.
+    const columns = ref.length > 16 ? 3 : 2;
+    const colW = (pageW - 30) / columns;
+    const rows = Math.ceil(ref.length / columns);
+    const rowH = 5;
     doc.setDrawColor(LINE);
     doc.setLineWidth(0.2);
     for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < 2; c++) {
+      for (let c = 0; c < columns; c++) {
         const idx = c * rows + r;
         if (idx >= ref.length) continue;
         const x = 15 + c * colW;
-        const yy = ty + r * 6;
+        const yy = ty + r * rowH;
         doc.setFillColor(r % 2 === 0 ? "#FAF8F2" : "#FFFFFF");
-        doc.rect(x, yy - 4, colW - 4, 5.6, "F");
+        doc.rect(x, yy - 3.8, colW - 3, 4.7, "F");
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
+        doc.setFontSize(columns === 3 ? 6.5 : 7.5);
         doc.setTextColor(GREEN_DARK);
         doc.text(ref[idx].letra, x + 2, yy);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(INK);
-        doc.text(String(ref[idx].nome || "").slice(0, 48), x + 9, yy);
+        const maxChars = columns === 3 ? 25 : 48;
+        doc.text(String(ref[idx].nome || "").slice(0, maxChars), x + 8, yy);
       }
     }
   }
