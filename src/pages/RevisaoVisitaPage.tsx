@@ -48,16 +48,31 @@ const PRODUTO_LABEL_MAP: Record<string, string> = Object.fromEntries(PRODUTOS.ma
 export type IndicadorKey =
   | "lotes_avaliados" | "animais_avaliados" | "peso_medio_rebanho"
   | "estrategias_nutricionais" | "score_corporal" | "score_fezes"
-  | "condicao_bebedouros" | "qualidade_pastagens";
+  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao";
 
 export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
+
+// UA = (qtd_animais × peso_medio_kg) / 450 ; Taxa = ΣUA / área (alqueires)
+export function computeTaxaLotacao(
+  pastos: { qtd_animais: number | null; peso_medio_kg: number | null }[],
+  areaAlqueires: number | null,
+): number | null {
+  if (!areaAlqueires || !(areaAlqueires > 0)) return null;
+  const totalUA = pastos.reduce((s, p) => {
+    const q = Number(p.qtd_animais || 0);
+    const pm = Number(p.peso_medio_kg || 0);
+    return s + (q > 0 && pm > 0 ? (q * pm) / 450 : 0);
+  }, 0);
+  if (!(totalUA > 0)) return null;
+  return totalUA / areaAlqueires;
+}
 
 export function computeIndicadoresAuto(pastos: {
   qtd_animais: number | null;
   peso_medio_kg: number | null;
   tipo_produto: string | null;
   samples: { fezes: { nota: number }[]; corporal: { nota: number }[]; bebedouro: { nota: number }[] };
-}[]): Record<IndicadorKey, string> {
+}[], areaAlqueires?: number | null): Record<IndicadorKey, string> {
   const lotes = pastos.length;
   const animais = pastos.reduce((s, p) => s + (p.qtd_animais || 0), 0);
   const somaPeso = pastos.reduce((s, p) => s + (p.qtd_animais || 0) * (p.peso_medio_kg || 0), 0);
@@ -71,6 +86,7 @@ export function computeIndicadoresAuto(pastos: {
   const corp = avgAll(pastos.flatMap(p => p.samples.corporal.map(s => s.nota)));
   const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
   const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
+  const taxa = computeTaxaLotacao(pastos, areaAlqueires ?? null);
   return {
     lotes_avaliados: lotes ? String(lotes) : "—",
     animais_avaliados: animais ? animais.toLocaleString("pt-BR") : "—",
@@ -80,6 +96,7 @@ export function computeIndicadoresAuto(pastos: {
     score_fezes: fmtScore(fezes),
     condicao_bebedouros: fmtScore(beb),
     qualidade_pastagens: "—",
+    taxa_lotacao: taxa != null ? `${taxa.toFixed(2).replace(".", ",")} UA/alqueire` : "—",
   };
 }
 
@@ -92,6 +109,7 @@ export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "score_fezes", label: "Score de fezes" },
   { key: "condicao_bebedouros", label: "Condição média dos bebedouros" },
   { key: "qualidade_pastagens", label: "Qualidade das pastagens" },
+  { key: "taxa_lotacao", label: "Taxa de Lotação (UA/alqueire)" },
 ];
 
 
