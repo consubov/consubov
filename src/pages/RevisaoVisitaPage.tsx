@@ -254,6 +254,11 @@ export default function RevisaoVisitaPage() {
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
+    setAreaAlqueires(
+      (visitaRow as any).area_total_alqueires != null
+        ? String((visitaRow as any).area_total_alqueires).replace(".", ",")
+        : ""
+    );
     setOverrides({
       fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
       localizacao: (visitaRow as any).localizacao_override || "",
