@@ -48,9 +48,12 @@ const PRODUTO_LABEL_MAP: Record<string, string> = Object.fromEntries(PRODUTOS.ma
 export type IndicadorKey =
   | "lotes_avaliados" | "animais_avaliados" | "peso_medio_rebanho"
   | "estrategias_nutricionais" | "score_corporal" | "score_fezes"
-  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao";
+  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao" | "taxa_lotacao_ha";
 
 export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
+
+/** 1 alqueire (paulista) = 2,42 ha; fator adotado pelo cliente: 4,84. */
+export const ALQ_TO_HA_FACTOR = 4.84;
 
 export function parseAlqueires(v: string): number | null {
   const s = (v || "").trim().replace(",", ".");
@@ -59,17 +62,30 @@ export function parseAlqueires(v: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** UA de um pasto = (qtd_animais × peso_medio_kg) / 450 */
+export function computeUAPasto(qtd: number | null, peso: number | null): number {
+  const q = Number(qtd || 0);
+  const pm = Number(peso || 0);
+  return q > 0 && pm > 0 ? (q * pm) / 450 : 0;
+}
+
+/** UA/ha individual do pasto = (UA_pasto / area_alqueires) / 4,84 */
+export function computeUAHaPasto(
+  qtd: number | null, peso: number | null, areaAlq: number | null,
+): number | null {
+  if (!areaAlq || !(areaAlq > 0)) return null;
+  const ua = computeUAPasto(qtd, peso);
+  if (!(ua > 0)) return null;
+  return ua / areaAlq / ALQ_TO_HA_FACTOR;
+}
+
 // UA = (qtd_animais × peso_medio_kg) / 450 ; Taxa = ΣUA / área (alqueires)
 export function computeTaxaLotacao(
   pastos: { qtd_animais: number | null; peso_medio_kg: number | null }[],
   areaAlqueires: number | null,
 ): number | null {
   if (!areaAlqueires || !(areaAlqueires > 0)) return null;
-  const totalUA = pastos.reduce((s, p) => {
-    const q = Number(p.qtd_animais || 0);
-    const pm = Number(p.peso_medio_kg || 0);
-    return s + (q > 0 && pm > 0 ? (q * pm) / 450 : 0);
-  }, 0);
+  const totalUA = pastos.reduce((s, p) => s + computeUAPasto(p.qtd_animais, p.peso_medio_kg), 0);
   if (!(totalUA > 0)) return null;
   return totalUA / areaAlqueires;
 }
@@ -94,6 +110,7 @@ export function computeIndicadoresAuto(pastos: {
   const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
   const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
   const taxa = computeTaxaLotacao(pastos, areaAlqueires ?? null);
+  const taxaHa = taxa != null ? taxa / ALQ_TO_HA_FACTOR : null;
   return {
     lotes_avaliados: lotes ? String(lotes) : "—",
     animais_avaliados: animais ? animais.toLocaleString("pt-BR") : "—",
@@ -104,8 +121,11 @@ export function computeIndicadoresAuto(pastos: {
     condicao_bebedouros: fmtScore(beb),
     qualidade_pastagens: "—",
     taxa_lotacao: taxa != null ? `${taxa.toFixed(2).replace(".", ",")} UA/alqueire` : "—",
+    taxa_lotacao_ha: taxaHa != null ? `${taxaHa.toFixed(2).replace(".", ",")} UA/ha` : "—",
   };
 }
+
+export const NOTA_UA = "Valores de UA calculados com base apenas nos pastos avaliados nesta visita.";
 
 export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "lotes_avaliados", label: "Lotes avaliados" },
@@ -117,7 +137,9 @@ export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "condicao_bebedouros", label: "Condição média dos bebedouros" },
   { key: "qualidade_pastagens", label: "Qualidade das pastagens" },
   { key: "taxa_lotacao", label: "Taxa de Lotação (UA/alqueire)" },
+  { key: "taxa_lotacao_ha", label: "Taxa de Lotação (UA/ha)" },
 ];
+
 
 
 interface Foto { id: string; url: string; ordem: number; }
@@ -133,6 +155,7 @@ interface Pasto {
   peso_medio_kg: number | null;
   consumo_esperado_kg: number | null;
   consumo_real_kg: number | null;
+  area_alqueires: number | null;
   observacao: string | null;
   ordem: number;
   samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -343,7 +366,7 @@ export default function RevisaoVisitaPage() {
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
     const dbPatch: any = {};
-    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","observacao"].forEach(k => {
+    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
@@ -567,6 +590,7 @@ export default function RevisaoVisitaPage() {
           peso_medio_kg: p.peso_medio_kg,
           consumo_esperado_kg: p.consumo_esperado_kg,
           consumo_real_kg: p.consumo_real_kg,
+          area_alqueires: (p as any).area_alqueires ?? null,
           scores: {
             fezes: averageOf(p.samples.fezes),
             corporal: averageOf(p.samples.corporal),
@@ -817,6 +841,15 @@ export default function RevisaoVisitaPage() {
                   disabled={readOnly}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FieldInline
+                  label="Área do pasto (alqueires)"
+                  type="number"
+                  value={p.area_alqueires?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { area_alqueires: n }); autosavePasto(p.id, { area_alqueires: n }); }}
+                  disabled={readOnly}
+                />
+              </div>
 
               {/* Resumo calculado (read-only) */}
               {(() => {
@@ -824,8 +857,9 @@ export default function RevisaoVisitaPage() {
                 const esp = p.consumo_esperado_kg ?? 0;
                 const pvt = (p.qtd_animais || 0) * (p.peso_medio_kg || 0);
                 const ind = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+                const uaHa = computeUAHaPasto(p.qtd_animais, p.peso_medio_kg, p.area_alqueires);
                 return (
-                  <div className="rounded-md border p-2 bg-muted/40 grid grid-cols-4 gap-2 text-[10px]" style={{ borderColor: "#E7E3D6" }}>
+                  <div className={cn("rounded-md border p-2 bg-muted/40 gap-2 text-[10px] grid", uaHa != null ? "grid-cols-5" : "grid-cols-4")} style={{ borderColor: "#E7E3D6" }}>
                     <div>
                       <div className="uppercase tracking-wide text-muted-foreground">PV total</div>
                       <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString("pt-BR")} kg` : "—"}</div>
@@ -842,6 +876,12 @@ export default function RevisaoVisitaPage() {
                       <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
                       <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
                     </div>
+                    {uaHa != null && (
+                      <div>
+                        <div className="uppercase tracking-wide text-muted-foreground">UA/ha</div>
+                        <div className="font-bold text-foreground text-xs">{uaHa.toFixed(2).replace(".", ",")}</div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -934,7 +974,7 @@ export default function RevisaoVisitaPage() {
             const override = indicadoresTabela[key] ?? "";
             const placeholder = auto[key];
             // Linhas condicionais: omitidas quando não há valor calculado nem override.
-            if (key === "taxa_lotacao" && !override.trim() && placeholder === "—") return null;
+            if ((key === "taxa_lotacao" || key === "taxa_lotacao_ha") && !override.trim() && placeholder === "—") return null;
             return (
               <div key={key} className="grid grid-cols-2 gap-2 items-center">
                 <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
@@ -949,6 +989,7 @@ export default function RevisaoVisitaPage() {
             );
           });
         })()}
+        <p className="text-[10px] pt-1" style={{ color: "#767066" }}>{NOTA_UA}</p>
       </div>
 
       {/* Data e horário editáveis */}

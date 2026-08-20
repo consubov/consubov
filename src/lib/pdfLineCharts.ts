@@ -306,7 +306,8 @@ export function drawDualLineChartPage(
 
   const chartX = 30;
   const chartY = 45;
-  const chartW = pageW - 55;
+  // margem direita maior para o último rótulo não ser cortado
+  const chartW = pageW - 30 - 26;
   const chartH = 120;
 
   const all = [...serieA.values.slice(0, n), ...serieB.values.slice(0, n)];
@@ -322,7 +323,7 @@ export function drawDualLineChartPage(
   for (let i = 0; i <= 5; i++) {
     const gy = chartY + chartH - (chartH * i) / 5;
     doc.line(chartX, gy, chartX + chartW, gy);
-    doc.text(String(Math.round((maxY * i) / 5)), chartX - 2, gy + 1, { align: "right" });
+    doc.text(String(Math.round((maxY * i) / 5)), chartX - 4, gy + 1, { align: "right" });
   }
 
   const px = (i: number) => (n === 1 ? chartX + chartW / 2 : chartX + (i * chartW) / (n - 1));
@@ -331,44 +332,78 @@ export function drawDualLineChartPage(
   const fmt = (v: number) =>
     Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-  const drawSerie = (values: number[], color: string, above: boolean, other: number[]) => {
+  // Desenha as linhas primeiro; os rótulos vêm DEPOIS (ficam na frente).
+  const drawLine = (values: number[], color: string) => {
     doc.setDrawColor(color);
     doc.setLineWidth(0.7);
     for (let i = 0; i < n - 1; i++) doc.line(px(i), py(values[i]), px(i + 1), py(values[i + 1]));
     doc.setFillColor(color);
     for (let i = 0; i < n; i++) doc.circle(px(i), py(values[i]), 1.2, "F");
-    // rótulos de valor em cada ponto
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(n > 8 ? 5 : 6);
-    doc.setTextColor(color);
-    for (let i = 0; i < n; i++) {
-      const y0 = py(values[i]);
-      const close = Math.abs(y0 - py(other[i])) < 6;
-      const extra = close ? 3.5 : 0;
-      const ly = above
-        ? Math.max(chartY + 3, y0 - 2.6 - extra)
-        : Math.min(chartY + chartH - 1, y0 + 4.4 + extra);
-      doc.text(fmt(values[i]), px(i), ly, { align: "center" });
-    }
   };
-  drawSerie(serieA.values, GREEN_DARK, true, serieB.values);
-  drawSerie(serieB.values, GOLD, false, serieA.values);
+  drawLine(serieA.values, GREEN_DARK);
+  drawLine(serieB.values, GOLD);
 
-  // rótulos X (identificação do pasto)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(n > 8 ? 5.5 : 6.5);
-  doc.setTextColor(INK);
-  const rotate = n > 5 || labels.some(l => (l || "").length > 8);
+  // Rótulos de valor com fundo branco (halo), sempre na frente das linhas.
+  const valFont = n > 8 ? 5 : 6;
+  const drawValueLabel = (text: string, cx: number, cy: number, color: string) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(valFont);
+    const w = doc.getTextWidth(text) + 1.6;
+    const h = valFont * 0.42 + 1.4;
+    doc.setFillColor("#FFFFFF");
+    doc.rect(cx - w / 2, cy - h + 1, w, h, "F");
+    doc.setTextColor(color);
+    doc.text(text, cx, cy, { align: "center" });
+  };
+
   for (let i = 0; i < n; i++) {
-    const txt = labels[i] || String(i + 1);
-    if (rotate) {
-      doc.text(txt, px(i) + 1.5, chartY + chartH + 4, { angle: 45, align: "right" });
+    const ya = py(serieA.values[i]);
+    const yb = py(serieB.values[i]);
+    // alterna posição quando os dois rótulos ficariam muito próximos
+    const close = Math.abs(ya - yb) < 7;
+    const aAbove = close ? ya <= yb : true;
+    const bAbove = close ? !aAbove : false;
+    const posY = (y0: number, above: boolean) =>
+      above ? Math.max(chartY + 3.5, y0 - 2.8) : Math.min(chartY + chartH - 0.8, y0 + 4.6);
+    drawValueLabel(fmt(serieA.values[i]), px(i), posY(ya, aAbove), GREEN_DARK);
+    drawValueLabel(fmt(serieB.values[i]), px(i), posY(yb, bAbove), GOLD);
+  }
+
+  // rótulos X — compactos, sem sobreposição, com linha conectora (leader line)
+  const xFont = n > 10 ? 5 : n > 6 ? 5.5 : 6.5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(xFont);
+  const texts = Array.from({ length: n }, (_, i) => labels[i] || String(i + 1));
+  const widths = texts.map(t => doc.getTextWidth(t));
+  const spacing = n > 1 ? chartW / (n - 1) : chartW;
+  const maxW = Math.max(...widths);
+  // modo: 0 = uma linha, 1 = duas linhas alternadas, 2 = rotacionado 45°
+  const mode = maxW + 1.5 <= spacing ? 0 : maxW + 1.5 <= spacing * 2 ? 1 : 2;
+  const axisY = chartY + chartH;
+  const rowGap = 4.2;
+
+  doc.setDrawColor("#B9B3A5");
+  doc.setLineWidth(0.2);
+  for (let i = 0; i < n; i++) {
+    const x = px(i);
+    if (mode === 2) {
+      doc.line(x, axisY, x, axisY + 3);
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(xFont);
+      doc.text(texts[i], x + 1.2, axisY + 4.5, { angle: 45, align: "right" });
     } else {
-      doc.text(txt, px(i), chartY + chartH + 5, { align: "center" });
+      const row = mode === 1 ? i % 2 : 0;
+      const ly = axisY + 4.5 + row * rowGap;
+      doc.line(x, axisY, x, ly - 2.6); // conector do ponto até o rótulo
+      doc.setTextColor(INK);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(xFont);
+      doc.text(texts[i], x, ly, { align: "center" });
     }
   }
 
-  const labelOffset = rotate ? 26 : 12;
+  const labelOffset = mode === 2 ? 26 : mode === 1 ? 14 : 11;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(INK);
@@ -394,3 +429,4 @@ export function drawDualLineChartPage(
   doc.text("Valores em g/cab/dia por pasto avaliado.", pageW / 2, legY + 7, { align: "center" });
   return true;
 }
+
