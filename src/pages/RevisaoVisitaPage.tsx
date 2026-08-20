@@ -539,7 +539,7 @@ export default function RevisaoVisitaPage() {
       });
       if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
 
-      const autoInd = computeIndicadoresAuto(pastos);
+      const autoInd = computeIndicadoresAuto(pastos, parseAlqueires(areaAlqueires));
       const tabelaFinal: IndicadorRow[] = INDICADOR_LABELS.map(({ key, label }) => ({
         key, label,
         value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
