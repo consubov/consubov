@@ -331,7 +331,7 @@ export function drawDualLineChartPage(
   const fmt = (v: number) =>
     Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-  const drawSerie = (values: number[], color: string, above: boolean) => {
+  const drawSerie = (values: number[], color: string, above: boolean, other: number[]) => {
     doc.setDrawColor(color);
     doc.setLineWidth(0.7);
     for (let i = 0; i < n - 1; i++) doc.line(px(i), py(values[i]), px(i + 1), py(values[i + 1]));
@@ -343,12 +343,16 @@ export function drawDualLineChartPage(
     doc.setTextColor(color);
     for (let i = 0; i < n; i++) {
       const y0 = py(values[i]);
-      const ly = above ? Math.max(chartY + 3, y0 - 2.6) : Math.min(chartY + chartH - 1, y0 + 4.4);
+      const close = Math.abs(y0 - py(other[i])) < 6;
+      const extra = close ? 3.5 : 0;
+      const ly = above
+        ? Math.max(chartY + 3, y0 - 2.6 - extra)
+        : Math.min(chartY + chartH - 1, y0 + 4.4 + extra);
       doc.text(fmt(values[i]), px(i), ly, { align: "center" });
     }
   };
-  drawSerie(serieA.values, GREEN_DARK, true);
-  drawSerie(serieB.values, GOLD, false);
+  drawSerie(serieA.values, GREEN_DARK, true, serieB.values);
+  drawSerie(serieB.values, GOLD, false, serieA.values);
 
   // rótulos X (identificação do pasto)
   doc.setFont("helvetica", "bold");
