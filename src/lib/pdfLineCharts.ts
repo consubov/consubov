@@ -323,7 +323,7 @@ export function drawDualLineChartPage(
   for (let i = 0; i <= 5; i++) {
     const gy = chartY + chartH - (chartH * i) / 5;
     doc.line(chartX, gy, chartX + chartW, gy);
-    doc.text(String(Math.round((maxY * i) / 5)), chartX - 2, gy + 1, { align: "right" });
+    doc.text(String(Math.round((maxY * i) / 5)), chartX - 4, gy + 1, { align: "right" });
   }
 
   const px = (i: number) => (n === 1 ? chartX + chartW / 2 : chartX + (i * chartW) / (n - 1));
