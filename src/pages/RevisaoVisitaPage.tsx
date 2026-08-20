@@ -48,9 +48,12 @@ const PRODUTO_LABEL_MAP: Record<string, string> = Object.fromEntries(PRODUTOS.ma
 export type IndicadorKey =
   | "lotes_avaliados" | "animais_avaliados" | "peso_medio_rebanho"
   | "estrategias_nutricionais" | "score_corporal" | "score_fezes"
-  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao";
+  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao" | "taxa_lotacao_ha";
 
 export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
+
+/** 1 alqueire (paulista) = 2,42 ha; fator adotado pelo cliente: 4,84. */
+export const ALQ_TO_HA_FACTOR = 4.84;
 
 export function parseAlqueires(v: string): number | null {
   const s = (v || "").trim().replace(",", ".");
@@ -59,17 +62,30 @@ export function parseAlqueires(v: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** UA de um pasto = (qtd_animais × peso_medio_kg) / 450 */
+export function computeUAPasto(qtd: number | null, peso: number | null): number {
+  const q = Number(qtd || 0);
+  const pm = Number(peso || 0);
+  return q > 0 && pm > 0 ? (q * pm) / 450 : 0;
+}
+
+/** UA/ha individual do pasto = (UA_pasto / area_alqueires) / 4,84 */
+export function computeUAHaPasto(
+  qtd: number | null, peso: number | null, areaAlq: number | null,
+): number | null {
+  if (!areaAlq || !(areaAlq > 0)) return null;
+  const ua = computeUAPasto(qtd, peso);
+  if (!(ua > 0)) return null;
+  return ua / areaAlq / ALQ_TO_HA_FACTOR;
+}
+
 // UA = (qtd_animais × peso_medio_kg) / 450 ; Taxa = ΣUA / área (alqueires)
 export function computeTaxaLotacao(
   pastos: { qtd_animais: number | null; peso_medio_kg: number | null }[],
   areaAlqueires: number | null,
 ): number | null {
   if (!areaAlqueires || !(areaAlqueires > 0)) return null;
-  const totalUA = pastos.reduce((s, p) => {
-    const q = Number(p.qtd_animais || 0);
-    const pm = Number(p.peso_medio_kg || 0);
-    return s + (q > 0 && pm > 0 ? (q * pm) / 450 : 0);
-  }, 0);
+  const totalUA = pastos.reduce((s, p) => s + computeUAPasto(p.qtd_animais, p.peso_medio_kg), 0);
   if (!(totalUA > 0)) return null;
   return totalUA / areaAlqueires;
 }
@@ -94,6 +110,7 @@ export function computeIndicadoresAuto(pastos: {
   const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
   const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
   const taxa = computeTaxaLotacao(pastos, areaAlqueires ?? null);
+  const taxaHa = taxa != null ? taxa / ALQ_TO_HA_FACTOR : null;
   return {
     lotes_avaliados: lotes ? String(lotes) : "—",
     animais_avaliados: animais ? animais.toLocaleString("pt-BR") : "—",
@@ -104,8 +121,11 @@ export function computeIndicadoresAuto(pastos: {
     condicao_bebedouros: fmtScore(beb),
     qualidade_pastagens: "—",
     taxa_lotacao: taxa != null ? `${taxa.toFixed(2).replace(".", ",")} UA/alqueire` : "—",
+    taxa_lotacao_ha: taxaHa != null ? `${taxaHa.toFixed(2).replace(".", ",")} UA/ha` : "—",
   };
 }
+
+export const NOTA_UA = "Valores de UA calculados com base apenas nos pastos avaliados nesta visita.";
 
 export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "lotes_avaliados", label: "Lotes avaliados" },
@@ -117,7 +137,9 @@ export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "condicao_bebedouros", label: "Condição média dos bebedouros" },
   { key: "qualidade_pastagens", label: "Qualidade das pastagens" },
   { key: "taxa_lotacao", label: "Taxa de Lotação (UA/alqueire)" },
+  { key: "taxa_lotacao_ha", label: "Taxa de Lotação (UA/ha)" },
 ];
+
 
 
 interface Foto { id: string; url: string; ordem: number; }
