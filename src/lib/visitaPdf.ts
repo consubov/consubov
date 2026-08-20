@@ -877,6 +877,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
         "Pasto",
         consumoPontos.map(p => ({ letra: p.letra, nome: p.nome })),
       );
+      // A página do gráfico é fechada por completo (tabela de referência pode
+      // ocupar a faixa inferior): qualquer bloco seguinte começa em nova página.
+      y = pageH;
+
     }
   }
 
