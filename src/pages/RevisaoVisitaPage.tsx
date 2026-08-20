@@ -971,7 +971,7 @@ export default function RevisaoVisitaPage() {
       <ConsumoPastoChart
         pontos={pastos.map(p => ({
           letra: p.letra || "?",
-          nomeCompleto: p.num_pasto ? `${p.letra || "?"} — Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
+          nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
           real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
           esperado: Number(p.consumo_esperado_kg ?? 0),
         }))}
