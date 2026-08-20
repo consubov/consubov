@@ -345,16 +345,29 @@ export function drawDualLineChartPage(
   drawLine(serieA.values, GREEN_DARK);
   drawLine(serieB.values, GOLD);
 
-  // Rótulos de valor com fundo branco (halo), centralizados no próprio ponto,
-  // sempre desenhados na frente das linhas.
+  const axisY = chartY + chartH;
+  const letterY = axisY + 6;
+
+  // Linhas guia tracejadas: de cada ponto até a letra, na cor da própria série.
+  const drawLeaders = (values: number[], color: string) => {
+    doc.setDrawColor(color);
+    doc.setLineWidth(0.25);
+    (doc as any).setLineDashPattern?.([0.8, 0.8], 0);
+    for (let i = 0; i < n; i++) doc.line(px(i), py(values[i]) + 1.6, px(i), letterY - 3.4);
+    (doc as any).setLineDashPattern?.([], 0);
+  };
+  drawLeaders(serieA.values, GREEN_DARK);
+  drawLeaders(serieB.values, GOLD);
+
+  // Rótulos de valor com halo branco, centralizados no ponto; maior acima, menor abaixo.
   const valFont = n > 8 ? 5 : 6;
   const drawValueLabel = (text: string, cx: number, cy: number, color: string) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(valFont);
-    const w = doc.getTextWidth(text) + 2;
-    const h = valFont * 0.5 + 1.6;
+    const w = doc.getTextWidth(text) + 2.4;
+    const h = valFont * 0.5 + 1.8;
     doc.setFillColor("#FFFFFF");
-    doc.rect(cx - w / 2, cy - h + 1.1, w, h, "F");
+    doc.rect(cx - w / 2, cy - h + 1.2, w, h, "F");
     doc.setTextColor(color);
     doc.text(text, cx, cy, { align: "center" });
   };
@@ -362,59 +375,26 @@ export function drawDualLineChartPage(
   for (let i = 0; i < n; i++) {
     const va = Number(serieA.values[i]);
     const vb = Number(serieB.values[i]);
-    const ya = py(va);
-    const yb = py(vb);
-    // Maior valor -> rótulo acima do próprio ponto; menor -> abaixo. Empate: série A acima.
     const aAbove = va >= vb;
-    const bAbove = !aAbove;
     const posY = (y0: number, above: boolean) =>
       above ? Math.max(chartY + 3.5, y0 - 2.8) : Math.min(chartY + chartH - 0.8, y0 + 5);
-    drawValueLabel(fmt(va), px(i), posY(ya, aAbove), GREEN_DARK);
-    drawValueLabel(fmt(vb), px(i), posY(yb, bAbove), GOLD);
+    drawValueLabel(fmt(va), px(i), posY(py(va), aAbove), GREEN_DARK);
+    drawValueLabel(fmt(vb), px(i), posY(py(vb), !aAbove), GOLD);
   }
 
-
-  // rótulos X — compactos, sem sobreposição, com linha conectora (leader line)
-  const xFont = n > 10 ? 5 : n > 6 ? 5.5 : 6.5;
+  // Eixo X — apenas as letras
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(xFont);
-  const texts = Array.from({ length: n }, (_, i) => labels[i] || String(i + 1));
-  const widths = texts.map(t => doc.getTextWidth(t));
-  const spacing = n > 1 ? chartW / (n - 1) : chartW;
-  const maxW = Math.max(...widths);
-  // modo: 0 = uma linha, 1 = duas linhas alternadas, 2 = rotacionado 45°
-  const mode = maxW + 1.5 <= spacing ? 0 : maxW + 1.5 <= spacing * 2 ? 1 : 2;
-  const axisY = chartY + chartH;
-  const rowGap = 4.2;
+  doc.setFontSize(7.5);
+  doc.setTextColor(INK);
+  for (let i = 0; i < n; i++) doc.text(labels[i] || String(i + 1), px(i), letterY, { align: "center" });
 
-  doc.setDrawColor("#B9B3A5");
-  doc.setLineWidth(0.2);
-  for (let i = 0; i < n; i++) {
-    const x = px(i);
-    if (mode === 2) {
-      doc.line(x, axisY, x, axisY + 3);
-      doc.setTextColor(INK);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(xFont);
-      doc.text(texts[i], x + 1.2, axisY + 4.5, { angle: 45, align: "right" });
-    } else {
-      const row = mode === 1 ? i % 2 : 0;
-      const ly = axisY + 4.5 + row * rowGap;
-      doc.line(x, axisY, x, ly - 2.6); // conector do ponto até o rótulo
-      doc.setTextColor(INK);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(xFont);
-      doc.text(texts[i], x, ly, { align: "center" });
-    }
-  }
-
-  const labelOffset = mode === 2 ? 26 : mode === 1 ? 14 : 11;
+  const labelOffset = 13;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(INK);
   doc.text(axisLabel, pageW / 2, chartY + chartH + labelOffset, { align: "center" });
 
-  // legenda
+  // legenda das séries
   const legY = chartY + chartH + labelOffset + 10;
   const items: [string, string][] = [[serieA.name, GREEN_DARK], [serieB.name, GOLD]];
   const boxW = 60;
@@ -432,6 +412,40 @@ export function drawDualLineChartPage(
   doc.setFontSize(7);
   doc.setTextColor(INK_SOFT);
   doc.text("Valores em g/cab/dia por pasto avaliado.", pageW / 2, legY + 7, { align: "center" });
+
+  // Tabela de referência letra -> pasto
+  const ref = (legenda || []).filter(r => r && r.letra);
+  if (ref.length > 0) {
+    let ty = legY + 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(GREEN_DARK);
+    doc.text("Referência dos Pastos", 15, ty);
+    ty += 5;
+
+    const colW = (pageW - 30) / 2;
+    const rows = Math.ceil(ref.length / 2);
+    doc.setDrawColor(LINE);
+    doc.setLineWidth(0.2);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < 2; c++) {
+        const idx = c * rows + r;
+        if (idx >= ref.length) continue;
+        const x = 15 + c * colW;
+        const yy = ty + r * 6;
+        doc.setFillColor(r % 2 === 0 ? "#FAF8F2" : "#FFFFFF");
+        doc.rect(x, yy - 4, colW - 4, 5.6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(GREEN_DARK);
+        doc.text(ref[idx].letra, x + 2, yy);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(INK);
+        doc.text(String(ref[idx].nome || "").slice(0, 48), x + 9, yy);
+      }
+    }
+  }
   return true;
 }
+
 
