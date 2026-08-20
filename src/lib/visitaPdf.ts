@@ -858,11 +858,12 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     // Consumo por pasto — Real x Esperado (2 séries)
     const consumoPontos = data.pastos
       .map(p => ({
-        letra: p.num_pasto ? `${p.letra || "?"} - Pasto ${p.num_pasto}` : (p.letra || "?"),
+        nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
         real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
         esp: Number(p.consumo_esperado_kg ?? 0),
       }))
-      .filter(p => p.real > 0 && p.esp > 0);
+      .filter(p => p.real > 0 && p.esp > 0)
+      .map((p, i) => ({ ...p, letra: String.fromCharCode(65 + (i % 26)) }));
     if (consumoPontos.length >= 2) {
       doc.addPage();
       drawDualLineChartPage(
@@ -872,9 +873,12 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
         consumoPontos.map(p => p.letra),
         { name: "Consumo Real", values: consumoPontos.map(p => p.real) },
         { name: "Consumo Esperado", values: consumoPontos.map(p => p.esp) },
+        "Pasto",
+        consumoPontos.map(p => ({ letra: p.letra, nome: p.nome })),
       );
     }
   }
+
 
 
   // DESENVOLVIMENTO — tópicos após pastos, fluxo contínuo (bloco atômico).
