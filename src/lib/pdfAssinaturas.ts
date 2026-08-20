@@ -7,10 +7,31 @@ export interface PdfAssinante {
   cargo_funcao: string;
 }
 
+function resolverLista(
+  assinantes: PdfAssinante[] | undefined,
+  consultorNomeFallback: string,
+): PdfAssinante[] {
+  const filtrados = (assinantes || []).filter(a => (a?.nome || "").trim());
+  return filtrados.length > 0
+    ? filtrados
+    : [{ nome: consultorNomeFallback || "Consultor", cargo_funcao: "Consultor Técnico" }];
+}
+
+/** Altura real (mm) que o bloco de assinatura ocupa — usado pelo motor de paginação. */
+export function measureAssinaturas(
+  assinantes: PdfAssinante[] | undefined,
+  consultorNomeFallback: string,
+): number {
+  const lista = resolverLista(assinantes, consultorNomeFallback);
+  // 1 assinante: linha + nome + cargo. N assinantes: uma linha de texto cada.
+  return lista.length === 1 ? 18 : 6 + lista.length * 5;
+}
+
 /**
- * Desenha o bloco de assinatura na última página do PDF (módulo Consultor).
+ * Desenha o bloco de assinatura (módulo Consultor).
  * - 1 assinante  → linha horizontal + nome + cargo (formato clássico)
  * - >1 assinantes → sem linha, apenas lista "Nome, Cargo/Função" (um por linha)
+ * Sem `startY`, ancora no rodapé da página (comportamento legado).
  */
 export function drawAssinaturas(
   doc: jsPDF,
@@ -18,14 +39,12 @@ export function drawAssinaturas(
   pageH: number,
   assinantes: PdfAssinante[] | undefined,
   consultorNomeFallback: string,
+  startY?: number,
 ) {
-  const filtrados = (assinantes || []).filter(a => (a?.nome || "").trim());
-  const lista: PdfAssinante[] = filtrados.length > 0
-    ? filtrados
-    : [{ nome: consultorNomeFallback || "Consultor", cargo_funcao: "Consultor Técnico" }];
+  const lista = resolverLista(assinantes, consultorNomeFallback);
 
   if (lista.length === 1) {
-    const sigY = pageH - 40;
+    const sigY = startY != null ? startY + 8 : pageH - 40;
     doc.setDrawColor(INK_SOFT);
     doc.setLineWidth(0.3);
     doc.line(pageW / 2 - 40, sigY, pageW / 2 + 40, sigY);
@@ -40,7 +59,7 @@ export function drawAssinaturas(
 
   const lineH = 5;
   const totalH = lista.length * lineH;
-  let y = pageH - 20 - totalH;
+  let y = startY != null ? startY + 8 : pageH - 20 - totalH;
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -50,3 +69,4 @@ export function drawAssinaturas(
     y += lineH;
   }
 }
+
