@@ -42,6 +42,7 @@ export interface VisitaPdfPasto {
   peso_medio_kg?: number | null;
   consumo_esperado_kg?: number | null;
   consumo_real_kg?: number | null;
+  area_alqueires?: number | null;
   observacao: string | null;
   scores: { fezes?: number; corporal?: number; bebedouro?: number };
   samples?: { fezes: number[]; corporal: number[]; bebedouro: number[] };
@@ -390,10 +391,15 @@ async function drawPastoBlock(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
+  const uaPasto = (pasto.qtd_animais || 0) > 0 && (pasto.peso_medio_kg || 0) > 0
+    ? ((pasto.qtd_animais || 0) * (pasto.peso_medio_kg || 0)) / 450 : 0;
+  const areaAlq = Number(pasto.area_alqueires || 0);
+  const uaHa = uaPasto > 0 && areaAlq > 0 ? uaPasto / areaAlq / 4.84 : null;
   const sub = [
     pasto.categoria || null,
     `${pasto.qtd_animais ?? "—"} animais`,
     pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg/cab` : null,
+    uaHa != null ? `${uaHa.toFixed(2).replace(".", ",")} UA/ha` : null,
   ].filter(Boolean).join(" · ");
   doc.text(sub, x + 20, y + 13);
 
@@ -719,6 +725,13 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.line(15, y + rowH, 15 + wTable, y + rowH);
       y += rowH;
     });
+    if (tabela.some(r => r.key === "taxa_lotacao" || r.key === "taxa_lotacao_ha")) {
+      y += 3.5;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7);
+      doc.setTextColor(INK_SOFT);
+      doc.text("Valores de UA calculados com base apenas nos pastos avaliados nesta visita.", 15, y);
+    }
     y += 6;
   };
 
