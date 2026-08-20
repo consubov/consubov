@@ -155,6 +155,7 @@ interface Pasto {
   peso_medio_kg: number | null;
   consumo_esperado_kg: number | null;
   consumo_real_kg: number | null;
+  area_alqueires: number | null;
   observacao: string | null;
   ordem: number;
   samples: { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -365,7 +366,7 @@ export default function RevisaoVisitaPage() {
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
     const dbPatch: any = {};
-    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","observacao"].forEach(k => {
+    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"].forEach(k => {
       if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
@@ -589,6 +590,7 @@ export default function RevisaoVisitaPage() {
           peso_medio_kg: p.peso_medio_kg,
           consumo_esperado_kg: p.consumo_esperado_kg,
           consumo_real_kg: p.consumo_real_kg,
+          area_alqueires: (p as any).area_alqueires ?? null,
           scores: {
             fezes: averageOf(p.samples.fezes),
             corporal: averageOf(p.samples.corporal),
@@ -956,7 +958,7 @@ export default function RevisaoVisitaPage() {
             const override = indicadoresTabela[key] ?? "";
             const placeholder = auto[key];
             // Linhas condicionais: omitidas quando não há valor calculado nem override.
-            if (key === "taxa_lotacao" && !override.trim() && placeholder === "—") return null;
+            if ((key === "taxa_lotacao" || key === "taxa_lotacao_ha") && !override.trim() && placeholder === "—") return null;
             return (
               <div key={key} className="grid grid-cols-2 gap-2 items-center">
                 <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
