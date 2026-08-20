@@ -5607,6 +5607,7 @@ export type Database = {
       }
       visita_pastos: {
         Row: {
+          area_alqueires: number | null
           categoria: string | null
           consumo_esperado_kg: number | null
           consumo_kg_dia: number | null
@@ -5630,6 +5631,7 @@ export type Database = {
           visita_id: string
         }
         Insert: {
+          area_alqueires?: number | null
           categoria?: string | null
           consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null
@@ -5653,6 +5655,7 @@ export type Database = {
           visita_id: string
         }
         Update: {
+          area_alqueires?: number | null
           categoria?: string | null
           consumo_esperado_kg?: number | null
           consumo_kg_dia?: number | null

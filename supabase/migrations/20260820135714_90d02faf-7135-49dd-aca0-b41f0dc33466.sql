@@ -1,0 +1,1 @@
+ALTER TABLE public.visita_pastos ADD COLUMN IF NOT EXISTS area_alqueires numeric;
