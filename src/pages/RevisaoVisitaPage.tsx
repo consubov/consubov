@@ -1262,7 +1262,7 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
                   <X className="w-3 h-3 text-destructive-foreground" />
                 </button>
                 <div className="absolute bottom-0 left-0 right-0 flex justify-between px-0.5 pb-0.5">
-                  <button type="button" onClick={() => onMove(i, -1)} disabled={i === 0}
+                  <button type="button" onClick={() => onMove(pasto.fotos.indexOf(f), -1)} disabled={i === 0}
                     className="bg-background/80 rounded p-0.5 disabled:opacity-30">
                     <ChevronUp className="w-3 h-3" />
                   </button>
