@@ -1229,13 +1229,17 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
   pasto: Pasto; readOnly?: boolean; numeroMap?: Record<string, number>;
   onAdd: (f: File) => void; onDelete: (f: Foto) => void; onMove: (i: number, d: -1 | 1) => void;
 }) {
+  // Card de detalhe/revisão: exibe a seção de fotos apenas quando há fotos reais.
+  // Não mostra slots vazios/tracejados complementares — o grid de upload ativo
+  // (PastoVisitaModal durante o preenchimento) continua oferecendo o slot vazio.
+  if (pasto.fotos.length === 0) return null;
   const inputId = `photo-${pasto.id}`;
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
         Fotos ({pasto.fotos.length}/5)
       </div>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className={cn("grid gap-1.5", pasto.fotos.length >= 5 ? "grid-cols-5" : "grid-cols-5")}>
         {pasto.fotos.map((f, i) => (
           <MentionablePhoto key={f.id} numero={numeroMap?.[f.id]}
             className="aspect-square rounded-md overflow-hidden relative border"
@@ -1269,14 +1273,6 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
             )}
           </MentionablePhoto>
         ))}
-        {!readOnly && pasto.fotos.length < 5 && (
-          <label htmlFor={inputId} className="aspect-square rounded-md border border-dashed flex items-center justify-center cursor-pointer bg-muted/40"
-            style={{ borderColor: "#E7E3D6" }}>
-            <Camera className="w-4 h-4 text-muted-foreground" />
-            <input id={inputId} type="file" accept="image/*" className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) onAdd(f); e.target.value = ""; }} />
-          </label>
-        )}
       </div>
     </div>
   );
