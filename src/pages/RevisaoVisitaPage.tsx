@@ -18,6 +18,7 @@ import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { computeRotinaPhotoNumbering } from "@/lib/photoNumbering";
 import ConfinamentoRevisaoView from "@/components/consultor/ConfinamentoRevisaoView";
 import ScoreSamplesInput, { ScoreSample, averageOf } from "@/components/consultor/ScoreSamplesInput";
+import ConsumoPastoChart from "@/components/consultor/ConsumoPastoChart";
 import VisitaTopicosSection, { Topico } from "@/components/consultor/VisitaTopicosSection";
 import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/components/consultor/AssinaturasSection";
 import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
@@ -851,6 +852,15 @@ export default function RevisaoVisitaPage() {
           </div>
         ))}
       </div>
+
+      {/* Consumo por Pasto — Real x Esperado */}
+      <ConsumoPastoChart
+        pontos={pastos.map(p => ({
+          letra: p.letra || "?",
+          real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
+          esperado: Number(p.consumo_esperado_kg ?? 0),
+        }))}
+      />
 
       {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
       <VisitaTopicosSection

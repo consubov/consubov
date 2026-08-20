@@ -7,7 +7,7 @@ import { mentionsToText } from "@/lib/photoMentions";
 import { getActivePhotoLinks, setActivePhotoLinks, PhotoLinkCollector, currentPage } from "@/lib/pdfPhotoLinks";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, drawDualLineChartPage, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
 
@@ -839,6 +839,26 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
       bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
     }, data.sampleChartTypes);
+
+    // Consumo por pasto — Real x Esperado (2 séries)
+    const consumoPontos = data.pastos
+      .map(p => ({
+        letra: p.letra || "?",
+        real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
+        esp: Number(p.consumo_esperado_kg ?? 0),
+      }))
+      .filter(p => p.real > 0 && p.esp > 0);
+    if (consumoPontos.length >= 2) {
+      doc.addPage();
+      drawDualLineChartPage(
+        doc,
+        data.fazenda.nome_fazenda || "",
+        "Consumo por Pasto - Real x Esperado",
+        consumoPontos.map(p => p.letra),
+        { name: "Consumo Real", values: consumoPontos.map(p => p.real) },
+        { name: "Consumo Esperado", values: consumoPontos.map(p => p.esp) },
+      );
+    }
   }
 
 
