@@ -176,6 +176,7 @@ export default function RevisaoVisitaPage() {
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
   const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
+  const [areaAlqueires, setAreaAlqueires] = useState<string>("");
   const [overrides, setOverrides] = useState<Record<CabecalhoKey, string>>({
     fazenda_nome: "", localizacao: "", proprietario: "", responsavel: "", consultor_nome: "",
   });
