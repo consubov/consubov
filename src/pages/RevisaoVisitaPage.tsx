@@ -52,6 +52,13 @@ export type IndicadorKey =
 
 export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
 
+export function parseAlqueires(v: string): number | null {
+  const s = (v || "").trim().replace(",", ".");
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 // UA = (qtd_animais × peso_medio_kg) / 450 ; Taxa = ΣUA / área (alqueires)
 export function computeTaxaLotacao(
   pastos: { qtd_animais: number | null; peso_medio_kg: number | null }[],
