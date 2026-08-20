@@ -1233,7 +1233,6 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
   // Não mostra slots vazios/tracejados complementares — o grid de upload ativo
   // (PastoVisitaModal durante o preenchimento) continua oferecendo o slot vazio.
   if (pasto.fotos.length === 0) return null;
-  const inputId = `photo-${pasto.id}`;
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
