@@ -328,28 +328,50 @@ export function drawDualLineChartPage(
   const px = (i: number) => (n === 1 ? chartX + chartW / 2 : chartX + (i * chartW) / (n - 1));
   const py = (v: number) => chartY + chartH - (chartH * Math.max(0, v)) / maxY;
 
-  const drawSerie = (values: number[], color: string) => {
+  const fmt = (v: number) =>
+    Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  const drawSerie = (values: number[], color: string, above: boolean) => {
     doc.setDrawColor(color);
     doc.setLineWidth(0.7);
     for (let i = 0; i < n - 1; i++) doc.line(px(i), py(values[i]), px(i + 1), py(values[i + 1]));
     doc.setFillColor(color);
     for (let i = 0; i < n; i++) doc.circle(px(i), py(values[i]), 1.2, "F");
+    // rótulos de valor em cada ponto
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(n > 8 ? 5 : 6);
+    doc.setTextColor(color);
+    for (let i = 0; i < n; i++) {
+      const y0 = py(values[i]);
+      const ly = above ? Math.max(chartY + 3, y0 - 2.6) : Math.min(chartY + chartH - 1, y0 + 4.4);
+      doc.text(fmt(values[i]), px(i), ly, { align: "center" });
+    }
   };
-  drawSerie(serieA.values, GREEN_DARK);
-  drawSerie(serieB.values, GOLD);
+  drawSerie(serieA.values, GREEN_DARK, true);
+  drawSerie(serieB.values, GOLD, false);
 
-  // rótulos X
-  doc.setFontSize(7);
-  doc.setTextColor(INK_SOFT);
-  for (let i = 0; i < n; i++) doc.text(labels[i] || String(i + 1), px(i), chartY + chartH + 5, { align: "center" });
+  // rótulos X (identificação do pasto)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(n > 8 ? 5.5 : 6.5);
+  doc.setTextColor(INK);
+  const rotate = n > 5 || labels.some(l => (l || "").length > 8);
+  for (let i = 0; i < n; i++) {
+    const txt = labels[i] || String(i + 1);
+    if (rotate) {
+      doc.text(txt, px(i) + 1.5, chartY + chartH + 4, { angle: 45, align: "right" });
+    } else {
+      doc.text(txt, px(i), chartY + chartH + 5, { align: "center" });
+    }
+  }
 
+  const labelOffset = rotate ? 26 : 12;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(INK);
-  doc.text(axisLabel, pageW / 2, chartY + chartH + 12, { align: "center" });
+  doc.text(axisLabel, pageW / 2, chartY + chartH + labelOffset, { align: "center" });
 
   // legenda
-  const legY = chartY + chartH + 22;
+  const legY = chartY + chartH + labelOffset + 10;
   const items: [string, string][] = [[serieA.name, GREEN_DARK], [serieB.name, GOLD]];
   const boxW = 60;
   const startX = pageW / 2 - (items.length * boxW) / 2;
