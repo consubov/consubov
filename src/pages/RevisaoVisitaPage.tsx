@@ -903,11 +903,29 @@ export default function RevisaoVisitaPage() {
         <div className="text-[10px]" style={{ color: "#767066" }}>
           Valores calculados automaticamente. Edite qualquer campo para sobrescrever.
         </div>
+        <div className="grid grid-cols-2 gap-2 items-center">
+          <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>
+            Área total dos pastos avaliados (alqueires)
+          </div>
+          <Input
+            value={areaAlqueires}
+            inputMode="decimal"
+            placeholder="opcional"
+            onChange={e => setAreaAlqueires(e.target.value)}
+            onBlur={() => {
+              const n = parseAlqueires(areaAlqueires);
+              void autosaveVisita({ area_total_alqueires: n } as any);
+            }}
+            className="h-8 text-sm"
+          />
+        </div>
         {(() => {
-          const auto = computeIndicadoresAuto(pastos);
+          const auto = computeIndicadoresAuto(pastos, parseAlqueires(areaAlqueires));
           return INDICADOR_LABELS.map(({ key, label }) => {
             const override = indicadoresTabela[key] ?? "";
             const placeholder = auto[key];
+            // Linhas condicionais: omitidas quando não há valor calculado nem override.
+            if (key === "taxa_lotacao" && !override.trim() && placeholder === "—") return null;
             return (
               <div key={key} className="grid grid-cols-2 gap-2 items-center">
                 <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
