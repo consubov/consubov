@@ -1034,6 +1034,7 @@ export default function RevisaoVisitaPage() {
                     resumo_executivo: resumo || null,
                     indicadores_gerais: indicadores || null,
                     indicadores_tabela: indicadoresTabela as any,
+                    area_total_alqueires: parseAlqueires(areaAlqueires),
                   } as any);
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
                   navigate("/consultor/historico");
