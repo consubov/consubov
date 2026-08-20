@@ -90,10 +90,51 @@ export function computeTaxaLotacao(
   return totalUA / areaAlqueires;
 }
 
+export interface AreaResolvida {
+  area: number | null;
+  origem: "pastos" | "manual" | null;
+  comArea: number;
+  totalPastos: number;
+  nota: string | null;
+}
+
+/**
+ * Precedência: se ao menos 1 pasto informar área individual, usa a SOMA dessas
+ * áreas (ignora o campo geral manual). Caso contrário, usa a área total manual.
+ */
+export function resolveAreaTotal(
+  pastos: { area_alqueires?: number | null }[],
+  areaManual: number | null,
+): AreaResolvida {
+  const totalPastos = pastos.length;
+  const comArea = pastos.filter(p => Number(p.area_alqueires || 0) > 0);
+  const somaPastos = comArea.reduce((s, p) => s + Number(p.area_alqueires || 0), 0);
+  if (comArea.length > 0 && somaPastos > 0) {
+    const parcial = comArea.length < totalPastos;
+    return {
+      area: somaPastos,
+      origem: "pastos",
+      comArea: comArea.length,
+      totalPastos,
+      nota: parcial
+        ? `Calculado com base na área informada por pasto — área somada de ${comArea.length} de ${totalPastos} pastos avaliados.`
+        : "Calculado com base na área informada por pasto.",
+    };
+  }
+  if (areaManual && areaManual > 0) {
+    return {
+      area: areaManual, origem: "manual", comArea: 0, totalPastos,
+      nota: "Calculado com base na área total informada.",
+    };
+  }
+  return { area: null, origem: null, comArea: 0, totalPastos, nota: null };
+}
+
 export function computeIndicadoresAuto(pastos: {
   qtd_animais: number | null;
   peso_medio_kg: number | null;
   tipo_produto: string | null;
+  area_alqueires?: number | null;
   samples: { fezes: { nota: number }[]; corporal: { nota: number }[]; bebedouro: { nota: number }[] };
 }[], areaAlqueires?: number | null): Record<IndicadorKey, string> {
   const lotes = pastos.length;
@@ -109,7 +150,7 @@ export function computeIndicadoresAuto(pastos: {
   const corp = avgAll(pastos.flatMap(p => p.samples.corporal.map(s => s.nota)));
   const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
   const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
-  const taxa = computeTaxaLotacao(pastos, areaAlqueires ?? null);
+  const taxa = computeTaxaLotacao(pastos, resolveAreaTotal(pastos, areaAlqueires ?? null).area);
   const taxaHa = taxa != null ? taxa / ALQ_TO_HA_FACTOR : null;
   return {
     lotes_avaliados: lotes ? String(lotes) : "—",
@@ -630,6 +671,7 @@ export default function RevisaoVisitaPage() {
         resumo_executivo: resumo,
         indicadores_gerais: indicadores,
         indicadores_tabela: tabelaFinal,
+        nota_area: resolveAreaTotal(pastos, parseAlqueires(areaAlqueires)).nota,
         topicos: topicosForPdf,
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
@@ -989,7 +1031,15 @@ export default function RevisaoVisitaPage() {
             );
           });
         })()}
-        <p className="text-[10px] pt-1" style={{ color: "#767066" }}>{NOTA_UA}</p>
+        {(() => {
+          const ar = resolveAreaTotal(pastos, parseAlqueires(areaAlqueires));
+          return (
+            <div className="pt-1 space-y-0.5">
+              {ar.nota && <p className="text-[10px]" style={{ color: "#767066" }}>{ar.nota}</p>}
+              <p className="text-[10px]" style={{ color: "#767066" }}>{NOTA_UA}</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Data e horário editáveis */}
