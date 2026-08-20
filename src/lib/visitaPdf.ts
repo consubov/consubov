@@ -915,11 +915,15 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
 
   if (!isConferencia) {
-    // A assinatura é uma página documental própria. Assim, gráficos e tabelas
-    // anteriores permanecem blocos atômicos e nunca disputam a faixa inferior.
-    doc.addPage();
-    slimHeader();
-    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+    // Bloco atômico: usa o espaço restante da página atual quando couber inteiro;
+    // só quebra de página quando não houver espaço suficiente.
+    const needAssin = measureAssinaturas(data.assinantes, data.consultor.nome);
+    let sigY = y + 10;
+    if (sigY + needAssin > pageH - 18) {
+      doc.addPage();
+      sigY = slimHeader() + 6;
+    }
+    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome, sigY);
   } else {
     const temAssinantes = (data.assinantes || []).some(a => (a?.nome || "").trim());
     if (temAssinantes) {
@@ -928,6 +932,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
     }
   }
+
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
