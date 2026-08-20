@@ -369,7 +369,7 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
   return yEnd + 4;
 }
 
-export async function drawPastoBlock(
+async function drawPastoBlock(
   doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
   numeroMap?: Record<string, number>,
