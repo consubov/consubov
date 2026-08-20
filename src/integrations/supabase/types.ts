@@ -5819,6 +5819,7 @@ export type Database = {
       visitas_tecnicas: {
         Row: {
           administrador_id: string | null
+          area_total_alqueires: number | null
           conclusao: string | null
           consultor_id: string | null
           consultor_nome_override: string | null
@@ -5845,6 +5846,7 @@ export type Database = {
         }
         Insert: {
           administrador_id?: string | null
+          area_total_alqueires?: number | null
           conclusao?: string | null
           consultor_id?: string | null
           consultor_nome_override?: string | null
@@ -5871,6 +5873,7 @@ export type Database = {
         }
         Update: {
           administrador_id?: string | null
+          area_total_alqueires?: number | null
           conclusao?: string | null
           consultor_id?: string | null
           consultor_nome_override?: string | null
