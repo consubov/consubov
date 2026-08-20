@@ -841,6 +841,15 @@ export default function RevisaoVisitaPage() {
                   disabled={readOnly}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FieldInline
+                  label="Área do pasto (alqueires)"
+                  type="number"
+                  value={p.area_alqueires?.toString() || ""}
+                  onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { area_alqueires: n }); autosavePasto(p.id, { area_alqueires: n }); }}
+                  disabled={readOnly}
+                />
+              </div>
 
               {/* Resumo calculado (read-only) */}
               {(() => {
@@ -848,8 +857,9 @@ export default function RevisaoVisitaPage() {
                 const esp = p.consumo_esperado_kg ?? 0;
                 const pvt = (p.qtd_animais || 0) * (p.peso_medio_kg || 0);
                 const ind = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+                const uaHa = computeUAHaPasto(p.qtd_animais, p.peso_medio_kg, p.area_alqueires);
                 return (
-                  <div className="rounded-md border p-2 bg-muted/40 grid grid-cols-4 gap-2 text-[10px]" style={{ borderColor: "#E7E3D6" }}>
+                  <div className={cn("rounded-md border p-2 bg-muted/40 gap-2 text-[10px] grid", uaHa != null ? "grid-cols-5" : "grid-cols-4")} style={{ borderColor: "#E7E3D6" }}>
                     <div>
                       <div className="uppercase tracking-wide text-muted-foreground">PV total</div>
                       <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString("pt-BR")} kg` : "—"}</div>
@@ -866,6 +876,12 @@ export default function RevisaoVisitaPage() {
                       <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
                       <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
                     </div>
+                    {uaHa != null && (
+                      <div>
+                        <div className="uppercase tracking-wide text-muted-foreground">UA/ha</div>
+                        <div className="font-bold text-foreground text-xs">{uaHa.toFixed(2).replace(".", ",")}</div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -973,6 +989,7 @@ export default function RevisaoVisitaPage() {
             );
           });
         })()}
+        <p className="text-[10px] pt-1" style={{ color: "#767066" }}>{NOTA_UA}</p>
       </div>
 
       {/* Data e horário editáveis */}
