@@ -1,0 +1,1 @@
+ALTER TABLE public.visitas_tecnicas ADD COLUMN IF NOT EXISTS area_total_alqueires numeric;

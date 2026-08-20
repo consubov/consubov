@@ -48,16 +48,38 @@ const PRODUTO_LABEL_MAP: Record<string, string> = Object.fromEntries(PRODUTOS.ma
 export type IndicadorKey =
   | "lotes_avaliados" | "animais_avaliados" | "peso_medio_rebanho"
   | "estrategias_nutricionais" | "score_corporal" | "score_fezes"
-  | "condicao_bebedouros" | "qualidade_pastagens";
+  | "condicao_bebedouros" | "qualidade_pastagens" | "taxa_lotacao";
 
 export interface IndicadorRow { key: IndicadorKey; label: string; value: string; }
+
+export function parseAlqueires(v: string): number | null {
+  const s = (v || "").trim().replace(",", ".");
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// UA = (qtd_animais × peso_medio_kg) / 450 ; Taxa = ΣUA / área (alqueires)
+export function computeTaxaLotacao(
+  pastos: { qtd_animais: number | null; peso_medio_kg: number | null }[],
+  areaAlqueires: number | null,
+): number | null {
+  if (!areaAlqueires || !(areaAlqueires > 0)) return null;
+  const totalUA = pastos.reduce((s, p) => {
+    const q = Number(p.qtd_animais || 0);
+    const pm = Number(p.peso_medio_kg || 0);
+    return s + (q > 0 && pm > 0 ? (q * pm) / 450 : 0);
+  }, 0);
+  if (!(totalUA > 0)) return null;
+  return totalUA / areaAlqueires;
+}
 
 export function computeIndicadoresAuto(pastos: {
   qtd_animais: number | null;
   peso_medio_kg: number | null;
   tipo_produto: string | null;
   samples: { fezes: { nota: number }[]; corporal: { nota: number }[]; bebedouro: { nota: number }[] };
-}[]): Record<IndicadorKey, string> {
+}[], areaAlqueires?: number | null): Record<IndicadorKey, string> {
   const lotes = pastos.length;
   const animais = pastos.reduce((s, p) => s + (p.qtd_animais || 0), 0);
   const somaPeso = pastos.reduce((s, p) => s + (p.qtd_animais || 0) * (p.peso_medio_kg || 0), 0);
@@ -71,6 +93,7 @@ export function computeIndicadoresAuto(pastos: {
   const corp = avgAll(pastos.flatMap(p => p.samples.corporal.map(s => s.nota)));
   const beb = avgAll(pastos.flatMap(p => p.samples.bebedouro.map(s => s.nota)));
   const fmtScore = (n: number) => n > 0 ? `${n.toFixed(1).replace(".",",")} / 5` : "—";
+  const taxa = computeTaxaLotacao(pastos, areaAlqueires ?? null);
   return {
     lotes_avaliados: lotes ? String(lotes) : "—",
     animais_avaliados: animais ? animais.toLocaleString("pt-BR") : "—",
@@ -80,6 +103,7 @@ export function computeIndicadoresAuto(pastos: {
     score_fezes: fmtScore(fezes),
     condicao_bebedouros: fmtScore(beb),
     qualidade_pastagens: "—",
+    taxa_lotacao: taxa != null ? `${taxa.toFixed(2).replace(".", ",")} UA/alqueire` : "—",
   };
 }
 
@@ -92,6 +116,7 @@ export const INDICADOR_LABELS: { key: IndicadorKey; label: string }[] = [
   { key: "score_fezes", label: "Score de fezes" },
   { key: "condicao_bebedouros", label: "Condição média dos bebedouros" },
   { key: "qualidade_pastagens", label: "Qualidade das pastagens" },
+  { key: "taxa_lotacao", label: "Taxa de Lotação (UA/alqueire)" },
 ];
 
 
@@ -158,6 +183,7 @@ export default function RevisaoVisitaPage() {
   const [resumo, setResumo] = useState("");
   const [indicadores, setIndicadores] = useState("");
   const [indicadoresTabela, setIndicadoresTabela] = useState<Record<string, string>>({});
+  const [areaAlqueires, setAreaAlqueires] = useState<string>("");
   const [overrides, setOverrides] = useState<Record<CabecalhoKey, string>>({
     fazenda_nome: "", localizacao: "", proprietario: "", responsavel: "", consultor_nome: "",
   });
@@ -235,6 +261,11 @@ export default function RevisaoVisitaPage() {
     setResumo((visitaRow as any).resumo_executivo || "");
     setIndicadores((visitaRow as any).indicadores_gerais || "");
     setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
+    setAreaAlqueires(
+      (visitaRow as any).area_total_alqueires != null
+        ? String((visitaRow as any).area_total_alqueires).replace(".", ",")
+        : ""
+    );
     setOverrides({
       fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
       localizacao: (visitaRow as any).localizacao_override || "",
@@ -504,11 +535,12 @@ export default function RevisaoVisitaPage() {
           resumo_executivo: resumo || null,
           indicadores_gerais: indicadores || null,
           indicadores_tabela: indicadoresTabela as any,
+          area_total_alqueires: parseAlqueires(areaAlqueires),
         } as any,
       });
       if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
 
-      const autoInd = computeIndicadoresAuto(pastos);
+      const autoInd = computeIndicadoresAuto(pastos, parseAlqueires(areaAlqueires));
       const tabelaFinal: IndicadorRow[] = INDICADOR_LABELS.map(({ key, label }) => ({
         key, label,
         value: (indicadoresTabela[key] ?? "").trim() || autoInd[key],
@@ -879,11 +911,29 @@ export default function RevisaoVisitaPage() {
         <div className="text-[10px]" style={{ color: "#767066" }}>
           Valores calculados automaticamente. Edite qualquer campo para sobrescrever.
         </div>
+        <div className="grid grid-cols-2 gap-2 items-center">
+          <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>
+            Área total dos pastos avaliados (alqueires)
+          </div>
+          <Input
+            value={areaAlqueires}
+            inputMode="decimal"
+            placeholder="opcional"
+            onChange={e => setAreaAlqueires(e.target.value)}
+            onBlur={() => {
+              const n = parseAlqueires(areaAlqueires);
+              void autosaveVisita({ area_total_alqueires: n } as any);
+            }}
+            className="h-8 text-sm"
+          />
+        </div>
         {(() => {
-          const auto = computeIndicadoresAuto(pastos);
+          const auto = computeIndicadoresAuto(pastos, parseAlqueires(areaAlqueires));
           return INDICADOR_LABELS.map(({ key, label }) => {
             const override = indicadoresTabela[key] ?? "";
             const placeholder = auto[key];
+            // Linhas condicionais: omitidas quando não há valor calculado nem override.
+            if (key === "taxa_lotacao" && !override.trim() && placeholder === "—") return null;
             return (
               <div key={key} className="grid grid-cols-2 gap-2 items-center">
                 <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>{label}</div>
@@ -984,6 +1034,7 @@ export default function RevisaoVisitaPage() {
                     resumo_executivo: resumo || null,
                     indicadores_gerais: indicadores || null,
                     indicadores_tabela: indicadoresTabela as any,
+                    area_total_alqueires: parseAlqueires(areaAlqueires),
                   } as any);
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
                   navigate("/consultor/historico");
