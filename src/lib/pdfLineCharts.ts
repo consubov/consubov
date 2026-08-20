@@ -278,3 +278,93 @@ export function drawFezesCategoriaChartPages(
   }
 }
 
+
+/**
+ * Gráfico de linha com DUAS séries (ex.: Consumo Real x Esperado por pasto).
+ * Reaproveita o mesmo motor/estilo dos gráficos de amostras.
+ * Retorna false se não houver pelo menos 2 pontos válidos.
+ */
+export function drawDualLineChartPage(
+  doc: jsPDF,
+  fazendaNome: string,
+  title: string,
+  labels: string[],
+  serieA: { name: string; values: number[] },
+  serieB: { name: string; values: number[] },
+  axisLabel = "Pasto",
+): boolean {
+  const n = Math.min(labels.length, serieA.values.length, serieB.values.length);
+  if (n < 2) return false;
+
+  const pageW = doc.internal.pageSize.getWidth();
+  drawPageHeader(doc, fazendaNome);
+
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(title, 15, 26);
+
+  const chartX = 30;
+  const chartY = 45;
+  const chartW = pageW - 55;
+  const chartH = 120;
+
+  const all = [...serieA.values.slice(0, n), ...serieB.values.slice(0, n)];
+  const rawMax = Math.max(...all, 1);
+  const maxY = Math.ceil(rawMax / 5) * 5 || 5;
+
+  // grade Y
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.3);
+  doc.setFontSize(7);
+  doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "normal");
+  for (let i = 0; i <= 5; i++) {
+    const gy = chartY + chartH - (chartH * i) / 5;
+    doc.line(chartX, gy, chartX + chartW, gy);
+    doc.text(String(Math.round((maxY * i) / 5)), chartX - 2, gy + 1, { align: "right" });
+  }
+
+  const px = (i: number) => (n === 1 ? chartX + chartW / 2 : chartX + (i * chartW) / (n - 1));
+  const py = (v: number) => chartY + chartH - (chartH * Math.max(0, v)) / maxY;
+
+  const drawSerie = (values: number[], color: string) => {
+    doc.setDrawColor(color);
+    doc.setLineWidth(0.7);
+    for (let i = 0; i < n - 1; i++) doc.line(px(i), py(values[i]), px(i + 1), py(values[i + 1]));
+    doc.setFillColor(color);
+    for (let i = 0; i < n; i++) doc.circle(px(i), py(values[i]), 1.2, "F");
+  };
+  drawSerie(serieA.values, GREEN_DARK);
+  drawSerie(serieB.values, GOLD);
+
+  // rótulos X
+  doc.setFontSize(7);
+  doc.setTextColor(INK_SOFT);
+  for (let i = 0; i < n; i++) doc.text(labels[i] || String(i + 1), px(i), chartY + chartH + 5, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(INK);
+  doc.text(axisLabel, pageW / 2, chartY + chartH + 12, { align: "center" });
+
+  // legenda
+  const legY = chartY + chartH + 22;
+  const items: [string, string][] = [[serieA.name, GREEN_DARK], [serieB.name, GOLD]];
+  const boxW = 60;
+  const startX = pageW / 2 - (items.length * boxW) / 2;
+  items.forEach(([label, color], i) => {
+    const lx = startX + i * boxW;
+    doc.setFillColor(color);
+    doc.rect(lx, legY - 3, 6, 3, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(INK);
+    doc.text(label, lx + 9, legY);
+  });
+
+  doc.setFontSize(7);
+  doc.setTextColor(INK_SOFT);
+  doc.text("Valores em g/cab/dia por pasto avaliado.", pageW / 2, legY + 7, { align: "center" });
+  return true;
+}
