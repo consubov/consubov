@@ -167,8 +167,61 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
   return listFotosByParent(kind, id);
 }
 
-async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+type UploadOutcome = "ok" | "failed" | "deferred";
+
+const PARENT_TABLE: Record<"pasto" | "curral" | "topico", string> = {
+  pasto: "visita_pastos",
+  curral: "visita_currais",
+  topico: "visita_topicos",
+};
+
+/** Cache de pais já confirmados no servidor durante o drain atual. */
+let confirmedParents = new Set<string>();
+
+function isDependencyError(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("foreign key") || m.includes("fkey") || m.includes("23503");
+}
+
+/**
+ * A foto só pode ser enviada depois que o registro pai (pasto/curral/tópico)
+ * existe no banco remoto. Sem essa checagem, o upload dispara erro de FK e a
+ * foto era marcada como falha definitiva.
+ */
+async function isParentReady(kind: "pasto" | "curral" | "topico", parentId: string): Promise<boolean> {
+  const key = `${kind}:${parentId}`;
+  if (confirmedParents.has(key)) return true;
+  try {
+    const res: any = await withConsultorTimeout(
+      (supabase as any).from(PARENT_TABLE[kind]).select("id").eq("id", parentId).maybeSingle(),
+      `verificação do ${kind} da foto`,
+      CONSULTOR_NETWORK_TIMEOUT_MS,
+    );
+    if (res.error) return false;
+    if (res.data?.id) {
+      confirmedParents.add(key);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function markDeferred(localId: string, reason: string) {
+  const current = await getFoto(localId);
+  if (current) {
+    current.status = "pending";
+    current.lastError = reason;
+    // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
+    await putFoto(current).catch(() => null);
+  }
+  await refreshPendingCount();
+}
+
+async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "failed";
+
 
   // ETAPA 1: reler SEMPRE a foto fresca do IndexedDB. Nunca reusar Blob de
   // sessão anterior — no Safari/iOS, referências antigas geram "Load failed"
