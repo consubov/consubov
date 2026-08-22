@@ -252,7 +252,18 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       await putFoto(current).catch(() => null);
     }
     await refreshPendingCount();
-    return false;
+    return "failed";
+  }
+
+  // ETAPA 1.5: só envia se o registro pai já existe no servidor (evita FK).
+  if (!(await isParentReady(item.parentKind, item.parentId))) {
+    debugSync("foto adiada — registro pai ainda não sincronizado", {
+      localId: item.localId,
+      parentKind: item.parentKind,
+      parentId: item.parentId,
+    });
+    await markDeferred(item.localId, "aguardando sincronização do registro principal");
+    return "deferred";
   }
 
   // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
