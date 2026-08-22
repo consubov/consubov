@@ -109,7 +109,7 @@ export async function mapWithConcurrency<T, R>(
 export async function prefetchFotosDataUrls(
   bucket: string,
   fotos: { id: string; url: string }[],
-  concurrency = 6,
+  concurrency = 2,
 ): Promise<Record<string, string | null>> {
   const cache: Record<string, string | null> = {};
   if (!fotos.length) return cache;

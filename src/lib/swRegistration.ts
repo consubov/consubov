@@ -343,17 +343,25 @@ export function registerSW() {
 
   bindControllerChangeReload();
 
-  const triggerUpdateCheck = () => {
+  // Throttle das checagens: em campo o consultor alterna app/câmera dezenas de
+  // vezes por visita; sem isso cada retorno de segundo plano dispara uma
+  // verificação (e possível aviso de "nova versão").
+  const MIN_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1h
+  let lastCheckAt = Date.now();
+  const triggerUpdateCheck = (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastCheckAt < MIN_CHECK_INTERVAL_MS) return;
+    lastCheckAt = now;
     void maybeUpdateActiveServiceWorker();
   };
 
-  window.addEventListener("pageshow", triggerUpdateCheck);
+  window.addEventListener("pageshow", () => triggerUpdateCheck());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       triggerUpdateCheck();
     }
   });
-  window.addEventListener("online", triggerUpdateCheck);
+  window.addEventListener("online", () => triggerUpdateCheck());
 
   navigator.serviceWorker
     .register(SW_SCRIPT_URL, { updateViaCache: "none" })
@@ -368,9 +376,9 @@ export function registerSW() {
     })
     .catch((err) => console.warn("SW registration failed:", err));
 
-  // Verifica atualizações a cada 5 minutos para garantir que usuários
-  // que permanecem horas com o app aberto recebam novas versões.
-  setInterval(() => void maybeUpdateActiveServiceWorker(), 5 * 60 * 1000);
+  // Verificação periódica de hora em hora (antes: 5 min), suficiente para
+  // entregar novas versões sem interromper o usuário em campo.
+  setInterval(() => triggerUpdateCheck(true), MIN_CHECK_INTERVAL_MS);
 }
 
 export function useSWUpdate() {

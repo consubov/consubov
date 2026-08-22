@@ -18,7 +18,7 @@ import {
   type FotoQueueItem,
 } from "./db";
 import { drainMutations, dropMutationsForRows } from "./mutationQueue";
-import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
 
@@ -46,6 +46,8 @@ let syncing = false;
 let cachedPending = 0;
 let cachedFailures: PhotoFailureDetail[] = [];
 const MAX_AUTO_RETRIES = 3;
+/** Envia poucas fotos por vez: dezenas de blobs simultâneos travam o Safari/iOS. */
+const PHOTO_UPLOAD_CONCURRENCY = 2;
 
 function formatBytes(size = 0): string {
   if (size <= 0) return "tamanho desconhecido";
@@ -167,8 +169,61 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
   return listFotosByParent(kind, id);
 }
 
-async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+type UploadOutcome = "ok" | "failed" | "deferred";
+
+const PARENT_TABLE: Record<"pasto" | "curral" | "topico", string> = {
+  pasto: "visita_pastos",
+  curral: "visita_currais",
+  topico: "visita_topicos",
+};
+
+/** Cache de pais já confirmados no servidor durante o drain atual. */
+let confirmedParents = new Set<string>();
+
+function isDependencyError(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("foreign key") || m.includes("fkey") || m.includes("23503");
+}
+
+/**
+ * A foto só pode ser enviada depois que o registro pai (pasto/curral/tópico)
+ * existe no banco remoto. Sem essa checagem, o upload dispara erro de FK e a
+ * foto era marcada como falha definitiva.
+ */
+async function isParentReady(kind: "pasto" | "curral" | "topico", parentId: string): Promise<boolean> {
+  const key = `${kind}:${parentId}`;
+  if (confirmedParents.has(key)) return true;
+  try {
+    const res: any = await withConsultorTimeout(
+      (supabase as any).from(PARENT_TABLE[kind]).select("id").eq("id", parentId).maybeSingle(),
+      `verificação do ${kind} da foto`,
+      CONSULTOR_NETWORK_TIMEOUT_MS,
+    );
+    if (res.error) return false;
+    if (res.data?.id) {
+      confirmedParents.add(key);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function markDeferred(localId: string, reason: string) {
+  const current = await getFoto(localId);
+  if (current) {
+    current.status = "pending";
+    current.lastError = reason;
+    // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
+    await putFoto(current).catch(() => null);
+  }
+  await refreshPendingCount();
+}
+
+async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "failed";
+
 
   // ETAPA 1: reler SEMPRE a foto fresca do IndexedDB. Nunca reusar Blob de
   // sessão anterior — no Safari/iOS, referências antigas geram "Load failed"
@@ -179,7 +234,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
     const fresh = await getFoto(inputItem.localId);
     if (!fresh) {
       // Já foi removida (talvez confirmada por outra corrida). Nada a fazer.
-      return true;
+      return "ok";
     }
     item = fresh;
     assertValidPhotoBlob(item.blob, `foto ${item.ordem}`);
@@ -199,7 +254,18 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
       await putFoto(current).catch(() => null);
     }
     await refreshPendingCount();
-    return false;
+    return "failed";
+  }
+
+  // ETAPA 1.5: só envia se o registro pai já existe no servidor (evita FK).
+  if (!(await isParentReady(item.parentKind, item.parentId))) {
+    debugSync("foto adiada — registro pai ainda não sincronizado", {
+      localId: item.localId,
+      parentKind: item.parentKind,
+      parentId: item.parentId,
+    });
+    await markDeferred(item.localId, "aguardando sincronização do registro principal");
+    return "deferred";
   }
 
   // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
@@ -241,7 +307,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
       .eq("url", path)
       .maybeSingle(),
       `confirmação da foto ${item.ordem}`,
-      CONSULTOR_NETWORK_TIMEOUT_MS,
+      CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS,
     );
     let inserted = existingRes.data;
     let insErr = existingRes.error;
@@ -252,7 +318,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
         .select("*")
         .single(),
         `registro da foto ${item.ordem}`,
-        CONSULTOR_NETWORK_TIMEOUT_MS,
+        CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS,
       );
       inserted = insertRes.data;
       insErr = insertRes.error;
@@ -297,7 +363,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
       };
     }).catch(() => null);
     await refreshPendingCount();
-    return true;
+    return "ok";
   } catch (err) {
     const message = getErrorMessage(err);
     debugSync("foto mantida no IndexedDB após falha de upload", {
@@ -305,6 +371,13 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
       visitaId: item.visitaId,
       error: message,
     });
+    // Falha por dependência (pasto/curral/tópico pai ainda ausente) não é
+    // falha definitiva: reagenda sem consumir tentativas.
+    if (isDependencyError(message)) {
+      confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
+      await markDeferred(item.localId, "aguardando sincronização do registro principal");
+      return "deferred";
+    }
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
@@ -313,7 +386,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<boolean> {
       await putFoto(current);
     }
     await refreshPendingCount();
-    return false;
+    return "failed";
   }
 }
 
@@ -334,14 +407,31 @@ export async function drain(): Promise<void> {
         debugSync("sincronização de dados antes das fotos falhou", { error: getErrorMessage(err) });
         return;
       }
-      // Processa todas as fotos aptas; uma falha individual não bloqueia as demais.
+      // Processa em pequenos lotes (2 por vez) para não estourar a memória do
+      // Safari/iOS com dezenas de blobs simultâneos, e para não saturar a rede.
+      confirmedParents = new Set();
       let rounds = 0;
       while (rounds < MAX_AUTO_RETRIES) {
         const items = (await listAllFotos()).filter((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
         if (!items.length) break;
-        const results = await Promise.all(items.map(uploadOne));
+
+        const results: UploadOutcome[] = [];
+        for (let i = 0; i < items.length; i += PHOTO_UPLOAD_CONCURRENCY) {
+          if (typeof navigator !== "undefined" && !navigator.onLine) break;
+          const batch = items.slice(i, i + PHOTO_UPLOAD_CONCURRENCY);
+          results.push(...(await Promise.all(batch.map(uploadOne))));
+        }
         if (typeof navigator !== "undefined" && !navigator.onLine) break;
-        if (results.every(Boolean)) continue;
+        if (results.every((r) => r === "ok")) continue;
+
+        // Se restaram fotos aguardando o registro pai, tenta sincronizar as
+        // mutações novamente para criar os pais e então reenfileirar as fotos.
+        if (results.some((r) => r === "deferred")) {
+          confirmedParents = new Set();
+          try {
+            await withConsultorTimeout(drainMutations(), "sincronização dos registros principais", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
+          } catch { /* tenta de novo na próxima rodada */ }
+        }
         rounds++;
         if (rounds < MAX_AUTO_RETRIES) await sleep(650 * rounds);
       }

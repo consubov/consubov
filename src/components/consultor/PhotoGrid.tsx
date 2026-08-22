@@ -246,7 +246,7 @@ export default function PhotoGrid({
               {foto ? (
                 <>
                   {signed[foto.id]
-                    ? <img src={signed[foto.id]} alt="" className="w-full h-full object-cover" />
+                    ? <img loading="lazy" decoding="async" src={signed[foto.id]} alt="" className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>}
                   {!disabled && (
                     <button type="button" onClick={() => handleDelete(foto)}
@@ -257,7 +257,7 @@ export default function PhotoGrid({
                 </>
               ) : showQueued ? (
                 <>
-                  <img src={queuedPreview} alt="" className="w-full h-full object-cover" />
+                  <img loading="lazy" decoding="async" src={queuedPreview} alt="" className="w-full h-full object-cover" />
                   {typeof navigator !== "undefined" && !navigator.onLine && (
                     <div className="absolute bottom-0.5 left-0.5 flex items-center gap-1 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-foreground">
                       <Loader2 className="w-2 h-2 animate-spin" /> off-line
@@ -276,7 +276,7 @@ export default function PhotoGrid({
                 </>
               ) : showPending ? (
                 <>
-                  <img src={pending!.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
+                  <img loading="lazy" decoding="async" src={pending!.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
                   <div className="absolute inset-0 flex items-center justify-center bg-background/30">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   </div>
