@@ -361,7 +361,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       };
     }).catch(() => null);
     await refreshPendingCount();
-    return true;
+    return "ok";
   } catch (err) {
     const message = getErrorMessage(err);
     debugSync("foto mantida no IndexedDB após falha de upload", {
@@ -369,6 +369,13 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       visitaId: item.visitaId,
       error: message,
     });
+    // Falha por dependência (pasto/curral/tópico pai ainda ausente) não é
+    // falha definitiva: reagenda sem consumir tentativas.
+    if (isDependencyError(message)) {
+      confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
+      await markDeferred(item.localId, "aguardando sincronização do registro principal");
+      return "deferred";
+    }
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
@@ -377,7 +384,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       await putFoto(current);
     }
     await refreshPendingCount();
-    return false;
+    return "failed";
   }
 }
 
