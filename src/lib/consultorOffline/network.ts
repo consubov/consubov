@@ -1,5 +1,7 @@
 export const CONSULTOR_NETWORK_TIMEOUT_MS = 30_000;
-export const CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS = 20_000;
+// Upload de fotos em campo (4G fraco) precisa de folga: 90s.
+export const CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS = 90_000;
+export const CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS = 60_000;
 export const CONSULTOR_SYNC_ATTEMPTS = 3;
 
 export function getErrorMessage(error: unknown): string {
