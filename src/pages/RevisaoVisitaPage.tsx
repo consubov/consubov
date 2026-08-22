@@ -1248,7 +1248,7 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
             style={{ borderColor: "#E7E3D6" }}
           >
             {pasto.signed[f.id]
-              ? <img src={pasto.signed[f.id]} alt="" className="w-full h-full object-cover" />
+              ? <img loading="lazy" decoding="async" src={pasto.signed[f.id]} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center bg-muted"><Loader2 className="w-3 h-3 animate-spin" /></div>}
             {numeroMap?.[f.id] != null && (
               <div className="absolute top-0.5 left-0.5 min-w-4 h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background: "#14432B" }}>

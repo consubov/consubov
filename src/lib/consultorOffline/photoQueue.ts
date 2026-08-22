@@ -18,7 +18,7 @@ import {
   type FotoQueueItem,
 } from "./db";
 import { drainMutations, dropMutationsForRows } from "./mutationQueue";
-import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
+import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
 
@@ -307,7 +307,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       .eq("url", path)
       .maybeSingle(),
       `confirmação da foto ${item.ordem}`,
-      CONSULTOR_NETWORK_TIMEOUT_MS,
+      CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS,
     );
     let inserted = existingRes.data;
     let insErr = existingRes.error;
@@ -318,7 +318,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
         .select("*")
         .single(),
         `registro da foto ${item.ordem}`,
-        CONSULTOR_NETWORK_TIMEOUT_MS,
+        CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS,
       );
       inserted = insertRes.data;
       insErr = insertRes.error;
