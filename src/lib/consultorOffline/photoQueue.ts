@@ -405,14 +405,31 @@ export async function drain(): Promise<void> {
         debugSync("sincronização de dados antes das fotos falhou", { error: getErrorMessage(err) });
         return;
       }
-      // Processa todas as fotos aptas; uma falha individual não bloqueia as demais.
+      // Processa em pequenos lotes (2 por vez) para não estourar a memória do
+      // Safari/iOS com dezenas de blobs simultâneos, e para não saturar a rede.
+      confirmedParents = new Set();
       let rounds = 0;
       while (rounds < MAX_AUTO_RETRIES) {
         const items = (await listAllFotos()).filter((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
         if (!items.length) break;
-        const results = await Promise.all(items.map(uploadOne));
+
+        const results: UploadOutcome[] = [];
+        for (let i = 0; i < items.length; i += PHOTO_UPLOAD_CONCURRENCY) {
+          if (typeof navigator !== "undefined" && !navigator.onLine) break;
+          const batch = items.slice(i, i + PHOTO_UPLOAD_CONCURRENCY);
+          results.push(...(await Promise.all(batch.map(uploadOne))));
+        }
         if (typeof navigator !== "undefined" && !navigator.onLine) break;
-        if (results.every(Boolean)) continue;
+        if (results.every((r) => r === "ok")) continue;
+
+        // Se restaram fotos aguardando o registro pai, tenta sincronizar as
+        // mutações novamente para criar os pais e então reenfileirar as fotos.
+        if (results.some((r) => r === "deferred")) {
+          confirmedParents = new Set();
+          try {
+            await withConsultorTimeout(drainMutations(), "sincronização dos registros principais", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
+          } catch { /* tenta de novo na próxima rodada */ }
+        }
         rounds++;
         if (rounds < MAX_AUTO_RETRIES) await sleep(650 * rounds);
       }
