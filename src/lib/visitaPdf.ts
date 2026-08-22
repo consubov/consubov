@@ -944,6 +944,9 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   photoLinks.apply(doc);
   setActivePhotoLinks(null);
   const blob = doc.output("blob");
+  // Libera imediatamente os data URLs das fotos (podem somar dezenas de MB em
+  // visitas com 50+ fotos e derrubar o Safari/iOS).
+  for (const key of Object.keys(fotosCache)) delete fotosCache[key];
   const stamp = format(new Date(), "yyyyMMdd-HHmm");
   const safeName = (data.fazenda.nome_fazenda || "fazenda").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   const fileName = `visita-${safeName}-${stamp}.pdf`;
