@@ -232,7 +232,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     const fresh = await getFoto(inputItem.localId);
     if (!fresh) {
       // Já foi removida (talvez confirmada por outra corrida). Nada a fazer.
-      return true;
+      return "ok";
     }
     item = fresh;
     assertValidPhotoBlob(item.blob, `foto ${item.ordem}`);
