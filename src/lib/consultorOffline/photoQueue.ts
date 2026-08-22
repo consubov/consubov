@@ -46,6 +46,8 @@ let syncing = false;
 let cachedPending = 0;
 let cachedFailures: PhotoFailureDetail[] = [];
 const MAX_AUTO_RETRIES = 3;
+/** Envia poucas fotos por vez: dezenas de blobs simultâneos travam o Safari/iOS. */
+const PHOTO_UPLOAD_CONCURRENCY = 2;
 
 function formatBytes(size = 0): string {
   if (size <= 0) return "tamanho desconhecido";
