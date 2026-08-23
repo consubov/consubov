@@ -118,8 +118,20 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                 {item.mutationErrors.length > 0 && <div className="text-destructive">Motivo (dados): {item.mutationErrors.join("; ")}</div>}
                 {item.photoErrors.length > 0 && <div className="text-destructive">Motivo (fotos): {item.photoErrors.join("; ")}</div>}
               </div>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={syncing || loading}
+                  onClick={() => void descartarIrrecuperaveis(item.visitaId)}
+                >
+                  Descartar itens irrecuperáveis
+                </Button>
+              </div>
             </div>
           ))}
+
         </div>
       </DialogContent>
     </Dialog>
