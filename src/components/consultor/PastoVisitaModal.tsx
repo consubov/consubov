@@ -126,7 +126,11 @@ export default function PastoVisitaModal({
       }
 
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
+      setMetaG100kg((pasto as any).meta_g_100kg?.toString() || "");
+      setKgConsumidos((pasto as any).kg_consumidos?.toString() || "");
+      setDiasConsumo((pasto as any).dias_consumo?.toString() || "");
       setObs(pasto.observacao || "");
+
       const online = typeof navigator === "undefined" || navigator.onLine;
       (async () => {
         const snap = await loadSnapshot(visitaId);
