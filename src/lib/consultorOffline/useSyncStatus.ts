@@ -133,8 +133,10 @@ export function useSyncStatus() {
           console.info("[consultor-sync] visitas pendentes", infos.map((i) => ({
             visitaId: i.visitaId,
             mutations: i.mutationTables,
+            mutationErrors: i.mutationErrors,
             photos: i.photoParents,
             photoErrors: i.photoErrors,
+            desde: i.oldestCreatedAt,
           })));
         }
         const activeIds = new Set(infos.map((i) => i.visitaId));
@@ -142,12 +144,18 @@ export function useSyncStatus() {
         setActiveMutPending(infos.reduce((total, item) => total + item.mutationIds.length, 0));
         setActivePhotoPending(infos.reduce((total, item) => total + item.photoIds.length, 0));
         setPhotoFailures(rawPhotoFailuresRef.current.filter((failure) => activeIds.has(failure.visitaId)));
+        const oldest = infos
+          .map((i) => i.oldestCreatedAt)
+          .filter(Boolean)
+          .sort()[0];
+        setStuckMinutes(oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / 60000) : 0);
       } catch {
         if (!alive) return;
         setVisitasPending(0);
         setActiveMutPending(0);
         setActivePhotoPending(0);
         setPhotoFailures([]);
+        setStuckMinutes(0);
       }
     };
     const u1 = subscribePhotos((_pending, s, failures) => {
