@@ -31,7 +31,7 @@ import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
-import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
+import { enqueuePhoto, getQueuedPhotosForParent } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
