@@ -172,6 +172,14 @@ export default function PastoVisitaModal({
     }
   }, [open, pasto, proximaLetra]);
 
+  // Modo de cálculo derivado do tipo de produto
+  const modo: "mineral" | "racao" | "outro" | "proteinado" | "" =
+    tipoProduto === "mineral" ? "mineral"
+    : tipoProduto === "racao" ? "racao"
+    : tipoProduto === "outro" ? "outro"
+    : tipoProduto.startsWith("proteinado") ? "proteinado"
+    : "";
+
   // Auto-calc peso vivo total & consumo esperado (only suggests; user can override)
   const pesoVivoTotal = useMemo(() => {
     const a = Number(qtdAnimais) || 0;
@@ -188,13 +196,14 @@ export default function PastoVisitaModal({
   // Recalcula sempre que qualquer entrada muda (100% no cliente / offline),
   // exceto se o usuário digitou manualmente um valor de consumo esperado.
   useEffect(() => {
+    if (modo === "mineral" || modo === "racao" || modo === "outro") return;
     if (esperadoManual) return;
     if (consumoEsperadoCalc > 0) {
       setConsumoEsperado(String(Number(consumoEsperadoCalc.toFixed(2))));
     } else {
       setConsumoEsperado("");
     }
-  }, [consumoEsperadoCalc, esperadoManual]);
+  }, [consumoEsperadoCalc, esperadoManual, modo]);
 
   const indiceMeta = useMemo(() => {
     const real = Number(consumoReal) || 0;
@@ -202,6 +211,33 @@ export default function PastoVisitaModal({
     if (esp <= 0 || real <= 0) return 0;
     return (real / esp) * 100;
   }, [consumoReal, consumoEsperado]);
+
+  // ===== Cálculos dedicados (100% no cliente, reativos, offline) =====
+  const calc = useMemo(() => {
+    const animais = Number(qtdAnimais) || 0;
+    const peso = Number(pesoMedio) || 0;
+    const kg = Number(kgConsumidos) || 0;
+    const dias = Number(diasConsumo) || 0;
+    const meta = Number(metaG100kg) || 0;
+    const cabDia = animais > 0 && dias > 0 ? animais * dias : 0;
+
+    if (modo === "mineral") {
+      const espG = meta > 0 && peso > 0 ? (meta / 100) * peso : 0;
+      const realG = cabDia > 0 && kg > 0 ? (kg * 1000) / cabDia : 0;
+      const indice = espG > 0 && realG > 0 ? (realG / espG) * 100 : 0;
+      return { espG, realG, indice, kgCabDia: 0, pctPv: 0, gCabDia: 0 };
+    }
+    if (modo === "racao" || modo === "outro") {
+      const kgCabDia = cabDia > 0 && kg > 0 ? kg / cabDia : 0;
+      const pctPv = kgCabDia > 0 && peso > 0 ? (kgCabDia / peso) * 100 : 0;
+      return { espG: 0, realG: 0, indice: 0, kgCabDia, pctPv, gCabDia: kgCabDia * 1000 };
+    }
+    return { espG: 0, realG: 0, indice: 0, kgCabDia: 0, pctPv: 0, gCabDia: 0 };
+  }, [modo, qtdAnimais, pesoMedio, kgConsumidos, diasConsumo, metaG100kg]);
+
+  const statusMeta = calc.indice > 0
+    ? (calc.indice < 80 ? "Baixo" : calc.indice > 120 ? "Alto" : "Ideal")
+    : "";
 
   function handleTipoProdutoChange(v: string) {
     setTipoProduto(v);
@@ -212,6 +248,7 @@ export default function PastoVisitaModal({
       setEsperadoManual(false);
     }
   }
+
 
 
   const ensurePasto = useCallback(async (): Promise<string | null> => {
