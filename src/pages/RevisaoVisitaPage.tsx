@@ -29,10 +29,10 @@ import AssinaturasSection, { fetchAssinantes, type Assinante } from "@/component
 import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { enqueuePhoto, getQueuedPhotosForParent } from "@/lib/consultorOffline/photoQueue";
-import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
+import { deleteFoto as deleteQueuedFoto, listMutationsByVisita, updateFotoOrdem } from "@/lib/consultorOffline/db";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
 
@@ -320,13 +320,19 @@ export default function RevisaoVisitaPage() {
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
-    const snap = visitaId ? await loadSnapshot(visitaId) : null;
+    const [snap, localMutations] = visitaId
+      ? await Promise.all([loadSnapshot(visitaId), listMutationsByVisita(visitaId)])
+      : [null, []];
     const online = typeof navigator === "undefined" || navigator.onLine;
-    const preferLocal = !!snap?.visita && visitaId ? await hasPendingLocalChanges(visitaId) : false;
-    const { data: v } = online && !preferLocal
+    const { data: v } = online
       ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).is("deleted_at", null).maybeSingle()
       : { data: null };
-    const visitaRow = preferLocal ? snap?.visita : (v as any) || snap?.visita;
+    const visitaPatch = localMutations
+      .filter((m) => m.table === "visitas_tecnicas" && m.rowId === visitaId && (m.operation ?? "update") !== "delete")
+      .reduce((acc, m) => ({ ...acc, ...m.patch }), {} as Record<string, any>);
+    const visitaRow = (v as any)
+      ? { ...(v as any), ...visitaPatch }
+      : snap?.visita;
     if (isVisitaDeleted(visitaRow as any)) { setVisita(null); setLoading(false); return; }
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow as any);
@@ -349,7 +355,7 @@ export default function RevisaoVisitaPage() {
       consultor_nome: (visitaRow as any).consultor_nome_override || "",
     });
 
-    const [{ data: fz }, { data: cs }, { data: ps }] = online && !preferLocal
+    const [{ data: fz }, { data: cs }, { data: ps }] = online
       ? await Promise.all([
           supabase.from("fazendas_consultor").select("*").eq("id", visitaRow.fazenda_consultor_id).maybeSingle(),
           supabase.from("consultores").select("*").eq("id", visitaRow.consultor_id).maybeSingle(),
@@ -360,12 +366,23 @@ export default function RevisaoVisitaPage() {
     const consultorRow = cs || snap?.consultor;
     setFazenda(fazendaRow); setConsultor(consultorRow);
 
-    let pastoRows = (ps as any[]) || [];
+    const pastoMutations = localMutations.filter((m) => m.table === "visita_pastos");
+    const pendingPastoPatch = new Map<string, Record<string, any>>();
+    pastoMutations.forEach((m) => {
+      if ((m.operation ?? "update") === "delete") return;
+      pendingPastoPatch.set(m.rowId, { ...(pendingPastoPatch.get(m.rowId) || {}), ...m.patch });
+    });
+    let pastoRows = ((ps as any[]) || []).map((p: any) => ({ ...p, ...(pendingPastoPatch.get(p.id) || {}) }));
     if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as any[];
     // Pastos que ainda só existem localmente (criados off-line) precisam aparecer
     // mesmo quando o servidor já respondeu com outros pastos.
     (snap?.pastos || []).forEach((sp: any) => {
-      if (sp?.id && !pastoRows.some((p: any) => p.id === sp.id)) pastoRows = [...pastoRows, sp];
+      if (sp?.id && !pastoRows.some((p: any) => p.id === sp.id)) {
+        pastoRows = [...pastoRows, { ...sp, ...(pendingPastoPatch.get(sp.id) || {}) }];
+      }
+    });
+    pendingPastoPatch.forEach((patch, rowId) => {
+      if (!pastoRows.some((p: any) => p.id === rowId)) pastoRows.push({ id: rowId, ...patch });
     });
     const ids = pastoRows.map(p => p.id);
     type Bucket = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -381,7 +398,7 @@ export default function RevisaoVisitaPage() {
       arr.push(s);
     };
     const fotosByPasto: Record<string, Foto[]> = {};
-    if (ids.length && online && !preferLocal) {
+    if (ids.length && online) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
@@ -418,12 +435,12 @@ export default function RevisaoVisitaPage() {
       });
       const queuedFromSnap = (fallbackFotos as any[]).filter((f: any) =>
         String(f.url || "").startsWith("queued:") && !queuedFromQueue.some((q) => q.id === f.id));
-      const base = remoteFotos.length ? remoteFotos : (fallbackFotos as any[]).filter((f: any) => !String(f.url || "").startsWith("queued:"));
-      const fotos = [...base, ...queuedFromQueue, ...queuedFromSnap]
+       const localSyncedFotos = (fallbackFotos as any[]).filter((f: any) => !String(f.url || "").startsWith("queued:"));
+       const fotos = [...remoteFotos, ...localSyncedFotos, ...queuedFromQueue, ...queuedFromSnap]
         .filter((f: any, i: number, arr: any[]) => arr.findIndex((x) => x.id === f.id) === i)
         .sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
       await Promise.all(fotos
-        .filter((f: any) => online && !preferLocal && !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
@@ -435,18 +452,18 @@ export default function RevisaoVisitaPage() {
     setPendingThisVisit(await hasPendingLocalChanges(visitaId!));
     // Snapshot local — permite reabrir a visita offline com dados pré-carregados.
     // IMPORTANTE: mesclar (nunca sobrescrever) para não apagar amostras/fotos locais.
-    if (!preferLocal) {
+    if (online) {
       const mergedPastos = built.map((b: any) => {
         const sp = (snap?.pastos || []).find((x: any) => x.id === b.id) as any;
         return { ...(sp || {}), ...b, samples: b.samples, fotos: b.fotos, signed: { ...(sp?.signed || {}), ...b.signed } };
       });
-      void saveSnapshot(visitaId!, {
-        ...(snap || {}),
-        visita: visitaRow,
-        fazenda: fazendaRow,
-        consultor: consultorRow,
+      void patchSnapshot(visitaId!, (current) => ({
+        ...current,
+        visita: { ...(current.visita || {}), ...visitaRow },
+        fazenda: fazendaRow || current.fazenda,
+        consultor: consultorRow || current.consultor,
         pastos: mergedPastos,
-      }).catch(() => {});
+      })).catch(() => {});
     }
     setLoading(false);
   }

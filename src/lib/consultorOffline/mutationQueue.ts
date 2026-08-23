@@ -16,7 +16,7 @@ let cachedPending = 0;
 const MAX_AUTO_RETRIES = 3;
 
 function debugSync(message: string, payload?: Record<string, unknown>) {
-  if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
+  console.info(`[consultor-sync] ${message}`, payload ?? {});
 }
 
 async function refresh() {
@@ -251,14 +251,13 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
 let drainPromise: Promise<void> | null = null;
 
 /**
- * Toda nova rodada de sincronização é uma nova chance: itens que já estouraram
- * as tentativas voltam a "pending" para não morrerem permanentemente na fila.
+ * Recupera apenas gravações interrompidas. Falhas que atingiram o limite ficam
+ * visíveis até uma tentativa manual, em vez de oscilarem silenciosamente.
  */
 async function reviveStuckMutations() {
   const items = await listAllMutations();
   for (const m of items) {
-    if ((m.tries ?? 0) >= MAX_AUTO_RETRIES || m.status === "flushing") {
-      m.tries = 0;
+    if (m.status === "flushing") {
       m.status = "pending";
       await putMutation(m);
     }
