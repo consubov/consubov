@@ -204,7 +204,7 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
           });
           await deleteMutation(m.id);
           await refresh();
-          return true;
+          return "ok";
         }
       }
     }
@@ -220,25 +220,50 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
     });
     await deleteMutation(m.id);
     await refresh();
-    return true;
+    return "ok";
   } catch (err) {
+    const message = getErrorMessage(err);
     debugSync("mutação mantida no IndexedDB após falha", {
       mutationId: m.id,
       visitaId: m.visitaId,
       table: m.table,
       rowId: m.rowId,
-      error: getErrorMessage(err),
+      error: message,
     });
+    // Erro de dependência (pai ainda não sincronizado) NÃO consome tentativas:
+    // a mutação é adiada e reprocessada depois que o pai for confirmado.
+    if (isDependencyError(message)) {
+      m.status = "pending";
+      m.lastError = "aguardando sincronização do registro principal";
+      await putMutation(m);
+      emit();
+      return "deferred";
+    }
     m.status = "error";
     m.tries = (m.tries ?? 0) + 1;
-    m.lastError = getErrorMessage(err);
+    m.lastError = message;
     await putMutation(m);
     emit();
-    return false;
+    return "failed";
   }
 }
 
 let drainPromise: Promise<void> | null = null;
+
+/**
+ * Toda nova rodada de sincronização é uma nova chance: itens que já estouraram
+ * as tentativas voltam a "pending" para não morrerem permanentemente na fila.
+ */
+async function reviveStuckMutations() {
+  const items = await listAllMutations();
+  for (const m of items) {
+    if ((m.tries ?? 0) >= MAX_AUTO_RETRIES || m.status === "flushing") {
+      m.tries = 0;
+      m.status = "pending";
+      await putMutation(m);
+    }
+  }
+}
 
 export async function drainMutations(): Promise<void> {
   if (drainPromise) return drainPromise;
@@ -247,22 +272,28 @@ export async function drainMutations(): Promise<void> {
     emit();
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      await reviveStuckMutations();
       let attempts = 0;
-      while (attempts < 50) {
-        const items = await listAllMutations();
-        const target = items.find((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
+      const deferred = new Set<string>();
+      while (attempts < 200) {
+        const items = sortMutations(await listAllMutations());
+        const target = items.find((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES && !deferred.has(i.id));
         if (!target) break;
-        const ok = await flushOne(target);
-        if (!ok) {
+        const outcome = await flushOne(target);
+        if (outcome === "deferred") {
+          // Já tentamos e o pai ainda não existe: sai da rodada atual e será
+          // reprocessado na próxima chamada (após o pai ser criado).
+          deferred.add(target.id);
+        } else if (outcome === "failed") {
           const remaining = await listAllMutations();
           const current = remaining.find((i) => i.id === target.id);
-          if ((current?.tries ?? 0) >= MAX_AUTO_RETRIES) break;
           if (typeof navigator !== "undefined" && !navigator.onLine) break;
           await sleep(650 * ((current?.tries ?? 0) || 1));
         }
         attempts++;
       }
     } finally {
+
       syncing = false;
       await refresh();
     }
