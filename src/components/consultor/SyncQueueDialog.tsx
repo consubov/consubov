@@ -45,6 +45,26 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
     }
   };
 
+  const descartarIrrecuperaveis = async (visitaId: string) => {
+    setSyncing(true);
+    try {
+      const { discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
+      const res = await discardUnrecoverableForVisita(visitaId);
+      if (res.descartados.length === 0) {
+        toast.info("Nenhum item irrecuperável encontrado nesta visita.");
+      } else {
+        const nomes = res.descartados.map((d) => `${d.kind} ${d.parentId.slice(0, 8)}…`).join(", ");
+        toast.success(`Descartados ${res.mutations} dado(s) e ${res.fotos} foto(s) de: ${nomes}. Esses registros precisam ser refeitos presencialmente.`);
+      }
+    } catch (err) {
+      toast.error(`Falha ao descartar itens: ${getErrorMessage(err)}`);
+    } finally {
+      setSyncing(false);
+      await load();
+    }
+  };
+
+
   useEffect(() => {
     if (open) void load();
   }, [open]);
@@ -98,8 +118,20 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                 {item.mutationErrors.length > 0 && <div className="text-destructive">Motivo (dados): {item.mutationErrors.join("; ")}</div>}
                 {item.photoErrors.length > 0 && <div className="text-destructive">Motivo (fotos): {item.photoErrors.join("; ")}</div>}
               </div>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={syncing || loading}
+                  onClick={() => void descartarIrrecuperaveis(item.visitaId)}
+                >
+                  Descartar itens irrecuperáveis
+                </Button>
+              </div>
             </div>
           ))}
+
         </div>
       </DialogContent>
     </Dialog>
