@@ -17,6 +17,8 @@ export interface FotoQueueItem {
   createdAt: string;
   lastAttemptAt?: string;
   tries: number;
+  /** Quantas rodadas o item ficou adiado esperando o registro pai. */
+  deferredRounds?: number;
   lastError?: string;
   status: "pending" | "uploading" | "error";
 }
@@ -43,6 +45,8 @@ export interface TextMutation {
   patch: Record<string, any>;
   createdAt: string;
   tries: number;
+  /** Quantas rodadas a mutação ficou adiada esperando o registro pai. */
+  deferredRounds?: number;
   status: "pending" | "flushing" | "error";
   lastError?: string;
 }
