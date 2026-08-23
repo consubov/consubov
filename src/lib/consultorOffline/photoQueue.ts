@@ -205,17 +205,32 @@ export async function isParentReady(kind: "pasto" | "curral" | "topico", parentI
     `verificação do ${kind} da foto`,
     CONSULTOR_NETWORK_TIMEOUT_MS,
   );
-  if (res.error) {
-    const message = `Falha ao verificar registro principal no servidor: ${getErrorMessage(res.error)}`;
-    debugSync("erro real ao verificar pai da foto", { kind, parentId, error: message }, "error");
-    throw new Error(message);
+  let ready: boolean;
+  try {
+    ready = resolveParentLookup(res);
+  } catch (error) {
+    debugSync("erro real ao verificar pai da foto", { kind, parentId, error: getErrorMessage(error) }, "error");
+    throw error;
   }
-  if (res.data?.id) {
+  if (ready) {
     confirmedParents.add(key);
     return true;
   }
   debugSync("registro pai ainda ausente no servidor", { kind, parentId });
   return false;
+}
+
+/** Semântica testável da consulta: ausência é espera normal; erro é falha real. */
+export function resolveParentLookup(result: { data?: { id?: string } | null; error?: unknown }): boolean {
+  if (result.error) {
+    throw new Error(`Falha ao verificar registro principal no servidor: ${getErrorMessage(result.error)}`);
+  }
+  return Boolean(result.data?.id);
+}
+
+export function nextPhotoFailureState(currentTries: number) {
+  const tries = currentTries + 1;
+  return { tries, status: tries >= MAX_AUTO_RETRIES ? "error" as const : "pending" as const };
 }
 
 async function markDeferred(localId: string, reason: string) {
@@ -256,8 +271,9 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     debugSync("erro ao ler foto do IndexedDB", { localId: inputItem.localId, error: message });
     const current = await getFoto(inputItem.localId);
     if (current) {
-      current.status = "error";
-      current.tries = (current.tries ?? 0) + 1;
+      const failure = nextPhotoFailureState(current.tries ?? 0);
+      current.status = failure.status;
+      current.tries = failure.tries;
       current.lastError = message;
       await putFoto(current).catch(() => null);
     }
@@ -383,8 +399,9 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     if (isDependencyError(message)) confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
     const current = await getFoto(item.localId);
     if (current) {
-      current.status = "error";
-      current.tries = (current.tries ?? 0) + 1;
+      const failure = nextPhotoFailureState(current.tries ?? 0);
+      current.status = failure.status;
+      current.tries = failure.tries;
       current.lastError = message;
       await putFoto(current);
     }

@@ -12,7 +12,7 @@ import { Loader2, MapPin, Play, ArrowLeft, ChevronRight, Landmark, CheckCircle2 
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { offlineUpsert, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { requestPersistentStorage } from "@/lib/storageProtection";
 
 interface Fazenda {
