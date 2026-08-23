@@ -172,7 +172,7 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
 /** Quantas fotos desta visita ainda estão apenas no aparelho (não sincronizadas). */
 export async function getQueuedPhotoCountForVisita(visitaId: string): Promise<number> {
   const items = await listAllFotos();
-  return items.filter((it) => it.visitaId === visitaId && it.status !== "done").length;
+  return items.filter((it) => it.visitaId === visitaId).length;
 }
 
 
