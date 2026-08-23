@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { loadSnapshot, patchSnapshot, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { resolveParentLookup } from "@/lib/consultorOffline/photoQueue";
+
+describe("verificação do registro pai da foto", () => {
+  it("trata ausência confirmada como espera normal", () => {
+    expect(resolveParentLookup({ data: null, error: null })).toBe(false);
+  });
+
+  it("propaga erro real de consulta para consumir retry e ficar visível", () => {
+    expect(() => resolveParentLookup({ data: null, error: { message: "permission denied" } }))
+      .toThrow("permission denied");
+  });
+
+  it("confirma o pai quando o servidor retorna seu id", () => {
+    expect(resolveParentLookup({ data: { id: "p1" }, error: null })).toBe(true);
+  });
+});
 
 describe("snapshot serializado do Relatto", () => {
   it("não perde uma alteração concorrente feita após uma carga de servidor", async () => {

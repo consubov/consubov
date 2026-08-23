@@ -205,17 +205,27 @@ export async function isParentReady(kind: "pasto" | "curral" | "topico", parentI
     `verificação do ${kind} da foto`,
     CONSULTOR_NETWORK_TIMEOUT_MS,
   );
-  if (res.error) {
-    const message = `Falha ao verificar registro principal no servidor: ${getErrorMessage(res.error)}`;
-    debugSync("erro real ao verificar pai da foto", { kind, parentId, error: message }, "error");
-    throw new Error(message);
+  let ready: boolean;
+  try {
+    ready = resolveParentLookup(res);
+  } catch (error) {
+    debugSync("erro real ao verificar pai da foto", { kind, parentId, error: getErrorMessage(error) }, "error");
+    throw error;
   }
-  if (res.data?.id) {
+  if (ready) {
     confirmedParents.add(key);
     return true;
   }
   debugSync("registro pai ainda ausente no servidor", { kind, parentId });
   return false;
+}
+
+/** Semântica testável da consulta: ausência é espera normal; erro é falha real. */
+export function resolveParentLookup(result: { data?: { id?: string } | null; error?: unknown }): boolean {
+  if (result.error) {
+    throw new Error(`Falha ao verificar registro principal no servidor: ${getErrorMessage(result.error)}`);
+  }
+  return Boolean(result.data?.id);
 }
 
 async function markDeferred(localId: string, reason: string) {
