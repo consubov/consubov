@@ -566,7 +566,7 @@ export default function RevisaoVisitaPage() {
     } finally { setConfirmando(false); }
   }
 
-  async function gerarPdf() {
+  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
@@ -588,6 +588,13 @@ export default function RevisaoVisitaPage() {
       }
       setPendingThisVisit(false);
     }
+    // Fotos ainda apenas locais não existem no servidor e sumiriam do relatório.
+    if (!opts?.ignorarFotosPendentes) {
+      const { getQueuedPhotoCountForVisita } = await import("@/lib/consultorOffline/photoQueue");
+      const pendentes = await getQueuedPhotoCountForVisita(visita.id);
+      if (pendentes > 0) { setFotosPendentesAviso(pendentes); return; }
+    }
+
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
