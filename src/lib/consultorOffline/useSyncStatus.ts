@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
-import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
+import { subscribeSyncStatus as subscribePhotos, forceFullSync, type PhotoFailureDetail } from "./photoQueue";
+import { subscribeMutationStatus } from "./mutationQueue";
 import { listAllFotos, listAllMutations, listAllSnapshots } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 import { patchSnapshot } from "./snapshotStore";
