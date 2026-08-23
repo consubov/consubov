@@ -876,11 +876,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
     // Consumo por pasto — Real x Esperado (2 séries)
     const consumoPontos = data.pastos
-      .map(p => ({
-        nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
-        real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
-        esp: Number(p.consumo_esperado_kg ?? 0),
-      }))
+      .map(p => {
+        const n = normalizarConsumoPasto(p as any);
+        return {
+          nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
+          real: n.realTotal,
+          esp: n.espTotal,
+        };
+      })
       .filter(p => p.real > 0 && p.esp > 0)
       .map((p, i) => ({ ...p, letra: String.fromCharCode(65 + (i % 26)) }));
     if (consumoPontos.length >= 2) {
