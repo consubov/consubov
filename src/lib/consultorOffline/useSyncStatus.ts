@@ -14,9 +14,12 @@ export interface PendingVisitaDebugInfo {
   deletedAt?: string | null;
   mutationIds: string[];
   mutationTables: string[];
+  mutationErrors: string[];
   photoIds: string[];
   photoParents: string[];
   photoErrors: string[];
+  /** Item mais antigo da fila desta visita (para detectar travamento). */
+  oldestCreatedAt?: string;
 }
 
 export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: boolean }): Promise<PendingVisitaDebugInfo[]> {
