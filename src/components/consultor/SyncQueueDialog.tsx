@@ -17,6 +17,7 @@ interface Props {
 
 export default function SyncQueueDialog({ open, onOpenChange, pending, mutPending, photoPending }: Props) {
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [items, setItems] = useState<PendingVisitaDebugInfo[]>([]);
 
   const load = async () => {
@@ -27,6 +28,19 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
       toast.error(`Erro ao ler fila local: ${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const forcarSync = async () => {
+    setSyncing(true);
+    try {
+      await forceFullSync();
+      toast.success("Sincronização forçada concluída. Confira os itens restantes abaixo.");
+    } catch (err) {
+      toast.error(`Falha ao forçar sincronização: ${getErrorMessage(err)}`);
+    } finally {
+      setSyncing(false);
+      await load();
     }
   };
 
@@ -45,9 +59,14 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
         </DialogHeader>
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>{pending} visita(s) contada(s) · {mutPending} alteração(ões) · {photoPending} foto(s)</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Atualizar"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={() => void forcarSync()} disabled={syncing || loading}>
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Forçar sincronização"}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading || syncing}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Atualizar"}
+            </Button>
+          </div>
         </div>
         <div className="overflow-y-auto space-y-2 pr-1">
           {loading && items.length === 0 ? (
