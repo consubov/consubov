@@ -120,6 +120,7 @@ export function useSyncStatus() {
   const [activePhotoPending, setActivePhotoPending] = useState(0);
   const [activeMutPending, setActiveMutPending] = useState(0);
   const [photoFailures, setPhotoFailures] = useState<PhotoFailureDetail[]>([]);
+  const [stuckMinutes, setStuckMinutes] = useState(0);
   const rawPhotoFailuresRef = useRef<PhotoFailureDetail[]>([]);
 
   useEffect(() => {
