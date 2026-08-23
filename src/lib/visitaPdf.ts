@@ -10,6 +10,7 @@ import { drawAssinaturas, measureAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, drawDualLineChartPage, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
+import { normalizarConsumoPasto, fmtKgDia, fmtPorCabeca } from "@/lib/consumoPasto";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -410,10 +411,11 @@ async function drawPastoBlock(
   doc.setDrawColor(LINE);
   doc.line(x + 3, y + 18, x + width - 3, y + 18);
 
-  const real = pasto.consumo_real_kg ?? pasto.consumo_kg_dia ?? 0;
-  const esp = pasto.consumo_esperado_kg ?? 0;
-  const indice = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
-  const pesoVivoTotal = (pasto.qtd_animais || 0) * (pasto.peso_medio_kg || 0);
+  const norm = normalizarConsumoPasto(pasto as any);
+  const real = norm.realTotal;
+  const esp = norm.espTotal;
+  const indice = norm.indice;
+  const pesoVivoTotal = norm.pesoVivoTotal;
 
   const lineY = y + 24;
   const cellW = (width - 6) / 3;
@@ -436,9 +438,17 @@ async function drawPastoBlock(
 
   const lineY2 = y + 34;
   const cells2 = [
-    { label: "CONSUMO ESPERADO", value: esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—" },
-    { label: "CONSUMO REAL", value: real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—" },
-    { label: "ÍNDICE / META", value: indice > 0 ? `${indice.toFixed(1)}%` : "—" },
+    {
+      label: "CONSUMO ESPERADO",
+      value: esp > 0 ? fmtKgDia(esp) : "—",
+      hint: esp > 0 ? fmtPorCabeca(norm.espCab) : "",
+    },
+    {
+      label: "CONSUMO REAL",
+      value: real > 0 ? fmtKgDia(real) : "—",
+      hint: real > 0 ? fmtPorCabeca(norm.realCab) : "",
+    },
+    { label: "ÍNDICE / META", value: indice > 0 ? `${indice.toFixed(1)}%` : "—", hint: "" },
   ];
   cells2.forEach((c, i) => {
     const cx = x + 3 + i * cellW;
@@ -450,7 +460,15 @@ async function drawPastoBlock(
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
     doc.text(c.value, cx, lineY2 + 5);
+    if (c.hint) {
+      const w = doc.getTextWidth(c.value);
+      doc.setFontSize(5.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(INK_SOFT);
+      doc.text(`(${c.hint})`, cx + w + 1.5, lineY2 + 5);
+    }
   });
+
 
   const scoreY = y + 44;
   const scoreCellW = (width - 6) / 3;
@@ -858,11 +876,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
 
     // Consumo por pasto — Real x Esperado (2 séries)
     const consumoPontos = data.pastos
-      .map(p => ({
-        nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
-        real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
-        esp: Number(p.consumo_esperado_kg ?? 0),
-      }))
+      .map(p => {
+        const n = normalizarConsumoPasto(p as any);
+        return {
+          nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
+          real: n.realTotal,
+          esp: n.espTotal,
+        };
+      })
       .filter(p => p.real > 0 && p.esp > 0)
       .map((p, i) => ({ ...p, letra: String.fromCharCode(65 + (i % 26)) }));
     if (consumoPontos.length >= 2) {

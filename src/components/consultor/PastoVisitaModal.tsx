@@ -1,3 +1,4 @@
+import { fmtPorCabeca } from "@/lib/consumoPasto";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -591,13 +592,20 @@ export default function PastoVisitaModal({
                   <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado (lote)</div>
                   <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
+                  {Number(consumoEsperado) > 0 && Number(qtdAnimais) > 0 && (
+                    <div className="text-[10px] text-muted-foreground">{fmtPorCabeca(Number(consumoEsperado) / Number(qtdAnimais))}</div>
+                  )}
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real (lote)</div>
                   <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
+                  {Number(consumoReal) > 0 && Number(qtdAnimais) > 0 && (
+                    <div className="text-[10px] text-muted-foreground">{fmtPorCabeca(Number(consumoReal) / Number(qtdAnimais))}</div>
+                  )}
                 </div>
+
                 <div>
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
                   <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>

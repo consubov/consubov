@@ -35,6 +35,7 @@ import { enqueuePhoto, getQueuedPhotosForParent } from "@/lib/consultorOffline/p
 import { deleteFoto as deleteQueuedFoto, listMutationsByVisita, updateFotoOrdem } from "@/lib/consultorOffline/db";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
+import { normalizarConsumoPasto, fmtPorCabeca } from "@/lib/consumoPasto";
 
 const BUCKET = "visitas-consultor-fotos";
 
@@ -1024,10 +1025,11 @@ export default function RevisaoVisitaPage() {
 
               {/* Resumo calculado (read-only) */}
               {(() => {
-                const real = p.consumo_real_kg ?? p.consumo_kg_dia ?? 0;
-                const esp = p.consumo_esperado_kg ?? 0;
-                const pvt = (p.qtd_animais || 0) * (p.peso_medio_kg || 0);
-                const ind = real > 0 && esp > 0 ? (real / esp) * 100 : 0;
+                const n = normalizarConsumoPasto(p as any);
+                const real = n.realTotal;
+                const esp = n.espTotal;
+                const pvt = n.pesoVivoTotal;
+                const ind = n.indice;
                 const uaHa = computeUAHaPasto(p.qtd_animais, p.peso_medio_kg, p.area_alqueires);
                 return (
                   <div className={cn("rounded-md border p-2 bg-muted/40 gap-2 text-[10px] grid", uaHa != null ? "grid-cols-5" : "grid-cols-4")} style={{ borderColor: "#E7E3D6" }}>
@@ -1037,16 +1039,19 @@ export default function RevisaoVisitaPage() {
                     </div>
                     <div>
                       <div className="uppercase tracking-wide text-muted-foreground">Esperado</div>
-                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
+                      {esp > 0 && <div className="text-muted-foreground">{fmtPorCabeca(n.espCab)}</div>}
                     </div>
                     <div>
                       <div className="uppercase tracking-wide text-muted-foreground">Real</div>
-                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "—"}</div>
+                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
+                      {real > 0 && <div className="text-muted-foreground">{fmtPorCabeca(n.realCab)}</div>}
                     </div>
                     <div>
                       <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
                       <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
                     </div>
+
                     {uaHa != null && (
                       <div>
                         <div className="uppercase tracking-wide text-muted-foreground">UA/ha</div>
@@ -1098,12 +1103,15 @@ export default function RevisaoVisitaPage() {
 
       {/* Consumo por Pasto — Real x Esperado */}
       <ConsumoPastoChart
-        pontos={pastos.map(p => ({
-          letra: p.letra || "?",
-          nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
-          real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
-          esperado: Number(p.consumo_esperado_kg ?? 0),
-        }))}
+        pontos={pastos.map(p => {
+          const n = normalizarConsumoPasto(p as any);
+          return {
+            letra: p.letra || "?",
+            nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
+            real: n.realTotal,
+            esperado: n.espTotal,
+          };
+        })}
       />
 
       {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
