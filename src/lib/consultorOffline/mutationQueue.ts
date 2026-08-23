@@ -7,6 +7,7 @@ import {
   purgeDeadMutations,
   type TextMutation,
 } from "./db";
+import { recoverMissingParent, type ParentKind } from "./parentRecovery";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 
 type Listener = (pending: number, syncing: boolean) => void;
