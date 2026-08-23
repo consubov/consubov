@@ -1255,6 +1255,16 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
                 {numeroMap[f.id]}
               </div>
             )}
+            {String(f.url || "").startsWith("queued:") ? (
+              <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600" title="Foto ainda não sincronizada">
+                <CloudOff className="w-2.5 h-2.5" /> pendente
+              </div>
+            ) : (
+              <div className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5" title="Foto sincronizada">
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+              </div>
+            )}
+
             {!readOnly && (
               <>
                 <button type="button" onClick={() => onDelete(f)}
