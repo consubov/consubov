@@ -1155,7 +1155,7 @@ export default function RevisaoVisitaPage() {
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && online && (
             <Button
-              onClick={gerarPdf}
+              onClick={() => void gerarPdf()}
               disabled={gerandoPdf}
               className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
