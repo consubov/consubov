@@ -194,11 +194,11 @@ export async function syncVisitaWithRetries(
 /** Merge a partial patch into the current snapshot. Serialized per visitaId to avoid races. */
 export async function patchSnapshot(
   visitaId: string,
-  patcher: (current: VisitaSnapshotData) => VisitaSnapshotData,
+  patcher: (current: VisitaSnapshotData) => VisitaSnapshotData | Promise<VisitaSnapshotData>,
 ) {
   await writeSnapshotSerialized(visitaId, async () => {
     const current = (await loadSnapshot(visitaId)) ?? {};
-    return patcher(current);
+    return await patcher(current);
   });
 }
 
