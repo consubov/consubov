@@ -94,6 +94,10 @@ export default function PastoVisitaModal({
   const [consumoEsperado, setConsumoEsperado] = useState("");
   const [consumoReal, setConsumoReal] = useState("");
   const [esperadoManual, setEsperadoManual] = useState(false);
+  const [metaG100kg, setMetaG100kg] = useState("");
+  const [kgConsumidos, setKgConsumidos] = useState("");
+  const [diasConsumo, setDiasConsumo] = useState("");
+
 
   const [obs, setObs] = useState("");
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
@@ -122,7 +126,11 @@ export default function PastoVisitaModal({
       }
 
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
+      setMetaG100kg((pasto as any).meta_g_100kg?.toString() || "");
+      setKgConsumidos((pasto as any).kg_consumidos?.toString() || "");
+      setDiasConsumo((pasto as any).dias_consumo?.toString() || "");
       setObs(pasto.observacao || "");
+
       const online = typeof navigator === "undefined" || navigator.onLine;
       (async () => {
         const snap = await loadSnapshot(visitaId);
@@ -158,9 +166,19 @@ export default function PastoVisitaModal({
       setNumPasto(""); setQtdAnimais(""); setCategoria(""); setPesoMedio("");
       setTipoProduto(""); setPercentualPv("");
       setConsumoEsperado(""); setConsumoReal(""); setEsperadoManual(false);
+      setMetaG100kg(""); setKgConsumidos(""); setDiasConsumo("");
       setObs(""); setSamples(EMPTY_SAMPLES);
+
     }
   }, [open, pasto, proximaLetra]);
+
+  // Modo de cálculo derivado do tipo de produto
+  const modo: "mineral" | "racao" | "outro" | "proteinado" | "" =
+    tipoProduto === "mineral" ? "mineral"
+    : tipoProduto === "racao" ? "racao"
+    : tipoProduto === "outro" ? "outro"
+    : tipoProduto.startsWith("proteinado") ? "proteinado"
+    : "";
 
   // Auto-calc peso vivo total & consumo esperado (only suggests; user can override)
   const pesoVivoTotal = useMemo(() => {
@@ -178,13 +196,14 @@ export default function PastoVisitaModal({
   // Recalcula sempre que qualquer entrada muda (100% no cliente / offline),
   // exceto se o usuário digitou manualmente um valor de consumo esperado.
   useEffect(() => {
+    if (modo === "mineral" || modo === "racao" || modo === "outro") return;
     if (esperadoManual) return;
     if (consumoEsperadoCalc > 0) {
       setConsumoEsperado(String(Number(consumoEsperadoCalc.toFixed(2))));
     } else {
       setConsumoEsperado("");
     }
-  }, [consumoEsperadoCalc, esperadoManual]);
+  }, [consumoEsperadoCalc, esperadoManual, modo]);
 
   const indiceMeta = useMemo(() => {
     const real = Number(consumoReal) || 0;
@@ -192,6 +211,33 @@ export default function PastoVisitaModal({
     if (esp <= 0 || real <= 0) return 0;
     return (real / esp) * 100;
   }, [consumoReal, consumoEsperado]);
+
+  // ===== Cálculos dedicados (100% no cliente, reativos, offline) =====
+  const calc = useMemo(() => {
+    const animais = Number(qtdAnimais) || 0;
+    const peso = Number(pesoMedio) || 0;
+    const kg = Number(kgConsumidos) || 0;
+    const dias = Number(diasConsumo) || 0;
+    const meta = Number(metaG100kg) || 0;
+    const cabDia = animais > 0 && dias > 0 ? animais * dias : 0;
+
+    if (modo === "mineral") {
+      const espG = meta > 0 && peso > 0 ? (meta / 100) * peso : 0;
+      const realG = cabDia > 0 && kg > 0 ? (kg * 1000) / cabDia : 0;
+      const indice = espG > 0 && realG > 0 ? (realG / espG) * 100 : 0;
+      return { espG, realG, indice, kgCabDia: 0, pctPv: 0, gCabDia: 0 };
+    }
+    if (modo === "racao" || modo === "outro") {
+      const kgCabDia = cabDia > 0 && kg > 0 ? kg / cabDia : 0;
+      const pctPv = kgCabDia > 0 && peso > 0 ? (kgCabDia / peso) * 100 : 0;
+      return { espG: 0, realG: 0, indice: 0, kgCabDia, pctPv, gCabDia: kgCabDia * 1000 };
+    }
+    return { espG: 0, realG: 0, indice: 0, kgCabDia: 0, pctPv: 0, gCabDia: 0 };
+  }, [modo, qtdAnimais, pesoMedio, kgConsumidos, diasConsumo, metaG100kg]);
+
+  const statusMeta = calc.indice > 0
+    ? (calc.indice < 80 ? "Baixo" : calc.indice > 120 ? "Alto" : "Ideal")
+    : "";
 
   function handleTipoProdutoChange(v: string) {
     setTipoProduto(v);
@@ -202,6 +248,7 @@ export default function PastoVisitaModal({
       setEsperadoManual(false);
     }
   }
+
 
 
   const ensurePasto = useCallback(async (): Promise<string | null> => {
@@ -301,19 +348,59 @@ export default function PastoVisitaModal({
       const id = await ensurePasto();
       if (!id) return;
       const realN = consumoReal ? Number(consumoReal) : null;
-      const payload = {
+      const base = {
         letra: letra.trim().toUpperCase(),
         num_pasto: numPasto.trim() || null,
         qtd_animais: qtdAnimais ? Number(qtdAnimais) : null,
         categoria: categoria || null,
         peso_medio_kg: pesoMedio ? Number(pesoMedio) : null,
         tipo_produto: tipoProduto || null,
-        percentual_pv: percentualPv.trim() || null,
-        consumo_esperado_kg: consumoEsperado ? Number(consumoEsperado) : null,
-        consumo_real_kg: realN,
-        consumo_kg_dia: realN, // manter em sync p/ compatibilidade
         observacao: obs.trim() || null,
+        meta_g_100kg: null as number | null,
+        kg_consumidos: kgConsumidos ? Number(kgConsumidos) : null,
+        dias_consumo: diasConsumo ? Number(diasConsumo) : null,
       };
+      let payload: Record<string, any>;
+      if (modo === "mineral") {
+        payload = {
+          ...base,
+          meta_g_100kg: metaG100kg ? Number(metaG100kg) : null,
+          percentual_pv: null,
+          consumo_esperado_kg: calc.espG > 0 ? calc.espG / 1000 : null,
+          consumo_real_kg: calc.realG > 0 ? calc.realG / 1000 : null,
+          consumo_kg_dia: calc.realG > 0 ? calc.realG / 1000 : null,
+          consumo_medio_g: calc.realG > 0 ? calc.realG : null,
+        };
+      } else if (modo === "racao") {
+        payload = {
+          ...base,
+          percentual_pv: calc.pctPv > 0 ? `${calc.pctPv.toFixed(2).replace(".", ",")}%` : null,
+          consumo_esperado_kg: null,
+          consumo_real_kg: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_kg_dia: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_medio_g: calc.gCabDia > 0 ? calc.gCabDia : null,
+        };
+      } else if (modo === "outro") {
+        payload = {
+          ...base,
+          percentual_pv: null,
+          consumo_esperado_kg: null,
+          consumo_real_kg: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_kg_dia: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_medio_g: calc.gCabDia > 0 ? calc.gCabDia : null,
+        };
+      } else {
+        payload = {
+          ...base,
+          kg_consumidos: null,
+          dias_consumo: null,
+          percentual_pv: percentualPv.trim() || null,
+          consumo_esperado_kg: consumoEsperado ? Number(consumoEsperado) : null,
+          consumo_real_kg: realN,
+          consumo_kg_dia: realN, // manter em sync p/ compatibilidade
+        };
+      }
+
       const res = await offlineUpdate({
         visitaId,
         table: "visita_pastos",
@@ -410,41 +497,115 @@ export default function PastoVisitaModal({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>% Peso Vivo</Label>
-              <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
-            </div>
-            <div>
-              <Label>Consumo Esperado (kg/dia)</Label>
-              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
-            </div>
-          </div>
+          {modo === "mineral" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Meta do produto (g/100kg PV)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={metaG100kg} onChange={e => setMetaG100kg(e.target.value)} placeholder="ex: 25" disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Qtd. consumida (kg)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
+                </div>
+              </div>
+              <div>
+                <Label>Dias desde a última salga</Label>
+                <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
+              </div>
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="font-semibold text-foreground">{calc.espG > 0 ? `${fmt(calc.espG, 1)} g/cab/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="font-semibold text-foreground">{calc.realG > 0 ? `${fmt(calc.realG, 1)} g/cab/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice da meta</div>
+                  <div className="font-semibold text-foreground">{calc.indice > 0 ? `${fmt(calc.indice, 1)}%` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Situação</div>
+                  <div className="font-semibold text-foreground">{statusMeta || "—"}</div>
+                </div>
+              </div>
+            </>
+          )}
 
-          <div>
-            <Label>Consumo Real (kg/dia)</Label>
-            <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
-          </div>
+          {(modo === "racao" || modo === "outro") && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>{modo === "racao" ? "Qtd. consumida (kg)" : "Qtd. fornecida (kg)"}</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Dias de consumo</Label>
+                  <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
+                </div>
+              </div>
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo</div>
+                  <div className="font-semibold text-foreground">{calc.kgCabDia > 0 ? `${fmt(calc.kgCabDia, 2)} kg/cab/dia` : "—"}</div>
+                </div>
+                {modo === "racao" ? (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">% do peso vivo</div>
+                    <div className="font-semibold text-foreground">{calc.pctPv > 0 ? `${fmt(calc.pctPv, 2)}%` : "—"}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo (g/cab/dia)</div>
+                    <div className="font-semibold text-foreground">{calc.gCabDia > 0 ? `${fmt(calc.gCabDia, 0)} g/cab/dia` : "—"}</div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-          {/* Resumo calculado */}
-          <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
-              <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
-              <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
-              <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
-              <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
-            </div>
-          </div>
+          {modo !== "mineral" && modo !== "racao" && modo !== "outro" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>% Peso Vivo</Label>
+                  <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Consumo Esperado (kg/dia)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
+                </div>
+              </div>
+
+              <div>
+                <Label>Consumo Real (kg/dia)</Label>
+                <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
+              </div>
+
+              {/* Resumo calculado */}
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
+                  <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
+                  <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
+                </div>
+              </div>
+            </>
+          )}
+
 
           <div>
             <Label>Observação</Label>
