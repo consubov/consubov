@@ -10,6 +10,7 @@ import { drawAssinaturas, measureAssinaturas } from "@/lib/pdfAssinaturas";
 import { drawAllSampleChartPages, drawDualLineChartPage, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
+import { normalizarConsumoPasto, fmtKgDia, fmtPorCabeca } from "@/lib/consumoPasto";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
