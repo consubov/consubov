@@ -5613,9 +5613,12 @@ export type Database = {
           consumo_kg_dia: number | null
           consumo_medio_g: number | null
           consumo_real_kg: number | null
+          dias_consumo: number | null
           fazenda_nome: string | null
           id: string
+          kg_consumidos: number | null
           letra: string
+          meta_g_100kg: number | null
           num_pasto: string | null
           observacao: string | null
           ordem: number
@@ -5637,9 +5640,12 @@ export type Database = {
           consumo_kg_dia?: number | null
           consumo_medio_g?: number | null
           consumo_real_kg?: number | null
+          dias_consumo?: number | null
           fazenda_nome?: string | null
           id?: string
+          kg_consumidos?: number | null
           letra: string
+          meta_g_100kg?: number | null
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
@@ -5661,9 +5667,12 @@ export type Database = {
           consumo_kg_dia?: number | null
           consumo_medio_g?: number | null
           consumo_real_kg?: number | null
+          dias_consumo?: number | null
           fazenda_nome?: string | null
           id?: string
+          kg_consumidos?: number | null
           letra?: string
+          meta_g_100kg?: number | null
           num_pasto?: string | null
           observacao?: string | null
           ordem?: number
