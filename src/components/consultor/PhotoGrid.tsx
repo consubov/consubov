@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Camera, X, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, Camera, X, AlertCircle, RefreshCw, CloudOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
