@@ -97,12 +97,49 @@ export async function enqueueMutation(params: {
   if (typeof navigator === "undefined" || navigator.onLine) void drainMutations();
 }
 
-async function flushOne(m: TextMutation): Promise<boolean> {
+/**
+ * Ordem de dependência: o pai precisa existir no servidor antes dos filhos.
+ * Quanto menor o número, mais cedo a mutação é enviada.
+ */
+const TABLE_PRIORITY: Record<string, number> = {
+  visitas_tecnicas: 0,
+  visita_pastos: 1,
+  visita_currais: 1,
+  visita_topicos: 1,
+  avaliacoes_score: 2,
+  avaliacoes_fabrica_quesito: 2,
+  visita_fotos: 3,
+  visita_topico_fotos: 3,
+};
+
+function mutationRank(m: TextMutation): number {
+  const base = TABLE_PRIORITY[m.table] ?? 2;
+  // Exclusões por último: primeiro criamos/atualizamos, depois removemos.
+  return (m.operation ?? "update") === "delete" ? base + 10 : base;
+}
+
+function sortMutations(items: TextMutation[]): TextMutation[] {
+  return [...items].sort((a, b) => {
+    const r = mutationRank(a) - mutationRank(b);
+    if (r !== 0) return r;
+    return String(a.createdAt).localeCompare(String(b.createdAt));
+  });
+}
+
+function isDependencyError(message: string): boolean {
+  const m = (message || "").toLowerCase();
+  return m.includes("foreign key") || m.includes("fkey") || m.includes("23503");
+}
+
+type FlushOutcome = "ok" | "failed" | "deferred";
+
+async function flushOne(m: TextMutation): Promise<FlushOutcome> {
   try {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return "failed";
     m.status = "flushing";
     await putMutation(m);
     emit();
+
     const operation = m.operation ?? "update";
     let error: any = null;
     let confirmed = false;
