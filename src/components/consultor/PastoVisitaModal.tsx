@@ -112,6 +112,15 @@ export default function PastoVisitaModal({
       setTipoProduto(pasto.tipo_produto || "");
       setPercentualPv(pasto.percentual_pv || "");
       setConsumoEsperado(pasto.consumo_esperado_kg?.toString() || "");
+      {
+        // detecta se o valor salvo foi digitado manualmente (difere do cálculo)
+        const pv = (Number(pasto.qtd_animais) || 0) * (Number(pasto.peso_medio_kg) || 0);
+        const pct = parsePercent(pasto.percentual_pv || "");
+        const calc = pv > 0 && pct > 0 ? (pv * pct) / 100 : 0;
+        const saved = Number(pasto.consumo_esperado_kg) || 0;
+        setEsperadoManual(saved > 0 && Math.abs(saved - calc) > 0.05);
+      }
+
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
       const online = typeof navigator === "undefined" || navigator.onLine;
