@@ -31,7 +31,7 @@ import VisitaDateTimeEditor from "@/components/consultor/VisitaDateTimeEditor";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
 import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
-import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
+import { enqueuePhoto, getQueuedPhotosForParent } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
@@ -362,29 +362,66 @@ export default function RevisaoVisitaPage() {
 
     let pastoRows = (ps as any[]) || [];
     if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as any[];
+    // Pastos que ainda só existem localmente (criados off-line) precisam aparecer
+    // mesmo quando o servidor já respondeu com outros pastos.
+    (snap?.pastos || []).forEach((sp: any) => {
+      if (sp?.id && !pastoRows.some((p: any) => p.id === sp.id)) pastoRows = [...pastoRows, sp];
+    });
     const ids = pastoRows.map(p => p.id);
-    const samplesByPasto: Record<string, { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] }> = {};
+    type Bucket = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
+    const samplesByPasto: Record<string, Bucket> = {};
+    const bucketOf = (pastoId: string): Bucket =>
+      (samplesByPasto[pastoId] ??= { fezes: [], corporal: [], bebedouro: [] });
+    const pushSample = (pastoId: string, tipo: string, s: ScoreSample) => {
+      if (!pastoId || typeof s?.nota !== "number") return;
+      const bucket = bucketOf(pastoId);
+      if (!(tipo in bucket)) return;
+      const arr = bucket[tipo as keyof Bucket];
+      if (s.id && arr.some((x) => x.id === s.id)) return;
+      arr.push(s);
+    };
     const fotosByPasto: Record<string, Foto[]> = {};
     if (ids.length && online && !preferLocal) {
       const [{ data: sc }, { data: ft }] = await Promise.all([
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
       ]);
-      (sc || []).forEach((s: any) => {
-        const bucket = samplesByPasto[s.visita_pasto_id] ??= { fezes: [], corporal: [], bebedouro: [] };
-        if (s.tipo in bucket) bucket[s.tipo as "fezes"|"corporal"|"bebedouro"].push({ id: s.id, nota: s.nota });
-      });
+      (sc || []).forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
       (ft || []).forEach((f: any) => {
         fotosByPasto[f.visita_pasto_id] = [...(fotosByPasto[f.visita_pasto_id] || []), f];
       });
     }
+    // União com as amostras locais (snapshot / fila off-line) — MESMA fonte da
+    // tela de edição. Sem isso a Revisão aparecia vazia enquanto houvesse
+    // qualquer avaliação ainda não sincronizada.
+    ((snap?.avaliacoes_score as any[]) || []).forEach((s: any) =>
+      pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+    (snap?.pastos || []).forEach((sp: any) => {
+      const local = sp?.samples;
+      if (!local) return;
+      (["fezes", "corporal", "bebedouro"] as const).forEach((tipo) => {
+        (local[tipo] || []).forEach((s: any) => pushSample(sp.id, tipo, { id: s.id, nota: s.nota }));
+      });
+    });
+
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
       const snapPasto = (snap?.pastos || []).find((x: any) => x.id === p.id) as any;
       const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : (snapPasto?.fotos || []);
       const remoteFotos = fotosByPasto[p.id] || [];
-      const queuedFotos = fallbackFotos.filter((f: any) => String(f.url || "").startsWith("queued:"));
-      const fotos = remoteFotos.length ? [...remoteFotos, ...queuedFotos.filter((q: any) => !remoteFotos.some((r: any) => r.ordem === q.ordem))] : fallbackFotos;
       const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
+      // Fotos ainda na fila local (IndexedDB) — garantem que a Revisão mostre
+      // exatamente o que aparece na tela de edição do pasto.
+      const queuedItems = await getQueuedPhotosForParent("pasto", p.id).catch(() => []);
+      const queuedFromQueue: any[] = queuedItems.map((it: any) => {
+        signed[it.localId] = URL.createObjectURL(it.blob);
+        return { id: it.localId, visita_pasto_id: p.id, url: `queued:${it.localId}`, ordem: it.ordem };
+      });
+      const queuedFromSnap = (fallbackFotos as any[]).filter((f: any) =>
+        String(f.url || "").startsWith("queued:") && !queuedFromQueue.some((q) => q.id === f.id));
+      const base = remoteFotos.length ? remoteFotos : (fallbackFotos as any[]).filter((f: any) => !String(f.url || "").startsWith("queued:"));
+      const fotos = [...base, ...queuedFromQueue, ...queuedFromSnap]
+        .filter((f: any, i: number, arr: any[]) => arr.findIndex((x) => x.id === f.id) === i)
+        .sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
       await Promise.all(fotos
         .filter((f: any) => online && !preferLocal && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
@@ -396,18 +433,24 @@ export default function RevisaoVisitaPage() {
     }));
     setPastos(built);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId!));
-    // Snapshot local — permite reabrir a visita offline com dados pré-carregados
+    // Snapshot local — permite reabrir a visita offline com dados pré-carregados.
+    // IMPORTANTE: mesclar (nunca sobrescrever) para não apagar amostras/fotos locais.
     if (!preferLocal) {
+      const mergedPastos = built.map((b: any) => {
+        const sp = (snap?.pastos || []).find((x: any) => x.id === b.id) as any;
+        return { ...(sp || {}), ...b, samples: b.samples, fotos: b.fotos, signed: { ...(sp?.signed || {}), ...b.signed } };
+      });
       void saveSnapshot(visitaId!, {
         ...(snap || {}),
         visita: visitaRow,
         fazenda: fazendaRow,
         consultor: consultorRow,
-        pastos: built,
+        pastos: mergedPastos,
       }).catch(() => {});
     }
     setLoading(false);
   }
+
 
   async function notifyEdit() {
     if (!visita || visita.status !== "finalizada") return;
