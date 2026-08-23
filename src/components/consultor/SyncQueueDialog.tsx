@@ -94,7 +94,9 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                 <div>ID: <span className="font-mono break-all">{item.visitaId}</span></div>
                 <div>Alterações: {item.mutationTables.length ? item.mutationTables.join(", ") : "nenhuma"}</div>
                 <div>Fotos: {item.photoParents.length ? item.photoParents.join(", ") : "nenhuma"}</div>
-                {item.photoErrors.length > 0 && <div className="text-destructive">Falhas: {item.photoErrors.join("; ")}</div>}
+                {item.oldestCreatedAt && <div>Na fila desde: {new Date(item.oldestCreatedAt).toLocaleString("pt-BR")}</div>}
+                {item.mutationErrors.length > 0 && <div className="text-destructive">Motivo (dados): {item.mutationErrors.join("; ")}</div>}
+                {item.photoErrors.length > 0 && <div className="text-destructive">Motivo (fotos): {item.photoErrors.join("; ")}</div>}
               </div>
             </div>
           ))}
