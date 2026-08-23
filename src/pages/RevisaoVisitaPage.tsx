@@ -387,10 +387,13 @@ export default function RevisaoVisitaPage() {
     const ids = pastoRows.map(p => p.id);
     type Bucket = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
     const samplesByPasto: Record<string, Bucket> = {};
+    const deletedSampleIds = new Set(localMutations
+      .filter((m) => m.table === "avaliacoes_score" && (m.operation ?? "update") === "delete")
+      .map((m) => m.rowId));
     const bucketOf = (pastoId: string): Bucket =>
       (samplesByPasto[pastoId] ??= { fezes: [], corporal: [], bebedouro: [] });
     const pushSample = (pastoId: string, tipo: string, s: ScoreSample) => {
-      if (!pastoId || typeof s?.nota !== "number") return;
+      if (!pastoId || typeof s?.nota !== "number" || (s.id && deletedSampleIds.has(s.id))) return;
       const bucket = bucketOf(pastoId);
       if (!(tipo in bucket)) return;
       const arr = bucket[tipo as keyof Bucket];
@@ -413,6 +416,12 @@ export default function RevisaoVisitaPage() {
     // qualquer avaliação ainda não sincronizada.
     ((snap?.avaliacoes_score as any[]) || []).forEach((s: any) =>
       pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+    localMutations
+      .filter((m) => m.table === "avaliacoes_score" && (m.operation ?? "update") !== "delete")
+      .forEach((m) => pushSample(String(m.patch.visita_pasto_id || ""), String(m.patch.tipo || ""), {
+        id: m.rowId,
+        nota: Number(m.patch.nota),
+      }));
     (snap?.pastos || []).forEach((sp: any) => {
       const local = sp?.samples;
       if (!local) return;

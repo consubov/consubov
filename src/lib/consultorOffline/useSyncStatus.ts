@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
 import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
-import { listAllFotos, listAllMutations, listAllSnapshots, putSnapshot } from "./db";
+import { listAllFotos, listAllMutations, listAllSnapshots } from "./db";
 import { supabase } from "@/integrations/supabase/client";
+import { patchSnapshot } from "./snapshotStore";
 
 export interface PendingVisitaDebugInfo {
   visitaId: string;
@@ -85,16 +86,14 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
         item.deleted = Boolean(row.deleted_at) || item.deleted;
         item.deletedAt = row.deleted_at || item.deletedAt;
         if (row.deleted_at) {
-          const snap = snapshotById.get(row.id) ?? {};
-          await putSnapshot({
-            visitaId: row.id,
-            data: { ...snap, visita: { ...(snap.visita || {}), id: row.id, deleted_at: row.deleted_at } },
-            updatedAt: new Date().toISOString(),
-          });
+          await patchSnapshot(row.id, (current) => ({
+            ...current,
+            visita: { ...(current.visita || {}), id: row.id, deleted_at: row.deleted_at },
+          }));
         }
       }));
     } catch (err) {
-      if (import.meta.env.DEV) console.debug("[consultor-sync] consulta de deleted_at falhou", err);
+      console.warn("[consultor-sync] consulta de deleted_at falhou", err);
     }
   }
   return infos

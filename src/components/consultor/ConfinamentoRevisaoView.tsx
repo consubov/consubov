@@ -19,7 +19,7 @@ import VisitaDateTimeEditor from "./VisitaDateTimeEditor";
 import IndicadoresZootecnicosSection, { fetchIndicadoresParaPdf } from "./IndicadoresZootecnicosSection";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, saveSnapshot, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { enqueuePhoto } from "@/lib/consultorOffline/photoQueue";
 import { deleteFoto as deleteQueuedFoto, updateFotoOrdem } from "@/lib/consultorOffline/db";
@@ -177,14 +177,14 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setCurrais(built);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId));
     if (!preferLocal) {
-      void saveSnapshot(visitaId, {
-        ...(snap || {}),
+      void patchSnapshot(visitaId, (current) => ({
+        ...current,
         visita: visitaRow,
         fazenda: fazendaRow,
         consultor: consultorRow,
         currais: built,
         avaliacao_fabrica_visita: afRow,
-      }).catch(() => {});
+      })).catch(() => {});
     }
     setLoading(false);
   }, [visitaId]);

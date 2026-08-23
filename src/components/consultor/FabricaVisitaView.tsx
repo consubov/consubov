@@ -16,7 +16,7 @@ import { generateFabricaPdf, uploadVisitaPdf } from "@/lib/visitaPdf";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, saveSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, patchSnapshot, offlineUpdate, offlineUpsert } from "@/lib/consultorOffline/snapshotStore";
 import { getErrorMessage, withConsultorTimeout } from "@/lib/consultorOffline/network";
 
 interface Visita {
@@ -98,13 +98,13 @@ export default function FabricaVisitaView({
     setNotaIds(ids);
     setPendingThisVisit(await hasPendingLocalChanges(visitaId));
     if (!preferLocal) {
-      void saveSnapshot(visitaId, {
-        ...(snap || {}),
+      void patchSnapshot(visitaId, (current) => ({
+        ...current,
         visita,
         fazenda: fazenda || snap?.fazenda,
         consultor: consultorRow,
         avaliacoes_fabrica: rows,
-      }).catch(() => {});
+      })).catch(() => {});
     }
   }
 
