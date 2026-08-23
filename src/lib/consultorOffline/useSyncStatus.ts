@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { subscribeSyncStatus as subscribePhotos, syncNow as syncPhotosNow, type PhotoFailureDetail } from "./photoQueue";
-import { subscribeMutationStatus, retryFailedMutations } from "./mutationQueue";
+import { subscribeSyncStatus as subscribePhotos, forceFullSync, type PhotoFailureDetail } from "./photoQueue";
+import { subscribeMutationStatus } from "./mutationQueue";
 import { listAllFotos, listAllMutations, listAllSnapshots } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 import { patchSnapshot } from "./snapshotStore";
@@ -14,9 +14,12 @@ export interface PendingVisitaDebugInfo {
   deletedAt?: string | null;
   mutationIds: string[];
   mutationTables: string[];
+  mutationErrors: string[];
   photoIds: string[];
   photoParents: string[];
   photoErrors: string[];
+  /** Item mais antigo da fila desta visita (para detectar travamento). */
+  oldestCreatedAt?: string;
 }
 
 export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: boolean }): Promise<PendingVisitaDebugInfo[]> {
@@ -38,6 +41,7 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
       deletedAt,
       mutationIds: [],
       mutationTables: [],
+      mutationErrors: [],
       photoIds: [],
       photoParents: [],
       photoErrors: [],
@@ -46,11 +50,18 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     return created;
   };
 
+  const noteAge = (item: PendingVisitaDebugInfo, createdAt?: string) => {
+    if (!createdAt) return;
+    if (!item.oldestCreatedAt || createdAt < item.oldestCreatedAt) item.oldestCreatedAt = createdAt;
+  };
+
   muts.forEach((m) => {
     if (!m.visitaId) return;
     const item = ensure(m.visitaId);
     item.mutationIds.push(m.id);
     item.mutationTables.push(`${m.table}:${m.operation ?? "update"}:${m.status}`);
+    if (m.lastError) item.mutationErrors.push(`${m.table}: ${m.lastError}`);
+    noteAge(item, m.createdAt);
     if (m.table === "visitas_tecnicas" && m.patch?.deleted_at) {
       item.deleted = true;
       item.deletedAt = String(m.patch.deleted_at);
@@ -65,6 +76,7 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     const item = ensure(f.visitaId);
     item.photoIds.push(f.localId);
     item.photoParents.push(`${f.parentKind}:${f.parentId}:${f.status}`);
+    noteAge(item, f.createdAt);
     if (f.lastError) item.photoErrors.push(`${f.parentKind}:${f.ordem}:${f.lastError}`);
   });
   const infos = Array.from(map.values());
@@ -108,6 +120,7 @@ export function useSyncStatus() {
   const [activePhotoPending, setActivePhotoPending] = useState(0);
   const [activeMutPending, setActiveMutPending] = useState(0);
   const [photoFailures, setPhotoFailures] = useState<PhotoFailureDetail[]>([]);
+  const [stuckMinutes, setStuckMinutes] = useState(0);
   const rawPhotoFailuresRef = useRef<PhotoFailureDetail[]>([]);
 
   useEffect(() => {
@@ -120,8 +133,10 @@ export function useSyncStatus() {
           console.info("[consultor-sync] visitas pendentes", infos.map((i) => ({
             visitaId: i.visitaId,
             mutations: i.mutationTables,
+            mutationErrors: i.mutationErrors,
             photos: i.photoParents,
             photoErrors: i.photoErrors,
+            desde: i.oldestCreatedAt,
           })));
         }
         const activeIds = new Set(infos.map((i) => i.visitaId));
@@ -129,12 +144,18 @@ export function useSyncStatus() {
         setActiveMutPending(infos.reduce((total, item) => total + item.mutationIds.length, 0));
         setActivePhotoPending(infos.reduce((total, item) => total + item.photoIds.length, 0));
         setPhotoFailures(rawPhotoFailuresRef.current.filter((failure) => activeIds.has(failure.visitaId)));
+        const oldest = infos
+          .map((i) => i.oldestCreatedAt)
+          .filter(Boolean)
+          .sort()[0];
+        setStuckMinutes(oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / 60000) : 0);
       } catch {
         if (!alive) return;
         setVisitasPending(0);
         setActiveMutPending(0);
         setActivePhotoPending(0);
         setPhotoFailures([]);
+        setStuckMinutes(0);
       }
     };
     const u1 = subscribePhotos((_pending, s, failures) => {
@@ -154,9 +175,10 @@ export function useSyncStatus() {
   }, []);
 
   const syncNow = async () => {
-    await retryFailedMutations();
-    await syncPhotosNow();
+    await forceFullSync();
   };
+
+  const online = typeof navigator === "undefined" ? true : navigator.onLine;
 
   return {
     // pending = número de VISITAS pendentes (não de itens internos)
@@ -165,6 +187,9 @@ export function useSyncStatus() {
     mutPending: activeMutPending,
     photoFailures,
     syncing: photoSyncing || mutSyncing,
+    /** Há pendências paradas há muito tempo mesmo com internet. */
+    stuck: online && visitasPending > 0 && stuckMinutes >= 15,
+    stuckMinutes,
     syncNow,
   };
 }

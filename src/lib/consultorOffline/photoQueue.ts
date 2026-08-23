@@ -17,7 +17,8 @@ import {
   retryFoto,
   type FotoQueueItem,
 } from "./db";
-import { drainMutations, dropMutationsForRows } from "./mutationQueue";
+import { drainMutations, dropMutationsForRows, retryFailedMutations } from "./mutationQueue";
+import { recoverMissingParent } from "./parentRecovery";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
@@ -104,8 +105,13 @@ export async function getPhotoFailures() {
 
 export async function retryQueuedPhoto(localId: string) {
   await retryFoto(localId);
+  confirmedParents = new Set();
   await refreshPendingCount();
-  if (typeof navigator === "undefined" || navigator.onLine) void drain();
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    // Reprocessa também os registros principais: sem o pai, a foto voltaria a
+    // ficar adiada e o botão pareceria "não funcionar".
+    void forceFullSync().catch((err) => debugSync("reenvio manual da foto falhou", { localId, error: getErrorMessage(err) }, "error"));
+  }
 }
 
 export async function enqueuePhoto(params: {
@@ -233,15 +239,51 @@ export function nextPhotoFailureState(currentTries: number) {
   return { tries, status: tries >= MAX_AUTO_RETRIES ? "error" as const : "pending" as const };
 }
 
-async function markDeferred(localId: string, reason: string) {
+/** Após N adiamentos, investigamos o pai em vez de esperar para sempre. */
+const MAX_DEFERRED_ROUNDS = 2;
+
+/**
+ * Marca a foto como adiada por dependência. Se o pai continuar ausente após
+ * algumas rodadas, tentamos recriá-lo a partir do backup local; se nem isso for
+ * possível, a foto vira ERRO VISÍVEL com o motivo técnico real — nunca mais um
+ * "pendente" eterno e silencioso.
+ */
+async function markDeferred(localId: string, reason: string): Promise<UploadOutcome> {
   const current = await getFoto(localId);
-  if (current) {
-    current.status = "pending";
-    current.lastError = reason;
-    // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
-    await putFoto(current).catch(() => null);
+  if (!current) {
+    await refreshPendingCount();
+    return "deferred";
   }
+  const rounds = (current.deferredRounds ?? 0) + 1;
+  current.status = "pending";
+  current.deferredRounds = rounds;
+  current.lastError = reason;
+  // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
+
+  if (rounds >= MAX_DEFERRED_ROUNDS) {
+    let outcome: string;
+    try {
+      outcome = await recoverMissingParent(current.visitaId, current.parentKind, current.parentId);
+    } catch (err) {
+      outcome = "erro";
+      current.lastError = `falha ao verificar registro principal (${current.parentKind} ${current.parentId}): ${getErrorMessage(err)}`;
+    }
+    if (outcome === "queued" || outcome === "exists" || outcome === "pending") {
+      current.deferredRounds = 0;
+      current.lastError = `registro principal ${outcome === "queued" ? "recriado a partir do backup local" : "localizado"}; reenviando`;
+    } else if (outcome === "missing") {
+      current.status = "error";
+      current.tries = MAX_AUTO_RETRIES;
+      current.lastError = `registro principal ausente: ${current.parentKind} ${current.parentId} não existe no servidor nem no backup local do aparelho.`;
+      debugSync("foto órfã sem registro principal recuperável", {
+        localId, parentKind: current.parentKind, parentId: current.parentId,
+      }, "error");
+    }
+  }
+
+  await putFoto(current).catch(() => null);
   await refreshPendingCount();
+  return current.status === "error" ? "failed" : "deferred";
 }
 
 async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
@@ -290,8 +332,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
         parentKind: item.parentKind,
         parentId: item.parentId,
       });
-      await markDeferred(item.localId, "aguardando sincronização do registro principal");
-      return "deferred";
+      return await markDeferred(item.localId, "aguardando sincronização do registro principal");
     }
 
     // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
@@ -478,16 +519,40 @@ export async function drain(): Promise<void> {
   }
 }
 
-export async function syncNow() {
-  // reset error status so failed items get retried
+/** Zera o estado de TODAS as fotos da fila para um reenvio forçado. */
+async function resetAllPhotos() {
   const items = await listAllFotos();
   for (const it of items) {
-    if (it.status === "error" || it.status === "uploading") {
-      it.status = "pending";
-      it.tries = 0;
-      it.lastError = undefined;
-      await putFoto(it);
-    }
+    it.status = "pending";
+    it.tries = 0;
+    it.deferredRounds = 0;
+    it.lastError = undefined;
+    await putFoto(it).catch(() => null);
+  }
+  confirmedParents = new Set();
+  await refreshPendingCount();
+}
+
+export async function syncNow() {
+  await resetAllPhotos();
+  await withConsultorTimeout(
+    drain(),
+    "sincronização das fotos",
+    CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS * MAX_AUTO_RETRIES + 15_000,
+  );
+}
+
+/**
+ * Sincronização forçada completa (botões "Sincronizar" / "Tentar novamente").
+ * Reprocessa dados E fotos do zero, inclusive itens adiados ou já em erro —
+ * é o que faz os botões de retry realmente voltarem a funcionar.
+ */
+export async function forceFullSync() {
+  await resetAllPhotos();
+  try {
+    await retryFailedMutations();
+  } catch (err) {
+    debugSync("retry das alterações falhou durante sincronização forçada", { error: getErrorMessage(err) }, "warn");
   }
   await withConsultorTimeout(
     drain(),

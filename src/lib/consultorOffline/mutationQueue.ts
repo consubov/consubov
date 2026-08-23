@@ -7,6 +7,7 @@ import {
   purgeDeadMutations,
   type TextMutation,
 } from "./db";
+import { recoverMissingParent, type ParentKind } from "./parentRecovery";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 
 type Listener = (pending: number, syncing: boolean) => void;
@@ -131,7 +132,31 @@ function isDependencyError(message: string): boolean {
   return m.includes("foreign key") || m.includes("fkey") || m.includes("23503");
 }
 
-type FlushOutcome = "ok" | "failed" | "deferred";
+/** Tabelas "pai": nunca podem ser descartadas silenciosamente da fila. */
+const PARENT_TABLES = new Set(["visitas_tecnicas", "visita_pastos", "visita_currais", "visita_topicos"]);
+
+/** De qual registro pai cada tabela filha depende. */
+const CHILD_PARENT_FIELDS: Record<string, Array<[string, ParentKind]>> = {
+  avaliacoes_score: [["visita_pasto_id", "pasto"], ["visita_curral_id", "curral"]],
+  visita_fotos: [["visita_pasto_id", "pasto"], ["visita_curral_id", "curral"]],
+  visita_topico_fotos: [["visita_topico_id", "topico"]],
+};
+
+export function parentRefOfMutation(m: TextMutation): { kind: ParentKind; id: string } | null {
+  const fields = CHILD_PARENT_FIELDS[m.table];
+  if (!fields) return null;
+  for (const [field, kind] of fields) {
+    const id = m.patch?.[field];
+    if (typeof id === "string" && id) return { kind, id };
+  }
+  return null;
+}
+
+/** Após N rodadas adiadas, investigamos o pai em vez de adiar para sempre. */
+const MAX_DEFERRED_ROUNDS = 2;
+
+type FlushOutcome = "ok" | "failed" | "deferred" | "recovered";
+
 
 async function flushOne(m: TextMutation): Promise<FlushOutcome> {
   try {
@@ -195,6 +220,11 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
         );
         if (!up.error) {
           confirmed = true;
+        } else if (PARENT_TABLES.has(m.table)) {
+          // NUNCA descartamos um registro pai: se ele sumir da fila, os filhos
+          // (avaliações e fotos) ficam órfãos para sempre. Mantemos como erro
+          // visível com o motivo técnico real.
+          throw new Error(`registro principal não pôde ser recriado em ${m.table}: ${getErrorMessage(up.error)}`);
         } else {
           debugSync("descartando mutação órfã (linha inexistente no servidor)", {
             mutationId: m.id,
@@ -233,11 +263,38 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
     // Erro de dependência (pai ainda não sincronizado) NÃO consome tentativas:
     // a mutação é adiada e reprocessada depois que o pai for confirmado.
     if (isDependencyError(message)) {
+      const rounds = (m.deferredRounds ?? 0) + 1;
       m.status = "pending";
-      m.lastError = "aguardando sincronização do registro principal";
+      m.deferredRounds = rounds;
+      m.lastError = `aguardando sincronização do registro principal (${message})`;
+      const ref = parentRefOfMutation(m);
+      if (rounds >= MAX_DEFERRED_ROUNDS && ref) {
+        let outcome: string;
+        try {
+          outcome = await recoverMissingParent(m.visitaId, ref.kind, ref.id);
+        } catch (recErr) {
+          outcome = "erro";
+          m.lastError = `falha ao verificar registro principal (${ref.kind} ${ref.id}): ${getErrorMessage(recErr)}`;
+        }
+        if (outcome === "queued" || outcome === "exists" || outcome === "pending") {
+          m.deferredRounds = 0;
+          m.lastError = `registro principal ${ref.kind} ${ref.id}: ${outcome === "queued" ? "recriado a partir do backup local" : "encontrado, reenviando"}`;
+          await putMutation(m);
+          emit();
+          return "recovered";
+        }
+        if (outcome === "missing") {
+          m.status = "error";
+          m.tries = MAX_AUTO_RETRIES;
+          m.lastError = `registro principal ausente: ${ref.kind} ${ref.id} não existe no servidor nem no backup local do aparelho. Erro original: ${message}`;
+          console.error("[consultor-sync] mutação órfã sem pai recuperável", {
+            mutationId: m.id, table: m.table, rowId: m.rowId, parent: ref,
+          });
+        }
+      }
       await putMutation(m);
       emit();
-      return "deferred";
+      return m.status === "error" ? "failed" : "deferred";
     }
     m.status = "error";
     m.tries = (m.tries ?? 0) + 1;
@@ -283,6 +340,9 @@ export async function drainMutations(): Promise<void> {
           // Já tentamos e o pai ainda não existe: sai da rodada atual e será
           // reprocessado na próxima chamada (após o pai ser criado).
           deferred.add(target.id);
+        } else if (outcome === "recovered") {
+          // O pai foi recriado/localizado: tudo que estava adiado volta à fila.
+          deferred.clear();
         } else if (outcome === "failed") {
           const remaining = await listAllMutations();
           const current = remaining.find((i) => i.id === target.id);
@@ -305,14 +365,15 @@ export async function drainMutations(): Promise<void> {
 }
 
 export async function retryFailedMutations() {
+  // Retry manual força TODAS as mutações de volta ao início: erros esgotados,
+  // gravações interrompidas e itens adiados esperando o registro pai.
   const items = await listAllMutations();
   for (const it of items) {
-    if (it.status === "error" || it.status === "flushing") {
-      it.status = "pending";
-      it.tries = 0;
-      it.lastError = undefined;
-      await putMutation(it);
-    }
+    it.status = "pending";
+    it.tries = 0;
+    it.deferredRounds = 0;
+    it.lastError = undefined;
+    await putMutation(it);
   }
   await withConsultorTimeout(drainMutations(), "sincronização das alterações", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
 }

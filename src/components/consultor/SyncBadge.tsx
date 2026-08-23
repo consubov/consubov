@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/consultorOffline/network";
@@ -21,7 +21,7 @@ interface Props {
  * Auto-sincroniza em segundo plano ao detectar internet; o clique força/repete.
  */
 export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
-  const { pending, photoPending, mutPending, photoFailures, syncing, syncNow } = useSyncStatus();
+  const { pending, photoPending, mutPending, photoFailures, syncing, stuck, stuckMinutes, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -50,6 +50,16 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
   const hasPending = pending > 0;
   const hasPhotoFailures = photoFailures.length > 0;
   const disabled = syncing || (!hasPending && !hasPhotoFailures) || !online;
+
+  const stuckAlerted = useRef(false);
+  useEffect(() => {
+    if (!stuck || stuckAlerted.current) return;
+    stuckAlerted.current = true;
+    toast.warning(`Há ${pending} visita(s) sem sincronizar há ${stuckMinutes} min mesmo com internet. Abra a fila para ver o motivo técnico.`, {
+      duration: 10000,
+      action: { label: "Ver fila", onClick: () => setDebugOpen(true) },
+    });
+  }, [stuck, stuckMinutes, pending]);
 
   const handleSync = async () => {
     try {
@@ -81,6 +91,7 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
     }
     if (hasPhotoFailures) return `${photoFailures.length} foto${photoFailures.length === 1 ? "" : "s"} com falha`;
     if (!online && hasPending) return `Sem conexão · ${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`;
+    if (stuck) return `Parado há ${stuckMinutes} min · toque para forçar envio`;
     if (hasPending) return `Sincronizar (${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"})`;
     if (showDone) return "Sincronização concluída ✓";
     return "Tudo sincronizado";
@@ -88,7 +99,7 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
 
   const Icon = syncing
     ? Loader2
-    : hasPhotoFailures
+    : hasPhotoFailures || stuck
       ? AlertCircle
     : !online && hasPending
       ? WifiOff
