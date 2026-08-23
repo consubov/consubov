@@ -785,7 +785,8 @@ export default function RevisaoVisitaPage() {
         consultor: { nome: cab.consultor_nome },
         hora_inicio: visita.hora_inicio,
         hora_fim: visita.hora_fim || new Date().toISOString(),
-        observacoes_gerais: obsGerais,
+        observacoes_gerais: notaPerdaDados ? `${obsGerais ? `${obsGerais}\n\n` : ""}${notaPerdaDados}` : obsGerais,
+
         conclusao,
         objetivo_visita: objetivo,
         resumo_executivo: resumo,
@@ -1346,6 +1347,47 @@ export default function RevisaoVisitaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={irrecuperaveisAviso != null} onOpenChange={(v) => { if (!v) setIrrecuperaveisAviso(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dados perdidos nesta visita</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alguns itens não podem mais ser sincronizados porque o registro principal se perdeu no aparelho
+              (não existe no servidor nem no backup local):
+              {" "}
+              {(irrecuperaveisAviso || []).map((g) => `${g.kind} ${g.parentId.slice(0, 8)}…`).join(", ")}.
+              Você pode descartá-los e gerar o relatório com o restante da visita — esses registros precisarão
+              ser refeitos presencialmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={descartando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={descartando}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!visita) return;
+                setDescartando(true);
+                try {
+                  const { discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
+                  const res = await discardUnrecoverableForVisita(visita.id);
+                  const nomes = res.descartados.map((d) => `${d.kind} ${d.parentId.slice(0, 8)}…`).join(", ");
+                  setNotaPerdaDados(`Atenção: ${res.descartados.length} registro(s) (${nomes}) foram perdidos no aparelho antes da sincronização e não constam neste relatório. Devem ser reavaliados presencialmente.`);
+                  setIrrecuperaveisAviso(null);
+                  toast.success(`Descartados ${res.mutations} dado(s) e ${res.fotos} foto(s) irrecuperáveis.`);
+                  void gerarPdf({ ignorarFotosPendentes: true });
+                } catch (err) {
+                  toast.error(`Falha ao descartar: ${getErrorMessage(err)}`);
+                } finally { setDescartando(false); }
+              }}
+            >
+              {descartando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Descartar e gerar PDF"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
 
   );
