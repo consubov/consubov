@@ -462,17 +462,25 @@ export default function RevisaoVisitaPage() {
     // Snapshot local — permite reabrir a visita offline com dados pré-carregados.
     // IMPORTANTE: mesclar (nunca sobrescrever) para não apagar amostras/fotos locais.
     if (online) {
-      const mergedPastos = built.map((b: any) => {
-        const sp = (snap?.pastos || []).find((x: any) => x.id === b.id) as any;
-        return { ...(sp || {}), ...b, samples: b.samples, fotos: b.fotos, signed: { ...(sp?.signed || {}), ...b.signed } };
-      });
-      void patchSnapshot(visitaId!, (current) => ({
-        ...current,
-        visita: { ...(current.visita || {}), ...visitaRow },
-        fazenda: fazendaRow || current.fazenda,
-        consultor: consultorRow || current.consultor,
-        pastos: mergedPastos,
-      })).catch(() => {});
+      void patchSnapshot(visitaId!, (current) => {
+        const mergedPastos = built.map((b: any) => {
+          const latest = (current.pastos || []).find((x: any) => x.id === b.id) as any;
+          return {
+            ...(latest || {}),
+            ...b,
+            samples: b.samples,
+            fotos: b.fotos,
+            signed: { ...(latest?.signed || {}), ...b.signed },
+          };
+        });
+        return {
+          ...current,
+          visita: { ...(current.visita || {}), ...visitaRow },
+          fazenda: fazendaRow || current.fazenda,
+          consultor: consultorRow || current.consultor,
+          pastos: mergedPastos,
+        };
+      }).catch(() => {});
     }
     setLoading(false);
   }
