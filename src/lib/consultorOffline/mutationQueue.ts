@@ -132,7 +132,31 @@ function isDependencyError(message: string): boolean {
   return m.includes("foreign key") || m.includes("fkey") || m.includes("23503");
 }
 
-type FlushOutcome = "ok" | "failed" | "deferred";
+/** Tabelas "pai": nunca podem ser descartadas silenciosamente da fila. */
+const PARENT_TABLES = new Set(["visitas_tecnicas", "visita_pastos", "visita_currais", "visita_topicos"]);
+
+/** De qual registro pai cada tabela filha depende. */
+const CHILD_PARENT_FIELDS: Record<string, Array<[string, ParentKind]>> = {
+  avaliacoes_score: [["visita_pasto_id", "pasto"], ["visita_curral_id", "curral"]],
+  visita_fotos: [["visita_pasto_id", "pasto"], ["visita_curral_id", "curral"]],
+  visita_topico_fotos: [["visita_topico_id", "topico"]],
+};
+
+export function parentRefOfMutation(m: TextMutation): { kind: ParentKind; id: string } | null {
+  const fields = CHILD_PARENT_FIELDS[m.table];
+  if (!fields) return null;
+  for (const [field, kind] of fields) {
+    const id = m.patch?.[field];
+    if (typeof id === "string" && id) return { kind, id };
+  }
+  return null;
+}
+
+/** Após N rodadas adiadas, investigamos o pai em vez de adiar para sempre. */
+const MAX_DEFERRED_ROUNDS = 2;
+
+type FlushOutcome = "ok" | "failed" | "deferred" | "recovered";
+
 
 async function flushOne(m: TextMutation): Promise<FlushOutcome> {
   try {
