@@ -1190,7 +1190,57 @@ export default function RevisaoVisitaPage() {
           if (visita?.status === "finalizada") navigate("/consultor/historico");
         }}
       />
+
+      <AlertDialog open={fotosPendentesAviso != null} onOpenChange={(v) => { if (!v) setFotosPendentesAviso(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fotos ainda não sincronizadas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existem {fotosPendentesAviso} foto(s) ainda não sincronizada(s). Sincronize antes de gerar o
+              relatório para garantir que todas apareçam. Se gerar mesmo assim, essas fotos ficarão de fora do PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sincronizandoFotos}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              disabled={sincronizandoFotos}
+              onClick={async () => {
+                setSincronizandoFotos(true);
+                try {
+                  const { syncNow, getQueuedPhotoCountForVisita } = await import("@/lib/consultorOffline/photoQueue");
+                  await syncNow();
+                  const restantes = visita ? await getQueuedPhotoCountForVisita(visita.id) : 0;
+                  if (restantes > 0) {
+                    setFotosPendentesAviso(restantes);
+                    toast.error(`Ainda restam ${restantes} foto(s) pendente(s).`);
+                  } else {
+                    setFotosPendentesAviso(null);
+                    toast.success("Fotos sincronizadas.");
+                    void gerarPdf({ ignorarFotosPendentes: true });
+                  }
+                } catch (err) {
+                  toast.error(`Não foi possível sincronizar. ${getErrorMessage(err)}`);
+                } finally { setSincronizandoFotos(false); }
+              }}
+            >
+              {sincronizandoFotos ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sincronizar agora"}
+            </Button>
+            <AlertDialogAction
+              disabled={sincronizandoFotos}
+              onClick={(e) => {
+                e.preventDefault();
+                setFotosPendentesAviso(null);
+                void gerarPdf({ ignorarFotosPendentes: true });
+              }}
+            >
+              Gerar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
 
