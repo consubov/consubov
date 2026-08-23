@@ -51,6 +51,16 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
   const hasPhotoFailures = photoFailures.length > 0;
   const disabled = syncing || (!hasPending && !hasPhotoFailures) || !online;
 
+  const stuckAlerted = useRef(false);
+  useEffect(() => {
+    if (!stuck || stuckAlerted.current) return;
+    stuckAlerted.current = true;
+    toast.warning(`Há ${pending} visita(s) sem sincronizar há ${stuckMinutes} min mesmo com internet. Abra a fila para ver o motivo técnico.`, {
+      duration: 10000,
+      action: { label: "Ver fila", onClick: () => setDebugOpen(true) },
+    });
+  }, [stuck, stuckMinutes, pending]);
+
   const handleSync = async () => {
     try {
       await syncNow();
