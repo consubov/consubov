@@ -116,8 +116,8 @@ export function useSyncStatus() {
       try {
         const infos = await getPendingVisitaDebugInfos();
         if (!alive) return;
-        if (import.meta.env.DEV) {
-          console.debug("[consultor-sync] visitas pendentes", infos.map((i) => ({
+        if (infos.length > 0) {
+          console.info("[consultor-sync] visitas pendentes", infos.map((i) => ({
             visitaId: i.visitaId,
             mutations: i.mutationTables,
             photos: i.photoParents,
