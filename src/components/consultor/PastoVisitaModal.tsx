@@ -497,41 +497,115 @@ export default function PastoVisitaModal({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>% Peso Vivo</Label>
-              <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
-            </div>
-            <div>
-              <Label>Consumo Esperado (kg/dia)</Label>
-              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
-            </div>
-          </div>
+          {modo === "mineral" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Meta do produto (g/100kg PV)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={metaG100kg} onChange={e => setMetaG100kg(e.target.value)} placeholder="ex: 25" disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Qtd. consumida (kg)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
+                </div>
+              </div>
+              <div>
+                <Label>Dias desde a última salga</Label>
+                <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
+              </div>
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="font-semibold text-foreground">{calc.espG > 0 ? `${fmt(calc.espG, 1)} g/cab/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="font-semibold text-foreground">{calc.realG > 0 ? `${fmt(calc.realG, 1)} g/cab/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice da meta</div>
+                  <div className="font-semibold text-foreground">{calc.indice > 0 ? `${fmt(calc.indice, 1)}%` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Situação</div>
+                  <div className="font-semibold text-foreground">{statusMeta || "—"}</div>
+                </div>
+              </div>
+            </>
+          )}
 
-          <div>
-            <Label>Consumo Real (kg/dia)</Label>
-            <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
-          </div>
+          {(modo === "racao" || modo === "outro") && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>{modo === "racao" ? "Qtd. consumida (kg)" : "Qtd. fornecida (kg)"}</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Dias de consumo</Label>
+                  <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
+                </div>
+              </div>
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo</div>
+                  <div className="font-semibold text-foreground">{calc.kgCabDia > 0 ? `${fmt(calc.kgCabDia, 2)} kg/cab/dia` : "—"}</div>
+                </div>
+                {modo === "racao" ? (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">% do peso vivo</div>
+                    <div className="font-semibold text-foreground">{calc.pctPv > 0 ? `${fmt(calc.pctPv, 2)}%` : "—"}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo (g/cab/dia)</div>
+                    <div className="font-semibold text-foreground">{calc.gCabDia > 0 ? `${fmt(calc.gCabDia, 0)} g/cab/dia` : "—"}</div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-          {/* Resumo calculado */}
-          <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
-              <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
-              <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
-              <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
-              <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
-            </div>
-          </div>
+          {modo !== "mineral" && modo !== "racao" && modo !== "outro" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>% Peso Vivo</Label>
+                  <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
+                </div>
+                <div>
+                  <Label>Consumo Esperado (kg/dia)</Label>
+                  <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
+                </div>
+              </div>
+
+              <div>
+                <Label>Consumo Real (kg/dia)</Label>
+                <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
+              </div>
+
+              {/* Resumo calculado */}
+              <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
+                  <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
+                  <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
+                </div>
+              </div>
+            </>
+          )}
+
 
           <div>
             <Label>Observação</Label>
