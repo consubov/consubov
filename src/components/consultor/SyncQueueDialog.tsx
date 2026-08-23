@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getPendingVisitaDebugInfos, type PendingVisitaDebugInfo } from "@/lib/consultorOffline/useSyncStatus";
 import { getErrorMessage } from "@/lib/consultorOffline/network";
+import { forceFullSync } from "@/lib/consultorOffline/photoQueue";
 
 interface Props {
   open: boolean;
