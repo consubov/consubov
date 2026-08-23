@@ -164,17 +164,16 @@ export default function PastoVisitaModal({
     return (pesoVivoTotal * pct) / 100;
   }, [pesoVivoTotal, percentualPv]);
 
-  // Sync suggested esperado into input when calc changes and user hasn't manually diverged too far
+  // Recalcula sempre que qualquer entrada muda (100% no cliente / offline),
+  // exceto se o usuário digitou manualmente um valor de consumo esperado.
   useEffect(() => {
+    if (esperadoManual) return;
     if (consumoEsperadoCalc > 0) {
-      setConsumoEsperado(prev => {
-        // If empty or previous equals a previous auto-calc, refresh
-        const prevN = Number(prev);
-        if (!prev || !isFinite(prevN) || prevN === 0) return String(Number(consumoEsperadoCalc.toFixed(2)));
-        return prev; // preserva edição manual
-      });
+      setConsumoEsperado(String(Number(consumoEsperadoCalc.toFixed(2))));
+    } else {
+      setConsumoEsperado("");
     }
-  }, [consumoEsperadoCalc]);
+  }, [consumoEsperadoCalc, esperadoManual]);
 
   const indiceMeta = useMemo(() => {
     const real = Number(consumoReal) || 0;
@@ -186,8 +185,13 @@ export default function PastoVisitaModal({
   function handleTipoProdutoChange(v: string) {
     setTipoProduto(v);
     const pct = extractPercentFromProduto(v);
-    if (pct) setPercentualPv(pct);
+    if (pct) {
+      setPercentualPv(pct);
+      // troca de produto volta ao cálculo automático
+      setEsperadoManual(false);
+    }
   }
+
 
   const ensurePasto = useCallback(async (): Promise<string | null> => {
     if (pastoIdLocal) return pastoIdLocal;
