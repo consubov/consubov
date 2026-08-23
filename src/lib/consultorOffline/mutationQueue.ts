@@ -263,11 +263,38 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
     // Erro de dependência (pai ainda não sincronizado) NÃO consome tentativas:
     // a mutação é adiada e reprocessada depois que o pai for confirmado.
     if (isDependencyError(message)) {
+      const rounds = (m.deferredRounds ?? 0) + 1;
       m.status = "pending";
-      m.lastError = "aguardando sincronização do registro principal";
+      m.deferredRounds = rounds;
+      m.lastError = `aguardando sincronização do registro principal (${message})`;
+      const ref = parentRefOfMutation(m);
+      if (rounds >= MAX_DEFERRED_ROUNDS && ref) {
+        let outcome: string;
+        try {
+          outcome = await recoverMissingParent(m.visitaId, ref.kind, ref.id);
+        } catch (recErr) {
+          outcome = "erro";
+          m.lastError = `falha ao verificar registro principal (${ref.kind} ${ref.id}): ${getErrorMessage(recErr)}`;
+        }
+        if (outcome === "queued" || outcome === "exists" || outcome === "pending") {
+          m.deferredRounds = 0;
+          m.lastError = `registro principal ${ref.kind} ${ref.id}: ${outcome === "queued" ? "recriado a partir do backup local" : "encontrado, reenviando"}`;
+          await putMutation(m);
+          emit();
+          return "recovered";
+        }
+        if (outcome === "missing") {
+          m.status = "error";
+          m.tries = MAX_AUTO_RETRIES;
+          m.lastError = `registro principal ausente: ${ref.kind} ${ref.id} não existe no servidor nem no backup local do aparelho. Erro original: ${message}`;
+          console.error("[consultor-sync] mutação órfã sem pai recuperável", {
+            mutationId: m.id, table: m.table, rowId: m.rowId, parent: ref,
+          });
+        }
+      }
       await putMutation(m);
       emit();
-      return "deferred";
+      return m.status === "error" ? "failed" : "deferred";
     }
     m.status = "error";
     m.tries = (m.tries ?? 0) + 1;
