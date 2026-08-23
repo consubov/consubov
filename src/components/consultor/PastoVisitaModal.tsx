@@ -94,6 +94,10 @@ export default function PastoVisitaModal({
   const [consumoEsperado, setConsumoEsperado] = useState("");
   const [consumoReal, setConsumoReal] = useState("");
   const [esperadoManual, setEsperadoManual] = useState(false);
+  const [metaG100kg, setMetaG100kg] = useState("");
+  const [kgConsumidos, setKgConsumidos] = useState("");
+  const [diasConsumo, setDiasConsumo] = useState("");
+
 
   const [obs, setObs] = useState("");
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
