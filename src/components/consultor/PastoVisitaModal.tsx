@@ -157,7 +157,7 @@ export default function PastoVisitaModal({
       setLetra(proximaLetra);
       setNumPasto(""); setQtdAnimais(""); setCategoria(""); setPesoMedio("");
       setTipoProduto(""); setPercentualPv("");
-      setConsumoEsperado(""); setConsumoReal("");
+      setConsumoEsperado(""); setConsumoReal(""); setEsperadoManual(false);
       setObs(""); setSamples(EMPTY_SAMPLES);
     }
   }, [open, pasto, proximaLetra]);
