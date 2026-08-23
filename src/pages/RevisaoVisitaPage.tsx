@@ -268,6 +268,9 @@ export default function RevisaoVisitaPage() {
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [fotosPendentesAviso, setFotosPendentesAviso] = useState<number | null>(null);
+  const [sincronizandoFotos, setSincronizandoFotos] = useState(false);
+
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [salvandoOffline, setSalvandoOffline] = useState(false);
   const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
