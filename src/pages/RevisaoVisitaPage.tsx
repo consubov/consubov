@@ -35,6 +35,7 @@ import { enqueuePhoto, getQueuedPhotosForParent } from "@/lib/consultorOffline/p
 import { deleteFoto as deleteQueuedFoto, listMutationsByVisita, updateFotoOrdem } from "@/lib/consultorOffline/db";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
+import { normalizarConsumoPasto, fmtPorCabeca } from "@/lib/consumoPasto";
 
 const BUCKET = "visitas-consultor-fotos";
 
