@@ -41,6 +41,7 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
       deletedAt,
       mutationIds: [],
       mutationTables: [],
+      mutationErrors: [],
       photoIds: [],
       photoParents: [],
       photoErrors: [],
@@ -49,11 +50,18 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     return created;
   };
 
+  const noteAge = (item: PendingVisitaDebugInfo, createdAt?: string) => {
+    if (!createdAt) return;
+    if (!item.oldestCreatedAt || createdAt < item.oldestCreatedAt) item.oldestCreatedAt = createdAt;
+  };
+
   muts.forEach((m) => {
     if (!m.visitaId) return;
     const item = ensure(m.visitaId);
     item.mutationIds.push(m.id);
     item.mutationTables.push(`${m.table}:${m.operation ?? "update"}:${m.status}`);
+    if (m.lastError) item.mutationErrors.push(`${m.table}: ${m.lastError}`);
+    noteAge(item, m.createdAt);
     if (m.table === "visitas_tecnicas" && m.patch?.deleted_at) {
       item.deleted = true;
       item.deletedAt = String(m.patch.deleted_at);
@@ -68,6 +76,7 @@ export async function getPendingVisitaDebugInfos(options?: { includeDeleted?: bo
     const item = ensure(f.visitaId);
     item.photoIds.push(f.localId);
     item.photoParents.push(`${f.parentKind}:${f.parentId}:${f.status}`);
+    noteAge(item, f.createdAt);
     if (f.lastError) item.photoErrors.push(`${f.parentKind}:${f.ordem}:${f.lastError}`);
   });
   const infos = Array.from(map.values());
