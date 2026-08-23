@@ -17,7 +17,8 @@ import {
   retryFoto,
   type FotoQueueItem,
 } from "./db";
-import { drainMutations, dropMutationsForRows } from "./mutationQueue";
+import { drainMutations, dropMutationsForRows, retryFailedMutations } from "./mutationQueue";
+import { recoverMissingParent } from "./parentRecovery";
 import { CONSULTOR_NETWORK_TIMEOUT_MS, CONSULTOR_PHOTO_CONFIRM_TIMEOUT_MS, CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS, getErrorMessage, sleep, withConsultorTimeout } from "./network";
 import { patchSnapshot } from "./snapshotStore";
 import { assertValidPhotoBlob, clonePhotoBlob, getBlobDiagnostic } from "./photoBlob";
