@@ -411,9 +411,11 @@ export async function drain(): Promise<void> {
       try {
         await withConsultorTimeout(drainMutations(), "sincronização dos dados antes das fotos", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
       } catch (err) {
+        // Mesmo que a fila de dados não tenha esvaziado, seguimos: fotos cujos
+        // pais JÁ existem no servidor podem subir normalmente (as demais são adiadas).
         debugSync("sincronização de dados antes das fotos falhou", { error: getErrorMessage(err) });
-        return;
       }
+
       // Processa em pequenos lotes (2 por vez) para não estourar a memória do
       // Safari/iOS com dezenas de blobs simultâneos, e para não saturar a rede.
       confirmedParents = new Set();
