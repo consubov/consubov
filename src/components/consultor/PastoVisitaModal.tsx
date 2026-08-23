@@ -93,6 +93,8 @@ export default function PastoVisitaModal({
   const [percentualPv, setPercentualPv] = useState("");
   const [consumoEsperado, setConsumoEsperado] = useState("");
   const [consumoReal, setConsumoReal] = useState("");
+  const [esperadoManual, setEsperadoManual] = useState(false);
+
   const [obs, setObs] = useState("");
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
   const [creating, setCreating] = useState(false);
@@ -110,6 +112,15 @@ export default function PastoVisitaModal({
       setTipoProduto(pasto.tipo_produto || "");
       setPercentualPv(pasto.percentual_pv || "");
       setConsumoEsperado(pasto.consumo_esperado_kg?.toString() || "");
+      {
+        // detecta se o valor salvo foi digitado manualmente (difere do cálculo)
+        const pv = (Number(pasto.qtd_animais) || 0) * (Number(pasto.peso_medio_kg) || 0);
+        const pct = parsePercent(pasto.percentual_pv || "");
+        const calc = pv > 0 && pct > 0 ? (pv * pct) / 100 : 0;
+        const saved = Number(pasto.consumo_esperado_kg) || 0;
+        setEsperadoManual(saved > 0 && Math.abs(saved - calc) > 0.05);
+      }
+
       setConsumoReal((pasto.consumo_real_kg ?? pasto.consumo_kg_dia)?.toString() || "");
       setObs(pasto.observacao || "");
       const online = typeof navigator === "undefined" || navigator.onLine;
@@ -146,7 +157,7 @@ export default function PastoVisitaModal({
       setLetra(proximaLetra);
       setNumPasto(""); setQtdAnimais(""); setCategoria(""); setPesoMedio("");
       setTipoProduto(""); setPercentualPv("");
-      setConsumoEsperado(""); setConsumoReal("");
+      setConsumoEsperado(""); setConsumoReal(""); setEsperadoManual(false);
       setObs(""); setSamples(EMPTY_SAMPLES);
     }
   }, [open, pasto, proximaLetra]);
@@ -164,17 +175,16 @@ export default function PastoVisitaModal({
     return (pesoVivoTotal * pct) / 100;
   }, [pesoVivoTotal, percentualPv]);
 
-  // Sync suggested esperado into input when calc changes and user hasn't manually diverged too far
+  // Recalcula sempre que qualquer entrada muda (100% no cliente / offline),
+  // exceto se o usuário digitou manualmente um valor de consumo esperado.
   useEffect(() => {
+    if (esperadoManual) return;
     if (consumoEsperadoCalc > 0) {
-      setConsumoEsperado(prev => {
-        // If empty or previous equals a previous auto-calc, refresh
-        const prevN = Number(prev);
-        if (!prev || !isFinite(prevN) || prevN === 0) return String(Number(consumoEsperadoCalc.toFixed(2)));
-        return prev; // preserva edição manual
-      });
+      setConsumoEsperado(String(Number(consumoEsperadoCalc.toFixed(2))));
+    } else {
+      setConsumoEsperado("");
     }
-  }, [consumoEsperadoCalc]);
+  }, [consumoEsperadoCalc, esperadoManual]);
 
   const indiceMeta = useMemo(() => {
     const real = Number(consumoReal) || 0;
@@ -186,8 +196,13 @@ export default function PastoVisitaModal({
   function handleTipoProdutoChange(v: string) {
     setTipoProduto(v);
     const pct = extractPercentFromProduto(v);
-    if (pct) setPercentualPv(pct);
+    if (pct) {
+      setPercentualPv(pct);
+      // troca de produto volta ao cálculo automático
+      setEsperadoManual(false);
+    }
   }
+
 
   const ensurePasto = useCallback(async (): Promise<string | null> => {
     if (pastoIdLocal) return pastoIdLocal;
@@ -402,7 +417,7 @@ export default function PastoVisitaModal({
             </div>
             <div>
               <Label>Consumo Esperado (kg/dia)</Label>
-              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => setConsumoEsperado(e.target.value)} disabled={readOnly} />
+              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
             </div>
           </div>
 
