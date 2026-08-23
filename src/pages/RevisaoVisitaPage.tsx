@@ -655,28 +655,49 @@ export default function RevisaoVisitaPage() {
     } finally { setConfirmando(false); }
   }
 
-  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean }) {
+  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
       return;
     }
     // Se houver pendências desta visita, sincroniza primeiro e aguarda concluir.
-    if (await hasPendingLocalChanges(visita.id)) {
+    if (!opts?.ignorarPendencias && await hasPendingLocalChanges(visita.id)) {
       const tSync = toast.loading("Sincronizando dados desta visita…");
       const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
       const result = await syncVisitaWithRetries(visita.id, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
       if (!result.ok) {
         setPendingThisVisit(true);
+        // Itens cujo registro principal se perdeu (nem servidor, nem backup local)
+        // nunca vão sincronizar — oferecemos descarte cirúrgico em vez de travar.
+        try {
+          const { scanOrphanParents } = await import("@/lib/consultorOffline/discardOrphans");
+          const orfaos = (await scanOrphanParents(visita.id)).filter((g) => g.unrecoverable);
+          if (orfaos.length > 0) {
+            setIrrecuperaveisAviso(orfaos.map((g) => ({ kind: g.kind, parentId: g.parentId, motivo: g.motivo })));
+            return;
+          }
+        } catch { /* segue com o aviso padrão */ }
         const motivo = result.reason || "Ainda há itens pendentes.";
         toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
           action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
+        });
+        toast.warning("Precisa do relatório agora? É possível gerar sem os itens pendentes.", {
+          duration: 15000,
+          action: {
+            label: "Gerar assim mesmo",
+            onClick: () => {
+              setNotaPerdaDados("Atenção: itens pendentes de sincronização não entraram neste relatório e precisam ser reavaliados presencialmente.");
+              void gerarPdf({ ignorarPendencias: true, ignorarFotosPendentes: true });
+            },
+          },
         });
         return;
       }
       setPendingThisVisit(false);
     }
+
     // Fotos ainda apenas locais não existem no servidor e sumiriam do relatório.
     if (!opts?.ignorarFotosPendentes) {
       const { getQueuedPhotoCountForVisita } = await import("@/lib/consultorOffline/photoQueue");
