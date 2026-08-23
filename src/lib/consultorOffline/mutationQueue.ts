@@ -365,14 +365,15 @@ export async function drainMutations(): Promise<void> {
 }
 
 export async function retryFailedMutations() {
+  // Retry manual força TODAS as mutações de volta ao início: erros esgotados,
+  // gravações interrompidas e itens adiados esperando o registro pai.
   const items = await listAllMutations();
   for (const it of items) {
-    if (it.status === "error" || it.status === "flushing") {
-      it.status = "pending";
-      it.tries = 0;
-      it.lastError = undefined;
-      await putMutation(it);
-    }
+    it.status = "pending";
+    it.tries = 0;
+    it.deferredRounds = 0;
+    it.lastError = undefined;
+    await putMutation(it);
   }
   await withConsultorTimeout(drainMutations(), "sincronização das alterações", CONSULTOR_NETWORK_TIMEOUT_MS * 2);
 }
