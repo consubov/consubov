@@ -655,7 +655,7 @@ export default function RevisaoVisitaPage() {
     } finally { setConfirmando(false); }
   }
 
-  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean }) {
+  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean; jaDescartouOrfaos?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
