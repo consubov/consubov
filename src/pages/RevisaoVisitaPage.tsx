@@ -670,15 +670,25 @@ export default function RevisaoVisitaPage() {
       if (!result.ok) {
         setPendingThisVisit(true);
         // Itens cujo registro principal se perdeu (nem servidor, nem backup local)
-        // nunca vão sincronizar — oferecemos descarte cirúrgico em vez de travar.
-        try {
-          const { scanOrphanParents } = await import("@/lib/consultorOffline/discardOrphans");
-          const orfaos = (await scanOrphanParents(visita.id)).filter((g) => g.unrecoverable);
-          if (orfaos.length > 0) {
-            setIrrecuperaveisAviso(orfaos.map((g) => ({ kind: g.kind, parentId: g.parentId, motivo: g.motivo })));
-            return;
-          }
-        } catch { /* segue com o aviso padrão */ }
+        // nunca vão sincronizar — descartamos automaticamente e registramos a
+        // perda nas observações do PDF (sem exigir confirmação do consultor).
+        if (!opts?.jaDescartouOrfaos) {
+          try {
+            const { scanOrphanParents, discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
+            const orfaos = (await scanOrphanParents(visita.id)).filter((g) => g.unrecoverable);
+            if (orfaos.length > 0) {
+              const res = await discardUnrecoverableForVisita(visita.id);
+              const detalhes = res.descartados
+                .map((d) => `${d.kind} ${d.parentId.slice(0, 8)}… (${d.mutationIds.length} avaliação(ões), ${d.fotoIds.length} foto(s))`)
+                .join("; ");
+              setNotaPerdaDados(`Atenção: ${res.descartados.length} registro(s) foram perdidos no aparelho antes da sincronização e não constam neste relatório: ${detalhes}. Total descartado: ${res.mutations} dado(s) e ${res.fotos} foto(s). Devem ser reavaliados presencialmente.`);
+              toast.warning(`Descartados automaticamente ${res.mutations} dado(s) e ${res.fotos} foto(s) irrecuperáveis. A perda está registrada no relatório.`);
+              await gerarPdf({ ...opts, jaDescartouOrfaos: true });
+              return;
+            }
+          } catch { /* segue com o aviso padrão */ }
+        }
+
         const motivo = result.reason || "Ainda há itens pendentes.";
         toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
           action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
