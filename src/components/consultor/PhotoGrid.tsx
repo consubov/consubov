@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Camera, X, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, Camera, X, AlertCircle, RefreshCw, CloudOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { enqueuePhoto, getQueuedPhotosForParent, subscribeSyncStatus } from "@/lib/consultorOffline/photoQueue";
@@ -248,6 +248,21 @@ export default function PhotoGrid({
                   {signed[foto.id]
                     ? <img loading="lazy" decoding="async" src={signed[foto.id]} alt="" className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>}
+                  {String(foto.url || "").startsWith("queued:") ? (
+                    <div
+                      className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600"
+                      title="Foto ainda não sincronizada"
+                    >
+                      <CloudOff className="w-2.5 h-2.5" /> pendente
+                    </div>
+                  ) : (
+                    <div
+                      className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5"
+                      title="Foto sincronizada"
+                    >
+                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                    </div>
+                  )}
                   {!disabled && (
                     <button type="button" onClick={() => handleDelete(foto)}
                       className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
@@ -258,11 +273,14 @@ export default function PhotoGrid({
               ) : showQueued ? (
                 <>
                   <img loading="lazy" decoding="async" src={queuedPreview} alt="" className="w-full h-full object-cover" />
-                  {typeof navigator !== "undefined" && !navigator.onLine && (
-                    <div className="absolute bottom-0.5 left-0.5 flex items-center gap-1 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-foreground">
-                      <Loader2 className="w-2 h-2 animate-spin" /> off-line
-                    </div>
-                  )}
+                  <div
+                    className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600"
+                    title="Foto ainda não sincronizada"
+                  >
+                    {typeof navigator !== "undefined" && !navigator.onLine
+                      ? <><CloudOff className="w-2.5 h-2.5" /> off-line</>
+                      : <><Loader2 className="w-2.5 h-2.5 animate-spin" /> pendente</>}
+                  </div>
                   {!disabled && (
                     <button
                       type="button"
@@ -275,6 +293,7 @@ export default function PhotoGrid({
                   )}
                 </>
               ) : showPending ? (
+
                 <>
                   <img loading="lazy" decoding="async" src={pending!.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
                   <div className="absolute inset-0 flex items-center justify-center bg-background/30">

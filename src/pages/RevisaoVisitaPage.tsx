@@ -6,9 +6,14 @@ import MentionTextarea from "@/components/consultor/MentionTextarea";
 import MentionablePhoto from "@/components/consultor/MentionablePhoto";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2 } from "lucide-react";
+import { ArrowLeft, Loader2, X, ChevronUp, ChevronDown, Check, FileText, Download, Share2, CloudOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -268,6 +273,9 @@ export default function RevisaoVisitaPage() {
   const { pending: pendingUploads } = useSyncStatus();
   const [hadPendingUploads, setHadPendingUploads] = useState(false);
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
+  const [fotosPendentesAviso, setFotosPendentesAviso] = useState<number | null>(null);
+  const [sincronizandoFotos, setSincronizandoFotos] = useState(false);
+
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [salvandoOffline, setSalvandoOffline] = useState(false);
   const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
@@ -566,7 +574,7 @@ export default function RevisaoVisitaPage() {
     } finally { setConfirmando(false); }
   }
 
-  async function gerarPdf() {
+  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
@@ -588,6 +596,13 @@ export default function RevisaoVisitaPage() {
       }
       setPendingThisVisit(false);
     }
+    // Fotos ainda apenas locais não existem no servidor e sumiriam do relatório.
+    if (!opts?.ignorarFotosPendentes) {
+      const { getQueuedPhotoCountForVisita } = await import("@/lib/consultorOffline/photoQueue");
+      const pendentes = await getQueuedPhotoCountForVisita(visita.id);
+      if (pendentes > 0) { setFotosPendentesAviso(pendentes); return; }
+    }
+
     setGerandoPdf(true);
     const t = toast.loading("Gerando PDF...");
     try {
@@ -1145,7 +1160,7 @@ export default function RevisaoVisitaPage() {
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && online && (
             <Button
-              onClick={gerarPdf}
+              onClick={() => void gerarPdf()}
               disabled={gerandoPdf}
               className="flex-1 gap-2"
               style={{ background: "#14432B", color: "white" }}
@@ -1180,7 +1195,57 @@ export default function RevisaoVisitaPage() {
           if (visita?.status === "finalizada") navigate("/consultor/historico");
         }}
       />
+
+      <AlertDialog open={fotosPendentesAviso != null} onOpenChange={(v) => { if (!v) setFotosPendentesAviso(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fotos ainda não sincronizadas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existem {fotosPendentesAviso} foto(s) ainda não sincronizada(s). Sincronize antes de gerar o
+              relatório para garantir que todas apareçam. Se gerar mesmo assim, essas fotos ficarão de fora do PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sincronizandoFotos}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              disabled={sincronizandoFotos}
+              onClick={async () => {
+                setSincronizandoFotos(true);
+                try {
+                  const { syncNow, getQueuedPhotoCountForVisita } = await import("@/lib/consultorOffline/photoQueue");
+                  await syncNow();
+                  const restantes = visita ? await getQueuedPhotoCountForVisita(visita.id) : 0;
+                  if (restantes > 0) {
+                    setFotosPendentesAviso(restantes);
+                    toast.error(`Ainda restam ${restantes} foto(s) pendente(s).`);
+                  } else {
+                    setFotosPendentesAviso(null);
+                    toast.success("Fotos sincronizadas.");
+                    void gerarPdf({ ignorarFotosPendentes: true });
+                  }
+                } catch (err) {
+                  toast.error(`Não foi possível sincronizar. ${getErrorMessage(err)}`);
+                } finally { setSincronizandoFotos(false); }
+              }}
+            >
+              {sincronizandoFotos ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sincronizar agora"}
+            </Button>
+            <AlertDialogAction
+              disabled={sincronizandoFotos}
+              onClick={(e) => {
+                e.preventDefault();
+                setFotosPendentesAviso(null);
+                void gerarPdf({ ignorarFotosPendentes: true });
+              }}
+            >
+              Gerar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
 
@@ -1255,6 +1320,16 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
                 {numeroMap[f.id]}
               </div>
             )}
+            {String(f.url || "").startsWith("queued:") ? (
+              <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600" title="Foto ainda não sincronizada">
+                <CloudOff className="w-2.5 h-2.5" /> pendente
+              </div>
+            ) : (
+              <div className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5" title="Foto sincronizada">
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+              </div>
+            )}
+
             {!readOnly && (
               <>
                 <button type="button" onClick={() => onDelete(f)}

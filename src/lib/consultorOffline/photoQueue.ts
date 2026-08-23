@@ -169,6 +169,13 @@ export async function getQueuedPhotosForParent(kind: "pasto" | "curral" | "topic
   return listFotosByParent(kind, id);
 }
 
+/** Quantas fotos desta visita ainda estão apenas no aparelho (não sincronizadas). */
+export async function getQueuedPhotoCountForVisita(visitaId: string): Promise<number> {
+  const items = await listAllFotos();
+  return items.filter((it) => it.visitaId === visitaId).length;
+}
+
+
 type UploadOutcome = "ok" | "failed" | "deferred";
 
 const PARENT_TABLE: Record<"pasto" | "curral" | "topico", string> = {
