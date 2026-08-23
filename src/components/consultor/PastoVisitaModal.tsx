@@ -1,3 +1,4 @@
+import { fmtPorCabeca } from "@/lib/consumoPasto";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
