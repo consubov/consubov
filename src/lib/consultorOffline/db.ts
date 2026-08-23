@@ -231,6 +231,7 @@ export async function retryFoto(localId: string) {
     ...current,
     status: "pending",
     tries: 0,
+    deferredRounds: 0,
     lastError: undefined,
     lastAttemptAt: undefined,
   });
