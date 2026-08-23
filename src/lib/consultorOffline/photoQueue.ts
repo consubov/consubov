@@ -417,10 +417,20 @@ export async function drain(): Promise<void> {
       // Processa em pequenos lotes (2 por vez) para não estourar a memória do
       // Safari/iOS com dezenas de blobs simultâneos, e para não saturar a rede.
       confirmedParents = new Set();
+      // Nova rodada = nova chance: fotos que estouraram as tentativas voltam a
+      // "pending" para nunca morrerem permanentemente na fila local.
+      for (const it of await listAllFotos()) {
+        if ((it.tries ?? 0) >= MAX_AUTO_RETRIES || it.status === "uploading") {
+          it.tries = 0;
+          it.status = "pending";
+          await putFoto(it).catch(() => null);
+        }
+      }
       let rounds = 0;
       while (rounds < MAX_AUTO_RETRIES) {
         const items = (await listAllFotos()).filter((i) => (i.tries ?? 0) < MAX_AUTO_RETRIES);
         if (!items.length) break;
+
 
         const results: UploadOutcome[] = [];
         for (let i = 0; i < items.length; i += PHOTO_UPLOAD_CONCURRENCY) {
