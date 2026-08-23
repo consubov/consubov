@@ -348,19 +348,59 @@ export default function PastoVisitaModal({
       const id = await ensurePasto();
       if (!id) return;
       const realN = consumoReal ? Number(consumoReal) : null;
-      const payload = {
+      const base = {
         letra: letra.trim().toUpperCase(),
         num_pasto: numPasto.trim() || null,
         qtd_animais: qtdAnimais ? Number(qtdAnimais) : null,
         categoria: categoria || null,
         peso_medio_kg: pesoMedio ? Number(pesoMedio) : null,
         tipo_produto: tipoProduto || null,
-        percentual_pv: percentualPv.trim() || null,
-        consumo_esperado_kg: consumoEsperado ? Number(consumoEsperado) : null,
-        consumo_real_kg: realN,
-        consumo_kg_dia: realN, // manter em sync p/ compatibilidade
         observacao: obs.trim() || null,
+        meta_g_100kg: null as number | null,
+        kg_consumidos: kgConsumidos ? Number(kgConsumidos) : null,
+        dias_consumo: diasConsumo ? Number(diasConsumo) : null,
       };
+      let payload: Record<string, any>;
+      if (modo === "mineral") {
+        payload = {
+          ...base,
+          meta_g_100kg: metaG100kg ? Number(metaG100kg) : null,
+          percentual_pv: null,
+          consumo_esperado_kg: calc.espG > 0 ? calc.espG / 1000 : null,
+          consumo_real_kg: calc.realG > 0 ? calc.realG / 1000 : null,
+          consumo_kg_dia: calc.realG > 0 ? calc.realG / 1000 : null,
+          consumo_medio_g: calc.realG > 0 ? calc.realG : null,
+        };
+      } else if (modo === "racao") {
+        payload = {
+          ...base,
+          percentual_pv: calc.pctPv > 0 ? `${calc.pctPv.toFixed(2).replace(".", ",")}%` : null,
+          consumo_esperado_kg: null,
+          consumo_real_kg: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_kg_dia: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_medio_g: calc.gCabDia > 0 ? calc.gCabDia : null,
+        };
+      } else if (modo === "outro") {
+        payload = {
+          ...base,
+          percentual_pv: null,
+          consumo_esperado_kg: null,
+          consumo_real_kg: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_kg_dia: calc.kgCabDia > 0 ? calc.kgCabDia : null,
+          consumo_medio_g: calc.gCabDia > 0 ? calc.gCabDia : null,
+        };
+      } else {
+        payload = {
+          ...base,
+          kg_consumidos: null,
+          dias_consumo: null,
+          percentual_pv: percentualPv.trim() || null,
+          consumo_esperado_kg: consumoEsperado ? Number(consumoEsperado) : null,
+          consumo_real_kg: realN,
+          consumo_kg_dia: realN, // manter em sync p/ compatibilidade
+        };
+      }
+
       const res = await offlineUpdate({
         visitaId,
         table: "visita_pastos",
