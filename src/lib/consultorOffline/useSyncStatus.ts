@@ -154,8 +154,7 @@ export function useSyncStatus() {
   }, []);
 
   const syncNow = async () => {
-    await retryFailedMutations();
-    await syncPhotosNow();
+    await forceFullSync();
   };
 
   return {
