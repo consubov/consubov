@@ -275,8 +275,6 @@ export default function RevisaoVisitaPage() {
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
   const [fotosPendentesAviso, setFotosPendentesAviso] = useState<number | null>(null);
   const [sincronizandoFotos, setSincronizandoFotos] = useState(false);
-  const [irrecuperaveisAviso, setIrrecuperaveisAviso] = useState<Array<{ kind: string; parentId: string; motivo: string }> | null>(null);
-  const [descartando, setDescartando] = useState(false);
   const [notaPerdaDados, setNotaPerdaDados] = useState<string | null>(null);
 
 
@@ -655,7 +653,7 @@ export default function RevisaoVisitaPage() {
     } finally { setConfirmando(false); }
   }
 
-  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean }) {
+  async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean; jaDescartouOrfaos?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
@@ -670,15 +668,25 @@ export default function RevisaoVisitaPage() {
       if (!result.ok) {
         setPendingThisVisit(true);
         // Itens cujo registro principal se perdeu (nem servidor, nem backup local)
-        // nunca vão sincronizar — oferecemos descarte cirúrgico em vez de travar.
-        try {
-          const { scanOrphanParents } = await import("@/lib/consultorOffline/discardOrphans");
-          const orfaos = (await scanOrphanParents(visita.id)).filter((g) => g.unrecoverable);
-          if (orfaos.length > 0) {
-            setIrrecuperaveisAviso(orfaos.map((g) => ({ kind: g.kind, parentId: g.parentId, motivo: g.motivo })));
-            return;
-          }
-        } catch { /* segue com o aviso padrão */ }
+        // nunca vão sincronizar — descartamos automaticamente e registramos a
+        // perda nas observações do PDF (sem exigir confirmação do consultor).
+        if (!opts?.jaDescartouOrfaos) {
+          try {
+            const { scanOrphanParents, discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
+            const orfaos = (await scanOrphanParents(visita.id)).filter((g) => g.unrecoverable);
+            if (orfaos.length > 0) {
+              const res = await discardUnrecoverableForVisita(visita.id);
+              const detalhes = res.descartados
+                .map((d) => `${d.kind} ${d.parentId.slice(0, 8)}… (${d.mutationIds.length} avaliação(ões), ${d.fotoIds.length} foto(s))`)
+                .join("; ");
+              setNotaPerdaDados(`Atenção: ${res.descartados.length} registro(s) foram perdidos no aparelho antes da sincronização e não constam neste relatório: ${detalhes}. Total descartado: ${res.mutations} dado(s) e ${res.fotos} foto(s). Devem ser reavaliados presencialmente.`);
+              toast.warning(`Descartados automaticamente ${res.mutations} dado(s) e ${res.fotos} foto(s) irrecuperáveis. A perda está registrada no relatório.`);
+              await gerarPdf({ ...opts, jaDescartouOrfaos: true });
+              return;
+            }
+          } catch { /* segue com o aviso padrão */ }
+        }
+
         const motivo = result.reason || "Ainda há itens pendentes.";
         toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
           action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
@@ -1348,45 +1356,9 @@ export default function RevisaoVisitaPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={irrecuperaveisAviso != null} onOpenChange={(v) => { if (!v) setIrrecuperaveisAviso(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Dados perdidos nesta visita</AlertDialogTitle>
-            <AlertDialogDescription>
-              Alguns itens não podem mais ser sincronizados porque o registro principal se perdeu no aparelho
-              (não existe no servidor nem no backup local):
-              {" "}
-              {(irrecuperaveisAviso || []).map((g) => `${g.kind} ${g.parentId.slice(0, 8)}…`).join(", ")}.
-              Você pode descartá-los e gerar o relatório com o restante da visita — esses registros precisarão
-              ser refeitos presencialmente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={descartando}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={descartando}
-              onClick={async (e) => {
-                e.preventDefault();
-                if (!visita) return;
-                setDescartando(true);
-                try {
-                  const { discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
-                  const res = await discardUnrecoverableForVisita(visita.id);
-                  const nomes = res.descartados.map((d) => `${d.kind} ${d.parentId.slice(0, 8)}…`).join(", ");
-                  setNotaPerdaDados(`Atenção: ${res.descartados.length} registro(s) (${nomes}) foram perdidos no aparelho antes da sincronização e não constam neste relatório. Devem ser reavaliados presencialmente.`);
-                  setIrrecuperaveisAviso(null);
-                  toast.success(`Descartados ${res.mutations} dado(s) e ${res.fotos} foto(s) irrecuperáveis.`);
-                  void gerarPdf({ ignorarFotosPendentes: true });
-                } catch (err) {
-                  toast.error(`Falha ao descartar: ${getErrorMessage(err)}`);
-                } finally { setDescartando(false); }
-              }}
-            >
-              {descartando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Descartar e gerar PDF"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Itens irrecuperáveis são descartados automaticamente antes do PDF,
+          com a perda registrada nas observações do relatório. */}
+
 
     </div>
 
