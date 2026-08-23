@@ -21,7 +21,7 @@ interface Props {
  * Auto-sincroniza em segundo plano ao detectar internet; o clique força/repete.
  */
 export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
-  const { pending, photoPending, mutPending, photoFailures, syncing, syncNow } = useSyncStatus();
+  const { pending, photoPending, mutPending, photoFailures, syncing, stuck, stuckMinutes, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
