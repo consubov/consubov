@@ -45,6 +45,26 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
     }
   };
 
+  const descartarIrrecuperaveis = async (visitaId: string) => {
+    setSyncing(true);
+    try {
+      const { discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
+      const res = await discardUnrecoverableForVisita(visitaId);
+      if (res.descartados.length === 0) {
+        toast.info("Nenhum item irrecuperável encontrado nesta visita.");
+      } else {
+        const nomes = res.descartados.map((d) => `${d.kind} ${d.parentId.slice(0, 8)}…`).join(", ");
+        toast.success(`Descartados ${res.mutations} dado(s) e ${res.fotos} foto(s) de: ${nomes}. Esses registros precisam ser refeitos presencialmente.`);
+      }
+    } catch (err) {
+      toast.error(`Falha ao descartar itens: ${getErrorMessage(err)}`);
+    } finally {
+      setSyncing(false);
+      await load();
+    }
+  };
+
+
   useEffect(() => {
     if (open) void load();
   }, [open]);
