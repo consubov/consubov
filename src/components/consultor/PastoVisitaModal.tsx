@@ -93,6 +93,8 @@ export default function PastoVisitaModal({
   const [percentualPv, setPercentualPv] = useState("");
   const [consumoEsperado, setConsumoEsperado] = useState("");
   const [consumoReal, setConsumoReal] = useState("");
+  const [esperadoManual, setEsperadoManual] = useState(false);
+
   const [obs, setObs] = useState("");
   const [samples, setSamples] = useState<SamplesState>(EMPTY_SAMPLES);
   const [creating, setCreating] = useState(false);
