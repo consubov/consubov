@@ -327,8 +327,7 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
         parentKind: item.parentKind,
         parentId: item.parentId,
       });
-      await markDeferred(item.localId, "aguardando sincronização do registro principal");
-      return "deferred";
+      return await markDeferred(item.localId, "aguardando sincronização do registro principal");
     }
 
     // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
