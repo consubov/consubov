@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadSnapshot, patchSnapshot, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
-import { resolveParentLookup } from "@/lib/consultorOffline/photoQueue";
+import { nextPhotoFailureState, resolveParentLookup } from "@/lib/consultorOffline/photoQueue";
 
 describe("verificação do registro pai da foto", () => {
   it("trata ausência confirmada como espera normal", () => {
@@ -14,6 +14,12 @@ describe("verificação do registro pai da foto", () => {
 
   it("confirma o pai quando o servidor retorna seu id", () => {
     expect(resolveParentLookup({ data: { id: "p1" }, error: null })).toBe(true);
+  });
+
+  it("mantém retries automáticos e torna a terceira falha visível", () => {
+    expect(nextPhotoFailureState(0)).toEqual({ tries: 1, status: "pending" });
+    expect(nextPhotoFailureState(1)).toEqual({ tries: 2, status: "pending" });
+    expect(nextPhotoFailureState(2)).toEqual({ tries: 3, status: "error" });
   });
 });
 

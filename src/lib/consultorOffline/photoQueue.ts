@@ -228,6 +228,11 @@ export function resolveParentLookup(result: { data?: { id?: string } | null; err
   return Boolean(result.data?.id);
 }
 
+export function nextPhotoFailureState(currentTries: number) {
+  const tries = currentTries + 1;
+  return { tries, status: tries >= MAX_AUTO_RETRIES ? "error" as const : "pending" as const };
+}
+
 async function markDeferred(localId: string, reason: string) {
   const current = await getFoto(localId);
   if (current) {
@@ -266,8 +271,9 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     debugSync("erro ao ler foto do IndexedDB", { localId: inputItem.localId, error: message });
     const current = await getFoto(inputItem.localId);
     if (current) {
-      current.status = "error";
-      current.tries = (current.tries ?? 0) + 1;
+      const failure = nextPhotoFailureState(current.tries ?? 0);
+      current.status = failure.status;
+      current.tries = failure.tries;
       current.lastError = message;
       await putFoto(current).catch(() => null);
     }
@@ -393,8 +399,9 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     if (isDependencyError(message)) confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
     const current = await getFoto(item.localId);
     if (current) {
-      current.status = "error";
-      current.tries = (current.tries ?? 0) + 1;
+      const failure = nextPhotoFailureState(current.tries ?? 0);
+      current.status = failure.status;
+      current.tries = failure.tries;
       current.lastError = message;
       await putFoto(current);
     }
