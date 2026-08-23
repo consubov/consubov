@@ -233,15 +233,51 @@ export function nextPhotoFailureState(currentTries: number) {
   return { tries, status: tries >= MAX_AUTO_RETRIES ? "error" as const : "pending" as const };
 }
 
-async function markDeferred(localId: string, reason: string) {
+/** Após N adiamentos, investigamos o pai em vez de esperar para sempre. */
+const MAX_DEFERRED_ROUNDS = 2;
+
+/**
+ * Marca a foto como adiada por dependência. Se o pai continuar ausente após
+ * algumas rodadas, tentamos recriá-lo a partir do backup local; se nem isso for
+ * possível, a foto vira ERRO VISÍVEL com o motivo técnico real — nunca mais um
+ * "pendente" eterno e silencioso.
+ */
+async function markDeferred(localId: string, reason: string): Promise<UploadOutcome> {
   const current = await getFoto(localId);
-  if (current) {
-    current.status = "pending";
-    current.lastError = reason;
-    // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
-    await putFoto(current).catch(() => null);
+  if (!current) {
+    await refreshPendingCount();
+    return "deferred";
   }
+  const rounds = (current.deferredRounds ?? 0) + 1;
+  current.status = "pending";
+  current.deferredRounds = rounds;
+  current.lastError = reason;
+  // NÃO incrementa tries: dependência não satisfeita não é falha do envio.
+
+  if (rounds >= MAX_DEFERRED_ROUNDS) {
+    let outcome: string;
+    try {
+      outcome = await recoverMissingParent(current.visitaId, current.parentKind, current.parentId);
+    } catch (err) {
+      outcome = "erro";
+      current.lastError = `falha ao verificar registro principal (${current.parentKind} ${current.parentId}): ${getErrorMessage(err)}`;
+    }
+    if (outcome === "queued" || outcome === "exists" || outcome === "pending") {
+      current.deferredRounds = 0;
+      current.lastError = `registro principal ${outcome === "queued" ? "recriado a partir do backup local" : "localizado"}; reenviando`;
+    } else if (outcome === "missing") {
+      current.status = "error";
+      current.tries = MAX_AUTO_RETRIES;
+      current.lastError = `registro principal ausente: ${current.parentKind} ${current.parentId} não existe no servidor nem no backup local do aparelho.`;
+      debugSync("foto órfã sem registro principal recuperável", {
+        localId, parentKind: current.parentKind, parentId: current.parentId,
+      }, "error");
+    }
+  }
+
+  await putFoto(current).catch(() => null);
   await refreshPendingCount();
+  return current.status === "error" ? "failed" : "deferred";
 }
 
 async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
