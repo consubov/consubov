@@ -81,6 +81,7 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
     }
     if (hasPhotoFailures) return `${photoFailures.length} foto${photoFailures.length === 1 ? "" : "s"} com falha`;
     if (!online && hasPending) return `Sem conexão · ${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`;
+    if (stuck) return `Parado há ${stuckMinutes} min · toque para forçar envio`;
     if (hasPending) return `Sincronizar (${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"})`;
     if (showDone) return "Sincronização concluída ✓";
     return "Tudo sincronizado";
@@ -88,7 +89,7 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
 
   const Icon = syncing
     ? Loader2
-    : hasPhotoFailures
+    : hasPhotoFailures || stuck
       ? AlertCircle
     : !online && hasPending
       ? WifiOff
