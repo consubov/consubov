@@ -105,8 +105,13 @@ export async function getPhotoFailures() {
 
 export async function retryQueuedPhoto(localId: string) {
   await retryFoto(localId);
+  confirmedParents = new Set();
   await refreshPendingCount();
-  if (typeof navigator === "undefined" || navigator.onLine) void drain();
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    // Reprocessa também os registros principais: sem o pai, a foto voltaria a
+    // ficar adiada e o botão pareceria "não funcionar".
+    void forceFullSync().catch((err) => debugSync("reenvio manual da foto falhou", { localId, error: getErrorMessage(err) }, "error"));
+  }
 }
 
 export async function enqueuePhoto(params: {
