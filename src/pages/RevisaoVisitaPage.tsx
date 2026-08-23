@@ -275,6 +275,10 @@ export default function RevisaoVisitaPage() {
   const [pendingThisVisit, setPendingThisVisit] = useState(false);
   const [fotosPendentesAviso, setFotosPendentesAviso] = useState<number | null>(null);
   const [sincronizandoFotos, setSincronizandoFotos] = useState(false);
+  const [irrecuperaveisAviso, setIrrecuperaveisAviso] = useState<Array<{ kind: string; parentId: string; motivo: string }> | null>(null);
+  const [descartando, setDescartando] = useState(false);
+  const [notaPerdaDados, setNotaPerdaDados] = useState<string | null>(null);
+
 
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
   const [salvandoOffline, setSalvandoOffline] = useState(false);
