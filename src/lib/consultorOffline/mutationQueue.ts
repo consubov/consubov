@@ -340,6 +340,9 @@ export async function drainMutations(): Promise<void> {
           // Já tentamos e o pai ainda não existe: sai da rodada atual e será
           // reprocessado na próxima chamada (após o pai ser criado).
           deferred.add(target.id);
+        } else if (outcome === "recovered") {
+          // O pai foi recriado/localizado: tudo que estava adiado volta à fila.
+          deferred.clear();
         } else if (outcome === "failed") {
           const remaining = await listAllMutations();
           const current = remaining.find((i) => i.id === target.id);
