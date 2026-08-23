@@ -417,7 +417,7 @@ export default function PastoVisitaModal({
             </div>
             <div>
               <Label>Consumo Esperado (kg/dia)</Label>
-              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => setConsumoEsperado(e.target.value)} disabled={readOnly} />
+              <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
             </div>
           </div>
 
