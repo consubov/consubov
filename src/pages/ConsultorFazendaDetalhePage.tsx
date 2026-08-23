@@ -136,14 +136,14 @@ export default function ConsultorFazendaDetalhePage() {
         try { return JSON.parse(window.localStorage.getItem(`consultor_offline_fazenda_${fazendaId}`) || "null"); }
         catch { return null; }
       })();
-      await saveSnapshot(id, {
+      await patchSnapshot(id, () => ({
         visita: { id, ...payload, hora_fim: null, observacoes_gerais: null, conclusao: null, pdf_url: null },
         fazenda: cached?.fazenda || fazenda,
         consultor: cached?.consultor || null,
         pastos: [],
         currais: [],
         topicos: [],
-      });
+      }));
       const res = await offlineUpsert({
         visitaId: id,
         table: "visitas_tecnicas",

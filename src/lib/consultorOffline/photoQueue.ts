@@ -75,8 +75,8 @@ function describeQueuedPhoto(item: FotoQueueItem): PhotoFailureDetail {
   };
 }
 
-function debugSync(message: string, payload?: Record<string, unknown>) {
-  if (import.meta.env.DEV) console.debug(`[consultor-sync] ${message}`, payload ?? {});
+function debugSync(message: string, payload?: Record<string, unknown>, level: "info" | "warn" | "error" = "info") {
+  console[level](`[consultor-sync] ${message}`, payload ?? {});
 }
 
 async function refreshPendingCount() {
@@ -197,24 +197,25 @@ function isDependencyError(message: string): boolean {
  * existe no banco remoto. Sem essa checagem, o upload dispara erro de FK e a
  * foto era marcada como falha definitiva.
  */
-async function isParentReady(kind: "pasto" | "curral" | "topico", parentId: string): Promise<boolean> {
+export async function isParentReady(kind: "pasto" | "curral" | "topico", parentId: string): Promise<boolean> {
   const key = `${kind}:${parentId}`;
   if (confirmedParents.has(key)) return true;
-  try {
-    const res: any = await withConsultorTimeout(
-      (supabase as any).from(PARENT_TABLE[kind]).select("id").eq("id", parentId).maybeSingle(),
-      `verificação do ${kind} da foto`,
-      CONSULTOR_NETWORK_TIMEOUT_MS,
-    );
-    if (res.error) return false;
-    if (res.data?.id) {
-      confirmedParents.add(key);
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
+  const res: any = await withConsultorTimeout(
+    (supabase as any).from(PARENT_TABLE[kind]).select("id").eq("id", parentId).maybeSingle(),
+    `verificação do ${kind} da foto`,
+    CONSULTOR_NETWORK_TIMEOUT_MS,
+  );
+  if (res.error) {
+    const message = `Falha ao verificar registro principal no servidor: ${getErrorMessage(res.error)}`;
+    debugSync("erro real ao verificar pai da foto", { kind, parentId, error: message }, "error");
+    throw new Error(message);
   }
+  if (res.data?.id) {
+    confirmedParents.add(key);
+    return true;
+  }
+  debugSync("registro pai ainda ausente no servidor", { kind, parentId });
+  return false;
 }
 
 async function markDeferred(localId: string, reason: string) {
@@ -264,19 +265,20 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
     return "failed";
   }
 
-  // ETAPA 1.5: só envia se o registro pai já existe no servidor (evita FK).
-  if (!(await isParentReady(item.parentKind, item.parentId))) {
-    debugSync("foto adiada — registro pai ainda não sincronizado", {
-      localId: item.localId,
-      parentKind: item.parentKind,
-      parentId: item.parentId,
-    });
-    await markDeferred(item.localId, "aguardando sincronização do registro principal");
-    return "deferred";
-  }
-
-  // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
   try {
+    // ETAPA 1.5: ausência confirmada é dependência normal; erro de consulta cai
+    // no catch abaixo, consome tentativa e se torna visível após o limite.
+    if (!(await isParentReady(item.parentKind, item.parentId))) {
+      debugSync("foto adiada — registro pai ainda não sincronizado", {
+        localId: item.localId,
+        parentKind: item.parentKind,
+        parentId: item.parentId,
+      });
+      await markDeferred(item.localId, "aguardando sincronização do registro principal");
+      return "deferred";
+    }
+
+    // ETAPA 2: marcar como "uploading" e enviar ao Supabase.
     item.status = "uploading";
     item.lastAttemptAt = new Date().toISOString();
     await putFoto(item);
@@ -377,14 +379,8 @@ async function uploadOne(inputItem: FotoQueueItem): Promise<UploadOutcome> {
       localId: item.localId,
       visitaId: item.visitaId,
       error: message,
-    });
-    // Falha por dependência (pasto/curral/tópico pai ainda ausente) não é
-    // falha definitiva: reagenda sem consumir tentativas.
-    if (isDependencyError(message)) {
-      confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
-      await markDeferred(item.localId, "aguardando sincronização do registro principal");
-      return "deferred";
-    }
+    }, "error");
+    if (isDependencyError(message)) confirmedParents.delete(`${item.parentKind}:${item.parentId}`);
     const current = await getFoto(item.localId);
     if (current) {
       current.status = "error";
@@ -419,11 +415,10 @@ export async function drain(): Promise<void> {
       // Processa em pequenos lotes (2 por vez) para não estourar a memória do
       // Safari/iOS com dezenas de blobs simultâneos, e para não saturar a rede.
       confirmedParents = new Set();
-      // Nova rodada = nova chance: fotos que estouraram as tentativas voltam a
-      // "pending" para nunca morrerem permanentemente na fila local.
+      // Recupera apenas uploads interrompidos. Itens que atingiram o limite de
+      // falhas permanecem em erro visível até o consultor escolher reenviar.
       for (const it of await listAllFotos()) {
-        if ((it.tries ?? 0) >= MAX_AUTO_RETRIES || it.status === "uploading") {
-          it.tries = 0;
+        if (it.status === "uploading") {
           it.status = "pending";
           await putFoto(it).catch(() => null);
         }

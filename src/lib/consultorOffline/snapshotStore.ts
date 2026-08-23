@@ -29,17 +29,35 @@ export interface VisitaSnapshotData {
   [k: string]: any;
 }
 
+/** Serializa absolutamente toda gravação de snapshot por visita. */
+const patchLocks = new Map<string, Promise<void>>();
+
+async function writeSnapshotSerialized(
+  visitaId: string,
+  buildData: () => Promise<VisitaSnapshotData> | VisitaSnapshotData,
+) {
+  const prev = patchLocks.get(visitaId) ?? Promise.resolve();
+  const next = prev.then(async () => {
+    const data = await buildData();
+    await putSnapshot({
+      visitaId,
+      data,
+      updatedAt: new Date().toISOString(),
+    });
+  }).catch((err) => { console.warn("[consultor-snapshot] falha na gravação serializada", { visitaId, error: getErrorMessage(err) }); });
+  patchLocks.set(visitaId, next);
+  try { await next; } finally {
+    if (patchLocks.get(visitaId) === next) patchLocks.delete(visitaId);
+  }
+}
+
 export async function loadSnapshot(visitaId: string): Promise<VisitaSnapshotData | null> {
   const snap = await getSnapshot(visitaId);
   return snap ? (snap.data as VisitaSnapshotData) : null;
 }
 
 export async function saveSnapshot(visitaId: string, data: VisitaSnapshotData) {
-  await putSnapshot({
-    visitaId,
-    data,
-    updatedAt: new Date().toISOString(),
-  });
+  await writeSnapshotSerialized(visitaId, () => data);
 }
 
 export async function loadAllSnapshots(): Promise<Array<{ visitaId: string; data: VisitaSnapshotData; updatedAt: string }>> {
@@ -174,21 +192,14 @@ export async function syncVisitaWithRetries(
 }
 
 /** Merge a partial patch into the current snapshot. Serialized per visitaId to avoid races. */
-const patchLocks = new Map<string, Promise<void>>();
 export async function patchSnapshot(
   visitaId: string,
   patcher: (current: VisitaSnapshotData) => VisitaSnapshotData,
 ) {
-  const prev = patchLocks.get(visitaId) ?? Promise.resolve();
-  const next = prev.then(async () => {
+  await writeSnapshotSerialized(visitaId, async () => {
     const current = (await loadSnapshot(visitaId)) ?? {};
-    const merged = patcher(current);
-    await saveSnapshot(visitaId, merged);
-  }).catch((err) => { console.warn("[patchSnapshot] error:", err); });
-  patchLocks.set(visitaId, next);
-  try { await next; } finally {
-    if (patchLocks.get(visitaId) === next) patchLocks.delete(visitaId);
-  }
+    return patcher(current);
+  });
 }
 
 /**

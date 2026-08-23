@@ -23,7 +23,7 @@ import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
 import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 
@@ -194,12 +194,12 @@ export default function VisitaTecnicaPage() {
       });
       setPastos(builtPastos);
       if (!preferLocal) {
-        void saveSnapshot(visitaId!, {
-          ...(snap || {}),
+        void patchSnapshot(visitaId!, (current) => ({
+          ...current,
           visita: v,
           fazenda: fazendaData,
           pastos: builtPastos,
-        }).catch(() => {});
+        })).catch(() => {});
       }
 
     }

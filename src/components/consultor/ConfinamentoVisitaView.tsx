@@ -24,7 +24,7 @@ import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
 import { useCriticalOperation } from "@/lib/criticalOperations";
-import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, saveSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
 interface Visita {
   id: string;
@@ -138,13 +138,13 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       setConclusao(v.conclusao || "");
     }
     if (!preferLocal) {
-      void saveSnapshot(visitaId, {
-        ...(snap || {}),
+      void patchSnapshot(visitaId, (current) => ({
+        ...current,
         visita: vRes.data || snap?.visita || initialVisita,
         fazenda: fazenda || snap?.fazenda,
         currais: built,
         avaliacao_fabrica_visita: afRow,
-      }).catch(() => {});
+      })).catch(() => {});
     }
     setLoading(false);
   }, [visitaId, fazenda, initialVisita]);
