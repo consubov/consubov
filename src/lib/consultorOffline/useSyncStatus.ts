@@ -178,6 +178,8 @@ export function useSyncStatus() {
     await forceFullSync();
   };
 
+  const online = typeof navigator === "undefined" ? true : navigator.onLine;
+
   return {
     // pending = número de VISITAS pendentes (não de itens internos)
     pending: visitasPending,
@@ -185,6 +187,9 @@ export function useSyncStatus() {
     mutPending: activeMutPending,
     photoFailures,
     syncing: photoSyncing || mutSyncing,
+    /** Há pendências paradas há muito tempo mesmo com internet. */
+    stuck: online && visitasPending > 0 && stuckMinutes >= 15,
+    stuckMinutes,
     syncNow,
   };
 }
