@@ -166,7 +166,9 @@ export default function PastoVisitaModal({
       setNumPasto(""); setQtdAnimais(""); setCategoria(""); setPesoMedio("");
       setTipoProduto(""); setPercentualPv("");
       setConsumoEsperado(""); setConsumoReal(""); setEsperadoManual(false);
+      setMetaG100kg(""); setKgConsumidos(""); setDiasConsumo("");
       setObs(""); setSamples(EMPTY_SAMPLES);
+
     }
   }, [open, pasto, proximaLetra]);
 
