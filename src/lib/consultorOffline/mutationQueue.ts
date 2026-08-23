@@ -220,6 +220,11 @@ async function flushOne(m: TextMutation): Promise<FlushOutcome> {
         );
         if (!up.error) {
           confirmed = true;
+        } else if (PARENT_TABLES.has(m.table)) {
+          // NUNCA descartamos um registro pai: se ele sumir da fila, os filhos
+          // (avaliações e fotos) ficam órfãos para sempre. Mantemos como erro
+          // visível com o motivo técnico real.
+          throw new Error(`registro principal não pôde ser recriado em ${m.table}: ${getErrorMessage(up.error)}`);
         } else {
           debugSync("descartando mutação órfã (linha inexistente no servidor)", {
             mutationId: m.id,
