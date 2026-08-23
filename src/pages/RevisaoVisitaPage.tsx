@@ -1102,12 +1102,15 @@ export default function RevisaoVisitaPage() {
 
       {/* Consumo por Pasto — Real x Esperado */}
       <ConsumoPastoChart
-        pontos={pastos.map(p => ({
-          letra: p.letra || "?",
-          nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
-          real: Number(p.consumo_real_kg ?? p.consumo_kg_dia ?? 0),
-          esperado: Number(p.consumo_esperado_kg ?? 0),
-        }))}
+        pontos={pastos.map(p => {
+          const n = normalizarConsumoPasto(p as any);
+          return {
+            letra: p.letra || "?",
+            nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
+            real: n.realTotal,
+            esperado: n.espTotal,
+          };
+        })}
       />
 
       {/* Tópicos do Relatório — Introdução, Desenvolvimento e Conclusão */}
