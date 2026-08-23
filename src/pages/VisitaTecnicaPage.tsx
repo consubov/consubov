@@ -139,31 +139,57 @@ export default function VisitaTecnicaPage() {
       let pastosData = (pRes.data as any[]) || [];
       if (pastosData.length === 0 && snap?.pastos?.length) pastosData = snap.pastos as any[];
       const ids = pastosData.map(p => p.id);
-      const samplesByPasto: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
+
+      // Amostras: MESMA fonte de dados usada na tela de edição (avaliacoes_score).
+      // União (dedup por id) entre o que já está no servidor e o que ainda está
+      // apenas local (snapshot / fila off-line). Nunca usa média pré-calculada.
+      type Sample = { id?: string; nota: number };
+      const samplesByPasto: Record<string, { fezes: Sample[]; corporal: Sample[]; bebedouro: Sample[] }> = {};
+      const bucketOf = (pastoId: string) =>
+        (samplesByPasto[pastoId] ??= { fezes: [], corporal: [], bebedouro: [] });
+      const pushSample = (pastoId: string, tipo: string, s: Sample) => {
+        const bucket = bucketOf(pastoId);
+        if (!(tipo in bucket)) return;
+        const arr = bucket[tipo as keyof typeof bucket];
+        if (s.id && arr.some(x => x.id === s.id)) return;
+        if (typeof s.nota !== "number") return;
+        arr.push(s);
+      };
+
       if (ids.length > 0 && online && !preferLocal) {
         const { data: scoresData } = await supabase.from("avaliacoes_score")
-          .select("visita_pasto_id, tipo, nota")
+          .select("id, visita_pasto_id, tipo, nota")
           .in("visita_pasto_id", ids);
-        (scoresData || []).forEach((s: any) => {
-          const bucket = samplesByPasto[s.visita_pasto_id] ??= { fezes: [], corporal: [], bebedouro: [] };
-          if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
-        });
+        (scoresData || []).forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
       }
-      const builtPastos = pastosData.map(p => {
+
+      // Amostras locais (ainda não sincronizadas ou modo off-line/preferLocal)
+      const snapScores = ((snap?.avaliacoes_score as any[]) || []);
+      snapScores.forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+      pastosData.forEach((p: any) => {
         const snapSamples = (p as any).samples || {};
-        const samples = samplesByPasto[p.id] || {
-          fezes: (snapSamples.fezes || []).map((s: any) => s.nota ?? s),
-          corporal: (snapSamples.corporal || []).map((s: any) => s.nota ?? s),
-          bebedouro: (snapSamples.bebedouro || []).map((s: any) => s.nota ?? s),
+        (["fezes", "corporal", "bebedouro"] as const).forEach(tipo => {
+          (snapSamples[tipo] || []).forEach((s: any) =>
+            pushSample(p.id, tipo, typeof s === "number" ? { nota: s } : { id: s.id, nota: s.nota }));
+        });
+      });
+
+      const builtPastos = pastosData.map(p => {
+        const samples = samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] };
+        const notas = {
+          fezes: samples.fezes.map(s => s.nota),
+          corporal: samples.corporal.map(s => s.nota),
+          bebedouro: samples.bebedouro.map(s => s.nota),
         };
         return {
           ...p,
+          samples,
           scores: {
-            fezes: averageOf(samples.fezes),
-            corporal: averageOf(samples.corporal),
-            bebedouro: averageOf(samples.bebedouro),
+            fezes: averageOf(notas.fezes),
+            corporal: averageOf(notas.corporal),
+            bebedouro: averageOf(notas.bebedouro),
           },
-          _sampleCounts: samples,
+          _sampleCounts: notas,
         } as any;
       });
       setPastos(builtPastos);
@@ -175,6 +201,7 @@ export default function VisitaTecnicaPage() {
           pastos: builtPastos,
         }).catch(() => {});
       }
+
     }
     setLoading(false);
   }
