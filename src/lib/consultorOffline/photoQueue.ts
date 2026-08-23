@@ -514,16 +514,40 @@ export async function drain(): Promise<void> {
   }
 }
 
-export async function syncNow() {
-  // reset error status so failed items get retried
+/** Zera o estado de TODAS as fotos da fila para um reenvio forçado. */
+async function resetAllPhotos() {
   const items = await listAllFotos();
   for (const it of items) {
-    if (it.status === "error" || it.status === "uploading") {
-      it.status = "pending";
-      it.tries = 0;
-      it.lastError = undefined;
-      await putFoto(it);
-    }
+    it.status = "pending";
+    it.tries = 0;
+    it.deferredRounds = 0;
+    it.lastError = undefined;
+    await putFoto(it).catch(() => null);
+  }
+  confirmedParents = new Set();
+  await refreshPendingCount();
+}
+
+export async function syncNow() {
+  await resetAllPhotos();
+  await withConsultorTimeout(
+    drain(),
+    "sincronização das fotos",
+    CONSULTOR_PHOTO_UPLOAD_TIMEOUT_MS * MAX_AUTO_RETRIES + 15_000,
+  );
+}
+
+/**
+ * Sincronização forçada completa (botões "Sincronizar" / "Tentar novamente").
+ * Reprocessa dados E fotos do zero, inclusive itens adiados ou já em erro —
+ * é o que faz os botões de retry realmente voltarem a funcionar.
+ */
+export async function forceFullSync() {
+  await resetAllPhotos();
+  try {
+    await retryFailedMutations();
+  } catch (err) {
+    debugSync("retry das alterações falhou durante sincronização forçada", { error: getErrorMessage(err) }, "warn");
   }
   await withConsultorTimeout(
     drain(),
