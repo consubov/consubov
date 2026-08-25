@@ -451,6 +451,32 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         curraisForPdf.map(c => ({ id: c.id, fotos: c.fotos })),
         topicosForPdf.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
       );
+      // Penn State — análises + fotos, com numeração global continuada.
+      const { listarPennStateAnalises } = await import("@/lib/pennStateStore");
+      const { listarFotosPennState, numerarFotosPennState } = await import("@/lib/pennStateFotos");
+      let pennStateForPdf: any[] = [];
+      try {
+        const analises = await listarPennStateAnalises(visita.id);
+        const fotosMap = await listarFotosPennState(analises.map((a: any) => a.id));
+        const offset = Object.values(numeroMap).length ? Math.max(...Object.values(numeroMap)) : 0;
+        const numsPenn = numerarFotosPennState(analises as any, fotosMap, offset);
+        Object.assign(numeroMap, numsPenn);
+        pennStateForPdf = (analises as any[]).map(a => ({
+          id: a.id,
+          nome: a.nome,
+          ordem: a.ordem ?? 0,
+          percentual_19mm: Number(a.percentual_19mm) || 0,
+          percentual_8mm: Number(a.percentual_8mm) || 0,
+          percentual_4mm: Number(a.percentual_4mm) || 0,
+          percentual_fundo: Number(a.percentual_fundo) || 0,
+          fef: Number(a.fef) || 0,
+          peNDF: a.peNDF != null ? Number(a.peNDF) : null,
+          aviso_divergencia: a.aviso_divergencia ?? null,
+          fotos: (fotosMap[a.id] || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem })),
+        }));
+      } catch (e) {
+        console.warn("[pdf] penn state", e);
+      }
       const indicadoresData = await fetchIndicadoresParaPdf(visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
         visitaId: visita.id,
@@ -475,6 +501,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           organizacao_insumos_nota: insumosNota,
         },
         currais: curraisForPdf,
+        pennState: pennStateForPdf,
         numeroMap,
         chartType,
         sampleChartTypes: {
