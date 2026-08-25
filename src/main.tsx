@@ -1,19 +1,84 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { registerSW } from "./lib/swRegistration";
 import { resetServiceWorkerStateOnFirstLoad } from "./lib/swReset";
 import { applyPwaProfile } from "./lib/pwaManifest";
 
+/**
+ * Tela branca por chunk quebrado: quando o HTML novo aponta para um asset que
+ * não existe mais (ou vice-versa), o import dinâmico falha e nada renderiza.
+ * Neste caso limpamos os caches do app e recarregamos UMA única vez.
+ */
+const CHUNK_RECOVERY_KEY = "consubov:chunk-recovery";
+
+function isChunkLoadError(message: string) {
+  const msg = message.toLowerCase();
+  return (
+    msg.includes("dynamically imported module") ||
+    msg.includes("importing a module script failed") ||
+    msg.includes("chunkloaderror") ||
+    (msg.includes("unexpected token") && msg.includes("<"))
+  );
+}
+
+async function recoverFromChunkError() {
+  try {
+    if (sessionStorage.getItem(CHUNK_RECOVERY_KEY)) return;
+    sessionStorage.setItem(CHUNK_RECOVERY_KEY, "1");
+  } catch {
+    return;
+  }
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k.startsWith("consubov-")).map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* ignore */
+  }
+  window.location.reload();
+}
+
+function installChunkErrorRecovery() {
+  window.addEventListener("error", (event) => {
+    if (event?.message && isChunkLoadError(String(event.message))) void recoverFromChunkError();
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = (event as PromiseRejectionEvent).reason;
+    const message = reason instanceof Error ? reason.message : String(reason ?? "");
+    if (isChunkLoadError(message)) void recoverFromChunkError();
+  });
+}
+
+function render() {
+  createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary autoResetOnVisibility>
+      <App />
+    </ErrorBoundary>,
+  );
+}
+
 async function bootstrap() {
-  // Ajusta manifest/ícone/título antes de qualquer renderização.
-  applyPwaProfile(window.location.pathname);
+  installChunkErrorRecovery();
 
-  const didReload = await resetServiceWorkerStateOnFirstLoad();
-  if (didReload) return;
+  // Nada aqui pode impedir a renderização — se falhar, o app abre mesmo assim.
+  try {
+    applyPwaProfile(window.location.pathname);
+    const didReload = await resetServiceWorkerStateOnFirstLoad();
+    if (didReload) return;
+  } catch (err) {
+    console.warn("Bootstrap pré-render falhou:", err);
+  }
 
-  createRoot(document.getElementById("root")!).render(<App />);
-  registerSW();
+  render();
+
+  try {
+    registerSW();
+  } catch (err) {
+    console.warn("registerSW falhou:", err);
+  }
 }
 
 void bootstrap();
