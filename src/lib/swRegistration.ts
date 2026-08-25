@@ -18,6 +18,8 @@ function schedulePostDrainAction(action: () => void) {
 let swRegistration: ServiceWorkerRegistration | null = null;
 let controllerChangeBound = false;
 let reloadingForUpdate = false;
+let ignoreFirstControllerChange =
+  typeof navigator !== "undefined" && "serviceWorker" in navigator && !navigator.serviceWorker.controller;
 const observedRegistrations = new WeakSet<ServiceWorkerRegistration>();
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
@@ -100,11 +102,19 @@ function bindControllerChangeReload() {
     }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
     if (data.version) lastKnownRemoteVersion = data.version;
+    // A ativação da versão que já está executando não exige nova navegação.
+    if (data.version === __APP_BUILD_VERSION__) return;
     hardReloadToLatest(data.version || lastKnownRemoteVersion);
   });
 
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    // Primeira instalação em um navegador limpo: o bundle atual já é o mais
+    // novo, portanto recarregar aqui apenas atrasa a abertura inicial.
+    if (ignoreFirstControllerChange) {
+      ignoreFirstControllerChange = false;
+      return;
+    }
     if (reloadingForUpdate) return;
     hardReloadToLatest();
   });
@@ -371,6 +381,13 @@ export async function maybeUpdateActiveServiceWorker() {
 
 export function registerSW() {
   if (!("serviceWorker" in navigator)) return;
+
+  if (!import.meta.env.PROD) {
+    navigator.serviceWorker.getRegistrations().then((regs) =>
+      Promise.all(regs.map((r) => r.unregister())).then(() => clearAppCaches()),
+    );
+    return;
+  }
 
   try {
     if (window.self !== window.top) return;
