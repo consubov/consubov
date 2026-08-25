@@ -984,7 +984,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
     const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
     const measureAnalise = (a: typeof analises[number]) => {
-      let h = 12; // título
+      let h = analises.length > 1 ? 12 : 0; // título da subseção (só com múltiplas)
       h += 4 * 5; // 4 frações
       h += 8; // fef
       if (a.peNDF != null) h += 9;
@@ -995,16 +995,16 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
 
     const drawAnalise = (a: typeof analises[number], startY: number): number => {
       let ay = startY;
-      const titulo = analises.length > 1
-        ? `Análise Penn State — ${a.nome}`
-        : "Análise Penn State";
-      doc.setFillColor(GREEN_DARK);
-      doc.rect(15, ay, 3, 8, "F");
-      doc.setTextColor(GREEN_DARK);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(titulo, 21, ay + 6);
-      ay += 12;
+      // Com uma única análise o título da seção já identifica o bloco.
+      if (analises.length > 1) {
+        doc.setFillColor(GREEN_DARK);
+        doc.rect(15, ay, 3, 8, "F");
+        doc.setTextColor(GREEN_DARK);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text(`Análise Penn State — ${a.nome}`, 21, ay + 6);
+        ay += 12;
+      }
 
       doc.setFontSize(9.5);
       const linhas: [string, number][] = [
@@ -1024,7 +1024,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
       doc.setTextColor(GREEN_DARK);
-      doc.text(`Material fisicamente efetivo (≥4mm): ${pct(a.fef)}`, 21, ay + 4);
+      doc.text(`Material fisicamente efetivo (4mm ou maior): ${pct(a.fef)}`, 21, ay + 4);
       ay += 8;
 
       if (a.peNDF != null) {
