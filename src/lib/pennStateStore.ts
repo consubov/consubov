@@ -78,7 +78,7 @@ export function buildAnaliseRow(input: PennStateAnaliseInput) {
 /** Cria ou atualiza uma análise recalculando sempre pelo motor puro. */
 export async function salvarPennStateAnalise(input: PennStateAnaliseInput) {
   const row = buildAnaliseRow(input);
-  const { data, error } = await pennStateRequest("salvar análise Penn State", () =>
+  const { data, error } = await pennStateRequest<any>("salvar análise Penn State", () =>
     (supabase as any)
       .from("penn_state_analises")
       .upsert(row, { onConflict: "id" })
@@ -89,7 +89,7 @@ export async function salvarPennStateAnalise(input: PennStateAnaliseInput) {
 }
 
 export async function listarPennStateAnalises(visitaId: string) {
-  const { data, error } = await pennStateRequest("carregar análises Penn State", () =>
+  const { data, error } = await pennStateRequest<any>("carregar análises Penn State", () =>
     (supabase as any)
     .from("penn_state_analises")
     .select("*")
@@ -101,7 +101,7 @@ export async function listarPennStateAnalises(visitaId: string) {
 }
 
 export async function excluirPennStateAnalise(id: string) {
-  const { error } = await pennStateRequest("excluir análise Penn State", () =>
+  const { error } = await pennStateRequest<any>("excluir análise Penn State", () =>
     (supabase as any)
       .from("penn_state_analises")
       .update({ deleted_at: new Date().toISOString() })

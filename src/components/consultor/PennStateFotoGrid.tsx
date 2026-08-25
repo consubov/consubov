@@ -70,7 +70,7 @@ export default function PennStateFotoGrid({
       const path = `penn-state/${analiseId}/${ordem}-${Date.now()}.jpg`;
       // Recria o Blob a cada tentativa: no Safari uma referência antiga pode
       // já estar inválida e falhar com "Load failed" na primeira chamada.
-      const { error: upErr } = await pennStateRequest("enviar foto Penn State", async () => {
+      const { error: upErr } = await pennStateRequest<any>("enviar foto Penn State", async () => {
         const fresh = new Blob([await blob.arrayBuffer()], { type: blob.type || "image/jpeg" });
         return supabase.storage
           .from(BUCKET)
@@ -78,7 +78,7 @@ export default function PennStateFotoGrid({
       });
       if (upErr) throw upErr;
 
-      const { error: insErr } = await pennStateRequest("registrar foto Penn State", () =>
+      const { error: insErr } = await pennStateRequest<any>("registrar foto Penn State", () =>
         (supabase as any)
           .from("penn_state_analise_fotos")
           .insert({ penn_state_analise_id: analiseId, url: path, ordem }));
