@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { prepareConsultorPhotoFile } from "@/lib/consultorOffline/photoBlob";
 import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
+import { pennStateRequest } from "@/lib/pennStateStore";
 
 const BUCKET = "visitas-consultor-fotos";
 const MAX = 5;
@@ -67,14 +68,20 @@ export default function PennStateFotoGrid({
       setLocais(prev => ({ ...prev, [ordem]: { ordem, previewUrl: dataUrl, uploading: true } }));
 
       const path = `penn-state/${analiseId}/${ordem}-${Date.now()}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+      // Recria o Blob a cada tentativa: no Safari uma referência antiga pode
+      // já estar inválida e falhar com "Load failed" na primeira chamada.
+      const { error: upErr } = await pennStateRequest("enviar foto Penn State", async () => {
+        const fresh = new Blob([await blob.arrayBuffer()], { type: blob.type || "image/jpeg" });
+        return supabase.storage
+          .from(BUCKET)
+          .upload(path, fresh, { upsert: true, contentType: fresh.type });
+      });
       if (upErr) throw upErr;
 
-      const { error: insErr } = await (supabase as any)
-        .from("penn_state_analise_fotos")
-        .insert({ penn_state_analise_id: analiseId, url: path, ordem });
+      const { error: insErr } = await pennStateRequest("registrar foto Penn State", () =>
+        (supabase as any)
+          .from("penn_state_analise_fotos")
+          .insert({ penn_state_analise_id: analiseId, url: path, ordem }));
       if (insErr) throw insErr;
 
       setLocais(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });

@@ -1008,8 +1008,8 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
 
       doc.setFontSize(9.5);
       const linhas: [string, number][] = [
-        ["19mm", a.percentual_19mm], ["8mm", a.percentual_8mm],
-        ["4mm", a.percentual_4mm], ["Fundo", a.percentual_fundo],
+        ["Peneira Superior", a.percentual_19mm], ["Peneira Intermediária", a.percentual_8mm],
+        ["Peneira Inferior", a.percentual_4mm], ["Fundo (Bandeja)", a.percentual_fundo],
       ];
       for (const [label, v] of linhas) {
         doc.setFont("helvetica", "normal");
@@ -1024,7 +1024,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
       doc.setTextColor(GREEN_DARK);
-      doc.text(`Material fisicamente efetivo (4mm ou maior): ${pct(a.fef)}`, 21, ay + 4);
+      doc.text(`fef: ${pct(a.fef)}`, 21, ay + 4);
       ay += 8;
 
       if (a.peNDF != null) {
@@ -1067,7 +1067,9 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       return ay + 4;
     };
 
-    y = ensureRoom(y, 16);
+    // Bloco atômico: o título da seção nunca fica sozinho no fim da página —
+    // ele reserva espaço junto com a primeira subseção.
+    y = ensureRoom(y, 16 + measureAnalise(analises[0]));
     y = drawSectionTitle(doc, "Análise Penn State", y);
     for (const a of analises) {
       y = ensureRoom(y, measureAnalise(a));
@@ -1094,7 +1096,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       );
       y += 8;
 
-      const headers = ["Ponto", "19mm", "8mm", "4mm", "Fundo", "fef", ...(temPeNDF ? ["peNDF"] : [])];
+      const headers = ["Ponto", "Sup.", "Interm.", "Inf.", "Fundo (Bandeja)", "fef", ...(temPeNDF ? ["peNDF"] : [])];
       const nCols = headers.length;
       const firstW = 40;
       const otherW = (pageW - 30 - firstW) / (nCols - 1);
