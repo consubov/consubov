@@ -101,10 +101,15 @@ function bindControllerChangeReload() {
 
   navigator.serviceWorker.addEventListener("message", (event) => {
     const data = event.data as { type?: string; version?: string } | undefined;
+    if (data?.type === "CONSUBOV_APPLY_UPDATE") {
+      void applyPendingUpdateNow();
+      return;
+    }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
     if (data.version) lastKnownRemoteVersion = data.version;
     hardReloadToLatest(data.version || lastKnownRemoteVersion);
   });
+
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
@@ -112,6 +117,56 @@ function bindControllerChangeReload() {
     hardReloadToLatest();
   });
 }
+
+/**
+ * Aplica a atualização pendente imediatamente (clique na notificação).
+ * Só recarrega DEPOIS que o novo Service Worker assume o controle — se ele
+ * ainda não estiver instalado, aguardamos a instalação antes do skipWaiting.
+ */
+export async function applyPendingUpdateNow() {
+  if (!("serviceWorker" in navigator)) {
+    window.location.reload();
+    return;
+  }
+  try {
+    const registration =
+      (await navigator.serviceWorker.getRegistration()) ?? swRegistration ?? undefined;
+    if (!registration) {
+      hardReloadToLatest();
+      return;
+    }
+    swRegistration = registration;
+    bindControllerChangeReload();
+    await registration.update().catch(() => undefined);
+
+    // Aguarda o worker em instalação terminar antes de pedir skipWaiting.
+    const installing = registration.installing;
+    if (!registration.waiting && installing) {
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          if (installing.state === "installed" || installing.state === "activated") {
+            installing.removeEventListener("statechange", done);
+            resolve();
+          }
+        };
+        installing.addEventListener("statechange", done);
+        setTimeout(resolve, 8000);
+      });
+    }
+
+    if (registration.waiting) {
+      await activateWaitingServiceWorker(registration);
+      // Rede de segurança: se o controllerchange não vier, força o reload.
+      setTimeout(() => hardReloadToLatest(), 4000);
+      return;
+    }
+
+    hardReloadToLatest();
+  } catch {
+    hardReloadToLatest();
+  }
+}
+
 
 function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
   if (!registration.waiting || !navigator.serviceWorker.controller) return false;
@@ -185,7 +240,7 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
       badge: "/icon-96.png",
       tag: "consubov-update",
       renotify: true,
-      data: { url: "/" },
+      data: { url: "/", type: "update" },
     } as NotificationOptions);
   } catch {
     /* ignore — notificação é best-effort */
@@ -342,6 +397,15 @@ export function registerSW() {
   }
 
   bindControllerChangeReload();
+
+  // Aberto a partir do clique na notificação sem nenhuma aba viva: aplica já.
+  try {
+    if (new URLSearchParams(window.location.search).has("__sw_update")) {
+      void applyPendingUpdateNow();
+    }
+  } catch {
+    /* ignore */
+  }
 
   // Throttle das checagens: em campo o consultor alterna app/câmera dezenas de
   // vezes por visita; sem isso cada retorno de segundo plano dispara uma
