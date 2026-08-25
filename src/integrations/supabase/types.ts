@@ -3136,6 +3136,38 @@ export type Database = {
         }
         Relationships: []
       }
+      penn_state_analise_fotos: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          penn_state_analise_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          penn_state_analise_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          penn_state_analise_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "penn_state_analise_fotos_penn_state_analise_id_fkey"
+            columns: ["penn_state_analise_id"]
+            isOneToOne: false
+            referencedRelation: "penn_state_analises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       penn_state_analises: {
         Row: {
           aviso_divergencia: string | null
