@@ -199,20 +199,6 @@ export async function applyPendingUpdateNow(updateToken?: string) {
 }
 
 
-function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
-  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
-  if (hasCriticalOperations()) {
-    logSw("Auto-update adiado — operação crítica em andamento");
-    schedulePostDrainAction(() => {
-      const reg = swRegistration ?? registration;
-      if (reg.waiting) void activateWaitingServiceWorker(reg);
-    });
-    return false;
-  }
-  void activateWaitingServiceWorker(registration);
-  return true;
-}
-
 function getWaitingServiceWorkerVersion(registration: ServiceWorkerRegistration) {
   const scriptUrl = registration.waiting?.scriptURL;
   if (!scriptUrl) return lastKnownRemoteVersion;
@@ -281,12 +267,11 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
 
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
-    logSw("Nova versão em espera — aplicando automaticamente");
+    logSw("Nova versão instalada e pronta, aguardando ação do usuário");
     notifyListeners(true);
     // Notifica o usuário no dispositivo (mesmo com o app aberto/minimizado)
     // que existe uma nova versão. Funciona em Android e iOS PWA.
     void showUpdateNotificationOnce(registration);
-    tryAutoApply(registration);
     return true;
   }
   return false;
