@@ -72,3 +72,19 @@ describe("calcularPennState", () => {
     expect(r.fef).toBe(85);
   });
 });
+
+describe("regressão v1.66.5 — base = soma das frações", () => {
+  it("Linha 2: 680g declarado, frações 40/350/210/90", () => {
+    const r = calcularPennState({
+      peso_amostra_g: 680, peso_19mm_g: 40, peso_8mm_g: 350,
+      peso_4mm_g: 210, peso_fundo_g: 90,
+    });
+    expect(r.percentual_19mm).toBe(5.8);
+    expect(r.percentual_8mm).toBe(50.7);
+    expect(r.percentual_4mm).toBe(30.4);
+    expect(r.percentual_fundo).toBe(13);
+    expect(r.fef).toBe(86.9);
+    const total = r.percentual_19mm + r.percentual_8mm + r.percentual_4mm + r.percentual_fundo;
+    expect(Math.round(total * 10) / 10).toBe(99.9);
+  });
+});
