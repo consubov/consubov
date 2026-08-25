@@ -275,28 +275,65 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = data.url || '/';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ('focus' in client) {
-          if (isUpdate) {
-            // Pede à página que ative o SW em espera e recarregue depois que
-            // o novo worker assumir o controle (evita voltar para o build antigo).
-            try {
-              client.postMessage({ type: 'CONSUBOV_APPLY_UPDATE' });
-            } catch {
-              /* ignore */
-            }
-            return client.focus();
-          }
-          client.navigate(targetUrl).catch(() => undefined);
-          return client.focus();
+    (async () => {
+      console.log('[SW update] clique recebido', { isUpdate, targetUrl });
+
+      const updateToken = Date.now().toString();
+      const withUpdateToken = (rawUrl) => {
+        try {
+          const url = new URL(rawUrl, self.location.origin);
+          url.searchParams.set('_update', updateToken);
+          return url.toString();
+        } catch {
+          return `/?_update=${updateToken}`;
+        }
+      };
+
+      if (isUpdate) {
+        const waitingWorker = self.registration.waiting;
+        if (waitingWorker) {
+          console.log('[SW update] worker waiting encontrado; enviando SKIP_WAITING');
+          waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          // Isto é esperado quando o auto-update já ativou o worker antes de o
+          // usuário tocar na notificação. A navegação direta ainda atualiza o app.
+          console.log('[SW update] nenhum worker waiting; seguindo com navegação direta');
         }
       }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(isUpdate ? '/?__sw_update=1' : targetUrl);
+
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const client = clientList[0];
+      if (client) {
+        if (isUpdate) {
+          try {
+            console.log('[SW update] avisando cliente para preparar fallback');
+            client.postMessage({ type: 'CONSUBOV_APPLY_UPDATE', updateToken });
+          } catch (error) {
+            console.warn('[SW update] falha ao avisar cliente', error);
+          }
+
+          const directUrl = withUpdateToken(client.url || targetUrl);
+          console.log('[SW update] navegando cliente com cache-busting', directUrl);
+          try {
+            await client.navigate(directUrl);
+          } catch (error) {
+            console.warn('[SW update] client.navigate falhou; cliente fará fallback', error);
+          }
+        } else {
+          await client.navigate(targetUrl).catch(() => undefined);
+        }
+        await client.focus().catch(() => undefined);
+        return;
       }
-      return undefined;
-    }),
+
+      if (self.clients.openWindow) {
+        const openUrl = isUpdate
+          ? withUpdateToken(`${targetUrl}${targetUrl.includes('?') ? '&' : '?'}__sw_update=1`)
+          : targetUrl;
+        console.log('[SW update] nenhuma aba aberta; abrindo', openUrl);
+        await self.clients.openWindow(openUrl);
+      }
+    })(),
   );
 });
 

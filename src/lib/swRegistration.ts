@@ -29,6 +29,7 @@ const UPDATE_NOTIFICATION_STORAGE_KEY = "consubov:update-notified-version";
 const FORCE_RELOAD_STORAGE_KEY = "consubov:forced-reload-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 const notifiedUpdateVersions = new Set<string>();
+let explicitUpdateFallbackTimer: number | null = null;
 
 function buildReloadUrl(version = lastKnownRemoteVersion) {
   const url = new URL(window.location.href);
@@ -76,6 +77,36 @@ function hardReloadToLatest(version = lastKnownRemoteVersion) {
   window.location.replace(buildReloadUrl(version));
 }
 
+function explicitUpdateReload(updateToken = Date.now().toString()) {
+  if (hasCriticalOperations()) {
+    logSw("Reload explícito adiado — operação crítica em andamento");
+    schedulePostDrainAction(() => explicitUpdateReload(updateToken));
+    return;
+  }
+
+  // O clique do usuário é uma ordem explícita: não pode ser bloqueado pelo
+  // limitador usado nas atualizações automáticas. Removemos os gatilhos da URL
+  // para que a página nova não reinicie o mesmo ciclo.
+  const url = new URL(window.location.href);
+  url.searchParams.delete("__sw_update");
+  url.searchParams.delete("_update");
+  url.searchParams.set("__v", updateToken);
+  logSw("Executando reload obrigatório do clique", url.toString());
+  window.location.replace(url.toString());
+}
+
+function scheduleExplicitUpdateFallback(updateToken?: string) {
+  if (explicitUpdateFallbackTimer !== null) {
+    window.clearTimeout(explicitUpdateFallbackTimer);
+  }
+  logSw("Fallback obrigatório agendado para 1500ms");
+  explicitUpdateFallbackTimer = window.setTimeout(() => {
+    explicitUpdateFallbackTimer = null;
+    logSw("Fallback de 1500ms disparado independentemente de controllerchange");
+    explicitUpdateReload(updateToken);
+  }, 1500);
+}
+
 function logSw(message: string, ...args: unknown[]) {
   console.log(`[SW] ${message}`, ...args);
 }
@@ -95,9 +126,10 @@ function bindControllerChangeReload() {
   controllerChangeBound = true;
 
   navigator.serviceWorker.addEventListener("message", (event) => {
-    const data = event.data as { type?: string; version?: string } | undefined;
+    const data = event.data as { type?: string; version?: string; updateToken?: string } | undefined;
     if (data?.type === "CONSUBOV_APPLY_UPDATE") {
-      void applyPendingUpdateNow();
+      logSw("Mensagem CONSUBOV_APPLY_UPDATE recebida", data.updateToken ?? "sem token");
+      void applyPendingUpdateNow(data.updateToken);
       return;
     }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
@@ -109,6 +141,10 @@ function bindControllerChangeReload() {
 
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    logSw("Evento controllerchange disparado", {
+      controller: navigator.serviceWorker.controller?.scriptURL ?? null,
+      explicitFallbackPending: explicitUpdateFallbackTimer !== null,
+    });
     // Primeira instalação em um navegador limpo: o bundle atual já é o mais
     // novo, portanto recarregar aqui apenas atrasa a abertura inicial.
     if (ignoreFirstControllerChange) {
@@ -125,47 +161,40 @@ function bindControllerChangeReload() {
  * Só recarrega DEPOIS que o novo Service Worker assume o controle — se ele
  * ainda não estiver instalado, aguardamos a instalação antes do skipWaiting.
  */
-export async function applyPendingUpdateNow() {
+export async function applyPendingUpdateNow(updateToken?: string) {
+  logSw("Iniciando aplicação explícita da atualização", updateToken ?? "sem token");
   if (!("serviceWorker" in navigator)) {
-    window.location.reload();
+    explicitUpdateReload(updateToken);
     return;
   }
+  scheduleExplicitUpdateFallback(updateToken);
   try {
     const registration =
       (await navigator.serviceWorker.getRegistration()) ?? swRegistration ?? undefined;
     if (!registration) {
-      hardReloadToLatest();
+      logSw("Registro SW ausente; fallback continuará ativo");
       return;
     }
     swRegistration = registration;
     bindControllerChangeReload();
-    await registration.update().catch(() => undefined);
-
-    // Aguarda o worker em instalação terminar antes de pedir skipWaiting.
-    const installing = registration.installing;
-    if (!registration.waiting && installing) {
-      await new Promise<void>((resolve) => {
-        const done = () => {
-          if (installing.state === "installed" || installing.state === "activated") {
-            installing.removeEventListener("statechange", done);
-            resolve();
-          }
-        };
-        installing.addEventListener("statechange", done);
-        setTimeout(resolve, 8000);
-      });
-    }
+    void registration.update().then(
+      () => logSw("registration.update concluído", {
+        installing: registration.installing?.state ?? null,
+        waiting: registration.waiting?.state ?? null,
+        active: registration.active?.state ?? null,
+      }),
+      (error) => console.warn("[SW] registration.update falhou; fallback continuará", error),
+    );
 
     if (registration.waiting) {
+      logSw("Worker waiting encontrado no cliente; tentando SKIP_WAITING");
       await activateWaitingServiceWorker(registration);
-      // Rede de segurança: se o controllerchange não vier, força o reload.
-      setTimeout(() => hardReloadToLatest(), 4000);
       return;
     }
 
-    hardReloadToLatest();
-  } catch {
-    hardReloadToLatest();
+    logSw("Nenhum worker waiting no cliente; fallback obrigatório fará a navegação");
+  } catch (error) {
+    console.warn("[SW] aplicação explícita falhou; fallback continuará", error);
   }
 }
 
@@ -409,8 +438,11 @@ export function registerSW() {
 
   // Aberto a partir do clique na notificação sem nenhuma aba viva: aplica já.
   try {
-    if (new URLSearchParams(window.location.search).has("__sw_update")) {
-      void applyPendingUpdateNow();
+    const updateParams = new URLSearchParams(window.location.search);
+    const updateToken = updateParams.get("_update") ?? undefined;
+    if (updateParams.has("__sw_update") || updateToken) {
+      logSw("Página aberta pelo clique da notificação", updateToken ?? "sem token");
+      void applyPendingUpdateNow(updateToken);
     }
   } catch {
     /* ignore */
