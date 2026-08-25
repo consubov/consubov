@@ -519,11 +519,8 @@ export function useSWUpdate() {
   }, []);
 
   const applyUpdate = useCallback(() => {
-    if (swRegistration?.waiting) {
-      void activateWaitingServiceWorker(swRegistration);
-      return;
-    }
-    window.location.reload();
+    logSw("Atualização solicitada pelo banner");
+    void applyPendingUpdateNow();
   }, []);
 
   const forceRefresh = useCallback(async () => {
