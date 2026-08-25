@@ -280,6 +280,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         visitaId={visitaId}
         fazendaConsultorId={visita.fazenda_consultor_id || null}
         readOnly={readOnly}
+        numeroMap={numeroMap}
       />
 
       <div className="flex items-center justify-between">

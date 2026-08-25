@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, HelpCircle, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Camera, HelpCircle, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { calcularPennState } from "@/lib/pennState";
 import {
@@ -23,6 +23,8 @@ import {
   listarPennStateAnalises,
   salvarPennStateAnalise,
 } from "@/lib/pennStateStore";
+import { listarFotosPennState, numerarFotosPennState, type PennStateFoto } from "@/lib/pennStateFotos";
+import PennStateFotoGrid from "@/components/consultor/PennStateFotoGrid";
 
 const SUGESTOES = [
   "Linha 1", "Linha 2", "Linha 3",
@@ -65,10 +67,13 @@ interface Props {
   visitaId: string;
   fazendaConsultorId: string | null;
   readOnly?: boolean;
+  /** Numeração global das fotos da visita (currais/tópicos), para continuar a sequência. */
+  numeroMap?: Record<string, number>;
 }
 
-export default function PennStateSection({ visitaId, fazendaConsultorId, readOnly }: Props) {
+export default function PennStateSection({ visitaId, fazendaConsultorId, readOnly, numeroMap }: Props) {
   const [analises, setAnalises] = useState<Analise[]>([]);
+  const [fotos, setFotos] = useState<Record<string, PennStateFoto[]>>({});
   const [dietas, setDietas] = useState<Dieta[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -93,6 +98,9 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
     try {
       const rows = await listarPennStateAnalises(visitaId);
       setAnalises(rows as Analise[]);
+      try {
+        setFotos(await listarFotosPennState((rows as Analise[]).map(r => r.id)));
+      } catch (e) { console.warn("[pennstate] fotos", e); }
       if (fazendaConsultorId) {
         const ds = await listarDietas(fazendaConsultorId);
         setDietas(ds as Dieta[]);
@@ -105,6 +113,20 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
   }, [visitaId, fazendaConsultorId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Sequência global da visita: continua a numeração de currais/tópicos.
+  const offsetGlobal = useMemo(() => {
+    const vals = Object.values(numeroMap || {});
+    return vals.length ? Math.max(...vals) : 0;
+  }, [numeroMap]);
+  const numeroFotos = useMemo(
+    () => numerarFotosPennState(analises, fotos, offsetGlobal),
+    [analises, fotos, offsetGlobal],
+  );
+  const totalFotos = useMemo(
+    () => Object.values(fotos).reduce((acc, arr) => acc + arr.length, 0),
+    [fotos],
+  );
 
   const fdnEfetivo = useMemo(() => {
     if (dietaId !== "nenhuma") {
@@ -229,6 +251,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                     <Badge variant="secondary" className="text-[10px]">fef: {fmt(a.fef)}%</Badge>
                     {a.peNDF != null && (
                       <Badge variant="secondary" className="text-[10px]">peNDF: {fmt(a.peNDF)}%</Badge>
+                    )}
+                    {(fotos[a.id]?.length ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                        <Camera className="w-3 h-3" /> {fotos[a.id].length}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -361,6 +388,15 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                 <Input inputMode="decimal" value={fdnManual} onChange={e => setFdnManual(e.target.value)} placeholder="Sem FDN, a análise segue sem peNDF" />
               </div>
             )}
+
+            <PennStateFotoGrid
+              analiseId={editing?.id ?? null}
+              fotos={(editing ? fotos[editing.id] : []) || []}
+              numeroMap={numeroFotos}
+              proximoNumero={offsetGlobal + totalFotos + 1}
+              onChange={load}
+              disabled={readOnly}
+            />
 
             {temEntradas && preview.aviso_divergencia && (
               <div className="flex gap-2 rounded-md border border-secondary/50 bg-secondary/10 p-2 text-xs text-foreground">
