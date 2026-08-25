@@ -101,10 +101,15 @@ function bindControllerChangeReload() {
 
   navigator.serviceWorker.addEventListener("message", (event) => {
     const data = event.data as { type?: string; version?: string } | undefined;
+    if (data?.type === "CONSUBOV_APPLY_UPDATE") {
+      void applyPendingUpdateNow();
+      return;
+    }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
     if (data.version) lastKnownRemoteVersion = data.version;
     hardReloadToLatest(data.version || lastKnownRemoteVersion);
   });
+
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
