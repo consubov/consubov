@@ -55,7 +55,7 @@ describe("calcularPennState", () => {
     expect(r.percentual_fundo).toBe(13);
     expect(
       r.percentual_19mm + r.percentual_8mm + r.percentual_4mm + r.percentual_fundo,
-    ).toBeCloseTo(100, 6);
+    ).toBeCloseTo(100, 0); // 99,9 por arredondamento de 1 casa
     expect(r.fef).toBe(86.9);
     expect(r.aviso_divergencia).toBeTruthy();
   });
