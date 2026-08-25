@@ -985,9 +985,9 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
 
     const measureAnalise = (a: typeof analises[number]) => {
       let h = analises.length > 1 ? 12 : 0; // título da subseção (só com múltiplas)
-      h += 4 * 5; // 4 frações
-      h += 8; // fef
-      if (a.peNDF != null) h += 9;
+      h += 12; // 4 frações lado a lado + total calculado
+      h += 11; // fef (rótulo + valor)
+      if (a.peNDF != null) h += 13;
       if (a.fotos.length > 0) h += fwF + 6;
       if ((a.aviso_divergencia || "").trim()) h += 6;
       return h + 4;
@@ -1006,36 +1006,55 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
         ay += 12;
       }
 
-      doc.setFontSize(9.5);
-      const linhas: [string, number][] = [
-        ["Peneira Superior", a.percentual_19mm], ["Peneira Intermediária", a.percentual_8mm],
-        ["Peneira Inferior", a.percentual_4mm], ["Fundo (Bandeja)", a.percentual_fundo],
+      // Frações em 4 colunas lado a lado.
+      const fracoes: [string, number][] = [
+        ["Peneira 19mm", a.percentual_19mm], ["Peneira 8mm", a.percentual_8mm],
+        ["Peneira 4mm", a.percentual_4mm], ["Fundo (Bandeja)", a.percentual_fundo],
       ];
-      for (const [label, v] of linhas) {
+      const colW = (pageW - 30) / 4;
+      fracoes.forEach(([label, v], i) => {
+        const cx = 15 + i * colW + colW / 2;
         doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
         doc.setTextColor(INK_SOFT);
-        doc.text(label, 21, ay + 3.4);
+        doc.text(label, cx, ay + 3, { align: "center" });
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(INK);
-        doc.text(pct(v), pageW - 15, ay + 3.4, { align: "right" });
-        ay += 5;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
-      doc.setTextColor(GREEN_DARK);
-      doc.text(`fef: ${pct(a.fef)}`, 21, ay + 4);
-      ay += 8;
-
-      if (a.peNDF != null) {
         doc.setFontSize(10);
         doc.setTextColor(INK);
-        doc.text(`peNDF: ${pct(a.peNDF)}`, 21, ay + 3.5);
+        doc.text(pct(v), cx, ay + 8, { align: "center" });
+      });
+      ay += 12;
+
+      const totalCalc = a.percentual_19mm + a.percentual_8mm + a.percentual_4mm + a.percentual_fundo;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(INK_SOFT);
+      doc.text(`Total calculado: ${pct(totalCalc)}`, 21, ay + 1);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(INK_SOFT);
+      doc.text("fef", 21, ay + 4);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(GREEN_DARK);
+      doc.text(pct(a.fef), 21, ay + 10);
+      ay += 13;
+
+      if (a.peNDF != null) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(INK_SOFT);
+        doc.text("peNDF", 21, ay + 2);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(INK);
+        doc.text(pct(a.peNDF), 21, ay + 8);
         doc.setFont("helvetica", "italic");
         doc.setFontSize(7.5);
         doc.setTextColor(INK_SOFT);
-        doc.text("FDN fisicamente efetiva", 21, ay + 7.5);
-        ay += 9;
+        doc.text("Fibra em Detergente Neutro Fisicamente Efetiva (peNDF)", 21, ay + 12);
+        ay += 15;
       }
 
       if (a.fotos.length > 0) {
@@ -1096,7 +1115,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
       );
       y += 8;
 
-      const headers = ["Ponto", "Sup.", "Interm.", "Inf.", "Fundo (Bandeja)", "fef", ...(temPeNDF ? ["peNDF"] : [])];
+      const headers = ["Ponto", "19mm", "8mm", "4mm", "Fundo (Bandeja)", "fef", ...(temPeNDF ? ["peNDF"] : [])];
       const nCols = headers.length;
       const firstW = 40;
       const otherW = (pageW - 30 - firstW) / (nCols - 1);
