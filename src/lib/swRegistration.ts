@@ -62,22 +62,15 @@ function hardReloadToLatest(version = lastKnownRemoteVersion) {
   }
 
   const reloadCount = getForcedReloadCount(version);
-  if (reloadCount >= 3) {
+  if (reloadCount >= 1 || reloadingForUpdate) {
     logSw("Reload automático interrompido para evitar loop", version);
     notifyListeners(true);
     return;
   }
 
+  reloadingForUpdate = true;
   setForcedReloadCount(version, reloadCount + 1);
   logSw("Reload após update", version);
-
-  // Na 2ª tentativa, limpa caches do app antes de navegar. Isso corrige PWAs
-  // instalados no Android/iOS que ficaram presos em um shell antigo.
-  if (reloadCount >= 1) {
-    void clearAppCaches().finally(() => window.location.replace(buildReloadUrl(version)));
-    return;
-  }
-
   window.location.replace(buildReloadUrl(version));
 }
 
@@ -113,7 +106,6 @@ function bindControllerChangeReload() {
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
-    reloadingForUpdate = true;
     hardReloadToLatest();
   });
 }
