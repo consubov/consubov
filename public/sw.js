@@ -11,19 +11,6 @@ const SW_VERSION_RESPONSE = new Response(CACHE_VERSION, {
   },
 });
 
-function buildClientReloadUrl(clientUrl) {
-  try {
-    const url = new URL(clientUrl);
-    if (url.origin !== self.location.origin) return null;
-    if (url.searchParams.get('__app_version') === BUILD_VERSION) return null;
-    url.searchParams.set('__app_version', BUILD_VERSION);
-    url.searchParams.set('__v', Date.now().toString());
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 async function notifyClientsAboutActivatedVersion() {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -35,13 +22,9 @@ async function notifyClientsAboutActivatedVersion() {
           /* ignore */
         }
 
-        // Apps instalados no Android/iOS podem manter o JS antigo em memória.
-        // Ao ativar um SW novo, força uma única navegação com a versão atual
-        // para que todos os dispositivos carreguem o mesmo build publicado.
-        const reloadUrl = buildClientReloadUrl(client.url);
-        if (reloadUrl && 'navigate' in client) {
-          await client.navigate(reloadUrl).catch(() => undefined);
-        }
+        // A navegação é coordenada exclusivamente pelo cliente. Fazer também
+        // client.navigate() aqui disputava com controllerchange/activation e
+        // podia causar duas ou mais recargas antes do React montar.
       }),
     );
   } catch {
