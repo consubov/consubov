@@ -43,8 +43,8 @@ export function calcularPennState(input: PennStateInput): PennStateResultado {
   const soma_fracoes = p19 + p8 + p4 + pFundo;
   const diferenca_g = round1(amostra - soma_fracoes);
 
-  // Base das porcentagens: peso informado da amostra (fallback para a soma).
-  const base = amostra > 0 ? amostra : soma_fracoes;
+  // Base das porcentagens: SOMA REAL das frações pesadas (metodologia Penn State).
+  const base = soma_fracoes;
 
   const pct = (v: number) => (base > 0 ? round1((v / base) * 100) : 0);
 
