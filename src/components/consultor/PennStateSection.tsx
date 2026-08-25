@@ -319,8 +319,8 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             )}
 
             {temEntradas && preview.aviso_divergencia && (
-              <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-foreground">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
+              <div className="flex gap-2 rounded-md border border-secondary/50 bg-secondary/10 p-2 text-xs text-foreground">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-secondary" />
                 <span>{preview.aviso_divergencia}</span>
               </div>
             )}

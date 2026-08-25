@@ -23,6 +23,7 @@ import VisitaTopicosSection, { type Topico } from "@/components/consultor/Visita
 import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
 import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
 import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
+import PennStateSection from "@/components/consultor/PennStateSection";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
 
@@ -273,6 +274,13 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
 
       {/* Indicadores Zootécnicos (única por visita) */}
       <IndicadoresZootecnicosSection visitaId={visitaId} readOnly={readOnly} />
+
+      {/* Análise Penn State (por visita) */}
+      <PennStateSection
+        visitaId={visitaId}
+        fazendaConsultorId={visita.fazenda_consultor_id || null}
+        readOnly={readOnly}
+      />
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Currais avaliados ({currais.length})</h2>
