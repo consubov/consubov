@@ -97,7 +97,29 @@ export async function listarPennStateAnalises(visitaId: string) {
     .is("deleted_at", null)
     .order("ordem"));
   if (error) throw error;
-  return data || [];
+  // Recalcula sempre pelo motor puro: linhas antigas gravadas antes da
+  // correção da base de cálculo (soma real das frações) ficariam com
+  // percentuais somando mais de 100%.
+  return ((data as any[]) || []).map(row => {
+    const r = calcularPennState({
+      peso_amostra_g: Number(row.peso_amostra_g) || 0,
+      peso_19mm_g: Number(row.peso_19mm_g) || 0,
+      peso_8mm_g: Number(row.peso_8mm_g) || 0,
+      peso_4mm_g: Number(row.peso_4mm_g) || 0,
+      peso_fundo_g: Number(row.peso_fundo_g) || 0,
+      fdn_percentual: row.fdn_percentual_usado ?? null,
+    });
+    return {
+      ...row,
+      percentual_19mm: r.percentual_19mm,
+      percentual_8mm: r.percentual_8mm,
+      percentual_4mm: r.percentual_4mm,
+      percentual_fundo: r.percentual_fundo,
+      fef: r.fef,
+      peNDF: r.peNDF,
+      aviso_divergencia: r.aviso_divergencia,
+    };
+  });
 }
 
 export async function excluirPennStateAnalise(id: string) {

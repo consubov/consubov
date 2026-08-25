@@ -286,9 +286,9 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
               <thead>
                 <tr className="text-muted-foreground border-b border-border">
                   <th className="text-left font-medium py-1.5 pr-2">Ponto</th>
-                  <th className="text-right font-medium py-1.5 px-1.5">Sup.</th>
-                  <th className="text-right font-medium py-1.5 px-1.5">Interm.</th>
-                  <th className="text-right font-medium py-1.5 px-1.5">Inf.</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">19mm</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">8mm</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">4mm</th>
                   <th className="text-right font-medium py-1.5 px-1.5">Fundo (Bandeja)</th>
                   <th className="text-right font-medium py-1.5 px-1.5">fef</th>
                   {analises.some(a => a.peNDF != null) && (
@@ -361,9 +361,9 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Peneira Superior (g)</Label><Input inputMode="decimal" value={p19} onChange={e => setP19(e.target.value)} /></div>
-              <div><Label>Peneira Intermediária (g)</Label><Input inputMode="decimal" value={p8} onChange={e => setP8(e.target.value)} /></div>
-              <div><Label>Peneira Inferior (g)</Label><Input inputMode="decimal" value={p4} onChange={e => setP4(e.target.value)} /></div>
+              <div><Label>Peneira 19mm (g)</Label><Input inputMode="decimal" value={p19} onChange={e => setP19(e.target.value)} /></div>
+              <div><Label>Peneira 8mm (g)</Label><Input inputMode="decimal" value={p8} onChange={e => setP8(e.target.value)} /></div>
+              <div><Label>Peneira 4mm (g)</Label><Input inputMode="decimal" value={p4} onChange={e => setP4(e.target.value)} /></div>
               <div><Label>Fundo (Bandeja) (g)</Label><Input inputMode="decimal" value={pFundo} onChange={e => setPFundo(e.target.value)} /></div>
             </div>
 
@@ -408,26 +408,38 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             {temEntradas && (
               <Card className="p-3 space-y-1.5 bg-muted/40">
                 <div className="text-xs font-semibold text-muted-foreground">Resultado</div>
-                <ResLinha label="Peneira Superior" v={preview.percentual_19mm} />
-                <ResLinha label="Peneira Intermediária" v={preview.percentual_8mm} />
-                <ResLinha label="Peneira Inferior" v={preview.percentual_4mm} />
-                <ResLinha label="Fundo (Bandeja)" v={preview.percentual_fundo} />
-                <div className="pt-1.5 mt-1 border-t border-border text-sm font-semibold text-primary flex items-center gap-1.5">
-                  fef: {fmt(preview.fef)}%
-                  <button
-                    type="button"
-                    aria-label="O que é fef"
-                    title="fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior)."
-                    onClick={() => toast.info("fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior).")}
-                    className="text-muted-foreground hover:text-primary"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                  </button>
+                <div className="grid grid-cols-4 gap-2">
+                  <ResCol label="Peneira 19mm" v={preview.percentual_19mm} />
+                  <ResCol label="Peneira 8mm" v={preview.percentual_8mm} />
+                  <ResCol label="Peneira 4mm" v={preview.percentual_4mm} />
+                  <ResCol label="Fundo (Bandeja)" v={preview.percentual_fundo} />
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Total calculado: {fmt(
+                    preview.percentual_19mm + preview.percentual_8mm +
+                    preview.percentual_4mm + preview.percentual_fundo,
+                  )}%
+                </div>
+                <div className="pt-1.5 mt-1 border-t border-border">
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    fef
+                    <button
+                      type="button"
+                      aria-label="O que é fef"
+                      title="fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior)."
+                      onClick={() => toast.info("fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior).")}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      <HelpCircle className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-lg font-bold text-primary leading-tight">{fmt(preview.fef)}%</div>
                 </div>
                 {preview.peNDF != null && (
                   <div>
-                    <div className="text-sm font-semibold text-foreground">peNDF: {fmt(preview.peNDF)}%</div>
-                    <div className="text-[10px] text-muted-foreground">FDN fisicamente efetiva</div>
+                    <div className="text-[10px] text-muted-foreground">peNDF</div>
+                    <div className="text-lg font-bold text-foreground leading-tight">{fmt(preview.peNDF)}%</div>
+                    <div className="text-[10px] text-muted-foreground">Fibra em Detergente Neutro Fisicamente Efetiva (peNDF)</div>
                   </div>
                 )}
               </Card>
@@ -466,11 +478,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
   );
 }
 
-function ResLinha({ label, v }: { label: string; v: number }) {
+function ResCol({ label, v }: { label: string; v: number }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">{fmt(v)}%</span>
+    <div className="text-center">
+      <div className="text-[10px] text-muted-foreground leading-tight">{label}</div>
+      <div className="text-sm font-semibold text-foreground">{fmt(v)}%</div>
     </div>
   );
 }
