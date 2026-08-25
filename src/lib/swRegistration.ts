@@ -118,6 +118,56 @@ function bindControllerChangeReload() {
   });
 }
 
+/**
+ * Aplica a atualização pendente imediatamente (clique na notificação).
+ * Só recarrega DEPOIS que o novo Service Worker assume o controle — se ele
+ * ainda não estiver instalado, aguardamos a instalação antes do skipWaiting.
+ */
+export async function applyPendingUpdateNow() {
+  if (!("serviceWorker" in navigator)) {
+    window.location.reload();
+    return;
+  }
+  try {
+    const registration =
+      (await navigator.serviceWorker.getRegistration()) ?? swRegistration ?? undefined;
+    if (!registration) {
+      hardReloadToLatest();
+      return;
+    }
+    swRegistration = registration;
+    bindControllerChangeReload();
+    await registration.update().catch(() => undefined);
+
+    // Aguarda o worker em instalação terminar antes de pedir skipWaiting.
+    const installing = registration.installing;
+    if (!registration.waiting && installing) {
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          if (installing.state === "installed" || installing.state === "activated") {
+            installing.removeEventListener("statechange", done);
+            resolve();
+          }
+        };
+        installing.addEventListener("statechange", done);
+        setTimeout(resolve, 8000);
+      });
+    }
+
+    if (registration.waiting) {
+      await activateWaitingServiceWorker(registration);
+      // Rede de segurança: se o controllerchange não vier, força o reload.
+      setTimeout(() => hardReloadToLatest(), 4000);
+      return;
+    }
+
+    hardReloadToLatest();
+  } catch {
+    hardReloadToLatest();
+  }
+}
+
+
 function tryAutoApply(registration: ServiceWorkerRegistration): boolean {
   if (!registration.waiting || !navigator.serviceWorker.controller) return false;
   if (hasCriticalOperations()) {
