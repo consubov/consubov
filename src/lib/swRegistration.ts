@@ -240,7 +240,7 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
       badge: "/icon-96.png",
       tag: "consubov-update",
       renotify: true,
-      data: { url: "/" },
+      data: { url: "/", type: "update" },
     } as NotificationOptions);
   } catch {
     /* ignore — notificação é best-effort */
@@ -397,6 +397,15 @@ export function registerSW() {
   }
 
   bindControllerChangeReload();
+
+  // Aberto a partir do clique na notificação sem nenhuma aba viva: aplica já.
+  try {
+    if (new URLSearchParams(window.location.search).has("__sw_update")) {
+      void applyPendingUpdateNow();
+    }
+  } catch {
+    /* ignore */
+  }
 
   // Throttle das checagens: em campo o consultor alterna app/câmera dezenas de
   // vezes por visita; sem isso cada retorno de segundo plano dispara uma
