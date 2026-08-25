@@ -32,6 +32,34 @@ async function notifyClientsAboutActivatedVersion() {
   }
 }
 
+async function moveClientsToActivatedBuild() {
+  // Esta navegação nasce no próprio worker NOVO, depois de clients.claim().
+  // Assim ela não depende do bundle/SW antigo entender mensagens novas.
+  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  await Promise.allSettled(
+    clientList.map(async (client) => {
+      try {
+        const url = new URL(client.url || '/', self.location.origin);
+        if (url.searchParams.get('__sw_build') === BUILD_VERSION) {
+          console.log('[SW update] cliente já está no build ativado', BUILD_VERSION);
+          return;
+        }
+        url.searchParams.delete('_update');
+        url.searchParams.delete('__sw_update');
+        url.searchParams.set('__sw_build', BUILD_VERSION);
+        url.searchParams.set('__v', Date.now().toString());
+        console.log('[SW update] SW novo forçando navegação do cliente', {
+          build: BUILD_VERSION,
+          url: url.toString(),
+        });
+        await client.navigate(url.toString());
+      } catch (error) {
+        console.warn('[SW update] SW novo não conseguiu navegar cliente', error);
+      }
+    }),
+  );
+}
+
 const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
 
 self.addEventListener('message', (event) => {
@@ -74,11 +102,17 @@ self.addEventListener('activate', (event) => {
   console.log('[SW] activate', CACHE_VERSION);
   const validCaches = new Set([CACHE_NAME, SHELL_CACHE]);
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => !validCaches.has(key)).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
-      .then(() => notifyClientsAboutActivatedVersion()),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => !validCaches.has(key)).map((key) => caches.delete(key)));
+      await self.clients.claim();
+      console.log('[SW update] novo worker assumiu os clientes', BUILD_VERSION);
+      await notifyClientsAboutActivatedVersion();
+      // Dá ao cliente antigo uma janela curta para reagir ao postMessage, mas
+      // garante a navegação mesmo se esse bundle estiver travado ou incompatível.
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await moveClientsToActivatedBuild();
+    })(),
   );
 });
 
