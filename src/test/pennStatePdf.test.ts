@@ -28,9 +28,9 @@ const analise = (n: string, ordem: number, peNDF: number | null, fotos: number) 
   fotos: Array.from({ length: fotos }, (_, i) => ({ id: `f${ordem}-${i}`, url: `p/${ordem}/${i}.jpg`, ordem: i + 1 })),
 });
 
-async function gerar(pennState: any[]) {
+async function gerar(pennState: any[], extra: any = {}) {
   const { generateConfinamentoPdf } = await import("@/lib/confinamentoPdf");
-  const { blob } = await generateConfinamentoPdf({ ...base, pennState } as any);
+  const { blob } = await generateConfinamentoPdf({ ...base, ...extra, pennState } as any);
   return await new Promise<Buffer>((resolve, reject) => {
     const fr = new FileReader();
     fr.onload = () => resolve(Buffer.from(fr.result as ArrayBuffer));
@@ -61,6 +61,16 @@ describe("PDF Confinamento — Análise Penn State", () => {
       analise("Linha 3", 3, 24.1, 0),
     ]);
     fs.writeFileSync("/tmp/pennpdf/tres.pdf", buf);
+    expect(buf.length).toBeGreaterThan(1000);
+  });
+
+  it("(d) título Penn State perto do fim da página não fica órfão", async () => {
+    const topicos = Array.from({ length: 7 }, (_, i) => ({
+      id: `t${i}`, titulo: `Tópico ${i + 1}`, ordem: i, zona: "desenvolvimento",
+      texto: "Texto de preenchimento. ".repeat(14), fotos: [],
+    }));
+    const buf = await gerar([analise("Linha 1", 1, 25.5, 2)], { topicos });
+    fs.writeFileSync("/tmp/pennpdf/paginacao.pdf", buf);
     expect(buf.length).toBeGreaterThan(1000);
   });
 });
