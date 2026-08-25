@@ -1172,6 +1172,41 @@ export type Database = {
           },
         ]
       }
+      dietas_consultor: {
+        Row: {
+          created_at: string
+          fazenda_consultor_id: string
+          fdn_percentual: number | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fazenda_consultor_id: string
+          fdn_percentual?: number | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fazenda_consultor_id?: string
+          fdn_percentual?: number | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dietas_consultor_fazenda_consultor_id_fkey"
+            columns: ["fazenda_consultor_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas_consultor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       elementos_mapa: {
         Row: {
           criado_em: string | null
@@ -3100,6 +3135,93 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      penn_state_analises: {
+        Row: {
+          aviso_divergencia: string | null
+          created_at: string
+          deleted_at: string | null
+          dieta_id: string | null
+          fdn_percentual_usado: number | null
+          fef: number
+          id: string
+          nome: string
+          ordem: number
+          peNDF: number | null
+          percentual_19mm: number
+          percentual_4mm: number
+          percentual_8mm: number
+          percentual_fundo: number
+          peso_19mm_g: number
+          peso_4mm_g: number
+          peso_8mm_g: number
+          peso_amostra_g: number
+          peso_fundo_g: number
+          updated_at: string
+          visita_id: string
+        }
+        Insert: {
+          aviso_divergencia?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          dieta_id?: string | null
+          fdn_percentual_usado?: number | null
+          fef?: number
+          id?: string
+          nome?: string
+          ordem?: number
+          peNDF?: number | null
+          percentual_19mm?: number
+          percentual_4mm?: number
+          percentual_8mm?: number
+          percentual_fundo?: number
+          peso_19mm_g?: number
+          peso_4mm_g?: number
+          peso_8mm_g?: number
+          peso_amostra_g?: number
+          peso_fundo_g?: number
+          updated_at?: string
+          visita_id: string
+        }
+        Update: {
+          aviso_divergencia?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          dieta_id?: string | null
+          fdn_percentual_usado?: number | null
+          fef?: number
+          id?: string
+          nome?: string
+          ordem?: number
+          peNDF?: number | null
+          percentual_19mm?: number
+          percentual_4mm?: number
+          percentual_8mm?: number
+          percentual_fundo?: number
+          peso_19mm_g?: number
+          peso_4mm_g?: number
+          peso_8mm_g?: number
+          peso_amostra_g?: number
+          peso_fundo_g?: number
+          updated_at?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "penn_state_analises_dieta_id_fkey"
+            columns: ["dieta_id"]
+            isOneToOne: false
+            referencedRelation: "dietas_consultor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "penn_state_analises_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pesadores: {
         Row: {
