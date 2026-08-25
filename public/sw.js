@@ -287,20 +287,36 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  const data = event.notification.data || {};
+  const isUpdate = data.type === 'update' || event.notification.tag === 'consubov-update';
+  const targetUrl = data.url || '/';
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
+          if (isUpdate) {
+            // Pede à página que ative o SW em espera e recarregue depois que
+            // o novo worker assumir o controle (evita voltar para o build antigo).
+            try {
+              client.postMessage({ type: 'CONSUBOV_APPLY_UPDATE' });
+            } catch {
+              /* ignore */
+            }
+            return client.focus();
+          }
           client.navigate(targetUrl).catch(() => undefined);
           return client.focus();
         }
       }
-      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(isUpdate ? '/?__sw_update=1' : targetUrl);
+      }
       return undefined;
     }),
   );
 });
+
 
 self.addEventListener('error', (event) => {
   console.warn('[SW] error event:', event.message);
