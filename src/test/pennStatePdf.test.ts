@@ -31,7 +31,7 @@ const analise = (n: string, ordem: number, peNDF: number | null, fotos: number) 
 async function gerar(pennState: any[]) {
   const { generateConfinamentoPdf } = await import("@/lib/confinamentoPdf");
   const { blob } = await generateConfinamentoPdf({ ...base, pennState } as any);
-  return Buffer.from(await blob.arrayBuffer());
+  return Buffer.from(await new Response(blob as any).arrayBuffer());
 }
 
 describe("PDF Confinamento — Análise Penn State", () => {
