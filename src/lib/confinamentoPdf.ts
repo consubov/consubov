@@ -47,6 +47,19 @@ export interface ConfinamentoPdfData {
     organizacao_insumos_nota: number | null;
   };
   currais: ConfinamentoPdfCurral[];
+  pennState?: {
+    id: string;
+    nome: string;
+    ordem: number;
+    percentual_19mm: number;
+    percentual_8mm: number;
+    percentual_4mm: number;
+    percentual_fundo: number;
+    fef: number;
+    peNDF: number | null;
+    aviso_divergencia: string | null;
+    fotos: { id: string; url: string; ordem: number }[];
+  }[];
   topicos?: { id: string; titulo: string; texto: string | null; ordem: number; zona?: "introducao" | "desenvolvimento" | "conclusao";
     fotos: { id: string; url: string; ordem: number }[] }[];
   numeroMap?: Record<string, number>;
@@ -808,6 +821,7 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   const allFotos = [
     ...data.currais.flatMap(c => c.fotos.slice(0, 10)),
     ...((data.topicos || []).flatMap(t => t.fotos.slice(0, 5))),
+    ...((data.pennState || []).flatMap(a => a.fotos.slice(0, 5))),
   ];
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, allFotos));
 
@@ -957,6 +971,163 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   // DESENVOLVIMENTO — tópicos após currais, fluxo contínuo (sem quebra forçada)
   for (const t of devT) {
     y = renderTopicoAtomic(t, y, false);
+  }
+
+  // ANÁLISE PENN STATE — omitida quando não há análises. Usa o mesmo fluxo
+  // contínuo/atômico (ensureRoom) dos demais blocos, sem paginação própria.
+  const analises = [...(data.pennState || [])].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  if (analises.length > 0) {
+    const wArea = pageW - 30;
+    const colsF = 5;
+    const gapF = 2;
+    const fwF = (wArea - (colsF - 1) * gapF) / colsF;
+    const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+
+    const measureAnalise = (a: typeof analises[number]) => {
+      let h = analises.length > 1 ? 12 : 0; // título da subseção (só com múltiplas)
+      h += 4 * 5; // 4 frações
+      h += 8; // fef
+      if (a.peNDF != null) h += 9;
+      if (a.fotos.length > 0) h += fwF + 6;
+      if ((a.aviso_divergencia || "").trim()) h += 6;
+      return h + 4;
+    };
+
+    const drawAnalise = (a: typeof analises[number], startY: number): number => {
+      let ay = startY;
+      // Com uma única análise o título da seção já identifica o bloco.
+      if (analises.length > 1) {
+        doc.setFillColor(GREEN_DARK);
+        doc.rect(15, ay, 3, 8, "F");
+        doc.setTextColor(GREEN_DARK);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text(`Análise Penn State — ${a.nome}`, 21, ay + 6);
+        ay += 12;
+      }
+
+      doc.setFontSize(9.5);
+      const linhas: [string, number][] = [
+        ["19mm", a.percentual_19mm], ["8mm", a.percentual_8mm],
+        ["4mm", a.percentual_4mm], ["Fundo", a.percentual_fundo],
+      ];
+      for (const [label, v] of linhas) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(INK_SOFT);
+        doc.text(label, 21, ay + 3.4);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(INK);
+        doc.text(pct(v), pageW - 15, ay + 3.4, { align: "right" });
+        ay += 5;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(GREEN_DARK);
+      doc.text(`Material fisicamente efetivo (4mm ou maior): ${pct(a.fef)}`, 21, ay + 4);
+      ay += 8;
+
+      if (a.peNDF != null) {
+        doc.setFontSize(10);
+        doc.setTextColor(INK);
+        doc.text(`peNDF: ${pct(a.peNDF)}`, 21, ay + 3.5);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7.5);
+        doc.setTextColor(INK_SOFT);
+        doc.text("FDN fisicamente efetiva", 21, ay + 7.5);
+        ay += 9;
+      }
+
+      if (a.fotos.length > 0) {
+        const nF = Math.min(a.fotos.length, colsF);
+        for (let i = 0; i < nF; i++) {
+          const fx = 15 + i * (fwF + gapF);
+          const foto = a.fotos[i];
+          const dataUrl = fotosCache[foto.id];
+          if (dataUrl) {
+            try {
+              const fmtImg = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+              doc.addImage(dataUrl, fmtImg, fx, ay, fwF, fwF, undefined, "FAST");
+            } catch { doc.setDrawColor(LINE); doc.rect(fx, ay, fwF, fwF); }
+          } else { doc.setFillColor("#F3F1E8"); doc.rect(fx, ay, fwF, fwF, "F"); }
+          const num = numeroMap[foto.id];
+          if (num != null) drawNumeroBadge(doc, fx + 1.5, ay + 1.5, num);
+        }
+        ay += fwF + 6;
+      }
+
+      const aviso = (a.aviso_divergencia || "").trim();
+      if (aviso) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7.5);
+        doc.setTextColor(INK_SOFT);
+        doc.text(aviso, 21, ay + 3);
+        ay += 6;
+      }
+      return ay + 4;
+    };
+
+    y = ensureRoom(y, 16);
+    y = drawSectionTitle(doc, "Análise Penn State", y);
+    for (const a of analises) {
+      y = ensureRoom(y, measureAnalise(a));
+      y = drawAnalise(a, y);
+    }
+
+    // Comparação entre pontos (bloco atômico) — só com 2+ análises.
+    if (analises.length > 1) {
+      const temPeNDF = analises.some(a => a.peNDF != null);
+      const rowH = 5.5;
+      const tableH = 12 + 7 + analises.length * rowH + 8;
+      y = ensureRoom(y, tableH);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(GREEN_DARK);
+      doc.text("Comparação entre Pontos", 15, y + 4);
+      y += 8;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(INK_SOFT);
+      doc.text(
+        "Compare a distribuição entre os pontos coletados para avaliar a uniformidade da mistura ao longo da distribuição do cocho.",
+        15, y + 3, { maxWidth: pageW - 30 },
+      );
+      y += 8;
+
+      const headers = ["Ponto", "19mm", "8mm", "4mm", "Fundo", "fef", ...(temPeNDF ? ["peNDF"] : [])];
+      const nCols = headers.length;
+      const firstW = 40;
+      const otherW = (pageW - 30 - firstW) / (nCols - 1);
+      const colX = (i: number) => 15 + (i === 0 ? 0 : firstW + (i - 1) * otherW);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(INK_SOFT);
+      headers.forEach((h, i) => {
+        if (i === 0) doc.text(h, colX(0) + 1, y + 4);
+        else doc.text(h, colX(i) + otherW - 1, y + 4, { align: "right" });
+      });
+      y += 6;
+      doc.setDrawColor(LINE);
+      doc.setLineWidth(0.3);
+      doc.line(15, y, pageW - 15, y);
+
+      doc.setFontSize(8.5);
+      for (const a of analises) {
+        y += rowH;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(INK);
+        doc.text(a.nome || "-", colX(0) + 1, y, { maxWidth: firstW - 2 });
+        doc.setFont("helvetica", "normal");
+        const cells = [
+          pct(a.percentual_19mm), pct(a.percentual_8mm), pct(a.percentual_4mm),
+          pct(a.percentual_fundo), pct(a.fef),
+          ...(temPeNDF ? [a.peNDF != null ? pct(a.peNDF) : "—"] : []),
+        ];
+        cells.forEach((c, i) => doc.text(c, colX(i + 1) + otherW - 1, y, { align: "right" }));
+      }
+      y += 8;
+    }
   }
 
   // INDICADORES ZOOTÉCNICOS — só se algum campo estiver preenchido
