@@ -248,6 +248,50 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
         </div>
       )}
 
+      {!loading && analises.length >= 2 && (
+        <Card className="p-3 space-y-2">
+          <div className="text-sm font-semibold text-foreground">Comparação entre Pontos</div>
+          <p className="text-[11px] text-muted-foreground">
+            Compare a distribuição entre os pontos coletados para avaliar a uniformidade da mistura ao longo da distribuição do cocho.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted-foreground border-b border-border">
+                  <th className="text-left font-medium py-1.5 pr-2">Ponto</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">19mm</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">8mm</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">4mm</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">Fundo</th>
+                  <th className="text-right font-medium py-1.5 px-1.5">fef</th>
+                  {analises.some(a => a.peNDF != null) && (
+                    <th className="text-right font-medium py-1.5 pl-1.5">peNDF</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {analises.map(a => (
+                  <tr key={a.id} className="border-b border-border/50 last:border-0">
+                    <td className="text-left py-1.5 pr-2 font-medium text-foreground max-w-[110px] truncate">{a.nome}</td>
+                    <td className="text-right py-1.5 px-1.5 text-foreground">{fmt(a.percentual_19mm)}%</td>
+                    <td className="text-right py-1.5 px-1.5 text-foreground">{fmt(a.percentual_8mm)}%</td>
+                    <td className="text-right py-1.5 px-1.5 text-foreground">{fmt(a.percentual_4mm)}%</td>
+                    <td className="text-right py-1.5 px-1.5 text-foreground">{fmt(a.percentual_fundo)}%</td>
+                    <td className="text-right py-1.5 px-1.5 font-semibold text-primary">{fmt(a.fef)}%</td>
+                    {analises.some(x => x.peNDF != null) && (
+                      <td className="text-right py-1.5 pl-1.5 text-foreground">
+                        {a.peNDF != null ? `${fmt(a.peNDF)}%` : "—"}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+
       {/* Orientação de campo */}
       <Dialog open={ajudaOpen} onOpenChange={setAjudaOpen}>
         <DialogContent>
