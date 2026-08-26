@@ -484,14 +484,17 @@ async function drawPastoBlock(
     doc.setTextColor(INK_SOFT);
     doc.text(label.toUpperCase(), cx, scoreY);
     // Indicador único (círculo dourado + N/5) em vez das 5 opções.
-    const notaNum = nota != null ? Math.round(nota * 10) / 10 : null;
+    const notaNum = nota != null ? Number(nota.toFixed(1)) : null;
+    const notaTxt = notaNum != null
+      ? (Number.isInteger(notaNum) ? String(notaNum) : notaNum.toFixed(1).replace(".", ","))
+      : null;
     const dotY = scoreY + 4;
     doc.setFillColor(notaNum ? GOLD : "#E7E3D6");
     doc.circle(cx + 2, dotY, 1.8, "F");
     doc.setFontSize(9);
     doc.setTextColor(notaNum ? GREEN_DARK : INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.text(notaNum ? `${notaNum}/5` : "—", cx + 6, dotY + 1.2);
+    doc.text(notaTxt ? `${notaTxt}/5` : "—", cx + 6, dotY + 1.2);
     // Legenda curta abaixo, quebrando em até 2 linhas.
     doc.setFontSize(5.6);
     doc.setFont("helvetica", "normal");
