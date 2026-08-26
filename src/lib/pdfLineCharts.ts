@@ -458,3 +458,218 @@ export function drawDualLineChartPage(
 }
 
 
+
+/* ==========================================================================
+ * Confinamento (Curral): página única com
+ *  - Gráfico 1: linha da média do escore de fezes por curral
+ *  - Gráfico 2: barras empilhadas horizontais (% escore 2/3/4 por curral)
+ *  - Tabela de apoio (percentual e contagem por curral + total)
+ * ========================================================================== */
+
+const ESC_COLORS: Record<number, string> = { 2: "#2F6FB2", 3: "#1F7A4D", 4: "#D98324" };
+
+export interface CurralFezesInput {
+  num_curral: string;
+  samples: number[];
+}
+
+const fmt1 = (v: number) =>
+  Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+export function drawCurralFezesDistribuicaoPage(
+  doc: jsPDF,
+  fazendaNome: string,
+  currais: CurralFezesInput[],
+): boolean {
+  const rows = currais
+    .map(c => {
+      const counts: Record<number, number> = { 2: 0, 3: 0, 4: 0 };
+      for (const s of c.samples || []) {
+        const n = Math.round(Number(s));
+        if (n >= 2 && n <= 4) counts[n] += 1;
+      }
+      const total = counts[2] + counts[3] + counts[4];
+      const media = total > 0 ? (counts[2] * 2 + counts[3] * 3 + counts[4] * 4) / total : 0;
+      return { label: c.num_curral || "?", counts, total, media };
+    })
+    .filter(r => r.total > 0);
+
+  if (rows.length === 0) return false;
+
+  const pageW = doc.internal.pageSize.getWidth();
+  drawPageHeader(doc, fazendaNome);
+
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Média do escore de fezes por curral", 15, 26);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(INK_SOFT);
+  doc.text("Média do escore de fezes (2, 3 e 4) em cada curral", 15, 31.5);
+
+  // ---------- Gráfico 1: linha ----------
+  const chartX = 24;
+  const chartY = 40;
+  const chartW = pageW - 24 - 18;
+  const chartH = 62;
+
+  const medias = rows.map(r => r.media);
+  let minY = Math.floor(Math.min(...medias, 3) * 2) / 2 - 0.5;
+  let maxY = Math.ceil(Math.max(...medias, 3) * 2) / 2 + 0.5;
+  minY = Math.max(1, minY);
+  maxY = Math.min(5, Math.max(maxY, minY + 1));
+
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.3);
+  doc.setFontSize(7);
+  doc.setTextColor(INK_SOFT);
+  doc.setFont("helvetica", "normal");
+  const TICKS = 4;
+  for (let i = 0; i <= TICKS; i++) {
+    const gy = chartY + chartH - (chartH * i) / TICKS;
+    doc.line(chartX, gy, chartX + chartW, gy);
+    doc.text(fmt1(minY + ((maxY - minY) * i) / TICKS), chartX - 3, gy + 1, { align: "right" });
+  }
+
+  const n = rows.length;
+  const px = (i: number) => (n === 1 ? chartX + chartW / 2 : chartX + (i * chartW) / (n - 1));
+  const py = (v: number) => chartY + chartH - (chartH * (v - minY)) / (maxY - minY);
+
+  doc.setDrawColor(GREEN_DARK);
+  doc.setLineWidth(0.7);
+  for (let i = 0; i < n - 1; i++) doc.line(px(i), py(rows[i].media), px(i + 1), py(rows[i + 1].media));
+  doc.setFillColor(GOLD);
+  for (let i = 0; i < n; i++) doc.circle(px(i), py(rows[i].media), 1.3, "F");
+
+  const valFont = n > 10 ? 5.5 : 6.5;
+  for (let i = 0; i < n; i++) {
+    const t = fmt1(rows[i].media);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(valFont);
+    const w = doc.getTextWidth(t) + 2;
+    const yy = Math.max(chartY + 4, py(rows[i].media) - 3);
+    doc.setFillColor("#FFFFFF");
+    doc.rect(px(i) - w / 2, yy - valFont * 0.42 - 1, w, valFont * 0.5 + 1.6, "F");
+    doc.setTextColor(GREEN_DARK);
+    doc.text(t, px(i), yy, { align: "center" });
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(INK);
+  for (let i = 0; i < n; i++) doc.text(rows[i].label, px(i), chartY + chartH + 5, { align: "center" });
+  doc.setFontSize(8);
+  doc.text("Curral", pageW / 2, chartY + chartH + 12, { align: "center" });
+
+  // ---------- Gráfico 2: barras empilhadas horizontais ----------
+  let y = chartY + chartH + 22;
+  doc.setTextColor(GREEN_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Distribuição do escore de fezes por curral", 15, y);
+  y += 6;
+
+  // legenda no topo
+  const legendItems: [string, string][] = [
+    ["Escore 2", ESC_COLORS[2]],
+    ["Escore 3", ESC_COLORS[3]],
+    ["Escore 4", ESC_COLORS[4]],
+  ];
+  let lx = 15;
+  legendItems.forEach(([label, color]) => {
+    doc.setFillColor(color);
+    doc.rect(lx, y - 3, 5, 3, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(INK);
+    doc.text(label, lx + 7, y);
+    lx += 30;
+  });
+  y += 6;
+
+  const labelW = 20;
+  const barX = 15 + labelW;
+  const barW = pageW - 15 - barX;
+  const barH = Math.min(9, Math.max(4.5, 60 / rows.length));
+  const barGap = barH * 0.35;
+
+  rows.forEach(r => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(INK);
+    doc.text(r.label, barX - 2, y + barH / 2 + 1.2, { align: "right" });
+    let cx = barX;
+    [2, 3, 4].forEach(k => {
+      const frac = r.counts[k] / r.total;
+      if (frac <= 0) return;
+      const w = barW * frac;
+      doc.setFillColor(ESC_COLORS[k]);
+      doc.rect(cx, y, w, barH, "F");
+      const pct = Math.round(frac * 100);
+      const txt = `${pct}%`;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(barH >= 7 ? 7 : 6);
+      if (w > doc.getTextWidth(txt) + 2) {
+        doc.setTextColor("#FFFFFF");
+        doc.text(txt, cx + w / 2, y + barH / 2 + 1.2, { align: "center" });
+      }
+      cx += w;
+    });
+    y += barH + barGap;
+  });
+
+  // ---------- Tabela de apoio ----------
+  y += 6;
+  const cols = rows.length + 1;
+  const firstColW = 26;
+  const colW = (pageW - 30 - firstColW) / cols;
+  const rowH = 6;
+  const headers = [...rows.map(r => r.label), "Total"];
+
+  const cell = (text: string, cxi: number, cy: number, bold: boolean, color = INK) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(cols > 8 ? 5.8 : 7);
+    doc.setTextColor(color);
+    doc.text(text, cxi, cy, { align: "center" });
+  };
+
+  doc.setFillColor("#FAF8F2");
+  doc.rect(15, y, pageW - 30, rowH, "F");
+  cell("Escore", 15 + firstColW / 2, y + 4, true, GREEN_DARK);
+  headers.forEach((h, i) => cell(h, 15 + firstColW + colW * (i + 0.5), y + 4, true, GREEN_DARK));
+  y += rowH;
+
+  const totals: Record<number, number> = { 2: 0, 3: 0, 4: 0 };
+  rows.forEach(r => { totals[2] += r.counts[2]; totals[3] += r.counts[3]; totals[4] += r.counts[4]; });
+  const grandTotal = totals[2] + totals[3] + totals[4];
+
+  doc.setDrawColor(LINE);
+  doc.setLineWidth(0.2);
+  [2, 3, 4].forEach((k, idx) => {
+    if (idx % 2 === 0) {
+      doc.setFillColor("#FFFFFF");
+    } else {
+      doc.setFillColor("#FAF8F2");
+    }
+    doc.rect(15, y, pageW - 30, rowH, "F");
+    doc.setFillColor(ESC_COLORS[k]);
+    doc.rect(16, y + rowH / 2 - 1.5, 3, 3, "F");
+    cell(`Escore ${k}`, 15 + firstColW / 2 + 2, y + 4, false);
+    rows.forEach((r, i) => {
+      const pct = r.total ? Math.round((r.counts[k] / r.total) * 100) : 0;
+      cell(`${pct}% (${r.counts[k]})`, 15 + firstColW + colW * (i + 0.5), y + 4, false);
+    });
+    const gp = grandTotal ? Math.round((totals[k] / grandTotal) * 100) : 0;
+    cell(`${gp}% (${totals[k]})`, 15 + firstColW + colW * (rows.length + 0.5), y + 4, true);
+    y += rowH;
+  });
+
+  doc.setFillColor("#F0EDE2");
+  doc.rect(15, y, pageW - 30, rowH, "F");
+  cell("Total de amostras", 15 + firstColW / 2, y + 4, true, GREEN_DARK);
+  rows.forEach((r, i) => cell(String(r.total), 15 + firstColW + colW * (i + 0.5), y + 4, true));
+  cell(String(grandTotal), 15 + firstColW + colW * (rows.length + 0.5), y + 4, true, GREEN_DARK);
+
+  return true;
+}

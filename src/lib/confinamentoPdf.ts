@@ -7,7 +7,7 @@ import { mentionsToText } from "@/lib/photoMentions";
 import { getActivePhotoLinks, setActivePhotoLinks, PhotoLinkCollector, currentPage } from "@/lib/pdfPhotoLinks";
 import { getScoreDescription, SCORE_SCALE_HINT } from "@/lib/scoreLegends";
 import { drawAssinaturas } from "@/lib/pdfAssinaturas";
-import { drawAllSampleChartPages, drawFezesCategoriaChartPages, type SampleChartTypes } from "@/lib/pdfLineCharts";
+import { drawAllSampleChartPages, drawFezesCategoriaChartPages, drawCurralFezesDistribuicaoPage, type SampleChartTypes } from "@/lib/pdfLineCharts";
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
 
@@ -1229,6 +1229,19 @@ export async function generateConfinamentoPdf(data: ConfinamentoPdfData): Promis
   drawFezesCategoriaChartPages(
     doc, data.fazenda.nome_fazenda || "", fezesGroups, data.sampleChartTypes?.fezes || "lines",
   );
+
+  // Página única: média por curral + distribuição percentual + tabela de apoio.
+  {
+    const curralInputs = data.currais.map(c => ({
+      num_curral: c.num_curral || "?",
+      samples: (c.samples?.fezes || []).filter(v => Number.isFinite(v) && v > 0),
+    }));
+    if (curralInputs.some(c => c.samples.length > 0)) {
+      doc.addPage();
+      const ok = drawCurralFezesDistribuicaoPage(doc, data.fazenda.nome_fazenda || "", curralInputs);
+      if (!ok) doc.deletePage(doc.getNumberOfPages());
+    }
+  }
 
   // SEÇÃO FINAL (Observações e Recomendações) — só renderiza se houver conteúdo.
   const hasConclusaoTopicos = conclusaoT.some(t => (t.texto || "").trim() || t.fotos.length > 0);
