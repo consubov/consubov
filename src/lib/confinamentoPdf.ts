@@ -342,6 +342,11 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
   return yEnd + 4;
 }
 
+function fmtDec(v: number, casas = 1): string {
+  const r = Number(v.toFixed(casas));
+  return (Number.isInteger(r) ? String(r) : r.toFixed(casas)).replace(".", ",");
+}
+
 function drawScoreRow(
   doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number, cellW = 40,
 ) {
@@ -357,7 +362,7 @@ function drawScoreRow(
   doc.setFontSize(9);
   doc.setTextColor(nota ? GREEN_DARK : INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.text(nota ? `${nota}/5` : "—", x + 6, dotY + 1.2);
+  doc.text(nota ? `${fmtDec(nota)}/5` : "—", x + 6, dotY + 1.2);
   // Legenda curta
   doc.setFontSize(5.6);
   doc.setFont("helvetica", "normal");
