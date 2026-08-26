@@ -462,11 +462,18 @@ export function drawDualLineChartPage(
 /* ==========================================================================
  * Confinamento (Curral): página única com
  *  - Gráfico 1: linha da média do escore de fezes por curral
- *  - Gráfico 2: barras empilhadas horizontais (% escore 2/3/4 por curral)
+ *  - Gráfico 2: barras empilhadas horizontais (% escore 1..5 por curral)
  *  - Tabela de apoio (percentual e contagem por curral + total)
  * ========================================================================== */
 
-const ESC_COLORS: Record<number, string> = { 2: "#2F6FB2", 3: "#1F7A4D", 4: "#D98324" };
+const ESC_COLORS: Record<number, string> = {
+  1: "#8E44AD",
+  2: "#2F6FB2",
+  3: "#1F7A4D",
+  4: "#D98324",
+  5: "#B03A2E",
+};
+const ESC_ALL = [1, 2, 3, 4, 5];
 
 export interface CurralFezesInput {
   num_curral: string;
@@ -483,18 +490,21 @@ export function drawCurralFezesDistribuicaoPage(
 ): boolean {
   const rows = currais
     .map(c => {
-      const counts: Record<number, number> = { 2: 0, 3: 0, 4: 0 };
+      const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       for (const s of c.samples || []) {
         const n = Math.round(Number(s));
-        if (n >= 2 && n <= 4) counts[n] += 1;
+        if (n >= 1 && n <= 5) counts[n] += 1;
       }
-      const total = counts[2] + counts[3] + counts[4];
-      const media = total > 0 ? (counts[2] * 2 + counts[3] * 3 + counts[4] * 4) / total : 0;
+      const total = ESC_ALL.reduce((a, k) => a + counts[k], 0);
+      const media = total > 0 ? ESC_ALL.reduce((a, k) => a + counts[k] * k, 0) / total : 0;
       return { label: c.num_curral || "?", counts, total, media };
     })
     .filter(r => r.total > 0);
 
   if (rows.length === 0) return false;
+
+  // escores presentes em pelo menos uma amostra da visita
+  const escoresAtivos = ESC_ALL.filter(k => rows.some(r => r.counts[k] > 0));
 
   const pageW = doc.internal.pageSize.getWidth();
   drawPageHeader(doc, fazendaNome);
@@ -506,7 +516,11 @@ export function drawCurralFezesDistribuicaoPage(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text("Média do escore de fezes (2, 3 e 4) em cada curral", 15, 31.5);
+  doc.text(
+    `Média do escore de fezes (${escoresAtivos.join(", ")}) em cada curral`,
+    15,
+    31.5,
+  );
 
   // ---------- Gráfico 1: linha ----------
   const chartX = 24;
@@ -571,11 +585,7 @@ export function drawCurralFezesDistribuicaoPage(
   y += 6;
 
   // legenda no topo
-  const legendItems: [string, string][] = [
-    ["Escore 2", ESC_COLORS[2]],
-    ["Escore 3", ESC_COLORS[3]],
-    ["Escore 4", ESC_COLORS[4]],
-  ];
+  const legendItems: [string, string][] = escoresAtivos.map(k => [`Escore ${k}`, ESC_COLORS[k]]);
   let lx = 15;
   legendItems.forEach(([label, color]) => {
     doc.setFillColor(color);
@@ -600,7 +610,7 @@ export function drawCurralFezesDistribuicaoPage(
     doc.setTextColor(INK);
     doc.text(r.label, barX - 2, y + barH / 2 + 1.2, { align: "right" });
     let cx = barX;
-    [2, 3, 4].forEach(k => {
+    escoresAtivos.forEach(k => {
       const frac = r.counts[k] / r.total;
       if (frac <= 0) return;
       const w = barW * frac;
@@ -640,13 +650,13 @@ export function drawCurralFezesDistribuicaoPage(
   headers.forEach((h, i) => cell(h, 15 + firstColW + colW * (i + 0.5), y + 4, true, GREEN_DARK));
   y += rowH;
 
-  const totals: Record<number, number> = { 2: 0, 3: 0, 4: 0 };
-  rows.forEach(r => { totals[2] += r.counts[2]; totals[3] += r.counts[3]; totals[4] += r.counts[4]; });
-  const grandTotal = totals[2] + totals[3] + totals[4];
+  const totals: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  rows.forEach(r => { ESC_ALL.forEach(k => { totals[k] += r.counts[k]; }); });
+  const grandTotal = ESC_ALL.reduce((a, k) => a + totals[k], 0);
 
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.2);
-  [2, 3, 4].forEach((k, idx) => {
+  escoresAtivos.forEach((k, idx) => {
     if (idx % 2 === 0) {
       doc.setFillColor("#FFFFFF");
     } else {
