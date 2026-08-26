@@ -601,7 +601,8 @@ export function drawCurralFezesDistribuicaoPage(
   const labelW = 20;
   const barX = 15 + labelW;
   const barW = pageW - 15 - barX;
-  const barH = Math.min(9, Math.max(4.5, 60 / rows.length));
+  const extraRows = Math.max(0, escoresAtivos.length - 3);
+  const barH = Math.min(9, Math.max(4, (60 - extraRows * 6) / rows.length));
   const barGap = barH * 0.35;
 
   rows.forEach(r => {
