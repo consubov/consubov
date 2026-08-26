@@ -411,9 +411,9 @@ async function drawCurralBlock(
 
   const rowY1 = y + 26;
   const cellW = (width - 6) / 3;
-  const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
-  const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
-  const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
+  const fezesDot = c.scores.fezes ?? null;
+  const corpoDot = c.scores.corporal ?? null;
+  const bebDot = c.scores.bebedouro ?? null;
   drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
   drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
   drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);
