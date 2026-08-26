@@ -467,7 +467,7 @@ export function drawDualLineChartPage(
  * ========================================================================== */
 
 const ESC_COLORS: Record<number, string> = {
-  1: "#8E44AD",
+  1: "#7DCEA0",
   2: "#2F6FB2",
   3: "#1F7A4D",
   4: "#D98324",
