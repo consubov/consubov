@@ -342,6 +342,11 @@ function drawIntroBlock(doc: jsPDF, title: string, text: string, y: number): num
   return yEnd + 4;
 }
 
+function fmtDec(v: number, casas = 1): string {
+  const r = Number(v.toFixed(casas));
+  return (Number.isInteger(r) ? String(r) : r.toFixed(casas)).replace(".", ",");
+}
+
 function drawScoreRow(
   doc: jsPDF, label: string, nota: number | null | undefined, x: number, y: number, cellW = 40,
 ) {
@@ -357,7 +362,7 @@ function drawScoreRow(
   doc.setFontSize(9);
   doc.setTextColor(nota ? GREEN_DARK : INK_SOFT);
   doc.setFont("helvetica", "bold");
-  doc.text(nota ? `${nota}/5` : "—", x + 6, dotY + 1.2);
+  doc.text(nota ? `${fmtDec(nota)}/5` : "—", x + 6, dotY + 1.2);
   // Legenda curta
   doc.setFontSize(5.6);
   doc.setFont("helvetica", "normal");
@@ -411,9 +416,9 @@ async function drawCurralBlock(
 
   const rowY1 = y + 26;
   const cellW = (width - 6) / 3;
-  const fezesDot = c.scores.fezes ? Math.round(c.scores.fezes) : null;
-  const corpoDot = c.scores.corporal ? Math.round(c.scores.corporal) : null;
-  const bebDot = c.scores.bebedouro ? Math.round(c.scores.bebedouro) : null;
+  const fezesDot = c.scores.fezes ?? null;
+  const corpoDot = c.scores.corporal ?? null;
+  const bebDot = c.scores.bebedouro ?? null;
   drawScoreRow(doc, "Fezes", fezesDot, x + 3, rowY1, cellW);
   drawScoreRow(doc, "Corporal", corpoDot, x + 3 + cellW, rowY1, cellW);
   drawScoreRow(doc, "Bebedouro", bebDot, x + 3 + 2 * cellW, rowY1, cellW);

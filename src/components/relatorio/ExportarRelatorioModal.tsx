@@ -445,8 +445,8 @@ export default function ExportarRelatorioModal({
           detalheSalga: scoreCalc.detalheSalga,
           detalheCocho: scoreCalc.detalheCocho,
           pastos: pastoReport,
-          consumoIdeal: Math.round(consumoIdeal),
-          consumoMaximo: Math.round(consumoMaximo),
+          consumoIdeal: Number(consumoIdeal.toFixed(1)),
+          consumoMaximo: Number(consumoMaximo.toFixed(1)),
           intervaloPadraoDias: diasIntervalo,
         };
       });
