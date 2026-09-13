@@ -82,7 +82,7 @@ export default function MapaFazendaPage() {
 
   const activeFazendaId = fazendaId ?? resolvedFazendaId;
   const activeRetiroId = retiroId ?? "";
-  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId);
+  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId ?? undefined);
   const totalAnimaisRetiro = (mapa?.pastos ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,6 +194,7 @@ export default function MapaFazendaPage() {
       {editing && canEditMapa ? (
         <MapaEditor
           fazendaId={activeFazendaId!}
+          retiroId={activeRetiroId}
           mapaId={mapa?.id}
           imagemUrl={mapa?.imagem_url}
           existingPolygons={mapa?.pastos.map((p) => ({
@@ -233,7 +234,7 @@ export default function MapaFazendaPage() {
       ) : canEditMapa ? (
         <div className="text-center py-12 space-y-3">
           <Map className="w-12 h-12 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground text-sm">Nenhum mapa cadastrado para esta fazenda.</p>
+          <p className="text-muted-foreground text-sm">Nenhum mapa cadastrado para este retiro.</p>
           <Button onClick={() => setEditing(true)} className="gap-1.5">
             <Map className="w-4 h-4" /> Adicionar Mapa
           </Button>
