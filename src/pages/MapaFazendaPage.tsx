@@ -82,7 +82,7 @@ export default function MapaFazendaPage() {
 
   const activeFazendaId = fazendaId ?? resolvedFazendaId;
   const activeRetiroId = retiroId ?? "";
-  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId);
+  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId ?? undefined);
   const totalAnimaisRetiro = (mapa?.pastos ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
