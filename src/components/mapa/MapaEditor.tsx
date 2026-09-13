@@ -40,6 +40,7 @@ interface DrawnElement {
 
 interface Props {
   fazendaId: string;
+  retiroId: string;
   mapaId?: string;
   imagemUrl?: string;
   existingPolygons?: DrawnPolygon[];
@@ -67,7 +68,7 @@ const ELEMENT_PRESETS = [
 type EditorMode = "idle" | "drawPolygon" | "drawLine" | "placeElement";
 
 export default function MapaEditor({
-  fazendaId, mapaId, imagemUrl, existingPolygons, existingLines, existingElements, onSaved,
+  fazendaId, retiroId, mapaId, imagemUrl, existingPolygons, existingLines, existingElements, onSaved,
 }: Props) {
   const [uploading, setUploading] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState(imagemUrl || "");
@@ -290,7 +291,7 @@ export default function MapaEditor({
     setSaving(true);
     let currentMapaId = mapaId;
     if (!currentMapaId) {
-      const { data, error } = await supabase.from("mapas").insert({ fazenda_id: fazendaId, imagem_url: currentImageUrl }).select("id").single();
+      const { data, error } = await supabase.from("mapas").insert({ fazenda_id: fazendaId, retiro_id: retiroId, imagem_url: currentImageUrl }).select("id").single();
       if (error || !data) { toast.error("Erro ao criar mapa."); setSaving(false); return; }
       currentMapaId = data.id;
     } else {
