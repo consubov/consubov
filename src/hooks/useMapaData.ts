@@ -51,13 +51,13 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
   const [mapa, setMapa] = useState<MapaData | null>(null);
 
   const load = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!retiroId) return;
     setLoading(true);
 
     const { data: mapaRow } = await supabase
       .from("mapas")
       .select("*")
-      .eq("fazenda_id", fazendaId)
+      .eq("retiro_id", retiroId)
       .order("criado_em", { ascending: false })
       .limit(1)
       .maybeSingle();
