@@ -76,8 +76,7 @@ const MortalidadeModal = lazy(() => import("@/components/capataz/MortalidadeModa
 const AbateModal = lazy(() => import("@/components/capataz/AbateModal"));
 const TransferenciaModal = lazy(() => import("@/components/capataz/TransferenciaModal"));
 const PastoActionSheet = lazy(() => import("@/components/capataz/PastoActionSheet"));
-const EntradaAnimaisModal = lazy(() => import("@/components/capataz/EntradaAnimaisModal"));
-const EditarPesoCapatazModal = lazy(() => import("@/components/capataz/EditarPesoCapatazModal"));
+const EditarQuantidadeCapatazModal = lazy(() => import("@/components/capataz/EditarQuantidadeCapatazModal"));
 const TransferenciaRetiroPage = lazy(() => import("@/pages/TransferenciaRetiroPage"));
 const RelatorioSalgaPage = lazy(() => import("@/pages/RelatorioSalgaPage"));
 const SelecionarEventoModal = lazy(() => import("@/components/eventos/SelecionarEventoModal"));
@@ -246,10 +245,9 @@ export default function CapatazDashboard() {
   const [transferPasto, setTransferPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
-  const [entradaOpen, setEntradaOpen] = useState(false);
-  const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
-  const [editarPesoOpen, setEditarPesoOpen] = useState(false);
-  const [editarPesoPasto, setEditarPesoPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  
+  const [editarQtdOpen, setEditarQtdOpen] = useState(false);
+  const [editarQtdPasto, setEditarQtdPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
   // Eventos do Lote
   const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
@@ -1875,16 +1873,10 @@ export default function CapatazDashboard() {
           }}
           onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
           onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
-          onEntrada={() => {
+          onEditarQuantidade={() => {
             if (actionSheetPasto) {
-              setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
-              setEntradaOpen(true);
-            }
-          }}
-          onEditarPeso={() => {
-            if (actionSheetPasto) {
-              setEditarPesoPasto(actionSheetPasto);
-              setEditarPesoOpen(true);
+              setEditarQtdPasto(actionSheetPasto);
+              setEditarQtdOpen(true);
             }
           }}
           onRegistrarEvento={() => {
@@ -1928,13 +1920,14 @@ export default function CapatazDashboard() {
           }}
         />
 
-        {entradaPasto && (
-          <EntradaAnimaisModal
-            open={entradaOpen}
-            onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
-            pastoId={entradaPasto.id}
-            pastoNome={entradaPasto.nome}
-            retiroId={roleData.retiroId || ""}
+        {editarQtdPasto && (
+          <EditarQuantidadeCapatazModal
+            open={editarQtdOpen}
+            onClose={() => { setEditarQtdOpen(false); setEditarQtdPasto(null); }}
+            pastoId={editarQtdPasto.id}
+            pastoNome={editarQtdPasto.nome}
+            numAnimaisAtual={pastos.find(p => p.id === editarQtdPasto.id)?.num_animais ?? editarQtdPasto.num_animais}
+            pesoAtual={pastos.find(p => p.id === editarQtdPasto.id)?.peso_medio_kg ?? null}
             onPastoUpdated={() => { loadFromSupabase(); }}
           />
         )}
@@ -2031,19 +2024,6 @@ export default function CapatazDashboard() {
         </Suspense>
       )}
 
-      {/* Editar Peso Modal (inline simples) */}
-      {editarPesoPasto && (
-        <Suspense fallback={null}>
-          <EditarPesoCapatazModal
-            open={editarPesoOpen}
-            onClose={() => { setEditarPesoOpen(false); setEditarPesoPasto(null); }}
-            pastoId={editarPesoPasto.id}
-            pastoNome={editarPesoPasto.nome}
-            pesoAtual={pastos.find(p => p.id === editarPesoPasto.id)?.peso_medio_kg ?? null}
-            onDone={() => { loadFromSupabase(); }}
-          />
-        </Suspense>
-      )}
 
       {/* Lançamento Manual Modal */}
       {lancManualOpen && roleData.retiroId && fazendaId && (
