@@ -247,9 +247,8 @@ export default function CapatazDashboard() {
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [entradaOpen, setEntradaOpen] = useState(false);
-  const [entradaPasto, setEntradaPasto] = useState<{ id: string; nome: string } | null>(null);
-  const [editarPesoOpen, setEditarPesoOpen] = useState(false);
-  const [editarPesoPasto, setEditarPesoPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  const [editarQtdOpen, setEditarQtdOpen] = useState(false);
+  const [editarQtdPasto, setEditarQtdPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
   // Eventos do Lote
   const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
