@@ -53,6 +53,10 @@ export function EnableNotificationsBanner() {
   useEffect(() => {
     if (!session || !user?.id) return;
     if (dismissedThisSession) return;
+    if (getBannerDecision()) {
+      setStatus("hidden");
+      return;
+    }
     if (!isPushSupported()) {
       setStatus("unsupported");
       return;
