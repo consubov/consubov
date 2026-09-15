@@ -1928,6 +1928,9 @@ export default function CapatazDashboard() {
             pastoNome={editarQtdPasto.nome}
             numAnimaisAtual={pastos.find(p => p.id === editarQtdPasto.id)?.num_animais ?? editarQtdPasto.num_animais}
             pesoAtual={pastos.find(p => p.id === editarQtdPasto.id)?.peso_medio_kg ?? null}
+            sexoAtual={pastos.find(p => p.id === editarQtdPasto.id)?.sexo ?? null}
+            categoriaAtual={pastos.find(p => p.id === editarQtdPasto.id)?.categoria ?? null}
+            ativoAtual={true}
             onPastoUpdated={() => { loadFromSupabase(); }}
           />
         )}
