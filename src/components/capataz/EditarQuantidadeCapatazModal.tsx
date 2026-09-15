@@ -171,12 +171,13 @@ export default function EditarQuantidadeCapatazModal({
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="capataz-nome">Nome *</Label>
+              <Label htmlFor="capataz-nome">Nome</Label>
               <Input
                 id="capataz-nome"
                 value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Ex: Pasto A1"
+                disabled
+                readOnly
+                className="bg-muted/50 text-muted-foreground"
               />
             </div>
 
