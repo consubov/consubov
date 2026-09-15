@@ -172,6 +172,7 @@ export function EnableNotificationsBanner() {
         /* ignore */
       }
       setOkMsg("Notificações ativadas!");
+      saveBannerDecision("enabled");
       setTimeout(() => setStatus("hidden"), 1500);
     } catch (err) {
       console.error("[Push] enable failed", err);
@@ -289,7 +290,7 @@ export function EnableNotificationsBanner() {
               <Bell className="h-4 w-4 mr-1.5" />
               {busy ? "Ativando..." : "Ativar notificações"}
             </Button>
-            <Button size="sm" variant="ghost" onClick={dismiss}>
+            <Button size="sm" variant="ghost" onClick={dismissLater}>
               Agora não
             </Button>
           </div>
