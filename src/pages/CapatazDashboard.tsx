@@ -245,7 +245,7 @@ export default function CapatazDashboard() {
   const [transferPasto, setTransferPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [actionSheetPasto, setActionSheetPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
-  const [entradaOpen, setEntradaOpen] = useState(false);
+  
   const [editarQtdOpen, setEditarQtdOpen] = useState(false);
   const [editarQtdPasto, setEditarQtdPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
 
