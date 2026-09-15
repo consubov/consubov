@@ -126,6 +126,12 @@ export function EnableNotificationsBanner() {
     setStatus("hidden");
   };
 
+  const dismissLater = () => {
+    saveBannerDecision("later");
+    setDismissedThisSession(true);
+    setStatus("hidden");
+  };
+
   const enable = async () => {
     setError(null);
     setOkMsg(null);
