@@ -21,6 +21,25 @@ function isLovablePreview() {
   return h.includes("id-preview--") || h.includes("lovableproject.com") || h.includes("lovable.app");
 }
 
+const BANNER_DECISION_KEY = "consubov_notif_banner_decision";
+
+function getBannerDecision(): "enabled" | "later" | null {
+  try {
+    const v = window.localStorage.getItem(BANNER_DECISION_KEY);
+    return v === "enabled" || v === "later" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveBannerDecision(decision: "enabled" | "later") {
+  try {
+    window.localStorage.setItem(BANNER_DECISION_KEY, decision);
+  } catch {
+    /* ignore */
+  }
+}
+
 type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
 
 export function EnableNotificationsBanner() {
@@ -34,6 +53,10 @@ export function EnableNotificationsBanner() {
   useEffect(() => {
     if (!session || !user?.id) return;
     if (dismissedThisSession) return;
+    if (getBannerDecision()) {
+      setStatus("hidden");
+      return;
+    }
     if (!isPushSupported()) {
       setStatus("unsupported");
       return;
@@ -103,6 +126,12 @@ export function EnableNotificationsBanner() {
     setStatus("hidden");
   };
 
+  const dismissLater = () => {
+    saveBannerDecision("later");
+    setDismissedThisSession(true);
+    setStatus("hidden");
+  };
+
   const enable = async () => {
     setError(null);
     setOkMsg(null);
@@ -143,6 +172,7 @@ export function EnableNotificationsBanner() {
         /* ignore */
       }
       setOkMsg("Notificações ativadas!");
+      saveBannerDecision("enabled");
       setTimeout(() => setStatus("hidden"), 1500);
     } catch (err) {
       console.error("[Push] enable failed", err);
@@ -260,7 +290,7 @@ export function EnableNotificationsBanner() {
               <Bell className="h-4 w-4 mr-1.5" />
               {busy ? "Ativando..." : "Ativar notificações"}
             </Button>
-            <Button size="sm" variant="ghost" onClick={dismiss}>
+            <Button size="sm" variant="ghost" onClick={dismissLater}>
               Agora não
             </Button>
           </div>
