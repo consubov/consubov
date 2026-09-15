@@ -76,8 +76,7 @@ const MortalidadeModal = lazy(() => import("@/components/capataz/MortalidadeModa
 const AbateModal = lazy(() => import("@/components/capataz/AbateModal"));
 const TransferenciaModal = lazy(() => import("@/components/capataz/TransferenciaModal"));
 const PastoActionSheet = lazy(() => import("@/components/capataz/PastoActionSheet"));
-const EntradaAnimaisModal = lazy(() => import("@/components/capataz/EntradaAnimaisModal"));
-const EditarPesoCapatazModal = lazy(() => import("@/components/capataz/EditarPesoCapatazModal"));
+const EditarQuantidadeCapatazModal = lazy(() => import("@/components/capataz/EditarQuantidadeCapatazModal"));
 const TransferenciaRetiroPage = lazy(() => import("@/pages/TransferenciaRetiroPage"));
 const RelatorioSalgaPage = lazy(() => import("@/pages/RelatorioSalgaPage"));
 const SelecionarEventoModal = lazy(() => import("@/components/eventos/SelecionarEventoModal"));
@@ -2025,19 +2024,6 @@ export default function CapatazDashboard() {
         </Suspense>
       )}
 
-      {/* Editar Peso Modal (inline simples) */}
-      {editarPesoPasto && (
-        <Suspense fallback={null}>
-          <EditarPesoCapatazModal
-            open={editarPesoOpen}
-            onClose={() => { setEditarPesoOpen(false); setEditarPesoPasto(null); }}
-            pastoId={editarPesoPasto.id}
-            pastoNome={editarPesoPasto.nome}
-            pesoAtual={pastos.find(p => p.id === editarPesoPasto.id)?.peso_medio_kg ?? null}
-            onDone={() => { loadFromSupabase(); }}
-          />
-        </Suspense>
-      )}
 
       {/* Lançamento Manual Modal */}
       {lancManualOpen && roleData.retiroId && fazendaId && (
