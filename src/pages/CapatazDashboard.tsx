@@ -1921,13 +1921,14 @@ export default function CapatazDashboard() {
           }}
         />
 
-        {entradaPasto && (
-          <EntradaAnimaisModal
-            open={entradaOpen}
-            onClose={() => { setEntradaOpen(false); setEntradaPasto(null); }}
-            pastoId={entradaPasto.id}
-            pastoNome={entradaPasto.nome}
-            retiroId={roleData.retiroId || ""}
+        {editarQtdPasto && (
+          <EditarQuantidadeCapatazModal
+            open={editarQtdOpen}
+            onClose={() => { setEditarQtdOpen(false); setEditarQtdPasto(null); }}
+            pastoId={editarQtdPasto.id}
+            pastoNome={editarQtdPasto.nome}
+            numAnimaisAtual={pastos.find(p => p.id === editarQtdPasto.id)?.num_animais ?? editarQtdPasto.num_animais}
+            pesoAtual={pastos.find(p => p.id === editarQtdPasto.id)?.peso_medio_kg ?? null}
             onPastoUpdated={() => { loadFromSupabase(); }}
           />
         )}
