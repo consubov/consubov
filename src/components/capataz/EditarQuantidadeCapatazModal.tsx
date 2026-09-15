@@ -19,8 +19,8 @@ interface Props {
 }
 
 export default function EditarQuantidadeCapatazModal({ open, onClose, pastoId, pastoNome, numAnimaisAtual, pesoAtual, onPastoUpdated }: Props) {
-  const [quantidade, setQuantidade] = useState("");
-  const [peso, setPeso] = useState("");
+  const [quantidade, setQuantidade] = useState(() => numAnimaisAtual > 0 ? String(numAnimaisAtual) : "");
+  const [peso, setPeso] = useState(() => pesoAtual != null && pesoAtual > 0 ? String(pesoAtual) : "");
   const [salvando, setSalvando] = useState(false);
   const [zerarOpen, setZerarOpen] = useState(false);
 
@@ -29,6 +29,10 @@ export default function EditarQuantidadeCapatazModal({ open, onClose, pastoId, p
     setPeso(pesoAtual != null && pesoAtual > 0 ? String(pesoAtual) : "");
     setZerarOpen(false);
   }
+
+  useEffect(() => {
+    if (open) handleOpen();
+  }, [open]);
 
   function handleClose() {
     setQuantidade("");
