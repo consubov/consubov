@@ -1875,16 +1875,10 @@ export default function CapatazDashboard() {
           }}
           onTransferir={() => { setTransferPasto(actionSheetPasto); setTransferOpen(true); }}
           onAbater={() => { setAbatePasto(actionSheetPasto); setAbateOpen(true); }}
-          onEntrada={() => {
+          onEditarQuantidade={() => {
             if (actionSheetPasto) {
-              setEntradaPasto({ id: actionSheetPasto.id, nome: actionSheetPasto.nome });
-              setEntradaOpen(true);
-            }
-          }}
-          onEditarPeso={() => {
-            if (actionSheetPasto) {
-              setEditarPesoPasto(actionSheetPasto);
-              setEditarPesoOpen(true);
+              setEditarQtdPasto(actionSheetPasto);
+              setEditarQtdOpen(true);
             }
           }}
           onRegistrarEvento={() => {
