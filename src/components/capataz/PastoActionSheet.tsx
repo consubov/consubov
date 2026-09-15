@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, Scissors, Plus, ClipboardList, Eye, Scale } from "lucide-react";
+import { ArrowRightLeft, Scissors, Pencil, ClipboardList, Eye } from "lucide-react";
 import CarenciaBadge from "@/components/eventos/CarenciaBadge";
 
 interface PastoActionSheetProps {
@@ -12,12 +12,11 @@ interface PastoActionSheetProps {
   onVerDetalhes: () => void;
   onTransferir: () => void;
   onAbater: () => void;
-  onEntrada: () => void;
-  onEditarPeso: () => void;
+  onEditarQuantidade: () => void;
   onRegistrarEvento?: () => void;
 }
 
-export default function PastoActionSheet({ open, onClose, pastoNome, numAnimais, dataFimCarencia, onVerDetalhes, onTransferir, onAbater, onEntrada, onEditarPeso, onRegistrarEvento }: PastoActionSheetProps) {
+export default function PastoActionSheet({ open, onClose, pastoNome, numAnimais, dataFimCarencia, onVerDetalhes, onTransferir, onAbater, onEditarQuantidade, onRegistrarEvento }: PastoActionSheetProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xs">
@@ -59,16 +58,10 @@ export default function PastoActionSheet({ open, onClose, pastoNome, numAnimais,
             </Button>
           )}
 
-          {/* 5. Adicionar animais */}
-          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => { onClose(); onEntrada(); }}>
-            <Plus className="w-5 h-5" />
-            Adicionar animais
-          </Button>
-
-          {/* 6. Editar peso médio */}
-          <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => { onClose(); onEditarPeso(); }}>
-            <Scale className="w-5 h-5 text-primary" />
-            Editar peso médio
+          {/* 5. Editar quantidade */}
+          <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => { onClose(); onEditarQuantidade(); }}>
+            <Pencil className="w-5 h-5" />
+            Editar quantidade
           </Button>
         </div>
       </DialogContent>
