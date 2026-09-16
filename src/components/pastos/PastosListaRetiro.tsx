@@ -18,14 +18,17 @@ const STATUS_GLOBAL_CLASSES: Record<string, string> = {
  * Consumo e status vêm sempre de view_painel_mae_pasto_atual
  * (consumo_global_g_cab_dia / status_global), a mesma fonte do Mapa.
  */
-export default function PastosListaRetiro({ pastos }: { pastos: PastoRetiroItem[] }) {
-  if (pastos.length === 0) return null;
-
+export default function PastosListaRetiro({ pastos, loading = false }: { pastos: PastoRetiroItem[]; loading?: boolean }) {
   return (
     <>
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
         <TreePine className="w-4 h-4" /> Pastos ({pastos.length})
       </h2>
+      {pastos.length === 0 && (
+        <p className="text-sm text-muted-foreground py-2">
+          {loading ? "Carregando pastos..." : "Nenhum pasto ativo neste retiro."}
+        </p>
+      )}
       <div className="space-y-2">
         {pastos.map((p) => {
           const consumo = p.consumo_global_g_cab_dia ?? 0;
