@@ -243,7 +243,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae(), refreshPastosLista()]);
     setRefreshing(false);
   };
 
