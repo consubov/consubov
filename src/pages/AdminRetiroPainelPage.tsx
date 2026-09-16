@@ -9,6 +9,8 @@ import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
+import { usePastosRetiro } from "@/hooks/usePastosRetiro";
+import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,7 @@ export default function AdminRetiroPainelPage() {
   const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
   const [resolvingRoute, setResolvingRoute] = useState(!fazendaId);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [retiroNomeFallback, setRetiroNomeFallback] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +87,7 @@ export default function AdminRetiroPainelPage() {
 
       const { data, error } = await supabase
         .from("retiros")
-        .select("fazenda_id")
+        .select("fazenda_id, nome")
         .eq("id", retiroId)
         .maybeSingle();
 
@@ -105,6 +108,7 @@ export default function AdminRetiroPainelPage() {
       }
 
       setResolvedFazendaId(data.fazenda_id);
+      setRetiroNomeFallback((data as any).nome ?? null);
       setRouteError(null);
       setResolvingRoute(false);
     }
@@ -162,8 +166,12 @@ export default function AdminRetiroPainelPage() {
   }, [retiroId, mes, ano]);
   useEffect(() => { void loadPastoMae(); }, [loadPastoMae]);
 
+  // Lista de Pastos: fonte única compartilhada com gerente/capataz e com o Mapa
+  // (view_painel_mae_pasto_atual → consumo_global_g_cab_dia / status_global).
+  const { pastos: pastosLista, refresh: refreshPastosLista } = usePastosRetiro(retiroId ?? null, mes, ano);
+
   const retiroData = retirosResumo.find(r => r.id === retiroId);
-  const retiroNome = retiroData?.nome ?? "Retiro";
+  const retiroNome = retiroData?.nome ?? retiroNomeFallback ?? "Retiro";
 
   // Restringe métricas do painel apenas aos pastos com lançamento no mês/ano
   // selecionado — mesma regra usada no PDF do Relatório de Consumo.
@@ -237,7 +245,7 @@ export default function AdminRetiroPainelPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae()]);
+    await Promise.all([refresh(), refreshPainelMae(), refreshMortalidades(), loadPastoMae(), refreshPastosLista()]);
     setRefreshing(false);
   };
 
@@ -253,7 +261,7 @@ export default function AdminRetiroPainelPage() {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (!activeFazendaId || !retiroId || !retiroData) {
+  if (!retiroId || (!retiroData && pastosLista.length === 0)) {
     return renderErrorState(
       "Retiro não encontrado",
       "Verifique se o retiro existe e se você possui permissão para visualizar seus dados.",
@@ -339,59 +347,7 @@ export default function AdminRetiroPainelPage() {
         </Card>
       )}
 
-      {retiroData && retiroData.pastos.length > 0 && (
-        <>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <TreePine className="w-4 h-4" /> Pastos ({retiroData.pastos.length})
-          </h2>
-          <div className="space-y-2">
-            {retiroData.pastos.map(p => {
-              // Fonte única: view_painel_mae_pasto (Consumo Real + Status Real)
-              const vp = pastoMae[p.id];
-              const consumoList = retiroData.pastosConsumo.get(p.id) ?? [];
-              const totalSacos = vp?.num_sacos != null
-                ? Number(vp.num_sacos)
-                : consumoList.reduce((s, c) => s + c.num_sacos, 0);
-              const numAnimais = vp?.num_animais != null
-                ? Number(vp.num_animais)
-                : (consumoList.length > 0 ? Math.max(...consumoList.map(c => c.num_animais)) : p.num_animais);
-
-              const consumoGCabDia = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : 0;
-              const indiceConsumo = vp?.indice_real != null ? Number(vp.indice_real) : null;
-              const statusConsumo = vp?.status_real ?? null;
-
-              return (
-                <Card key={p.id}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-sm">{p.nome}</p>
-                      <div className="flex items-center gap-1.5">
-                        {statusConsumo && (
-                          <Badge className={`text-[10px] px-1.5 py-0 h-5 ${
-                            statusConsumo === "Baixo" ? "bg-destructive text-destructive-foreground" :
-                            statusConsumo === "Ideal" ? "bg-primary text-primary-foreground" :
-                            "bg-secondary text-secondary-foreground"
-                          }`}>
-                            {statusConsumo}
-                            {indiceConsumo != null ? ` (${Number(indiceConsumo).toFixed(2)})` : ""}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px]">{numAnimais} cab</Badge>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div><p className="text-muted-foreground">Sacos</p><p className="font-bold">{totalSacos}</p></div>
-                      <div><p className="text-muted-foreground">Consumo</p><p className="font-bold text-secondary">{consumoGCabDia > 0 ? fmtNum(consumoGCabDia, 1) : "—"}</p></div>
-                      <div><p className="text-muted-foreground">Peso</p><p className="font-bold">{p.peso_medio_kg ? `${p.peso_medio_kg}kg` : "—"}</p></div>
-                      <div><p className="text-muted-foreground">GMD</p><p className="font-bold text-primary">{p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0 ? fmtNum(Number(p.gmd_kg_dia), 3) : "—"}</p></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <PastosListaRetiro pastos={pastosLista} />
 
       {retiroData && retiroData.diasSemSalga != null && (
         <Card className="border-secondary/50">

@@ -9,6 +9,8 @@ import MonthScroller from "@/components/MonthScroller";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
+import { usePastosRetiro } from "@/hooks/usePastosRetiro";
+import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
@@ -660,7 +662,8 @@ export default function GerenteDashboard() {
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   const navRetiro = useNavigate();
-  const formulas = useFormulasSistema();
+  const { mes, ano } = usePainelPeriodo();
+  const { pastos: pastosLista } = usePastosRetiro(retiro.id ?? null, mes, ano);
   return (
     <>
       <SheetHeader className="mb-4">
@@ -681,89 +684,7 @@ function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
         </Button>
       </SheetHeader>
 
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
-        <TreePine className="w-4 h-4" /> Pastos ({retiro.pastos.length})
-      </h3>
-
-      <div className="space-y-2">
-        {retiro.pastos.map((p) => {
-          const pLanc = retiro.lancamentos.filter((l) => l.pasto_id === p.id);
-          const totalSacos = pLanc.reduce((sum, l) => sum + (l.num_sacos || 0), 0);
-          const numAnimais = pLanc.length > 0
-            ? Math.max(...pLanc.map((l) => l.num_animais))
-            : p.num_animais;
-
-          let consumoPonderado = 0;
-          let totalCabDias = 0;
-          for (const lanc of pLanc) {
-            const consumo = Number(lanc.consumo_g_cab_dia) || 0;
-            if (consumo <= 0 || lanc.num_animais <= 0 || lanc.dias_no_pasto <= 0) continue;
-            const cabDias = lanc.num_animais * lanc.dias_no_pasto;
-            consumoPonderado += consumo * cabDias;
-            totalCabDias += cabDias;
-          }
-          const consumoMedio = totalCabDias > 0 ? consumoPonderado / totalCabDias : 0;
-
-          const sortedLanc = [...pLanc].sort(
-            (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
-          );
-          const latestLanc = sortedLanc[sortedLanc.length - 1];
-          const indiceConsumo = latestLanc?.indice_consumo;
-          // Reclassifica pelo indice_consumo usando a fórmula da tabela formulas_sistema.
-          const statusConsumo = indiceConsumo != null && Number(indiceConsumo) > 0
-            ? formulas.classificacao.classify(Number(indiceConsumo))
-            : latestLanc?.status_consumo ?? null;
-
-
-          const statusClassName = statusConsumo === 'Baixo'
-            ? 'bg-destructive text-destructive-foreground'
-            : statusConsumo === 'Ideal'
-              ? 'bg-primary text-primary-foreground'
-              : statusConsumo === 'Alto'
-                ? 'bg-secondary text-secondary-foreground'
-                : '';
-
-          return (
-            <Card key={p.id}>
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-semibold text-sm">{p.nome}</p>
-                  <div className="flex items-center gap-1.5">
-                    {statusConsumo && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${statusClassName}`}>
-                        {statusConsumo}
-                        {indiceConsumo != null ? ` (${Number(indiceConsumo).toFixed(2)})` : ''}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-[10px]">{numAnimais} cab</Badge>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <p className="text-muted-foreground">Sacos</p>
-                    <p className="font-bold">{totalSacos}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Consumo</p>
-                    <p className="font-bold text-secondary">{consumoMedio > 0 ? fmtNum(consumoMedio, 1) : '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">GMD</p>
-                    <p className="font-bold text-primary">
-                      {p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0 ? fmtNum(Number(p.gmd_kg_dia), 3) : '—'}
-                    </p>
-                  </div>
-                </div>
-                {latestLanc && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Último: {latestLanc.created_at ? new Date(latestLanc.created_at).toLocaleDateString('pt-BR') : '—'}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <PastosListaRetiro pastos={pastosLista} />
     </>
   );
 }
