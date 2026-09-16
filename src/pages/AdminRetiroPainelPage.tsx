@@ -108,6 +108,7 @@ export default function AdminRetiroPainelPage() {
       }
 
       setResolvedFazendaId(data.fazenda_id);
+      setRetiroNomeFallback((data as any).nome ?? null);
       setRouteError(null);
       setResolvingRoute(false);
     }
