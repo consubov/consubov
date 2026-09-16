@@ -117,6 +117,20 @@ export default function ProdutosPage() {
 
     setSaving(true);
     const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+    const consumo_recria1 = numOrNull(form.consumo_recria1);
+    const consumo_recria2 = numOrNull(form.consumo_recria2);
+    const consumo_engorda = numOrNull(form.consumo_engorda);
+    const margem_mais_recria1_pct = numOrNull(form.margem_mais_recria1_pct);
+    const margem_menos_recria1_pct = numOrNull(form.margem_menos_recria1_pct);
+    const margem_mais_recria2_pct = numOrNull(form.margem_mais_recria2_pct);
+    const margem_menos_recria2_pct = numOrNull(form.margem_menos_recria2_pct);
+    const margem_mais_engorda_pct = numOrNull(form.margem_mais_engorda_pct);
+    const margem_menos_engorda_pct = numOrNull(form.margem_menos_engorda_pct);
+    // Compatibilidade temporária: margem_<categoria> (absoluta) = consumo × média das margens %
+    const margemAbs = (consumo: number | null, mais: number | null, menos: number | null): number | null => {
+      if (consumo == null || mais == null || menos == null) return null;
+      return consumo * (((mais + menos) / 2) / 100);
+    };
     const payload: any = {
       nome: form.nome.trim(),
       marca: form.marca.trim(),
@@ -124,12 +138,18 @@ export default function ProdutosPage() {
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
       consumo_por_100kg: numOrNull(form.consumo_por_100kg),
-      consumo_recria1: numOrNull(form.consumo_recria1),
-      consumo_recria2: numOrNull(form.consumo_recria2),
-      consumo_engorda: numOrNull(form.consumo_engorda),
-      margem_recria1: numOrNull(form.margem_recria1),
-      margem_recria2: numOrNull(form.margem_recria2),
-      margem_engorda: numOrNull(form.margem_engorda),
+      consumo_recria1,
+      consumo_recria2,
+      consumo_engorda,
+      margem_mais_recria1_pct,
+      margem_menos_recria1_pct,
+      margem_mais_recria2_pct,
+      margem_menos_recria2_pct,
+      margem_mais_engorda_pct,
+      margem_menos_engorda_pct,
+      margem_recria1: margemAbs(consumo_recria1, margem_mais_recria1_pct, margem_menos_recria1_pct),
+      margem_recria2: margemAbs(consumo_recria2, margem_mais_recria2_pct, margem_menos_recria2_pct),
+      margem_engorda: margemAbs(consumo_engorda, margem_mais_engorda_pct, margem_menos_engorda_pct),
     };
 
     try {
