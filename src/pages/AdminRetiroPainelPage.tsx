@@ -259,7 +259,7 @@ export default function AdminRetiroPainelPage() {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (!activeFazendaId || !retiroId || !retiroData) {
+  if (!retiroId || (!retiroData && pastosLista.length === 0)) {
     return renderErrorState(
       "Retiro não encontrado",
       "Verifique se o retiro existe e se você possui permissão para visualizar seus dados.",
