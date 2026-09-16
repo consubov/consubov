@@ -660,7 +660,8 @@ export default function GerenteDashboard() {
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   const navRetiro = useNavigate();
-  const formulas = useFormulasSistema();
+  const { mes, ano } = usePainelPeriodo();
+  const { pastos: pastosLista } = usePastosRetiro(retiro.id ?? null, mes, ano);
   return (
     <>
       <SheetHeader className="mb-4">
