@@ -39,10 +39,12 @@ const catLabels: Record<string, string> = {
   outro: "Outro",
 };
 
+// Paleta unificada do Consumo Global (mesma do RelatorioPDF)
 const statusClasses: Record<string, string> = {
-  Baixo: "bg-destructive/10 text-destructive border-destructive/30",
-  Ideal: "bg-primary/10 text-primary border-primary/30",
-  Alto: "bg-secondary/10 text-secondary-foreground border-secondary/30",
+  Baixo: "bg-[#E53935]/10 text-[#E53935] border-[#E53935]/30",
+  "Atenção": "bg-[#FBC02D]/15 text-[#A17E00] border-[#FBC02D]/40",
+  Ideal: "bg-[#43A047]/10 text-[#43A047] border-[#43A047]/30",
+  Alto: "bg-[#1E88E5]/10 text-[#1E88E5] border-[#1E88E5]/30",
 };
 
 function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
