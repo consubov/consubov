@@ -87,7 +87,7 @@ export default function AdminRetiroPainelPage() {
 
       const { data, error } = await supabase
         .from("retiros")
-        .select("fazenda_id")
+        .select("fazenda_id, nome")
         .eq("id", retiroId)
         .maybeSingle();
 
