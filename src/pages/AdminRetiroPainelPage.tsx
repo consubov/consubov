@@ -171,7 +171,7 @@ export default function AdminRetiroPainelPage() {
   const { pastos: pastosLista, refresh: refreshPastosLista } = usePastosRetiro(retiroId ?? null, mes, ano);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
-  const retiroNome = retiroData?.nome ?? "Retiro";
+  const retiroNome = retiroData?.nome ?? retiroNomeFallback ?? "Retiro";
 
   // Restringe métricas do painel apenas aos pastos com lançamento no mês/ano
   // selecionado — mesma regra usada no PDF do Relatório de Consumo.
