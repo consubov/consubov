@@ -313,6 +313,30 @@ export default function CapatazDashboard() {
     setConsumoMap(cMap);
   }, []);
 
+  useEffect(() => {
+    const retiroIdAtual = roleData.retiroId;
+    if (!retiroIdAtual) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from("view_painel_mae_pasto_atual")
+        .select("pasto_id, indice_global, status_global")
+        .eq("retiro_id", retiroIdAtual);
+      if (cancelled || error || !data) return;
+      const map: Record<string, { status_consumo?: string; indice_consumo?: number }> = {};
+      for (const row of data) {
+        if (!map[row.pasto_id]) {
+          map[row.pasto_id] = {
+            status_consumo: row.status_global ?? undefined,
+            indice_consumo: row.indice_global != null ? Number(row.indice_global) : undefined,
+          };
+        }
+      }
+      setConsumoGlobalMap(map);
+    })();
+    return () => { cancelled = true; };
+  }, [roleData.retiroId]);
+
   const refreshLancamentosState = useCallback(async (cicloId?: string) => {
     const [allLancamentos, pendentes] = await Promise.all([
       getAllLancamentos(),
