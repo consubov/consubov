@@ -9,6 +9,8 @@ import { resolvePainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo
 import MonthScroller from "@/components/MonthScroller";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
+import { usePastosRetiro } from "@/hooks/usePastosRetiro";
+import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
