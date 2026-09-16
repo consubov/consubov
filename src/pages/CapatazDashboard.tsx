@@ -1763,7 +1763,7 @@ export default function CapatazDashboard() {
           ) : (
             <div className="space-y-2">
               {pastos.map((p) => {
-                const cm = consumoMap[p.id];
+                const cm = consumoGlobalMap[p.id] ?? consumoMap[p.id];
                 const { dias, pesoAtual } = calcDinamicoPasto(p, retiro, selectedCiclo);
                 return (
                   <div key={p.id} onClick={() => { setActionSheetPasto({ id: p.id, nome: p.nome, num_animais: p.num_animais }); setActionSheetOpen(true); }} className="cursor-pointer">
