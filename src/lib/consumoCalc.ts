@@ -6,6 +6,22 @@
  * All other calculations are identical.
  */
 
+export interface ProdutoMargens {
+  consumo_recria1?: number | null;
+  consumo_recria2?: number | null;
+  consumo_engorda?: number | null;
+  margem_recria1?: number | null;
+  margem_recria2?: number | null;
+  margem_engorda?: number | null;
+  margem_mais_recria1_pct?: number | null;
+  margem_menos_recria1_pct?: number | null;
+  margem_mais_recria2_pct?: number | null;
+  margem_menos_recria2_pct?: number | null;
+  margem_mais_engorda_pct?: number | null;
+  margem_menos_engorda_pct?: number | null;
+  amarelo_buffer_g?: number | null;
+}
+
 export interface ConsumoInput {
   num_sacos: number;
   peso_saco_kg: number;
@@ -16,7 +32,60 @@ export interface ConsumoInput {
   consumo_por_100kg_categoria: number;
   /** margin tolerance from product (g/cab/dia) */
   margem: number;
+  /** sexo do lote — usado para calcular a categoria ao vivo */
+  sexo?: string | null;
+  /** produto completo — habilita categoria ao vivo e classificação de 4 estados */
+  produto?: ProdutoMargens | null;
 }
+
+/**
+ * Categoria calculada ao vivo (replica a função SQL calcular_categoria).
+ * Fêmea: <=220 Recria 1, <=299 Recria 2, senão Engorda
+ * Macho:  <=220 Recria 1, <=360 Recria 2, senão Engorda
+ */
+export function calcularCategoriaViva(pesoMedioKg: number, sexo?: string | null): string {
+  const s = (sexo || "").toLowerCase();
+  const femea = s.startsWith("f") || s.includes("fêmea") || s.includes("femea");
+  if (pesoMedioKg <= 220) return "Recria 1";
+  if (femea) return pesoMedioKg <= 299 ? "Recria 2" : "Engorda";
+  return pesoMedioKg <= 360 ? "Recria 2" : "Engorda";
+}
+
+/**
+ * Classificação de 4 estados usando margens percentuais + buffer amarelo.
+ */
+export function classificarConsumo4(
+  consumoG: number,
+  esperadoG: number,
+  margemMaisPct: number,
+  margemMenosPct: number,
+  bufferG: number,
+): string {
+  if (esperadoG <= 0) return "ERRO";
+  const limiteInf = esperadoG * (1 - margemMenosPct / 100);
+  const limiteSup = esperadoG * (1 + margemMaisPct / 100);
+  const buffer = bufferG > 0 ? bufferG : 0;
+  if (consumoG < limiteInf) return "Baixo";
+  if (consumoG < limiteInf + buffer) return "Atenção";
+  if (consumoG > limiteSup) return "Alto";
+  if (consumoG > limiteSup - buffer) return "Atenção";
+  return "Ideal";
+}
+
+function getPctPorCategoria(
+  categoria: string,
+  produto: ProdutoMargens,
+): { mais: number | null; menos: number | null } {
+  const cat = (categoria || "").toLowerCase();
+  const pick = (mais?: number | null, menos?: number | null) => ({
+    mais: mais == null ? null : Number(mais),
+    menos: menos == null ? null : Number(menos),
+  });
+  if (cat.includes("recria 1") || cat.includes("recria1")) return pick(produto.margem_mais_recria1_pct, produto.margem_menos_recria1_pct);
+  if (cat.includes("recria 2") || cat.includes("recria2")) return pick(produto.margem_mais_recria2_pct, produto.margem_menos_recria2_pct);
+  return pick(produto.margem_mais_engorda_pct, produto.margem_menos_engorda_pct);
+}
+
 
 export interface ConsumoResult {
   /** g/cab/dia */
