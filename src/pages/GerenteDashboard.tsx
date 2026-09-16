@@ -374,21 +374,28 @@ export default function GerenteDashboard() {
                 {/* Bar */}
                 <div className="flex h-3 rounded-full overflow-hidden bg-muted">
                   {painelData.statusDistribution.baixoPct > 0 && (
-                    <div className="bg-destructive transition-all" style={{ width: `${painelData.statusDistribution.baixoPct}%` }} />
+                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.baixoPct}%`, backgroundColor: "#E53935" }} />
+                  )}
+                  {(painelData.statusDistribution as any).atencaoPct > 0 && (
+                    <div className="transition-all" style={{ width: `${(painelData.statusDistribution as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />
                   )}
                   {painelData.statusDistribution.idealPct > 0 && (
-                    <div className="bg-primary transition-all" style={{ width: `${painelData.statusDistribution.idealPct}%` }} />
+                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.idealPct}%`, backgroundColor: "#43A047" }} />
                   )}
                   {painelData.statusDistribution.altoPct > 0 && (
-                    <div className="bg-secondary transition-all" style={{ width: `${painelData.statusDistribution.altoPct}%` }} />
+                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.altoPct}%`, backgroundColor: "#1E88E5" }} />
                   )}
                 </div>
                 {/* Labels */}
                 <div className="flex justify-between text-xs">
-                  <span className="text-destructive font-medium">Baixo {fmtNum(painelData.statusDistribution.baixoPct, 0)}%</span>
-                  <span className="text-primary font-medium">Ideal {fmtNum(painelData.statusDistribution.idealPct, 0)}%</span>
-                  <span className="text-secondary font-medium">Alto {fmtNum(painelData.statusDistribution.altoPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelData.statusDistribution.baixoPct, 0)}%</span>
+                  {(painelData.statusDistribution as any).atencaoPct > 0 && (
+                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((painelData.statusDistribution as any).atencaoPct, 0)}%</span>
+                  )}
+                  <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelData.statusDistribution.idealPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelData.statusDistribution.altoPct, 0)}%</span>
                 </div>
+
               </CardContent>
             </Card>
           )}

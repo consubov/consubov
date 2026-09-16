@@ -6,6 +6,22 @@
  * All other calculations are identical.
  */
 
+export interface ProdutoMargens {
+  consumo_recria1?: number | null;
+  consumo_recria2?: number | null;
+  consumo_engorda?: number | null;
+  margem_recria1?: number | null;
+  margem_recria2?: number | null;
+  margem_engorda?: number | null;
+  margem_mais_recria1_pct?: number | null;
+  margem_menos_recria1_pct?: number | null;
+  margem_mais_recria2_pct?: number | null;
+  margem_menos_recria2_pct?: number | null;
+  margem_mais_engorda_pct?: number | null;
+  margem_menos_engorda_pct?: number | null;
+  amarelo_buffer_g?: number | null;
+}
+
 export interface ConsumoInput {
   num_sacos: number;
   peso_saco_kg: number;
@@ -16,7 +32,60 @@ export interface ConsumoInput {
   consumo_por_100kg_categoria: number;
   /** margin tolerance from product (g/cab/dia) */
   margem: number;
+  /** sexo do lote — usado para calcular a categoria ao vivo */
+  sexo?: string | null;
+  /** produto completo — habilita categoria ao vivo e classificação de 4 estados */
+  produto?: ProdutoMargens | null;
 }
+
+/**
+ * Categoria calculada ao vivo (replica a função SQL calcular_categoria).
+ * Fêmea: <=220 Recria 1, <=299 Recria 2, senão Engorda
+ * Macho:  <=220 Recria 1, <=360 Recria 2, senão Engorda
+ */
+export function calcularCategoriaViva(pesoMedioKg: number, sexo?: string | null): string {
+  const s = (sexo || "").toLowerCase();
+  const femea = s.startsWith("f") || s.includes("fêmea") || s.includes("femea");
+  if (pesoMedioKg <= 220) return "Recria 1";
+  if (femea) return pesoMedioKg <= 299 ? "Recria 2" : "Engorda";
+  return pesoMedioKg <= 360 ? "Recria 2" : "Engorda";
+}
+
+/**
+ * Classificação de 4 estados usando margens percentuais + buffer amarelo.
+ */
+export function classificarConsumo4(
+  consumoG: number,
+  esperadoG: number,
+  margemMaisPct: number,
+  margemMenosPct: number,
+  bufferG: number,
+): string {
+  if (esperadoG <= 0) return "ERRO";
+  const limiteInf = esperadoG * (1 - margemMenosPct / 100);
+  const limiteSup = esperadoG * (1 + margemMaisPct / 100);
+  const buffer = bufferG > 0 ? bufferG : 0;
+  if (consumoG < limiteInf) return "Baixo";
+  if (consumoG < limiteInf + buffer) return "Atenção";
+  if (consumoG > limiteSup) return "Alto";
+  if (consumoG > limiteSup - buffer) return "Atenção";
+  return "Ideal";
+}
+
+function getPctPorCategoria(
+  categoria: string,
+  produto: ProdutoMargens,
+): { mais: number | null; menos: number | null } {
+  const cat = (categoria || "").toLowerCase();
+  const pick = (mais?: number | null, menos?: number | null) => ({
+    mais: mais == null ? null : Number(mais),
+    menos: menos == null ? null : Number(menos),
+  });
+  if (cat.includes("recria 1") || cat.includes("recria1")) return pick(produto.margem_mais_recria1_pct, produto.margem_menos_recria1_pct);
+  if (cat.includes("recria 2") || cat.includes("recria2")) return pick(produto.margem_mais_recria2_pct, produto.margem_menos_recria2_pct);
+  return pick(produto.margem_mais_engorda_pct, produto.margem_menos_engorda_pct);
+}
+
 
 export interface ConsumoResult {
   /** g/cab/dia */
@@ -40,9 +109,20 @@ export interface ConsumoResult {
  * Classification uses product margin (not fixed 0.9/1.1).
  */
 export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
-  const { num_sacos, peso_saco_kg, num_animais, dias, peso_medio_kg, consumo_por_100kg_categoria, margem } = input;
+  const { num_sacos, peso_saco_kg, num_animais, dias, peso_medio_kg, produto, sexo } = input;
 
   if (num_animais <= 0 || dias <= 0 || peso_saco_kg <= 0) return null;
+
+  // TAREFA 1 — categoria calculada ao vivo (peso + sexo), nunca o campo salvo
+  const categoria_viva = calcularCategoriaViva(peso_medio_kg, sexo);
+
+  // Quando o produto completo é informado, consumo/margem vêm da categoria viva
+  const consumo_por_100kg_categoria = produto
+    ? (getConsumoPorCategoria(categoria_viva, produto) || input.consumo_por_100kg_categoria)
+    : input.consumo_por_100kg_categoria;
+  const margem = produto
+    ? (getMargemPorCategoria(categoria_viva, produto) || input.margem)
+    : input.margem;
 
   // consumo_real in g/cab/dia
   const consumo_real_g_cab_dia = (num_sacos * peso_saco_kg) / (num_animais * dias) * 1000;
@@ -67,23 +147,37 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
 
   const indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
 
-  // Classification based on product margin
-  // margem is per 100kg PV → escala pelo peso médio: margem × peso_medio_kg × 10 (g/cab/dia)
-  const margem_g = margem * peso_medio_kg * 10;
+  // TAREFA 2 — produtos migrados (margens % preenchidas) usam 4 estados
+  const pct = produto ? getPctPorCategoria(categoria_viva, produto) : { mais: null, menos: null };
   let status_consumo: string;
-  if (margem_g > 0) {
-    // Margin-based: compare g/cab/dia against expected ± margin (in g)
-    if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem_g)) {
-      status_consumo = 'ABAIXO';
-    } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem_g)) {
-      status_consumo = 'ACIMA';
-    } else {
-      status_consumo = 'IDEAL';
-    }
+
+  if (produto && pct.mais != null && pct.menos != null) {
+    status_consumo = classificarConsumo4(
+      consumo_real_g_cab_dia,
+      consumo_esperado_g_cab_dia,
+      pct.mais,
+      pct.menos,
+      Number(produto.amarelo_buffer_g ?? 0),
+    );
   } else {
-    // Fallback to index-based if no margin defined (unified 0.8/1.2 thresholds)
-    status_consumo = indice_consumo < 0.8 ? 'ABAIXO' : indice_consumo > 1.2 ? 'ACIMA' : 'IDEAL';
+    // Lógica antiga (3 estados) — inalterada para produtos não migrados
+    // margem is per 100kg PV → escala pelo peso médio: margem × peso_medio_kg × 10 (g/cab/dia)
+    const margem_g = margem * peso_medio_kg * 10;
+    if (margem_g > 0) {
+      // Margin-based: compare g/cab/dia against expected ± margin (in g)
+      if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem_g)) {
+        status_consumo = 'ABAIXO';
+      } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem_g)) {
+        status_consumo = 'ACIMA';
+      } else {
+        status_consumo = 'IDEAL';
+      }
+    } else {
+      // Fallback to index-based if no margin defined (unified 0.8/1.2 thresholds)
+      status_consumo = indice_consumo < 0.8 ? 'ABAIXO' : indice_consumo > 1.2 ? 'ACIMA' : 'IDEAL';
+    }
   }
+
 
   return {
     consumo_real_g_cab_dia,

@@ -67,6 +67,26 @@ function getStatusColor(
   return { color: "text-yellow-500", label: "Ideal", emoji: "🟡" };
 }
 
+/** Paleta unificada de status textual (4 estados novos + 3 antigos). */
+export function corStatusConsumo(status?: string | null): { color: string; emoji: string } {
+  switch (status) {
+    case "Baixo":
+    case "ABAIXO":
+      return { color: "#E53935", emoji: "🔴" };
+    case "Atenção":
+      return { color: "#FBC02D", emoji: "🟡" };
+    case "Ideal":
+    case "IDEAL":
+      return { color: "#43A047", emoji: "🟢" };
+    case "Alto":
+    case "ACIMA":
+      return { color: "#1E88E5", emoji: "🔵" };
+    default:
+      return { color: "#9E9E9E", emoji: "⚪" };
+  }
+}
+
+
 function getMapColor(consumo: number, media: number): string {
   if (!media || !consumo) return "hsl(var(--muted))";
   const ratio = consumo / media;

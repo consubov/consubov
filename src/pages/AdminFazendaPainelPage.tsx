@@ -160,15 +160,20 @@ export default function AdminFazendaPainelPage() {
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-              {metrics.statusDist.baixoPct > 0 && <div className="bg-destructive transition-all" style={{ width: `${metrics.statusDist.baixoPct}%` }} />}
-              {metrics.statusDist.idealPct > 0 && <div className="bg-primary transition-all" style={{ width: `${metrics.statusDist.idealPct}%` }} />}
-              {metrics.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metrics.statusDist.altoPct}%` }} />}
+              {metrics.statusDist.baixoPct > 0 && <div className="transition-all" style={{ width: `${metrics.statusDist.baixoPct}%`, backgroundColor: "#E53935" }} />}
+              {(metrics.statusDist as any).atencaoPct > 0 && <div className="transition-all" style={{ width: `${(metrics.statusDist as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />}
+              {metrics.statusDist.idealPct > 0 && <div className="transition-all" style={{ width: `${metrics.statusDist.idealPct}%`, backgroundColor: "#43A047" }} />}
+              {metrics.statusDist.altoPct > 0 && <div className="transition-all" style={{ width: `${metrics.statusDist.altoPct}%`, backgroundColor: "#1E88E5" }} />}
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-destructive font-medium">Baixo {fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
-              <span className="text-primary font-medium">Ideal {fmtNum(metrics.statusDist.idealPct, 0)}%</span>
-              <span className="text-secondary font-medium">Alto {fmtNum(metrics.statusDist.altoPct, 0)}%</span>
+              <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
+              {(metrics.statusDist as any).atencaoPct > 0 && (
+                <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((metrics.statusDist as any).atencaoPct, 0)}%</span>
+              )}
+              <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(metrics.statusDist.idealPct, 0)}%</span>
+              <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(metrics.statusDist.altoPct, 0)}%</span>
             </div>
+
           </CardContent>
         </Card>
       )}
