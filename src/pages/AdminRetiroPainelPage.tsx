@@ -57,6 +57,7 @@ export default function AdminRetiroPainelPage() {
   const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
   const [resolvingRoute, setResolvingRoute] = useState(!fazendaId);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [retiroNomeFallback, setRetiroNomeFallback] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
