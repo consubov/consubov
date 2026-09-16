@@ -6517,6 +6517,7 @@ export type Database = {
           consumo_global_g_cab_dia: number | null
           consumo_real_g_cab_dia: number | null
           eficiencia_pasto: number | null
+          esperado_g: number | null
           fazenda_id: string | null
           indice_global: number | null
           indice_real: number | null
@@ -6555,6 +6556,16 @@ export type Database = {
       }
     }
     Functions: {
+      classificar_consumo: {
+        Args: {
+          buffer_g: number
+          consumo_g: number
+          esperado_g: number
+          margem_mais_pct: number
+          margem_menos_pct: number
+        }
+        Returns: string
+      }
       ensure_ciclo: {
         Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
         Returns: string
