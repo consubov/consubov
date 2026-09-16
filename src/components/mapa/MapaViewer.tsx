@@ -313,9 +313,10 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   function getStatusColor(status: string | null | undefined, numAnimais: number) {
     if (!status || numAnimais <= 0) return "#9E9E9E";
     const s = status.toLowerCase();
-    if (s.includes("alto")) return "#E53935";
+    if (s.includes("baix")) return "#E53935";
+    if (s.includes("aten")) return "#FBC02D";
     if (s.includes("ideal")) return "#43A047";
-    if (s.includes("baix")) return "#FDD835";
+    if (s.includes("alto")) return "#1E88E5";
     return "#9E9E9E";
   }
 
