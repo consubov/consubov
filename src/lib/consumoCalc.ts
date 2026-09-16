@@ -109,9 +109,20 @@ export interface ConsumoResult {
  * Classification uses product margin (not fixed 0.9/1.1).
  */
 export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
-  const { num_sacos, peso_saco_kg, num_animais, dias, peso_medio_kg, consumo_por_100kg_categoria, margem } = input;
+  const { num_sacos, peso_saco_kg, num_animais, dias, peso_medio_kg, produto, sexo } = input;
 
   if (num_animais <= 0 || dias <= 0 || peso_saco_kg <= 0) return null;
+
+  // TAREFA 1 — categoria calculada ao vivo (peso + sexo), nunca o campo salvo
+  const categoria_viva = calcularCategoriaViva(peso_medio_kg, sexo);
+
+  // Quando o produto completo é informado, consumo/margem vêm da categoria viva
+  const consumo_por_100kg_categoria = produto
+    ? (getConsumoPorCategoria(categoria_viva, produto) || input.consumo_por_100kg_categoria)
+    : input.consumo_por_100kg_categoria;
+  const margem = produto
+    ? (getMargemPorCategoria(categoria_viva, produto) || input.margem)
+    : input.margem;
 
   // consumo_real in g/cab/dia
   const consumo_real_g_cab_dia = (num_sacos * peso_saco_kg) / (num_animais * dias) * 1000;
@@ -136,23 +147,37 @@ export function calcularConsumo(input: ConsumoInput): ConsumoResult | null {
 
   const indice_consumo = Number((consumo_real_kg / consumo_esperado_kg).toFixed(2));
 
-  // Classification based on product margin
-  // margem is per 100kg PV → escala pelo peso médio: margem × peso_medio_kg × 10 (g/cab/dia)
-  const margem_g = margem * peso_medio_kg * 10;
+  // TAREFA 2 — produtos migrados (margens % preenchidas) usam 4 estados
+  const pct = produto ? getPctPorCategoria(categoria_viva, produto) : { mais: null, menos: null };
   let status_consumo: string;
-  if (margem_g > 0) {
-    // Margin-based: compare g/cab/dia against expected ± margin (in g)
-    if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem_g)) {
-      status_consumo = 'ABAIXO';
-    } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem_g)) {
-      status_consumo = 'ACIMA';
-    } else {
-      status_consumo = 'IDEAL';
-    }
+
+  if (produto && pct.mais != null && pct.menos != null) {
+    status_consumo = classificarConsumo4(
+      consumo_real_g_cab_dia,
+      consumo_esperado_g_cab_dia,
+      pct.mais,
+      pct.menos,
+      Number(produto.amarelo_buffer_g ?? 0),
+    );
   } else {
-    // Fallback to index-based if no margin defined (unified 0.8/1.2 thresholds)
-    status_consumo = indice_consumo < 0.8 ? 'ABAIXO' : indice_consumo > 1.2 ? 'ACIMA' : 'IDEAL';
+    // Lógica antiga (3 estados) — inalterada para produtos não migrados
+    // margem is per 100kg PV → escala pelo peso médio: margem × peso_medio_kg × 10 (g/cab/dia)
+    const margem_g = margem * peso_medio_kg * 10;
+    if (margem_g > 0) {
+      // Margin-based: compare g/cab/dia against expected ± margin (in g)
+      if (consumo_real_g_cab_dia < (consumo_esperado_g_cab_dia - margem_g)) {
+        status_consumo = 'ABAIXO';
+      } else if (consumo_real_g_cab_dia > (consumo_esperado_g_cab_dia + margem_g)) {
+        status_consumo = 'ACIMA';
+      } else {
+        status_consumo = 'IDEAL';
+      }
+    } else {
+      // Fallback to index-based if no margin defined (unified 0.8/1.2 thresholds)
+      status_consumo = indice_consumo < 0.8 ? 'ABAIXO' : indice_consumo > 1.2 ? 'ACIMA' : 'IDEAL';
+    }
   }
+
 
   return {
     consumo_real_g_cab_dia,
