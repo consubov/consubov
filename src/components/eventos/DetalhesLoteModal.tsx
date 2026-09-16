@@ -52,7 +52,8 @@ function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
 export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico }: Props) {
   const [pesagem, setPesagem] = useState<any>(null);
   const [sanitario, setSanitario] = useState<any>(null);
-  const [consumoMedio, setConsumoMedio] = useState<number | null>(null);
+  const [consumoGlobal, setConsumoGlobal] = useState<number | null>(null);
+  const [statusGlobal, setStatusGlobal] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
