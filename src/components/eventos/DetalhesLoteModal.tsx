@@ -80,7 +80,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
     if (!open || !pasto?.id) {
       setPesagem(null);
       setSanitario(null);
-      setConsumoMedio(null);
+      setConsumoGlobal(null);
+      setStatusGlobal(null);
       return;
     }
 
@@ -102,17 +103,15 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
       .maybeSingle()
       .then(({ data }: any) => setSanitario(data));
 
-    // Fetch consumo médio from latest lancamento
+    // Fetch consumo global e status da mesma fonte do Mapa
     supabase
-      .from("lancamentos")
-      .select("consumo_g_cab_dia")
+      .from("view_painel_mae_pasto_atual")
+      .select("consumo_global_g_cab_dia, status_global")
       .eq("pasto_id", pasto.id)
-      .not("consumo_g_cab_dia", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        setConsumoMedio(data?.consumo_g_cab_dia != null ? Number(data.consumo_g_cab_dia) : null);
+        setConsumoGlobal(data?.consumo_global_g_cab_dia != null ? Number(data.consumo_global_g_cab_dia) : null);
+        setStatusGlobal(data?.status_global ?? null);
       });
   }, [open, pasto?.id]);
 
