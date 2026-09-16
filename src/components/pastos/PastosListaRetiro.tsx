@@ -37,10 +37,8 @@ export default function PastosListaRetiro({ pastos }: { pastos: PastoRetiroItem[
                   <p className="font-semibold text-sm">{p.nome}</p>
                   <div className="flex items-center gap-1.5">
                     {status && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${
-                        status === "Baixo" ? "bg-destructive text-destructive-foreground" :
-                        status === "Ideal" ? "bg-primary text-primary-foreground" :
-                        "bg-secondary text-secondary-foreground"
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 hover:bg-inherit ${
+                        STATUS_GLOBAL_CLASSES[status] || "bg-muted text-muted-foreground"
                       }`}>
                         {status}
                         {p.indice_global != null ? ` (${p.indice_global.toFixed(2)})` : ""}
