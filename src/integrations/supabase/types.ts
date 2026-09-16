@@ -6556,6 +6556,10 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_categoria: {
+        Args: { peso: number; sexo: string }
+        Returns: string
+      }
       classificar_consumo: {
         Args: {
           buffer_g: number
