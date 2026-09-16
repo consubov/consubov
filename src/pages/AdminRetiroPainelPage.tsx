@@ -339,59 +339,7 @@ export default function AdminRetiroPainelPage() {
         </Card>
       )}
 
-      {retiroData && retiroData.pastos.length > 0 && (
-        <>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <TreePine className="w-4 h-4" /> Pastos ({retiroData.pastos.length})
-          </h2>
-          <div className="space-y-2">
-            {retiroData.pastos.map(p => {
-              // Fonte única: view_painel_mae_pasto (Consumo Real + Status Real)
-              const vp = pastoMae[p.id];
-              const consumoList = retiroData.pastosConsumo.get(p.id) ?? [];
-              const totalSacos = vp?.num_sacos != null
-                ? Number(vp.num_sacos)
-                : consumoList.reduce((s, c) => s + c.num_sacos, 0);
-              const numAnimais = vp?.num_animais != null
-                ? Number(vp.num_animais)
-                : (consumoList.length > 0 ? Math.max(...consumoList.map(c => c.num_animais)) : p.num_animais);
-
-              const consumoGCabDia = vp ? Number(vp.consumo_real_g_cab_dia ?? 0) : 0;
-              const indiceConsumo = vp?.indice_real != null ? Number(vp.indice_real) : null;
-              const statusConsumo = vp?.status_real ?? null;
-
-              return (
-                <Card key={p.id}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-sm">{p.nome}</p>
-                      <div className="flex items-center gap-1.5">
-                        {statusConsumo && (
-                          <Badge className={`text-[10px] px-1.5 py-0 h-5 ${
-                            statusConsumo === "Baixo" ? "bg-destructive text-destructive-foreground" :
-                            statusConsumo === "Ideal" ? "bg-primary text-primary-foreground" :
-                            "bg-secondary text-secondary-foreground"
-                          }`}>
-                            {statusConsumo}
-                            {indiceConsumo != null ? ` (${Number(indiceConsumo).toFixed(2)})` : ""}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px]">{numAnimais} cab</Badge>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div><p className="text-muted-foreground">Sacos</p><p className="font-bold">{totalSacos}</p></div>
-                      <div><p className="text-muted-foreground">Consumo</p><p className="font-bold text-secondary">{consumoGCabDia > 0 ? fmtNum(consumoGCabDia, 1) : "—"}</p></div>
-                      <div><p className="text-muted-foreground">Peso</p><p className="font-bold">{p.peso_medio_kg ? `${p.peso_medio_kg}kg` : "—"}</p></div>
-                      <div><p className="text-muted-foreground">GMD</p><p className="font-bold text-primary">{p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0 ? fmtNum(Number(p.gmd_kg_dia), 3) : "—"}</p></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <PastosListaRetiro pastos={pastosLista} />
 
       {retiroData && retiroData.diasSemSalga != null && (
         <Card className="border-secondary/50">
