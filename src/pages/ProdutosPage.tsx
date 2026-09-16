@@ -313,24 +313,51 @@ export default function ProdutosPage() {
               <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Recria 1</Label>
+                  <Label className="text-xs font-medium">Recria 1</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <div className="relative">
+                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Recria 2</Label>
+                  <Label className="text-xs font-medium">Recria 2</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <div className="relative">
+                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Engorda</Label>
+                  <Label className="text-xs font-medium">Engorda</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <div className="relative">
+                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
