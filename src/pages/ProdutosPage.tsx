@@ -98,9 +98,12 @@ export default function ProdutosPage() {
       consumo_recria1: a.consumo_recria1?.toString() ?? "",
       consumo_recria2: a.consumo_recria2?.toString() ?? "",
       consumo_engorda: a.consumo_engorda?.toString() ?? "",
-      margem_recria1: a.margem_recria1?.toString() ?? "",
-      margem_recria2: a.margem_recria2?.toString() ?? "",
-      margem_engorda: a.margem_engorda?.toString() ?? "",
+      margem_mais_recria1_pct: a.margem_mais_recria1_pct?.toString() ?? "",
+      margem_menos_recria1_pct: a.margem_menos_recria1_pct?.toString() ?? "",
+      margem_mais_recria2_pct: a.margem_mais_recria2_pct?.toString() ?? "",
+      margem_menos_recria2_pct: a.margem_menos_recria2_pct?.toString() ?? "",
+      margem_mais_engorda_pct: a.margem_mais_engorda_pct?.toString() ?? "",
+      margem_menos_engorda_pct: a.margem_menos_engorda_pct?.toString() ?? "",
     });
     setDialogOpen(true);
   }
