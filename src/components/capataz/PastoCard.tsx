@@ -20,12 +20,18 @@ const statusConfig = {
   atrasado: { icon: '🔴', label: 'Atrasado' },
 };
 
-const consumoBadge: Record<string, { emoji: string; className: string }> = {
+const consumoBadge: Record<string, { emoji: string; className: string; style?: React.CSSProperties }> = {
   ABAIXO: { emoji: '🔴', className: 'bg-destructive text-destructive-foreground' },
   IDEAL: { emoji: '🟢', className: 'bg-primary text-primary-foreground' },
   ACIMA: { emoji: '🟡', className: 'bg-yellow-500 text-yellow-950' },
   ERRO: { emoji: '⚠️', className: 'bg-muted text-muted-foreground' },
+  // Classificação nova (4 estados) — mesma paleta do Consumo Global
+  Baixo: { emoji: '🔴', className: 'text-white', style: { backgroundColor: '#E53935' } },
+  'Atenção': { emoji: '🟡', className: 'text-black', style: { backgroundColor: '#FBC02D' } },
+  Ideal: { emoji: '🟢', className: 'text-white', style: { backgroundColor: '#43A047' } },
+  Alto: { emoji: '🔵', className: 'text-white', style: { backgroundColor: '#1E88E5' } },
 };
+
 
 export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sacosHoje, status, statusConsumo, indiceConsumo, dataFimCarencia }: PastoCardProps) {
   const s = statusConfig[status];
