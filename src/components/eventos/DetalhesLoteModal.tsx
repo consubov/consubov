@@ -39,6 +39,12 @@ const catLabels: Record<string, string> = {
   outro: "Outro",
 };
 
+const statusClasses: Record<string, string> = {
+  Baixo: "bg-destructive/10 text-destructive border-destructive/30",
+  Ideal: "bg-primary/10 text-primary border-primary/30",
+  Alto: "bg-secondary/10 text-secondary-foreground border-secondary/30",
+};
+
 function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
   if (!dataFimCarencia) return 0;
   const fim = new Date(dataFimCarencia);
