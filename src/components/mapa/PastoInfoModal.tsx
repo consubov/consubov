@@ -6,10 +6,24 @@ import type { PastoMapaData } from "@/hooks/useMapaData";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 
+// Paleta unificada do Consumo Global (mesma do RelatorioPDF)
+const STATUS_GLOBAL_CLASSES: Record<string, string> = {
+  Baixo: "bg-[#E53935]/10 text-[#E53935] border-[#E53935]/30",
+  "Atenção": "bg-[#FBC02D]/15 text-[#A17E00] border-[#FBC02D]/40",
+  Ideal: "bg-[#43A047]/10 text-[#43A047] border-[#43A047]/30",
+  Alto: "bg-[#1E88E5]/10 text-[#1E88E5] border-[#1E88E5]/30",
+};
+
 function statusBadge(status: string | null) {
   if (!status) return null;
-  const variant = status === "Ideal" ? "default" : status === "Baixo" ? "destructive" : "secondary";
-  return <Badge variant={variant}>{status}</Badge>;
+  return (
+    <Badge
+      variant="outline"
+      className={STATUS_GLOBAL_CLASSES[status] || "bg-muted text-muted-foreground border-muted"}
+    >
+      {status}
+    </Badge>
+  );
 }
 
 function formatDate(iso: string | null) {

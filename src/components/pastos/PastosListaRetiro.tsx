@@ -5,6 +5,14 @@ import type { PastoRetiroItem } from "@/hooks/usePastosRetiro";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 
+// Paleta unificada do Consumo Global (mesma do RelatorioPDF)
+const STATUS_GLOBAL_CLASSES: Record<string, string> = {
+  Baixo: "bg-[#E53935]/15 text-[#E53935] border border-[#E53935]/30",
+  "Atenção": "bg-[#FBC02D]/20 text-[#A17E00] border border-[#FBC02D]/40",
+  Ideal: "bg-[#43A047]/15 text-[#43A047] border border-[#43A047]/30",
+  Alto: "bg-[#1E88E5]/15 text-[#1E88E5] border border-[#1E88E5]/30",
+};
+
 /**
  * Lista de Pastos — componente único usado pelos perfis admin e gerente.
  * Consumo e status vêm sempre de view_painel_mae_pasto_atual
@@ -29,10 +37,8 @@ export default function PastosListaRetiro({ pastos }: { pastos: PastoRetiroItem[
                   <p className="font-semibold text-sm">{p.nome}</p>
                   <div className="flex items-center gap-1.5">
                     {status && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${
-                        status === "Baixo" ? "bg-destructive text-destructive-foreground" :
-                        status === "Ideal" ? "bg-primary text-primary-foreground" :
-                        "bg-secondary text-secondary-foreground"
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 hover:bg-inherit ${
+                        STATUS_GLOBAL_CLASSES[status] || "bg-muted text-muted-foreground"
                       }`}>
                         {status}
                         {p.indice_global != null ? ` (${p.indice_global.toFixed(2)})` : ""}
