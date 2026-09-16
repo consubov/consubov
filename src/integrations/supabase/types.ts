@@ -3640,6 +3640,7 @@ export type Database = {
       produtos: {
         Row: {
           administrador_id: string | null
+          amarelo_buffer_g: number | null
           ativo: boolean | null
           consumo_engorda: number | null
           consumo_por_100kg: number | null
@@ -3649,6 +3650,12 @@ export type Database = {
           id: string
           marca: string | null
           margem_engorda: number | null
+          margem_mais_engorda_pct: number | null
+          margem_mais_recria1_pct: number | null
+          margem_mais_recria2_pct: number | null
+          margem_menos_engorda_pct: number | null
+          margem_menos_recria1_pct: number | null
+          margem_menos_recria2_pct: number | null
           margem_recria1: number | null
           margem_recria2: number | null
           nome: string
@@ -3658,6 +3665,7 @@ export type Database = {
         }
         Insert: {
           administrador_id?: string | null
+          amarelo_buffer_g?: number | null
           ativo?: boolean | null
           consumo_engorda?: number | null
           consumo_por_100kg?: number | null
@@ -3667,6 +3675,12 @@ export type Database = {
           id?: string
           marca?: string | null
           margem_engorda?: number | null
+          margem_mais_engorda_pct?: number | null
+          margem_mais_recria1_pct?: number | null
+          margem_mais_recria2_pct?: number | null
+          margem_menos_engorda_pct?: number | null
+          margem_menos_recria1_pct?: number | null
+          margem_menos_recria2_pct?: number | null
           margem_recria1?: number | null
           margem_recria2?: number | null
           nome: string
@@ -3676,6 +3690,7 @@ export type Database = {
         }
         Update: {
           administrador_id?: string | null
+          amarelo_buffer_g?: number | null
           ativo?: boolean | null
           consumo_engorda?: number | null
           consumo_por_100kg?: number | null
@@ -3685,6 +3700,12 @@ export type Database = {
           id?: string
           marca?: string | null
           margem_engorda?: number | null
+          margem_mais_engorda_pct?: number | null
+          margem_mais_recria1_pct?: number | null
+          margem_mais_recria2_pct?: number | null
+          margem_menos_engorda_pct?: number | null
+          margem_menos_recria1_pct?: number | null
+          margem_menos_recria2_pct?: number | null
           margem_recria1?: number | null
           margem_recria2?: number | null
           nome?: string
