@@ -45,11 +45,14 @@ const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 function StatusBadge({ status }: { status: string | null }) {
-  if (status === "Ideal") return <Badge className="bg-primary text-primary-foreground">🟢 Dentro da meta</Badge>;
-  if (status === "Baixo" || status === "Alto") return <Badge className="bg-secondary text-secondary-foreground">🟡 Atenção</Badge>;
+  if (status === "Ideal" || status === "IDEAL") return <Badge style={{ backgroundColor: "#43A047" }} className="text-white">🟢 Ideal</Badge>;
+  if (status === "Atenção") return <Badge style={{ backgroundColor: "#FBC02D" }} className="text-black">🟡 Atenção</Badge>;
+  if (status === "Alto" || status === "ACIMA") return <Badge style={{ backgroundColor: "#1E88E5" }} className="text-white">🔵 Alto</Badge>;
+  if (status === "Baixo" || status === "ABAIXO") return <Badge style={{ backgroundColor: "#E53935" }} className="text-white">🔴 Baixo</Badge>;
   if (status) return <Badge variant="destructive">🔴 Fora da meta</Badge>;
   return <Badge variant="outline">Sem dados</Badge>;
 }
+
 
 function Linha({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) {
   return (

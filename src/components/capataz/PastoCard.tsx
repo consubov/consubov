@@ -44,7 +44,8 @@ export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sa
           <span className="font-semibold text-sm text-foreground">{nome}</span>
           <div className="flex items-center gap-1.5">
             {cb && (
-              <Badge className={`text-[10px] px-1.5 py-0 h-5 ${cb.className}`}>
+              <Badge className={`text-[10px] px-1.5 py-0 h-5 ${cb.className}`} style={cb.style}>
+
                 {cb.emoji} {statusConsumo} {indiceConsumo != null ? `(${indiceConsumo.toFixed(2)})` : ''}
               </Badge>
             )}
