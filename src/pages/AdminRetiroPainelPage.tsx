@@ -164,6 +164,10 @@ export default function AdminRetiroPainelPage() {
   }, [retiroId, mes, ano]);
   useEffect(() => { void loadPastoMae(); }, [loadPastoMae]);
 
+  // Lista de Pastos: fonte única compartilhada com gerente/capataz e com o Mapa
+  // (view_painel_mae_pasto_atual → consumo_global_g_cab_dia / status_global).
+  const { pastos: pastosLista, refresh: refreshPastosLista } = usePastosRetiro(retiroId ?? null, mes, ano);
+
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? "Retiro";
 
