@@ -42,16 +42,21 @@ interface ProdutoForm {
   consumo_recria1: string;
   consumo_recria2: string;
   consumo_engorda: string;
-  margem_recria1: string;
-  margem_recria2: string;
-  margem_engorda: string;
+  margem_mais_recria1_pct: string;
+  margem_menos_recria1_pct: string;
+  margem_mais_recria2_pct: string;
+  margem_menos_recria2_pct: string;
+  margem_mais_engorda_pct: string;
+  margem_menos_engorda_pct: string;
 }
 
 const emptyForm: ProdutoForm = {
   marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "",
   consumo_por_100kg: "",
   consumo_recria1: "", consumo_recria2: "", consumo_engorda: "",
-  margem_recria1: "", margem_recria2: "", margem_engorda: "",
+  margem_mais_recria1_pct: "", margem_menos_recria1_pct: "",
+  margem_mais_recria2_pct: "", margem_menos_recria2_pct: "",
+  margem_mais_engorda_pct: "", margem_menos_engorda_pct: "",
 };
 
 export default function ProdutosPage() {
