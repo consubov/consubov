@@ -39,6 +39,12 @@ const catLabels: Record<string, string> = {
   outro: "Outro",
 };
 
+const statusClasses: Record<string, string> = {
+  Baixo: "bg-destructive/10 text-destructive border-destructive/30",
+  Ideal: "bg-primary/10 text-primary border-primary/30",
+  Alto: "bg-secondary/10 text-secondary-foreground border-secondary/30",
+};
+
 function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
   if (!dataFimCarencia) return 0;
   const fim = new Date(dataFimCarencia);
@@ -52,7 +58,8 @@ function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
 export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico }: Props) {
   const [pesagem, setPesagem] = useState<any>(null);
   const [sanitario, setSanitario] = useState<any>(null);
-  const [consumoMedio, setConsumoMedio] = useState<number | null>(null);
+  const [consumoGlobal, setConsumoGlobal] = useState<number | null>(null);
+  const [statusGlobal, setStatusGlobal] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +86,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
     if (!open || !pasto?.id) {
       setPesagem(null);
       setSanitario(null);
-      setConsumoMedio(null);
+      setConsumoGlobal(null);
+      setStatusGlobal(null);
       return;
     }
 
@@ -101,17 +109,15 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
       .maybeSingle()
       .then(({ data }: any) => setSanitario(data));
 
-    // Fetch consumo médio from latest lancamento
+    // Fetch consumo global e status da mesma fonte do Mapa
     supabase
-      .from("lancamentos")
-      .select("consumo_g_cab_dia")
+      .from("view_painel_mae_pasto_atual")
+      .select("consumo_global_g_cab_dia, status_global")
       .eq("pasto_id", pasto.id)
-      .not("consumo_g_cab_dia", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        setConsumoMedio(data?.consumo_g_cab_dia != null ? Number(data.consumo_g_cab_dia) : null);
+        setConsumoGlobal(data?.consumo_global_g_cab_dia != null ? Number(data.consumo_global_g_cab_dia) : null);
+        setStatusGlobal(data?.status_global ?? null);
       });
   }, [open, pasto?.id]);
 
@@ -146,7 +152,23 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Item label="Animais" value={String(pasto.num_animais)} />
               <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
-              <Item label="Consumo médio" value={consumoMedio != null ? `${consumoMedio.toFixed(1).replace(".", ",")} g/cab/dia` : "—"} />
+              <Item
+                label="Consumo global"
+                value={
+                  consumoGlobal != null ? (
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <span>{consumoGlobal.toFixed(1).replace(".", ",")} g/cab/dia</span>
+                      {statusGlobal && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusClasses[statusGlobal] || "bg-muted text-muted-foreground border-muted"}`}>
+                          {statusGlobal}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
               <Item label="Categoria" value={pasto.categoria || "—"} />
               <Item label="Sexo" value={pasto.sexo || "—"} />
               <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
@@ -219,11 +241,11 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   );
 }
 
-function Item({ label, value }: { label: string; value: string }) {
+function Item({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium">{value}</p>
+      <div className="font-medium">{value}</div>
     </div>
   );
 }
