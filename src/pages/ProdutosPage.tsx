@@ -180,6 +180,10 @@ export default function ProdutosPage() {
     toast.success("Produto excluído.");
   }
 
+  function getMargemUnico(mais: string, menos: string): string {
+    return mais || menos;
+  }
+
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
