@@ -670,7 +670,7 @@ export default function GerenteDashboard() {
 function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
   const navRetiro = useNavigate();
   const { mes, ano } = usePainelPeriodo();
-  const { pastos: pastosLista } = usePastosRetiro(retiro.id ?? null, mes, ano);
+  const { pastos: pastosLista, loading: pastosListaLoading } = usePastosRetiro(retiro.id ?? null, mes, ano);
   return (
     <>
       <SheetHeader className="mb-4">
@@ -691,7 +691,7 @@ function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
         </Button>
       </SheetHeader>
 
-      <PastosListaRetiro pastos={pastosLista} />
+      <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
     </>
   );
 }

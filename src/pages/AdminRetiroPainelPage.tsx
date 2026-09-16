@@ -168,7 +168,7 @@ export default function AdminRetiroPainelPage() {
 
   // Lista de Pastos: fonte única compartilhada com gerente/capataz e com o Mapa
   // (view_painel_mae_pasto_atual → consumo_global_g_cab_dia / status_global).
-  const { pastos: pastosLista, refresh: refreshPastosLista } = usePastosRetiro(retiroId ?? null, mes, ano);
+  const { pastos: pastosLista, loading: pastosListaLoading, refresh: refreshPastosLista } = usePastosRetiro(retiroId ?? null, mes, ano);
 
   const retiroData = retirosResumo.find(r => r.id === retiroId);
   const retiroNome = retiroData?.nome ?? retiroNomeFallback ?? "Retiro";
@@ -261,7 +261,7 @@ export default function AdminRetiroPainelPage() {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (!retiroId || (!retiroData && pastosLista.length === 0)) {
+  if (!retiroId || (!retiroData && pastosLista.length === 0 && !pastosListaLoading)) {
     return renderErrorState(
       "Retiro não encontrado",
       "Verifique se o retiro existe e se você possui permissão para visualizar seus dados.",
@@ -347,7 +347,7 @@ export default function AdminRetiroPainelPage() {
         </Card>
       )}
 
-      <PastosListaRetiro pastos={pastosLista} />
+      <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
 
       {retiroData && retiroData.diasSemSalga != null && (
         <Card className="border-secondary/50">
