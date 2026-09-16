@@ -38,17 +38,7 @@ export default function PastosListaRetiro({ pastos, loading = false }: { pastos:
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-sm">{p.nome}</p>
-                  <div className="flex items-center gap-1.5">
-                    {status && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 hover:bg-inherit ${
-                        STATUS_GLOBAL_CLASSES[status] || "bg-muted text-muted-foreground"
-                      }`}>
-                        {status}
-                        {p.indice_global != null ? ` (${p.indice_global.toFixed(2)})` : ""}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
-                  </div>
+                  <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div><p className="text-muted-foreground">Sacos</p><p className="font-bold">{p.num_sacos}</p></div>
