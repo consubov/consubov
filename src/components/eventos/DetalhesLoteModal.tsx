@@ -146,7 +146,23 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Item label="Animais" value={String(pasto.num_animais)} />
               <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
-              <Item label="Consumo médio" value={consumoMedio != null ? `${consumoMedio.toFixed(1).replace(".", ",")} g/cab/dia` : "—"} />
+              <Item
+                label="Consumo global"
+                value={
+                  consumoGlobal != null ? (
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <span>{consumoGlobal.toFixed(1).replace(".", ",")} g/cab/dia</span>
+                      {statusGlobal && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusClasses[statusGlobal] || "bg-muted text-muted-foreground border-muted"}`}>
+                          {statusGlobal}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
               <Item label="Categoria" value={pasto.categoria || "—"} />
               <Item label="Sexo" value={pasto.sexo || "—"} />
               <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
