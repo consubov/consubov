@@ -52,6 +52,10 @@ export function usePastosRetiro(retiroId: string | null | undefined, mes: number
           .eq("ano_referencia", ano),
       ]);
 
+      if ((pastosRes as any).error) console.error("usePastosRetiro pastos error:", (pastosRes as any).error);
+      if ((atualRes as any).error) console.error("usePastosRetiro view_painel_mae_pasto_atual error:", (atualRes as any).error);
+      if ((mesRes as any).error) console.error("usePastosRetiro view_painel_mae_pasto error:", (mesRes as any).error);
+
       const atualMap = new Map<string, any>();
       for (const row of (atualRes.data ?? [])) {
         if (!atualMap.has(row.pasto_id)) atualMap.set(row.pasto_id, row);
