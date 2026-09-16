@@ -9,6 +9,8 @@ import MonthScroller from "@/components/MonthScroller";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
+import { usePastosRetiro } from "@/hooks/usePastosRetiro";
+import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
