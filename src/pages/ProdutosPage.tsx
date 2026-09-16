@@ -180,6 +180,10 @@ export default function ProdutosPage() {
     toast.success("Produto excluído.");
   }
 
+  function getMargemUnico(mais: string, menos: string): string {
+    return mais || menos;
+  }
+
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -309,27 +313,24 @@ export default function ProdutosPage() {
               <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Recria 1 (0–220kg)</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label className="text-xs">Recria 1</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem + %" value={form.margem_mais_recria1_pct} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem - %" value={form.margem_menos_recria1_pct} onChange={(e) => setForm({ ...form, margem_menos_recria1_pct: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Recria 2 (221–360kg ♂ / 221–299kg ♀)</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label className="text-xs">Recria 2</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem + %" value={form.margem_mais_recria2_pct} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem - %" value={form.margem_menos_recria2_pct} onChange={(e) => setForm({ ...form, margem_menos_recria2_pct: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Engorda (&gt;361kg ♂ / &gt;300kg ♀)</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label className="text-xs">Engorda</Label>
+                  <div className="grid grid-cols-2 gap-2">
                     <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem + %" value={form.margem_mais_engorda_pct} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value })} />
-                    <Input type="number" step="0.01" placeholder="Margem - %" value={form.margem_menos_engorda_pct} onChange={(e) => setForm({ ...form, margem_menos_engorda_pct: e.target.value })} />
+                    <Input type="number" step="0.01" placeholder="Margem (%)" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
                   </div>
                 </div>
               </div>
