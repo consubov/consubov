@@ -122,14 +122,6 @@ function getCentroid(coords: number[][]) {
   return { x, y };
 }
 
-function polygonArea(coords: number[][]) {
-  let area = 0;
-  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-    area += coords[j][0] * coords[i][1] - coords[i][0] * coords[j][1];
-  }
-  return Math.abs(area) / 2;
-}
-
 function distanceToSegmentSquared(x: number, y: number, ax: number, ay: number, bx: number, by: number) {
   let dx = bx - ax;
   let dy = by - ay;
@@ -253,19 +245,8 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   if (pasto.coordenadas.length < 3) return null;
   const bounds = getBounds(pasto.coordenadas);
   const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
-  const area = polygonArea(pasto.coordenadas);
-  const boundingArea = bounds.width * bounds.height;
-  const fillRatio = boundingArea > 0 ? area / boundingArea : 0;
-  const narrowShape = fillRatio < 0.4 && bounds.height > 150;
-  const areaScale = area < 12_000 || narrowShape
-    ? 0.55
-    : area < 18_000 && bounds.width < 200
-      ? 0.75
-      : 1;
-  const pinScale = pasto.num_animais > 0
-    ? Math.max(0, Math.min(areaScale, labelPoint.distance / 24))
-    : 0;
-  const fontSize = Math.max(2.8, Math.min(10, 8 * Math.max(pinScale, areaScale * 0.75)));
+  const pinScale = pasto.num_animais > 0 ? 1 : 0;
+  const fontSize = 8;
   const lines = buildLabelLines(pasto, fontSize, Math.max(bounds.width * 0.72, 8));
   const textWidth = Math.max(...lines.map((line) => line.width), 0);
   const textHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
