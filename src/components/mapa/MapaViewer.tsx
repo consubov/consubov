@@ -24,11 +24,10 @@ type LabelLine = {
 type LabelLayout = {
   centerX: number;
   centerY: number;
-  width: number;
-  height: number;
+  pinCenterY: number;
+  pinScale: number;
+  showText: boolean;
   lines: LabelLine[];
-  lineHeight: number;
-  padding: number;
 };
 
 type CategoriaBovina = "Recria 1" | "Recria 2" | "Engorda";
@@ -123,6 +122,68 @@ function getCentroid(coords: number[][]) {
   return { x, y };
 }
 
+function polygonArea(coords: number[][]) {
+  let area = 0;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    area += coords[j][0] * coords[i][1] - coords[i][0] * coords[j][1];
+  }
+  return Math.abs(area) / 2;
+}
+
+function distanceToSegmentSquared(x: number, y: number, ax: number, ay: number, bx: number, by: number) {
+  let dx = bx - ax;
+  let dy = by - ay;
+  if (dx !== 0 || dy !== 0) {
+    const t = ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy);
+    if (t > 1) { ax = bx; ay = by; }
+    else if (t > 0) { ax += dx * t; ay += dy * t; }
+  }
+  dx = x - ax;
+  dy = y - ay;
+  return dx * dx + dy * dy;
+}
+
+function signedDistanceToPolygon(x: number, y: number, coords: number[][]) {
+  let minDistanceSquared = Infinity;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    minDistanceSquared = Math.min(
+      minDistanceSquared,
+      distanceToSegmentSquared(x, y, coords[i][0], coords[i][1], coords[j][0], coords[j][1]),
+    );
+  }
+  const distance = Math.sqrt(minDistanceSquared);
+  return pointInPolygon(x, y, coords) ? distance : -distance;
+}
+
+function getPolygonLabelPoint(coords: number[][]) {
+  const bounds = getBounds(coords);
+  const centroid = getCentroid(coords);
+  let best = pointInPolygon(centroid.x, centroid.y, coords)
+    ? { ...centroid, distance: signedDistanceToPolygon(centroid.x, centroid.y, coords) }
+    : { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2, distance: -Infinity };
+  let step = Math.max(bounds.width, bounds.height) / 8;
+
+  for (let y = bounds.minY; y <= bounds.maxY; y += step) {
+    for (let x = bounds.minX; x <= bounds.maxX; x += step) {
+      const distance = signedDistanceToPolygon(x, y, coords);
+      if (distance > best.distance) best = { x, y, distance };
+    }
+  }
+
+  for (let pass = 0; pass < 7; pass += 1) {
+    step /= 2;
+    for (let oy = -2; oy <= 2; oy += 1) {
+      for (let ox = -2; ox <= 2; ox += 1) {
+        const x = best.x + ox * step;
+        const y = best.y + oy * step;
+        const distance = signedDistanceToPolygon(x, y, coords);
+        if (distance > best.distance) best = { x, y, distance };
+      }
+    }
+  }
+  return best;
+}
+
 function calcularCategoriaViva(pesoMedioKg: number | null, sexo: string | null): CategoriaBovina {
   const peso = Number(pesoMedioKg) || 0;
   const sexoNormalizado = (sexo ?? "").trim().toLowerCase();
@@ -138,9 +199,7 @@ function getSilhuetaAsset(categoria: CategoriaBovina) {
   return recria1Asset.url;
 }
 
-function PastoPin({ pasto, centerX, centerY }: { pasto: PastoMapaData; centerX: number; centerY: number }) {
-  const bounds = getBounds(pasto.coordenadas);
-  const scale = Math.min(1, Math.max(0.42, Math.min(bounds.width / 48, bounds.height / 58)));
+function PastoPin({ pasto, centerX, centerY, scale }: { pasto: PastoMapaData; centerX: number; centerY: number; scale: number }) {
   const categoria = calcularCategoriaViva(pasto.peso_medio_kg, pasto.sexo);
   const color = getStatusColor(pasto.status_consumo, pasto.num_animais);
 
@@ -190,45 +249,34 @@ function rectFitsPolygon(centerX: number, centerY: number, width: number, height
   return points.every(([x, y]) => pointInPolygon(x, y, coords));
 }
 
-function createCenterCandidates(coords: number[][]) {
-  const { minX, width, height } = getBounds(coords);
-  const centroid = getCentroid(coords);
-  const bboxCenter = { x: minX + width / 2, y: getBounds(coords).minY + height / 2 };
-  const offsetX = width * 0.08;
-  const offsetY = height * 0.08;
-  return [centroid, bboxCenter,
-    { x: centroid.x, y: centroid.y - offsetY }, { x: centroid.x, y: centroid.y + offsetY },
-    { x: centroid.x - offsetX, y: centroid.y }, { x: centroid.x + offsetX, y: centroid.y },
-    { x: centroid.x - offsetX, y: centroid.y - offsetY }, { x: centroid.x + offsetX, y: centroid.y - offsetY },
-    { x: centroid.x - offsetX, y: centroid.y + offsetY }, { x: centroid.x + offsetX, y: centroid.y + offsetY },
-  ];
-}
-
-function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
+function computeLabelLayout(pasto: PastoMapaData, renderedScale: number): LabelLayout | null {
   if (pasto.coordenadas.length < 3) return null;
   const bounds = getBounds(pasto.coordenadas);
-  const maxWidth = Math.max(bounds.width * 0.74, 18);
-  const minFont = 4;
-  const maxFont = Math.min(22, bounds.height * 0.26, bounds.width * 0.28);
-  const centers = createCenterCandidates(pasto.coordenadas);
-  for (let fontSize = maxFont; fontSize >= minFont; fontSize -= 0.5) {
-    const padding = Math.max(fontSize * 0.5, 4);
-    const lineHeight = fontSize * 1.14;
-    const lines = buildLabelLines(pasto, fontSize, Math.max(maxWidth - padding * 2, 12));
-    const textWidth = Math.max(...lines.map((line) => line.width), 0);
-    const totalLineHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
-    const boxWidth = textWidth + padding * 2;
-    const boxHeight = totalLineHeight + padding * 2;
-    if (boxWidth > bounds.width * 0.92 || boxHeight > bounds.height * 0.92) continue;
-    const fittingCenter = centers.find((candidate) => rectFitsPolygon(candidate.x, candidate.y, boxWidth, boxHeight, pasto.coordenadas));
-    if (!fittingCenter) continue;
-    return { centerX: fittingCenter.x, centerY: fittingCenter.y, width: boxWidth, height: boxHeight, lines, lineHeight, padding };
-  }
-  const fallbackFont = Math.max(minFont, Math.min(6, bounds.height * 0.18, bounds.width * 0.18));
-  const fallbackLines = buildLabelLines(pasto, fallbackFont, Math.max(bounds.width * 0.62, 12));
-  const fallbackHeight = fallbackLines.reduce((sum, line) => sum + line.fontSize * 1.05, 0);
-  const centroid = getCentroid(pasto.coordenadas);
-  return { centerX: centroid.x, centerY: centroid.y, width: Math.max(...fallbackLines.map((line) => line.width), 0), height: fallbackHeight, lines: fallbackLines, lineHeight: fallbackFont * 1.1, padding: 2 };
+  const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
+  const areaPx = polygonArea(pasto.coordenadas) * renderedScale * renderedScale;
+  const areaScale = areaPx < 700 ? 0.38 : areaPx < 1600 ? 0.52 : areaPx < 3200 ? 0.7 : areaPx < 6000 ? 0.85 : 1;
+  const pinScale = pasto.num_animais > 0
+    ? Math.max(0, Math.min(areaScale, labelPoint.distance / 24))
+    : 0;
+  const fontSize = Math.max(2.8, Math.min(10, 8 * Math.max(pinScale, areaScale * 0.75)));
+  const lines = buildLabelLines(pasto, fontSize, Math.max(bounds.width * 0.72, 8));
+  const textWidth = Math.max(...lines.map((line) => line.width), 0);
+  const textHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
+  const gap = pasto.num_animais > 0 ? 2 * pinScale : 0;
+  const pinHeight = pasto.num_animais > 0 ? 38 * pinScale : 0;
+  const contentWidth = Math.max(26 * pinScale, textWidth);
+  const contentHeight = pinHeight + gap + textHeight;
+  const showText = rectFitsPolygon(labelPoint.x, labelPoint.y, contentWidth, contentHeight, pasto.coordenadas);
+  const visibleTextHeight = showText ? textHeight + gap : 0;
+
+  return {
+    centerX: labelPoint.x,
+    centerY: labelPoint.y,
+    pinCenterY: labelPoint.y - visibleTextHeight / 2,
+    pinScale,
+    showText,
+    lines,
+  };
 }
 
 export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos }: Props) {
@@ -241,6 +289,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
   const suppressClickRef = useRef(false);
+  const [renderedScale, setRenderedScale] = useState(1);
 
   const MIN_Z = 1;
   const MAX_Z = 5;
@@ -282,6 +331,21 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const updateScale = () => {
+      const viewBox = svg.viewBox.baseVal;
+      if (viewBox.width > 0 && viewBox.height > 0) {
+        setRenderedScale(Math.min(svg.clientWidth / viewBox.width, svg.clientHeight / viewBox.height));
+      }
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [mapa]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -343,8 +407,8 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   ];
 
   const layouts = useMemo(
-    () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto) })),
-    [mapa.pastos],
+    () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto, renderedScale) })),
+    [mapa.pastos, renderedScale],
   );
 
   if (allCoords.length === 0) {
@@ -409,8 +473,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
         {/* Polygons with labels */}
         {layouts.map(({ pasto, layout }) => {
           if (!layout || pasto.coordenadas.length < 3) return null;
-          const totalTextHeight = layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
-          let currentY = layout.centerY - totalTextHeight / 2;
+          let currentY = layout.pinCenterY + (pasto.num_animais > 0 ? 21 * layout.pinScale : -layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0) / 2);
           return (
             <g key={pasto.id} className="cursor-pointer" onClick={() => handlePastoClick(pasto)}>
               <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto)}
@@ -418,9 +481,8 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
                 stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : "#FFFFFF"}
                 strokeWidth={2} />
 
-              {layout.lines.map((line, index) => {
-                const pinOffset = pasto.num_animais > 0 ? Math.min(20, getBounds(pasto.coordenadas).height * 0.22) : 0;
-                const y = currentY + line.fontSize + pinOffset;
+              {layout.showText && layout.lines.map((line, index) => {
+                const y = currentY + line.fontSize;
                 currentY += line.fontSize * 1.08;
                 return (
                   <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
@@ -433,7 +495,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
               })}
 
               {pasto.num_animais > 0 && (
-                <PastoPin pasto={pasto} centerX={layout.centerX} centerY={layout.centerY - Math.min(8, getBounds(pasto.coordenadas).height * 0.08)} />
+                <PastoPin pasto={pasto} centerX={layout.centerX} centerY={layout.pinCenterY} scale={layout.pinScale} />
               )}
             </g>
           );
