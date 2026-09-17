@@ -249,12 +249,19 @@ function rectFitsPolygon(centerX: number, centerY: number, width: number, height
   return points.every(([x, y]) => pointInPolygon(x, y, coords));
 }
 
-function computeLabelLayout(pasto: PastoMapaData, renderedScale: number): LabelLayout | null {
+function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   if (pasto.coordenadas.length < 3) return null;
   const bounds = getBounds(pasto.coordenadas);
   const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
-  const areaPx = polygonArea(pasto.coordenadas) * renderedScale * renderedScale;
-  const areaScale = areaPx < 700 ? 0.38 : areaPx < 1600 ? 0.52 : areaPx < 3200 ? 0.7 : areaPx < 6000 ? 0.85 : 1;
+  const area = polygonArea(pasto.coordenadas);
+  const boundingArea = bounds.width * bounds.height;
+  const fillRatio = boundingArea > 0 ? area / boundingArea : 0;
+  const narrowShape = fillRatio < 0.4 && bounds.height > 150;
+  const areaScale = area < 12_000 || narrowShape
+    ? 0.55
+    : area < 18_000 && bounds.width < 200
+      ? 0.75
+      : 1;
   const pinScale = pasto.num_animais > 0
     ? Math.max(0, Math.min(areaScale, labelPoint.distance / 24))
     : 0;
@@ -289,7 +296,6 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
   const suppressClickRef = useRef(false);
-  const [renderedScale, setRenderedScale] = useState(1);
 
   const MIN_Z = 1;
   const MAX_Z = 5;
@@ -331,21 +337,6 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const updateScale = () => {
-      const viewBox = svg.viewBox.baseVal;
-      if (viewBox.width > 0 && viewBox.height > 0) {
-        setRenderedScale(Math.min(svg.clientWidth / viewBox.width, svg.clientHeight / viewBox.height));
-      }
-    };
-    updateScale();
-    const observer = new ResizeObserver(updateScale);
-    observer.observe(svg);
-    return () => observer.disconnect();
-  }, [mapa]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -407,8 +398,8 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   ];
 
   const layouts = useMemo(
-    () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto, renderedScale) })),
-    [mapa.pastos, renderedScale],
+    () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto) })),
+    [mapa.pastos],
   );
 
   if (allCoords.length === 0) {
