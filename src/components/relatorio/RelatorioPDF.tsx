@@ -545,8 +545,8 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
     { label: "Consumo/100kg", width: "11%" },
     { label: "Peso Saco (kg)", width: "10%" },
     { label: "Sacos", width: "7%" },
-    { label: "Dias Cons.", width: "9%" },
-    { label: "Consumo Real", width: "10%" },
+    { label: "Dias do Ciclo", width: "9%" },
+    { label: "Consumo Médio do Mês", width: "10%" },
     { label: "Status Real", width: "10%" },
   ];
 
