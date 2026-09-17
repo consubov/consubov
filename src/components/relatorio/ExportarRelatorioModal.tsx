@@ -209,12 +209,21 @@ export default function ExportarRelatorioModal({
         ...Object.values(ocupacaoProdutoByPasto),
 
       ])] as string[];
-      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number; margem_recria1: number; margem_recria2: number; margem_engorda: number }> = {};
+      const produtosMap: Record<string, {
+        nome: string; peso_saco_kg: number; preco_por_kg: number;
+        consumo_recria1: number; consumo_recria2: number; consumo_engorda: number;
+        margem_recria1: number; margem_recria2: number; margem_engorda: number;
+        margem_mais_recria1_pct: number | null; margem_menos_recria1_pct: number | null;
+        margem_mais_recria2_pct: number | null; margem_menos_recria2_pct: number | null;
+        margem_mais_engorda_pct: number | null; margem_menos_engorda_pct: number | null;
+        amarelo_buffer_g: number;
+      }> = {};
       if (produtoIds.length > 0) {
-        const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
+        const { data: prodData } = await (supabase as any).from("produtos")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda, margem_mais_recria1_pct, margem_menos_recria1_pct, margem_mais_recria2_pct, margem_menos_recria2_pct, margem_mais_engorda_pct, margem_menos_engorda_pct, amarelo_buffer_g")
           .in("id", produtoIds);
-        for (const p of (prodData ?? [])) {
+        const num = (v: any) => (v == null ? null : Number(v));
+        for (const p of ((prodData ?? []) as any[])) {
           produtosMap[p.id] = {
             nome: p.nome,
             peso_saco_kg: Number(p.peso_saco_kg),
@@ -225,6 +234,13 @@ export default function ExportarRelatorioModal({
             margem_recria1: Number(p.margem_recria1 ?? 0),
             margem_recria2: Number(p.margem_recria2 ?? 0),
             margem_engorda: Number(p.margem_engorda ?? 0),
+            margem_mais_recria1_pct: num(p.margem_mais_recria1_pct),
+            margem_menos_recria1_pct: num(p.margem_menos_recria1_pct),
+            margem_mais_recria2_pct: num(p.margem_mais_recria2_pct),
+            margem_menos_recria2_pct: num(p.margem_menos_recria2_pct),
+            margem_mais_engorda_pct: num(p.margem_mais_engorda_pct),
+            margem_menos_engorda_pct: num(p.margem_menos_engorda_pct),
+            amarelo_buffer_g: Number(p.amarelo_buffer_g ?? 0),
           };
         }
       }
