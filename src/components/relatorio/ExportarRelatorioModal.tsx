@@ -1,6 +1,28 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, calcularCategoriaViva, classificarConsumo4, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+
+type MargensPct = {
+  margem_mais_recria1_pct?: number | null; margem_menos_recria1_pct?: number | null;
+  margem_mais_recria2_pct?: number | null; margem_menos_recria2_pct?: number | null;
+  margem_mais_engorda_pct?: number | null; margem_menos_engorda_pct?: number | null;
+};
+
+function getMargemMaisPct(categoria: string, p: MargensPct): number | null {
+  const c = (categoria || "").toLowerCase();
+  const v = c.includes("recria 1") || c.includes("recria1") ? p.margem_mais_recria1_pct
+    : c.includes("recria 2") || c.includes("recria2") ? p.margem_mais_recria2_pct
+    : p.margem_mais_engorda_pct;
+  return v == null ? null : Number(v);
+}
+
+function getMargemMenosPct(categoria: string, p: MargensPct): number | null {
+  const c = (categoria || "").toLowerCase();
+  const v = c.includes("recria 1") || c.includes("recria1") ? p.margem_menos_recria1_pct
+    : c.includes("recria 2") || c.includes("recria2") ? p.margem_menos_recria2_pct
+    : p.margem_menos_engorda_pct;
+  return v == null ? null : Number(v);
+}
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
