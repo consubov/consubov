@@ -24,7 +24,6 @@ export default function PastosListaRetiro({ pastos, loading = false }: { pastos:
       <div className="space-y-2">
         {pastos.map((p) => {
           const consumo = p.consumo_global_g_cab_dia ?? 0;
-          const status = p.status_global;
           return (
             <Card key={p.id}>
               <CardContent className="p-3">
