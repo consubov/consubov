@@ -1,6 +1,28 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, calcularCategoriaViva, classificarConsumo4, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+
+type MargensPct = {
+  margem_mais_recria1_pct?: number | null; margem_menos_recria1_pct?: number | null;
+  margem_mais_recria2_pct?: number | null; margem_menos_recria2_pct?: number | null;
+  margem_mais_engorda_pct?: number | null; margem_menos_engorda_pct?: number | null;
+};
+
+function getMargemMaisPct(categoria: string, p: MargensPct): number | null {
+  const c = (categoria || "").toLowerCase();
+  const v = c.includes("recria 1") || c.includes("recria1") ? p.margem_mais_recria1_pct
+    : c.includes("recria 2") || c.includes("recria2") ? p.margem_mais_recria2_pct
+    : p.margem_mais_engorda_pct;
+  return v == null ? null : Number(v);
+}
+
+function getMargemMenosPct(categoria: string, p: MargensPct): number | null {
+  const c = (categoria || "").toLowerCase();
+  const v = c.includes("recria 1") || c.includes("recria1") ? p.margem_menos_recria1_pct
+    : c.includes("recria 2") || c.includes("recria2") ? p.margem_menos_recria2_pct
+    : p.margem_menos_engorda_pct;
+  return v == null ? null : Number(v);
+}
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
@@ -152,7 +174,7 @@ export default function ExportarRelatorioModal({
 
 
       const { data: pastosData } = await supabase.from("pastos")
-        .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
+        .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
         .in("retiro_id", retiroIds).eq("ativo", true);
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
@@ -209,12 +231,21 @@ export default function ExportarRelatorioModal({
         ...Object.values(ocupacaoProdutoByPasto),
 
       ])] as string[];
-      const produtosMap: Record<string, { nome: string; peso_saco_kg: number; preco_por_kg: number; consumo_recria1: number; consumo_recria2: number; consumo_engorda: number; margem_recria1: number; margem_recria2: number; margem_engorda: number }> = {};
+      const produtosMap: Record<string, {
+        nome: string; peso_saco_kg: number; preco_por_kg: number;
+        consumo_recria1: number; consumo_recria2: number; consumo_engorda: number;
+        margem_recria1: number; margem_recria2: number; margem_engorda: number;
+        margem_mais_recria1_pct: number | null; margem_menos_recria1_pct: number | null;
+        margem_mais_recria2_pct: number | null; margem_menos_recria2_pct: number | null;
+        margem_mais_engorda_pct: number | null; margem_menos_engorda_pct: number | null;
+        amarelo_buffer_g: number;
+      }> = {};
       if (produtoIds.length > 0) {
-        const { data: prodData } = await supabase.from("produtos")
-          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
+        const { data: prodData } = await (supabase as any).from("produtos")
+          .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda, margem_mais_recria1_pct, margem_menos_recria1_pct, margem_mais_recria2_pct, margem_menos_recria2_pct, margem_mais_engorda_pct, margem_menos_engorda_pct, amarelo_buffer_g")
           .in("id", produtoIds);
-        for (const p of (prodData ?? [])) {
+        const num = (v: any) => (v == null ? null : Number(v));
+        for (const p of ((prodData ?? []) as any[])) {
           produtosMap[p.id] = {
             nome: p.nome,
             peso_saco_kg: Number(p.peso_saco_kg),
@@ -225,6 +256,13 @@ export default function ExportarRelatorioModal({
             margem_recria1: Number(p.margem_recria1 ?? 0),
             margem_recria2: Number(p.margem_recria2 ?? 0),
             margem_engorda: Number(p.margem_engorda ?? 0),
+            margem_mais_recria1_pct: num(p.margem_mais_recria1_pct),
+            margem_menos_recria1_pct: num(p.margem_menos_recria1_pct),
+            margem_mais_recria2_pct: num(p.margem_mais_recria2_pct),
+            margem_menos_recria2_pct: num(p.margem_menos_recria2_pct),
+            margem_mais_engorda_pct: num(p.margem_mais_engorda_pct),
+            margem_menos_engorda_pct: num(p.margem_menos_engorda_pct),
+            amarelo_buffer_g: Number(p.amarelo_buffer_g ?? 0),
           };
         }
       }
@@ -329,13 +367,9 @@ export default function ExportarRelatorioModal({
             new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
           );
           const lastP = sortedPLanc[0];
-          const idx = lastP ? Number(lastP.indice_consumo ?? 0) : 0;
-          const pStatus = idx > 0
-            ? formulas.classificacao.classify(idx)
-            : (lastP?.status_consumo ?? "—");
-
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
-          const cat = (p as any).categoria || classificarCategoria(pesoMedio);
+          // Categoria calculada ao vivo (peso + sexo), nunca o campo salvo.
+          const cat = calcularCategoriaViva(pesoMedio, (p as any).sexo);
           const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
           let diasConsiderados = 0;
           if (lastCiclo) {
@@ -367,19 +401,34 @@ export default function ExportarRelatorioModal({
           if (consumoRealV2 !== undefined) {
             const pesoMedioStatus = Number(vp?.peso_medio_kg ?? pesoMedio);
             const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedioStatus);
-            const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
-            const margemGCabDia = margemPor100kg * pesoMedioStatus * 10;
+            const maisPct = pProd ? getMargemMaisPct(cat, pProd) : null;
+            const menosPct = pProd ? getMargemMenosPct(cat, pProd) : null;
             if (consumoEsperado <= 0) {
               statusReal = "—";
-            } else if (consumoReal < (consumoEsperado - margemGCabDia)) {
-              statusReal = "Baixo";
-            } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
-              statusReal = "Alto";
+            } else if (maisPct != null && menosPct != null) {
+              // Produto migrado: 4 estados com buffer amarelo (mesma regra das demais telas)
+              statusReal = classificarConsumo4(
+                consumoReal,
+                consumoEsperado,
+                maisPct,
+                menosPct,
+                Number(pProd?.amarelo_buffer_g ?? 0),
+              );
             } else {
-              statusReal = "Ideal";
+              // Compatibilidade: margem absoluta, 3 estados
+              const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
+              const margemGCabDia = margemPor100kg * pesoMedioStatus * 10;
+              if (consumoReal < (consumoEsperado - margemGCabDia)) {
+                statusReal = "Baixo";
+              } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
+                statusReal = "Alto";
+              } else {
+                statusReal = "Ideal";
+              }
             }
           } else {
-            statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+            // Sem dado mensal: não classificar com regra diferente.
+            statusReal = "—";
           }
 
 

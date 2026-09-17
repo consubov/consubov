@@ -545,8 +545,8 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
     { label: "Consumo/100kg", width: "11%" },
     { label: "Peso Saco (kg)", width: "10%" },
     { label: "Sacos", width: "7%" },
-    { label: "Dias Cons.", width: "9%" },
-    { label: "Consumo Real", width: "10%" },
+    { label: "Dias do Ciclo", width: "9%" },
+    { label: "Consumo Médio do Mês", width: "10%" },
     { label: "Status Real", width: "10%" },
   ];
 
@@ -610,7 +610,9 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
 
       <Text style={{ fontSize: 6, color: "#888", marginTop: 2 }}>
         {"\u2713 = lançado via QR Code"}
-        {limiteDias != null ? ` · Dias Cons. em vermelho = acima do intervalo padrão (${limiteDias} dias)` : ""}
+        {" · Consumo Médio do Mês = média de todas as salgas do mês (g/cab/dia), diferente do Consumo Real pontual das telas"}
+        {" · Dias do Ciclo = dias do ciclo do retiro, não o intervalo de consumo de cada pasto"}
+        {limiteDias != null ? ` (em vermelho = acima do intervalo padrão de ${limiteDias} dias)` : ""}
       </Text>
     </View>
   );
