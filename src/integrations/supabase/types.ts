@@ -2981,6 +2981,9 @@ export type Database = {
           dias_no_pasto: number | null
           gmd_kg_dia: number | null
           id: string
+          label_offset_x: number | null
+          label_offset_y: number | null
+          label_rotation: number | null
           nome: string
           num_animais: number
           pasto_origem_id: string | null
@@ -3004,6 +3007,9 @@ export type Database = {
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
+          label_offset_x?: number | null
+          label_offset_y?: number | null
+          label_rotation?: number | null
           nome: string
           num_animais?: number
           pasto_origem_id?: string | null
@@ -3027,6 +3033,9 @@ export type Database = {
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
+          label_offset_x?: number | null
+          label_offset_y?: number | null
+          label_rotation?: number | null
           nome?: string
           num_animais?: number
           pasto_origem_id?: string | null
