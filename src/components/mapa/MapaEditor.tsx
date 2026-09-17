@@ -528,6 +528,10 @@ export default function MapaEditor({
                             const point = getSvgCoords(touch.clientX, touch.clientY);
                             setDraggingLabel({ idx: polyIdx, startX: point.x, startY: point.y, offsetX: labelPasto.label_offset_x, offsetY: labelPasto.label_offset_y });
                           }}>
+                          {isEditing && (
+                            <rect x={labelLayout.centerX - 16} y={labelLayout.pinCenterY - 20} width={32} height={76}
+                              fill="transparent" pointerEvents="all" />
+                          )}
                           {(() => {
                             let labelY = labelLayout.pinCenterY + (labelPasto.num_animais > 0 ? 21 * labelLayout.pinScale : -labelLayout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0) / 2);
                             return labelLayout.lines.map((line, lineIndex) => {
