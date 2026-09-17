@@ -152,7 +152,7 @@ export default function ExportarRelatorioModal({
 
 
       const { data: pastosData } = await supabase.from("pastos")
-        .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
+        .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
         .in("retiro_id", retiroIds).eq("ativo", true);
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
