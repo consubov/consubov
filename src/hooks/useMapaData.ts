@@ -17,6 +17,9 @@ export interface PastoMapaData {
   ultima_movimentacao: string | null;
   ultima_salga: string | null; // ultima_salga_real_em
   data_fim_carencia: string | null;
+  label_offset_x: number;
+  label_offset_y: number;
+  label_rotation: number;
 }
 
 
@@ -132,7 +135,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
     const filteredPastosMapa = pastosMapa.filter((pm) => pastoIds.includes(pm.pasto_id));
 
     const [pastosRes, painelMaeRes, movimentacoesRes] = await Promise.all([
-      supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo, data_fim_carencia").in("id", pastoIds),
+      supabase.from("pastos").select("id, nome, num_animais, peso_medio_kg, categoria, sexo, data_fim_carencia, label_offset_x, label_offset_y, label_rotation").in("id", pastoIds),
       supabase.from("view_painel_mae_pasto_atual").select("pasto_id, consumo_global_g_cab_dia, status_global, ultima_salga_real_em").in("pasto_id", pastoIds),
       supabase.from("movimentacoes_animais").select("pasto_origem_id, pasto_destino_id, data").or(pastoIds.map((id) => `pasto_origem_id.eq.${id},pasto_destino_id.eq.${id}`).join(",")).order("data", { ascending: false }).limit(100),
     ]);
@@ -178,6 +181,9 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
         ultima_movimentacao: movMap.get(pm.pasto_id) ?? null,
         ultima_salga: consumo?.data ?? null,
         data_fim_carencia: (pasto as any)?.data_fim_carencia ?? null,
+        label_offset_x: Number(pasto?.label_offset_x) || 0,
+        label_offset_y: Number(pasto?.label_offset_y) || 0,
+        label_rotation: Number(pasto?.label_rotation) || 0,
       };
     });
 

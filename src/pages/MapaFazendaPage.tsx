@@ -202,6 +202,15 @@ export default function MapaFazendaPage() {
             pasto_id: p.pasto_id,
             coordenadas: p.coordenadas,
             cor: p.cor || "#16a34a",
+            label_offset_x: p.label_offset_x,
+            label_offset_y: p.label_offset_y,
+            label_rotation: p.label_rotation,
+            pasto_nome: p.pasto_nome,
+            num_animais: p.num_animais,
+            peso_medio_kg: p.peso_medio_kg,
+            categoria: p.categoria,
+            sexo: p.sexo,
+            status_consumo: p.status_consumo,
           }))}
           existingLines={(mapa?.linhas ?? []).map((l) => ({
             id: l.id,
