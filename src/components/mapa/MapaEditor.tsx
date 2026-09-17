@@ -8,10 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Upload, Trash2, Plus, Save, X, Undo2, Palette, GripVertical, Route, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { computeLabelLayout, PastoPin } from "@/components/mapa/MapaViewer";
+import type { PastoMapaData } from "@/hooks/useMapaData";
 
 interface PastoOption {
   id: string;
   nome: string;
+  num_animais: number;
+  peso_medio_kg: number | null;
+  categoria: string | null;
+  sexo: string | null;
+  label_offset_x: number | null;
+  label_offset_y: number | null;
+  label_rotation: number | null;
 }
 
 interface DrawnPolygon {
@@ -19,6 +28,15 @@ interface DrawnPolygon {
   pasto_id: string;
   coordenadas: number[][];
   cor: string;
+  label_offset_x?: number;
+  label_offset_y?: number;
+  label_rotation?: number;
+  pasto_nome?: string;
+  num_animais?: number;
+  peso_medio_kg?: number | null;
+  categoria?: string | null;
+  sexo?: string | null;
+  status_consumo?: string | null;
 }
 
 interface DrawnLine {
@@ -100,10 +118,22 @@ export default function MapaEditor({
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [draggingVertex, setDraggingVertex] = useState<{ target: "poly" | "line"; idx: number; vertIdx: number } | null>(null);
   const [draggingElement, setDraggingElement] = useState<number | null>(null);
+  const [draggingLabel, setDraggingLabel] = useState<{
+    idx: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
 
   useEffect(() => {
     async function loadPastos() {
-      const { data } = await supabase.from("pastos").select("id, nome, retiro_id").eq("ativo", true).eq("retiro_id", retiroId).order("nome");
+      const { data } = await supabase
+        .from("pastos")
+        .select("id, nome, num_animais, peso_medio_kg, categoria, sexo, label_offset_x, label_offset_y, label_rotation")
+        .eq("ativo", true)
+        .eq("retiro_id", retiroId)
+        .order("nome");
       setPastos(data ?? []);
     }
     loadPastos();
@@ -188,7 +218,21 @@ export default function MapaEditor({
     if (currentPoints.length < 3) { toast.error("Desenhe pelo menos 3 pontos."); return; }
     if (!selectedPastoId) { toast.error("Selecione um pasto para vincular."); return; }
     if (polygons.some((p) => p.pasto_id === selectedPastoId)) { toast.error("Este pasto já está vinculado."); return; }
-    setPolygons((prev) => [...prev, { pasto_id: selectedPastoId, coordenadas: currentPoints, cor: selectedColor }]);
+    const selectedPasto = pastos.find((p) => p.id === selectedPastoId);
+    setPolygons((prev) => [...prev, {
+      pasto_id: selectedPastoId,
+      coordenadas: currentPoints,
+      cor: selectedColor,
+      label_offset_x: Number(selectedPasto?.label_offset_x) || 0,
+      label_offset_y: Number(selectedPasto?.label_offset_y) || 0,
+      label_rotation: Number(selectedPasto?.label_rotation) || 0,
+      pasto_nome: selectedPasto?.nome || "Pasto",
+      num_animais: selectedPasto?.num_animais || 0,
+      peso_medio_kg: selectedPasto?.peso_medio_kg ?? null,
+      categoria: selectedPasto?.categoria ?? null,
+      sexo: selectedPasto?.sexo ?? null,
+      status_consumo: null,
+    }]);
     setCurrentPoints([]);
     setSelectedPastoId("");
     setMode("idle");
@@ -253,6 +297,36 @@ export default function MapaEditor({
     window.addEventListener("touchend", onUp);
     return () => { window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseup", onUp); window.removeEventListener("touchmove", onTouchMove); window.removeEventListener("touchend", onUp); };
   }, [draggingElement, getSvgCoords]);
+
+  // --- Pasture label drag ---
+  useEffect(() => {
+    if (!draggingLabel) return;
+    const handleMove = (clientX: number, clientY: number) => {
+      const { x, y } = getSvgCoords(clientX, clientY);
+      setPolygons((prev) => prev.map((polygon, index) => index === draggingLabel.idx ? {
+        ...polygon,
+        label_offset_x: draggingLabel.offsetX + x - draggingLabel.startX,
+        label_offset_y: draggingLabel.offsetY + y - draggingLabel.startY,
+      } : polygon));
+    };
+    const onMouseMove = (event: MouseEvent) => handleMove(event.clientX, event.clientY);
+    const onTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+      const touch = event.touches[0];
+      if (touch) handleMove(touch.clientX, touch.clientY);
+    };
+    const onUp = () => setDraggingLabel(null);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [draggingLabel, getSvgCoords]);
 
   // Edge click to add point
   const handleEdgeClick = (e: React.MouseEvent, target: "poly" | "line", idx: number, edgeIdx: number) => {
@@ -326,6 +400,20 @@ export default function MapaEditor({
       return;
     }
 
+    const labelResults = await Promise.all(polygons.map((polygon) => supabase
+      .from("pastos")
+      .update({
+        label_offset_x: polygon.label_offset_x || 0,
+        label_offset_y: polygon.label_offset_y || 0,
+        label_rotation: polygon.label_rotation || 0,
+      })
+      .eq("id", polygon.pasto_id)));
+    if (labelResults.some((result) => result.error)) {
+      toast.error("Mapa salvo, mas não foi possível salvar a posição de alguns rótulos.");
+      setSaving(false);
+      return;
+    }
+
     setSaving(false);
     toast.success("Mapa salvo com sucesso!");
     onSaved();
@@ -393,6 +481,27 @@ export default function MapaEditor({
                 {/* Polygons */}
                 {polygons.map((p, polyIdx) => {
                   const isEditing = editingPolygonIndex === polyIdx;
+                  const option = pastos.find((candidate) => candidate.id === p.pasto_id);
+                  const labelPasto: PastoMapaData = {
+                    id: p.id || `editor-${polyIdx}`,
+                    pasto_id: p.pasto_id,
+                    coordenadas: p.coordenadas,
+                    cor: p.cor,
+                    pasto_nome: p.pasto_nome || option?.nome || "Pasto",
+                    num_animais: p.num_animais ?? option?.num_animais ?? 0,
+                    peso_medio_kg: p.peso_medio_kg ?? option?.peso_medio_kg ?? null,
+                    categoria: p.categoria ?? option?.categoria ?? null,
+                    sexo: p.sexo ?? option?.sexo ?? null,
+                    consumo_medio: null,
+                    status_consumo: p.status_consumo ?? null,
+                    ultima_movimentacao: null,
+                    ultima_salga: null,
+                    data_fim_carencia: null,
+                    label_offset_x: p.label_offset_x || 0,
+                    label_offset_y: p.label_offset_y || 0,
+                    label_rotation: p.label_rotation || 0,
+                  };
+                  const labelLayout = computeLabelLayout(labelPasto);
                   return (
                     <g key={`poly-${polyIdx}`}>
                       <polygon points={toPoints(p.coordenadas)}
@@ -401,6 +510,48 @@ export default function MapaEditor({
                         className={mode === "idle" && !isEditing ? "cursor-pointer" : ""}
                         onClick={(e) => { if (mode === "idle") { e.stopPropagation(); setEditingLineIndex(null); setEditingPolygonIndex(isEditing ? null : polyIdx); } }} />
                       {isEditing && renderVertexHandles(p.coordenadas, "poly", polyIdx, p.cor)}
+                      {labelLayout && (
+                        <g transform={`scale(${scaleX} ${scaleY}) translate(${labelPasto.label_offset_x} ${labelPasto.label_offset_y}) rotate(${labelPasto.label_rotation} ${labelLayout.centerX} ${labelLayout.centerY})`}
+                          className={isEditing ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}
+                          onMouseDown={(event) => {
+                            if (!isEditing) return;
+                            event.stopPropagation();
+                            event.preventDefault();
+                            const point = getSvgCoords(event.clientX, event.clientY);
+                            setDraggingLabel({ idx: polyIdx, startX: point.x, startY: point.y, offsetX: labelPasto.label_offset_x, offsetY: labelPasto.label_offset_y });
+                          }}
+                          onTouchStart={(event) => {
+                            if (!isEditing) return;
+                            event.stopPropagation();
+                            const touch = event.touches[0];
+                            if (!touch) return;
+                            const point = getSvgCoords(touch.clientX, touch.clientY);
+                            setDraggingLabel({ idx: polyIdx, startX: point.x, startY: point.y, offsetX: labelPasto.label_offset_x, offsetY: labelPasto.label_offset_y });
+                          }}>
+                          {isEditing && (
+                            <rect x={labelLayout.centerX - 16} y={labelLayout.pinCenterY - 20} width={32} height={76}
+                              fill="transparent" pointerEvents="all" />
+                          )}
+                          {(() => {
+                            let labelY = labelLayout.pinCenterY + (labelPasto.num_animais > 0 ? 21 * labelLayout.pinScale : -labelLayout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0) / 2);
+                            return labelLayout.lines.map((line, lineIndex) => {
+                              const y = labelY + line.fontSize;
+                              labelY += line.fontSize * 1.08;
+                              return (
+                                <text key={`${p.pasto_id}-label-${lineIndex}`} x={labelLayout.centerX} y={y}
+                                  textAnchor="middle" fill="hsl(0 0% 0%)" fontSize={line.fontSize} fontWeight={line.fontWeight}
+                                  stroke="hsl(0 0% 100%)" strokeWidth={line.fontSize * 0.16} strokeLinejoin="round"
+                                  style={{ userSelect: "none", paintOrder: "stroke" }}>
+                                  {line.text}
+                                </text>
+                              );
+                            });
+                          })()}
+                          {labelPasto.num_animais > 0 && (
+                            <PastoPin pasto={labelPasto} centerX={labelLayout.centerX} centerY={labelLayout.pinCenterY} scale={labelLayout.pinScale} />
+                          )}
+                        </g>
+                      )}
                     </g>
                   );
                 })}
@@ -499,8 +650,21 @@ export default function MapaEditor({
                       onClick={() => changeColor(editingTarget, editingIdx, c.value)} />
                   ))}
                 </div>
+                {editingTarget === "poly" && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="label-rotation" className="text-xs whitespace-nowrap">Rotação do rótulo</Label>
+                    <Input id="label-rotation" type="number" min={-180} max={180} step={1}
+                      value={polygons[editingIdx]?.label_rotation || 0}
+                      onChange={(event) => {
+                        const rotation = Number(event.target.value);
+                        setPolygons((prev) => prev.map((polygon, index) => index === editingIdx ? { ...polygon, label_rotation: Number.isFinite(rotation) ? rotation : 0 } : polygon));
+                      }}
+                      className="h-8 w-24" />
+                    <span className="text-xs text-muted-foreground">graus</span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Arraste os pontos • Clique na borda para adicionar • Duplo-clique no ponto para excluir
+                  {editingTarget === "poly" ? "Arraste o rótulo ou os pontos • Clique na borda para adicionar • Duplo-clique no ponto para excluir" : "Arraste os pontos • Clique na borda para adicionar • Duplo-clique no ponto para excluir"}
                 </p>
               </CardContent>
             </Card>

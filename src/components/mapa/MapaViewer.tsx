@@ -14,14 +14,14 @@ interface Props {
   highlightDestinos?: boolean;
 }
 
-type LabelLine = {
+export type LabelLine = {
   text: string;
   fontSize: number;
   fontWeight: CSSProperties["fontWeight"];
   width: number;
 };
 
-type LabelLayout = {
+export type LabelLayout = {
   centerX: number;
   centerY: number;
   pinCenterY: number;
@@ -191,7 +191,7 @@ function getSilhuetaAsset(categoria: CategoriaBovina) {
   return recria1Asset.url;
 }
 
-function PastoPin({ pasto, centerX, centerY, scale }: { pasto: PastoMapaData; centerX: number; centerY: number; scale: number }) {
+export function PastoPin({ pasto, centerX, centerY, scale }: { pasto: PastoMapaData; centerX: number; centerY: number; scale: number }) {
   const categoria = calcularCategoriaViva(pasto.peso_medio_kg, pasto.sexo);
   const color = getStatusColor(pasto.status_consumo, pasto.num_animais);
 
@@ -241,7 +241,7 @@ function rectFitsPolygon(centerX: number, centerY: number, width: number, height
   return points.every(([x, y]) => pointInPolygon(x, y, coords));
 }
 
-function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
+export function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   if (pasto.coordenadas.length < 3) return null;
   const bounds = getBounds(pasto.coordenadas);
   const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
@@ -469,6 +469,10 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
         {layouts.map(({ pasto, layout }) => {
           if (!layout || pasto.coordenadas.length < 3) return null;
           let currentY = layout.pinCenterY + (pasto.num_animais > 0 ? 21 * layout.pinScale : -layout.lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0) / 2);
+          const offsetX = pasto.label_offset_x || 0;
+          const offsetY = pasto.label_offset_y || 0;
+          const rotation = pasto.label_rotation || 0;
+          const hasCustomPosition = offsetX !== 0 || offsetY !== 0 || rotation !== 0;
           return (
             <g key={pasto.id} className="cursor-pointer" onClick={() => handlePastoClick(pasto)}>
               <polygon points={toPoints(pasto.coordenadas)} fill={getFillColor(pasto)}
@@ -476,22 +480,24 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
                 stroke={selectedPastoId === pasto.pasto_id ? "hsl(120 80% 30%)" : "#FFFFFF"}
                 strokeWidth={2} />
 
-              {layout.showText && layout.lines.map((line, index) => {
-                const y = currentY + line.fontSize;
-                currentY += line.fontSize * 1.08;
-                return (
-                  <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
-                    textAnchor="middle" fill={MAP_COLORS.text} fontSize={line.fontSize} fontWeight={line.fontWeight}
-                    stroke="hsl(0 0% 100%)" strokeWidth={line.fontSize * 0.16} strokeLinejoin="round"
-                    style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }}>
-                    {line.text}
-                  </text>
-                );
-              })}
+              <g transform={`translate(${offsetX} ${offsetY}) rotate(${rotation} ${layout.centerX} ${layout.centerY})`}>
+                {(layout.showText || hasCustomPosition) && layout.lines.map((line, index) => {
+                  const y = currentY + line.fontSize;
+                  currentY += line.fontSize * 1.08;
+                  return (
+                    <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
+                      textAnchor="middle" fill={MAP_COLORS.text} fontSize={line.fontSize} fontWeight={line.fontWeight}
+                      stroke="hsl(0 0% 100%)" strokeWidth={line.fontSize * 0.16} strokeLinejoin="round"
+                      style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }}>
+                      {line.text}
+                    </text>
+                  );
+                })}
 
-              {pasto.num_animais > 0 && (
-                <PastoPin pasto={pasto} centerX={layout.centerX} centerY={layout.pinCenterY} scale={layout.pinScale} />
-              )}
+                {pasto.num_animais > 0 && (
+                  <PastoPin pasto={pasto} centerX={layout.centerX} centerY={layout.pinCenterY} scale={layout.pinScale} />
+                )}
+              </g>
             </g>
           );
         })}
