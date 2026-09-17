@@ -256,7 +256,7 @@ function computeLabelLayout(pasto: PastoMapaData, renderedScale: number): LabelL
   const areaPx = polygonArea(pasto.coordenadas) * renderedScale * renderedScale;
   const areaScale = areaPx < 700 ? 0.38 : areaPx < 1600 ? 0.52 : areaPx < 3200 ? 0.7 : areaPx < 6000 ? 0.85 : 1;
   const pinScale = pasto.num_animais > 0
-    ? Math.max(0.12, Math.min(areaScale, labelPoint.distance / 24))
+    ? Math.max(0, Math.min(areaScale, labelPoint.distance / 24))
     : 0;
   const fontSize = Math.max(2.8, Math.min(10, 8 * Math.max(pinScale, areaScale * 0.75)));
   const lines = buildLabelLines(pasto, fontSize, Math.max(bounds.width * 0.72, 8));
