@@ -5,14 +5,6 @@ import type { PastoRetiroItem } from "@/hooks/usePastosRetiro";
 
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 
-// Paleta unificada do Consumo Global (mesma do RelatorioPDF)
-const STATUS_GLOBAL_CLASSES: Record<string, string> = {
-  Baixo: "bg-[#E53935]/15 text-[#E53935] border border-[#E53935]/30",
-  "Atenção": "bg-[#FBC02D]/20 text-[#A17E00] border border-[#FBC02D]/40",
-  Ideal: "bg-[#43A047]/15 text-[#43A047] border border-[#43A047]/30",
-  Alto: "bg-[#1E88E5]/15 text-[#1E88E5] border border-[#1E88E5]/30",
-};
-
 /**
  * Lista de Pastos — componente único usado pelos perfis admin e gerente.
  * Consumo e status vêm sempre de view_painel_mae_pasto_atual
@@ -32,23 +24,12 @@ export default function PastosListaRetiro({ pastos, loading = false }: { pastos:
       <div className="space-y-2">
         {pastos.map((p) => {
           const consumo = p.consumo_global_g_cab_dia ?? 0;
-          const status = p.status_global;
           return (
             <Card key={p.id}>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-sm">{p.nome}</p>
-                  <div className="flex items-center gap-1.5">
-                    {status && (
-                      <Badge className={`text-[10px] px-1.5 py-0 h-5 hover:bg-inherit ${
-                        STATUS_GLOBAL_CLASSES[status] || "bg-muted text-muted-foreground"
-                      }`}>
-                        {status}
-                        {p.indice_global != null ? ` (${p.indice_global.toFixed(2)})` : ""}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
-                  </div>
+                  <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div><p className="text-muted-foreground">Sacos</p><p className="font-bold">{p.num_sacos}</p></div>
