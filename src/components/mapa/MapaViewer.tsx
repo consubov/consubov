@@ -246,16 +246,39 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   const bounds = getBounds(pasto.coordenadas);
   const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
   const pinScale = pasto.num_animais > 0 ? 1 : 0;
-  const fontSize = 8;
-  const lines = buildLabelLines(pasto, fontSize, Math.max(bounds.width * 0.72, 8));
-  const textWidth = Math.max(...lines.map((line) => line.width), 0);
-  const textHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
-  const gap = pasto.num_animais > 0 ? 2 * pinScale : 0;
   const pinHeight = pasto.num_animais > 0 ? 38 * pinScale : 0;
-  const contentWidth = Math.max(26 * pinScale, textWidth);
-  const contentHeight = pinHeight + gap + textHeight;
-  const showText = rectFitsPolygon(labelPoint.x, labelPoint.y, contentWidth, contentHeight, pasto.coordenadas);
-  const visibleTextHeight = showText ? textHeight + gap : 0;
+  const gap = pasto.num_animais > 0 ? 2 * pinScale : 0;
+
+  const minFont = 4;
+  const maxFont = Math.min(22, bounds.height * 0.26, bounds.width * 0.28);
+
+  for (let fontSize = maxFont; fontSize >= minFont; fontSize -= 0.5) {
+    const lines = buildLabelLines(pasto, fontSize, Math.max(bounds.width * 0.72, 8));
+    const textWidth = Math.max(...lines.map((line) => line.width), 0);
+    const textHeight = lines.reduce((sum, line) => sum + line.fontSize * 1.08, 0);
+    const contentWidth = Math.max(26 * pinScale, textWidth);
+    const contentHeight = pinHeight + gap + textHeight;
+    if (rectFitsPolygon(labelPoint.x, labelPoint.y, contentWidth, contentHeight, pasto.coordenadas)) {
+      const visibleTextHeight = textHeight + gap;
+      return {
+        centerX: labelPoint.x,
+        centerY: labelPoint.y,
+        pinCenterY: labelPoint.y - visibleTextHeight / 2,
+        pinScale,
+        showText: true,
+        lines,
+      };
+    }
+  }
+
+  const fallbackFont = Math.max(minFont, Math.min(6, bounds.height * 0.18, bounds.width * 0.18));
+  const fallbackLines = buildLabelLines(pasto, fallbackFont, Math.max(bounds.width * 0.62, 12));
+  const fallbackTextWidth = Math.max(...fallbackLines.map((line) => line.width), 0);
+  const fallbackTextHeight = fallbackLines.reduce((sum, line) => sum + line.fontSize * 1.05, 0);
+  const fallbackContentWidth = Math.max(26 * pinScale, fallbackTextWidth);
+  const fallbackContentHeight = pinHeight + gap + fallbackTextHeight;
+  const showText = rectFitsPolygon(labelPoint.x, labelPoint.y, fallbackContentWidth, fallbackContentHeight, pasto.coordenadas);
+  const visibleTextHeight = showText ? fallbackTextHeight + gap : 0;
 
   return {
     centerX: labelPoint.x,
@@ -263,7 +286,7 @@ function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
     pinCenterY: labelPoint.y - visibleTextHeight / 2,
     pinScale,
     showText,
-    lines,
+    lines: fallbackLines,
   };
 }
 
