@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
+import engordaAsset from "@/assets/mapa/engorda.png.asset.json";
+import recria2Asset from "@/assets/mapa/recria-2.png.asset.json";
+import recria1Asset from "@/assets/mapa/recria-1.png.asset.json";
 
 
 interface Props {
@@ -129,29 +132,10 @@ function calcularCategoriaViva(pesoMedioKg: number | null, sexo: string | null):
   return "Engorda";
 }
 
-function SilhuetaBovina({ categoria }: { categoria: CategoriaBovina }) {
-  if (categoria === "Engorda") {
-    return (
-      <g fill="currentColor">
-        <path d="M3.1 5.1c1.1-1.7 3.4-2.4 6.1-2.1l6.7.8c1 .1 1.9-.1 2.8-.6l1.6-.9 2.3.2 1.1 1.5-1.2 1.3-1.8.1-.9 1.6-2.2 1.4-1.2 5.7h-2.2l-.6-4.5-5.9.2-.9 4.3H4.7l-.3-5.3-2-1.3z" />
-        <path d="M21.1 2.8 22 .5l1.1 2.4M20.4 2.9 19.8.5 18.7 2.8M3.4 5.3 1.7 8.8.8 8.3l1-4.2z" />
-      </g>
-    );
-  }
-  if (categoria === "Recria 2") {
-    return (
-      <g fill="currentColor">
-        <path d="M3.8 5.3c1-1.5 2.9-2.1 5.2-1.8l6.4.7c1 .1 1.9-.1 2.7-.6l1.7-1 2.4.5.8 1.4-1.3 1.2-1.7-.1-.9 1.5-2.2 1.2-.9 5.5h-1.8l-.6-4.4-5.8.2-.7 4.2H5.2l-.4-5.1-1.8-1z" />
-        <path d="M20 3.3 21.1 1l.8 2.5M3.9 5.5 2.2 8.7l-.8-.5L2.2 4z" />
-      </g>
-    );
-  }
-  return (
-    <g fill="currentColor">
-      <path d="M5.1 6.2c.8-1.2 2.4-1.8 4.2-1.5l5.5.7c.9.1 1.6-.1 2.3-.5l1.4-.9 2.1.5.7 1.2-1.2 1.1-1.5-.1-.8 1.3-1.8 1-.7 4.6h-1.6l-.5-3.6-4.7.1-.6 3.5H6.3l-.4-4.2-1.5-.9z" />
-      <path d="M18.5 4.5 19.3 2.8l.7 1.9M5.2 6.3 3.8 9l-.7-.5.7-3.4z" />
-    </g>
-  );
+function getSilhuetaAsset(categoria: CategoriaBovina) {
+  if (categoria === "Engorda") return engordaAsset.url;
+  if (categoria === "Recria 2") return recria2Asset.url;
+  return recria1Asset.url;
 }
 
 function PastoPin({ pasto, centerX, centerY }: { pasto: PastoMapaData; centerX: number; centerY: number }) {
@@ -169,9 +153,7 @@ function PastoPin({ pasto, centerX, centerY }: { pasto: PastoMapaData; centerX: 
     >
       <path d="M0 19C-3 14-13 6-13-5.5A13 13 0 0 1 13-5.5C13 6 3 14 0 19Z" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1.5" />
       <circle cx="0" cy="-5.5" r="9.7" fill="hsl(0 0% 100%)" />
-      <g transform="translate(-10.8 -11.8) scale(.9)" color="hsl(0 0% 4%)">
-        <SilhuetaBovina categoria={categoria} />
-      </g>
+      <image href={getSilhuetaAsset(categoria)} x="-8.2" y="-11.2" width="16.4" height="11.4" preserveAspectRatio="xMidYMid meet" />
       <rect x="-8.5" y="5.5" width="17" height="8" rx="4" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1" />
       <text x="0" y="11.2" textAnchor="middle" fill="hsl(0 0% 100%)" fontSize="6.2" fontWeight="700">
         {pasto.num_animais}
