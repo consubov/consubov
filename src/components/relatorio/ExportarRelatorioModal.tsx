@@ -379,19 +379,34 @@ export default function ExportarRelatorioModal({
           if (consumoRealV2 !== undefined) {
             const pesoMedioStatus = Number(vp?.peso_medio_kg ?? pesoMedio);
             const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedioStatus);
-            const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
-            const margemGCabDia = margemPor100kg * pesoMedioStatus * 10;
+            const maisPct = pProd ? getMargemMaisPct(cat, pProd) : null;
+            const menosPct = pProd ? getMargemMenosPct(cat, pProd) : null;
             if (consumoEsperado <= 0) {
               statusReal = "—";
-            } else if (consumoReal < (consumoEsperado - margemGCabDia)) {
-              statusReal = "Baixo";
-            } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
-              statusReal = "Alto";
+            } else if (maisPct != null && menosPct != null) {
+              // Produto migrado: 4 estados com buffer amarelo (mesma regra das demais telas)
+              statusReal = classificarConsumo4(
+                consumoReal,
+                consumoEsperado,
+                maisPct,
+                menosPct,
+                Number(pProd?.amarelo_buffer_g ?? 0),
+              );
             } else {
-              statusReal = "Ideal";
+              // Compatibilidade: margem absoluta, 3 estados
+              const margemPor100kg = pProd ? getMargemPorCategoria(cat, pProd) : 0;
+              const margemGCabDia = margemPor100kg * pesoMedioStatus * 10;
+              if (consumoReal < (consumoEsperado - margemGCabDia)) {
+                statusReal = "Baixo";
+              } else if (consumoReal > (consumoEsperado + margemGCabDia)) {
+                statusReal = "Alto";
+              } else {
+                statusReal = "Ideal";
+              }
             }
           } else {
-            statusReal = vp ? (vp.status_real ?? "—") : pStatus;
+            // Sem dado mensal: não classificar com regra diferente.
+            statusReal = "—";
           }
 
 
