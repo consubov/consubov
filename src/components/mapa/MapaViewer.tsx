@@ -28,11 +28,23 @@ type LabelLayout = {
   padding: number;
 };
 
+type CategoriaBovina = "Recria 1" | "Recria 2" | "Engorda";
+
 const MAP_COLORS = {
   background: "hsl(0 0% 100%)",
   line: "hsl(120 100% 25%)",
   text: "hsl(0 0% 0%)",
 } as const;
+
+function getStatusColor(status: string | null | undefined, numAnimais: number) {
+  if (!status || numAnimais <= 0) return "#9E9E9E";
+  const s = status.toLowerCase();
+  if (s.includes("baix")) return "#E53935";
+  if (s.includes("aten")) return "#FBC02D";
+  if (s.includes("ideal")) return "#43A047";
+  if (s.includes("alto")) return "#1E88E5";
+  return "#9E9E9E";
+}
 
 function estimateTextWidth(text: string, fontSize: number, isBold = false) {
   const factor = isBold ? 0.64 : 0.58;
@@ -106,6 +118,66 @@ function getCentroid(coords: number[][]) {
   const x = coords.reduce((sum, [cx]) => sum + cx, 0) / coords.length;
   const y = coords.reduce((sum, [, cy]) => sum + cy, 0) / coords.length;
   return { x, y };
+}
+
+function calcularCategoriaViva(pesoMedioKg: number | null, sexo: string | null): CategoriaBovina {
+  const peso = Number(pesoMedioKg) || 0;
+  const sexoNormalizado = (sexo ?? "").trim().toLowerCase();
+  const femea = sexoNormalizado.startsWith("f") || sexoNormalizado.includes("fêmea") || sexoNormalizado.includes("femea");
+  if (peso <= 220) return "Recria 1";
+  if (femea ? peso <= 299 : peso <= 360) return "Recria 2";
+  return "Engorda";
+}
+
+function SilhuetaBovina({ categoria }: { categoria: CategoriaBovina }) {
+  if (categoria === "Engorda") {
+    return (
+      <g fill="currentColor">
+        <path d="M3.1 5.1c1.1-1.7 3.4-2.4 6.1-2.1l6.7.8c1 .1 1.9-.1 2.8-.6l1.6-.9 2.3.2 1.1 1.5-1.2 1.3-1.8.1-.9 1.6-2.2 1.4-1.2 5.7h-2.2l-.6-4.5-5.9.2-.9 4.3H4.7l-.3-5.3-2-1.3z" />
+        <path d="M21.1 2.8 22 .5l1.1 2.4M20.4 2.9 19.8.5 18.7 2.8M3.4 5.3 1.7 8.8.8 8.3l1-4.2z" />
+      </g>
+    );
+  }
+  if (categoria === "Recria 2") {
+    return (
+      <g fill="currentColor">
+        <path d="M3.8 5.3c1-1.5 2.9-2.1 5.2-1.8l6.4.7c1 .1 1.9-.1 2.7-.6l1.7-1 2.4.5.8 1.4-1.3 1.2-1.7-.1-.9 1.5-2.2 1.2-.9 5.5h-1.8l-.6-4.4-5.8.2-.7 4.2H5.2l-.4-5.1-1.8-1z" />
+        <path d="M20 3.3 21.1 1l.8 2.5M3.9 5.5 2.2 8.7l-.8-.5L2.2 4z" />
+      </g>
+    );
+  }
+  return (
+    <g fill="currentColor">
+      <path d="M5.1 6.2c.8-1.2 2.4-1.8 4.2-1.5l5.5.7c.9.1 1.6-.1 2.3-.5l1.4-.9 2.1.5.7 1.2-1.2 1.1-1.5-.1-.8 1.3-1.8 1-.7 4.6h-1.6l-.5-3.6-4.7.1-.6 3.5H6.3l-.4-4.2-1.5-.9z" />
+      <path d="M18.5 4.5 19.3 2.8l.7 1.9M5.2 6.3 3.8 9l-.7-.5.7-3.4z" />
+    </g>
+  );
+}
+
+function PastoPin({ pasto, centerX, centerY }: { pasto: PastoMapaData; centerX: number; centerY: number }) {
+  const bounds = getBounds(pasto.coordenadas);
+  const scale = Math.min(1, Math.max(0.42, Math.min(bounds.width / 48, bounds.height / 58)));
+  const categoria = calcularCategoriaViva(pasto.peso_medio_kg, pasto.sexo);
+  const color = getStatusColor(pasto.status_consumo, pasto.num_animais);
+
+  return (
+    <g
+      transform={`translate(${centerX} ${centerY}) scale(${scale})`}
+      style={{ color: MAP_COLORS.text, pointerEvents: "none", userSelect: "none" }}
+      role="img"
+      aria-label={`${categoria}, ${pasto.num_animais} animais`}
+    >
+      <path d="M0 19C-3 14-13 6-13-5.5A13 13 0 0 1 13-5.5C13 6 3 14 0 19Z" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1.5" />
+      <circle cx="0" cy="-5.5" r="9.7" fill="hsl(0 0% 100%)" />
+      <g transform="translate(-10.8 -11.8) scale(.9)" color="hsl(0 0% 4%)">
+        <SilhuetaBovina categoria={categoria} />
+      </g>
+      <rect x="-8.5" y="5.5" width="17" height="8" rx="4" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1" />
+      <text x="0" y="11.2" textAnchor="middle" fill="hsl(0 0% 100%)" fontSize="6.2" fontWeight="700">
+        {pasto.num_animais}
+      </text>
+    </g>
+  );
 }
 
 function buildLabelLines(pasto: PastoMapaData, fontSize: number, maxTextWidth: number) {
@@ -310,16 +382,6 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
 
   const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
 
-  function getStatusColor(status: string | null | undefined, numAnimais: number) {
-    if (!status || numAnimais <= 0) return "#9E9E9E";
-    const s = status.toLowerCase();
-    if (s.includes("baix")) return "#E53935";
-    if (s.includes("aten")) return "#FBC02D";
-    if (s.includes("ideal")) return "#43A047";
-    if (s.includes("alto")) return "#1E88E5";
-    return "#9E9E9E";
-  }
-
   function getFillColor(pasto: PastoMapaData) {
     if (selectedPastoId === pasto.pasto_id) return "hsl(120 60% 90%)";
     if (selectingDestino && highlightDestinos && pasto.pasto_id !== selectedPastoId) return "hsl(200 60% 95%)";
@@ -375,7 +437,8 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
                 strokeWidth={2} />
 
               {layout.lines.map((line, index) => {
-                const y = currentY + line.fontSize;
+                const pinOffset = pasto.num_animais > 0 ? Math.min(20, getBounds(pasto.coordenadas).height * 0.22) : 0;
+                const y = currentY + line.fontSize + pinOffset;
                 currentY += line.fontSize * 1.08;
                 return (
                   <text key={`${pasto.id}-${index}-${line.text}`} x={layout.centerX} y={y}
@@ -386,6 +449,10 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
                   </text>
                 );
               })}
+
+              {pasto.num_animais > 0 && (
+                <PastoPin pasto={pasto} centerX={layout.centerX} centerY={layout.centerY - Math.min(8, getBounds(pasto.coordenadas).height * 0.08)} />
+              )}
             </g>
           );
         })}
