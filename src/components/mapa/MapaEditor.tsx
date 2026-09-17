@@ -103,14 +103,11 @@ export default function MapaEditor({
 
   useEffect(() => {
     async function loadPastos() {
-      const { data } = await supabase.from("pastos").select("id, nome, retiro_id").eq("ativo", true).order("nome");
-      if (!data) return;
-      const { data: retiros } = await supabase.from("retiros").select("id").eq("fazenda_id", fazendaId).eq("ativo", true);
-      const retiroIds = new Set((retiros ?? []).map((r) => r.id));
-      setPastos(data.filter((p) => retiroIds.has(p.retiro_id)));
+      const { data } = await supabase.from("pastos").select("id, nome, retiro_id").eq("ativo", true).eq("retiro_id", retiroId).order("nome");
+      setPastos(data ?? []);
     }
     loadPastos();
-  }, [fazendaId]);
+  }, [retiroId]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
