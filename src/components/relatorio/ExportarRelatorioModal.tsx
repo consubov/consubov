@@ -345,13 +345,9 @@ export default function ExportarRelatorioModal({
             new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
           );
           const lastP = sortedPLanc[0];
-          const idx = lastP ? Number(lastP.indice_consumo ?? 0) : 0;
-          const pStatus = idx > 0
-            ? formulas.classificacao.classify(idx)
-            : (lastP?.status_consumo ?? "—");
-
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
-          const cat = (p as any).categoria || classificarCategoria(pesoMedio);
+          // Categoria calculada ao vivo (peso + sexo), nunca o campo salvo.
+          const cat = calcularCategoriaViva(pesoMedio, (p as any).sexo);
           const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
           let diasConsiderados = 0;
           if (lastCiclo) {
