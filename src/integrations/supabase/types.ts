@@ -731,6 +731,42 @@ export type Database = {
           },
         ]
       }
+      capatazes_retiros: {
+        Row: {
+          capataz_id: string
+          criado_em: string
+          principal: boolean
+          retiro_id: string
+        }
+        Insert: {
+          capataz_id: string
+          criado_em?: string
+          principal?: boolean
+          retiro_id: string
+        }
+        Update: {
+          capataz_id?: string
+          criado_em?: string
+          principal?: boolean
+          retiro_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capatazes_retiros_capataz_id_fkey"
+            columns: ["capataz_id"]
+            isOneToOne: false
+            referencedRelation: "capatazes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capatazes_retiros_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_pecuarista: {
         Row: {
           created_at: string | null
@@ -1914,6 +1950,42 @@ export type Database = {
             columns: ["retiro_id"]
             isOneToOne: false
             referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gerentes_fazendas: {
+        Row: {
+          criado_em: string
+          fazenda_id: string
+          gerente_id: string
+          principal: boolean
+        }
+        Insert: {
+          criado_em?: string
+          fazenda_id: string
+          gerente_id: string
+          principal?: boolean
+        }
+        Update: {
+          criado_em?: string
+          fazenda_id?: string
+          gerente_id?: string
+          principal?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gerentes_fazendas_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gerentes_fazendas_gerente_id_fkey"
+            columns: ["gerente_id"]
+            isOneToOne: false
+            referencedRelation: "gerentes"
             referencedColumns: ["id"]
           },
         ]

@@ -81,11 +81,13 @@ export interface GerenteFilters {
   ano: number;
   mes: number | null; // null = todos os meses
   cicloStatus: 'aberto' | 'fechado' | 'todos';
+  fazendaId?: string | null;
+  painelRetiroId?: string | null;
 }
 
 export function useGerenteData(filters?: GerenteFilters) {
   const { roleData } = useAuth();
-  const fazendaId = roleData.fazendaId;
+  const fazendaId = filters?.fazendaId ?? roleData.fazendaId;
   const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
   const consumoAno = filters?.ano ?? new Date().getFullYear();
   const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
@@ -243,20 +245,36 @@ export function useGerenteData(filters?: GerenteFilters) {
     // Consumo Médio e Eficiência são computados aqui com a mesma fórmula
     // canônica usada no Painel de Detalhe do Retiro, PDF e Painel de
     // Inteligência Nutricional — garantindo que os 6 pontos convirjam.
-    const consumoAgg = aggregateConsumoMineral(consumoData, formulas);
+    const painelConsumoData = filters?.painelRetiroId
+      ? consumoData.filter(r => r.retiro_id === filters.painelRetiroId)
+      : consumoData;
+    const consumoAgg = aggregateConsumoMineral(painelConsumoData, formulas);
+    const painelLancamentos = filters?.painelRetiroId
+      ? lancamentos.filter(l => l.retiro_id === filters.painelRetiroId)
+      : lancamentos;
+    const painelPastos = filters?.painelRetiroId
+      ? pastos.filter(p => p.retiro_id === filters.painelRetiroId)
+      : pastos;
     const consumoMedio = computeConsumoMedioPonderado(
-      lancamentos.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
+      painelLancamentos.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
     );
-    const indices = lancamentos
+    const indices = painelLancamentos
       .map(l => Number(l.indice_consumo ?? 0))
       .filter(v => v > 0);
     const indiceMedio = indices.length > 0 ? indices.reduce((a, b) => a + b, 0) / indices.length : 0;
     const eficiencia = indiceMedio > 0
       ? (formulas ? formulas.eficiencia.compute(indiceMedio) : indiceMedio * 100)
       : 0;
+    const pastosComLancamento = new Set(painelLancamentos.map(l => l.pasto_id));
+    const gmdValoresRetiro = painelPastos
+      .filter(p => pastosComLancamento.has(p.id) && p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
+      .map(p => Number(p.gmd_kg_dia));
+    const gmdMedio = filters?.painelRetiroId
+      ? (gmdValoresRetiro.length > 0 ? gmdValoresRetiro.reduce((a, b) => a + b, 0) / gmdValoresRetiro.length : 0)
+      : consumoAgg.gmdMedio;
 
     return {
-      totalAnimais: consumoAgg.totalAnimais,
+      totalAnimais: painelPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
       consumoMedio,
       pastosNaMeta: consumoAgg.pastosNaMeta,
       totalPastos: consumoAgg.totalPastos,
@@ -264,10 +282,10 @@ export function useGerenteData(filters?: GerenteFilters) {
       custoDiario: consumoAgg.custoDiario,
       custoMensal: consumoAgg.custoMensal,
       eficiencia,
-      gmdMedio: consumoAgg.gmdMedio,
+      gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas, lancamentos]);
+  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
