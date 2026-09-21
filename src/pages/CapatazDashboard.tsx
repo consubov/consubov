@@ -847,33 +847,8 @@ export default function CapatazDashboard() {
 
     // Compute suggestion
     const pasto = pastos.find(p => p.id === pastoId);
-    if (pasto && produtoAtivo && fazendaCache) {
-      const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
-      const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
-      const categoria = pasto.categoria || 'Engorda';
-      const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
-      const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
-
-      if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
-        const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
-        const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
-        const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
-        setFormSugestao({
-          sacosSugeridos: sacos,
-          numAnimais: pasto.num_animais,
-          intervaloDias,
-          pesoAtual: peso,
-          produtoNome: produtoAtivo.nome,
-          consumoPor100kg: consumo_por_100kg,
-          categoria,
-          pesoSacoKg: produtoAtivo.peso_saco_kg,
-        });
-      } else {
-        setFormSugestao(null);
-      }
-    } else {
-      setFormSugestao(null);
-    }
+    const sugestao = pasto ? computeFormSuggestion(pasto, produtoAtivo, fazendaCache, retiro, selectedCiclo) : null;
+    setFormSugestao(sugestao);
 
     // Audit photo lottery logic
     const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
