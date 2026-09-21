@@ -94,7 +94,6 @@ export function useGerenteData(filters?: GerenteFilters) {
     fazendaId: fazendaId ?? "",
     mes: consumoMes,
     ano: consumoAno,
-    retiroId: filters?.painelRetiroId,
   });
   const formulas = useFormulasSistema();
 
@@ -246,7 +245,10 @@ export function useGerenteData(filters?: GerenteFilters) {
     // Consumo Médio e Eficiência são computados aqui com a mesma fórmula
     // canônica usada no Painel de Detalhe do Retiro, PDF e Painel de
     // Inteligência Nutricional — garantindo que os 6 pontos convirjam.
-    const consumoAgg = aggregateConsumoMineral(consumoData, formulas);
+    const painelConsumoData = filters?.painelRetiroId
+      ? consumoData.filter(r => r.retiro_id === filters.painelRetiroId)
+      : consumoData;
+    const consumoAgg = aggregateConsumoMineral(painelConsumoData, formulas);
     const painelLancamentos = filters?.painelRetiroId
       ? lancamentos.filter(l => l.retiro_id === filters.painelRetiroId)
       : lancamentos;
