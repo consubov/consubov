@@ -1702,6 +1702,24 @@ export default function CapatazDashboard() {
         {retiro && (
           <p className="text-xs opacity-70 mt-1">{retiro.nome} • {retiro.fazenda_nome}</p>
         )}
+        {retirosVinculados.length > 1 && (
+          <div className="mt-2">
+            <Select
+              value={activeRetiroId ?? undefined}
+              onValueChange={(v) => { void handleTrocarRetiro(v); }}
+              disabled={trocandoRetiro}
+            >
+              <SelectTrigger className="h-9 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground text-xs">
+                <SelectValue placeholder="Selecionar retiro" />
+              </SelectTrigger>
+              <SelectContent>
+                {retirosVinculados.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6 overflow-auto">
