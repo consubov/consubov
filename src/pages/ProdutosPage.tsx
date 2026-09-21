@@ -59,34 +59,85 @@ const emptyForm: ProdutoForm = {
   margem_mais_engorda_pct: "", margem_menos_engorda_pct: "",
 };
 
-export default function ProdutosPage() {
-  const { roleData } = useAuth();
+interface ProdutosPageProps {
+  /** "gerente" restringe as fazendas vinculáveis às fazendas do gerente logado. */
+  modo?: "admin" | "gerente";
+}
+
+export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
+  const { roleData, user } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProdutoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [fazendasOpcoes, setFazendasOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
+  const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
 
-  async function loadProdutos() {
+  const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
+
+  async function loadFazendas() {
+    if (modo === "gerente") {
+      if (!user) return;
+      const { data } = await supabase
+        .from("gerentes")
+        .select("fazenda_id, fazendas(nome)")
+        .eq("user_id", user.id)
+        .eq("ativo", true);
+      const list = ((data ?? []) as any[])
+        .filter((g) => g.fazenda_id)
+        .map((g) => ({ id: g.fazenda_id as string, nome: g.fazendas?.nome ?? "Fazenda" }));
+      setFazendasOpcoes(list);
+    } else {
+      const { data } = await supabase
+        .from("fazendas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      setFazendasOpcoes((data ?? []) as { id: string; nome: string }[]);
+    }
+  }
+
+  async function loadProdutos(permitidas?: string[]) {
+    const vinc = await fetchVinculosPorProduto();
+    setVinculos(vinc);
     const { data } = await supabase
       .from("produtos")
       .select("*")
       .order("nome") as { data: Produto[] | null };
-    setProdutos(data ?? []);
+    let list = data ?? [];
+    if (modo === "gerente") {
+      const ids = permitidas ?? fazendasPermitidasIds;
+      list = list.filter((p) => (vinc[p.id] ?? []).some((f) => ids.includes(f)));
+    }
+    setProdutos(list);
     setLoading(false);
   }
 
-  useEffect(() => { loadProdutos(); }, []);
+  useEffect(() => {
+    (async () => {
+      await loadFazendas();
+    })();
+  }, [modo, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadProdutos(fazendasPermitidasIds);
+  }, [fazendasOpcoes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
+    setFazendasSelecionadas(
+      modo === "gerente" && fazendasOpcoes.length === 1 ? [fazendasOpcoes[0].id] : [],
+    );
     setDialogOpen(true);
   }
 
   function openEdit(p: Produto) {
     setEditingId(p.id);
+    setFazendasSelecionadas(vinculos[p.id] ?? []);
     const a = p as any;
     setForm({
       marca: a.marca ?? "",
