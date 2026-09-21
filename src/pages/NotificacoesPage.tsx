@@ -45,9 +45,12 @@ export default function NotificacoesPage() {
   const [salvando, setSalvando] = useState(false);
 
   const fetchNotificacoes = async () => {
+    // Eventos de plataforma (lead e aviso manual) — visíveis somente para o Admin.
+    // Eventos internos da fazenda pertencem a Gerente/Capataz e não aparecem aqui.
     const { data } = await supabase
       .from("notificacoes")
       .select("*")
+      .in("tipo", ["lead", "aviso"])
       .order("criado_em", { ascending: false });
     setNotificacoes((data as Notificacao[] | null) ?? []);
     setLoading(false);

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import { toast } from "sonner";
-import { sendPushToAll } from "@/lib/pushService";
+import { sendPush } from "@/lib/pushService";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -185,10 +185,11 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       if (itErr) throw itErr;
 
       toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
-      void sendPushToAll(
+      void sendPush(
         "📝 Lançamento Manual pendente",
         capatazNome,
         "/gerente",
+        { fazendaId },
       );
       setEntries({});
       setTab("historico");

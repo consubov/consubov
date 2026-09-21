@@ -24,8 +24,9 @@ interface PushPayload {
   url?: string;
   user_id?: string;
   user_ids?: string[];
-  fazenda_id?: string;          // envia para gerentes + admins da fazenda
-  include_admins?: boolean;     // padrão true quando fazenda_id é passado
+  fazenda_id?: string;          // eventos internos: gerentes + capatazes da fazenda
+  fabrica_id?: string;          // restringe aos vinculados a essa fábrica
+  admins_only?: boolean;        // eventos de plataforma: somente administradores
   all?: boolean;
 }
 
@@ -34,29 +35,66 @@ async function resolveTargetUserIds(payload: PushPayload): Promise<string[]> {
   if (payload.user_id) ids.add(payload.user_id);
   (payload.user_ids ?? []).forEach((id) => id && ids.add(id));
 
+  if (payload.admins_only) {
+    const { data: admins } = await supabase
+      .from("administradores")
+      .select("user_id")
+      .eq("ativo", true);
+    (admins ?? []).forEach((a: { user_id: string | null }) => a.user_id && ids.add(a.user_id));
+  }
+
   if (payload.fazenda_id) {
+    // Retiros da fazenda (para resolver capatazes)
+    const { data: retiros } = await supabase
+      .from("retiros")
+      .select("id")
+      .eq("fazenda_id", payload.fazenda_id);
+    let retiroIds = (retiros ?? []).map((r: { id: string }) => r.id);
+
+    // Filtro extra por fábrica: só destinos vinculados àquela fábrica
+    let fabricaFazendas: string[] | null = null;
+    if (payload.fabrica_id) {
+      const { data: destinos } = await supabase
+        .from("fabrica_destinos")
+        .select("fazenda_id, retiro_id")
+        .eq("fabrica_id", payload.fabrica_id);
+      const destRetiros = (destinos ?? [])
+        .map((d: { retiro_id: string | null }) => d.retiro_id)
+        .filter(Boolean) as string[];
+      fabricaFazendas = (destinos ?? [])
+        .map((d: { fazenda_id: string | null }) => d.fazenda_id)
+        .filter(Boolean) as string[];
+      if (destRetiros.length > 0) {
+        retiroIds = retiroIds.filter((id) => destRetiros.includes(id));
+      } else if (!fabricaFazendas.includes(payload.fazenda_id)) {
+        retiroIds = [];
+      }
+    }
+
+    // Gerentes da fazenda
     const { data: gerentes } = await supabase
       .from("gerentes")
-      .select("user_id")
+      .select("user_id, retiro_id")
       .eq("fazenda_id", payload.fazenda_id)
       .eq("ativo", true);
-    (gerentes ?? []).forEach((g: { user_id: string | null }) => g.user_id && ids.add(g.user_id));
-
-    if (payload.include_admins !== false) {
-      const { data: fazenda } = await supabase
-        .from("fazendas")
-        .select("administrador_id")
-        .eq("id", payload.fazenda_id)
-        .maybeSingle();
-      if (fazenda?.administrador_id) {
-        const { data: admin } = await supabase
-          .from("administradores")
-          .select("user_id")
-          .eq("id", fazenda.administrador_id)
-          .eq("ativo", true)
-          .maybeSingle();
-        if (admin?.user_id) ids.add(admin.user_id);
+    (gerentes ?? []).forEach((g: { user_id: string | null; retiro_id: string | null }) => {
+      if (!g.user_id) return;
+      if (payload.fabrica_id) {
+        const vinculadoPorFazenda = (fabricaFazendas ?? []).includes(payload.fazenda_id!);
+        const vinculadoPorRetiro = !!g.retiro_id && retiroIds.includes(g.retiro_id);
+        if (!vinculadoPorFazenda && !vinculadoPorRetiro) return;
       }
+      ids.add(g.user_id);
+    });
+
+    // Capatazes dos retiros da fazenda
+    if (retiroIds.length > 0) {
+      const { data: capatazes } = await supabase
+        .from("capatazes")
+        .select("user_id")
+        .in("retiro_id", retiroIds)
+        .eq("ativo", true);
+      (capatazes ?? []).forEach((c: { user_id: string | null }) => c.user_id && ids.add(c.user_id));
     }
   }
 
