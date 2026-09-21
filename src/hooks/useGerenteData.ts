@@ -6,6 +6,7 @@ import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
