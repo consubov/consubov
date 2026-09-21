@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { fetchFazendaIdDoRetiro, fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 
 interface Produto {
   id: string;
@@ -36,17 +37,18 @@ export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome,
     setProdutoId("");
     setLoading(true);
 
-    supabase
-      .from("produtos")
-      .select("id, nome")
-      .eq("ativo", true)
-      .then(({ data }) => {
-        const list = data ?? [];
-        setProdutos(list);
-        if (list.length === 1) setProdutoId(list[0].id);
-        setLoading(false);
-      });
-  }, [open]);
+    (async () => {
+      const fazendaId = await fetchFazendaIdDoRetiro(retiroId);
+      const produtoIds = await fetchProdutoIdsDaFazenda(fazendaId);
+      let query = supabase.from("produtos").select("id, nome").eq("ativo", true);
+      if (produtoIds) query = query.in("id", produtoIds);
+      const { data } = await query;
+      const list = data ?? [];
+      setProdutos(list);
+      if (list.length === 1) setProdutoId(list[0].id);
+      setLoading(false);
+    })();
+  }, [open, retiroId]);
 
   const isValid = parseInt(quantidade) > 0 && parseFloat(pesoMedio) > 0 && produtoId;
 

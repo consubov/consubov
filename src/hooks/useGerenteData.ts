@@ -184,7 +184,10 @@ export function useGerenteData(filters?: GerenteFilters) {
         setLancamentos([]);
       }
 
-      const produtosRes = await supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
+      let produtosQuery = supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      if (produtoIdsFazenda) produtosQuery = produtosQuery.in("id", produtoIdsFazenda);
+      const produtosRes = await produtosQuery;
       setProdutos((produtosRes.data ?? []) as Produto[]);
 
       try {

@@ -15,6 +15,7 @@ import {
   getConsumoPorCategoria,
   getMargemPorCategoria,
 } from "@/lib/consumoCalc";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -67,13 +68,27 @@ export default function LancamentoManualPage() {
     return map;
   }, [produtos]);
 
-  // Load fazendas + produtos
+  // Load fazendas
   useEffect(() => {
     supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome")
       .then(({ data }) => setFazendas(data ?? []));
-    supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda").eq("ativo", true).order("nome")
-      .then(({ data }) => setProdutos((data ?? []) as Produto[]));
   }, []);
+
+  // Produtos da fazenda selecionada
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!fazendaId) { setProdutos([]); return; }
+      const produtoIds = await fetchProdutoIdsDaFazenda(fazendaId);
+      let query = supabase.from("produtos")
+        .select("id, nome, peso_saco_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda")
+        .eq("ativo", true).order("nome");
+      if (produtoIds) query = query.in("id", produtoIds);
+      const { data } = await query;
+      if (!cancelled) setProdutos((data ?? []) as Produto[]);
+    })();
+    return () => { cancelled = true; };
+  }, [fazendaId]);
 
   // Load retiros when fazenda changes
   useEffect(() => {
