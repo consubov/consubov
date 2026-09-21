@@ -831,6 +831,36 @@ export default function CapatazDashboard() {
     }
   }, [refreshLancamentosState, activeRetiroId]);
 
+  // Troca de retiro: exige conexão e recarrega todo o cache local do novo retiro.
+  const handleTrocarRetiro = useCallback(async (novoRetiroId: string) => {
+    if (!novoRetiroId || novoRetiroId === activeRetiroId) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      toast.error('Sem conexão', {
+        description: 'É preciso estar online para trocar de retiro.',
+      });
+      return;
+    }
+    setTrocandoRetiro(true);
+    try {
+      await clearRetiroScopedCache();
+      serverPastosLoadedRef.current = false;
+      setPastos([]);
+      setRetiro(null);
+      setCiclos([]);
+      setProdutoAtivo(undefined);
+      setFazendaCache(undefined);
+      setFazendaId("");
+      setConsumoGlobalMap({});
+      setRetiroAtivoId(novoRetiroId);
+      await setConfig('capatazRetiroAtivoId', novoRetiroId);
+      toast.success('Retiro alterado');
+    } catch {
+      toast.error('Não foi possível trocar de retiro. Tente novamente.');
+    } finally {
+      setTrocandoRetiro(false);
+    }
+  }, [activeRetiroId]);
+
   // Try to load from Supabase on mount (if online)
   useEffect(() => {
     if (!backgroundBootReady || !activeRetiroId) return;
