@@ -232,6 +232,12 @@ function computeFormSuggestion(
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
+
+  // ===== Retiros vinculados (múltiplos) + retiro ativo =====
+  const [retirosVinculados, setRetirosVinculados] = useState<{ id: string; nome: string }[]>([]);
+  const [retiroAtivoId, setRetiroAtivoId] = useState<string | null>(null);
+  const [trocandoRetiro, setTrocandoRetiro] = useState(false);
+  const activeRetiroId = retiroAtivoId ?? roleData.retiroId ?? null;
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
   // Keep the page/SW alive while the capataz is logged in to prevent
