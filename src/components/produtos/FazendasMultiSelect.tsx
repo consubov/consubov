@@ -49,7 +49,7 @@ export default function FazendasMultiSelect({
         <Input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Pesquisar fazenda..."
+          placeholder={searchPlaceholder}
           className="pl-8"
         />
       </div>
