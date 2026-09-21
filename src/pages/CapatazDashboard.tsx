@@ -31,7 +31,7 @@ import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
 import PastoCard from "@/components/capataz/PastoCard";
-import type { SalgaFormDraft } from "@/components/capataz/SalgaForm";
+import type { SalgaFormDraft, SalgaSugestao } from "@/components/capataz/SalgaForm";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
 import type { TipoEvento } from "@/components/eventos/SelecionarEventoModal";
 import type { SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
@@ -67,6 +67,7 @@ interface PersistedCapatazState {
   formJustificativa?: string;
   formAuditoriaExigida: boolean;
   formDraft: SalgaFormDraft | null;
+  formSugestao: SalgaSugestao | null;
 }
 
 const QrScanner = lazy(() => import("@/components/capataz/QrScanner"));
@@ -188,6 +189,44 @@ function arredondarSacosSugeridos(sacos: number): number {
   const decimal = sacos - parteInteira;
   const arredondado = decimal < 0.4 ? Math.floor(sacos) : Math.ceil(sacos);
   return Math.max(1, arredondado);
+}
+
+/** Recalcula a sugestão de sacos usada no formulário de salga.
+ *  Replica a lógica de openForm para garantir que, ao restaurar o estado
+ *  após descarte da página pelo SO, a sugestão seja reconstruída com os
+ *  dados de cache disponíveis (produto/fazenda/retiro/ciclo).
+ */
+function computeFormSuggestion(
+  pasto: PastoCache,
+  produtoAtivo: ProdutoCache | undefined,
+  fazendaCache: FazendaCache | undefined,
+  retiro: RetiroCache | null,
+  selectedCiclo: CicloCache | undefined
+): SalgaSugestao | null {
+  if (!pasto || !produtoAtivo || !fazendaCache) return null;
+
+  const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
+  const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
+  const categoria = pasto.categoria || 'Engorda';
+  const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
+  const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
+
+  if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
+    const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
+    const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
+    const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
+    return {
+      sacosSugeridos: sacos,
+      numAnimais: pasto.num_animais,
+      intervaloDias,
+      pesoAtual: peso,
+      produtoNome: produtoAtivo.nome,
+      consumoPor100kg: consumo_por_100kg,
+      categoria,
+      pesoSacoKg: produtoAtivo.peso_saco_kg,
+    };
+  }
+  return null;
 }
 
 export default function CapatazDashboard() {
@@ -346,7 +385,14 @@ export default function CapatazDashboard() {
     applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloId);
   }, [applyLancamentosState, selectedCicloId]);
 
-  const restoreUiState = useCallback((savedState: string | undefined, cachedPastos: PastoCache[]) => {
+  const restoreUiState = useCallback((
+    savedState: string | undefined,
+    cachedPastos: PastoCache[],
+    cachedRetiro: RetiroCache | null,
+    cachedCiclos: CicloCache[],
+    cachedProd: ProdutoCache | undefined,
+    cachedFaz: FazendaCache | undefined
+  ) => {
     if (!savedState) return;
 
     try {
@@ -366,12 +412,16 @@ export default function CapatazDashboard() {
       if (nextScreen === 'form' && parsed.formPastoId) {
         const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
         if (savedPasto) {
+          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || cachedCiclos[0];
+          const sugestaoRestaurada = parsed.formSugestao ?? computeFormSuggestion(savedPasto, cachedProd, cachedFaz, cachedRetiro, currentCiclo);
+
           setFormPastoId(savedPasto.id);
           setFormPastoNome(parsed.formPastoNome || savedPasto.nome);
           setFormTipo(parsed.formTipo === 'falha_qr' ? 'falha_qr' : 'salga');
           setFormJustificativa(parsed.formJustificativa);
           setFormAuditoriaExigida(Boolean(parsed.formAuditoriaExigida));
           setFormDraft(parsed.formDraft ?? null);
+          setFormSugestao(sugestaoRestaurada);
           setScreen('form');
           return;
         }
@@ -383,11 +433,12 @@ export default function CapatazDashboard() {
       setFormJustificativa(undefined);
       setFormAuditoriaExigida(false);
       setFormDraft(null);
+      setFormSugestao(null);
       setScreen(nextScreen);
     } catch {
       setScreen('home');
     }
-  }, []);
+  }, [selectedCicloId]);
 
   const persistUiState = useCallback(async () => {
     const persistedScreen: RestorableScreen = screen === 'salga' || screen === 'scanner' || screen === 'form' || screen === 'manual-select'
@@ -405,10 +456,11 @@ export default function CapatazDashboard() {
       formJustificativa,
       formAuditoriaExigida,
       formDraft,
+      formSugestao,
     };
 
     await setConfig('capatazUiState', JSON.stringify(uiState));
-  }, [formAuditoriaExigida, formDraft, formJustificativa, formPastoId, formPastoNome, formTipo, manualJustificativa, manualPastoId, salgaCount, screen]);
+  }, [formAuditoriaExigida, formDraft, formJustificativa, formPastoId, formPastoNome, formSugestao, formTipo, manualJustificativa, manualPastoId, salgaCount, screen]);
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
@@ -445,7 +497,7 @@ export default function CapatazDashboard() {
     applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
-      restoreUiState(savedUiState, cachedPastos);
+      restoreUiState(savedUiState, cachedPastos, cachedRetiro || null, cachedCiclos, cachedProd, cachedFaz);
       uiStateRestoredRef.current = true;
     }
 
@@ -795,33 +847,8 @@ export default function CapatazDashboard() {
 
     // Compute suggestion
     const pasto = pastos.find(p => p.id === pastoId);
-    if (pasto && produtoAtivo && fazendaCache) {
-      const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
-      const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
-      const categoria = pasto.categoria || 'Engorda';
-      const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
-      const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
-
-      if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
-        const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
-        const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
-        const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
-        setFormSugestao({
-          sacosSugeridos: sacos,
-          numAnimais: pasto.num_animais,
-          intervaloDias,
-          pesoAtual: peso,
-          produtoNome: produtoAtivo.nome,
-          consumoPor100kg: consumo_por_100kg,
-          categoria,
-          pesoSacoKg: produtoAtivo.peso_saco_kg,
-        });
-      } else {
-        setFormSugestao(null);
-      }
-    } else {
-      setFormSugestao(null);
-    }
+    const sugestao = pasto ? computeFormSuggestion(pasto, produtoAtivo, fazendaCache, retiro, selectedCiclo) : null;
+    setFormSugestao(sugestao);
 
     // Audit photo lottery logic
     const fotosPorBloco = fazendaCache?.auditoria_fotos_por_bloco ?? 3;
