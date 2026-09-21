@@ -17,6 +17,8 @@ import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
+import { fetchVinculosPorProduto, salvarVinculosProduto } from "@/lib/produtosFazenda";
 
 const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
 const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Ração", "Suplemento", "Outro"];
