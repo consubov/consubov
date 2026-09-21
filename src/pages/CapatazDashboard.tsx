@@ -45,7 +45,7 @@ import {
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
   cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
-  logSyncError, clearSyncError,
+  logSyncError, clearSyncError, clearRetiroScopedCache,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
