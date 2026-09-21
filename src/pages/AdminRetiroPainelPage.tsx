@@ -155,7 +155,7 @@ export default function AdminRetiroPainelPage() {
     if (!retiroId) { setPastoMae({}); return; }
     const { data, error } = await (supabase as any)
       .from("view_painel_mae_pasto")
-      .select("pasto_id, consumo_real_g_cab_dia, indice_real, status_real, num_sacos, num_animais, peso_medio_kg")
+      .select("pasto_id, consumo_real_g_cab_dia, indice_real, status_real, indice_global, status_global, num_sacos, num_animais, peso_medio_kg")
       .eq("retiro_id", retiroId)
       .eq("mes_referencia", mes)
       .eq("ano_referencia", ano);
@@ -191,12 +191,13 @@ export default function AdminRetiroPainelPage() {
       .map(p => Number(p.gmd_kg_dia));
     const gmdMedio = gmdVals.length ? gmdVals.reduce((a, b) => a + b, 0) / gmdVals.length : 0;
 
-    // Distribuição de Status: fonte única = view_painel_mae_pasto (status_real),
-    // mesma fonte da lista de pastos abaixo e do PDF.
+    // Distribuição de Status: fonte única = view_painel_mae_pasto (status_global),
+    // a MESMA base usada pelo Mapa do Retiro e pela lista de pastos.
+    // "Atenção" é somado dentro de "Ideal" (mesmo segmento visual).
     let baixo = 0, ideal = 0, alto = 0;
     for (const p of retiroData.pastos) {
-      const status = pastoMae[p.id]?.status_real ?? null;
-      if (status === "Ideal") ideal++;
+      const status = pastoMae[p.id]?.status_global ?? null;
+      if (status === "Ideal" || status === "Atenção") ideal++;
       else if (status === "Baixo") baixo++;
       else if (status === "Alto") alto++;
     }

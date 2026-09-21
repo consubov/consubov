@@ -232,7 +232,8 @@ const getStatusDist = (lancamentos: PainelLancamentoSource[]): StatusDist => {
   const lancComStatus = lancamentos.filter((item) => item.status_consumo);
   const total = lancComStatus.length;
   const baixo = lancComStatus.filter((item) => item.status_consumo === "Baixo").length;
-  const ideal = lancComStatus.filter((item) => item.status_consumo === "Ideal").length;
+  // "Atenção" é considerado dentro da meta e somado ao segmento "Ideal".
+  const ideal = lancComStatus.filter((item) => item.status_consumo === "Ideal" || item.status_consumo === "Atenção").length;
   const alto = lancComStatus.filter((item) => item.status_consumo === "Alto").length;
 
   return {
@@ -254,7 +255,7 @@ const getPastosNaMeta = (lancamentos: PainelLancamentoSource[]) => {
     }
   }
 
-  return Array.from(pastosStatus.values()).filter((status) => status === "Ideal").length;
+  return Array.from(pastosStatus.values()).filter((status) => status === "Ideal" || status === "Atenção").length;
 };
 
 const getEficiencia = (lancamentos: PainelLancamentoSource[]) => {
