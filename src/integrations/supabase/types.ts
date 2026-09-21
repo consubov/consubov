@@ -3732,6 +3732,39 @@ export type Database = {
           },
         ]
       }
+      produtos_fazendas: {
+        Row: {
+          criado_em: string
+          fazenda_id: string
+          produto_id: string
+        }
+        Insert: {
+          criado_em?: string
+          fazenda_id: string
+          produto_id: string
+        }
+        Update: {
+          criado_em?: string
+          fazenda_id?: string
+          produto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_fazendas_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_fazendas_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           created_at: string | null
