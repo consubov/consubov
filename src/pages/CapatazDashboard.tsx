@@ -45,7 +45,7 @@ import {
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
   cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
-  logSyncError, clearSyncError,
+  logSyncError, clearSyncError, clearRetiroScopedCache,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
@@ -232,7 +232,60 @@ function computeFormSuggestion(
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
+
+  // ===== Retiros vinculados (múltiplos) + retiro ativo =====
+  const [retirosVinculados, setRetirosVinculados] = useState<{ id: string; nome: string }[]>([]);
+  const [retiroAtivoId, setRetiroAtivoId] = useState<string | null>(null);
+  const [trocandoRetiro, setTrocandoRetiro] = useState(false);
+  const activeRetiroId = retiroAtivoId ?? roleData.retiroId ?? null;
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
+
+  // Restaura o retiro ativo persistido e carrega a lista de vínculos
+  // (cache local primeiro, depois servidor quando houver conexão).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [savedRetiro, savedList] = await Promise.all([
+        getConfig('capatazRetiroAtivoId'),
+        getConfig('capatazRetirosList'),
+      ]);
+      if (cancelled) return;
+      if (savedList) {
+        try {
+          const parsed = JSON.parse(savedList) as { id: string; nome: string }[];
+          if (Array.isArray(parsed)) setRetirosVinculados(parsed);
+        } catch { /* cache inválido */ }
+      }
+      if (savedRetiro) setRetiroAtivoId(savedRetiro);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!backgroundBootReady || !roleData.roleId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from("capatazes_retiros")
+        .select("retiro_id, principal, retiros(nome)")
+        .eq("capataz_id", roleData.roleId);
+      if (cancelled || error || !data) return;
+      const lista = (data as any[])
+        .map((r) => ({ id: r.retiro_id as string, nome: (r.retiros?.nome as string) || 'Retiro' }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+      if (lista.length === 0) return;
+      setRetirosVinculados(lista);
+      await setConfig('capatazRetirosList', JSON.stringify(lista));
+      setRetiroAtivoId((atual) => {
+        if (atual && lista.some((r) => r.id === atual)) return atual;
+        const principal = (data as any[]).find((r) => r.principal)?.retiro_id as string | undefined;
+        const proximo = principal || roleData.retiroId || lista[0].id;
+        void setConfig('capatazRetiroAtivoId', proximo);
+        return proximo;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [backgroundBootReady, roleData.roleId, roleData.retiroId]);
 
   // Keep the page/SW alive while the capataz is logged in to prevent
   // the browser from discarding offline state after idle time.
@@ -330,14 +383,14 @@ export default function CapatazDashboard() {
 
   const refreshObservacoes = useCallback(async () => {
     const [pend, hist] = await Promise.all([getObservacoesPendentes(), getObservacoesSincronizadas()]);
-    const currentRetiroId = roleData.retiroId || "";
+    const currentRetiroId = activeRetiroId || "";
     const currentFazendaId = fazendaId || "";
     const filterByScope = (o: ObservacaoOffline) =>
       (!currentRetiroId || o.retiro_id === currentRetiroId) &&
       (!currentFazendaId || o.fazenda_id === currentFazendaId);
     setObsPendentes(pend.filter(filterByScope));
     setObsHistorico(hist.filter(filterByScope));
-  }, [roleData.retiroId, fazendaId]);
+  }, [activeRetiroId, fazendaId]);
 
   const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[] | undefined | null, pendingCountValue: number, cicloId?: string) => {
     const list = Array.isArray(allLancamentos) ? allLancamentos.filter(Boolean) : [];
@@ -356,7 +409,7 @@ export default function CapatazDashboard() {
   }, []);
 
   useEffect(() => {
-    const retiroIdAtual = roleData.retiroId;
+    const retiroIdAtual = activeRetiroId;
     if (!retiroIdAtual) return;
     let cancelled = false;
     void (async () => {
@@ -377,7 +430,7 @@ export default function CapatazDashboard() {
       setConsumoGlobalMap(map);
     })();
     return () => { cancelled = true; };
-  }, [roleData.retiroId]);
+  }, [activeRetiroId]);
 
   const refreshLancamentosState = useCallback(async (cicloId?: string) => {
     const [allLancamentos, pendentes] = await Promise.all([
@@ -625,7 +678,7 @@ export default function CapatazDashboard() {
       const { data: retiroData } = await supabase
         .from("retiros")
         .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id")
-        .eq("id", roleData.retiroId!)
+        .eq("id", activeRetiroId!)
         .maybeSingle();
 
       if (retiroData) {
@@ -776,15 +829,45 @@ export default function CapatazDashboard() {
     } catch {
       // Offline — use cached data
     }
-  }, [refreshLancamentosState, roleData.retiroId]);
+  }, [refreshLancamentosState, activeRetiroId]);
+
+  // Troca de retiro: exige conexão e recarrega todo o cache local do novo retiro.
+  const handleTrocarRetiro = useCallback(async (novoRetiroId: string) => {
+    if (!novoRetiroId || novoRetiroId === activeRetiroId) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      toast.error('Sem conexão', {
+        description: 'É preciso estar online para trocar de retiro.',
+      });
+      return;
+    }
+    setTrocandoRetiro(true);
+    try {
+      await clearRetiroScopedCache();
+      serverPastosLoadedRef.current = false;
+      setPastos([]);
+      setRetiro(null);
+      setCiclos([]);
+      setProdutoAtivo(undefined);
+      setFazendaCache(undefined);
+      setFazendaId("");
+      setConsumoGlobalMap({});
+      setRetiroAtivoId(novoRetiroId);
+      await setConfig('capatazRetiroAtivoId', novoRetiroId);
+      toast.success('Retiro alterado');
+    } catch {
+      toast.error('Não foi possível trocar de retiro. Tente novamente.');
+    } finally {
+      setTrocandoRetiro(false);
+    }
+  }, [activeRetiroId]);
 
   // Try to load from Supabase on mount (if online)
   useEffect(() => {
-    if (!backgroundBootReady || !roleData.retiroId) return;
+    if (!backgroundBootReady || !activeRetiroId) return;
     void loadFromSupabase().catch((error) => {
       console.warn('[CapatazDashboard] supabase bootstrap failed:', error);
     });
-  }, [backgroundBootReady, loadFromSupabase, roleData.retiroId]);
+  }, [backgroundBootReady, loadFromSupabase, activeRetiroId]);
 
   // Prepare offline mode
   const handleIniciarSalga = async () => {
@@ -975,8 +1058,8 @@ export default function CapatazDashboard() {
         if (pasto && !l.cocho_cheio) {
           // Get retiro produto_id as fallback
           let retiroProdutoId: string | null = null;
-          if (roleData.retiroId) {
-            const { data: retiroRow } = await supabase.from("retiros").select("produto_id").eq("id", roleData.retiroId).maybeSingle();
+          if (activeRetiroId) {
+            const { data: retiroRow } = await supabase.from("retiros").select("produto_id").eq("id", activeRetiroId).maybeSingle();
             retiroProdutoId = retiroRow?.produto_id ?? null;
           }
           produto_id_final = pasto.produto_id || retiroProdutoId;
@@ -1062,7 +1145,7 @@ export default function CapatazDashboard() {
         const insertData: Record<string, any> = {
           id: l.id,
           fazenda_id: fazendaId,
-          retiro_id: roleData.retiroId,
+          retiro_id: activeRetiroId,
           pasto_id: l.pasto_id,
           mes_referencia: mesRef,
           ano_referencia: anoRef,
@@ -1136,7 +1219,7 @@ export default function CapatazDashboard() {
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
-        const retiroId = roleData.retiroId;
+        const retiroId = activeRetiroId;
         // Calcular num_dias real e duracao_dias a partir de data_inicio
         const cicloParaFechar = ciclos.find(c => c.id === fecharPend.ciclo_id);
         let numDiasReal = 30;
@@ -1496,7 +1579,7 @@ export default function CapatazDashboard() {
         onBack={() => setScreen('home')}
         fazendaId={fazendaId}
         fazendaNome={retiro?.fazenda_nome || ""}
-        retiroId={roleData.retiroId || ""}
+        retiroId={activeRetiroId || ""}
         retiroNome={retiro?.nome || ""}
       />
     );
@@ -1567,10 +1650,10 @@ export default function CapatazDashboard() {
                         Lançamento Manual
                       </button>
                     </li>
-                    {roleData.retiroId && (
+                    {activeRetiroId && (
                       <li>
                         <button
-                          onClick={() => { const id = roleData.retiroId; setMenuOpen(false); setTimeout(() => navigate(`/mapa/retiro/${id}`), 220); }}
+                          onClick={() => { const id = activeRetiroId; setMenuOpen(false); setTimeout(() => navigate(`/mapa/retiro/${id}`), 220); }}
                           className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                         >
                           <MapIcon className="w-5 h-5 text-primary" />
@@ -1619,6 +1702,24 @@ export default function CapatazDashboard() {
         {retiro && (
           <p className="text-xs opacity-70 mt-1">{retiro.nome} • {retiro.fazenda_nome}</p>
         )}
+        {retirosVinculados.length > 1 && (
+          <div className="mt-2">
+            <Select
+              value={activeRetiroId ?? undefined}
+              onValueChange={(v) => { void handleTrocarRetiro(v); }}
+              disabled={trocandoRetiro}
+            >
+              <SelectTrigger className="h-9 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground text-xs">
+                <SelectValue placeholder="Selecionar retiro" />
+              </SelectTrigger>
+              <SelectContent>
+                {retirosVinculados.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6 overflow-auto">
@@ -1648,9 +1749,9 @@ export default function CapatazDashboard() {
             🐄 Mortalidade
           </Button>
         </div>
-        {roleData.retiroId && (
+        {activeRetiroId && (
           <Button
-            onClick={() => navigate(`/mapa/retiro/${roleData.retiroId}`)}
+            onClick={() => navigate(`/mapa/retiro/${activeRetiroId}`)}
             variant="outline"
             className="h-14 w-full gap-2 text-sm font-semibold"
             size="lg"
@@ -1659,8 +1760,8 @@ export default function CapatazDashboard() {
             Ver Mapa
           </Button>
         )}
-        {roleData.retiroId && fazendaId && (
-          <EstoqueCapatazSection retiroId={roleData.retiroId} fazendaId={fazendaId} />
+        {activeRetiroId && fazendaId && (
+          <EstoqueCapatazSection retiroId={activeRetiroId} fazendaId={fazendaId} />
         )}
 
         {syncError && (
@@ -1894,7 +1995,7 @@ export default function CapatazDashboard() {
           open={observacaoOpen}
           onClose={() => { setObservacaoOpen(false); setEditingObs(null); }}
           pastos={pastos}
-          retiroId={roleData.retiroId || ""}
+          retiroId={activeRetiroId || ""}
           fazendaId={fazendaId}
           capatazNome={userName}
           editingObs={editingObs}
@@ -1915,7 +2016,7 @@ export default function CapatazDashboard() {
           open={mortalidadeOpen}
           onClose={() => setMortalidadeOpen(false)}
           pastos={pastos}
-          retiroId={roleData.retiroId || ""}
+          retiroId={activeRetiroId || ""}
           fazendaId={fazendaId}
           capatazNome={userName}
           onPastoUpdated={() => { loadFromSupabase(); }}
@@ -1956,7 +2057,7 @@ export default function CapatazDashboard() {
           onClose={() => { setAbateOpen(false); setAbatePasto(null); }}
           pasto={abatePasto}
           fazendaId={fazendaId}
-          retiroId={roleData.retiroId || ""}
+          retiroId={activeRetiroId || ""}
           mesOperacional={mesOperacional}
           anoOperacional={anoOperacional}
           onAbateConfirmed={(pastoId, qtd) => {
@@ -1970,7 +2071,7 @@ export default function CapatazDashboard() {
           pasto={transferPasto}
           pastos={pastos}
           fazendaId={fazendaId}
-          retiroId={roleData.retiroId || ""}
+          retiroId={activeRetiroId || ""}
           mesOperacional={mesOperacional}
           anoOperacional={anoOperacional}
           onTransferConfirmed={(origemId, destinoId, qtd) => {
@@ -2052,7 +2153,7 @@ export default function CapatazDashboard() {
             fazendaId={fazendaId}
             fazendaNome={retiro?.fazenda_nome || ""}
             retiroNome={retiro?.nome || ""}
-            retiroId={roleData.retiroId || ""}
+            retiroId={activeRetiroId || ""}
             sanitarioData={pendingSanitarioData}
             onSaved={() => { loadFromSupabase(); refreshPesagemCount(); }}
           />
@@ -2092,13 +2193,13 @@ export default function CapatazDashboard() {
 
 
       {/* Lançamento Manual Modal */}
-      {lancManualOpen && roleData.retiroId && fazendaId && (
+      {lancManualOpen && activeRetiroId && fazendaId && (
         <Suspense fallback={null}>
           <LancamentoManualModal
             open={lancManualOpen}
             onOpenChange={setLancManualOpen}
             pastos={pastos.map(p => ({ id: p.id, nome: p.nome, num_animais: p.num_animais }))}
-            retiroId={roleData.retiroId}
+            retiroId={activeRetiroId}
             fazendaId={fazendaId}
           />
         </Suspense>

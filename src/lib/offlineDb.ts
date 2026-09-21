@@ -668,3 +668,22 @@ export async function deleteLastPdf(retiroId: string) {
     await db.delete('lastPdfs', `last_pdf_${retiroId}`);
   }, undefined);
 }
+
+/** Limpa todo o cache local vinculado a um retiro específico (pastos, retiro,
+ *  ciclos, produto ativo e fazenda) ao trocar de retiro. Lançamentos pendentes
+ *  de sincronização são preservados; os já sincronizados são descartados para
+ *  nunca misturar dados de dois retiros. */
+export async function clearRetiroScopedCache() {
+  return safeRun(async () => {
+    const db = await getDb();
+    for (const store of ['pastos', 'retiro', 'ciclos', 'produtoAtivo', 'fazendaCache'] as const) {
+      const tx = db.transaction(store, 'readwrite');
+      await tx.store.clear();
+      await tx.done;
+    }
+    const lancamentos = (await db.getAll('lancamentos')) ?? [];
+    for (const l of lancamentos) {
+      if (l?.status === 'sincronizado') await db.delete('lancamentos', l.id);
+    }
+  }, undefined);
+}
