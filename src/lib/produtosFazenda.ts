@@ -50,17 +50,28 @@ export async function fetchVinculosPorProduto(): Promise<Record<string, string[]
   return map;
 }
 
-/** Substitui os vínculos de um produto pelas fazendas selecionadas. */
-export async function salvarVinculosProduto(produtoId: string, fazendaIds: string[]) {
+/**
+ * Substitui os vínculos de um produto pelas fazendas selecionadas.
+ * Quando `escopoFazendaIds` é informado (caso do Gerente), apenas os vínculos
+ * dessas fazendas são alterados — vínculos de outras fazendas ficam intactos.
+ */
+export async function salvarVinculosProduto(
+  produtoId: string,
+  fazendaIds: string[],
+  escopoFazendaIds?: string[],
+) {
   const client = supabase as any;
-  const { error: delErr } = await client
-    .from("produtos_fazendas")
-    .delete()
-    .eq("produto_id", produtoId);
+  let del = client.from("produtos_fazendas").delete().eq("produto_id", produtoId);
+  if (escopoFazendaIds) del = del.in("fazenda_id", escopoFazendaIds);
+  const { error: delErr } = await del;
   if (delErr) throw delErr;
-  if (fazendaIds.length === 0) return;
+
+  const alvo = escopoFazendaIds
+    ? fazendaIds.filter((id) => escopoFazendaIds.includes(id))
+    : fazendaIds;
+  if (alvo.length === 0) return;
   const { error } = await client
     .from("produtos_fazendas")
-    .insert(fazendaIds.map((fazenda_id) => ({ produto_id: produtoId, fazenda_id })));
+    .insert(alvo.map((fazenda_id) => ({ produto_id: produtoId, fazenda_id })));
   if (error) throw error;
 }
