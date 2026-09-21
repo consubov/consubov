@@ -385,7 +385,14 @@ export default function CapatazDashboard() {
     applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloId);
   }, [applyLancamentosState, selectedCicloId]);
 
-  const restoreUiState = useCallback((savedState: string | undefined, cachedPastos: PastoCache[]) => {
+  const restoreUiState = useCallback((
+    savedState: string | undefined,
+    cachedPastos: PastoCache[],
+    cachedRetiro: RetiroCache | null,
+    cachedCiclos: CicloCache[],
+    cachedProd: ProdutoCache | undefined,
+    cachedFaz: FazendaCache | undefined
+  ) => {
     if (!savedState) return;
 
     try {
@@ -405,12 +412,16 @@ export default function CapatazDashboard() {
       if (nextScreen === 'form' && parsed.formPastoId) {
         const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
         if (savedPasto) {
+          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || cachedCiclos[0];
+          const sugestaoRestaurada = parsed.formSugestao ?? computeFormSuggestion(savedPasto, cachedProd, cachedFaz, cachedRetiro, currentCiclo);
+
           setFormPastoId(savedPasto.id);
           setFormPastoNome(parsed.formPastoNome || savedPasto.nome);
           setFormTipo(parsed.formTipo === 'falha_qr' ? 'falha_qr' : 'salga');
           setFormJustificativa(parsed.formJustificativa);
           setFormAuditoriaExigida(Boolean(parsed.formAuditoriaExigida));
           setFormDraft(parsed.formDraft ?? null);
+          setFormSugestao(sugestaoRestaurada);
           setScreen('form');
           return;
         }
@@ -422,11 +433,12 @@ export default function CapatazDashboard() {
       setFormJustificativa(undefined);
       setFormAuditoriaExigida(false);
       setFormDraft(null);
+      setFormSugestao(null);
       setScreen(nextScreen);
     } catch {
       setScreen('home');
     }
-  }, []);
+  }, [selectedCicloId]);
 
   const persistUiState = useCallback(async () => {
     const persistedScreen: RestorableScreen = screen === 'salga' || screen === 'scanner' || screen === 'form' || screen === 'manual-select'
