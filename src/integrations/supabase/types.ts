@@ -6588,6 +6588,12 @@ export type Database = {
         Args: { p_ano?: number; p_mes?: number; p_retiro_id: string }
         Returns: string
       }
+      fazendas_operacionais_do_usuario: {
+        Args: { _user_id: string }
+        Returns: {
+          fazenda_id: string
+        }[]
+      }
       get_consultor_id: { Args: { _user_id: string }; Returns: string }
       get_consumo_mineral: {
         Args: { p_ano: number; p_fazenda_id: string; p_mes: number }
@@ -6677,7 +6683,9 @@ export type Database = {
       }
       send_push_async: {
         Args: {
+          p_admins_only?: boolean
           p_body: string
+          p_fabrica_id?: string
           p_fazenda_id: string
           p_title: string
           p_url: string
