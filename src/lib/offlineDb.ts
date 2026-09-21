@@ -295,7 +295,7 @@ export async function cachePastos(pastos: PastoCache[]) {
 export async function getCachedPastos(): Promise<PastoCache[]> {
   return safeRun(async () => {
     const db = await getDb();
-    return (await db.getAll('pastos')) ?? [];
+    return sortPastos((await db.getAll('pastos')) ?? []);
   }, []);
 }
 
