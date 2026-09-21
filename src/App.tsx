@@ -43,6 +43,7 @@ import FabricaDetailPage from "./pages/FabricaDetailPage";
 import OperadoresFabricaPage from "./pages/OperadoresFabricaPage";
 import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
+import GerenteProdutosPage from "./pages/GerenteProdutosPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import ConsultoresPage from "./pages/ConsultoresPage";
@@ -303,6 +304,7 @@ const App = () => (
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
               <Route path="/gerente/materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><MateriasPrimasPage /></ProtectedRoute>} />
               <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><EntradaMateriasPrimasPage /></ProtectedRoute>} />
+              <Route path="/gerente/produtos" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteProdutosPage /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazRoute /></ProtectedRoute>} />
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />

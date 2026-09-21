@@ -6,6 +6,7 @@ import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
@@ -184,7 +185,10 @@ export function useGerenteData(filters?: GerenteFilters) {
         setLancamentos([]);
       }
 
-      const produtosRes = await supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
+      let produtosQuery = supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      if (produtoIdsFazenda) produtosQuery = produtosQuery.in("id", produtoIdsFazenda);
+      const produtosRes = await produtosQuery;
       setProdutos((produtosRes.data ?? []) as Produto[]);
 
       try {

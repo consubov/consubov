@@ -17,6 +17,8 @@ import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
+import { fetchVinculosPorProduto, salvarVinculosProduto } from "@/lib/produtosFazenda";
 
 const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
 const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Ração", "Suplemento", "Outro"];
@@ -59,34 +61,85 @@ const emptyForm: ProdutoForm = {
   margem_mais_engorda_pct: "", margem_menos_engorda_pct: "",
 };
 
-export default function ProdutosPage() {
-  const { roleData } = useAuth();
+interface ProdutosPageProps {
+  /** "gerente" restringe as fazendas vinculáveis às fazendas do gerente logado. */
+  modo?: "admin" | "gerente";
+}
+
+export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
+  const { roleData, user } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProdutoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [fazendasOpcoes, setFazendasOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
+  const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
 
-  async function loadProdutos() {
+  const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
+
+  async function loadFazendas() {
+    if (modo === "gerente") {
+      if (!user) return;
+      const { data } = await supabase
+        .from("gerentes")
+        .select("fazenda_id, fazendas(nome)")
+        .eq("user_id", user.id)
+        .eq("ativo", true);
+      const list = ((data ?? []) as any[])
+        .filter((g) => g.fazenda_id)
+        .map((g) => ({ id: g.fazenda_id as string, nome: g.fazendas?.nome ?? "Fazenda" }));
+      setFazendasOpcoes(list);
+    } else {
+      const { data } = await supabase
+        .from("fazendas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      setFazendasOpcoes((data ?? []) as { id: string; nome: string }[]);
+    }
+  }
+
+  async function loadProdutos(permitidas?: string[]) {
+    const vinc = await fetchVinculosPorProduto();
+    setVinculos(vinc);
     const { data } = await supabase
       .from("produtos")
       .select("*")
       .order("nome") as { data: Produto[] | null };
-    setProdutos(data ?? []);
+    let list = data ?? [];
+    if (modo === "gerente") {
+      const ids = permitidas ?? fazendasPermitidasIds;
+      list = list.filter((p) => (vinc[p.id] ?? []).some((f) => ids.includes(f)));
+    }
+    setProdutos(list);
     setLoading(false);
   }
 
-  useEffect(() => { loadProdutos(); }, []);
+  useEffect(() => {
+    (async () => {
+      await loadFazendas();
+    })();
+  }, [modo, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadProdutos(fazendasPermitidasIds);
+  }, [fazendasOpcoes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
+    setFazendasSelecionadas(
+      modo === "gerente" && fazendasOpcoes.length === 1 ? [fazendasOpcoes[0].id] : [],
+    );
     setDialogOpen(true);
   }
 
   function openEdit(p: Produto) {
     setEditingId(p.id);
+    setFazendasSelecionadas(vinculos[p.id] ?? []);
     const a = p as any;
     setForm({
       marca: a.marca ?? "",
@@ -153,18 +206,24 @@ export default function ProdutosPage() {
     };
 
     try {
+      const escopo = modo === "gerente" ? fazendasPermitidasIds : undefined;
+      let produtoId = editingId;
       if (editingId) {
         const { error } = await supabase.from("produtos").update(payload).eq("id", editingId);
         if (error) throw error;
         toast.success("Produto atualizado!");
       } else {
-        payload.administrador_id = roleData?.roleId ?? null;
-        const { error } = await supabase.from("produtos").insert(payload);
+        if (modo === "admin") payload.administrador_id = roleData?.roleId ?? null;
+        const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
         if (error) throw error;
+        produtoId = (data as any)?.id ?? null;
         toast.success("Produto cadastrado!");
       }
+      if (produtoId) {
+        await salvarVinculosProduto(produtoId, fazendasSelecionadas, escopo);
+      }
       setDialogOpen(false);
-      loadProdutos();
+      loadProdutos(fazendasPermitidasIds);
     } catch (err: any) {
       toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
     } finally {
@@ -307,6 +366,23 @@ export default function ProdutosPage() {
               <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder="Ex: 100" />
               <p className="text-xs text-muted-foreground">Parâmetro nutricional obrigatório para cálculos do sistema</p>
             </div>
+
+            <div className="border-t pt-3">
+              <FazendasMultiSelect
+                fazendas={fazendasOpcoes}
+                selected={fazendasSelecionadas}
+                onChange={setFazendasSelecionadas}
+                emptyMessage={
+                  modo === "gerente"
+                    ? "Você não está vinculado a nenhuma fazenda."
+                    : "Nenhuma fazenda ativa cadastrada."
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                O produto só aparecerá nas fazendas selecionadas.
+              </p>
+            </div>
+
 
             {/* Consumo por Categoria */}
             <div className="space-y-3 border-t pt-3">

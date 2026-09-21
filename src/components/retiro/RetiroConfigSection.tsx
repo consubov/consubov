@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Settings, Package, BarChart3, Target, Weight } from "lucide-react";
 import { toast } from "sonner";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 
 interface Produto {
   id: string;
@@ -62,10 +63,11 @@ export default function RetiroConfigSection({ retiroId }: Props) {
 
   useEffect(() => {
     async function load() {
-      const [retRes, prodRes] = await Promise.all([
-        supabase.from("retiros").select("*").eq("id", retiroId).single(),
-        supabase.from("produtos").select("*").eq("ativo", true).order("nome"),
-      ]);
+      const retRes = await supabase.from("retiros").select("*").eq("id", retiroId).single();
+      const produtoIds = await fetchProdutoIdsDaFazenda((retRes.data as any)?.fazenda_id ?? null);
+      let prodQuery = supabase.from("produtos").select("*").eq("ativo", true).order("nome");
+      if (produtoIds) prodQuery = prodQuery.in("id", produtoIds);
+      const prodRes = await prodQuery;
       if (retRes.data) {
         const r = retRes.data as any;
         setConfig({

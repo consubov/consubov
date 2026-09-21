@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Loader2, TreePine, ClipboardList, Package, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 
 type Pasto = Tables<"pastos">;
 type Retiro = Tables<"retiros">;
@@ -47,11 +48,14 @@ export default function PastoDetailPage() {
 
   async function loadData() {
     if (!pastoId || !retiroId || !fazendaId) return;
+    const produtoIds = await fetchProdutoIdsDaFazenda(fazendaId);
+    let produtosQuery = supabase.from("produtos").select("*").eq("ativo", true).order("nome");
+    if (produtoIds) produtosQuery = produtosQuery.in("id", produtoIds);
     const [pastoRes, retiroRes, fazendaRes, produtosRes, pastosRes] = await Promise.all([
       supabase.from("pastos").select("*").eq("id", pastoId).single(),
       supabase.from("retiros").select("*").eq("id", retiroId).single(),
       supabase.from("fazendas").select("*").eq("id", fazendaId).single(),
-      supabase.from("produtos").select("*").eq("ativo", true).order("nome"),
+      produtosQuery,
       supabase.from("pastos").select("*").eq("retiro_id", retiroId).eq("ativo", true).order("nome"),
     ]);
     if (pastoRes.error) {
