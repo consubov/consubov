@@ -31,7 +31,7 @@ import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useRemoteSyncCommands } from "@/hooks/useRemoteSyncCommands";
 import PastoCard from "@/components/capataz/PastoCard";
-import type { SalgaFormDraft } from "@/components/capataz/SalgaForm";
+import type { SalgaFormDraft, SalgaSugestao } from "@/components/capataz/SalgaForm";
 import EstoqueCapatazSection from "@/components/estoque/EstoqueCapatazSection";
 import type { TipoEvento } from "@/components/eventos/SelecionarEventoModal";
 import type { SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
@@ -67,6 +67,7 @@ interface PersistedCapatazState {
   formJustificativa?: string;
   formAuditoriaExigida: boolean;
   formDraft: SalgaFormDraft | null;
+  formSugestao: SalgaSugestao | null;
 }
 
 const QrScanner = lazy(() => import("@/components/capataz/QrScanner"));
