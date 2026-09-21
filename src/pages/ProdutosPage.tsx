@@ -367,6 +367,23 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
               <p className="text-xs text-muted-foreground">Parâmetro nutricional obrigatório para cálculos do sistema</p>
             </div>
 
+            <div className="border-t pt-3">
+              <FazendasMultiSelect
+                fazendas={fazendasOpcoes}
+                selected={fazendasSelecionadas}
+                onChange={setFazendasSelecionadas}
+                emptyMessage={
+                  modo === "gerente"
+                    ? "Você não está vinculado a nenhuma fazenda."
+                    : "Nenhuma fazenda ativa cadastrada."
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                O produto só aparecerá nas fazendas selecionadas.
+              </p>
+            </div>
+
+
             {/* Consumo por Categoria */}
             <div className="space-y-3 border-t pt-3">
               <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
