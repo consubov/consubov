@@ -15,6 +15,7 @@ interface Props {
   onChange: (ids: string[]) => void;
   label?: string;
   emptyMessage?: string;
+  searchPlaceholder?: string;
 }
 
 export default function FazendasMultiSelect({
@@ -23,6 +24,7 @@ export default function FazendasMultiSelect({
   onChange,
   label = "Fazendas vinculadas",
   emptyMessage = "Nenhuma fazenda disponível.",
+  searchPlaceholder = "Pesquisar fazenda...",
 }: Props) {
   const [busca, setBusca] = useState("");
 
@@ -47,7 +49,7 @@ export default function FazendasMultiSelect({
         <Input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Pesquisar fazenda..."
+          placeholder={searchPlaceholder}
           className="pl-8"
         />
       </div>
