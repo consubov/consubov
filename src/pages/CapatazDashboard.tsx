@@ -37,7 +37,7 @@ import type { TipoEvento } from "@/components/eventos/SelecionarEventoModal";
 import type { SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
 import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import {
-  cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro,
+  cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro, sortPastos,
   getCachedCiclos,
   saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
@@ -241,6 +241,9 @@ export default function CapatazDashboard() {
   const [startupError, setStartupError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [pastos, setPastos] = useState<PastoCache[]>([]);
+  // Evita que a carga do cache local sobrescreva pastos já atualizados pelo
+  // servidor (race entre loadLocalData e a sincronização inicial).
+  const serverPastosLoadedRef = useRef(false);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
   const [ciclos, setCiclos] = useState<CicloCache[]>([]);
   const [selectedCicloId, setSelectedCicloId] = useState<string>("");
@@ -476,7 +479,9 @@ export default function CapatazDashboard() {
       getCachedProdutoAtivo(),
       getCachedFazenda(),
     ]);
-    setPastos(cachedPastos);
+    if (!serverPastosLoadedRef.current) {
+      setPastos(sortPastos(cachedPastos));
+    }
     setRetiro(cachedRetiro || null);
     setCiclos(cachedCiclos);
     if (savedFazendaId) setFazendaId(savedFazendaId);
@@ -683,11 +688,14 @@ export default function CapatazDashboard() {
           .from("pastos")
           .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia, data_movimentacao")
           .eq("retiro_id", retiroData.id)
-          .eq("ativo", true);
+          .eq("ativo", true)
+          .order("nome", { ascending: true });
 
         if (pastosData) {
-          await cachePastos(pastosData);
-          setPastos(pastosData);
+          const pastosOrdenados = sortPastos(pastosData);
+          await cachePastos(pastosOrdenados);
+          serverPastosLoadedRef.current = true;
+          setPastos(pastosOrdenados);
 
           if (pastosData.length > 0) {
             const { data: lancamentosData } = await supabase
