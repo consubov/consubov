@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Vínculo produto ↔ fazenda (tabela produtos_fazendas).
  * Retorna a lista de produto_id vinculados à fazenda informada.
- * Retorna null quando não há filtro a aplicar (sem fazenda em contexto,
- * erro de consulta ou fazenda ainda sem nenhum vínculo cadastrado) —
- * nesse caso o chamador deve manter o comportamento anterior (catálogo completo).
+ * Fazenda SEM nenhum vínculo cadastrado → lista vazia (sem fallback
+ * para o catálogo completo): sem vínculo, sem produto.
+ * Retorna null apenas quando não há fazenda em contexto ou a consulta
+ * falhou (ex: offline) — nesse caso o chamador mantém o catálogo completo.
  */
 export async function fetchProdutoIdsDaFazenda(
   fazendaId?: string | null,
@@ -19,9 +20,12 @@ export async function fetchProdutoIdsDaFazenda(
     console.error("[produtosFazenda] erro ao carregar vínculos:", error);
     return null;
   }
-  const ids = ((data ?? []) as { produto_id: string }[]).map((r) => r.produto_id);
-  return ids.length > 0 ? ids : null;
+  return ((data ?? []) as { produto_id: string }[]).map((r) => r.produto_id);
 }
+
+/** Mensagem padrão quando a fazenda não tem nenhum produto vinculado. */
+export const MSG_FAZENDA_SEM_PRODUTO =
+  "Nenhum produto vinculado a esta fazenda — peça ao administrador para vincular um produto.";
 
 /** Descobre a fazenda de um retiro. */
 export async function fetchFazendaIdDoRetiro(retiroId?: string | null): Promise<string | null> {

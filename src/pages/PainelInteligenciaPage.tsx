@@ -238,8 +238,8 @@ export default function PainelInteligenciaPage() {
     const allIds = new Set([...produtos.map(p => p.id), ...usedIds]);
     let lista = produtos.filter(p => allIds.has(p.id));
     if (filtroFazenda !== "all") {
-      const daFazenda = lista.filter(p => (vinculosProduto[p.id] ?? []).includes(filtroFazenda));
-      if (daFazenda.length > 0) lista = daFazenda;
+      // Sem vínculo, sem produto: fazenda sem produtos vinculados → lista vazia.
+      lista = lista.filter(p => (vinculosProduto[p.id] ?? []).includes(filtroFazenda));
     }
     return lista;
   }, [lancamentos, produtos, pastoById, retiroById, filtroFazenda, vinculosProduto]);
