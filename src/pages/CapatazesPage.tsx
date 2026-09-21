@@ -10,13 +10,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { ForcarSyncButton } from "@/components/ForcarSyncButton";
+import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
 
 interface Retiro {
   id: string;
@@ -37,15 +35,16 @@ interface CapatazForm {
   nome: string;
   email: string;
   telefone: string;
-  retiro_id: string;
+  retiro_ids: string[];
   ativo: boolean;
 }
 
-const emptyForm: CapatazForm = { nome: "", email: "", telefone: "", retiro_id: "", ativo: true };
+const emptyForm: CapatazForm = { nome: "", email: "", telefone: "", retiro_ids: [], ativo: true };
 
 export default function CapatazesPage() {
   const [capatazes, setCapatazes] = useState<Capataz[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
+  const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,12 +57,28 @@ export default function CapatazesPage() {
 
   async function fetchData() {
     setLoading(true);
-    const [cRes, rRes] = await Promise.all([
+    const [cRes, rRes, vRes, fRes] = await Promise.all([
       supabase.from("capatazes").select("*").order("nome"),
-      supabase.from("retiros").select("id, nome").eq("ativo", true).order("nome"),
+      supabase.from("retiros").select("id, nome, fazenda_id").eq("ativo", true).order("nome"),
+      supabase.from("capatazes_retiros").select("capataz_id, retiro_id, principal"),
+      supabase.from("fazendas").select("id, nome"),
     ]);
     if (cRes.data) setCapatazes(cRes.data as Capataz[]);
-    if (rRes.data) setRetiros(rRes.data);
+
+    const fazendaNome = Object.fromEntries(((fRes.data || []) as { id: string; nome: string }[]).map(f => [f.id, f.nome]));
+    const lista = ((rRes.data || []) as { id: string; nome: string; fazenda_id: string | null }[]).map(r => ({
+      id: r.id,
+      nome: r.fazenda_id && fazendaNome[r.fazenda_id] ? `${r.nome} — ${fazendaNome[r.fazenda_id]}` : r.nome,
+    }));
+    setRetiros(lista);
+
+    const map: Record<string, string[]> = {};
+    for (const row of (vRes.data || []) as { capataz_id: string; retiro_id: string; principal: boolean }[]) {
+      if (!map[row.capataz_id]) map[row.capataz_id] = [];
+      if (row.principal) map[row.capataz_id].unshift(row.retiro_id);
+      else map[row.capataz_id].push(row.retiro_id);
+    }
+    setVinculos(map);
     setLoading(false);
   }
 
@@ -75,14 +90,35 @@ export default function CapatazesPage() {
 
   function openEdit(c: Capataz) {
     setEditingId(c.id);
+    const ids = vinculos[c.id] && vinculos[c.id].length > 0
+      ? vinculos[c.id]
+      : (c.retiro_id ? [c.retiro_id] : []);
     setForm({
       nome: c.nome,
       email: c.email,
       telefone: c.telefone || "",
-      retiro_id: c.retiro_id || "",
+      retiro_ids: ids,
       ativo: c.ativo ?? true,
     });
     setDialogOpen(true);
+  }
+
+  /** Grava os vínculos em capatazes_retiros e devolve o retiro principal. */
+  async function salvarVinculos(capatazId: string, ids: string[], retiroAtual: string | null) {
+    const principal = retiroAtual && ids.includes(retiroAtual) ? retiroAtual : ids[0];
+
+    const { error: delErr } = await supabase
+      .from("capatazes_retiros")
+      .delete()
+      .eq("capataz_id", capatazId);
+    if (delErr) throw delErr;
+
+    const { error: insErr } = await supabase.from("capatazes_retiros").insert(
+      ids.map((rid) => ({ capataz_id: capatazId, retiro_id: rid, principal: rid === principal })),
+    );
+    if (insErr) throw insErr;
+
+    return principal;
   }
 
   async function handleSave() {
@@ -90,15 +126,22 @@ export default function CapatazesPage() {
       toast.error("Nome e email são obrigatórios");
       return;
     }
+    if (form.retiro_ids.length === 0) {
+      toast.error("Selecione pelo menos um retiro");
+      return;
+    }
     setSaving(true);
 
     try {
       if (editingId) {
+        const atual = capatazes.find((c) => c.id === editingId)?.retiro_id ?? null;
+        const principal = await salvarVinculos(editingId, form.retiro_ids, atual);
+
         const { error } = await supabase.from("capatazes").update({
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          retiro_id: form.retiro_id || null,
+          retiro_id: principal,
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
@@ -122,20 +165,22 @@ export default function CapatazesPage() {
         }
 
         const userId = responseData?.user?.id;
-        const { error } = await supabase.from("capatazes").insert({
+        const { data: novo, error } = await supabase.from("capatazes").insert({
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          retiro_id: form.retiro_id || null,
+          retiro_id: form.retiro_ids[0],
           user_id: userId || null,
           ativo: form.ativo,
-        });
+        }).select("id").single();
         if (error) {
           console.error("Erro ao salvar capataz:", error);
           toast.error("Erro ao salvar: " + error.message);
           setSaving(false);
           return;
         }
+
+        await salvarVinculos(novo.id, form.retiro_ids, form.retiro_ids[0]);
         toast.success("Capataz criado! Senha padrão: Consubov@2025");
       }
       setDialogOpen(false);
@@ -149,6 +194,7 @@ export default function CapatazesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este capataz?")) return;
+    await supabase.from("capatazes_retiros").delete().eq("capataz_id", id);
     const { error } = await supabase.from("capatazes").delete().eq("id", id);
     if (error) {
       toast.error("Erro ao excluir: " + error.message);
@@ -166,7 +212,6 @@ export default function CapatazesPage() {
     if (!confirm(`Redefinir a senha de ${c.nome} para "Consubov@2025"?`)) return;
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("reset-password", {
         body: { user_id: c.user_id, password: "Consubov@2025" },
       });
@@ -186,6 +231,14 @@ export default function CapatazesPage() {
   }
 
   const retiroMap = Object.fromEntries(retiros.map(r => [r.id, r.nome]));
+
+  function nomesRetiros(c: Capataz) {
+    const ids = vinculos[c.id] && vinculos[c.id].length > 0
+      ? vinculos[c.id]
+      : (c.retiro_id ? [c.retiro_id] : []);
+    const nomes = ids.map((id) => retiroMap[id]).filter(Boolean);
+    return nomes.length > 0 ? nomes.join(", ") : "—";
+  }
 
   if (loading) {
     return (
@@ -211,7 +264,7 @@ export default function CapatazesPage() {
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Telefone</TableHead>
-              <TableHead>Retiro</TableHead>
+              <TableHead>Retiros</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-24">Ações</TableHead>
             </TableRow>
@@ -229,7 +282,7 @@ export default function CapatazesPage() {
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell>{c.email}</TableCell>
                   <TableCell>{c.telefone || "—"}</TableCell>
-                  <TableCell>{c.retiro_id ? retiroMap[c.retiro_id] || "—" : "—"}</TableCell>
+                  <TableCell>{nomesRetiros(c)}</TableCell>
                   <TableCell>
                     <Badge variant={c.ativo ? "default" : "secondary"}>
                       {c.ativo ? "Ativo" : "Inativo"}
@@ -278,15 +331,14 @@ export default function CapatazesPage() {
               <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
             <div>
-              <Label>Retiro</Label>
-              <Select value={form.retiro_id} onValueChange={v => setForm(f => ({ ...f, retiro_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione um retiro" /></SelectTrigger>
-                <SelectContent>
-                  {retiros.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FazendasMultiSelect
+                fazendas={retiros}
+                selected={form.retiro_ids}
+                onChange={(ids) => setForm(f => ({ ...f, retiro_ids: ids }))}
+                label="Retiros *"
+                searchPlaceholder="Pesquisar retiro..."
+                emptyMessage="Nenhum retiro disponível."
+              />
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />

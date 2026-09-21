@@ -10,12 +10,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
 
 interface Fazenda {
   id: string;
@@ -36,15 +34,16 @@ interface GerenteForm {
   nome: string;
   email: string;
   telefone: string;
-  fazenda_id: string;
+  fazenda_ids: string[];
   ativo: boolean;
 }
 
-const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", fazenda_id: "", ativo: true };
+const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", fazenda_ids: [], ativo: true };
 
 export default function GerentesPage() {
   const [gerentes, setGerentes] = useState<Gerente[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
+  const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,12 +56,21 @@ export default function GerentesPage() {
 
   async function fetchData() {
     setLoading(true);
-    const [gRes, fRes] = await Promise.all([
+    const [gRes, fRes, vRes] = await Promise.all([
       supabase.from("gerentes").select("*").order("nome"),
       supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome"),
+      supabase.from("gerentes_fazendas").select("gerente_id, fazenda_id, principal"),
     ]);
     if (gRes.data) setGerentes(gRes.data as Gerente[]);
     if (fRes.data) setFazendas(fRes.data);
+
+    const map: Record<string, string[]> = {};
+    for (const row of (vRes.data || []) as { gerente_id: string; fazenda_id: string; principal: boolean }[]) {
+      if (!map[row.gerente_id]) map[row.gerente_id] = [];
+      if (row.principal) map[row.gerente_id].unshift(row.fazenda_id);
+      else map[row.gerente_id].push(row.fazenda_id);
+    }
+    setVinculos(map);
     setLoading(false);
   }
 
@@ -74,14 +82,35 @@ export default function GerentesPage() {
 
   function openEdit(g: Gerente) {
     setEditingId(g.id);
+    const ids = vinculos[g.id] && vinculos[g.id].length > 0
+      ? vinculos[g.id]
+      : (g.fazenda_id ? [g.fazenda_id] : []);
     setForm({
       nome: g.nome,
       email: g.email,
       telefone: g.telefone || "",
-      fazenda_id: g.fazenda_id || "",
+      fazenda_ids: ids,
       ativo: g.ativo ?? true,
     });
     setDialogOpen(true);
+  }
+
+  /** Grava os vínculos em gerentes_fazendas e devolve a fazenda principal. */
+  async function salvarVinculos(gerenteId: string, ids: string[], fazendaAtual: string | null) {
+    const principal = fazendaAtual && ids.includes(fazendaAtual) ? fazendaAtual : ids[0];
+
+    const { error: delErr } = await supabase
+      .from("gerentes_fazendas")
+      .delete()
+      .eq("gerente_id", gerenteId);
+    if (delErr) throw delErr;
+
+    const { error: insErr } = await supabase.from("gerentes_fazendas").insert(
+      ids.map((fid) => ({ gerente_id: gerenteId, fazenda_id: fid, principal: fid === principal })),
+    );
+    if (insErr) throw insErr;
+
+    return principal;
   }
 
   async function handleSave() {
@@ -89,19 +118,22 @@ export default function GerentesPage() {
       toast.error("Nome e email são obrigatórios");
       return;
     }
-    if (!form.fazenda_id) {
-      toast.error("Selecione uma fazenda");
+    if (form.fazenda_ids.length === 0) {
+      toast.error("Selecione pelo menos uma fazenda");
       return;
     }
     setSaving(true);
 
     try {
       if (editingId) {
+        const atual = gerentes.find((g) => g.id === editingId)?.fazenda_id ?? null;
+        const principal = await salvarVinculos(editingId, form.fazenda_ids, atual);
+
         const { error } = await supabase.from("gerentes").update({
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          fazenda_id: form.fazenda_id,
+          fazenda_id: principal,
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
@@ -126,21 +158,23 @@ export default function GerentesPage() {
         }
 
         const userId = responseData?.user?.id;
-        const { error } = await supabase.from("gerentes").insert({
+        const { data: novo, error } = await supabase.from("gerentes").insert({
           nome: form.nome,
           email: form.email,
           telefone: form.telefone || null,
-          fazenda_id: form.fazenda_id,
+          fazenda_id: form.fazenda_ids[0],
           user_id: userId || null,
           ativo: form.ativo,
-        });
+        }).select("id").single();
         if (error) {
           console.error("Erro ao salvar gerente:", error);
           toast.error("Erro ao salvar: " + error.message);
           setSaving(false);
           return;
         }
-        toast.success("Gerente criado! Acessa todos os retiros da fazenda selecionada.");
+
+        await salvarVinculos(novo.id, form.fazenda_ids, form.fazenda_ids[0]);
+        toast.success("Gerente criado! Acessa todos os retiros das fazendas selecionadas.");
       }
       setDialogOpen(false);
       fetchData();
@@ -153,6 +187,7 @@ export default function GerentesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este gerente?")) return;
+    await supabase.from("gerentes_fazendas").delete().eq("gerente_id", id);
     const { error } = await supabase.from("gerentes").delete().eq("id", id);
     if (error) {
       toast.error("Erro ao excluir: " + error.message);
@@ -163,6 +198,14 @@ export default function GerentesPage() {
   }
 
   const fazendaMap = Object.fromEntries(fazendas.map(f => [f.id, f.nome]));
+
+  function nomesFazendas(g: Gerente) {
+    const ids = vinculos[g.id] && vinculos[g.id].length > 0
+      ? vinculos[g.id]
+      : (g.fazenda_id ? [g.fazenda_id] : []);
+    const nomes = ids.map((id) => fazendaMap[id]).filter(Boolean);
+    return nomes.length > 0 ? nomes.join(", ") : "—";
+  }
 
   if (loading) {
     return (
@@ -188,7 +231,7 @@ export default function GerentesPage() {
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Telefone</TableHead>
-              <TableHead>Fazenda</TableHead>
+              <TableHead>Fazendas</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-24">Ações</TableHead>
             </TableRow>
@@ -206,7 +249,7 @@ export default function GerentesPage() {
                   <TableCell className="font-medium">{g.nome}</TableCell>
                   <TableCell>{g.email}</TableCell>
                   <TableCell>{g.telefone || "—"}</TableCell>
-                  <TableCell>{g.fazenda_id ? fazendaMap[g.fazenda_id] || "—" : "—"}</TableCell>
+                  <TableCell>{nomesFazendas(g)}</TableCell>
                   <TableCell>
                     <Badge variant={g.ativo ? "default" : "secondary"}>
                       {g.ativo ? "Ativo" : "Inativo"}
@@ -234,7 +277,7 @@ export default function GerentesPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Gerente" : "Novo Gerente"}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Atualize os dados do gerente." : "Preencha os dados. O gerente terá acesso a todos os retiros da fazenda."}
+              {editingId ? "Atualize os dados do gerente." : "Preencha os dados. O gerente terá acesso a todos os retiros das fazendas selecionadas."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -251,16 +294,13 @@ export default function GerentesPage() {
               <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
             <div>
-              <Label>Fazenda *</Label>
-              <Select value={form.fazenda_id} onValueChange={v => setForm(f => ({ ...f, fazenda_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma fazenda" /></SelectTrigger>
-                <SelectContent>
-                  {fazendas.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">O gerente terá acesso a todos os retiros desta fazenda.</p>
+              <FazendasMultiSelect
+                fazendas={fazendas}
+                selected={form.fazenda_ids}
+                onChange={(ids) => setForm(f => ({ ...f, fazenda_ids: ids }))}
+                label="Fazendas *"
+              />
+              <p className="text-xs text-muted-foreground mt-1">O gerente terá acesso a todos os retiros das fazendas selecionadas.</p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />
