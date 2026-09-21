@@ -255,6 +255,15 @@ export default function GerenteDashboard() {
                     </li>
                     <li>
                       <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/produtos"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <Package className="w-5 h-5 text-primary" />
+                        Produtos
+                      </button>
+                    </li>
+                    <li>
+                      <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/conferencia"), 220); }}
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                       >
