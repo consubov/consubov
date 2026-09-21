@@ -191,6 +191,44 @@ function arredondarSacosSugeridos(sacos: number): number {
   return Math.max(1, arredondado);
 }
 
+/** Recalcula a sugestão de sacos usada no formulário de salga.
+ *  Replica a lógica de openForm para garantir que, ao restaurar o estado
+ *  após descarte da página pelo SO, a sugestão seja reconstruída com os
+ *  dados de cache disponíveis (produto/fazenda/retiro/ciclo).
+ */
+function computeFormSuggestion(
+  pasto: PastoCache,
+  produtoAtivo: ProdutoCache | undefined,
+  fazendaCache: FazendaCache | undefined,
+  retiro: RetiroCache | null,
+  selectedCiclo: CicloCache | undefined
+): SalgaSugestao | null {
+  if (!pasto || !produtoAtivo || !fazendaCache) return null;
+
+  const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
+  const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
+  const categoria = pasto.categoria || 'Engorda';
+  const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
+  const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
+
+  if (consumo_por_100kg > 0 && pasto.num_animais > 0 && peso > 0) {
+    const consumo_diario_kg = (pasto.num_animais * peso * consumo_por_100kg) / 100;
+    const consumo_periodo_kg = consumo_diario_kg * intervaloDias;
+    const sacos = arredondarSacosSugeridos(consumo_periodo_kg / produtoAtivo.peso_saco_kg);
+    return {
+      sacosSugeridos: sacos,
+      numAnimais: pasto.num_animais,
+      intervaloDias,
+      pesoAtual: peso,
+      produtoNome: produtoAtivo.nome,
+      consumoPor100kg: consumo_por_100kg,
+      categoria,
+      pesoSacoKg: produtoAtivo.peso_saco_kg,
+    };
+  }
+  return null;
+}
+
 export default function CapatazDashboard() {
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
