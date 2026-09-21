@@ -100,6 +100,7 @@ export default function PainelInteligenciaPage() {
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [vinculosProduto, setVinculosProduto] = useState<Record<string, string[]>>({});
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [loading, setLoading] = useState(true);
 
