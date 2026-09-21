@@ -273,6 +273,15 @@ async function safeRun<T>(op: () => Promise<T>, fallback: T): Promise<T> {
 }
 
 // Pastos
+// Ordenação única e determinística da lista de pastos (mesma ordem no cache
+// local e nos dados vindos do servidor) — evita a lista "pular" ao alternar
+// entre as duas fontes.
+export function sortPastos<T extends { nome?: string | null }>(pastos: T[]): T[] {
+  return [...pastos].sort((a, b) =>
+    (a.nome ?? '').localeCompare(b.nome ?? '', 'pt-BR', { numeric: true, sensitivity: 'base' })
+  );
+}
+
 export async function cachePastos(pastos: PastoCache[]) {
   return safeRun(async () => {
     const db = await getDb();
@@ -286,7 +295,7 @@ export async function cachePastos(pastos: PastoCache[]) {
 export async function getCachedPastos(): Promise<PastoCache[]> {
   return safeRun(async () => {
     const db = await getDb();
-    return (await db.getAll('pastos')) ?? [];
+    return sortPastos((await db.getAll('pastos')) ?? []);
   }, []);
 }
 
