@@ -497,7 +497,7 @@ export default function CapatazDashboard() {
     applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
-      restoreUiState(savedUiState, cachedPastos);
+      restoreUiState(savedUiState, cachedPastos, cachedRetiro || null, cachedCiclos, cachedProd, cachedFaz);
       uiStateRestoredRef.current = true;
     }
 
