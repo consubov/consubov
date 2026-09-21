@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Settings, Package, BarChart3, Target, Weight } from "lucide-react";
 import { toast } from "sonner";
-import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
 interface Produto {
   id: string;
@@ -178,6 +178,9 @@ export default function RetiroConfigSection({ retiroId }: Props) {
                 ))}
               </SelectContent>
             </Select>
+            {!loading && produtos.length === 0 && (
+              <p className="text-xs text-amber-700">{MSG_FAZENDA_SEM_PRODUTO}</p>
+            )}
             {config.produto_id && (() => {
               const prod = produtos.find((p) => p.id === config.produto_id);
               return prod ? (
