@@ -265,6 +265,13 @@ export function useGerenteData(filters?: GerenteFilters) {
     const eficiencia = indiceMedio > 0
       ? (formulas ? formulas.eficiencia.compute(indiceMedio) : indiceMedio * 100)
       : 0;
+    const pastosComLancamento = new Set(painelLancamentos.map(l => l.pasto_id));
+    const gmdValoresRetiro = painelPastos
+      .filter(p => pastosComLancamento.has(p.id) && p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
+      .map(p => Number(p.gmd_kg_dia));
+    const gmdMedio = filters?.painelRetiroId
+      ? (gmdValoresRetiro.length > 0 ? gmdValoresRetiro.reduce((a, b) => a + b, 0) / gmdValoresRetiro.length : 0)
+      : consumoAgg.gmdMedio;
 
     return {
       totalAnimais: painelPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
@@ -275,7 +282,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       custoDiario: consumoAgg.custoDiario,
       custoMensal: consumoAgg.custoMensal,
       eficiencia,
-      gmdMedio: consumoAgg.gmdMedio,
+      gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
   }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId]);
