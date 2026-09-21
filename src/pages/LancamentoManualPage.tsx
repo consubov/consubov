@@ -15,7 +15,7 @@ import {
   getConsumoPorCategoria,
   getMargemPorCategoria,
 } from "@/lib/consumoCalc";
-import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -356,6 +356,9 @@ export default function LancamentoManualPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {fazendaId && produtos.length === 0 && (
+                  <p className="text-[11px] text-amber-700">{MSG_FAZENDA_SEM_PRODUTO}</p>
+                )}
                 <p className="text-[11px] text-muted-foreground">Peso do saco obtido automaticamente</p>
               </div>
             </div>

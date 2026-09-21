@@ -18,7 +18,7 @@ import {
 import { ArrowLeft, Loader2, TreePine, ClipboardList, Package, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
-import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
 type Pasto = Tables<"pastos">;
 type Retiro = Tables<"retiros">;
@@ -296,6 +296,9 @@ export default function PastoDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {produtos.length === 0 && (
+                <p className="text-xs text-amber-700">{MSG_FAZENDA_SEM_PRODUTO}</p>
+              )}
             </div>
           </div>
           <DialogFooter>

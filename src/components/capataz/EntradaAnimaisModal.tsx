@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { fetchFazendaIdDoRetiro, fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { fetchFazendaIdDoRetiro, fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
 interface Produto {
   id: string;
@@ -112,8 +112,13 @@ export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome,
 
             <div>
               <label className="text-sm font-medium mb-1 block">Produto *</label>
-              {produtos.length <= 1 ? (
-                <Input value={produtos[0]?.nome ?? "Nenhum produto"} disabled />
+              {produtos.length === 0 ? (
+                <>
+                  <Input value="Nenhum produto" disabled />
+                  <p className="text-xs text-amber-700 mt-1">{MSG_FAZENDA_SEM_PRODUTO}</p>
+                </>
+              ) : produtos.length === 1 ? (
+                <Input value={produtos[0].nome} disabled />
               ) : (
                 <Select value={produtoId} onValueChange={setProdutoId}>
                   <SelectTrigger>
