@@ -123,8 +123,9 @@ export default function EscritorioLayout() {
         .select("id, dados")
         .eq("tipo", "mortalidade")
         .eq("lida", false)
+        .eq("fazenda_id", fazendaId)
         .in("modulo", modulosVisiveis("consubov"));
-      return (data || []).filter((n: any) => (n.dados as any)?.fazenda_id === fazendaId).length;
+      return (data || []).length;
     },
     enabled: !!fazendaId,
     retry: 2,
@@ -543,12 +544,10 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         .select("id, lida, criado_em, dados")
         .eq("tipo", "mortalidade")
         .eq("lida", false)
+        .eq("fazenda_id", fazendaId)
         .in("modulo", modulosVisiveis("consubov"))
         .order("criado_em", { ascending: false });
-      return (data || []).filter((n: any) => {
-        const d = n.dados as Record<string, any> | null;
-        return d?.fazenda_id === fazendaId;
-      });
+      return data || [];
     },
     enabled: !!fazendaId,
     retry: 2,
