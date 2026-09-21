@@ -240,6 +240,53 @@ export default function CapatazDashboard() {
   const activeRetiroId = retiroAtivoId ?? roleData.retiroId ?? null;
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
+  // Restaura o retiro ativo persistido e carrega a lista de vínculos
+  // (cache local primeiro, depois servidor quando houver conexão).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [savedRetiro, savedList] = await Promise.all([
+        getConfig('capatazRetiroAtivoId'),
+        getConfig('capatazRetirosList'),
+      ]);
+      if (cancelled) return;
+      if (savedList) {
+        try {
+          const parsed = JSON.parse(savedList) as { id: string; nome: string }[];
+          if (Array.isArray(parsed)) setRetirosVinculados(parsed);
+        } catch { /* cache inválido */ }
+      }
+      if (savedRetiro) setRetiroAtivoId(savedRetiro);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!backgroundBootReady || !roleData.roleId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from("capatazes_retiros")
+        .select("retiro_id, principal, retiros(nome)")
+        .eq("capataz_id", roleData.roleId);
+      if (cancelled || error || !data) return;
+      const lista = (data as any[])
+        .map((r) => ({ id: r.retiro_id as string, nome: (r.retiros?.nome as string) || 'Retiro' }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+      if (lista.length === 0) return;
+      setRetirosVinculados(lista);
+      await setConfig('capatazRetirosList', JSON.stringify(lista));
+      setRetiroAtivoId((atual) => {
+        if (atual && lista.some((r) => r.id === atual)) return atual;
+        const principal = (data as any[]).find((r) => r.principal)?.retiro_id as string | undefined;
+        const proximo = principal || roleData.retiroId || lista[0].id;
+        void setConfig('capatazRetiroAtivoId', proximo);
+        return proximo;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [backgroundBootReady, roleData.roleId, roleData.retiroId]);
+
   // Keep the page/SW alive while the capataz is logged in to prevent
   // the browser from discarding offline state after idle time.
   useKeepAlive(Boolean(user?.id) && backgroundBootReady);
