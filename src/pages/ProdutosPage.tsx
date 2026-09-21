@@ -206,18 +206,24 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
     };
 
     try {
+      const escopo = modo === "gerente" ? fazendasPermitidasIds : undefined;
+      let produtoId = editingId;
       if (editingId) {
         const { error } = await supabase.from("produtos").update(payload).eq("id", editingId);
         if (error) throw error;
         toast.success("Produto atualizado!");
       } else {
-        payload.administrador_id = roleData?.roleId ?? null;
-        const { error } = await supabase.from("produtos").insert(payload);
+        if (modo === "admin") payload.administrador_id = roleData?.roleId ?? null;
+        const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
         if (error) throw error;
+        produtoId = (data as any)?.id ?? null;
         toast.success("Produto cadastrado!");
       }
+      if (produtoId) {
+        await salvarVinculosProduto(produtoId, fazendasSelecionadas, escopo);
+      }
       setDialogOpen(false);
-      loadProdutos();
+      loadProdutos(fazendasPermitidasIds);
     } catch (err: any) {
       toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
     } finally {
