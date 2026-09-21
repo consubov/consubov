@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
@@ -85,6 +86,39 @@ export default function GerenteDashboard() {
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
+  const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [fazendaSelecionadaId, setFazendaSelecionadaId] = useState(roleData.fazendaId ?? "");
+  const [painelRetiroId, setPainelRetiroId] = useState("todos");
+
+  useEffect(() => {
+    if (!roleData.roleId) return;
+    let cancelled = false;
+    const carregarFazendas = async () => {
+      const { data } = await supabase
+        .from("gerentes_fazendas")
+        .select("fazenda_id, fazendas(id, nome)")
+        .eq("gerente_id", roleData.roleId);
+      if (cancelled) return;
+      const opcoes = (data ?? []).flatMap((item: any) => {
+        const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
+        return fazenda?.id ? [{ id: fazenda.id, nome: fazenda.nome }] : [];
+      });
+      if (opcoes.length === 0 && roleData.fazendaId) {
+        const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
+        if (!cancelled && fazenda) setFazendasVinculadas([fazenda]);
+        return;
+      }
+      setFazendasVinculadas(opcoes);
+      if (opcoes.length > 0 && !opcoes.some(f => f.id === fazendaSelecionadaId)) {
+        setFazendaSelecionadaId(opcoes[0].id);
+      }
+    };
+    void carregarFazendas();
+    return () => { cancelled = true; };
+  }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId]);
+
+  const activeFazendaId = fazendaSelecionadaId || roleData.fazendaId || "";
+  const activeRetiroId = painelRetiroId === "todos" ? null : painelRetiroId;
 
   useEffect(() => {
     const periodoAtual = getCurrentPainelPeriodo();
@@ -95,7 +129,9 @@ export default function GerenteDashboard() {
     ano,
     mes,
     cicloStatus: 'todos',
-  }), [ano, mes]);
+    fazendaId: activeFazendaId,
+    painelRetiroId: activeRetiroId,
+  }), [ano, mes, activeFazendaId, activeRetiroId]);
 
   const {
     loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
@@ -104,13 +140,13 @@ export default function GerenteDashboard() {
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
-  const { painelMae } = usePainelMae(roleData.fazendaId ?? null, null, mes, ano);
-  const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(roleData.fazendaId ?? undefined, mes, ano);
-  const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(roleData.fazendaId ?? undefined, ano);
+  const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
+  const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
+  const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
   const {
     estoques, transferencias, loading: estoqueLoading,
     adicionarEstoque, aprovarTransferencia, recusarTransferencia,
-  } = useEstoqueData(roleData.fazendaId, mes, ano);
+  } = useEstoqueData(activeFazendaId, mes, ano);
 
   const retirosList = useMemo(() => retirosComDados.map(r => ({ id: r.id!, nome: r.nome })).filter(r => r.id), [retirosComDados]);
 
@@ -122,19 +158,23 @@ export default function GerenteDashboard() {
   const [pdfRefreshTick, setPdfRefreshTick] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    setPainelRetiroId("todos");
+  }, [activeFazendaId]);
+
   // Realtime: when any capataz syncs (lancamento INSERT into our fazenda),
   // bump a tick so retiro rows re-render the "Baixar PDF" affordance.
   useEffect(() => {
-    if (!roleData.fazendaId) return;
+    if (!activeFazendaId) return;
     const channel = supabase
-      .channel(`gerente-lancamentos-${roleData.fazendaId}`)
+      .channel(`gerente-lancamentos-${activeFazendaId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "lancamentos",
-          filter: `fazenda_id=eq.${roleData.fazendaId}`,
+          filter: `fazenda_id=eq.${activeFazendaId}`,
         },
         () => {
           setPdfRefreshTick((t) => t + 1);
@@ -144,15 +184,15 @@ export default function GerenteDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roleData.fazendaId]);
+  }, [activeFazendaId]);
 
   const handleBaixarSalgaPdf = async (retiro: RetiroComDados) => {
-    if (!retiro.id || !roleData.fazendaId) return;
+    if (!retiro.id || !activeFazendaId) return;
     setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: true }));
     try {
       // Use the last 24h as default range when generating on demand
       const result = await generateAndStoreSalgaPdf({
-        fazendaId: roleData.fazendaId,
+        fazendaId: activeFazendaId,
         fazendaNome,
         retiroId: retiro.id,
         retiroNome: retiro.nome,
@@ -317,7 +357,7 @@ export default function GerenteDashboard() {
             <span className="truncate">{fazendaNome}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {roleData.fazendaId && <GerenteNotificacoesBell fazendaId={roleData.fazendaId} />}
+             {activeFazendaId && <GerenteNotificacoesBell fazendaId={activeFazendaId} />}
             <UserNotificationToggle />
             <AppVersionBadge />
           </div>
@@ -356,6 +396,35 @@ export default function GerenteDashboard() {
 
         {/* ===== PAINEL ===== */}
         <TabsContent value="painel" className="flex-1 overflow-auto p-4 space-y-4 mt-0">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {fazendasVinculadas.length > 1 && (
+                <Select value={activeFazendaId} onValueChange={setFazendaSelecionadaId}>
+                  <SelectTrigger className="h-9 w-full max-w-[190px]" aria-label="Selecionar fazenda">
+                    <SelectValue placeholder="Fazenda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fazendasVinculadas.map(fazenda => (
+                      <SelectItem key={fazenda.id} value={fazenda.id}>{fazenda.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            {retirosComDados.length > 1 && (
+              <Select value={painelRetiroId} onValueChange={setPainelRetiroId}>
+                <SelectTrigger className="h-9 w-full max-w-[190px] flex-1" aria-label="Selecionar retiro">
+                  <SelectValue placeholder="Retiro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os retiros</SelectItem>
+                  {retirosComDados.map(retiro => (
+                    <SelectItem key={retiro.id} value={retiro.id}>{retiro.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Painel da Fazenda</h2>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelData.totalAnimais)} />
