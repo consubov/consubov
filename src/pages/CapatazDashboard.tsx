@@ -456,10 +456,11 @@ export default function CapatazDashboard() {
       formJustificativa,
       formAuditoriaExigida,
       formDraft,
+      formSugestao,
     };
 
     await setConfig('capatazUiState', JSON.stringify(uiState));
-  }, [formAuditoriaExigida, formDraft, formJustificativa, formPastoId, formPastoNome, formTipo, manualJustificativa, manualPastoId, salgaCount, screen]);
+  }, [formAuditoriaExigida, formDraft, formJustificativa, formPastoId, formPastoNome, formSugestao, formTipo, manualJustificativa, manualPastoId, salgaCount, screen]);
 
   // Load data from cache on mount
   const loadLocalData = useCallback(async () => {
