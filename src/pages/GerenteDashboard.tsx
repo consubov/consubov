@@ -118,6 +118,13 @@ export default function GerenteDashboard() {
   }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId]);
 
   const activeFazendaId = fazendaSelecionadaId || roleData.fazendaId || "";
+
+  // Ao trocar de fazenda, o retiro selecionado volta para "Todos os retiros"
+  // (nunca pode ficar um retiro da fazenda anterior).
+  useEffect(() => {
+    setPainelRetiroId("todos");
+  }, [activeFazendaId]);
+
   const activeRetiroId = painelRetiroId === "todos" ? null : painelRetiroId;
 
   useEffect(() => {
