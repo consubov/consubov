@@ -1200,6 +1200,7 @@ export default function CapatazDashboard() {
           cocho_cheio: l.cocho_cheio ?? false,
           foto_cocho_url: fotoCochoSincronizacao ?? null,
           data_salga: l.data,
+          confirmar_duplicado: l.duplicado_confirmado === true,
         };
         const { error } = await supabase.rpc("sync_capataz_lancamento" as any, {
           p_lancamento: insertData,
