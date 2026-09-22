@@ -92,8 +92,8 @@ export default function ExportarRelatorioModal({
     if (!open) return;
     const currentDate = new Date();
     setPeriodoTipo("mensal");
-    setMes(initialMes ?? currentDate.getMonth() + 1);
-    setAno(initialAno ?? currentDate.getFullYear());
+    setMes(currentDate.getMonth() + 1);
+    setAno(currentDate.getFullYear());
     setRetiroFiltro(lockedRetiroId ?? "todos");
   }, [open, initialMes, initialAno, lockedRetiroId]);
 
@@ -653,6 +653,7 @@ export default function ExportarRelatorioModal({
 
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const painelYears = Array.from({ length: currentYear - 2024 + 2 }, (_, i) => 2024 + i);
   const retiroBloqueadoNome = lockedRetiroId
     ? retirosList.find((retiro) => retiro.id === lockedRetiroId)?.nome ?? "Retiro selecionado"
     : null;
@@ -670,8 +671,23 @@ export default function ExportarRelatorioModal({
           {monthlyContextEnabled ? (
             <div className="space-y-2">
               <Label>Período do painel</Label>
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
-                {MESES[mes - 1]} {ano}
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MESES.map((mesNome, i) => (
+                      <SelectItem key={mesNome} value={String(i + 1)}>{mesNome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {painelYears.map(y => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           ) : (
