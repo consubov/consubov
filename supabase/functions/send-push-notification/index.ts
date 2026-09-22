@@ -87,7 +87,7 @@ async function resolveTargetUserIds(payload: PushPayload): Promise<string[]> {
       ids.add(g.user_id);
     });
 
-    // Capatazes dos retiros da fazenda
+    // Capatazes dos retiros da fazenda (vínculo principal + vínculos múltiplos)
     if (retiroIds.length > 0) {
       const { data: capatazes } = await supabase
         .from("capatazes")
@@ -95,6 +95,20 @@ async function resolveTargetUserIds(payload: PushPayload): Promise<string[]> {
         .in("retiro_id", retiroIds)
         .eq("ativo", true);
       (capatazes ?? []).forEach((c: { user_id: string | null }) => c.user_id && ids.add(c.user_id));
+
+      const { data: vinculos } = await supabase
+        .from("capatazes_retiros")
+        .select("capataz_id")
+        .in("retiro_id", retiroIds);
+      const capatazIds = [...new Set((vinculos ?? []).map((v: { capataz_id: string }) => v.capataz_id))];
+      if (capatazIds.length > 0) {
+        const { data: capatazesVinculados } = await supabase
+          .from("capatazes")
+          .select("user_id")
+          .in("id", capatazIds)
+          .eq("ativo", true);
+        (capatazesVinculados ?? []).forEach((c: { user_id: string | null }) => c.user_id && ids.add(c.user_id));
+      }
     }
   }
 
