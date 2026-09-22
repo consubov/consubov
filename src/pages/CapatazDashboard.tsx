@@ -140,6 +140,26 @@ function buildSacosMap(lancamentos: LancamentoOffline[] | undefined | null, cicl
   }, {});
 }
 
+/**
+ * Regra ÚNICA de escolha do ciclo ativo — usada pelo carregamento local e pelo servidor.
+ * 1) ciclo do mês/ano atual que NÃO esteja fechado;
+ * 2) senão, o ciclo aberto mais recente;
+ * 3) senão, o ciclo mais recente (mesmo fechado).
+ * A lista é ordenada (ano/mês desc) dentro da função para não depender da ordem da fonte.
+ */
+function escolherCicloAtivo(ciclos: CicloCache[]): CicloCache | undefined {
+  if (!ciclos || ciclos.length === 0) return undefined;
+  const ordenados = [...ciclos].sort((a, b) => (b.ano - a.ano) || (b.mes - a.mes));
+  const now = new Date();
+  const mesAtual = now.getMonth() + 1;
+  const anoAtual = now.getFullYear();
+  return (
+    ordenados.find(c => c.mes === mesAtual && c.ano === anoAtual && !c.fechado) ||
+    ordenados.find(c => !c.fechado) ||
+    ordenados[0]
+  );
+}
+
 /** Calculate dynamic dias and peso_atual based on the active cycle (or fallback to cached values). */
 function calcDinamicoPasto(
   pasto: PastoCache,
@@ -474,7 +494,7 @@ export default function CapatazDashboard() {
       if (nextScreen === 'form' && parsed.formPastoId) {
         const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
         if (savedPasto) {
-          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || cachedCiclos[0];
+          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || escolherCicloAtivo(cachedCiclos);
           const sugestaoRestaurada = parsed.formSugestao ?? computeFormSuggestion(savedPasto, cachedProd, cachedFaz, cachedRetiro, currentCiclo);
 
           setFormPastoId(savedPasto.id);
@@ -549,12 +569,8 @@ export default function CapatazDashboard() {
 
     let nextCicloId = "";
     if (cachedCiclos.length > 0) {
-      const now = new Date();
-      const currentMonth = now.getMonth() + 1;
-      const currentYear = now.getFullYear();
-      const currentCiclo = cachedCiclos.find(c => c.mes === currentMonth && c.ano === currentYear);
-      const active = currentCiclo || cachedCiclos.find(c => !c.fechado) || cachedCiclos[0];
-      nextCicloId = active.id;
+      const active = escolherCicloAtivo(cachedCiclos);
+      nextCicloId = active?.id ?? "";
     }
 
     setSelectedCicloId(nextCicloId);
@@ -818,11 +834,7 @@ export default function CapatazDashboard() {
         if (ciclosData && ciclosData.length > 0) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
-          const now = new Date();
-          const currentMonth = now.getMonth() + 1;
-          const currentYear = now.getFullYear();
-          const currentCiclo = ciclosData.find(c => c.mes === currentMonth && c.ano === currentYear && !c.fechado);
-          const active = currentCiclo || ciclosData.find(c => !c.fechado) || ciclosData[0];
+          const active = escolherCicloAtivo(ciclosData as CicloCache[]);
           if (active) {
             setSelectedCicloId(active.id);
             await setConfig('selectedCicloId', active.id);
