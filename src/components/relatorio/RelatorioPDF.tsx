@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   Circle, Document, G, Line, Page, Rect, StyleSheet, Svg, Text, View,
 } from "@react-pdf/renderer";
@@ -827,7 +828,7 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
         <Footer fazendaNome={data.fazendaNome} />
       </Page>
       {data.retiros.map((r, retiroIndex) => (
-        <>
+        <Fragment key={r.nome}>
           <Page key={`detalhe-${r.nome}`} size="A4" style={s.page} wrap>
             <Header data={data} />
             {retiroIndex === 0 && (
@@ -837,7 +838,7 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
             <Footer fazendaNome={data.fazendaNome} />
           </Page>
           <RealEsperadoRetiroPages key={`real-esperado-${r.nome}`} retiro={r} data={data} />
-        </>
+        </Fragment>
       ))}
     </Document>
   );
