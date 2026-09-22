@@ -572,18 +572,18 @@ export default function CapatazDashboard() {
       setPastos(sortPastos(cachedPastos));
     }
     setRetiro(cachedRetiro || null);
-    setCiclos(cachedCiclos);
+    if (!serverCiclosLoadedRef.current) {
+      setCiclos(cachedCiclos);
+    }
     if (savedFazendaId) setFazendaId(savedFazendaId);
     if (cachedProd) setProdutoAtivo(cachedProd);
     if (cachedFaz) setFazendaCache(cachedFaz);
 
-    let nextCicloId = "";
-    if (cachedCiclos.length > 0) {
-      const active = escolherCicloAtivo(cachedCiclos);
-      nextCicloId = active?.id ?? "";
+    let nextCicloId = selectedCicloIdRef.current;
+    if (!serverCiclosLoadedRef.current) {
+      nextCicloId = cachedCiclos.length > 0 ? (escolherCicloAtivo(cachedCiclos)?.id ?? "") : "";
+      setSelectedCicloId(nextCicloId);
     }
-
-    setSelectedCicloId(nextCicloId);
     applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
