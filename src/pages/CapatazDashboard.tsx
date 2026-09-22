@@ -595,7 +595,7 @@ export default function CapatazDashboard() {
     await refreshObservacoes();
     const fecharPend = await getFecharMesPendente();
     setFecharMesPendente(fecharPend);
-  }, [applyLancamentosState, refreshObservacoes, restoreUiState]);
+  }, [applyLancamentosState, refreshObservacoes, restoreUiState, setSelectedCicloId]);
 
   useEffect(() => {
     let cancelled = false;
