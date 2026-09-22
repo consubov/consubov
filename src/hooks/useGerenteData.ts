@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
