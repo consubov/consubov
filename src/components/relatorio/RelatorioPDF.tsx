@@ -626,7 +626,7 @@ interface DualChartPoint {
   esperado: number;
 }
 
-const CHART_PASTOS_PER_PAGE = 18;
+const CHART_PASTOS_PER_PAGE = 15;
 
 function indexToLetter(index: number) {
   let value = index + 1;
