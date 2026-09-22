@@ -7,6 +7,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { usePainelMae } from "@/hooks/usePainelMae";
+import { usePainelProduto } from "@/hooks/usePainelProduto";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
