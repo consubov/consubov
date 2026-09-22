@@ -1029,8 +1029,10 @@ export default function CapatazDashboard() {
       data: new Date().toISOString(),
       status: 'pendente',
       ciclo_id: cicloAtivo.id,
+      duplicado_confirmado: formDuplicadoConfirmado || undefined,
     };
     await saveLancamento(lancamento);
+    setFormDuplicadoConfirmado(false);
 
     // Register audit counter ONLY for normal salga (not cocho cheio)
     if (!data.cocho_cheio) {
