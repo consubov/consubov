@@ -626,8 +626,7 @@ interface DualChartPoint {
   esperado: number;
 }
 
-const CHART_REFERENCE_CAPACITY = 39;
-const REFERENCE_PAGE_CAPACITY = 126;
+const CHART_PASTOS_PER_PAGE = 15;
 
 function indexToLetter(index: number) {
   let value = index + 1;
@@ -761,55 +760,52 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
 }
 
 function RealEsperadoPages({ data }: { data: RelatorioPDFData }) {
-  const pontos = data.retiros
-    .flatMap(retiro => retiro.pastos.map(pasto => ({ retiro: retiro.nome, pasto })))
-    .filter(({ pasto }) => (pasto.consumoRealGCabDia ?? 0) > 0 && (pasto.consumoEsperadoGCabDia ?? 0) > 0)
-    .map(({ retiro, pasto }, index) => ({
-      letra: indexToLetter(index),
-      nome: data.retiros.length > 1 ? `${retiro} — ${pasto.nome}` : pasto.nome,
-      real: Number(pasto.consumoRealGCabDia),
-      esperado: Number(pasto.consumoEsperadoGCabDia),
-    }));
-  if (pontos.length < 2) return null;
+  const retiroPages = data.retiros.flatMap(retiro => {
+    const pontos = retiro.pastos
+      .filter(pasto => (pasto.consumoRealGCabDia ?? 0) > 0 && (pasto.consumoEsperadoGCabDia ?? 0) > 0)
+      .map((pasto, index) => ({
+        letra: indexToLetter(index),
+        nome: pasto.nome,
+        real: Number(pasto.consumoRealGCabDia),
+        esperado: Number(pasto.consumoEsperadoGCabDia),
+      }));
 
-  const columns = pontos.length > 16 ? 3 : 2;
-  const firstReferences = pontos.slice(0, CHART_REFERENCE_CAPACITY);
-  const continuationPages = chunk(pontos.slice(CHART_REFERENCE_CAPACITY), REFERENCE_PAGE_CAPACITY);
+    if (pontos.length === 0) return [];
+
+    const partes = chunk(pontos, CHART_PASTOS_PER_PAGE);
+    return partes.map((pontosParte, parteIndex) => ({
+      retiroNome: retiro.nome,
+      pontos: pontosParte,
+      parte: parteIndex + 1,
+      totalPartes: partes.length,
+    }));
+  });
+
+  if (retiroPages.length === 0) return null;
 
   return (
     <>
-      <Page size="A4" style={s.page}>
-        <Header data={data} />
-        <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: green, marginBottom: 4 }}>
-          Consumo por Pasto - Real x Esperado
-        </Text>
-        <DualLineChart pontos={pontos} />
-        <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 2, marginBottom: 5 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", marginRight: 24 }}>
-            <View style={{ width: 18, height: 3, backgroundColor: green, marginRight: 5 }} />
-            <Text style={{ fontSize: 8 }}>Consumo Real</Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <View style={{ width: 18, height: 3, backgroundColor: gold, marginRight: 5 }} />
-            <Text style={{ fontSize: 8 }}>Consumo Esperado</Text>
-          </View>
-        </View>
-        <Text style={{ fontSize: 7, color: "#767066", textAlign: "center", marginBottom: 8 }}>
-          Valores em g/cab/dia por pasto avaliado.
-        </Text>
-        <ReferenceTable pontos={firstReferences} columns={columns} />
-        {continuationPages.length > 0 && (
-          <Text style={{ fontSize: 6.5, color: "#767066", marginTop: 5 }}>Referência continua na página seguinte.</Text>
-        )}
-        <Footer fazendaNome={data.fazendaNome} />
-      </Page>
-      {continuationPages.map((references, pageIndex) => (
-        <Page key={`chart-reference-${pageIndex}`} size="A4" style={s.page}>
+      {retiroPages.map(({ retiroNome, pontos, parte, totalPartes }) => (
+        <Page key={`${retiroNome}-${parte}`} size="A4" style={s.page}>
           <Header data={data} />
-          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: green, marginBottom: 10 }}>
-            Consumo por Pasto - Referência (continuação)
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: green, marginBottom: 4 }}>
+            {`${retiroNome} - Real x Esperado (${parte}/${totalPartes})`}
           </Text>
-          <ReferenceTable pontos={references} columns={3} />
+          <DualLineChart pontos={pontos} />
+          <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 2, marginBottom: 5 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginRight: 24 }}>
+              <View style={{ width: 18, height: 3, backgroundColor: green, marginRight: 5 }} />
+              <Text style={{ fontSize: 8 }}>Consumo Real</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 18, height: 3, backgroundColor: gold, marginRight: 5 }} />
+              <Text style={{ fontSize: 8 }}>Consumo Esperado</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 7, color: "#767066", textAlign: "center", marginBottom: 8 }}>
+            Valores em g/cab/dia por pasto avaliado.
+          </Text>
+          <ReferenceTable pontos={pontos} columns={pontos.length > 16 ? 3 : 2} />
           <Footer fazendaNome={data.fazendaNome} />
         </Page>
       ))}
