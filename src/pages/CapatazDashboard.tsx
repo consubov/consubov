@@ -320,6 +320,15 @@ export default function CapatazDashboard() {
   const [formJustificativa, setFormJustificativa] = useState<string | undefined>();
   const [formAuditoriaExigida, setFormAuditoriaExigida] = useState(false);
   const [formDraft, setFormDraft] = useState<SalgaFormDraft | null>(null);
+  // Trava suave contra lançamento duplicado no mesmo dia (pede confirmação)
+  const [formDuplicadoConfirmado, setFormDuplicadoConfirmado] = useState(false);
+  const [duplicadoPrompt, setDuplicadoPrompt] = useState<{
+    pastoId: string;
+    pastoNome: string;
+    tipo: 'salga' | 'falha_qr';
+    justificativa?: string;
+    hora: string;
+  } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [uiStateReady, setUiStateReady] = useState(false);
   const uiStateRestoredRef = useRef(false);
@@ -910,12 +919,30 @@ export default function CapatazDashboard() {
     return lancamentosHoje.some(l => l.pasto_id === pastoId);
   };
 
+  const horaUltimaSalgaHoje = (pastoId: string): string => {
+    const doPasto = lancamentosHoje
+      .filter(l => l.pasto_id === pastoId)
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const ultima = doPasto[0];
+    if (!ultima) return "";
+    return new Date(ultima.data).toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   // QR scanned
   const handleQrScan = async (qrValue: string) => {
     const pasto = await getPastoByQr(qrValue);
     if (pasto) {
       if (pastoJaSalgadoHoje(pasto.id)) {
-        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        setDuplicadoPrompt({
+          pastoId: pasto.id,
+          pastoNome: pasto.nome,
+          tipo: 'salga',
+          hora: horaUltimaSalgaHoje(pasto.id),
+        });
         setScreen('salga');
         return;
       }
