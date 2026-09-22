@@ -844,6 +844,7 @@ export default function CapatazDashboard() {
         if (ciclosData && ciclosData.length > 0) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
+          serverCiclosLoadedRef.current = true;
           const active = escolherCicloAtivo(ciclosData as CicloCache[]);
           if (active) {
             setSelectedCicloId(active.id);
@@ -851,7 +852,7 @@ export default function CapatazDashboard() {
             await refreshLancamentosState(active.id);
           }
         } else {
-          await refreshLancamentosState(selectedCicloId);
+          await refreshLancamentosState(selectedCicloIdRef.current);
         }
       }
     } catch {
