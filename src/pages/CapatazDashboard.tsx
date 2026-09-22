@@ -873,9 +873,11 @@ export default function CapatazDashboard() {
     try {
       await clearRetiroScopedCache();
       serverPastosLoadedRef.current = false;
+      serverCiclosLoadedRef.current = false;
       setPastos([]);
       setRetiro(null);
       setCiclos([]);
+      setSelectedCicloId("");
       setProdutoAtivo(undefined);
       setFazendaCache(undefined);
       setFazendaId("");
