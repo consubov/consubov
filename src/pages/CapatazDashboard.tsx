@@ -504,7 +504,7 @@ export default function CapatazDashboard() {
       if (nextScreen === 'form' && parsed.formPastoId) {
         const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
         if (savedPasto) {
-          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || escolherCicloAtivo(cachedCiclos);
+          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloIdRef.current) || escolherCicloAtivo(cachedCiclos);
           const sugestaoRestaurada = parsed.formSugestao ?? computeFormSuggestion(savedPasto, cachedProd, cachedFaz, cachedRetiro, currentCiclo);
 
           setFormPastoId(savedPasto.id);
