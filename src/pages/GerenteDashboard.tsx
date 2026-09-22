@@ -89,6 +89,7 @@ export default function GerenteDashboard() {
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
   const [fazendaSelecionadaId, setFazendaSelecionadaId] = useState(roleData.fazendaId ?? "");
   const [painelRetiroId, setPainelRetiroId] = useState("todos");
+  const [painelProdutoId, setPainelProdutoId] = useState("todos");
 
   useEffect(() => {
     if (!roleData.roleId) return;
