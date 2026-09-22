@@ -474,8 +474,8 @@ export default function CapatazDashboard() {
       getLancamentosPendentes(),
     ]);
 
-    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloId);
-  }, [applyLancamentosState, selectedCicloId]);
+    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloIdRef.current);
+  }, [applyLancamentosState]);
 
   const restoreUiState = useCallback((
     savedState: string | undefined,
