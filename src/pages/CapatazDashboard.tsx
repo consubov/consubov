@@ -316,7 +316,17 @@ export default function CapatazDashboard() {
   const serverPastosLoadedRef = useRef(false);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
   const [ciclos, setCiclos] = useState<CicloCache[]>([]);
-  const [selectedCicloId, setSelectedCicloId] = useState<string>("");
+  const [selectedCicloId, setSelectedCicloIdState] = useState<string>("");
+  // Espelho do ciclo selecionado: permite ler o valor atual dentro de callbacks
+  // sem colocá-lo nas dependências (evitava recriação → efeito → recarga em loop).
+  const selectedCicloIdRef = useRef<string>("");
+  const setSelectedCicloId = useCallback((id: string) => {
+    selectedCicloIdRef.current = id;
+    setSelectedCicloIdState(id);
+  }, []);
+  // "Servidor vence" também para ciclo/seleção: depois que o servidor carregou,
+  // a carga do cache local não sobrescreve mais o ciclo ativo.
+  const serverCiclosLoadedRef = useRef(false);
   const [lancamentosHoje, setLancamentosHoje] = useState<LancamentoOffline[]>([]);
   const [sacosMap, setSacosMap] = useState<Record<string, number>>({});
   const [consumoMap, setConsumoMap] = useState<Record<string, { status_consumo?: string; indice_consumo?: number }>>({});
