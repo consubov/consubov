@@ -530,7 +530,7 @@ export default function CapatazDashboard() {
     } catch {
       setScreen('home');
     }
-  }, [selectedCicloId]);
+  }, []);
 
   const persistUiState = useCallback(async () => {
     const persistedScreen: RestorableScreen = screen === 'salga' || screen === 'scanner' || screen === 'form' || screen === 'manual-select'
