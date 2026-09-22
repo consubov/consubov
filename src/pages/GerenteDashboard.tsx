@@ -7,6 +7,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { usePainelMae } from "@/hooks/usePainelMae";
+import { usePainelProduto } from "@/hooks/usePainelProduto";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
@@ -89,6 +90,7 @@ export default function GerenteDashboard() {
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
   const [fazendaSelecionadaId, setFazendaSelecionadaId] = useState(roleData.fazendaId ?? "");
   const [painelRetiroId, setPainelRetiroId] = useState("todos");
+  const [painelProdutoId, setPainelProdutoId] = useState("todos");
 
   useEffect(() => {
     if (!roleData.roleId) return;
@@ -127,6 +129,11 @@ export default function GerenteDashboard() {
 
   const activeRetiroId = painelRetiroId === "todos" ? null : painelRetiroId;
 
+  // Trocar fazenda ou retiro reseta o filtro de produto.
+  useEffect(() => {
+    setPainelProdutoId("todos");
+  }, [activeFazendaId, painelRetiroId]);
+
   useEffect(() => {
     const periodoAtual = getCurrentPainelPeriodo();
     setPeriodo(periodoAtual.mes, periodoAtual.ano);
@@ -150,6 +157,21 @@ export default function GerenteDashboard() {
   const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
+
+  // Filtro de produto do painel (recalcula tudo só para os pastos do produto).
+  const produtoFiltro = usePainelProduto({
+    fazendaId: activeFazendaId || null,
+    retiroId: activeRetiroId,
+    mes,
+    ano,
+    produtoId: painelProdutoId,
+  });
+  const painelMaeView = produtoFiltro.filtroAtivo ? produtoFiltro.painelMae : painelMae;
+  const painelDataView = produtoFiltro.filtroAtivo
+    ? { ...painelData, ...produtoFiltro.agg }
+    : painelData;
+  const abatidosMesView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosMes : abatidosMes;
+  const abatidosAnoView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosAno : abatidosAno;
   const {
     estoques, transferencias, loading: estoqueLoading,
     adicionarEstoque, aprovarTransferencia, recusarTransferencia,
@@ -403,7 +425,7 @@ export default function GerenteDashboard() {
 
         {/* ===== PAINEL ===== */}
         <TabsContent value="painel" className="flex-1 overflow-auto p-4 space-y-4 mt-0">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0 flex-1">
               {fazendasVinculadas.length > 1 && (
                 <Select value={activeFazendaId} onValueChange={setFazendaSelecionadaId}>
@@ -431,26 +453,39 @@ export default function GerenteDashboard() {
                 </SelectContent>
               </Select>
             )}
+            {produtoFiltro.produtos.length > 0 && (
+              <Select value={painelProdutoId} onValueChange={setPainelProdutoId}>
+                <SelectTrigger className="h-9 w-full max-w-[190px] flex-1" aria-label="Selecionar produto">
+                  <SelectValue placeholder="Produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os produtos</SelectItem>
+                  {produtoFiltro.produtos.map(produto => (
+                    <SelectItem key={produto.id} value={produto.id}>{produto.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Painel da Fazenda</h2>
           <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelData.totalAnimais)} />
-            <MetricCard icon={Droplets} label="Consumo Real" value={`${fmtNum(painelMae.consumo_real_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-primary" />
-            <MetricCard icon={Gauge} label="Consumo Global" value={`${fmtNum(painelMae.consumo_global_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`} sub={painelMae.pastos_na_meta_den > 0 ? `${fmtNum((painelMae.pastos_na_meta_num / painelMae.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
-            <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
-            <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelData.sacosUtilizados)} />
-            <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelData.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelData.custoMensal)} />
-            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
-            <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelData.gmdMedio, 3)} sub="kg/dia" />
-            <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
-            <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
+            <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelDataView.totalAnimais)} />
+            <MetricCard icon={Droplets} label="Consumo Real" value={`${fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-primary" />
+            <MetricCard icon={Gauge} label="Consumo Global" value={`${fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMaeView.pastos_na_meta_num}/${painelMaeView.pastos_na_meta_den}`} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
+            <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelDataView.sacosUtilizados)} />
+            <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelDataView.custoMensal)} />
+            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelMaeView.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+            <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelDataView.gmdMedio, 3)} sub="kg/dia" />
+            <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
+            <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />
             <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
           </div>
 
           {/* Status Distribution */}
-          {(painelData.statusDistribution.baixo + painelData.statusDistribution.ideal + painelData.statusDistribution.alto) > 0 && (
+          {(painelDataView.statusDistribution.baixo + painelDataView.statusDistribution.ideal + painelDataView.statusDistribution.alto) > 0 && (
             <Card>
               <CardHeader className="pb-2 pt-3 px-4">
                 <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
@@ -458,27 +493,27 @@ export default function GerenteDashboard() {
               <CardContent className="px-4 pb-3 space-y-2">
                 {/* Bar */}
                 <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-                  {painelData.statusDistribution.baixoPct > 0 && (
-                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.baixoPct}%`, backgroundColor: "#E53935" }} />
+                  {painelDataView.statusDistribution.baixoPct > 0 && (
+                    <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.baixoPct}%`, backgroundColor: "#E53935" }} />
                   )}
-                  {(painelData.statusDistribution as any).atencaoPct > 0 && (
-                    <div className="transition-all" style={{ width: `${(painelData.statusDistribution as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />
+                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
+                    <div className="transition-all" style={{ width: `${(painelDataView.statusDistribution as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />
                   )}
-                  {painelData.statusDistribution.idealPct > 0 && (
-                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.idealPct}%`, backgroundColor: "#43A047" }} />
+                  {painelDataView.statusDistribution.idealPct > 0 && (
+                    <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.idealPct}%`, backgroundColor: "#43A047" }} />
                   )}
-                  {painelData.statusDistribution.altoPct > 0 && (
-                    <div className="transition-all" style={{ width: `${painelData.statusDistribution.altoPct}%`, backgroundColor: "#1E88E5" }} />
+                  {painelDataView.statusDistribution.altoPct > 0 && (
+                    <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.altoPct}%`, backgroundColor: "#1E88E5" }} />
                   )}
                 </div>
                 {/* Labels */}
                 <div className="flex justify-between text-xs">
-                  <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelData.statusDistribution.baixoPct, 0)}%</span>
-                  {(painelData.statusDistribution as any).atencaoPct > 0 && (
-                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((painelData.statusDistribution as any).atencaoPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelDataView.statusDistribution.baixoPct, 0)}%</span>
+                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
+                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((painelDataView.statusDistribution as any).atencaoPct, 0)}%</span>
                   )}
-                  <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelData.statusDistribution.idealPct, 0)}%</span>
-                  <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelData.statusDistribution.altoPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelDataView.statusDistribution.idealPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelDataView.statusDistribution.altoPct, 0)}%</span>
                 </div>
 
               </CardContent>
