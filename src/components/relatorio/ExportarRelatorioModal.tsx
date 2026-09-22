@@ -670,8 +670,23 @@ export default function ExportarRelatorioModal({
           {monthlyContextEnabled ? (
             <div className="space-y-2">
               <Label>Período do painel</Label>
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
-                {MESES[mes - 1]} {ano}
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MESES.map((mesNome, i) => (
+                      <SelectItem key={mesNome} value={String(i + 1)}>{mesNome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {painelYears.map(y => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           ) : (
