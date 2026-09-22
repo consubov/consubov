@@ -92,8 +92,8 @@ export default function ExportarRelatorioModal({
     if (!open) return;
     const currentDate = new Date();
     setPeriodoTipo("mensal");
-    setMes(initialMes ?? currentDate.getMonth() + 1);
-    setAno(initialAno ?? currentDate.getFullYear());
+    setMes(currentDate.getMonth() + 1);
+    setAno(currentDate.getFullYear());
     setRetiroFiltro(lockedRetiroId ?? "todos");
   }, [open, initialMes, initialAno, lockedRetiroId]);
 
@@ -653,6 +653,7 @@ export default function ExportarRelatorioModal({
 
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const painelYears = Array.from({ length: currentYear - 2024 + 2 }, (_, i) => 2024 + i);
   const retiroBloqueadoNome = lockedRetiroId
     ? retirosList.find((retiro) => retiro.id === lockedRetiroId)?.nome ?? "Retiro selecionado"
     : null;
