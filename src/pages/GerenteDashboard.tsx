@@ -156,6 +156,21 @@ export default function GerenteDashboard() {
   const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
+
+  // Filtro de produto do painel (recalcula tudo só para os pastos do produto).
+  const produtoFiltro = usePainelProduto({
+    fazendaId: activeFazendaId || null,
+    retiroId: activeRetiroId,
+    mes,
+    ano,
+    produtoId: painelProdutoId,
+  });
+  const painelMaeView = produtoFiltro.filtroAtivo ? produtoFiltro.painelMae : painelMae;
+  const painelDataView = produtoFiltro.filtroAtivo
+    ? { ...painelData, ...produtoFiltro.agg }
+    : painelData;
+  const abatidosMesView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosMes : abatidosMes;
+  const abatidosAnoView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosAno : abatidosAno;
   const {
     estoques, transferencias, loading: estoqueLoading,
     adicionarEstoque, aprovarTransferencia, recusarTransferencia,
