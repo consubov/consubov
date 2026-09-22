@@ -316,7 +316,17 @@ export default function CapatazDashboard() {
   const serverPastosLoadedRef = useRef(false);
   const [retiro, setRetiro] = useState<RetiroCache | null>(null);
   const [ciclos, setCiclos] = useState<CicloCache[]>([]);
-  const [selectedCicloId, setSelectedCicloId] = useState<string>("");
+  const [selectedCicloId, setSelectedCicloIdState] = useState<string>("");
+  // Espelho do ciclo selecionado: permite ler o valor atual dentro de callbacks
+  // sem colocá-lo nas dependências (evitava recriação → efeito → recarga em loop).
+  const selectedCicloIdRef = useRef<string>("");
+  const setSelectedCicloId = useCallback((id: string) => {
+    selectedCicloIdRef.current = id;
+    setSelectedCicloIdState(id);
+  }, []);
+  // "Servidor vence" também para ciclo/seleção: depois que o servidor carregou,
+  // a carga do cache local não sobrescreve mais o ciclo ativo.
+  const serverCiclosLoadedRef = useRef(false);
   const [lancamentosHoje, setLancamentosHoje] = useState<LancamentoOffline[]>([]);
   const [sacosMap, setSacosMap] = useState<Record<string, number>>({});
   const [consumoMap, setConsumoMap] = useState<Record<string, { status_consumo?: string; indice_consumo?: number }>>({});
@@ -464,8 +474,8 @@ export default function CapatazDashboard() {
       getLancamentosPendentes(),
     ]);
 
-    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloId);
-  }, [applyLancamentosState, selectedCicloId]);
+    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloIdRef.current);
+  }, [applyLancamentosState]);
 
   const restoreUiState = useCallback((
     savedState: string | undefined,
@@ -494,7 +504,7 @@ export default function CapatazDashboard() {
       if (nextScreen === 'form' && parsed.formPastoId) {
         const savedPasto = cachedPastos.find((p) => p.id === parsed.formPastoId);
         if (savedPasto) {
-          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloId) || escolherCicloAtivo(cachedCiclos);
+          const currentCiclo = cachedCiclos.find(c => c.id === selectedCicloIdRef.current) || escolherCicloAtivo(cachedCiclos);
           const sugestaoRestaurada = parsed.formSugestao ?? computeFormSuggestion(savedPasto, cachedProd, cachedFaz, cachedRetiro, currentCiclo);
 
           setFormPastoId(savedPasto.id);
@@ -520,7 +530,7 @@ export default function CapatazDashboard() {
     } catch {
       setScreen('home');
     }
-  }, [selectedCicloId]);
+  }, []);
 
   const persistUiState = useCallback(async () => {
     const persistedScreen: RestorableScreen = screen === 'salga' || screen === 'scanner' || screen === 'form' || screen === 'manual-select'
@@ -562,18 +572,18 @@ export default function CapatazDashboard() {
       setPastos(sortPastos(cachedPastos));
     }
     setRetiro(cachedRetiro || null);
-    setCiclos(cachedCiclos);
+    if (!serverCiclosLoadedRef.current) {
+      setCiclos(cachedCiclos);
+    }
     if (savedFazendaId) setFazendaId(savedFazendaId);
     if (cachedProd) setProdutoAtivo(cachedProd);
     if (cachedFaz) setFazendaCache(cachedFaz);
 
-    let nextCicloId = "";
-    if (cachedCiclos.length > 0) {
-      const active = escolherCicloAtivo(cachedCiclos);
-      nextCicloId = active?.id ?? "";
+    let nextCicloId = selectedCicloIdRef.current;
+    if (!serverCiclosLoadedRef.current) {
+      nextCicloId = cachedCiclos.length > 0 ? (escolherCicloAtivo(cachedCiclos)?.id ?? "") : "";
+      setSelectedCicloId(nextCicloId);
     }
-
-    setSelectedCicloId(nextCicloId);
     applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
@@ -585,7 +595,7 @@ export default function CapatazDashboard() {
     await refreshObservacoes();
     const fecharPend = await getFecharMesPendente();
     setFecharMesPendente(fecharPend);
-  }, [applyLancamentosState, refreshObservacoes, restoreUiState]);
+  }, [applyLancamentosState, refreshObservacoes, restoreUiState, setSelectedCicloId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -834,6 +844,7 @@ export default function CapatazDashboard() {
         if (ciclosData && ciclosData.length > 0) {
           await cacheCiclos(ciclosData as CicloCache[]);
           setCiclos(ciclosData as CicloCache[]);
+          serverCiclosLoadedRef.current = true;
           const active = escolherCicloAtivo(ciclosData as CicloCache[]);
           if (active) {
             setSelectedCicloId(active.id);
@@ -841,7 +852,7 @@ export default function CapatazDashboard() {
             await refreshLancamentosState(active.id);
           }
         } else {
-          await refreshLancamentosState(selectedCicloId);
+          await refreshLancamentosState(selectedCicloIdRef.current);
         }
       }
     } catch {
@@ -862,9 +873,11 @@ export default function CapatazDashboard() {
     try {
       await clearRetiroScopedCache();
       serverPastosLoadedRef.current = false;
+      serverCiclosLoadedRef.current = false;
       setPastos([]);
       setRetiro(null);
       setCiclos([]);
+      setSelectedCicloId("");
       setProdutoAtivo(undefined);
       setFazendaCache(undefined);
       setFazendaId("");
