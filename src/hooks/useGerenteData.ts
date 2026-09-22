@@ -289,7 +289,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId]);
+  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
