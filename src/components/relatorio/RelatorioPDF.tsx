@@ -1,5 +1,5 @@
 import {
-  Circle, Document, Line, Page, Rect, StyleSheet, Svg, Text, View,
+  Circle, Document, G, Line, Page, Rect, StyleSheet, Svg, Text, View,
 } from "@react-pdf/renderer";
 
 // ---------- Types ----------
@@ -709,20 +709,20 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
       {Array.from({ length: 6 }, (_, index) => {
         const gridY = top + plotHeight - (plotHeight * index) / 5;
         return (
-          <View key={`grid-${index}`}>
+          <G key={`grid-${index}`}>
             <Line x1={left} y1={gridY} x2={left + plotWidth} y2={gridY} stroke="#E7E3D6" strokeWidth={0.5} />
             <Text x={left - 5} y={gridY + 2} textAnchor="end" style={{ fontSize: 7, fill: "#767066" }}>
               {fmtNum((maxY * index) / 5, maxY >= 10 ? 0 : 1)}
             </Text>
-          </View>
+          </G>
         );
       })}
 
       {pontos.slice(0, -1).map((point, index) => (
-        <View key={`segments-${point.letra}`}>
+        <G key={`segments-${point.letra}`}>
           <Line x1={x(index)} y1={y(point.real)} x2={x(index + 1)} y2={y(pontos[index + 1].real)} stroke={green} strokeWidth={2} />
           <Line x1={x(index)} y1={y(point.esperado)} x2={x(index + 1)} y2={y(pontos[index + 1].esperado)} stroke={gold} strokeWidth={2} />
-        </View>
+        </G>
       ))}
 
       {pontos.map((point, index) => {
@@ -736,9 +736,9 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
         const esperadoText = formatValue(point.esperado);
         const labelWidth = Math.max(realText.length, esperadoText.length) * valueFontSize * 0.62 + 5;
         return (
-          <View key={`point-${point.letra}`}>
-            <Line x1={pointX} y1={realY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={green} strokeWidth={0.5} strokeDasharray="3 3" />
-            <Line x1={pointX} y1={esperadoY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={gold} strokeWidth={0.5} strokeDasharray="3 3" />
+          <G key={`point-${point.letra}`}>
+            <Line x1={pointX} y1={realY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={green} strokeWidth={0.5} strokeDasharray="3,3" />
+            <Line x1={pointX} y1={esperadoY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={gold} strokeWidth={0.5} strokeDasharray="3,3" />
             <Circle cx={pointX} cy={realY} r={3} fill={green} />
             <Circle cx={pointX} cy={esperadoY} r={3} fill={gold} />
             <Rect x={pointX - labelWidth / 2} y={realLabelY - valueFontSize + 1} width={labelWidth} height={valueFontSize + 3} fill="#FFFFFF" />
@@ -752,7 +752,7 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
             <Text x={pointX} y={top + plotHeight + 14} textAnchor="middle" style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}>
               {point.letra}
             </Text>
-          </View>
+          </G>
         );
       })}
       <Text x={width / 2} y={height - 5} textAnchor="middle" style={{ fontSize: 8, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}>Pasto</Text>
