@@ -425,7 +425,7 @@ export default function GerenteDashboard() {
 
         {/* ===== PAINEL ===== */}
         <TabsContent value="painel" className="flex-1 overflow-auto p-4 space-y-4 mt-0">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0 flex-1">
               {fazendasVinculadas.length > 1 && (
                 <Select value={activeFazendaId} onValueChange={setFazendaSelecionadaId}>
@@ -449,6 +449,19 @@ export default function GerenteDashboard() {
                   <SelectItem value="todos">Todos os retiros</SelectItem>
                   {retirosComDados.map(retiro => (
                     <SelectItem key={retiro.id} value={retiro.id}>{retiro.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {produtoFiltro.produtos.length > 0 && (
+              <Select value={painelProdutoId} onValueChange={setPainelProdutoId}>
+                <SelectTrigger className="h-9 w-full max-w-[190px] flex-1" aria-label="Selecionar produto">
+                  <SelectValue placeholder="Produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os produtos</SelectItem>
+                  {produtoFiltro.produtos.map(produto => (
+                    <SelectItem key={produto.id} value={produto.id}>{produto.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
