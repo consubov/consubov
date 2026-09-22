@@ -1446,9 +1446,29 @@ export default function CapatazDashboard() {
     );
   }
 
+  const duplicadoDialog = (
+    <AlertDialog open={!!duplicadoPrompt} onOpenChange={(open) => { if (!open) setDuplicadoPrompt(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Pasto já salgado hoje</AlertDialogTitle>
+          <AlertDialogDescription>
+            {duplicadoPrompt
+              ? `Esse pasto já foi salgado hoje${duplicadoPrompt.hora ? ` às ${duplicadoPrompt.hora}` : ""}. Confirma registrar mais um lançamento?`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmarDuplicado}>Confirmar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (screen === 'manual-select') {
     return (
       <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="icon" onClick={() => setScreen('scanner')} className="text-primary-foreground hover:bg-primary/80">
             <ArrowLeft className="w-5 h-5" />
