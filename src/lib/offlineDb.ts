@@ -27,6 +27,8 @@ export interface LancamentoOffline {
   // Cocho cheio
   cocho_cheio?: boolean;
   foto_cocho_url?: string | null;
+  // Trava suave: usuário confirmou 2º lançamento do mesmo pasto no mesmo dia
+  duplicado_confirmado?: boolean;
 }
 
 export interface ObservacaoOffline {
