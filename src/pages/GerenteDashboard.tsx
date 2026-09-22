@@ -128,6 +128,11 @@ export default function GerenteDashboard() {
 
   const activeRetiroId = painelRetiroId === "todos" ? null : painelRetiroId;
 
+  // Trocar fazenda ou retiro reseta o filtro de produto.
+  useEffect(() => {
+    setPainelProdutoId("todos");
+  }, [activeFazendaId, painelRetiroId]);
+
   useEffect(() => {
     const periodoAtual = getCurrentPainelPeriodo();
     setPeriodo(periodoAtual.mes, periodoAtual.ano);
