@@ -1543,6 +1543,7 @@ export default function CapatazDashboard() {
     const salgasHoje = lancamentosHoje;
     return (
       <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setScreen('home')} className="text-primary-foreground hover:bg-primary/80">
