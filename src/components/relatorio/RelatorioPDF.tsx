@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   Circle, Document, G, Line, Page, Rect, StyleSheet, Svg, Text, View,
 } from "@react-pdf/renderer";
@@ -759,29 +760,25 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
   );
 }
 
-function RealEsperadoPages({ data }: { data: RelatorioPDFData }) {
-  const retiroPages = data.retiros.flatMap(retiro => {
-    const pontos = retiro.pastos
-      .filter(pasto => (pasto.consumoRealGCabDia ?? 0) > 0 && (pasto.consumoEsperadoGCabDia ?? 0) > 0)
-      .map((pasto, index) => ({
-        letra: indexToLetter(index),
-        nome: pasto.nome,
-        real: Number(pasto.consumoRealGCabDia),
-        esperado: Number(pasto.consumoEsperadoGCabDia),
-      }));
-
-    if (pontos.length === 0) return [];
-
-    const partes = chunk(pontos, CHART_PASTOS_PER_PAGE);
-    return partes.map((pontosParte, parteIndex) => ({
-      retiroNome: retiro.nome,
-      pontos: pontosParte,
-      parte: parteIndex + 1,
-      totalPartes: partes.length,
+function RealEsperadoRetiroPages({ retiro, data }: { retiro: RetiroReportData; data: RelatorioPDFData }) {
+  const pontos = retiro.pastos
+    .filter(pasto => (pasto.consumoRealGCabDia ?? 0) > 0 && (pasto.consumoEsperadoGCabDia ?? 0) > 0)
+    .map((pasto, index) => ({
+      letra: indexToLetter(index),
+      nome: pasto.nome,
+      real: Number(pasto.consumoRealGCabDia),
+      esperado: Number(pasto.consumoEsperadoGCabDia),
     }));
-  });
 
-  if (retiroPages.length === 0) return null;
+  if (pontos.length === 0) return null;
+
+  const partes = chunk(pontos, CHART_PASTOS_PER_PAGE);
+  const retiroPages = partes.map((pontosParte, parteIndex) => ({
+    retiroNome: retiro.nome,
+    pontos: pontosParte,
+    parte: parteIndex + 1,
+    totalPartes: partes.length,
+  }));
 
   return (
     <>
@@ -828,14 +825,21 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
           <MetricasCategoria metrics={data.categoriaMetrics} />
         )}
 
-        <Text style={s.sectionTitle}>SEÇÃO 6 — DETALHE POR RETIRO</Text>
-        {data.retiros.map(r => (
-          <DetalheRetiro key={r.nome} r={r} />
-        ))}
-
         <Footer fazendaNome={data.fazendaNome} />
       </Page>
-      <RealEsperadoPages data={data} />
+      {data.retiros.map((r, retiroIndex) => (
+        <Fragment key={r.nome}>
+          <Page key={`detalhe-${r.nome}`} size="A4" style={s.page} wrap>
+            <Header data={data} />
+            {retiroIndex === 0 && (
+              <Text style={s.sectionTitle}>SEÇÃO 6 — DETALHE POR RETIRO</Text>
+            )}
+            <DetalheRetiro r={r} />
+            <Footer fazendaNome={data.fazendaNome} />
+          </Page>
+          <RealEsperadoRetiroPages key={`real-esperado-${r.nome}`} retiro={r} data={data} />
+        </Fragment>
+      ))}
     </Document>
   );
 }
