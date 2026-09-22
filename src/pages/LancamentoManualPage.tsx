@@ -16,6 +16,11 @@ import {
   getMargemPorCategoria,
 } from "@/lib/consumoCalc";
 import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
+import { dataLocalSP } from "@/lib/diasCalendario";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -58,6 +63,7 @@ export default function LancamentoManualPage() {
   const [rows, setRows] = useState<PastoRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [duplicadoInfo, setDuplicadoInfo] = useState<{ nomes: string[]; hora: string } | null>(null);
   const [cicloFechado, setCicloFechado] = useState(false);
   const [diasNoPastoGlobal, setDiasNoPastoGlobal] = useState(30);
   const [produtoPadraoId, setProdutoPadraoId] = useState("");
@@ -217,6 +223,7 @@ export default function LancamentoManualPage() {
     return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
   }
 
+  // Trava suave: pede confirmação se algum pasto já tem lançamento hoje (SP)
   async function handleSalvar() {
     for (const r of rows) {
       if (r.num_animais < 0) { toast.error(`Animais inválido em ${r.nome}`); return; }
@@ -224,6 +231,33 @@ export default function LancamentoManualPage() {
       if (r.dias_no_pasto <= 0) { toast.error(`Dias no pasto deve ser > 0 em ${r.nome}`); return; }
     }
 
+    const pastoIds = rows.filter(r => r.num_sacos > 0).map(r => r.pasto_id);
+    if (pastoIds.length > 0) {
+      const hojeSP = dataLocalSP(new Date());
+      const { data: existentes } = await supabase.from("lancamentos")
+        .select("pasto_id, data_salga_informada, created_at")
+        .in("pasto_id", pastoIds)
+        .gte("created_at", new Date(Date.now() - 3 * 86400000).toISOString());
+      const duplicados = (existentes ?? []).filter(l =>
+        dataLocalSP(l.data_salga_informada ?? l.created_at) === hojeSP
+      );
+      if (duplicados.length > 0) {
+        const nomes = Array.from(new Set(duplicados.map(d =>
+          rows.find(r => r.pasto_id === d.pasto_id)?.nome ?? ""
+        ))).filter(Boolean);
+        const hora = new Date(
+          duplicados[0].data_salga_informada ?? duplicados[0].created_at
+        ).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+        setDuplicadoInfo({ nomes, hora });
+        return;
+      }
+    }
+
+    await salvarLancamentos();
+  }
+
+  async function salvarLancamentos() {
+    setDuplicadoInfo(null);
     setSaving(true);
     try {
       // Ensure ciclo exists for selected month/year (per-retiro cycle)
@@ -517,6 +551,23 @@ export default function LancamentoManualPage() {
       ) : retiroId ? (
         <p className="text-muted-foreground text-sm text-center py-8">Nenhum pasto cadastrado neste retiro.</p>
       ) : null}
+
+      <AlertDialog open={!!duplicadoInfo} onOpenChange={(open) => { if (!open) setDuplicadoInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pasto já lançado hoje</AlertDialogTitle>
+            <AlertDialogDescription>
+              {duplicadoInfo
+                ? `${duplicadoInfo.nomes.length > 1 ? "Esses pastos já foram salgados" : "Esse pasto já foi salgado"} hoje${duplicadoInfo.hora ? ` às ${duplicadoInfo.hora}` : ""} (${duplicadoInfo.nomes.join(", ")}). Confirma registrar mais um lançamento?`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { void salvarLancamentos(); }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
