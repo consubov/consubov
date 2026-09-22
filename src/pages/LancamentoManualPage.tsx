@@ -551,6 +551,23 @@ export default function LancamentoManualPage() {
       ) : retiroId ? (
         <p className="text-muted-foreground text-sm text-center py-8">Nenhum pasto cadastrado neste retiro.</p>
       ) : null}
+
+      <AlertDialog open={!!duplicadoInfo} onOpenChange={(open) => { if (!open) setDuplicadoInfo(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pasto já lançado hoje</AlertDialogTitle>
+            <AlertDialogDescription>
+              {duplicadoInfo
+                ? `${duplicadoInfo.nomes.length > 1 ? "Esses pastos já foram salgados" : "Esse pasto já foi salgado"} hoje${duplicadoInfo.hora ? ` às ${duplicadoInfo.hora}` : ""} (${duplicadoInfo.nomes.join(", ")}). Confirma registrar mais um lançamento?`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { void salvarLancamentos(); }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
