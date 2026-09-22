@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { diasCalendarioSP, dataLocalSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
@@ -122,13 +122,10 @@ async function withSyncRetry<T>(operation: () => Promise<T>, label: string, maxA
 }
 
 function isSameLocalDay(dateIso: string, reference = new Date()) {
-  const date = new Date(dateIso);
-
-  return (
-    date.getFullYear() === reference.getFullYear() &&
-    date.getMonth() === reference.getMonth() &&
-    date.getDate() === reference.getDate()
-  );
+  // Dia de CALENDÁRIO em America/Sao_Paulo (mesma lógica de diasCalendarioSP).
+  const a = dataLocalSP(dateIso);
+  const b = dataLocalSP(reference);
+  return !!a && a === b;
 }
 
 function buildSacosMap(lancamentos: LancamentoOffline[] | undefined | null, cicloId?: string) {
@@ -323,6 +320,15 @@ export default function CapatazDashboard() {
   const [formJustificativa, setFormJustificativa] = useState<string | undefined>();
   const [formAuditoriaExigida, setFormAuditoriaExigida] = useState(false);
   const [formDraft, setFormDraft] = useState<SalgaFormDraft | null>(null);
+  // Trava suave contra lançamento duplicado no mesmo dia (pede confirmação)
+  const [formDuplicadoConfirmado, setFormDuplicadoConfirmado] = useState(false);
+  const [duplicadoPrompt, setDuplicadoPrompt] = useState<{
+    pastoId: string;
+    pastoNome: string;
+    tipo: 'salga' | 'falha_qr';
+    justificativa?: string;
+    hora: string;
+  } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [uiStateReady, setUiStateReady] = useState(false);
   const uiStateRestoredRef = useRef(false);
@@ -913,12 +919,30 @@ export default function CapatazDashboard() {
     return lancamentosHoje.some(l => l.pasto_id === pastoId);
   };
 
+  const horaUltimaSalgaHoje = (pastoId: string): string => {
+    const doPasto = lancamentosHoje
+      .filter(l => l.pasto_id === pastoId)
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const ultima = doPasto[0];
+    if (!ultima) return "";
+    return new Date(ultima.data).toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   // QR scanned
   const handleQrScan = async (qrValue: string) => {
     const pasto = await getPastoByQr(qrValue);
     if (pasto) {
       if (pastoJaSalgadoHoje(pasto.id)) {
-        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        setDuplicadoPrompt({
+          pastoId: pasto.id,
+          pastoNome: pasto.nome,
+          tipo: 'salga',
+          hora: horaUltimaSalgaHoje(pasto.id),
+        });
         setScreen('salga');
         return;
       }
@@ -929,7 +953,8 @@ export default function CapatazDashboard() {
     }
   };
 
-  const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string) => {
+  const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string, duplicadoConfirmado = false) => {
+    setFormDuplicadoConfirmado(duplicadoConfirmado);
     setFormPastoId(pastoId);
     setFormPastoNome(pastoNome);
     setFormTipo(tipo);
@@ -970,11 +995,24 @@ export default function CapatazDashboard() {
     const pasto = pastos.find(p => p.id === manualPastoId);
     if (pasto) {
       if (pastoJaSalgadoHoje(pasto.id)) {
-        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        setDuplicadoPrompt({
+          pastoId: pasto.id,
+          pastoNome: pasto.nome,
+          tipo: 'falha_qr',
+          justificativa: manualJustificativa,
+          hora: horaUltimaSalgaHoje(pasto.id),
+        });
         return;
       }
       openForm(pasto.id, pasto.nome, 'falha_qr', manualJustificativa);
     }
+  };
+
+  const confirmarDuplicado = () => {
+    const prompt = duplicadoPrompt;
+    setDuplicadoPrompt(null);
+    if (!prompt) return;
+    void openForm(prompt.pastoId, prompt.pastoNome, prompt.tipo, prompt.justificativa, true);
   };
 
   const handleSaveSalga = async (data: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => {
@@ -991,8 +1029,10 @@ export default function CapatazDashboard() {
       data: new Date().toISOString(),
       status: 'pendente',
       ciclo_id: cicloAtivo.id,
+      duplicado_confirmado: formDuplicadoConfirmado || undefined,
     };
     await saveLancamento(lancamento);
+    setFormDuplicadoConfirmado(false);
 
     // Register audit counter ONLY for normal salga (not cocho cheio)
     if (!data.cocho_cheio) {
@@ -1160,6 +1200,7 @@ export default function CapatazDashboard() {
           cocho_cheio: l.cocho_cheio ?? false,
           foto_cocho_url: fotoCochoSincronizacao ?? null,
           data_salga: l.data,
+          confirmar_duplicado: l.duplicado_confirmado === true,
         };
         const { error } = await supabase.rpc("sync_capataz_lancamento" as any, {
           p_lancamento: insertData,
@@ -1405,9 +1446,29 @@ export default function CapatazDashboard() {
     );
   }
 
+  const duplicadoDialog = (
+    <AlertDialog open={!!duplicadoPrompt} onOpenChange={(open) => { if (!open) setDuplicadoPrompt(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Pasto já salgado hoje</AlertDialogTitle>
+          <AlertDialogDescription>
+            {duplicadoPrompt
+              ? `Esse pasto já foi salgado hoje${duplicadoPrompt.hora ? ` às ${duplicadoPrompt.hora}` : ""}. Confirma registrar mais um lançamento?`
+              : ""}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmarDuplicado}>Confirmar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (screen === 'manual-select') {
     return (
       <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="icon" onClick={() => setScreen('scanner')} className="text-primary-foreground hover:bg-primary/80">
             <ArrowLeft className="w-5 h-5" />
@@ -1482,6 +1543,7 @@ export default function CapatazDashboard() {
     const salgasHoje = lancamentosHoje;
     return (
       <div className="min-h-screen bg-background flex flex-col overflow-auto">
+        {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setScreen('home')} className="text-primary-foreground hover:bg-primary/80">
