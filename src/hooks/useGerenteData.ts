@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
+import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
@@ -96,6 +97,13 @@ export function useGerenteData(filters?: GerenteFilters) {
     ano: consumoAno,
   });
   const formulas = useFormulasSistema();
+  // Eficiência: fonte única get_painel_mae (mesma do Painel do Retiro/Fazenda).
+  const { painelMae } = usePainelMae(
+    fazendaId ?? null,
+    filters?.painelRetiroId ?? null,
+    consumoMes,
+    consumoAno,
+  );
 
   const [loading, setLoading] = useState(true);
   const [gerenteNome, setGerenteNome] = useState("");
@@ -258,13 +266,9 @@ export function useGerenteData(filters?: GerenteFilters) {
     const consumoMedio = computeConsumoMedioPonderado(
       painelLancamentos.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
     );
-    const indices = painelLancamentos
-      .map(l => Number(l.indice_consumo ?? 0))
-      .filter(v => v > 0);
-    const indiceMedio = indices.length > 0 ? indices.reduce((a, b) => a + b, 0) / indices.length : 0;
-    const eficiencia = indiceMedio > 0
-      ? (formulas ? formulas.eficiencia.compute(indiceMedio) : indiceMedio * 100)
-      : 0;
+    // Eficiência vem de get_painel_mae: por pasto 100 - |1 - índice global| x 100,
+    // ponderada por cabeças-dia — idêntica ao Painel do Retiro/Fazenda.
+    const eficiencia = painelMae.eficiencia;
     const pastosComLancamento = new Set(painelLancamentos.map(l => l.pasto_id));
     const gmdValoresRetiro = painelPastos
       .filter(p => pastosComLancamento.has(p.id) && p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
@@ -285,7 +289,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId]);
+  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
