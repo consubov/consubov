@@ -953,7 +953,8 @@ export default function CapatazDashboard() {
     }
   };
 
-  const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string) => {
+  const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string, duplicadoConfirmado = false) => {
+    setFormDuplicadoConfirmado(duplicadoConfirmado);
     setFormPastoId(pastoId);
     setFormPastoNome(pastoNome);
     setFormTipo(tipo);
@@ -994,11 +995,24 @@ export default function CapatazDashboard() {
     const pasto = pastos.find(p => p.id === manualPastoId);
     if (pasto) {
       if (pastoJaSalgadoHoje(pasto.id)) {
-        toast.error(`Pasto "${pasto.nome}" já foi salgado hoje`);
+        setDuplicadoPrompt({
+          pastoId: pasto.id,
+          pastoNome: pasto.nome,
+          tipo: 'falha_qr',
+          justificativa: manualJustificativa,
+          hora: horaUltimaSalgaHoje(pasto.id),
+        });
         return;
       }
       openForm(pasto.id, pasto.nome, 'falha_qr', manualJustificativa);
     }
+  };
+
+  const confirmarDuplicado = () => {
+    const prompt = duplicadoPrompt;
+    setDuplicadoPrompt(null);
+    if (!prompt) return;
+    void openForm(prompt.pastoId, prompt.pastoNome, prompt.tipo, prompt.justificativa, true);
   };
 
   const handleSaveSalga = async (data: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => {
