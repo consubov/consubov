@@ -59,6 +59,7 @@ interface Props {
   initialMes?: number;
   initialAno?: number;
   lockedRetiroId?: string | null;
+  produtoId?: string | null;
 }
 
 export default function ExportarRelatorioModal({
@@ -70,6 +71,7 @@ export default function ExportarRelatorioModal({
   initialMes,
   initialAno,
   lockedRetiroId,
+  produtoId,
 }: Props) {
   const now = new Date();
   const monthlyContextEnabled = initialMes != null && initialAno != null;
@@ -101,6 +103,7 @@ export default function ExportarRelatorioModal({
       const formulas = await fetchFormulasConfig();
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
+      const produtoSelecionado = produtoId && produtoId !== "todos" ? produtoId : null;
       const { start, end, label } = getDateRange(periodoSelecionado);
 
       const scoreWeights = await fetchScoreWeights();
@@ -160,14 +163,16 @@ export default function ExportarRelatorioModal({
 
       // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
       const painelPastoByPastoId: Record<string, any> = {};
+      let painelPastoRows: any[] = [];
       if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
         const { data: vpRows } = await (supabase as any)
           .from("view_painel_mae_pasto")
-          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real")
+          .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, kg_fornecido, cab_dias_global, eficiencia_pasto")
           .in("retiro_id", retiroIds)
           .eq("mes_referencia", mes)
           .eq("ano_referencia", ano);
-        for (const row of (vpRows ?? [])) painelPastoByPastoId[row.pasto_id] = row;
+        painelPastoRows = vpRows ?? [];
+        for (const row of painelPastoRows) painelPastoByPastoId[row.pasto_id] = row;
       }
 
 
@@ -176,8 +181,8 @@ export default function ExportarRelatorioModal({
       const { data: pastosData } = await supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
         .in("retiro_id", retiroIds).eq("ativo", true);
-      const pastos = pastosData ?? [];
-      const pastoIds = pastos.map(p => p.id);
+      let pastos = pastosData ?? [];
+      let pastoIds = pastos.map(p => p.id);
 
       // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
       const ocupacaoProdutoByPasto: Record<string, string> = {};
@@ -190,6 +195,57 @@ export default function ExportarRelatorioModal({
         for (const o of (ocupData ?? [])) {
           if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
             ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
+          }
+        }
+      }
+
+      // O relatório herda o produto do Painel do Gerente. A fonte do produto
+      // efetivo é a mesma do painel: ocupação ativa → pasto → retiro.
+      const retiroProdutoById = Object.fromEntries(retirosData.map(r => [r.id, r.produto_id ?? null]));
+      const produtoEfetivoDoPasto = (p: { id: string; retiro_id: string; produto_id: string | null }) =>
+        ocupacaoProdutoByPasto[p.id] ?? p.produto_id ?? retiroProdutoById[p.retiro_id] ?? null;
+      if (produtoSelecionado) {
+        pastos = pastos.filter(p => produtoEfetivoDoPasto(p) === produtoSelecionado);
+        pastoIds = pastos.map(p => p.id);
+        if (pastoIds.length === 0) {
+          toast.error("Nenhum pasto usa o produto selecionado.");
+          return;
+        }
+
+        // Recalcula os mesmos agregados mensais sobre o conjunto filtrado.
+        if (periodoSelecionado === "mensal") {
+          const { data: realRows } = await (supabase as any)
+            .from("view_lancamento_consumo_real")
+            .select("pasto_id, kg_fornecido, cab_dias_assumidos")
+            .in("pasto_id", pastoIds)
+            .eq("mes_referencia", mes)
+            .eq("ano_referencia", ano);
+          for (const ret of retirosData) {
+            const rPastos = pastos.filter(p => p.retiro_id === ret.id);
+            const rIds = new Set(rPastos.map(p => p.id));
+            const rView = painelPastoRows.filter(row => rIds.has(row.pasto_id));
+            const rReal = (realRows ?? []).filter((row: any) => rIds.has(row.pasto_id));
+            const cabDiasGlobal = rView.reduce((sum, row) => sum + (Number(row.cab_dias_global) || 0), 0);
+            const eficienciaPonderada = rView.reduce(
+              (sum, row) => sum + (Number(row.eficiencia_pasto) || 0) * (Number(row.cab_dias_global) || 0),
+              0,
+            );
+            const kgReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.kg_fornecido) || 0), 0);
+            const cabDiasReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.cab_dias_assumidos) || 0), 0);
+            let pesoSum = 0;
+            let animaisPeso = 0;
+            for (const p of rPastos) {
+              const animais = Number(p.num_animais) || 0;
+              if (animais <= 0) continue;
+              const peso = Number(painelPastoByPastoId[p.id]?.peso_medio_kg ?? p.peso_medio_kg) || 0;
+              pesoSum += peso * animais;
+              animaisPeso += animais;
+            }
+            painelMaeByRetiro[ret.id] = {
+              eficiencia: cabDiasGlobal > 0 ? eficienciaPonderada / cabDiasGlobal : 0,
+              peso_medio_kg: animaisPeso > 0 ? pesoSum / animaisPeso : 0,
+              consumo_real_g_cab_dia: cabDiasReal > 0 ? (kgReal * 1000) / cabDiasReal : 0,
+            };
           }
         }
       }
@@ -301,7 +357,8 @@ export default function ExportarRelatorioModal({
         const totalAnimais = rPastos.reduce((sum, p) => sum + (Number(p.num_animais) || 0), 0);
         const sacosUtilizados = rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
 
-        const prod = ret.produto_id ? produtosMap[ret.produto_id] : null;
+        const produtoBaseId = produtoSelecionado ?? ret.produto_id;
+        const prod = produtoBaseId ? produtosMap[produtoBaseId] : null;
         const pesoSacoKg = prod?.peso_saco_kg ?? 25;
         const precoKg = prod?.preco_por_kg ?? 0;
         // Animais considerados no custo: apenas pastos com lançamento no período
@@ -314,13 +371,13 @@ export default function ExportarRelatorioModal({
           ? painelMaeByRetiro[ret.id].consumo_real_g_cab_dia
           : computeConsumoMedioPonderado(rLanc);
 
-        const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia!));
+        const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia));
         const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
 
         // Custo por pasto: usa o produto do próprio pasto quando existir,
         // caindo para o produto do retiro.
         const custoTotal = pastosNoPeriodo.reduce((sum, p) => {
-          const pProd = produtosMap[(p as any).produto_id || (ret.produto_id ?? "")] ?? prod;
+          const pProd = produtosMap[produtoEfetivoDoPasto(p) ?? ""] ?? prod;
           const pPeso = pProd?.peso_saco_kg ?? pesoSacoKg;
           const pPreco = pProd?.preco_por_kg ?? precoKg;
           const pSacos = rLanc.filter(l => l.pasto_id === p.id).reduce((a, l) => a + (l.num_sacos || 0), 0);
@@ -397,10 +454,10 @@ export default function ExportarRelatorioModal({
           // Status recalculado a partir do consumo real e do produto usado (mensal)
           // Usa peso médio histórico da view (quando disponível) para não zerar
           // o esperado/margem em pastos transferidos com 0 animais no momento.
+          const pesoMedioStatus = Number(vp?.peso_medio_kg ?? pesoMedio);
+          const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedioStatus);
           let statusReal: string;
           if (consumoRealV2 !== undefined) {
-            const pesoMedioStatus = Number(vp?.peso_medio_kg ?? pesoMedio);
-            const consumoEsperado = calcConsumoEsperadoGCabDia(consumoPor100kg, pesoMedioStatus);
             const maisPct = pProd ? getMargemMaisPct(cat, pProd) : null;
             const menosPct = pProd ? getMargemMenosPct(cat, pProd) : null;
             if (consumoEsperado <= 0) {
@@ -439,6 +496,7 @@ export default function ExportarRelatorioModal({
             consumoGCabDia: consumoReal,
             status: statusReal,
             consumoRealGCabDia: consumoReal,
+            consumoEsperadoGCabDia: consumoEsperado,
             statusReal,
             pesoMedioKg: vp ? Number(vp.peso_medio_kg ?? pesoMedio) : pesoMedio,
             gmdKgDia: Number(p.gmd_kg_dia ?? 0),
@@ -498,7 +556,7 @@ export default function ExportarRelatorioModal({
           consumoMaximo: Number(consumoMaximo.toFixed(1)),
           intervaloPadraoDias: diasIntervalo,
         };
-      });
+      }).filter(retiro => retiro.pastos.length > 0);
 
       // Compute category metrics
       const CATS = ["Recria 1", "Recria 2", "Engorda"];
@@ -520,7 +578,7 @@ export default function ExportarRelatorioModal({
         const consumoReal = Number(l.consumo_g_cab_dia ?? 0);
         if (consumoReal > 0 && animais > 0) {
           entry.weightedSum += consumoReal * animais;
-          const prodId = pasto?.produto_id || retiro?.produto_id;
+          const prodId = pasto ? produtoEfetivoDoPasto(pasto) : retiro?.produto_id;
           if (prodId && produtosMap[prodId]) {
             const prod = produtosMap[prodId];
             entry.custoTotal += l.num_sacos * prod.peso_saco_kg * prod.preco_por_kg;

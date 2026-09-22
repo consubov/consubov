@@ -1,5 +1,5 @@
 import {
-  Document, Page, Text, View, StyleSheet,
+  Circle, Document, Line, Page, Rect, StyleSheet, Svg, Text, View,
 } from "@react-pdf/renderer";
 
 // ---------- Types ----------
@@ -30,6 +30,7 @@ export interface PastoReportData {
   consumoGCabDia: number;
   status: string;
   consumoRealGCabDia?: number;
+  consumoEsperadoGCabDia?: number;
   statusReal?: string;
   pesoMedioKg: number;
   gmdKgDia: number;
@@ -618,6 +619,204 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
   );
 }
 
+interface DualChartPoint {
+  letra: string;
+  nome: string;
+  real: number;
+  esperado: number;
+}
+
+const CHART_REFERENCE_CAPACITY = 39;
+const REFERENCE_PAGE_CAPACITY = 126;
+
+function indexToLetter(index: number) {
+  let value = index + 1;
+  let label = "";
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function ReferenceTable({ pontos, columns }: { pontos: DualChartPoint[]; columns: number }) {
+  const rows = Math.ceil(pontos.length / columns);
+  return (
+    <View>
+      <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: green, marginBottom: 5 }}>
+        Referência dos Pastos
+      </Text>
+      <View style={{ flexDirection: "row" }}>
+        {Array.from({ length: columns }, (_, columnIndex) => (
+          <View key={`ref-col-${columnIndex}`} style={{ width: `${100 / columns}%`, paddingRight: columnIndex < columns - 1 ? 5 : 0 }}>
+            {Array.from({ length: rows }, (_, rowIndex) => {
+              const point = pontos[columnIndex * rows + rowIndex];
+              if (!point) return null;
+              return (
+                <View
+                  key={`${point.letra}-${point.nome}`}
+                  style={{
+                    height: 14,
+                    paddingHorizontal: 4,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: rowIndex % 2 === 0 ? "#FAF8F2" : "#FFFFFF",
+                  }}
+                >
+                  <Text style={{ width: 22, fontSize: columns === 3 ? 6.5 : 7.5, fontFamily: "Helvetica-Bold", color: green }}>
+                    {point.letra}
+                  </Text>
+                  <Text style={{ flex: 1, fontSize: columns === 3 ? 6.5 : 7.5, color: "#333" }}>
+                    {point.nome}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
+  const width = 535;
+  const height = 300;
+  const left = 38;
+  const top = 28;
+  const right = 18;
+  const bottom = 34;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxRaw = Math.max(...pontos.flatMap(p => [p.real, p.esperado]), 1);
+  const maxY = Math.ceil(maxRaw / 5) * 5 || 5;
+  const x = (index: number) => pontos.length === 1 ? left + plotWidth / 2 : left + (index * plotWidth) / (pontos.length - 1);
+  const y = (value: number) => top + plotHeight - (Math.max(0, value) / maxY) * plotHeight;
+  const valueFontSize = pontos.length > 8 ? 5 : 6;
+  const formatValue = (value: number) => fmtNum(value, 1);
+
+  return (
+    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      {Array.from({ length: 6 }, (_, index) => {
+        const gridY = top + plotHeight - (plotHeight * index) / 5;
+        return (
+          <View key={`grid-${index}`}>
+            <Line x1={left} y1={gridY} x2={left + plotWidth} y2={gridY} stroke="#E7E3D6" strokeWidth={0.5} />
+            <Text x={left - 5} y={gridY + 2} textAnchor="end" style={{ fontSize: 7, fill: "#767066" }}>
+              {fmtNum((maxY * index) / 5, maxY >= 10 ? 0 : 1)}
+            </Text>
+          </View>
+        );
+      })}
+
+      {pontos.slice(0, -1).map((point, index) => (
+        <View key={`segments-${point.letra}`}>
+          <Line x1={x(index)} y1={y(point.real)} x2={x(index + 1)} y2={y(pontos[index + 1].real)} stroke={green} strokeWidth={2} />
+          <Line x1={x(index)} y1={y(point.esperado)} x2={x(index + 1)} y2={y(pontos[index + 1].esperado)} stroke={gold} strokeWidth={2} />
+        </View>
+      ))}
+
+      {pontos.map((point, index) => {
+        const pointX = x(index);
+        const realY = y(point.real);
+        const esperadoY = y(point.esperado);
+        const realAbove = point.real >= point.esperado;
+        const realLabelY = realAbove ? Math.max(top + 5, realY - 7) : Math.min(top + plotHeight - 1, realY + 12);
+        const esperadoLabelY = realAbove ? Math.min(top + plotHeight - 1, esperadoY + 12) : Math.max(top + 5, esperadoY - 7);
+        const realText = formatValue(point.real);
+        const esperadoText = formatValue(point.esperado);
+        const labelWidth = Math.max(realText.length, esperadoText.length) * valueFontSize * 0.62 + 5;
+        return (
+          <View key={`point-${point.letra}`}>
+            <Line x1={pointX} y1={realY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={green} strokeWidth={0.5} strokeDasharray="3 3" />
+            <Line x1={pointX} y1={esperadoY + 3} x2={pointX} y2={top + plotHeight + 5} stroke={gold} strokeWidth={0.5} strokeDasharray="3 3" />
+            <Circle cx={pointX} cy={realY} r={3} fill={green} />
+            <Circle cx={pointX} cy={esperadoY} r={3} fill={gold} />
+            <Rect x={pointX - labelWidth / 2} y={realLabelY - valueFontSize + 1} width={labelWidth} height={valueFontSize + 3} fill="#FFFFFF" />
+            <Text x={pointX} y={realLabelY} textAnchor="middle" style={{ fontSize: valueFontSize, fontFamily: "Helvetica-Bold", fill: green }}>
+              {realText}
+            </Text>
+            <Rect x={pointX - labelWidth / 2} y={esperadoLabelY - valueFontSize + 1} width={labelWidth} height={valueFontSize + 3} fill="#FFFFFF" />
+            <Text x={pointX} y={esperadoLabelY} textAnchor="middle" style={{ fontSize: valueFontSize, fontFamily: "Helvetica-Bold", fill: gold }}>
+              {esperadoText}
+            </Text>
+            <Text x={pointX} y={top + plotHeight + 14} textAnchor="middle" style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}>
+              {point.letra}
+            </Text>
+          </View>
+        );
+      })}
+      <Text x={width / 2} y={height - 5} textAnchor="middle" style={{ fontSize: 8, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}>Pasto</Text>
+    </Svg>
+  );
+}
+
+function RealEsperadoPages({ data }: { data: RelatorioPDFData }) {
+  const pontos = data.retiros
+    .flatMap(retiro => retiro.pastos.map(pasto => ({ retiro: retiro.nome, pasto })))
+    .filter(({ pasto }) => (pasto.consumoRealGCabDia ?? 0) > 0 && (pasto.consumoEsperadoGCabDia ?? 0) > 0)
+    .map(({ retiro, pasto }, index) => ({
+      letra: indexToLetter(index),
+      nome: data.retiros.length > 1 ? `${retiro} — ${pasto.nome}` : pasto.nome,
+      real: Number(pasto.consumoRealGCabDia),
+      esperado: Number(pasto.consumoEsperadoGCabDia),
+    }));
+  if (pontos.length < 2) return null;
+
+  const columns = pontos.length > 16 ? 3 : 2;
+  const firstReferences = pontos.slice(0, CHART_REFERENCE_CAPACITY);
+  const continuationPages = chunk(pontos.slice(CHART_REFERENCE_CAPACITY), REFERENCE_PAGE_CAPACITY);
+
+  return (
+    <>
+      <Page size="A4" style={s.page}>
+        <Header data={data} />
+        <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: green, marginBottom: 4 }}>
+          Consumo por Pasto - Real x Esperado
+        </Text>
+        <DualLineChart pontos={pontos} />
+        <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 2, marginBottom: 5 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginRight: 24 }}>
+            <View style={{ width: 18, height: 3, backgroundColor: green, marginRight: 5 }} />
+            <Text style={{ fontSize: 8 }}>Consumo Real</Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ width: 18, height: 3, backgroundColor: gold, marginRight: 5 }} />
+            <Text style={{ fontSize: 8 }}>Consumo Esperado</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 7, color: "#767066", textAlign: "center", marginBottom: 8 }}>
+          Valores em g/cab/dia por pasto avaliado.
+        </Text>
+        <ReferenceTable pontos={firstReferences} columns={columns} />
+        {continuationPages.length > 0 && (
+          <Text style={{ fontSize: 6.5, color: "#767066", marginTop: 5 }}>Referência continua na página seguinte.</Text>
+        )}
+        <Footer fazendaNome={data.fazendaNome} />
+      </Page>
+      {continuationPages.map((references, pageIndex) => (
+        <Page key={`chart-reference-${pageIndex}`} size="A4" style={s.page}>
+          <Header data={data} />
+          <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: green, marginBottom: 10 }}>
+            Consumo por Pasto - Referência (continuação)
+          </Text>
+          <ReferenceTable pontos={references} columns={3} />
+          <Footer fazendaNome={data.fazendaNome} />
+        </Page>
+      ))}
+    </>
+  );
+}
+
 // ---------- Main Document ----------
 export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
   return (
@@ -640,6 +839,7 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
 
         <Footer fazendaNome={data.fazendaNome} />
       </Page>
+      <RealEsperadoPages data={data} />
     </Document>
   );
 }

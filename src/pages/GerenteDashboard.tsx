@@ -773,13 +773,17 @@ export default function GerenteDashboard() {
         </SheetContent>
       </Sheet>
 
-      {roleData.fazendaId && (
+      {activeFazendaId && (
         <ExportarRelatorioModal
           open={relatorioOpen}
           onOpenChange={setRelatorioOpen}
-          fazendaId={roleData.fazendaId}
+          fazendaId={activeFazendaId}
           fazendaNome={fazendaNome}
           geradoPor={nomeGerentePdf || gerenteNome}
+          initialMes={mes}
+          initialAno={ano}
+          lockedRetiroId={activeRetiroId}
+          produtoId={painelProdutoId}
         />
       )}
     </div>
