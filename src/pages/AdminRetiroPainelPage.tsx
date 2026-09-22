@@ -11,6 +11,7 @@ import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModa
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
 import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
+import AnaliseIaRetiroCard from "@/components/retiro/AnaliseIaRetiroCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -347,6 +348,23 @@ export default function AdminRetiroPainelPage() {
           </CardContent>
         </Card>
       )}
+
+      <AnaliseIaRetiroCard
+        retiroNome={retiroNome}
+        contexto={{
+          mes,
+          ano,
+          total_animais: metricsPeriodo.totalAnimais,
+          total_pastos: metricsPeriodo.totalPastos,
+          consumo_real_g_cab_dia: painelMae.consumo_real_g_cab_dia,
+          consumo_global_g_cab_dia: painelMae.consumo_global_g_cab_dia,
+          peso_medio_kg: painelMae.peso_medio_kg,
+          gmd_medio_kg_dia: metricsPeriodo.gmdMedio,
+          pastos_na_meta: `${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`,
+          mortalidade_ano: mortalidadesAno,
+          distribuicao_status: metricsPeriodo.statusDist,
+        }}
+      />
 
       <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
 
