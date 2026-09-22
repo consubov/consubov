@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { diasCalendarioSP, dataLocalSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
@@ -122,13 +122,10 @@ async function withSyncRetry<T>(operation: () => Promise<T>, label: string, maxA
 }
 
 function isSameLocalDay(dateIso: string, reference = new Date()) {
-  const date = new Date(dateIso);
-
-  return (
-    date.getFullYear() === reference.getFullYear() &&
-    date.getMonth() === reference.getMonth() &&
-    date.getDate() === reference.getDate()
-  );
+  // Dia de CALENDÁRIO em America/Sao_Paulo (mesma lógica de diasCalendarioSP).
+  const a = dataLocalSP(dateIso);
+  const b = dataLocalSP(reference);
+  return !!a && a === b;
 }
 
 function buildSacosMap(lancamentos: LancamentoOffline[] | undefined | null, cicloId?: string) {
