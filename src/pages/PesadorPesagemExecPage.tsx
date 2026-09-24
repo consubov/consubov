@@ -514,12 +514,43 @@ export default function PesadorPesagemExecPage() {
     const pesosPend = pesos.filter(
       (p) => syncSnap.pendingRefIds.has(p.id) || (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id)),
     ).length;
+    // Cálculos locais (mesmas funções do resumo) — não dependem de sincronizar.
+    const categoriasMapLocal: Record<string, { tipo_preco: any; preco_valor: number }> = {};
+    for (const c of categoriasLote) categoriasMapLocal[c.categoria] = { tipo_preco: c.tipo_preco, preco_valor: c.preco_valor };
+    const totLocal = totalizar(calcularAnimais({
+      tipo_preco: pesagem.tipo_preco,
+      preco_valor: Number(pesagem.preco_valor ?? 0),
+      modo_percentual: pesagem.modo_percentual ?? "na",
+      percentual_fixo: pesagem.percentual_fixo != null ? Number(pesagem.percentual_fixo) : null,
+      preco_arroba: pesagem.preco_arroba != null ? Number(pesagem.preco_arroba) : null,
+      preco_kg: pesagem.preco_kg != null ? Number(pesagem.preco_kg) : null,
+      preco_fixo_animal: pesagem.preco_fixo_animal != null ? Number(pesagem.preco_fixo_animal) : null,
+      categorias_map: pesagem.tipo_preco === "misto" ? categoriasMapLocal : null,
+    } as any, pesos as any));
+    const mediaArrobaLocal = semValores ? Math.floor((totLocal.mediaPeso / 30) * 100) / 100 : totLocal.mediaArrobaPorAnimal;
+    const fmtBR = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
     return (
       <div className="space-y-4 pb-28">
         <div className="rounded-lg border bg-card p-4 space-y-3 text-center">
           <Check className="w-8 h-8 mx-auto text-primary" />
           <div className="font-semibold">Pesagem finalizada</div>
           <div className="text-sm text-muted-foreground">{clienteNome} • {pesos.length} animais</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-xl font-bold text-foreground">{fmtBR(totLocal.mediaPeso)} kg</p>
+              <p className="text-xs text-muted-foreground">peso médio</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-xl font-bold text-foreground">{fmtBR(mediaArrobaLocal)} @</p>
+              <p className="text-xs text-muted-foreground">média de @ por animal</p>
+            </div>
+            {!semValores && (
+              <div className="p-3 rounded-lg bg-muted col-span-2">
+                <p className="text-xl font-bold text-foreground">R$ {fmtBR(totLocal.totalValor)}</p>
+                <p className="text-xs text-muted-foreground">valor a pagar</p>
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{pesos.length - pesosPend}</p>
