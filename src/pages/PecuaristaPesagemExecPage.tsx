@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, Loader2, Scale, Undo2, History } from "lucide-react";
+import { Check, CloudOff, Loader2, Scale, Undo2, History } from "lucide-react";
+import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
+import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
 import { gerarPecuaristaLotePdf, type PecuaristaPesoIdentificado, type PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
 
 interface Lote {
@@ -56,6 +58,7 @@ function daysBetween(a: string, b: string): number {
 export default function PecuaristaPesagemExecPage() {
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();
+  const syncSnap = useMaisArrobasSync();
 
   const [lote, setLote] = useState<Lote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +95,7 @@ export default function PecuaristaPesagemExecPage() {
     if (horaInicio || !pesagemId) return;
     const agora = new Date().toISOString();
     setHoraInicio(agora);
-    await supabase.from("pesagens_lote_pecuarista").update({ hora_inicio: agora }).eq("id", pesagemId);
+    enqueueMa(pesagemId, { kind: "update", table: "pesagens_lote_pecuarista", id: pesagemId, values: { hora_inicio: agora } });
   }
 
   useEffect(() => {
@@ -129,19 +132,19 @@ export default function PecuaristaPesagemExecPage() {
     try {
       const pesoIndiv = Math.round((total / qtd) * 100) / 100;
       const ordem = leiturasBalancao.length + 1;
-      const { data: leituraRow, error: eL } = await supabase
-        .from("leituras_balancao_pecuarista")
-        .insert({
+      const leituraId = crypto.randomUUID();
+      enqueueMa(leituraId, {
+        kind: "insert",
+        table: "leituras_balancao_pecuarista",
+        row: {
+          id: leituraId,
           pesagem_lote_id: pesagemId,
           ordem,
           peso_total: total,
           quantidade_animais: qtd,
           peso_individual: pesoIndiv,
-        })
-        .select("id")
-        .single();
-      if (eL || !leituraRow) return toast.error("Erro: " + (eL?.message ?? ""));
-      const leituraId = (leituraRow as any).id as string;
+        },
+      });
 
       if (!lote.identificado) {
         // Cria N linhas sem identificação diretamente
@@ -175,45 +178,30 @@ export default function PecuaristaPesagemExecPage() {
     if (!pesagemId || !lote || !pendingLeituraId || pendingPesoIndiv == null) return;
     const numero = numeroAtual.trim();
     if (!numero) return;
-    // cria/associa animal
-    let animalId: string | null = null;
-    const { data: an } = await supabase
-      .from("animais_pecuarista")
-      .select("id")
-      .eq("pecuarista_id", lote.pecuarista_id)
-      .eq("numero", numero)
-      .maybeSingle();
-    if (an) {
-      animalId = (an as any).id;
-      await supabase.from("animais_pecuarista").update({ lote_atual_id: lote.id }).eq("id", animalId);
-    } else {
-      const { data: novo, error: eA } = await supabase
-        .from("animais_pecuarista")
-        .insert({ pecuarista_id: lote.pecuarista_id, numero, lote_atual_id: lote.id })
-        .select("id").single();
-      if (eA || !novo) return toast.error("Erro ao cadastrar animal: " + (eA?.message ?? ""));
-      animalId = (novo as any).id;
-    }
+    // animal é resolvido/criado pelo número no momento do envio (fila local)
+    const animalId = crypto.randomUUID();
+    const pesoRowId = crypto.randomUUID();
     const agora = new Date().toISOString();
-    const { data: pRow, error: eP } = await supabase
-      .from("pesos_animais_pecuarista")
-      .insert({
-        pesagem_lote_id: pesagemId,
-        animal_id: animalId,
-        peso_kg: pendingPesoIndiv,
-        gmd_individual: null,
-        leitura_balancao_id: pendingLeituraId,
-      })
-      .select("id").single();
-    if (eP || !pRow) return toast.error("Erro ao salvar peso: " + (eP?.message ?? ""));
+    enqueueMa(pesoRowId, {
+      kind: "pecuarista_peso_id",
+      pesoId: pesoRowId,
+      animalIdLocal: animalId,
+      pecuaristaId: lote.pecuarista_id,
+      numero,
+      loteId: lote.id,
+      pesagemLoteId: pesagemId,
+      pesoKg: pendingPesoIndiv,
+      gmdIndividual: null,
+      leituraBalancaoId: pendingLeituraId,
+    });
     void marcarInicioSePreciso();
     setLinhasId((prev) => [
       ...prev,
       {
-        animal_id: animalId!, numero, peso_kg: pendingPesoIndiv, data: agora,
+        animal_id: animalId, numero, peso_kg: pendingPesoIndiv, data: agora,
         peso_anterior_kg: null, data_anterior: null, lote_anterior: null,
         gmd_individual: null, dias: null,
-        pesoRowId: (pRow as any).id,
+        pesoRowId,
         leitura_balancao_id: pendingLeituraId,
       },
     ]);
@@ -272,7 +260,17 @@ export default function PecuaristaPesagemExecPage() {
     if (!numero) return;
     setBuscandoAnimal(true);
     try {
-      const info = await buscarAnimalPorNumero(numero);
+      // Consulta do peso anterior com tempo limite: com internet ruim a tela
+      // não trava — segue sem o histórico e o animal é resolvido no envio.
+      let info: PrevInfo;
+      try {
+        info = await Promise.race([
+          buscarAnimalPorNumero(numero),
+          new Promise<PrevInfo>((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000)),
+        ]);
+      } catch {
+        info = { animalId: null, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
+      }
       setPrev(info);
       setStep("peso");
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -286,19 +284,7 @@ export default function PecuaristaPesagemExecPage() {
     const peso = parseFloat(pesoAtual.replace(",", "."));
     if (!Number.isFinite(peso) || peso <= 0) return;
 
-    let animalId = prev.animalId;
-    // criar animal se não existir
-    if (!animalId) {
-      const { data: novo, error: e1 } = await supabase
-        .from("animais_pecuarista")
-        .insert({ pecuarista_id: lote.pecuarista_id, numero: prev.numero, lote_atual_id: lote.id })
-        .select("id").single();
-      if (e1 || !novo) return toast.error("Erro ao cadastrar animal: " + (e1?.message ?? ""));
-      animalId = (novo as any).id;
-    } else {
-      await supabase.from("animais_pecuarista").update({ lote_atual_id: lote.id }).eq("id", animalId);
-    }
-
+    const animalId = prev.animalId ?? crypto.randomUUID();
     const agora = new Date().toISOString();
     let gmd: number | null = null;
     let dias: number | null = null;
@@ -307,25 +293,28 @@ export default function PecuaristaPesagemExecPage() {
       gmd = (peso - prev.peso_anterior_kg) / dias;
     }
 
-    const { data: pRow, error: e2 } = await supabase
-      .from("pesos_animais_pecuarista")
-      .insert({
-        pesagem_lote_id: pesagemId,
-        animal_id: animalId,
-        peso_kg: peso,
-        gmd_individual: gmd,
-      })
-      .select("id").single();
-    if (e2 || !pRow) return toast.error("Erro ao salvar peso: " + (e2?.message ?? ""));
+    const pesoRowId = crypto.randomUUID();
+    enqueueMa(pesoRowId, {
+      kind: "pecuarista_peso_id",
+      pesoId: pesoRowId,
+      animalIdLocal: animalId,
+      pecuaristaId: lote.pecuarista_id,
+      numero: prev.numero,
+      loteId: lote.id,
+      pesagemLoteId: pesagemId,
+      pesoKg: peso,
+      gmdIndividual: gmd,
+      leituraBalancaoId: null,
+    });
     void marcarInicioSePreciso();
 
     setLinhasId((prev2) => [
       ...prev2,
       {
-        animal_id: animalId!, numero: prev.numero, peso_kg: peso, data: agora,
+        animal_id: animalId, numero: prev.numero, peso_kg: peso, data: agora,
         peso_anterior_kg: prev.peso_anterior_kg, data_anterior: prev.data_anterior,
         lote_anterior: prev.lote_anterior, gmd_individual: gmd, dias,
-        pesoRowId: (pRow as any).id,
+        pesoRowId,
       },
     ]);
     setNumeroAtual(""); setPesoAtual(""); setPrev(null); setStep("numero");
@@ -351,7 +340,7 @@ export default function PecuaristaPesagemExecPage() {
     }
     const last = linhasId[linhasId.length - 1];
     if (!last) return;
-    await supabase.from("pesos_animais_pecuarista").delete().eq("id", last.pesoRowId);
+    undoMa(last.pesoRowId, "pesos_animais_pecuarista");
     setLinhasId((prev) => prev.slice(0, -1));
   }
 
@@ -364,6 +353,15 @@ export default function PecuaristaPesagemExecPage() {
     const isId = lote.identificado;
     const qtd = isId ? linhasId.length : linhasSem.length;
     if (qtd === 0) return toast.error("Nenhum peso registrado.");
+    setFinalizando(true);
+    const restantes = await flushMaAndCount();
+    if (restantes > 0) {
+      setFinalizando(false);
+      return toast.error(
+        `${restantes} registro(s) ainda aguardam envio. Os dados estão salvos no aparelho — finalize quando a internet melhorar.`,
+      );
+    }
+    setFinalizando(false);
     const pesos = isId ? linhasId.map((l) => l.peso_kg) : linhasSem.map((l) => l.peso_kg);
     const peso_total = pesos.reduce((s, v) => s + v, 0);
     const peso_medio = peso_total / qtd;
@@ -655,12 +653,24 @@ export default function PecuaristaPesagemExecPage() {
 
       {(linhasId.length > 0 || linhasSem.length > 0) && (
         <Card className="p-3">
-          <div className="text-xs text-muted-foreground mb-2">Histórico da rodada</div>
+          <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
+            <span>Histórico da rodada</span>
+            {syncSnap.pendingCount > 0 && (
+              <span className="flex items-center gap-1">
+                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} aguardando envio
+              </span>
+            )}
+          </div>
           <div className="max-h-40 overflow-y-auto text-xs space-y-1">
             {lote.identificado
               ? linhasId.slice().reverse().map((l) => (
                 <div key={l.pesoRowId} className="flex justify-between border-b border-border/40 py-1">
-                  <span>Nº {l.numero}</span>
+                  <span className="flex items-center gap-1">
+                    Nº {l.numero}
+                    {syncSnap.pendingRefIds.has(l.pesoRowId) && (
+                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label="Pendente de envio" />
+                    )}
+                  </span>
                   <span>
                     {l.peso_kg.toFixed(1)} kg
                     {l.gmd_individual != null ? ` • GMD ${l.gmd_individual.toFixed(3)}` : ""}
