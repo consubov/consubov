@@ -422,12 +422,12 @@ export default function PesadorPesagemResumoPage() {
           <Button
             className="w-full h-12"
             onClick={handleGerarPdf}
-            disabled={generating}
+            disabled={generating || isMaOffline()}
           >
             {generating ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PDF...</>
             ) : (
-              <>Concluir e gerar PDF <ArrowRight className="w-4 h-4 ml-2" /></>
+              <>{isMaOffline() ? "PDF disponível após sincronizar" : "Concluir e gerar PDF"} <ArrowRight className="w-4 h-4 ml-2" /></>
             )}
           </Button>
         )}
