@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,8 @@ export default function PecuaristaPesagemExecPage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const restauradoRef = useRef(false);
+  // Pesagem em andamento: segura recargas automáticas (nova versão, falha de chunk).
+  useCriticalOperation(!loading && !!lote && !dataFimLocal, "pesagem-pecuarista");
 
   async function marcarInicioSePreciso() {
     if (horaInicio || !pesagemId) return;

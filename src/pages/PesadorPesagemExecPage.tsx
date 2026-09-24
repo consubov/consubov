@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,8 @@ export default function PesadorPesagemExecPage() {
   const [qtdBalancaoAtual, setQtdBalancaoAtual] = useState<number>(2);
   const [salvandoLeitura, setSalvandoLeitura] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Pesagem em andamento: segura recargas automáticas (nova versão, falha de chunk).
+  useCriticalOperation(!loading && !!pesagem && !finalizadoLocal, "pesagem-pesador");
 
   useEffect(() => {
     (async () => {
