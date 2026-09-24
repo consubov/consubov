@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { hasCriticalOperations } from "./lib/criticalOperations";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { registerSW } from "./lib/swRegistration";
 import { resetServiceWorkerStateOnFirstLoad } from "./lib/swReset";
@@ -24,6 +25,12 @@ function isChunkLoadError(message: string) {
 }
 
 async function recoverFromChunkError() {
+  // Pesagem (ou outra operação crítica) em andamento: não recarrega a página
+  // inteira — a tela tenta de novo carregar só a parte que falhou.
+  if (hasCriticalOperations()) {
+    console.warn("[chunk] falha de carregamento durante operação crítica — sem recarregar a página");
+    return;
+  }
   try {
     if (sessionStorage.getItem(CHUNK_RECOVERY_KEY)) return;
     sessionStorage.setItem(CHUNK_RECOVERY_KEY, "1");

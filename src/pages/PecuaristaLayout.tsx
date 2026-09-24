@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { AtualizarAppButton } from "@/components/maisArrobas/AtualizarAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Landmark, History } from "lucide-react";
@@ -44,9 +45,7 @@ export default function PecuaristaLayout() {
             </div>
           </button>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
-              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-            </Button>
+            <AtualizarAppButton className="text-primary-foreground hover:bg-white/10" />
             <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </Button>
