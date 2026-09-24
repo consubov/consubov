@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Check, Loader2, Scale, Undo2 } from "lucide-react";
+import { Check, CloudOff, Loader2, Scale, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
+import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
 
 type Pesagem = {
   id: string;
@@ -44,6 +46,7 @@ const CATEGORIA_LABELS: Record<string, string> = {
 };
 
 type Peso = {
+  id: string;
   ordem: number;
   peso_kg: number;
   percentual_individual: number | null;
@@ -170,28 +173,21 @@ export default function PesadorPesagemExecPage() {
     setSalvandoLeitura(true);
     try {
       const pesoIndiv = Math.round((total / qtd) * 100) / 100;
-      // ordem da leitura = qtde atual de leituras + 1
-      const { count } = await supabase
-        .from("leituras_balancao_pesador")
-        .select("id", { count: "exact", head: true })
-        .eq("pesagem_id", pesagem.id);
-      const ordemLeitura = (count ?? 0) + 1;
-      const { data: leituraRow, error: eL } = await supabase
-        .from("leituras_balancao_pesador")
-        .insert({
+      // ordem da leitura calculada localmente (sem consulta ao servidor)
+      const ordemLeitura = new Set(pesos.map((p) => p.leitura_balancao_id).filter(Boolean)).size + 1;
+      const leituraId = crypto.randomUUID();
+      enqueueMa(leituraId, {
+        kind: "insert",
+        table: "leituras_balancao_pesador",
+        row: {
+          id: leituraId,
           pesagem_id: pesagem.id,
           ordem: ordemLeitura,
           peso_total: total,
           quantidade_animais: qtd,
           peso_individual: pesoIndiv,
-        })
-        .select("id")
-        .single();
-      if (eL || !leituraRow) {
-        toast({ title: "Erro ao salvar leitura", description: eL?.message, variant: "destructive" });
-        return;
-      }
-      const leituraId = (leituraRow as any).id as string;
+        },
+      });
       // percentual padrão para arroba+fixo
       const pctPadrao =
         pesagem.tipo_preco === "arroba" && pesagem.modo_percentual === "fixo"
@@ -201,6 +197,7 @@ export default function PesadorPesagemExecPage() {
       const novos: Peso[] = [];
       for (let i = 0; i < qtd; i++) {
         novos.push({
+          id: crypto.randomUUID(),
           ordem: base + i + 1,
           peso_kg: pesoIndiv,
           percentual_individual: pctPadrao,
@@ -214,45 +211,29 @@ export default function PesadorPesagemExecPage() {
       // reset qtd to default
       const qDef = pesagem.quantidade_padrao_balancao ?? 2;
       setQtdBalancaoAtual(qDef >= 2 && qDef <= 5 ? qDef : 2);
-      // persist all
-      const { error: ePe } = await supabase.from("pesos_pesagem_compra").insert(
-        novos.map((n) => ({
-          pesagem_id: pesagem.id,
-          ordem: n.ordem,
-          peso_kg: n.peso_kg,
-          percentual_individual: n.percentual_individual,
-          tipo_preco_individual: n.tipo_preco_individual,
-          categoria_individual: n.categoria_individual,
-          leitura_balancao_id: n.leitura_balancao_id,
-        }))
-      );
-      if (ePe) {
-        toast({ title: "Erro ao salvar pesos", description: ePe.message, variant: "destructive" });
-        // rollback state
-        setPesos((prev) => prev.filter((x) => x.leitura_balancao_id !== leituraId));
-      }
+      for (const n of novos) persistirPeso(n);
       inputRef.current?.focus();
     } finally {
       setSalvandoLeitura(false);
     }
   }
 
-  async function persistirPeso(p: Peso) {
-    const { error } = await supabase.from("pesos_pesagem_compra").insert({
-      pesagem_id: pesagemId,
-      ordem: p.ordem,
-      peso_kg: p.peso_kg,
-      percentual_individual: p.percentual_individual,
-      tipo_preco_individual: p.tipo_preco_individual,
-      categoria_individual: p.categoria_individual,
-      leitura_balancao_id: p.leitura_balancao_id,
+  /** Grava no aparelho e envia em segundo plano (idempotente pelo id). */
+  function persistirPeso(p: Peso) {
+    enqueueMa(p.id, {
+      kind: "insert",
+      table: "pesos_pesagem_compra",
+      row: {
+        id: p.id,
+        pesagem_id: pesagemId,
+        ordem: p.ordem,
+        peso_kg: p.peso_kg,
+        percentual_individual: p.percentual_individual,
+        tipo_preco_individual: p.tipo_preco_individual,
+        categoria_individual: p.categoria_individual,
+        leitura_balancao_id: p.leitura_balancao_id,
+      },
     });
-    if (error) {
-      toast({ title: "Erro ao salvar peso", description: error.message, variant: "destructive" });
-      setPesos((prev) => prev.filter((x) => x.ordem !== p.ordem));
-      return false;
-    }
-    return true;
   }
 
   async function commitPeso(
@@ -264,6 +245,7 @@ export default function PesadorPesagemExecPage() {
   ) {
     const ordem = pesos.length + 1;
     const novo: Peso = {
+      id: crypto.randomUUID(),
       ordem,
       peso_kg,
       percentual_individual: pct,
@@ -278,7 +260,7 @@ export default function PesadorPesagemExecPage() {
     setPendingCategoria(null);
     setSubStep("peso");
     inputRef.current?.focus();
-    await persistirPeso(novo);
+    persistirPeso(novo);
   }
 
   async function handleProximo() {
@@ -341,9 +323,8 @@ export default function PesadorPesagemExecPage() {
       const leituraId = last.leitura_balancao_id;
       const doGrupo = pesos.filter((p) => p.leitura_balancao_id === leituraId);
       setPesos((prev) => prev.filter((p) => p.leitura_balancao_id !== leituraId));
-      await supabase.from("pesos_pesagem_compra").delete()
-        .eq("pesagem_id", pesagemId!).in("ordem", doGrupo.map((p) => p.ordem));
-      await supabase.from("leituras_balancao_pesador").delete().eq("id", leituraId);
+      for (const p of doGrupo) undoMa(p.id, "pesos_pesagem_compra");
+      undoMa(leituraId, "leituras_balancao_pesador");
       return;
     }
     if (subStep !== "peso") {
@@ -357,14 +338,7 @@ export default function PesadorPesagemExecPage() {
     const last = pesos[pesos.length - 1];
     if (!last) return;
     setPesos((prev) => prev.slice(0, -1));
-    const { error } = await supabase
-      .from("pesos_pesagem_compra")
-      .delete()
-      .eq("pesagem_id", pesagemId!)
-      .eq("ordem", last.ordem);
-    if (error) {
-      toast({ title: "Erro ao desfazer", description: error.message, variant: "destructive" });
-    }
+    undoMa(last.id, "pesos_pesagem_compra");
   }
 
 
@@ -374,6 +348,16 @@ export default function PesadorPesagemExecPage() {
       return;
     }
     setSaving(true);
+    const restantes = await flushMaAndCount();
+    if (restantes > 0) {
+      setSaving(false);
+      toast({
+        title: "Pesos aguardando envio",
+        description: `${restantes} registro(s) ainda não chegaram ao servidor. Os dados estão salvos no aparelho — tente finalizar quando a internet melhorar.`,
+        variant: "destructive",
+      });
+      return;
+    }
     let valorTotal: number | null = null;
     if (!semValores) {
       const { calcularAnimais, totalizar } = await import("@/lib/pesagemCompra");
@@ -568,14 +552,27 @@ export default function PesadorPesagemExecPage() {
 
       {pesos.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-xs text-muted-foreground mb-2">Histórico</div>
+          <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
+            <span>Histórico</span>
+            {syncSnap.pendingCount > 0 && (
+              <span className="flex items-center gap-1">
+                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} aguardando envio
+              </span>
+            )}
+          </div>
           <div className="max-h-40 overflow-y-auto text-xs space-y-1">
             {pesos
               .slice()
               .reverse()
               .map((p) => (
-                <div key={p.ordem} className="flex justify-between border-b border-border/40 py-1">
-                  <span>{p.ordem}</span>
+                <div key={p.id} className="flex justify-between border-b border-border/40 py-1">
+                  <span className="flex items-center gap-1">
+                    {p.ordem}
+                    {(syncSnap.pendingRefIds.has(p.id) ||
+                      (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id))) && (
+                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label="Pendente de envio" />
+                    )}
+                  </span>
                   <span>
                     {p.peso_kg} kg
                     {p.tipo_preco_individual ? ` • ${
