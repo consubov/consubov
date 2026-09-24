@@ -291,6 +291,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializedRef = useRef(false);
   // true enquanto a detecção de perfil falhou por erro de consulta (sem cache).
   const roleUnresolvedRef = useRef(false);
+  // true só quando o usuário tocou em "Sair".
+  const explicitSignOutRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -384,10 +386,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoleData(emptyRoleData);
         setRoleResolved(true);
         clearCachedCapatazRole();
-        void clearAuthSession();
+        // A cópia de segurança do login só é apagada no "Sair" explícito.
       }
       if (!cancelled) setLoading(false);
 
+    }
+
+    let restoring = false;
+    async function tryRestoreBackup(): Promise<boolean> {
+      if (restoring) return false;
+      restoring = true;
+      try {
+        const persisted = await getAuthSession();
+        if (!persisted?.access_token || !persisted?.refresh_token) return false;
+        const { data, error } = await supabase.auth.setSession({
+          access_token: persisted.access_token,
+          refresh_token: persisted.refresh_token,
+        });
+        if (error || !data.session) return false;
+        // setSession dispara SIGNED_IN, que recarrega o perfil.
+        return true;
+      } catch {
+        return false;
+      } finally {
+        restoring = false;
+      }
     }
 
     // 1. Set up listener FIRST
@@ -405,6 +428,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === "TOKEN_REFRESHED" && session?.user) {
           setSession(session);
           setUser(session.user);
+          return;
+        }
+        if (!session && !explicitSignOutRef.current) {
+          // Token recusado / sessão perdida sem "Sair": tenta a cópia de
+          // segurança antes de mandar para a tela de login.
+          void (async () => {
+            const restored = await tryRestoreBackup();
+            if (!restored) loadRole(null);
+          })();
           return;
         }
         loadRole(session);
@@ -495,6 +527,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    explicitSignOutRef.current = true;
     try {
       await supabase.auth.signOut();
     } catch (error) {
