@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Check, CloudOff, Loader2, Scale, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
+import { enqueueMa, undoMa, flushMaAndCount, getMaQueueItems } from "@/lib/maisArrobasQueue";
+import { setPesagemAtiva, clearPesagemAtiva } from "@/lib/maisArrobasResume";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
 import { calcularAnimais, totalizar } from "@/lib/pesagemCompra";
 
@@ -145,10 +146,76 @@ export default function PesadorPesagemExecPage() {
         .select("nome")
         .eq("id", (p as Pesagem).cliente_id)
         .maybeSingle();
-      setClienteNome((c?.nome as string) ?? "");
+      const nomeCliente = (c?.nome as string) ?? "";
+      setClienteNome(nomeCliente);
+
+      // ---- Retomada: pesos do servidor + pesos ainda na fila local ----
+      const [{ data: srv }, fila] = await Promise.all([
+        supabase
+          .from("pesos_pesagem_compra")
+          .select("id, ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual, leitura_balancao_id")
+          .eq("pesagem_id", pesagemId)
+          .order("ordem"),
+        getMaQueueItems(),
+      ]);
+      const removidos = new Set(
+        fila.filter((i) => i.op.kind === "delete" && i.op.table === "pesos_pesagem_compra").map((i) => i.refId),
+      );
+      const porId = new Map<string, Peso>();
+      for (const r of (srv ?? []) as any[]) {
+        porId.set(r.id, {
+          id: r.id,
+          ordem: Number(r.ordem),
+          peso_kg: Number(r.peso_kg),
+          percentual_individual: r.percentual_individual != null ? Number(r.percentual_individual) : null,
+          tipo_preco_individual: r.tipo_preco_individual,
+          categoria_individual: r.categoria_individual,
+          leitura_balancao_id: r.leitura_balancao_id,
+        });
+      }
+      for (const i of fila) {
+        if (i.op.kind !== "insert" || i.op.table !== "pesos_pesagem_compra") continue;
+        const r = i.op.row;
+        if (r.pesagem_id !== pesagemId || porId.has(r.id)) continue;
+        porId.set(r.id, {
+          id: r.id,
+          ordem: Number(r.ordem),
+          peso_kg: Number(r.peso_kg),
+          percentual_individual: r.percentual_individual ?? null,
+          tipo_preco_individual: r.tipo_preco_individual ?? null,
+          categoria_individual: r.categoria_individual ?? null,
+          leitura_balancao_id: r.leitura_balancao_id ?? null,
+        });
+      }
+      const restaurados = [...porId.values()]
+        .filter((x) => !removidos.has(x.id))
+        .sort((a, b) => a.ordem - b.ordem);
+      setPesos(restaurados);
+
+      const finalizadaNaFila = fila.some(
+        (i) => i.op.kind === "update" && i.op.table === "pesagens_compra" && i.op.id === pesagemId && i.op.values?.status === "finalizada",
+      );
+      if (finalizadaNaFila) setFinalizadoLocal(true);
+      if (finalizadaNaFila || (p as Pesagem).status === "finalizada") {
+        clearPesagemAtiva(pesagemId);
+      } else {
+        setPesagemAtiva({
+          tipo: "pesador",
+          pesagemId,
+          path: `/pesador/pesagem/${pesagemId}`,
+          label: nomeCliente ? `o cliente ${nomeCliente}` : "um cliente",
+        });
+      }
+      if (restaurados.length > 0) {
+        toast({ title: "Pesagem retomada", description: `${restaurados.length} peso(s) recuperado(s). Continue de onde parou.` });
+      }
       setLoading(false);
     })();
   }, [pesagemId, navigate]);
+
+  useEffect(() => {
+    if (finalizadoLocal && pesagemId) clearPesagemAtiva(pesagemId);
+  }, [finalizadoLocal, pesagemId]);
 
   useEffect(() => {
     if (!loading && subStep !== "categoria" && subStep !== "tipo_pagamento") {

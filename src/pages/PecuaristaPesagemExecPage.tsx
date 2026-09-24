@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Check, CloudOff, Loader2, Scale, Undo2, History } from "lucide-react";
-import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
+import { enqueueMa, undoMa, flushMaAndCount, getMaQueueItems } from "@/lib/maisArrobasQueue";
+import { setPesagemAtiva, clearPesagemAtiva, loadLinhasSem, saveLinhasSem } from "@/lib/maisArrobasResume";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
 import { gerarPecuaristaLotePdf, type PecuaristaPesoIdentificado, type PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
 
@@ -91,6 +92,7 @@ export default function PecuaristaPesagemExecPage() {
   const [leiturasBalancao, setLeiturasBalancao] = useState<LeituraBalancao[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const restauradoRef = useRef(false);
 
   async function marcarInicioSePreciso() {
     if (horaInicio || !pesagemId) return;
@@ -109,7 +111,7 @@ export default function PecuaristaPesagemExecPage() {
           .eq("id", loteId).maybeSingle(),
         supabase
           .from("pesagens_lote_pecuarista")
-          .select("tipo_balanca, quantidade_padrao_balancao")
+          .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio")
           .eq("id", pesagemId).maybeSingle(),
       ]);
       setLote(data as Lote);
@@ -119,9 +121,134 @@ export default function PecuaristaPesagemExecPage() {
       const qSafe = q >= 2 && q <= 5 ? q : 2;
       setQtdBalancaoDefault(qSafe);
       setQtdBalancaoAtual(qSafe);
+
+      // ---- Retomada: servidor + fila local ----
+      try {
+        const fila = await getMaQueueItems();
+        const lt = data as Lote | null;
+
+        // hora de início
+        let hi: string | null = (pes as any)?.hora_inicio ?? null;
+        for (const i of fila) {
+          if (i.op.kind === "update" && i.op.table === "pesagens_lote_pecuarista" && i.op.id === pesagemId && i.op.values?.hora_inicio) {
+            hi = hi ?? i.op.values.hora_inicio;
+          }
+        }
+        if (hi) setHoraInicio(hi);
+
+        // leituras de balanção
+        const { data: lsrv } = await supabase
+          .from("leituras_balancao_pecuarista")
+          .select("id, ordem, peso_total, quantidade_animais, peso_individual")
+          .eq("pesagem_lote_id", pesagemId);
+        const lmap = new Map<string, LeituraBalancao>();
+        for (const r of (lsrv ?? []) as any[]) {
+          lmap.set(r.id, { id: r.id, ordem: Number(r.ordem), peso_total: Number(r.peso_total), quantidade_animais: Number(r.quantidade_animais), peso_individual: Number(r.peso_individual) });
+        }
+        for (const i of fila) {
+          if (i.op.kind !== "insert" || i.op.table !== "leituras_balancao_pecuarista") continue;
+          const r = i.op.row;
+          if (r.pesagem_lote_id !== pesagemId || lmap.has(r.id)) continue;
+          lmap.set(r.id, { id: r.id, ordem: Number(r.ordem), peso_total: Number(r.peso_total), quantidade_animais: Number(r.quantidade_animais), peso_individual: Number(r.peso_individual) });
+        }
+        const leituras = [...lmap.values()].sort((a, b) => a.ordem - b.ordem);
+        setLeiturasBalancao(leituras);
+
+        let recuperados = 0;
+        if (lt?.identificado) {
+          const { data: psrv } = await supabase
+            .from("pesos_animais_pecuarista")
+            .select("id, animal_id, peso_kg, gmd_individual, leitura_balancao_id, created_at")
+            .eq("pesagem_lote_id", pesagemId)
+            .order("created_at");
+          const animalIds = [...new Set(((psrv ?? []) as any[]).map((r) => r.animal_id))];
+          const numeros = new Map<string, string>();
+          if (animalIds.length) {
+            const { data: an } = await supabase.from("animais_pecuarista").select("id, numero").in("id", animalIds);
+            for (const a of (an ?? []) as any[]) numeros.set(a.id, a.numero);
+          }
+          const removidos = new Set(
+            fila.filter((i) => i.op.kind === "delete" && i.op.table === "pesos_animais_pecuarista").map((i) => i.refId),
+          );
+          const vistos = new Set<string>();
+          const linhas: LinhaId[] = [];
+          for (const r of (psrv ?? []) as any[]) {
+            if (removidos.has(r.id)) continue;
+            vistos.add(r.id);
+            linhas.push({
+              animal_id: r.animal_id, numero: numeros.get(r.animal_id) ?? "—",
+              peso_kg: Number(r.peso_kg), data: r.created_at ?? new Date().toISOString(),
+              peso_anterior_kg: null, data_anterior: null, lote_anterior: null,
+              gmd_individual: r.gmd_individual != null ? Number(r.gmd_individual) : null, dias: null,
+              pesoRowId: r.id, leitura_balancao_id: r.leitura_balancao_id,
+            });
+          }
+          for (const i of fila) {
+            if (i.op.kind !== "pecuarista_peso_id" || i.op.pesagemLoteId !== pesagemId) continue;
+            const op = i.op;
+            if (vistos.has(op.pesoId) || removidos.has(op.pesoId)) continue;
+            vistos.add(op.pesoId);
+            linhas.push({
+              animal_id: op.animalIdLocal, numero: op.numero, peso_kg: op.pesoKg,
+              data: (i.createdAt.split("#")[0]) || new Date().toISOString(),
+              peso_anterior_kg: null, data_anterior: null, lote_anterior: null,
+              gmd_individual: op.gmdIndividual, dias: null,
+              pesoRowId: op.pesoId, leitura_balancao_id: op.leituraBalancaoId,
+            });
+          }
+          setLinhasId(linhas);
+          recuperados = linhas.length;
+
+          // leitura de balanção interrompida no meio da coleta de números
+          const ultima = leituras[leituras.length - 1];
+          if (tb === "balancao" && ultima) {
+            const feitos = linhas.filter((l) => l.leitura_balancao_id === ultima.id).length;
+            if (feitos < ultima.quantidade_animais) {
+              setPendingLeituraId(ultima.id);
+              setPendingPesoIndiv(ultima.peso_individual);
+              setPendingRestante(ultima.quantidade_animais - feitos);
+            }
+          }
+        } else {
+          const salvas = loadLinhasSem<LinhaSem>(pesagemId);
+          setLinhasSem(salvas);
+          recuperados = salvas.length;
+        }
+
+        const fimNaFila = fila.find(
+          (i) => i.op.kind === "update" && i.op.table === "pesagens_lote_pecuarista" && i.op.id === pesagemId && i.op.values?.data_pesagem,
+        );
+        if (fimNaFila && fimNaFila.op.kind === "update") {
+          setDataFimLocal(fimNaFila.op.values.data_pesagem);
+          clearPesagemAtiva(pesagemId);
+        } else if (lt) {
+          setPesagemAtiva({
+            tipo: "pecuarista",
+            pesagemId,
+            path: `/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${pesagemId}`,
+            label: `o lote ${lt.codigo ?? lt.nome_lote ?? ""}`.trim(),
+          });
+        }
+        if (recuperados > 0 && !fimNaFila) {
+          toast.success(`Pesagem retomada: ${recuperados} peso(s) recuperado(s).`);
+        }
+      } catch (err) {
+        console.warn("[pecuarista] retomada falhou", err);
+      }
+      restauradoRef.current = true;
       setLoading(false);
     })();
-  }, [loteId, pesagemId]);
+  }, [loteId, pesagemId, fazendaId]);
+
+  // guarda a lista de lotes sem identificação no aparelho (retomada após recarga)
+  useEffect(() => {
+    if (!restauradoRef.current || !pesagemId || lote?.identificado) return;
+    saveLinhasSem(pesagemId, linhasSem);
+  }, [linhasSem, pesagemId, lote]);
+
+  useEffect(() => {
+    if (dataFimLocal && pesagemId) clearPesagemAtiva(pesagemId);
+  }, [dataFimLocal, pesagemId]);
 
   async function iniciarLeituraBalancao() {
     if (!pesagemId || !lote || salvandoLeitura) return;
