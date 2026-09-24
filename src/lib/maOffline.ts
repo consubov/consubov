@@ -12,7 +12,7 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
-import { enqueueMa, flushMaAndCount, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
+import { clearMaAcknowledgedRows, enqueueMa, flushMaAndCount, getMaAcknowledgedRows, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
 import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
 import { hasCriticalOperations, onCriticalOperationsDrained } from "@/lib/criticalOperations";
 
@@ -133,6 +133,7 @@ async function downloadTables(perfil: MaPerfil) {
   for (const [t, rows] of results) {
     await db.put(STORE, rows, t);
     mem.set(t, rows);
+    await clearMaAcknowledgedRows(t, rows.map((row) => String(row.id)));
   }
   memLoaded = Promise.resolve();
 }
@@ -211,8 +212,9 @@ function applyQueue(table: string, base: Record<string, any>[], queue: MaQueueIt
 
 async function localRows(table: string) {
   await loadMem();
-  const queue = await getMaQueueItems();
-  return applyQueue(table, mem.get(table) ?? [], queue);
+  const [queue, acknowledged] = await Promise.all([getMaQueueItems(), getMaAcknowledgedRows(table)]);
+  const base = [...(mem.get(table) ?? []), ...acknowledged];
+  return applyQueue(table, base, queue);
 }
 
 type Filter = (r: Record<string, any>) => boolean;
