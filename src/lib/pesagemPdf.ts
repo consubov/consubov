@@ -151,10 +151,8 @@ function drawFooter(doc: jsPDF) {
     doc.setFontSize(8);
     doc.setTextColor("#000000");
     doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
-    // Rodapé em 3 linhas (base alinhada com o "Página x de y")
-    doc.text("www.consubov.com.br", 15, H - 8);
-    doc.text("Uma marca do grupo Consubov", 15, H - 12);
-    doc.text("Mais Arrobas", 15, H - 16);
+    doc.text("consubov.com.br", 15, H - 8);
+    doc.text("Mais Arrobas", 15, H - 12);
   }
 }
 

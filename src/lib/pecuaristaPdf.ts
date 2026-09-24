@@ -241,16 +241,6 @@ function drawFirstHeader(
     if (w > maxW) { w = maxW; h = w / ratio; }
     const yLogo = topY + (HEADER_H - h) / 2;
     try { doc.addImage(logo.dataUrl, "JPEG", W - 15 - w, yLogo, w, h); } catch {}
-  } else {
-    // Fallback: marca "Mais Arrobas" como texto no canto direito
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(GREEN);
-    doc.text("Mais Arrobas", W - 15, topY + 12, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(INK_SOFT);
-    doc.text("consubov.com.br", W - 15, topY + 17, { align: "right" });
   }
 
   doc.setFillColor(GREEN);
@@ -268,9 +258,8 @@ function drawFooter(doc: jsPDF) {
     doc.setFontSize(8);
     doc.setTextColor("#000000");
     doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
-    doc.text("www.consubov.com.br", 15, H - 8);
-    doc.text("Uma marca do grupo Consubov", 15, H - 12);
-    doc.text("Mais Arrobas", 15, H - 16);
+    doc.text("consubov.com.br", 15, H - 8);
+    doc.text("Mais Arrobas", 15, H - 12);
   }
 }
 
