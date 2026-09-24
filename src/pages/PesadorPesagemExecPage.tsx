@@ -8,6 +8,7 @@ import { Check, CloudOff, Loader2, Scale, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
+import { calcularAnimais, totalizar } from "@/lib/pesagemCompra";
 
 type Pesagem = {
   id: string;
@@ -90,6 +91,7 @@ export default function PesadorPesagemExecPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
+  const [finalizadoLocal, setFinalizadoLocal] = useState(false);
 
   const [pesagem, setPesagem] = useState<Pesagem | null>(null);
   const [clienteNome, setClienteNome] = useState<string>("");
@@ -343,25 +345,25 @@ export default function PesadorPesagemExecPage() {
   }
 
 
+  /** Registros desta pesagem ainda na fila local (pesos, leituras e o fechamento). */
+  function pendentesDaPesagem() {
+    const ids = new Set<string>();
+    for (const p of pesos) {
+      if (syncSnap.pendingRefIds.has(p.id)) ids.add(p.id);
+      if (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id)) ids.add(p.leitura_balancao_id);
+    }
+    if (pesagem && syncSnap.pendingRefIds.has(pesagem.id)) ids.add(pesagem.id);
+    return ids.size;
+  }
+
   async function handleFinalizar() {
     if (!pesagem || pesos.length === 0) {
       toast({ title: "Nenhum peso registrado", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const restantes = await flushMaAndCount();
-    if (restantes > 0) {
-      setSaving(false);
-      toast({
-        title: "Pesos aguardando envio",
-        description: `${restantes} registro(s) ainda não chegaram ao servidor. Os dados estão salvos no aparelho — tente finalizar quando a internet melhorar.`,
-        variant: "destructive",
-      });
-      return;
-    }
     let valorTotal: number | null = null;
     if (!semValores) {
-      const { calcularAnimais, totalizar } = await import("@/lib/pesagemCompra");
       const categoriasMap: Record<string, { tipo_preco: any; preco_valor: number }> = {};
       for (const c of categoriasLote) {
         categoriasMap[c.categoria] = { tipo_preco: c.tipo_preco, preco_valor: c.preco_valor };
@@ -379,17 +381,35 @@ export default function PesadorPesagemExecPage() {
       const totals = totalizar(calcularAnimais(cfg, pesos as any));
       valorTotal = totals.totalValor;
     }
-    const { error } = await supabase
-      .from("pesagens_compra")
-      .update({
+    // Fechamento vai para a mesma fila local — funciona offline.
+    enqueueMa(pesagem.id, {
+      kind: "update",
+      table: "pesagens_compra",
+      id: pesagem.id,
+      values: {
         status: "finalizada",
         finalizada_at: new Date().toISOString(),
         valor_total_pago: valorTotal,
-      })
-      .eq("id", pesagem.id);
+      },
+    });
+    setFinalizadoLocal(true);
     setSaving(false);
-    if (error) {
-      toast({ title: "Erro ao finalizar", description: error.message, variant: "destructive" });
+    // Se a internet ajudar, segue direto para o resumo como antes.
+    const restantes = await flushMaAndCount();
+    if (restantes === 0) navigate(`/pesador/pesagem/${pesagem.id}/resumo`);
+  }
+
+  async function handleIrParaPdf() {
+    if (!pesagem) return;
+    setSaving(true);
+    const restantes = await flushMaAndCount();
+    setSaving(false);
+    if (restantes > 0) {
+      toast({
+        title: "PDF ainda não disponível",
+        description: `Aguardando sincronizar ${restantes} registro(s) antes de gerar o PDF. Tente de novo quando a internet voltar.`,
+        variant: "destructive",
+      });
       return;
     }
     navigate(`/pesador/pesagem/${pesagem.id}/resumo`);
@@ -414,6 +434,49 @@ export default function PesadorPesagemExecPage() {
     : "misto";
 
   const animalNum = pesos.length + 1;
+
+  if (finalizadoLocal) {
+    const pend = pendentesDaPesagem();
+    const pesosPend = pesos.filter(
+      (p) => syncSnap.pendingRefIds.has(p.id) || (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id)),
+    ).length;
+    return (
+      <div className="space-y-4 pb-28">
+        <div className="rounded-lg border bg-card p-4 space-y-3 text-center">
+          <Check className="w-8 h-8 mx-auto text-primary" />
+          <div className="font-semibold">Pesagem finalizada</div>
+          <div className="text-sm text-muted-foreground">{clienteNome} • {pesos.length} animais</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary">{pesos.length - pesosPend}</p>
+              <p className="text-xs text-muted-foreground">confirmados no servidor</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
+                {pesosPend > 0 && <CloudOff className="w-5 h-5" />}{pesosPend}
+              </p>
+              <p className="text-xs text-muted-foreground">pendentes de envio</p>
+            </div>
+          </div>
+          {pend > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Os dados estão salvos no aparelho e serão enviados automaticamente quando a internet voltar.
+              O PDF fica disponível depois que tudo for sincronizado.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Tudo sincronizado. O PDF já pode ser gerado.</p>
+          )}
+        </div>
+        <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/pesador/clientes")}>Voltar</Button>
+          <Button className="flex-1" onClick={() => void handleIrParaPdf()} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-28">
