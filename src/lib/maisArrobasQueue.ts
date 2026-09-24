@@ -43,13 +43,15 @@ export interface MaQueueItem {
 
 const DB_NAME = "mais-arrobas-sync";
 const STORE = "queue";
+const ACK_STORE = "acknowledged-inserts";
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, 1, {
+    dbPromise = openDB(DB_NAME, 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(ACK_STORE)) db.createObjectStore(ACK_STORE, { keyPath: "key" });
       },
       terminated() {
         dbPromise = null;
@@ -104,6 +106,39 @@ async function persistDelete(id: string) {
   } catch (err) {
     console.error("[maisArrobasQueue] delete failed", err);
   }
+}
+
+interface MaAcknowledgedInsert {
+  key: string;
+  table: string;
+  row: Record<string, any>;
+}
+
+async function persistAcknowledgedInsert(op: Extract<MaOp, { kind: "insert" }>) {
+  const db = await getDb();
+  await db.put(ACK_STORE, { key: `${op.table}:${op.row.id}`, table: op.table, row: op.row } satisfies MaAcknowledgedInsert);
+}
+
+/** Inserts já aceitos pelo servidor continuam visíveis até o próximo download. */
+export async function getMaAcknowledgedRows(table: string): Promise<Record<string, any>[]> {
+  const db = await getDb();
+  const all = ((await db.getAll(ACK_STORE)) as MaAcknowledgedInsert[]) ?? [];
+  return all.filter((item) => item.table === table).map((item) => ({ ...item.row }));
+}
+
+/** Remove somente confirmações que já constam no novo retrato vindo do servidor. */
+export async function clearMaAcknowledgedRows(table: string, serverIds: Iterable<string>) {
+  const ids = new Set(serverIds);
+  if (ids.size === 0) return;
+  const db = await getDb();
+  const tx = db.transaction(ACK_STORE, "readwrite");
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    const item = cursor.value as MaAcknowledgedInsert;
+    if (item.table === table && ids.has(String(item.row.id))) await cursor.delete();
+    cursor = await cursor.continue();
+  }
+  await tx.done;
 }
 
 let seq = 0;
@@ -229,6 +264,52 @@ async function runOp(op: MaOp) {
   if (eP) throw eP;
 }
 
+function isDuplicateLoteCode(err: any, op: MaOp) {
+  if (op.kind !== "insert" || op.table !== "lotes_pecuarista") return false;
+  const text = `${err?.code ?? ""} ${err?.message ?? ""} ${err?.details ?? ""}`;
+  return text.includes("23505") || text.includes("lotes_pecuarista_pecuarista_codigo_key");
+}
+
+/**
+ * Recupera automaticamente um lote criado offline cujo código foi ocupado por
+ * outro envio. O UUID não muda, portanto pesagens e pesos dependentes continuam
+ * apontando para o mesmo lote.
+ */
+async function repairDuplicateLoteCode(item: MaQueueItem): Promise<boolean> {
+  if (item.op.kind !== "insert" || item.op.table !== "lotes_pecuarista") return false;
+  const pecuaristaId = item.op.row.pecuarista_id;
+  if (typeof pecuaristaId !== "string") return false;
+
+  const sb = supabase as any;
+  const { data, error } = await withTimeout(
+    sb.from("lotes_pecuarista").select("id, codigo").eq("pecuarista_id", pecuaristaId),
+  ) as any;
+  if (error) throw error;
+
+  const alreadySaved = (data ?? []).some((row: any) => row.id === item.op.kind && row.id === item.op.row.id);
+  if (alreadySaved) return true;
+
+  const used = new Set<string>((data ?? []).map((row: any) => String(row.codigo)));
+  for (const queued of memQueue) {
+    if (queued.id === item.id || queued.op.kind !== "insert" || queued.op.table !== "lotes_pecuarista") continue;
+    if (queued.op.row.pecuarista_id === pecuaristaId) used.add(String(queued.op.row.codigo));
+  }
+  for (const row of await getMaAcknowledgedRows("lotes_pecuarista")) {
+    if (row.pecuarista_id === pecuaristaId) used.add(String(row.codigo));
+  }
+
+  const nextCode = nextMaLoteCodigo(used);
+  const repaired: MaQueueItem = {
+    ...item,
+    op: { ...item.op, row: { ...item.op.row, codigo: nextCode } },
+    lastError: undefined,
+  };
+  memQueue = memQueue.map((queued) => queued.id === item.id ? repaired : queued);
+  await persistPut(repaired);
+  emit();
+  return false;
+}
+
 let retryDelay = 3000;
 
 /** Envia a fila em ordem. Para no primeiro erro e tenta de novo depois. */
@@ -244,6 +325,7 @@ export async function flushMa(): Promise<void> {
     flushing = item.id;
     try {
       await runOp(item.op);
+      if (item.op.kind === "insert") await persistAcknowledgedInsert(item.op);
       memQueue = memQueue.filter((i) => i.id !== item.id);
       await persistDelete(item.id);
       lastError = null;
@@ -252,6 +334,20 @@ export async function flushMa(): Promise<void> {
       emit();
     } catch (err: any) {
       flushing = null;
+      if (isDuplicateLoteCode(err, item.op)) {
+        try {
+          const alreadySaved = await repairDuplicateLoteCode(item);
+          if (alreadySaved) {
+            memQueue = memQueue.filter((queued) => queued.id !== item.id);
+            await persistDelete(item.id);
+          }
+          retryDelay = 3000;
+          emit();
+          continue;
+        } catch (repairError) {
+          console.warn("[maisArrobasQueue] não foi possível corrigir o código do lote", repairError);
+        }
+      }
       const msg = err?.message ?? String(err);
       const updated = { ...item, attempts: item.attempts + 1, lastError: msg };
       memQueue = memQueue.map((i) => (i.id === item.id ? updated : i));
@@ -282,10 +378,11 @@ export async function getMaQueueItems(): Promise<MaQueueItem[]> {
 
 /** Retorna inserts locais ainda pendentes de uma tabela, em ordem FIFO. */
 export async function getMaPendingRows(table: string): Promise<Record<string, any>[]> {
-  const items = await getMaQueueItems();
-  return items
+  const [items, acknowledged] = await Promise.all([getMaQueueItems(), getMaAcknowledgedRows(table)]);
+  const pending = items
     .filter((item) => item.op.kind === "insert" && item.op.table === table)
     .map((item) => (item.op.kind === "insert" ? { ...item.op.row } : {}));
+  return mergeMaRows(acknowledged as Array<{ id: string }>, pending) as Record<string, any>[];
 }
 
 /** Combina registros confirmados com inserts locais sem duplicar UUIDs. */
