@@ -18,6 +18,11 @@ import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search
 import { toast } from "sonner";
 import FazendaPecuaristaConfigModal from "@/components/FazendaPecuaristaConfigModal";
 import { enqueueMa, getMaPendingRows, mergeMaRows, nextMaLoteCodigo } from "@/lib/maisArrobasQueue";
+import { dataLocalSP } from "@/lib/diasCalendario";
+import { dataEscolhidaParaIso } from "@/lib/pecuaristaData";
+
+type AnimalInicial = { numero: string; peso: string };
+const pesInicialVazio = () => ({ ativo: false, data: dataLocalSP(new Date()), qtd: "", media: "", animais: [] as AnimalInicial[], numero: "", peso: "" });
 
 function extractStoragePath(url: string, bucket: string): string | null {
   const marker = `/${bucket}/`;
@@ -75,6 +80,7 @@ export default function PecuaristaFazendaDetalhePage() {
     criandoNova: false,
     identificado: "sim" as "sim" | "nao",
   });
+  const [pesInicial, setPesInicial] = useState(pesInicialVazio);
   const [query, setQuery] = useState("");
   const [configOpen, setConfigOpen] = useState(false);
   const [loteParaApagar, setLoteParaApagar] = useState<Lote | null>(null);
@@ -170,6 +176,7 @@ export default function PecuaristaFazendaDetalhePage() {
     setEditingId(null);
     setEditingHasPesagens(false);
     setForm({ nome: "", categoriaSlug: "boi_gordo", categoriaCustomizadaId: "", novaCategoria: "", criandoNova: false, identificado: "sim" });
+    setPesInicial(pesInicialVazio());
   }
 
   function openCreate() {
@@ -228,6 +235,25 @@ export default function PecuaristaFazendaDetalhePage() {
         if (error) throw error;
         toast.success("Lote atualizado!");
       } else {
+        // Pesagem inicial opcional (validação antes de criar qualquer coisa)
+        const hojeSP = dataLocalSP(new Date());
+        const ident = form.identificado === "sim";
+        let inicial: null | { qtd: number; total: number; animais: Array<{ numero: string; peso: number }> } = null;
+        if (pesInicial.ativo) {
+          if (!pesInicial.data || pesInicial.data > hojeSP) throw new Error("Data da pesagem inicial deve ser hoje ou anterior");
+          if (ident) {
+            const animais = pesInicial.animais.map((a) => ({ numero: a.numero.trim(), peso: parseFloat(a.peso.replace(",", ".")) }));
+            if (animais.length > 0) inicial = { qtd: animais.length, total: animais.reduce((s, a) => s + a.peso, 0), animais };
+          } else {
+            const qtd = parseInt(pesInicial.qtd, 10);
+            const media = parseFloat(pesInicial.media.replace(",", "."));
+            if (pesInicial.qtd || pesInicial.media) {
+              if (!Number.isFinite(qtd) || qtd <= 0) throw new Error("Informe a quantidade de animais da pesagem inicial");
+              if (!Number.isFinite(media) || media <= 0) throw new Error("Informe o peso médio da pesagem inicial");
+              inicial = { qtd, total: qtd * media, animais: [] };
+            }
+          }
+        }
         const codigo = await nextCodigo(pecuaristaId);
         const loteId = crypto.randomUUID();
         const novo = {
@@ -243,8 +269,33 @@ export default function PecuaristaFazendaDetalhePage() {
           encerrado_at: null,
         };
         enqueueMa(loteId, { kind: "insert", table: "lotes_pecuarista", row: novo });
+        let ultimaData: string | null = null;
+        if (inicial) {
+          const pesagemId = crypto.randomUUID();
+          const dataIso = dataEscolhidaParaIso(pesInicial.data);
+          const agora = new Date().toISOString();
+          ultimaData = dataIso;
+          enqueueMa(pesagemId, {
+            kind: "insert",
+            table: "pesagens_lote_pecuarista",
+            row: {
+              id: pesagemId, lote_id: loteId, data_pesagem: dataIso,
+              peso_total: inicial.total, quantidade_animais: inicial.qtd, peso_medio: inicial.total / inicial.qtd,
+              gmd: null, tipo_balanca: "individual", quantidade_padrao_balancao: null,
+              hora_inicio: agora, hora_fim: agora,
+            },
+          });
+          for (const a of inicial.animais) {
+            const pesoRowId = crypto.randomUUID();
+            enqueueMa(pesoRowId, {
+              kind: "pecuarista_peso_id", pesoId: pesoRowId, animalIdLocal: crypto.randomUUID(),
+              pecuaristaId, numero: a.numero, loteId, pesagemLoteId: pesagemId,
+              pesoKg: a.peso, gmdIndividual: null, leituraBalancaoId: null,
+            });
+          }
+        }
         setCodigosOcupados((prev) => [...prev, codigo]);
-        setLotes((prev) => [{ ...novo, ultima_data: null, ultimo_gmd: null, qtd_animais: null }, ...prev]);
+        setLotes((prev) => [{ ...novo, ultima_data: ultimaData, ultimo_gmd: null, qtd_animais: inicial?.qtd ?? null }, ...prev]);
         toast.success(`Lote ${codigo} criado!`);
       }
       setDialogOpen(false);
@@ -505,6 +556,58 @@ export default function PecuaristaFazendaDetalhePage() {
                 <p className="text-xs text-muted-foreground mt-1">A identificação fica travada após a primeira pesagem para preservar o histórico.</p>
               )}
             </div>
+
+            {!editingId && (
+              <div className="rounded-md border p-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input type="checkbox" checked={pesInicial.ativo} onChange={(e) => setPesInicial((p) => ({ ...p, ativo: e.target.checked }))} />
+                  Informar pesagem inicial (opcional)
+                </label>
+                {pesInicial.ativo && (
+                  <>
+                    <div>
+                      <Label>Data da pesagem</Label>
+                      <Input type="date" max={dataLocalSP(new Date())} value={pesInicial.data} onChange={(e) => setPesInicial((p) => ({ ...p, data: e.target.value }))} />
+                    </div>
+                    {form.identificado === "nao" ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><Label>Quantidade de animais</Label><Input inputMode="numeric" value={pesInicial.qtd} onChange={(e) => setPesInicial((p) => ({ ...p, qtd: e.target.value.replace(/\D/g, "") }))} /></div>
+                        <div><Label>Peso médio (kg)</Label><Input inputMode="decimal" value={pesInicial.media} onChange={(e) => setPesInicial((p) => ({ ...p, media: e.target.value }))} /></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1"><Label>Nº do animal</Label><Input value={pesInicial.numero} onChange={(e) => setPesInicial((p) => ({ ...p, numero: e.target.value }))} /></div>
+                          <div className="flex-1"><Label>Peso (kg)</Label><Input inputMode="decimal" value={pesInicial.peso} onChange={(e) => setPesInicial((p) => ({ ...p, peso: e.target.value }))} /></div>
+                          <Button type="button" size="icon" onClick={() => {
+                            const numero = pesInicial.numero.trim();
+                            const peso = parseFloat(pesInicial.peso.replace(",", "."));
+                            if (!numero) return toast.error("Informe o número do animal");
+                            if (!Number.isFinite(peso) || peso <= 0) return toast.error("Informe um peso válido");
+                            if (pesInicial.animais.some((a) => a.numero === numero)) return toast.error(`Animal ${numero} já foi adicionado`);
+                            setPesInicial((p) => ({ ...p, animais: [...p.animais, { numero, peso: String(peso) }], numero: "", peso: "" }));
+                          }}><Plus className="w-4 h-4" /></Button>
+                        </div>
+                        {pesInicial.animais.length > 0 && (
+                          <div className="space-y-1">
+                            {pesInicial.animais.map((a, i) => (
+                              <div key={a.numero} className="flex items-center justify-between text-sm bg-muted rounded px-2 py-1">
+                                <span>Animal <strong>{a.numero}</strong> — {a.peso} kg</span>
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPesInicial((p) => ({ ...p, animais: p.animais.filter((_, j) => j !== i) }))}>
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground">{pesInicial.animais.length} animal(is) na pesagem inicial</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">Essa pesagem será a base do GMD das próximas pesagens.</p>
+                  </>
+                )}
+              </div>
+            )}
 
           </div>
           <DialogFooter>
