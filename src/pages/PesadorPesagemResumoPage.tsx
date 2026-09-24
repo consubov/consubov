@@ -254,23 +254,21 @@ export default function PesadorPesagemResumoPage() {
     if (!pdfUrl) return;
     const title = "Relatório de Pesagem";
     const text = `Pesagem — ${clienteNome}`;
+    const fileName = `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`;
     try {
       const resp = await fetch(pdfUrl);
       const blob = await resp.blob();
-      const fileName = `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`;
       const file = new File([blob], fileName, { type: "application/pdf" });
       const nav: any = navigator;
       if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title, text });
         return;
       }
-      if (nav.share) {
-        await nav.share({ title, text, url: pdfUrl });
-        return;
-      }
-      await navigator.clipboard.writeText(pdfUrl);
-      toast({ title: "Link copiado" });
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+    }
+    // Sem compartilhamento de arquivo: baixa o PDF (nunca expõe a URL técnica).
+    await downloadPdfFromUrl(pdfUrl, fileName);
   }
 
   return (
@@ -419,7 +417,7 @@ export default function PesadorPesagemResumoPage() {
               <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
             </Button>
             <Button variant="outline" className="h-11" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" /> Compartilhar
+              <Share2 className="w-4 h-4 mr-2" /> Compartilhar PDF
             </Button>
             <Button className="w-full h-11 col-span-2" onClick={() => navigate("/pesador/clientes")}>
               Concluir <ArrowRight className="w-4 h-4 ml-2" />

@@ -13,7 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Pencil, Plus, Scale, Search } from "lucide-react";
+import { Loader2, Pencil, Plus, Scale, Search, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { z } from "zod";
 
 type Cliente = {
@@ -44,6 +48,8 @@ export default function PesadorClientesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [saving, setSaving] = useState(false);
+  const [toDelete, setToDelete] = useState<Cliente | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     nome: "",
     nome_fazenda: "",
@@ -134,6 +140,43 @@ export default function PesadorClientesPage() {
     void loadClientes();
   }
 
+  async function handleDelete() {
+    if (!toDelete || !pesadorId) return;
+    setDeleting(true);
+    const { count, error: cErr } = await supabase
+      .from("pesagens_compra")
+      .select("id", { count: "exact", head: true })
+      .eq("cliente_id", toDelete.id);
+    if (cErr) {
+      setDeleting(false);
+      toast({ title: "Erro ao verificar pesagens", description: cErr.message, variant: "destructive" });
+      return;
+    }
+    if ((count ?? 0) > 0) {
+      setDeleting(false);
+      setToDelete(null);
+      toast({
+        title: "Não é possível apagar",
+        description: "Cliente tem pesagens registradas, não pode ser apagado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const { error } = await supabase
+      .from("clientes_pesador")
+      .delete()
+      .eq("id", toDelete.id)
+      .eq("pesador_id", pesadorId);
+    setDeleting(false);
+    if (error) {
+      toast({ title: "Erro ao apagar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Cliente apagado" });
+    setToDelete(null);
+    void loadClientes();
+  }
+
   const term = search.trim().toLowerCase();
   const filtered = term
     ? clientes.filter((c) => c.nome.toLowerCase().includes(term))
@@ -197,6 +240,15 @@ export default function PesadorClientesPage() {
                   aria-label="Editar"
                 >
                   <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setToDelete(c)}
+                  className="h-8 w-8 p-0 text-destructive"
+                  aria-label="Apagar"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
                 <Button
                   size="sm"
@@ -266,6 +318,25 @@ export default function PesadorClientesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o && !deleting) setToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar {toDelete?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apagar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
