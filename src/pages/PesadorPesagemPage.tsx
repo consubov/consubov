@@ -9,6 +9,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -83,6 +85,7 @@ export default function PesadorPesagemPage() {
     setLoading(false);
   }
 
+  const off = useMaOffline();
   useEffect(() => { void load(); }, []);
 
   async function handleDelete() {
@@ -173,6 +176,16 @@ export default function PesadorPesagemPage() {
                     {p.sem_valores ? "Sem valores" : brl(p.totalValor)}
                   </div>
                   <div className="flex items-center gap-2">
+                    {!p.pdf_url && (off.active ? (
+                      <span className="text-[11px] text-muted-foreground">PDF após sincronizar</span>
+                    ) : (
+                      <Link
+                        to={`/pesador/pesagem/${p.id}/resumo`}
+                        className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                      >
+                        <FileDown className="w-3 h-3" /> Gerar PDF
+                      </Link>
+                    ))}
                     {p.pdf_url && (
                       <button
                         type="button"

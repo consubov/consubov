@@ -11,6 +11,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
+import { gerarPdfPesagemPecuaristaHistorico } from "@/lib/pecuaristaPdfHistorico";
 
 const CATEGORIAS_PADRAO: Record<string, string> = {
   boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
@@ -46,6 +48,21 @@ export default function PecuaristaHistoricoPage() {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [toDelete, setToDelete] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const off = useMaOffline();
+  const [gerandoId, setGerandoId] = useState<string | null>(null);
+
+  async function gerarPdf(item: Item) {
+    setGerandoId(item.id);
+    try {
+      const url = await gerarPdfPesagemPecuaristaHistorico(item.rawId, item.categoria);
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, pdfUrl: url } : i)));
+      toast.success("PDF gerado");
+      void downloadPdfFromUrl(url, `pesagem-${item.rawId}.pdf`);
+    } catch (e: any) {
+      toast.error("Erro ao gerar PDF: " + (e?.message ?? ""));
+    }
+    setGerandoId(null);
+  }
 
   async function load() {
     setLoading(true);
@@ -82,7 +99,8 @@ export default function PecuaristaHistoricoPage() {
       const { data: pes } = await maFrom("pesagens_lote_pecuarista")
         .select("id, lote_id, data_pesagem, gmd, pdf_url, apartacao_id")
         .in("lote_id", loteIds)
-        .not("pdf_url", "is", null)
+        .not("hora_fim", "is", null)
+        .gt("quantidade_animais", 0)
         .is("apartacao_id", null)
         .order("data_pesagem", { ascending: false });
       for (const r of (pes ?? []) as any[]) {
@@ -230,6 +248,18 @@ export default function PecuaristaHistoricoPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
+                  {!p.pdfUrl && p.tipo === "pesagem" && (
+                    <button
+                      type="button"
+                      onClick={() => void gerarPdf(p)}
+                      disabled={off.active || gerandoId !== null}
+                      title={off.active ? "PDF disponível após sincronizar" : undefined}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                    >
+                      {gerandoId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                      {off.active ? "PDF após sincronizar" : "Gerar PDF"}
+                    </button>
+                  )}
                   {p.pdfUrl && (
                     <button
                       type="button"
