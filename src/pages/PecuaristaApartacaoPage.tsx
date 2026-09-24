@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { dataEscolhidaParaIso, diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
 import { dataLocalSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
-import { maFrom, maGetUser } from "@/lib/maOffline";
+import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -512,6 +512,7 @@ export default function PecuaristaApartacaoPage() {
       });
       let pdfUrl: string | null = null;
       try {
+        if (isMaOffline()) throw new Error("offline");
         const path = `pecuarista/apartacoes/${apartacaoId}-${Date.now()}.pdf`;
         const { error: upErr } = await supabase.storage.from("relatorios")
           .upload(path, blob, { contentType: "application/pdf", upsert: true });

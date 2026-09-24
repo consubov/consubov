@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
+import { ModoOfflinePanel } from "@/components/maisarrobas/ModoOfflinePanel";
 import { Loader2, Scale, CalendarDays, Users, DollarSign } from "lucide-react";
 import { calcularAnimais, totalizar, type PesagemCompraCfg, type PesoAnimal } from "@/lib/pesagemCompra";
 import { Button } from "@/components/ui/button";
@@ -300,6 +301,7 @@ export default function PesadorDashboard() {
           <p className="text-sm text-muted-foreground">{nomeEmpresa}</p>
         )}
       </div>
+      <ModoOfflinePanel perfil="pesador" />
 
       <div className="grid grid-cols-2 gap-3">
         <KpiCard icon={<Scale className="w-4 h-4" />} label="Animais pesados no ano" value={stats.animaisAno.toString()} />

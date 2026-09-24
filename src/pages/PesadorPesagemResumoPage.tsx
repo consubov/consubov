@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { maFrom, maGetUser } from "@/lib/maOffline";
+import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";

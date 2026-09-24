@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { maFrom, maGetUser } from "@/lib/maOffline";
+import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -515,7 +515,7 @@ export default function PecuaristaPesagemExecPage() {
     const restantes = await flushMaAndCount();
     setFinalizando(false);
     // Com tudo sincronizado segue direto para o PDF, como antes.
-    if (restantes === 0) await gerarPdfEResumo(dataFim);
+    if (restantes === 0 && !isMaOffline()) await gerarPdfEResumo(dataFim);
   }
 
   /** Gera o PDF — exige que todos os registros estejam no servidor. */
@@ -683,10 +683,10 @@ export default function PecuaristaPesagemExecPage() {
         </Card>
         <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
           <Button variant="outline" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>Voltar</Button>
-          <Button className="flex-1" onClick={() => void tentarGerarPdf()} disabled={finalizando}>
+          {!isMaOffline() && (<Button className="flex-1" onClick={() => void tentarGerarPdf()} disabled={finalizando}>
             {finalizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
             {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
-          </Button>
+          </Button>)}
         </div>
       </div>
     );

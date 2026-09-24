@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
+import { ModoOfflinePanel } from "@/components/maisarrobas/ModoOfflinePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -274,6 +275,7 @@ export default function PecuaristaDashboard() {
         <h1 className="text-2xl font-bold text-foreground">{greeting}{nome ? `, ${nome}` : ""}!</h1>
         <p className="text-sm text-muted-foreground">Bem-vindo ao Mais Arrobas.</p>
       </div>
+      <ModoOfflinePanel perfil="pecuarista" />
 
       {loading ? (
         <Card><CardContent className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></CardContent></Card>
