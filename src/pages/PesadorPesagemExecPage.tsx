@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +95,7 @@ export default function PesadorPesagemExecPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
+  useMaOffline(); // re-renderiza quando o Modo Offline desliga sozinho
   const [finalizadoLocal, setFinalizadoLocal] = useState(false);
 
   const [pesagem, setPesagem] = useState<Pesagem | null>(null);

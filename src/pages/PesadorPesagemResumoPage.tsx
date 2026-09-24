@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";

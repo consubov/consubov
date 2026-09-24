@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +60,7 @@ export default function PecuaristaPesagemExecPage() {
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
+  useMaOffline(); // re-renderiza quando o Modo Offline desliga sozinho
   const [dataFimLocal, setDataFimLocal] = useState<string | null>(null);
   const [gmdLoteLocal, setGmdLoteLocal] = useState<number | null>(null);
 

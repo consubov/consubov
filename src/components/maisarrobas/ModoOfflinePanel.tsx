@@ -34,7 +34,7 @@ export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
     setBusy("sync");
     try {
       const restantes = await sincronizarOffline();
-      if (restantes > 0) toast.error(`${restantes} item(ns) ainda não foram enviados. Tente de novo com internet melhor.`);
+      if (restantes > 0) toast.error(`${restantes} envio(s) pendente(s). Tente de novo com internet melhor.`);
       else {
         toast.success("Tudo sincronizado. Modo Offline desativado.");
         window.location.reload();

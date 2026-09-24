@@ -106,7 +106,7 @@ export default function PecuaristaFazendaDetalhePage() {
     if (!fazendaId) return;
     setLoading(true);
     const { data } = await maFrom("lotes_pecuarista")
-      .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status, encerrado_at")
+      .select("id, fazenda_id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status, encerrado_at")
       .eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false });
     const pending = await getMaPendingRows("lotes_pecuarista");
