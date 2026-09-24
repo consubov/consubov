@@ -18,6 +18,7 @@ import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search
 import { toast } from "sonner";
 import FazendaPecuaristaConfigModal from "@/components/FazendaPecuaristaConfigModal";
 import { enqueueMa, getMaPendingRows, mergeMaRows, nextMaLoteCodigo } from "@/lib/maisArrobasQueue";
+import { limparLoteLocal, loteAindaNaoEnviado } from "@/lib/maLoteDelete";
 import { dataLocalSP } from "@/lib/diasCalendario";
 import { dataEscolhidaParaIso } from "@/lib/pecuaristaData";
 
@@ -336,14 +337,28 @@ export default function PecuaristaFazendaDetalhePage() {
   async function executarApagar(l: Lote) {
     setApagando(true);
     try {
+      // Lote ainda não enviado: cancela o envio e limpa só o aparelho.
+      if (await loteAindaNaoEnviado(l.id)) {
+        await limparLoteLocal(l.id);
+        toast.success("Lote apagado.");
+        setLoteParaApagar(null);
+        setLotes((prev) => prev.filter((x) => x.id !== l.id));
+        await loadLotes();
+        return;
+      }
+
       const sb = supabase as any;
       const pdfPaths: string[] = [];
+      const check = (r: any, etapa: string) => {
+        if (r?.error) throw new Error(`${etapa}: ${r.error.message}`);
+        return r;
+      };
 
       // 1) Pesagens vinculadas diretamente ao lote
-      const { data: pesagensLote } = await sb
+      const { data: pesagensLote } = check(await sb
         .from("pesagens_lote_pecuarista")
         .select("id, pdf_url")
-        .eq("lote_id", l.id);
+        .eq("lote_id", l.id), "pesagens");
       const pesIdsLote = (pesagensLote ?? []).map((r: any) => r.id);
       for (const r of pesagensLote ?? []) {
         if (r.pdf_url) {
@@ -353,10 +368,10 @@ export default function PecuaristaFazendaDetalhePage() {
       }
 
       // 2) Apartações onde o lote é origem
-      const { data: apartOrigem } = await sb
+      const { data: apartOrigem } = check(await sb
         .from("apartacoes_pecuarista")
         .select("id, pdf_url")
-        .eq("lote_origem_id", l.id);
+        .eq("lote_origem_id", l.id), "apartações");
       const apartIds = (apartOrigem ?? []).map((r: any) => r.id);
       for (const r of apartOrigem ?? []) {
         if (r.pdf_url) {
@@ -368,10 +383,10 @@ export default function PecuaristaFazendaDetalhePage() {
       // 3) Pesagens filhas das apartações
       let pesIdsApart: string[] = [];
       if (apartIds.length > 0) {
-        const { data: pesFilhas } = await sb
+        const { data: pesFilhas } = check(await sb
           .from("pesagens_lote_pecuarista")
           .select("id, pdf_url")
-          .in("apartacao_id", apartIds);
+          .in("apartacao_id", apartIds), "pesagens da apartação");
         pesIdsApart = (pesFilhas ?? []).map((r: any) => r.id);
         for (const r of pesFilhas ?? []) {
           if (r.pdf_url) {
@@ -383,32 +398,34 @@ export default function PecuaristaFazendaDetalhePage() {
 
       const todasPesIds = Array.from(new Set([...pesIdsLote, ...pesIdsApart]));
 
-      // 4) Apagar pesos individuais
+      // 4) Pesos individuais e pesagens
       if (todasPesIds.length > 0) {
-        await sb.from("pesos_animais_pecuarista").delete().in("pesagem_lote_id", todasPesIds);
-        await sb.from("pesagens_lote_pecuarista").delete().in("id", todasPesIds);
+        check(await sb.from("pesos_animais_pecuarista").delete().in("pesagem_lote_id", todasPesIds), "pesos");
+        check(await sb.from("pesagens_lote_pecuarista").delete().in("id", todasPesIds), "pesagens");
       }
 
-      // 5) Apagar destinos e apartações onde este lote participou
+      // 5) Destinos e apartações
       if (apartIds.length > 0) {
-        await sb.from("apartacao_destinos_pecuarista").delete().in("apartacao_id", apartIds);
-        await sb.from("apartacao_lotes").delete().in("apartacao_id", apartIds);
-        await sb.from("apartacoes_pecuarista").delete().in("id", apartIds);
+        check(await sb.from("apartacao_destinos_pecuarista").delete().in("apartacao_id", apartIds), "destinos da apartação");
+        check(await sb.from("apartacao_lotes").delete().in("apartacao_id", apartIds), "lotes da apartação");
+        check(await sb.from("apartacoes_pecuarista").delete().in("id", apartIds), "apartações");
       }
-      // destinos onde este lote é destino (apartações que geraram este lote)
-      await sb.from("apartacao_destinos_pecuarista").delete().eq("lote_destino_id", l.id);
+      check(await sb.from("apartacao_destinos_pecuarista").delete().eq("lote_destino_id", l.id), "destinos");
 
-      // 6) Animais vinculados a este lote
-      await sb.from("animais_pecuarista").delete().eq("lote_atual_id", l.id);
+      // 6) Animais
+      check(await sb.from("animais_pecuarista").delete().eq("lote_atual_id", l.id), "animais");
 
       // 7) O próprio lote
-      const { error } = await sb.from("lotes_pecuarista").delete().eq("id", l.id);
-      if (error) throw error;
+      check(await sb.from("lotes_pecuarista").delete().eq("id", l.id), "lote");
 
-      // 8) Arquivos de Storage
+      // 8) Arquivos de Storage (não bloqueia)
       if (pdfPaths.length > 0) {
         await supabase.storage.from("relatorios").remove(pdfPaths);
       }
+
+      // 9) Cópias locais (fila, confirmados e cache offline)
+      await limparLoteLocal(l.id);
+      setLotes((prev) => prev.filter((x) => x.id !== l.id));
 
       toast.success("Lote e histórico apagados.");
       setLoteParaApagar(null);
