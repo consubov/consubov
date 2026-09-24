@@ -54,11 +54,6 @@ type PrevInfo = {
   lote_anterior: string | null;
 };
 
-function daysBetween(a: string, b: string): number {
-  const ms = new Date(b).getTime() - new Date(a).getTime();
-  return Math.max(1, Math.round(ms / 86400000));
-}
-
 export default function PecuaristaPesagemExecPage() {
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();

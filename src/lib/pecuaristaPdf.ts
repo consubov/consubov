@@ -18,6 +18,7 @@ export interface PecuaristaPdfHeader {
   identificado: boolean;
   data: string;
   horaInicio?: string | null;
+  horaFim?: string | null;
 }
 
 export interface PecuaristaPesoIdentificado {
@@ -307,7 +308,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ["Tipo de lote:", data.header.identificado ? "Identificado" : "Sem identificação"],
     ["Data:", fmtDate(data.header.data)],
   );
-  const horarioLinhaP = fmtHorarioLinha(data.header.data, data.header.horaInicio);
+  const horarioLinhaP = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio);
   if (horarioLinhaP) rows.push(["", horarioLinhaP]);
 
   doc.setFontSize(10);
@@ -367,7 +368,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
       r.numero,
       `${fmtN(r.peso_kg, 1)} kg`,
       `${fmtN(r.peso_kg / 30, 2)} @`,
-      fmtDateTime(r.data),
+      fmtDate(r.data),
       r.peso_anterior_kg != null ? `${fmtN(r.peso_anterior_kg, 1)} kg` : "—",
       r.data_anterior ? fmtDate(r.data_anterior) : "—",
       r.dias != null ? String(r.dias) : "—",
@@ -503,7 +504,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
     ["Data:", fmtDate(data.header.data)],
   );
-  const horarioLinhaA = fmtHorarioLinha(data.header.data, data.header.horaInicio);
+  const horarioLinhaA = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio);
   if (horarioLinhaA) rows.push(["", horarioLinhaA]);
   rows.push(
     ["Total animais apartados:", String(data.totalGeral.quantidade)],
@@ -571,7 +572,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         r.numero,
         `${fmtN(r.peso_kg, 1)} kg`,
         `${fmtN(r.peso_kg / 30, 2)} @`,
-        fmtDateTime(r.data),
+        fmtDate(r.data),
         r.gmd_individual != null ? `${fmtN(r.gmd_individual, 3)} kg/dia` : "—",
       ]);
       autoTable(doc, {
