@@ -522,6 +522,46 @@ export default function PecuaristaPesagemExecPage() {
   const contagem = lote.identificado ? linhasId.length : linhasSem.length;
   const animalNum = contagem + 1;
 
+  if (dataFimLocal) {
+    const pend = pendentesDaPesagem();
+    const pesosPend = lote.identificado
+      ? linhasId.filter((l) => syncSnap.pendingRefIds.has(l.pesoRowId)).length
+      : linhasSem.filter((l) => l.leitura_balancao_id && syncSnap.pendingRefIds.has(l.leitura_balancao_id)).length;
+    return (
+      <div className="max-w-3xl mx-auto space-y-4 pb-44">
+        <Card className="p-4 space-y-3 text-center">
+          <Check className="w-8 h-8 mx-auto text-primary" />
+          <div className="font-semibold">Pesagem finalizada</div>
+          <div className="text-sm text-muted-foreground">{lote.nome_lote} • {contagem} animais</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary">{contagem - pesosPend}</p>
+              <p className="text-xs text-muted-foreground">confirmados no servidor</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
+                {pesosPend > 0 && <CloudOff className="w-5 h-5" />}{pesosPend}
+              </p>
+              <p className="text-xs text-muted-foreground">pendentes de envio</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {pend > 0
+              ? "Os dados estão salvos no aparelho e serão enviados automaticamente quando a internet voltar. O PDF fica disponível depois que tudo for sincronizado."
+              : "Tudo sincronizado. O PDF já pode ser gerado."}
+          </p>
+        </Card>
+        <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
+          <Button variant="outline" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>Voltar</Button>
+          <Button className="flex-1" onClick={() => void tentarGerarPdf()} disabled={finalizando}>
+            {finalizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-44">
       <Card className="p-3">
