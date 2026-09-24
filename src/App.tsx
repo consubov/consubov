@@ -253,6 +253,7 @@ const App = () => (
           <AuthProvider>
             <PwaProfileSync />
             <PushNotificationsBootstrap />
+            <PesagemEmAndamentoPrompt />
 
             <Routes>
 
