@@ -240,8 +240,8 @@ export default function PesadorPesagemResumoPage() {
       await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
       setPdfUrl(url);
       toast({ title: "PDF gerado com sucesso" });
-    } catch (e: any) {
-      toast({ title: "Erro ao gerar PDF", description: e.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Erro ao gerar PDF", description: "Tente novamente.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
