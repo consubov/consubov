@@ -13,6 +13,7 @@ type NavState = {
   totalGeral: { quantidade: number; peso_total: number };
   destinos: ApartacaoDestinoSection[];
   dataFim?: string | null;
+  horaFim?: string | null;
   horaInicio?: string | null;
 };
 
@@ -49,7 +50,7 @@ export default function PecuaristaApartacaoResumoPage() {
     (async () => {
       if (!apartacaoId) return;
       const { data: ap } = await supabase.from("apartacoes_pecuarista")
-        .select("pdf_url, data_apartacao, hora_inicio").eq("id", apartacaoId).maybeSingle();
+        .select("pdf_url, data_apartacao, hora_inicio, hora_fim").eq("id", apartacaoId).maybeSingle();
       setPdfUrl((ap as any)?.pdf_url ?? null);
       const { data: pesagens } = await supabase.from("pesagens_lote_pecuarista")
         .select("lote_id, quantidade_animais, peso_total, peso_medio, gmd")
@@ -71,7 +72,7 @@ export default function PecuaristaApartacaoResumoPage() {
         totQ += Number(p.quantidade_animais);
         totP += Number(p.peso_total);
       }
-      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: (ap as any)?.pdf_url ?? undefined, dataFim: (ap as any)?.data_apartacao ?? null, horaInicio: (ap as any)?.hora_inicio ?? null });
+      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: (ap as any)?.pdf_url ?? undefined, dataFim: (ap as any)?.data_apartacao ?? null, horaInicio: (ap as any)?.hora_inicio ?? null, horaFim: (ap as any)?.hora_fim ?? null });
       setLoading(false);
     })();
   }, [apartacaoId, data]);
@@ -106,8 +107,8 @@ export default function PecuaristaApartacaoResumoPage() {
         {fmtDataLinha(data.dataFim) && (
           <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
         )}
-        {fmtHorarioLinha(data.dataFim, data.horaInicio) && (
-          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.dataFim, data.horaInicio)}</div>
+        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio)}</div>
         )}
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
