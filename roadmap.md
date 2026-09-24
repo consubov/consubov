@@ -9,3 +9,4 @@
 - [x] Fase B: Modo Offline (cache completo), Sincronizar com desativação automática, PDF oculto offline, indicador de pendências.
 - [x] Fase C: GMD offline (animal e lote) pelo cache + recálculo no servidor ao sincronizar.
 - [x] Sincronização offline: recuperar código de lote duplicado e manter cadastros confirmados visíveis até atualizar o cache.
+- [x] PDF do Pesador: impedir que o fallback de download exponha a URL técnica do Storage.
