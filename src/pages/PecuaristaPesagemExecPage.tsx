@@ -681,6 +681,24 @@ export default function PecuaristaPesagemExecPage() {
           {!lote.identificado && gmdLoteLocal != null && (
             <div className="text-sm font-semibold text-foreground">GMD do lote: {gmdLoteLocal.toFixed(3)} kg/dia</div>
           )}
+          {(() => {
+            // Cálculo local (mesma regra do resumo: média / 30).
+            const ps = lote.identificado ? linhasId.map((l) => Number(l.peso_kg)) : linhasSem.map((l) => Number(l.peso_kg));
+            const media = ps.length ? ps.reduce((s, v) => s + v, 0) / ps.length : 0;
+            const f = (n: number, d: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="text-xl font-bold text-foreground">{f(media, 1)} kg</p>
+                  <p className="text-xs text-muted-foreground">peso médio</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="text-xl font-bold text-foreground">{f(media / 30, 2)} @</p>
+                  <p className="text-xs text-muted-foreground">média de @</p>
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{contagem - pesosPend}</p>
