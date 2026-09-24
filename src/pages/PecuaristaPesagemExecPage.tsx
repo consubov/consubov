@@ -60,6 +60,7 @@ export default function PecuaristaPesagemExecPage() {
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
   const [dataFimLocal, setDataFimLocal] = useState<string | null>(null);
+  const [gmdLoteLocal, setGmdLoteLocal] = useState<number | null>(null);
 
   const [lote, setLote] = useState<Lote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -510,6 +511,20 @@ export default function PecuaristaPesagemExecPage() {
         hora_inicio: horaInicio ?? dataFim,
       },
     });
+    if (!isId) {
+      // GMD do lote para o resumo local (usa o cache no Modo Offline).
+      try {
+        const media = peso_total / qtd;
+        const { data: ant } = await maFrom("pesagens_lote_pecuarista")
+          .select("id, data_pesagem, peso_medio")
+          .eq("lote_id", lote.id).neq("id", pesagemId).gt("quantidade_animais", 0)
+          .order("data_pesagem", { ascending: false }).limit(100);
+        const diaAtual = dataLocalSP(dataPesagem);
+        const a = ((ant as any[]) ?? []).find((x) => dataLocalSP(x.data_pesagem) < diaAtual);
+        const d = a ? diasEntrePesagens(a.data_pesagem, dataPesagem) : null;
+        setGmdLoteLocal(a && d ? (media - Number(a.peso_medio)) / d : null);
+      } catch { setGmdLoteLocal(null); }
+    }
     setDataFimLocal(dataFim);
     setFinalizando(true);
     const restantes = await flushMaAndCount();
@@ -663,6 +678,9 @@ export default function PecuaristaPesagemExecPage() {
           <Check className="w-8 h-8 mx-auto text-primary" />
           <div className="font-semibold">Pesagem finalizada</div>
           <div className="text-sm text-muted-foreground">{lote.nome_lote} • {contagem} animais</div>
+          {!lote.identificado && gmdLoteLocal != null && (
+            <div className="text-sm font-semibold text-foreground">GMD do lote: {gmdLoteLocal.toFixed(3)} kg/dia</div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{contagem - pesosPend}</p>
