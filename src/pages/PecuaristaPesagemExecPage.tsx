@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -110,12 +111,10 @@ export default function PecuaristaPesagemExecPage() {
       const lotePendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "lotes_pecuarista" && item.op.row.id === loteId);
       const pesagemPendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "pesagens_lote_pecuarista" && item.op.row.id === pesagemId);
       const [{ data: dataServer }, { data: pesServer }] = await Promise.all([
-        lotePendente ? Promise.resolve({ data: null }) : supabase
-          .from("lotes_pecuarista")
+        lotePendente ? Promise.resolve({ data: null }) : maFrom("lotes_pecuarista")
           .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
           .eq("id", loteId).maybeSingle(),
-        pesagemPendente ? Promise.resolve({ data: null }) : supabase
-          .from("pesagens_lote_pecuarista")
+        pesagemPendente ? Promise.resolve({ data: null }) : maFrom("pesagens_lote_pecuarista")
           .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio, data_pesagem")
           .eq("id", pesagemId).maybeSingle(),
       ]);
@@ -144,8 +143,7 @@ export default function PecuaristaPesagemExecPage() {
         if (hi) setHoraInicio(hi);
 
         // leituras de balanção
-        const { data: lsrv } = pesagemPendente ? { data: [] as any[] } : await supabase
-          .from("leituras_balancao_pecuarista")
+        const { data: lsrv } = pesagemPendente ? { data: [] as any[] } : await maFrom("leituras_balancao_pecuarista")
           .select("id, ordem, peso_total, quantidade_animais, peso_individual")
           .eq("pesagem_lote_id", pesagemId);
         const lmap = new Map<string, LeituraBalancao>();
@@ -163,15 +161,14 @@ export default function PecuaristaPesagemExecPage() {
 
         let recuperados = 0;
         if (lt?.identificado) {
-          const { data: psrv } = pesagemPendente ? { data: [] as any[] } : await supabase
-            .from("pesos_animais_pecuarista")
+          const { data: psrv } = pesagemPendente ? { data: [] as any[] } : await maFrom("pesos_animais_pecuarista")
             .select("id, animal_id, peso_kg, gmd_individual, leitura_balancao_id, created_at")
             .eq("pesagem_lote_id", pesagemId)
             .order("created_at");
           const animalIds = [...new Set(((psrv ?? []) as any[]).map((r) => r.animal_id))];
           const numeros = new Map<string, string>();
           if (animalIds.length) {
-            const { data: an } = await supabase.from("animais_pecuarista").select("id, numero").in("id", animalIds);
+            const { data: an } = await maFrom("animais_pecuarista").select("id, numero").in("id", animalIds);
             for (const a of (an ?? []) as any[]) numeros.set(a.id, a.numero);
           }
           const removidos = new Set(
@@ -365,16 +362,14 @@ export default function PecuaristaPesagemExecPage() {
 
   async function buscarAnimalPorNumero(numero: string): Promise<PrevInfo> {
     if (!lote) return { animalId: null, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
-    const { data: an } = await supabase
-      .from("animais_pecuarista")
+    const { data: an } = await maFrom("animais_pecuarista")
       .select("id")
       .eq("pecuarista_id", lote.pecuarista_id)
       .eq("numero", numero)
       .maybeSingle();
     if (!an) return { animalId: null, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
     const animalId = (an as any).id as string;
-    const { data: p } = await supabase
-      .from("pesos_animais_pecuarista")
+    const { data: p } = await maFrom("pesos_animais_pecuarista")
       .select("peso_kg, created_at, pesagem_lote_id, pesagens_lote_pecuarista!inner(data_pesagem, lote_id, lotes_pecuarista!inner(nome_lote))")
       .eq("animal_id", animalId)
       .order("created_at", { ascending: false })
@@ -552,8 +547,7 @@ export default function PecuaristaPesagemExecPage() {
     let dias: number | null = null;
     setFinalizando(true);
     if (!isId) {
-      const { data: ant } = await supabase
-        .from("pesagens_lote_pecuarista")
+      const { data: ant } = await maFrom("pesagens_lote_pecuarista")
         .select("id, data_pesagem, peso_medio")
         .eq("lote_id", lote.id)
         .neq("id", pesagemId)
@@ -571,8 +565,7 @@ export default function PecuaristaPesagemExecPage() {
     }
 
     const horaIniFinal = horaInicio ?? dataFim;
-    const { error } = await supabase
-      .from("pesagens_lote_pecuarista")
+    const { error } = await maFrom("pesagens_lote_pecuarista")
       .update({
         peso_total, quantidade_animais: qtd, peso_medio,
         gmd: gmdLote,
@@ -583,11 +576,11 @@ export default function PecuaristaPesagemExecPage() {
     if (error) { setFinalizando(false); return toast.error("Erro: " + error.message); }
 
     // dados de cabeçalho
-    const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
-    const { data: pc } = await supabase.from("pecuaristas").select("nome, nome_empresa").eq("id", lote.pecuarista_id).maybeSingle();
+    const { data: fz } = await maFrom("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
+    const { data: pc } = await maFrom("pecuaristas").select("nome, nome_empresa").eq("id", lote.pecuarista_id).maybeSingle();
     let categoriaLabel = CATEGORIAS_LABELS[lote.categoria] ?? lote.categoria;
     if (lote.categoria === "customizada" && lote.categoria_customizada_id) {
-      const { data: c } = await supabase.from("categorias_pecuarista").select("nome").eq("id", lote.categoria_customizada_id).maybeSingle();
+      const { data: c } = await maFrom("categorias_pecuarista").select("nome").eq("id", lote.categoria_customizada_id).maybeSingle();
       categoriaLabel = (c as any)?.nome ?? "Personalizada";
     }
 
@@ -631,7 +624,7 @@ export default function PecuaristaPesagemExecPage() {
       if (!upErr) {
         const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
         pdfUrl = pub.publicUrl;
-        await supabase.from("pesagens_lote_pecuarista").update({ pdf_url: pdfUrl }).eq("id", pesagemId);
+        await maFrom("pesagens_lote_pecuarista").update({ pdf_url: pdfUrl }).eq("id", pesagemId);
       }
     } catch (e: any) {
       toast.error("PDF: " + (e?.message ?? ""));

@@ -259,7 +259,7 @@ class OfflineQuery {
   private cols = "*";
   private countOpt = false;
   private head = false;
-  private single: "one" | "maybe" | null = null;
+  private singleMode: "one" | "maybe" | null = null;
   private payload: any = null;
   private returning = false;
 
@@ -301,7 +301,8 @@ class OfflineQuery {
   order(col: string, opts?: { ascending?: boolean }) { this.orders.push({ col, asc: opts?.ascending !== false }); return this; }
   limit(n: number) { this.lim = n; return this; }
   range(a: number, b: number) { this.rangeFrom = a; this.rangeTo = b; return this; }
-  maybeSingle() { this.single = "maybe"; return this; }
+  single() { this.singleMode = "one"; return this; }
+  maybeSingle() { this.singleMode = "maybe"; return this; }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   then(resolve: (v: any) => any, reject?: (e: any) => any) {
     return this.exec().then(resolve, reject);
@@ -312,14 +313,14 @@ class OfflineQuery {
       if (this.mode === "insert" || this.mode === "upsert") {
         const rows = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((r: any) => ({ id: r.id ?? crypto.randomUUID(), ...r }));
         rows.forEach((row: any) => enqueueMa(row.id, { kind: "insert", table: this.table, row }));
-        const data = this.single ? rows[0] : rows;
-        return { data: this.returning || this.single ? data : null, error: null };
+        const data = this.singleMode ? rows[0] : rows;
+        return { data: this.returning || this.singleMode ? data : null, error: null };
       }
       let rows = (await localRows(this.table)).filter((r) => this.filters.every((f) => f(r)));
       if (this.mode === "update") {
         rows.forEach((r) => enqueueMa(r.id, { kind: "update", table: this.table, id: r.id, values: this.payload }));
         const data = rows.map((r) => ({ ...r, ...this.payload }));
-        return { data: this.single ? data[0] ?? null : this.returning ? data : null, error: null };
+        return { data: this.singleMode ? data[0] ?? null : this.returning ? data : null, error: null };
       }
       if (this.mode === "delete") {
         rows.forEach((r) => enqueueMa(r.id, { kind: "delete", table: this.table, id: r.id }));
@@ -340,8 +341,8 @@ class OfflineQuery {
       if (this.rangeFrom != null) rows = rows.slice(this.rangeFrom, (this.rangeTo ?? rows.length) + 1);
       if (this.lim != null) rows = rows.slice(0, this.lim);
       if (this.head) return { data: null, error: null, count };
-      if (this.single) {
-        if (this.single === "one" && rows.length !== 1) return { data: null, error: { message: "Registro não encontrado no aparelho" } };
+      if (this.singleMode) {
+        if (this.singleMode === "one" && rows.length !== 1) return { data: null, error: { message: "Registro não encontrado no aparelho" } };
         return { data: rows[0] ?? null, error: null };
       }
       return { data: rows, error: null, count: this.countOpt ? count : null };
@@ -350,8 +351,6 @@ class OfflineQuery {
     }
   }
 }
-// `single` é palavra usada como campo; expõe o método separadamente.
-(OfflineQuery.prototype as any).single = function (this: any) { this.single = "one"; return this; };
 
 /** Substituto de `supabase.from` nas telas do Mais Arrobas. */
 export const maFrom = ((table: string) => {

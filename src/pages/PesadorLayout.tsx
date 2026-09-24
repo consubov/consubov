@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import PesadorConfigModal from "@/components/PesadorConfigModal";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 
 export default function PesadorLayout() {
   const { signOut, user } = useAuth();
@@ -22,8 +23,7 @@ export default function PesadorLayout() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("pesadores")
+      const { data } = await maFrom("pesadores")
         .select("logo_url, nome_empresa")
         .eq("user_id", user.id)
         .maybeSingle();

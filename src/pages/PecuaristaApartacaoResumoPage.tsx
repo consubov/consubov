@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
@@ -49,16 +50,16 @@ export default function PecuaristaApartacaoResumoPage() {
     if (data) return;
     (async () => {
       if (!apartacaoId) return;
-      const { data: ap } = await supabase.from("apartacoes_pecuarista")
+      const { data: ap } = await maFrom("apartacoes_pecuarista")
         .select("pdf_url, data_apartacao, hora_inicio, hora_fim").eq("id", apartacaoId).maybeSingle();
       setPdfUrl((ap as any)?.pdf_url ?? null);
-      const { data: pesagens } = await supabase.from("pesagens_lote_pecuarista")
+      const { data: pesagens } = await maFrom("pesagens_lote_pecuarista")
         .select("lote_id, quantidade_animais, peso_total, peso_medio, gmd")
         .eq("apartacao_id", apartacaoId);
       const destinos: ApartacaoDestinoSection[] = [];
       let totQ = 0, totP = 0;
       for (const p of (pesagens ?? []) as any[]) {
-        const { data: lote } = await supabase.from("lotes_pecuarista")
+        const { data: lote } = await maFrom("lotes_pecuarista")
           .select("nome_lote, codigo, identificado").eq("id", p.lote_id).maybeSingle();
         destinos.push({
           nome_lote: (lote as any)?.nome_lote ?? "—",

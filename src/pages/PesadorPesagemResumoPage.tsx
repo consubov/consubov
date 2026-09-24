@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -46,8 +47,7 @@ export default function PesadorPesagemResumoPage() {
   useEffect(() => {
     (async () => {
       if (!pesagemId) return;
-      const { data: p } = await supabase
-        .from("pesagens_compra")
+      const { data: p } = await maFrom("pesagens_compra")
         .select(
           "cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, finalizada_at, created_at, pdf_url, valor_total_pago, sem_valores"
         )
@@ -69,8 +69,7 @@ export default function PesadorPesagemResumoPage() {
         setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
         setSemValores(!!(p as any).sem_valores);
         setPdfUrl((p as any).pdf_url ?? null);
-        const { data: c } = await supabase
-          .from("clientes_pesador")
+        const { data: c } = await maFrom("clientes_pesador")
           .select("nome, nome_fazenda, cidade")
           .eq("id", p.cliente_id)
           .maybeSingle();
@@ -78,8 +77,7 @@ export default function PesadorPesagemResumoPage() {
         setClienteFazenda((c?.nome_fazenda as string) ?? "");
         setClienteCidade((c?.cidade as string) ?? "");
       }
-      const { data: ps } = await supabase
-        .from("pesos_pesagem_compra")
+      const { data: ps } = await maFrom("pesos_pesagem_compra")
         .select("ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual")
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
@@ -94,8 +92,7 @@ export default function PesadorPesagemResumoPage() {
         }))
       );
       if (p?.tipo_preco === "misto") {
-        const { data: cats } = await supabase
-          .from("pesagens_compra_categorias")
+        const { data: cats } = await maFrom("pesagens_compra_categorias")
           .select("categoria, tipo_preco, preco_valor")
           .eq("pesagem_id", pesagemId);
         const map: Record<string, { tipo_preco: any; preco_valor: number }> = {};
@@ -104,8 +101,7 @@ export default function PesadorPesagemResumoPage() {
         });
         setCfg((prev) => (prev ? { ...prev, categorias_map: map } : prev));
       }
-      const { data: lts } = await supabase
-        .from("leituras_balancao_pesador")
+      const { data: lts } = await maFrom("leituras_balancao_pesador")
         .select("ordem, peso_total, quantidade_animais, peso_individual")
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
@@ -197,13 +193,12 @@ export default function PesadorPesagemResumoPage() {
     setGenerating(true);
     try {
       // Fetch pesador logo
-      const { data: authUser } = await supabase.auth.getUser();
+      const { data: authUser } = await maGetUser();
       let pesadorLogoUrl: string | null = null;
       let pesadorNomeEmpresa: string | null = null;
       let pesadorNome: string | null = null;
       if (authUser.user) {
-        const { data: pes } = await supabase
-          .from("pesadores")
+        const { data: pes } = await maFrom("pesadores")
           .select("logo_url, nome_empresa, nome")
           .eq("user_id", authUser.user.id)
           .maybeSingle();
@@ -240,7 +235,7 @@ export default function PesadorPesagemResumoPage() {
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
       const url = pub.publicUrl;
-      await supabase.from("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
+      await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
       setPdfUrl(url);
       toast({ title: "PDF gerado com sucesso" });
     } catch (e: any) {

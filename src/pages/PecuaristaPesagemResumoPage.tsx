@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
@@ -58,8 +59,7 @@ export default function PecuaristaPesagemResumoPage() {
   useEffect(() => {
     if (!pesagemId) return;
     (async () => {
-      const { data: ls } = await supabase
-        .from("leituras_balancao_pecuarista")
+      const { data: ls } = await maFrom("leituras_balancao_pecuarista")
         .select("ordem, peso_total, quantidade_animais, peso_individual")
         .eq("pesagem_lote_id", pesagemId)
         .order("ordem", { ascending: true });
@@ -74,14 +74,12 @@ export default function PecuaristaPesagemResumoPage() {
     if (data) return;
     (async () => {
       if (!pesagemId) return;
-      const { data: p } = await supabase
-        .from("pesagens_lote_pecuarista")
+      const { data: p } = await maFrom("pesagens_lote_pecuarista")
         .select("quantidade_animais, peso_total, peso_medio, gmd, pdf_url, lote_id, data_pesagem, hora_inicio, hora_fim")
         .eq("id", pesagemId)
         .maybeSingle();
       if (!p) { setLoading(false); return; }
-      const { data: lote } = await supabase
-        .from("lotes_pecuarista").select("nome_lote, identificado").eq("id", (p as any).lote_id).maybeSingle();
+      const { data: lote } = await maFrom("lotes_pecuarista").select("nome_lote, identificado").eq("id", (p as any).lote_id).maybeSingle();
       setPdfUrl((p as any).pdf_url ?? null);
       setData({
         identificado: !!(lote as any)?.identificado,

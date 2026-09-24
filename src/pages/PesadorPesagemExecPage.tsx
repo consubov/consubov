@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCriticalOperation } from "@/lib/criticalOperations";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -121,8 +122,7 @@ export default function PesadorPesagemExecPage() {
       let p = (pLocal?.op.kind === "insert" ? pLocal.op.row : null) as Pesagem | null;
       let loadError: string | undefined;
       if (!p) {
-        const { data, error } = await supabase
-          .from("pesagens_compra")
+        const { data, error } = await maFrom("pesagens_compra")
           .select("id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, sem_valores, status, tipo_balanca, quantidade_padrao_balancao")
           .eq("id", pesagemId).maybeSingle();
         p = data as Pesagem | null;
@@ -140,8 +140,7 @@ export default function PesadorPesagemExecPage() {
         const locais = fila
           .filter((item) => item.op.kind === "insert" && item.op.table === "pesagens_compra_categorias" && item.op.row.pesagem_id === pesagemId)
           .map((item) => item.op.kind === "insert" ? item.op.row : {});
-        const { data: cats } = pLocal ? { data: [] as any[] } : await supabase
-          .from("pesagens_compra_categorias")
+        const { data: cats } = pLocal ? { data: [] as any[] } : await maFrom("pesagens_compra_categorias")
           .select("id, categoria, tipo_preco, preco_valor")
           .eq("pesagem_id", pesagemId);
         const todas = [...(cats ?? []), ...locais.filter((local) => !(cats ?? []).some((cat: any) => cat.id === local.id))];
@@ -154,8 +153,7 @@ export default function PesadorPesagemExecPage() {
         );
       }
       const clienteLocal = fila.find((item) => item.op.kind === "insert" && item.op.table === "clientes_pesador" && item.op.row.id === p.cliente_id);
-      const { data: c } = clienteLocal ? { data: null } : await supabase
-        .from("clientes_pesador")
+      const { data: c } = clienteLocal ? { data: null } : await maFrom("clientes_pesador")
         .select("nome")
         .eq("id", p.cliente_id)
         .maybeSingle();
@@ -163,8 +161,7 @@ export default function PesadorPesagemExecPage() {
       setClienteNome(nomeCliente);
 
       // ---- Retomada: pesos do servidor + pesos ainda na fila local ----
-      const { data: srv } = pLocal ? { data: [] as any[] } : await supabase
-          .from("pesos_pesagem_compra")
+      const { data: srv } = pLocal ? { data: [] as any[] } : await maFrom("pesos_pesagem_compra")
           .select("id, ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual, leitura_balancao_id")
           .eq("pesagem_id", pesagemId)
           .order("ordem");

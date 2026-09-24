@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ export default function PecuaristaBuscarAnimalPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
+      const { data } = await maFrom("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
       setPecuaristaId((data as any)?.id ?? null);
     })();
   }, [user]);
@@ -38,8 +39,7 @@ export default function PecuaristaBuscarAnimalPage() {
     if (!pecuaristaId || !numero.trim()) return;
     setBuscando(true);
     setHistorico(null); setAnimalFound(null);
-    const { data: an } = await supabase
-      .from("animais_pecuarista")
+    const { data: an } = await maFrom("animais_pecuarista")
       .select("id")
       .eq("pecuarista_id", pecuaristaId)
       .eq("numero", numero.trim())
@@ -50,8 +50,7 @@ export default function PecuaristaBuscarAnimalPage() {
       return;
     }
     setAnimalFound(true);
-    const { data: rows, error } = await supabase
-      .from("pesos_animais_pecuarista")
+    const { data: rows, error } = await maFrom("pesos_animais_pecuarista")
       .select("peso_kg, gmd_individual, created_at, pesagens_lote_pecuarista!inner(data_pesagem, lotes_pecuarista!inner(nome_lote, codigo))")
       .eq("animal_id", (an as any).id)
       .order("created_at", { ascending: true });
