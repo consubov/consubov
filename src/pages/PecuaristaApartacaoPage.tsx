@@ -95,6 +95,7 @@ export default function PecuaristaApartacaoPage() {
   const [lote, setLote] = useState<Lote | null>(null);
   const [customCats, setCustomCats] = useState<CatCustom[]>([]);
   const [lotesFazenda, setLotesFazenda] = useState<LoteExistente[]>([]);
+  const [codigosOcupados, setCodigosOcupados] = useState<string[]>([]);
 
   // Config
   const [qtd, setQtd] = useState<2 | 3>(2);
@@ -135,15 +136,17 @@ export default function PecuaristaApartacaoPage() {
       const lo = l as Lote | null;
       setLote(lo);
       if (lo) {
-        const [{ data: cats }, { data: lotes }] = await Promise.all([
+        const [{ data: cats }, { data: lotes }, { data: codigos }] = await Promise.all([
           supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", lo.pecuarista_id).order("nome"),
           supabase.from("lotes_pecuarista")
             .select("id, nome_lote, codigo, identificado, status")
             .eq("fazenda_id", lo.fazenda_id).neq("id", lo.id).eq("status", "ativo")
             .order("nome_lote"),
+          supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", lo.pecuarista_id),
         ]);
         setCustomCats((cats as CatCustom[]) || []);
         setLotesFazenda(((lotes as LoteExistente[]) || []).filter(x => x.identificado === lo.identificado));
+        setCodigosOcupados((codigos ?? []).map((row: any) => row.codigo));
       }
       setLoading(false);
     })();
@@ -164,11 +167,8 @@ export default function PecuaristaApartacaoPage() {
 
   async function nextCodigo(pecuaristaId: string, usados: Set<string>): Promise<string> {
     if (usados.size === 0) {
-      const [{ data }, pending] = await Promise.all([
-        supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", pecuaristaId),
-        getMaPendingRows("lotes_pecuarista"),
-      ]);
-      (data ?? []).forEach((r: any) => usados.add(r.codigo));
+      const pending = await getMaPendingRows("lotes_pecuarista");
+      codigosOcupados.forEach((codigo) => usados.add(codigo));
       pending.filter((r) => r.pecuarista_id === pecuaristaId).forEach((r) => usados.add(r.codigo));
     }
     const codigo = nextMaLoteCodigo(usados);

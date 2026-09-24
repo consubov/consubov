@@ -59,6 +59,7 @@ export default function PecuaristaFazendaDetalhePage() {
   const [pecuaristaId, setPecuaristaId] = useState<string | null>(null);
   const [fazendaNome, setFazendaNome] = useState("");
   const [lotes, setLotes] = useState<Lote[]>([]);
+  const [codigosOcupados, setCodigosOcupados] = useState<string[]>([]);
   const [customCats, setCustomCats] = useState<CatCustom[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,7 +91,12 @@ export default function PecuaristaFazendaDetalhePage() {
       ]);
       const fazendaLocal = fazendasPendentes.find((row) => row.id === fazendaId);
       setFazendaNome((fz as any)?.nome_fazenda ?? fazendaLocal?.nome_fazenda ?? "");
-      await Promise.all([loadLotes(), loadCats(pid)]);
+      const [, , codigos] = await Promise.all([
+        loadLotes(),
+        loadCats(pid),
+        supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", pid),
+      ]);
+      setCodigosOcupados((codigos.data ?? []).map((row: any) => row.codigo));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, fazendaId, roleData.roleId]);
@@ -153,15 +159,9 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
   async function nextCodigo(pid: string): Promise<string> {
-    const [{ data }, pending] = await Promise.all([
-      supabase
-      .from("lotes_pecuarista")
-      .select("codigo")
-      .eq("pecuarista_id", pid),
-      getMaPendingRows("lotes_pecuarista"),
-    ]);
+    const pending = await getMaPendingRows("lotes_pecuarista");
     const codigos = [
-      ...(data ?? []).map((r: any) => r.codigo),
+      ...codigosOcupados,
       ...pending.filter((r) => r.pecuarista_id === pid).map((r) => r.codigo),
     ];
     return nextMaLoteCodigo(codigos);
@@ -245,6 +245,7 @@ export default function PecuaristaFazendaDetalhePage() {
           encerrado_at: null,
         };
         enqueueMa(loteId, { kind: "insert", table: "lotes_pecuarista", row: novo });
+        setCodigosOcupados((prev) => [...prev, codigo]);
         setLotes((prev) => [{ ...novo, ultima_data: null, ultimo_gmd: null, qtd_animais: null }, ...prev]);
         toast.success(`Lote ${codigo} criado!`);
       }
