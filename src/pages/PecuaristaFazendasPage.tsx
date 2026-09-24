@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Loader2, Search, Landmark, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { enqueueMa, getMaPendingRows, mergeMaRows } from "@/lib/maisArrobasQueue";
 
 interface Fazenda {
   id: string;
@@ -18,7 +19,7 @@ interface Fazenda {
 }
 
 export default function PecuaristaFazendasPage() {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
   const navigate = useNavigate();
   const [pecuaristaId, setPecuaristaId] = useState<string | null>(null);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -31,13 +32,12 @@ export default function PecuaristaFazendasPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: p } = await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
-      const pid = (p as any)?.id ?? null;
+      const pid = roleData.roleId ?? (await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
       setPecuaristaId(pid);
       if (pid) await load(pid);
       else setLoading(false);
     })();
-  }, [user]);
+  }, [user, roleData.roleId]);
 
   async function load(pid: string) {
     setLoading(true);
@@ -46,7 +46,10 @@ export default function PecuaristaFazendasPage() {
       .select("id, nome_fazenda, cidade, uf")
       .eq("pecuarista_id", pid)
       .order("nome_fazenda");
-    setFazendas((data as Fazenda[]) || []);
+    const pending = await getMaPendingRows("fazendas_pecuarista");
+    setFazendas(mergeMaRows((data as Fazenda[]) || [], pending as Fazenda[])
+      .filter((fazenda: any) => fazenda.pecuarista_id === pid)
+      .sort((a, b) => a.nome_fazenda.localeCompare(b.nome_fazenda, "pt-BR")));
     setLoading(false);
   }
 
@@ -59,23 +62,20 @@ export default function PecuaristaFazendasPage() {
     if (!pecuaristaId) return;
     if (!form.nome.trim()) return toast.error("Nome da fazenda é obrigatório");
     setSaving(true);
-    try {
-      const { error } = await supabase.from("fazendas_pecuarista").insert({
-        pecuarista_id: pecuaristaId,
-        nome_fazenda: form.nome.trim(),
-        cidade: form.cidade.trim() || null,
-        uf: form.uf.trim().toUpperCase() || null,
-      });
-      if (error) throw error;
-      toast.success("Fazenda criada!");
-      setDialogOpen(false);
-      setForm({ nome: "", cidade: "", uf: "" });
-      await load(pecuaristaId);
-    } catch (e: any) {
-      toast.error("Erro: " + (e?.message || "desconhecido"));
-    } finally {
-      setSaving(false);
-    }
+    const id = crypto.randomUUID();
+    const nova = {
+      id,
+      pecuarista_id: pecuaristaId,
+      nome_fazenda: form.nome.trim(),
+      cidade: form.cidade.trim() || null,
+      uf: form.uf.trim().toUpperCase() || null,
+    };
+    enqueueMa(id, { kind: "insert", table: "fazendas_pecuarista", row: nova });
+    setFazendas((prev) => [...prev, nova].sort((a, b) => a.nome_fazenda.localeCompare(b.nome_fazenda, "pt-BR")));
+    toast.success("Fazenda criada!");
+    setDialogOpen(false);
+    setForm({ nome: "", cidade: "", uf: "" });
+    setSaving(false);
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;

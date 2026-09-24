@@ -106,17 +106,22 @@ export default function PecuaristaPesagemExecPage() {
   useEffect(() => {
     if (!loteId || !pesagemId) return;
     (async () => {
-      const [{ data }, { data: pes }] = await Promise.all([
-        supabase
+      const fila = await getMaQueueItems();
+      const lotePendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "lotes_pecuarista" && item.op.row.id === loteId);
+      const pesagemPendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "pesagens_lote_pecuarista" && item.op.row.id === pesagemId);
+      const [{ data: dataServer }, { data: pesServer }] = await Promise.all([
+        lotePendente ? Promise.resolve({ data: null }) : supabase
           .from("lotes_pecuarista")
           .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
           .eq("id", loteId).maybeSingle(),
-        supabase
+        pesagemPendente ? Promise.resolve({ data: null }) : supabase
           .from("pesagens_lote_pecuarista")
           .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio, data_pesagem")
           .eq("id", pesagemId).maybeSingle(),
       ]);
-      setLote(data as Lote);
+      const data = (dataServer ?? (lotePendente?.op.kind === "insert" ? lotePendente.op.row : null)) as Lote | null;
+      const pes = pesServer ?? (pesagemPendente?.op.kind === "insert" ? pesagemPendente.op.row : null);
+      setLote(data);
       if ((pes as any)?.data_pesagem) setDataPesagem((pes as any).data_pesagem);
       const tb = ((pes as any)?.tipo_balanca as "individual" | "balancao" | null) ?? "individual";
       setTipoBalanca(tb);
@@ -127,7 +132,6 @@ export default function PecuaristaPesagemExecPage() {
 
       // ---- Retomada: servidor + fila local ----
       try {
-        const fila = await getMaQueueItems();
         const lt = data as Lote | null;
 
         // hora de início
@@ -140,7 +144,7 @@ export default function PecuaristaPesagemExecPage() {
         if (hi) setHoraInicio(hi);
 
         // leituras de balanção
-        const { data: lsrv } = await supabase
+        const { data: lsrv } = pesagemPendente ? { data: [] as any[] } : await supabase
           .from("leituras_balancao_pecuarista")
           .select("id, ordem, peso_total, quantidade_animais, peso_individual")
           .eq("pesagem_lote_id", pesagemId);
@@ -159,7 +163,7 @@ export default function PecuaristaPesagemExecPage() {
 
         let recuperados = 0;
         if (lt?.identificado) {
-          const { data: psrv } = await supabase
+          const { data: psrv } = pesagemPendente ? { data: [] as any[] } : await supabase
             .from("pesos_animais_pecuarista")
             .select("id, animal_id, peso_kg, gmd_individual, leitura_balancao_id, created_at")
             .eq("pesagem_lote_id", pesagemId)

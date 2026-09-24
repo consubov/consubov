@@ -19,6 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { z } from "zod";
+import { enqueueMa, getMaPendingRows, mergeMaRows } from "@/lib/maisArrobasQueue";
 
 type Cliente = {
   id: string;
@@ -65,11 +66,14 @@ export default function PesadorClientesPage() {
       .select("*")
       .eq("pesador_id", pesadorId)
       .order("nome", { ascending: true });
-    if (error) {
+    const pending = await getMaPendingRows("clientes_pesador");
+    if (error && pending.length === 0) {
       toast({ title: "Erro ao carregar clientes", description: error.message, variant: "destructive" });
-    } else {
-      setClientes((data ?? []) as Cliente[]);
     }
+    const merged = mergeMaRows((data ?? []) as Cliente[], pending as Cliente[])
+      .filter((cliente) => cliente.pesador_id === pesadorId)
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    setClientes(merged);
     setLoading(false);
   }
 
@@ -119,25 +123,28 @@ export default function PesadorClientesPage() {
       telefone: parsed.data.telefone?.trim() || null,
     };
 
-    let error;
     if (editing) {
-      ({ error } = await supabase
+      const { error } = await supabase
         .from("clientes_pesador")
         .update(payload)
         .eq("id", editing.id)
-        .eq("pesador_id", pesadorId));
+        .eq("pesador_id", pesadorId);
+      setSaving(false);
+      if (error) {
+        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Cliente atualizado" });
     } else {
-      ({ error } = await supabase.from("clientes_pesador").insert(payload));
+      const id = crypto.randomUUID();
+      const novo: Cliente = { id, ...payload, created_at: new Date().toISOString() };
+      enqueueMa(id, { kind: "insert", table: "clientes_pesador", row: novo });
+      setClientes((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      setSaving(false);
+      toast({ title: "Cliente criado" });
     }
-    setSaving(false);
-
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: editing ? "Cliente atualizado" : "Cliente criado" });
     setModalOpen(false);
-    void loadClientes();
+    if (editing) void loadClientes();
   }
 
   async function handleDelete() {
