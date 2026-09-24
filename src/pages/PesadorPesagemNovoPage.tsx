@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { enqueueMa, getMaPendingRows } from "@/lib/maisArrobasQueue";
 
 const CATEGORIAS: { label: string; value: string }[] = [
   { label: "Boi Gordo", value: "boi_gordo" },
@@ -100,16 +101,19 @@ export default function PesadorPesagemNovoPage() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
+      const [{ data, error }, pending] = await Promise.all([
+        supabase
         .from("clientes_pesador")
         .select("id, nome, nome_fazenda, cidade")
         .eq("id", clienteId)
-        .maybeSingle();
-      if (error) {
+        .maybeSingle(),
+        getMaPendingRows("clientes_pesador"),
+      ]);
+      const local = pending.find((row) => row.id === clienteId) as Cliente | undefined;
+      if (error && !local) {
         toast({ title: "Erro ao carregar cliente", description: error.message, variant: "destructive" });
-      } else {
-        setCliente(data as Cliente | null);
       }
+      setCliente((data as Cliente | null) ?? local ?? null);
       setLoading(false);
     })();
   }, [clienteId]);
@@ -228,36 +232,26 @@ export default function PesadorPesagemNovoPage() {
     payload.tipo_balanca = tipoBalanca;
     payload.quantidade_padrao_balancao = isBalancao ? qtdBalancao : null;
 
-    const { data, error } = await supabase
-      .from("pesagens_compra")
-      .insert(payload)
-      .select("id")
-      .single();
-    if (error || !data) {
-      setSaving(false);
-      toast({ title: "Erro ao iniciar pesagem", description: error?.message, variant: "destructive" });
-      return;
-    }
+    const pesagemId = crypto.randomUUID();
+    enqueueMa(pesagemId, {
+      kind: "insert",
+      table: "pesagens_compra",
+      row: { id: pesagemId, ...payload },
+    });
 
     if (!isRotina && isAleatoria) {
       const rows = Object.entries(categoriasMistas).map(([cat, cfg]) => ({
-        pesagem_id: data.id,
+        id: crypto.randomUUID(),
+        pesagem_id: pesagemId,
         categoria: cat,
         tipo_preco: cfg.tipo_preco,
         preco_valor: parseNum(cfg.preco_valor),
       }));
-      const { error: catErr } = await supabase
-        .from("pesagens_compra_categorias")
-        .insert(rows);
-      if (catErr) {
-        setSaving(false);
-        toast({ title: "Erro ao salvar categorias", description: catErr.message, variant: "destructive" });
-        return;
-      }
+      rows.forEach((row) => enqueueMa(row.id, { kind: "insert", table: "pesagens_compra_categorias", row }));
     }
 
     setSaving(false);
-    navigate(`/pesador/pesagem/${data.id}`);
+    navigate(`/pesador/pesagem/${pesagemId}`);
   }
 
   if (loading) {

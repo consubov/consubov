@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, Loader2, ArrowLeft, Archive, ChevronRight, Pencil, Trash2, Search, Users, Settings } from "lucide-react";
 import { toast } from "sonner";
 import FazendaPecuaristaConfigModal from "@/components/FazendaPecuaristaConfigModal";
+import { enqueueMa, getMaPendingRows, mergeMaRows, nextMaLoteCodigo } from "@/lib/maisArrobasQueue";
 
 function extractStoragePath(url: string, bucket: string): string | null {
   const marker = `/${bucket}/`;
@@ -53,7 +54,7 @@ interface CatCustom { id: string; nome: string; }
 
 export default function PecuaristaFazendaDetalhePage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
   const navigate = useNavigate();
   const [pecuaristaId, setPecuaristaId] = useState<string | null>(null);
   const [fazendaNome, setFazendaNome] = useState("");
@@ -80,16 +81,19 @@ export default function PecuaristaFazendaDetalhePage() {
   useEffect(() => {
     if (!user || !fazendaId) return;
     (async () => {
-      const { data: p } = await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
-      const pid = (p as any)?.id ?? null;
+      const pid = roleData.roleId ?? (await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
       setPecuaristaId(pid);
       if (!pid) { setLoading(false); return; }
-      const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda").eq("id", fazendaId).maybeSingle();
-      setFazendaNome((fz as any)?.nome_fazenda ?? "");
+      const [{ data: fz }, fazendasPendentes] = await Promise.all([
+        supabase.from("fazendas_pecuarista").select("nome_fazenda").eq("id", fazendaId).maybeSingle(),
+        getMaPendingRows("fazendas_pecuarista"),
+      ]);
+      const fazendaLocal = fazendasPendentes.find((row) => row.id === fazendaId);
+      setFazendaNome((fz as any)?.nome_fazenda ?? fazendaLocal?.nome_fazenda ?? "");
       await Promise.all([loadLotes(), loadCats(pid)]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, fazendaId]);
+  }, [user, fazendaId, roleData.roleId]);
 
   async function loadLotes() {
     if (!fazendaId) return;
@@ -99,7 +103,9 @@ export default function PecuaristaFazendaDetalhePage() {
       .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status, encerrado_at")
       .eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false });
-    const base = (data as Lote[]) || [];
+    const pending = await getMaPendingRows("lotes_pecuarista");
+    const base = mergeMaRows((data as Lote[]) || [], pending as Lote[])
+      .filter((lote: any) => lote.fazenda_id === fazendaId);
     // fetch last pesagem por lote
     const ids = base.map((l) => l.id);
     let mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
@@ -130,8 +136,13 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
   async function loadCats(pid: string) {
-    const { data } = await supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid).order("nome");
-    setCustomCats((data as CatCustom[]) || []);
+    const [{ data }, pending] = await Promise.all([
+      supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid).order("nome"),
+      getMaPendingRows("categorias_pecuarista"),
+    ]);
+    setCustomCats(mergeMaRows((data as CatCustom[]) || [], pending as CatCustom[])
+      .filter((cat: any) => cat.pecuarista_id === pid)
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
   }
 
   function labelCategoria(l: Lote) {
@@ -142,16 +153,18 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
   async function nextCodigo(pid: string): Promise<string> {
-    const { data } = await supabase
+    const [{ data }, pending] = await Promise.all([
+      supabase
       .from("lotes_pecuarista")
       .select("codigo")
-      .eq("pecuarista_id", pid);
-    const usados = new Set((data ?? []).map((r: any) => r.codigo));
-    for (let i = 1; i <= 999; i++) {
-      const c = String(i).padStart(3, "0");
-      if (!usados.has(c)) return c;
-    }
-    throw new Error("Limite de 999 lotes atingido");
+      .eq("pecuarista_id", pid),
+      getMaPendingRows("lotes_pecuarista"),
+    ]);
+    const codigos = [
+      ...(data ?? []).map((r: any) => r.codigo),
+      ...pending.filter((r) => r.pecuarista_id === pid).map((r) => r.codigo),
+    ];
+    return nextMaLoteCodigo(codigos);
   }
 
   function resetForm() {
@@ -195,14 +208,10 @@ export default function PecuaristaFazendaDetalhePage() {
       if (form.criandoNova) {
         const nomeNova = form.novaCategoria.trim();
         if (!nomeNova) throw new Error("Informe o nome da nova categoria");
-        const { data: cat, error: e1 } = await supabase
-          .from("categorias_pecuarista")
-          .insert({ pecuarista_id: pecuaristaId, nome: nomeNova })
-          .select("id")
-          .single();
-        if (e1) throw e1;
+        const categoriaId = crypto.randomUUID();
+        enqueueMa(categoriaId, { kind: "insert", table: "categorias_pecuarista", row: { id: categoriaId, pecuarista_id: pecuaristaId, nome: nomeNova } });
         categoria = "customizada";
-        categoria_customizada_id = (cat as any).id;
+        categoria_customizada_id = categoriaId;
       } else if (form.categoriaSlug === "customizada") {
         if (!form.categoriaCustomizadaId) throw new Error("Selecione uma categoria personalizada");
         categoria_customizada_id = form.categoriaCustomizadaId;
@@ -222,7 +231,9 @@ export default function PecuaristaFazendaDetalhePage() {
         toast.success("Lote atualizado!");
       } else {
         const codigo = await nextCodigo(pecuaristaId);
-        const { error } = await supabase.from("lotes_pecuarista").insert({
+        const loteId = crypto.randomUUID();
+        const novo = {
+          id: loteId,
           pecuarista_id: pecuaristaId,
           fazenda_id: fazendaId,
           nome_lote: form.nome.trim(),
@@ -231,13 +242,16 @@ export default function PecuaristaFazendaDetalhePage() {
           categoria_customizada_id,
           identificado: form.identificado === "sim",
           status: "ativo",
-        });
-        if (error) throw error;
+          encerrado_at: null,
+        };
+        enqueueMa(loteId, { kind: "insert", table: "lotes_pecuarista", row: novo });
+        setLotes((prev) => [{ ...novo, ultima_data: null, ultimo_gmd: null, qtd_animais: null }, ...prev]);
         toast.success(`Lote ${codigo} criado!`);
       }
       setDialogOpen(false);
       resetForm();
-      await Promise.all([loadLotes(), loadCats(pecuaristaId)]);
+      if (editingId) await Promise.all([loadLotes(), loadCats(pecuaristaId)]);
+      else void loadCats(pecuaristaId);
     } catch (e: any) {
       toast.error("Erro: " + (e?.message || "desconhecido"));
     } finally {

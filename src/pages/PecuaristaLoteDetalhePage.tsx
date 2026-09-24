@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { dataLocalSP } from "@/lib/diasCalendario";
 import { dataEscolhidaParaIso } from "@/lib/pecuaristaData";
+import { enqueueMa, getMaPendingRows } from "@/lib/maisArrobasQueue";
 
 const CATEGORIAS_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
@@ -52,14 +53,21 @@ export default function PecuaristaLoteDetalhePage() {
   useEffect(() => {
     if (!loteId) return;
     (async () => {
-      const { data: l } = await supabase
+      const [{ data: l }, pendingLotes] = await Promise.all([
+        supabase
         .from("lotes_pecuarista")
         .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status")
-        .eq("id", loteId).maybeSingle();
-      setLote(l as Lote);
-      if ((l as any)?.categoria === "customizada" && (l as any)?.categoria_customizada_id) {
-        const { data: c } = await supabase.from("categorias_pecuarista").select("nome").eq("id", (l as any).categoria_customizada_id).maybeSingle();
-        setCatNome((c as any)?.nome ?? "Personalizada");
+        .eq("id", loteId).maybeSingle(),
+        getMaPendingRows("lotes_pecuarista"),
+      ]);
+      const loteAtual = (l as Lote | null) ?? pendingLotes.find((row) => row.id === loteId) as Lote | undefined ?? null;
+      setLote(loteAtual);
+      if (loteAtual?.categoria === "customizada" && loteAtual.categoria_customizada_id) {
+        const [{ data: c }, pendingCats] = await Promise.all([
+          supabase.from("categorias_pecuarista").select("nome").eq("id", loteAtual.categoria_customizada_id).maybeSingle(),
+          getMaPendingRows("categorias_pecuarista"),
+        ]);
+        setCatNome((c as any)?.nome ?? pendingCats.find((row) => row.id === loteAtual.categoria_customizada_id)?.nome ?? "Personalizada");
       }
       const { data: p } = await supabase
         .from("pesagens_lote_pecuarista")
@@ -76,20 +84,21 @@ export default function PecuaristaLoteDetalhePage() {
   async function iniciarPesagem() {
     if (!loteId) return;
     setIniciando(true);
-    const { data, error } = await supabase
-      .from("pesagens_lote_pecuarista")
-      .insert({
+    const pesagemId = crypto.randomUUID();
+    enqueueMa(pesagemId, {
+      kind: "insert",
+      table: "pesagens_lote_pecuarista",
+      row: {
+        id: pesagemId,
         lote_id: loteId,
         data_pesagem: dataEscolhidaParaIso(dataEscolhida),
         peso_total: 0, quantidade_animais: 0, peso_medio: 0,
         tipo_balanca: tipoBalanca,
         quantidade_padrao_balancao: tipoBalanca === "balancao" ? qtdBalancao : null,
-      })
-      .select("id")
-      .single();
+      },
+    });
     setIniciando(false);
-    if (error || !data) return toast.error("Erro: " + (error?.message ?? "desconhecido"));
-    navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${(data as any).id}`);
+    navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${pesagemId}`);
   }
 
   if (loading || !lote) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;

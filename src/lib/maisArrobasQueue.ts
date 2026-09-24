@@ -280,6 +280,33 @@ export async function getMaQueueItems(): Promise<MaQueueItem[]> {
   return [...memQueue];
 }
 
+/** Retorna inserts locais ainda pendentes de uma tabela, em ordem FIFO. */
+export async function getMaPendingRows(table: string): Promise<Record<string, any>[]> {
+  const items = await getMaQueueItems();
+  return items
+    .filter((item) => item.op.kind === "insert" && item.op.table === table)
+    .map((item) => (item.op.kind === "insert" ? { ...item.op.row } : {}));
+}
+
+/** Combina registros confirmados com inserts locais sem duplicar UUIDs. */
+export function mergeMaRows<T extends { id: string }>(serverRows: T[], pendingRows: Record<string, any>[]): T[] {
+  const byId = new Map(serverRows.map((row) => [row.id, row]));
+  for (const row of pendingRows) {
+    if (typeof row.id === "string" && !byId.has(row.id)) byId.set(row.id, row as T);
+  }
+  return [...byId.values()];
+}
+
+/** Próximo código de lote considerando servidor e lotes ainda no aparelho. */
+export function nextMaLoteCodigo(codigos: Iterable<string>): string {
+  const usados = new Set(codigos);
+  for (let i = 1; i <= 999; i++) {
+    const codigo = String(i).padStart(3, "0");
+    if (!usados.has(codigo)) return codigo;
+  }
+  throw new Error("Limite de 999 lotes atingido");
+}
+
 export function getMaSnapshot() {
   return {
     pendingRefIds: new Set(memQueue.map((i) => i.refId)),
