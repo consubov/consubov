@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
+import { getMaSnapshot } from "@/lib/maisArrobasQueue";
 import {
   baixarDadosOffline, getMaOfflineState, sincronizarOffline, subscribeMaOffline, type MaPerfil,
 } from "@/lib/maOffline";
@@ -35,7 +36,7 @@ export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
     try {
       const restantes = await sincronizarOffline();
       if (restantes > 0) {
-        const detail = useMaisArrobasSync.getState?.lastError;
+        const detail = getMaSnapshot().lastError;
         toast.error(detail ? `Não foi possível enviar: ${detail}` : `${restantes} envio(s) ainda pendente(s).`);
       }
       else {

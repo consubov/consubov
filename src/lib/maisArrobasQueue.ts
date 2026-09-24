@@ -277,7 +277,8 @@ function isDuplicateLoteCode(err: any, op: MaOp) {
  */
 async function repairDuplicateLoteCode(item: MaQueueItem): Promise<boolean> {
   if (item.op.kind !== "insert" || item.op.table !== "lotes_pecuarista") return false;
-  const pecuaristaId = item.op.row.pecuarista_id;
+  const op = item.op;
+  const pecuaristaId = op.row.pecuarista_id;
   if (typeof pecuaristaId !== "string") return false;
 
   const sb = supabase as any;
@@ -286,7 +287,7 @@ async function repairDuplicateLoteCode(item: MaQueueItem): Promise<boolean> {
   ) as any;
   if (error) throw error;
 
-  const alreadySaved = (data ?? []).some((row: any) => row.id === item.op.kind && row.id === item.op.row.id);
+  const alreadySaved = (data ?? []).some((row: any) => row.id === op.row.id);
   if (alreadySaved) return true;
 
   const used = new Set<string>((data ?? []).map((row: any) => String(row.codigo)));
@@ -301,7 +302,7 @@ async function repairDuplicateLoteCode(item: MaQueueItem): Promise<boolean> {
   const nextCode = nextMaLoteCodigo(used);
   const repaired: MaQueueItem = {
     ...item,
-    op: { ...item.op, row: { ...item.op.row, codigo: nextCode } },
+    op: { ...op, row: { ...op.row, codigo: nextCode } },
     lastError: undefined,
   };
   memQueue = memQueue.map((queued) => queued.id === item.id ? repaired : queued);
