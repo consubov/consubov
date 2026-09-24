@@ -43,23 +43,29 @@ export default function Login() {
           </div>
         </CardHeader>
         <CardContent className="pt-4 pb-8 px-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" method="post" action="#" autoComplete="on">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                inputMode="email"
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <PasswordInput
                 id="password"
+                name="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
