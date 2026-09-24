@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, Scale, Search, Split } from "lucide-react";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { dataLocalSP } from "@/lib/diasCalendario";
+import { dataEscolhidaParaIso } from "@/lib/pecuaristaData";
 
 const CATEGORIAS_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
@@ -34,6 +37,17 @@ export default function PecuaristaLoteDetalhePage() {
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
   const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
+  const hojeSP = dataLocalSP(new Date());
+  const [dataEscolhida, setDataEscolhida] = useState<string>(hojeSP);
+  const [avisoData, setAvisoData] = useState<null | "simples" | "apartacao">(null);
+
+  function seguir(acao: "simples" | "apartacao", confirmado = false) {
+    if (!dataEscolhida || dataEscolhida > hojeSP) return toast.error("Escolha uma data de hoje ou anterior.");
+    if (!confirmado && ultima && dataEscolhida < dataLocalSP(ultima.data_pesagem)) { setAvisoData(acao); return; }
+    setChoiceOpen(false);
+    if (acao === "simples") void iniciarPesagem();
+    else navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao?data=${dataEscolhida}`);
+  }
 
   useEffect(() => {
     if (!loteId) return;
@@ -66,7 +80,7 @@ export default function PecuaristaLoteDetalhePage() {
       .from("pesagens_lote_pecuarista")
       .insert({
         lote_id: loteId,
-        data_pesagem: new Date().toISOString(),
+        data_pesagem: dataEscolhidaParaIso(dataEscolhida),
         peso_total: 0, quantidade_animais: 0, peso_medio: 0,
         tipo_balanca: tipoBalanca,
         quantidade_padrao_balancao: tipoBalanca === "balancao" ? qtdBalancao : null,
@@ -123,6 +137,16 @@ export default function PecuaristaLoteDetalhePage() {
           </DialogHeader>
           <div className="grid gap-3 overflow-y-auto p-4">
             <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
+              <label className="text-xs font-medium text-muted-foreground">Data da pesagem</label>
+              <input
+                type="date"
+                value={dataEscolhida}
+                max={hojeSP}
+                onChange={(e) => setDataEscolhida(e.target.value)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
+              />
+            </div>
+            <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
               <label className="text-xs font-medium text-muted-foreground">Tipo de balança</label>
               <select
                 value={tipoBalanca}
@@ -149,7 +173,7 @@ export default function PecuaristaLoteDetalhePage() {
               size="lg"
               className="h-auto min-h-16 justify-start bg-primary hover:bg-primary/90 py-3 whitespace-normal"
               disabled={iniciando}
-              onClick={() => { setChoiceOpen(false); void iniciarPesagem(); }}
+              onClick={() => seguir("simples")}
             >
               {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin shrink-0" /> : <Scale className="w-5 h-5 mr-2 shrink-0" />}
               <div className="text-left min-w-0">
@@ -161,7 +185,7 @@ export default function PecuaristaLoteDetalhePage() {
               size="lg"
               variant="outline"
               className="h-auto min-h-16 justify-start py-3 whitespace-normal"
-              onClick={() => { setChoiceOpen(false); navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao`); }}
+              onClick={() => seguir("apartacao")}
             >
               <Split className="w-5 h-5 mr-2 shrink-0" />
               <div className="text-left min-w-0">
@@ -172,6 +196,21 @@ export default function PecuaristaLoteDetalhePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!avisoData} onOpenChange={(o) => !o && setAvisoData(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Data anterior à última pesagem</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa data é anterior à última pesagem registrada em {ultima ? new Date(ultima.data_pesagem).toLocaleDateString("pt-BR") : ""}. O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const a = avisoData; setAvisoData(null); if (a) seguir(a, true); }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

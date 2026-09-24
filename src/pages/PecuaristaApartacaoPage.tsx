@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { dataEscolhidaParaIso, diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
+import { dataLocalSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,13 +82,12 @@ type PrevInfo = {
   peso_anterior_kg: number | null; data_anterior: string | null; lote_anterior: string | null;
 };
 
-function daysBetween(a: string, b: string): number {
-  return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
-}
-
 export default function PecuaristaApartacaoPage() {
   const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // "Data da pesagem" escolhida no início (?data=YYYY-MM-DD); base oficial de data e GMD.
+  const [dataPesagem] = useState<string>(() => dataEscolhidaParaIso(searchParams.get("data") ?? ""));
 
   const [phase, setPhase] = useState<"config" | "weighing">("config");
   const [loading, setLoading] = useState(true);
@@ -202,7 +203,7 @@ export default function PecuaristaApartacaoPage() {
         lote_origem_id: lote.id,
         pecuarista_id: lote.pecuarista_id,
         quantidade_lotes_destino: qtd,
-        data_apartacao: new Date().toISOString(),
+        data_apartacao: dataPesagem,
       }).select("id").single();
       if (eAp || !apRow) throw eAp ?? new Error("Falha ao criar apartação");
       const apId = (apRow as any).id as string;
@@ -302,11 +303,11 @@ export default function PecuaristaApartacaoPage() {
     const animalId = (an as any).id as string;
     const { data: p } = await supabase
       .from("pesos_animais_pecuarista")
-      .select("peso_kg, created_at, pesagens_lote_pecuarista!inner(data_pesagem, lote_id, lotes_pecuarista!inner(nome_lote))")
+      .select("peso_kg, created_at, pesagem_lote_id, pesagens_lote_pecuarista!inner(data_pesagem, lote_id, lotes_pecuarista!inner(nome_lote))")
       .eq("animal_id", animalId)
       .order("created_at", { ascending: false })
-      .limit(1);
-    const row = ((p as any[]) ?? [])[0];
+      .limit(100);
+    const row: any = escolherPesoAnterior(((p as any[]) ?? []), dataPesagem);
     if (!row) return { animalId, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
     return {
       animalId,
@@ -348,8 +349,8 @@ export default function PecuaristaApartacaoPage() {
     const agora = new Date().toISOString();
     let gmd: number | null = null, dias: number | null = null;
     if (prev.peso_anterior_kg != null && prev.data_anterior) {
-      dias = daysBetween(prev.data_anterior, agora);
-      gmd = (peso - prev.peso_anterior_kg) / dias;
+      dias = diasEntrePesagens(prev.data_anterior, dataPesagem);
+      if (dias) gmd = (peso - prev.peso_anterior_kg) / dias;
     }
     setLinhasId(prev2 => [...prev2, {
       animal_id: prev.animalId ?? "",
@@ -412,22 +413,23 @@ export default function PecuaristaApartacaoPage() {
           .eq("lote_id", d.lote_id)
           .gt("quantidade_animais", 0)
           .order("data_pesagem", { ascending: false })
-          .limit(1);
-        const a = ((ant as any[]) ?? [])[0];
+          .limit(100);
+        const a = ((ant as any[]) ?? []).find((x) => dataLocalSP(x.data_pesagem) < dataLocalSP(dataPesagem));
         let gmdLote: number | null = null, dias: number | null = null, mediaAnt: number | null = null, dataAnt: string | null = null;
         if (a) {
           mediaAnt = Number(a.peso_medio);
           dataAnt = a.data_pesagem;
-          dias = daysBetween(dataAnt!, dataFim);
-          gmdLote = (peso_medio - mediaAnt) / dias;
+          dias = diasEntrePesagens(dataAnt!, dataPesagem);
+          if (dias) gmdLote = (peso_medio - mediaAnt) / dias;
         }
 
         // cria pesagem do destino
         const { data: pRow, error: eP } = await supabase.from("pesagens_lote_pecuarista").insert({
           lote_id: d.lote_id,
           apartacao_id: apartacaoId,
-          data_pesagem: dataFim,
+          data_pesagem: dataPesagem,
           hora_inicio: horaIniFinal,
+          hora_fim: dataFim,
           peso_total, quantidade_animais: qtd, peso_medio,
           gmd: gmdLote,
         }).select("id").single();
@@ -461,7 +463,7 @@ export default function PecuaristaApartacaoPage() {
             });
             if (ePe) throw ePe;
             identificadosOut.push({
-              numero: l.numero, peso_kg: l.peso_kg, data: l.data,
+              numero: l.numero, peso_kg: l.peso_kg, data: dataPesagem,
               peso_anterior_kg: l.peso_anterior_kg, data_anterior: l.data_anterior,
               lote_anterior: l.lote_anterior, gmd_individual: l.gmd_individual, dias: l.dias,
             });
@@ -499,8 +501,9 @@ export default function PecuaristaApartacaoPage() {
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
           categoria: categoriaLabel, identificado: lote.identificado,
-          data: dataFim,
+          data: dataPesagem,
           horaInicio: horaIniFinal,
+          horaFim: dataFim,
         },
         totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
         destinos: secoes,
@@ -514,11 +517,11 @@ export default function PecuaristaApartacaoPage() {
           const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
           pdfUrl = pub.publicUrl;
           await supabase.from("apartacoes_pecuarista")
-            .update({ pdf_url: pdfUrl, data_apartacao: dataFim, hora_inicio: horaIniFinal })
+            .update({ pdf_url: pdfUrl, hora_fim: dataFim, hora_inicio: horaIniFinal })
             .eq("id", apartacaoId);
         } else {
           await supabase.from("apartacoes_pecuarista")
-            .update({ data_apartacao: dataFim, hora_inicio: horaIniFinal })
+            .update({ hora_fim: dataFim, hora_inicio: horaIniFinal })
             .eq("id", apartacaoId);
         }
       } catch { /* segue mesmo sem PDF */ }
@@ -528,7 +531,8 @@ export default function PecuaristaApartacaoPage() {
           pdfUrl: pdfUrl ?? undefined,
           totalGeral: { quantidade: totalGeralQtd, peso_total: totalGeralPeso },
           destinos: secoes,
-          dataFim,
+          dataFim: dataPesagem,
+          horaFim: dataFim,
           horaInicio: horaIniFinal,
         },
       });
@@ -556,6 +560,7 @@ export default function PecuaristaApartacaoPage() {
             {lote.nome_lote} <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
             <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
           </div>
+          <div className="text-sm text-muted-foreground">Data da pesagem: <strong>{new Date(dataPesagem).toLocaleDateString("pt-BR")}</strong></div>
         </Card>
 
         <Card className="p-4 space-y-2">

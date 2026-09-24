@@ -22,6 +22,7 @@ type NavState = {
   semId?: PecuaristaPesoSemId[];
   loteNome?: string;
   dataFim?: string | null;
+  horaFim?: string | null;
   horaInicio?: string | null;
 };
 
@@ -75,7 +76,7 @@ export default function PecuaristaPesagemResumoPage() {
       if (!pesagemId) return;
       const { data: p } = await supabase
         .from("pesagens_lote_pecuarista")
-        .select("quantidade_animais, peso_total, peso_medio, gmd, pdf_url, lote_id, data_pesagem, hora_inicio")
+        .select("quantidade_animais, peso_total, peso_medio, gmd, pdf_url, lote_id, data_pesagem, hora_inicio, hora_fim")
         .eq("id", pesagemId)
         .maybeSingle();
       if (!p) { setLoading(false); return; }
@@ -91,6 +92,7 @@ export default function PecuaristaPesagemResumoPage() {
         gmd: (p as any).gmd != null ? Number((p as any).gmd) : null,
         pdfUrl: (p as any).pdf_url ?? undefined,
         dataFim: (p as any).data_pesagem ?? null,
+        horaFim: (p as any).hora_fim ?? null,
         horaInicio: (p as any).hora_inicio ?? null,
       });
       setLoading(false);
@@ -131,8 +133,8 @@ export default function PecuaristaPesagemResumoPage() {
         {fmtDataLinha(data.dataFim) && (
           <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
         )}
-        {fmtHorarioLinha(data.dataFim, data.horaInicio) && (
-          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.dataFim, data.horaInicio)}</div>
+        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio)}</div>
         )}
       </Card>
 

@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Check, CloudOff, Loader2, Scale, Undo2, History } from "lucide-react";
 import { enqueueMa, undoMa, flushMaAndCount, getMaQueueItems } from "@/lib/maisArrobasQueue";
 import { setPesagemAtiva, clearPesagemAtiva, loadLinhasSem, saveLinhasSem } from "@/lib/maisArrobasResume";
+import { diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
+import { dataLocalSP } from "@/lib/diasCalendario";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
 import { gerarPecuaristaLotePdf, type PecuaristaPesoIdentificado, type PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
 
@@ -52,11 +54,6 @@ type PrevInfo = {
   lote_anterior: string | null;
 };
 
-function daysBetween(a: string, b: string): number {
-  const ms = new Date(b).getTime() - new Date(a).getTime();
-  return Math.max(1, Math.round(ms / 86400000));
-}
-
 export default function PecuaristaPesagemExecPage() {
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();
@@ -80,6 +77,8 @@ export default function PecuaristaPesagemExecPage() {
   const [pesoSem, setPesoSem] = useState("");
 
   const [horaInicio, setHoraInicio] = useState<string | null>(null);
+  // "Data da pesagem" escolhida ao abrir a pesagem — base oficial de data e GMD.
+  const [dataPesagem, setDataPesagem] = useState<string>(new Date().toISOString());
 
   // Balanção
   const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
@@ -114,10 +113,11 @@ export default function PecuaristaPesagemExecPage() {
           .eq("id", loteId).maybeSingle(),
         supabase
           .from("pesagens_lote_pecuarista")
-          .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio")
+          .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio, data_pesagem")
           .eq("id", pesagemId).maybeSingle(),
       ]);
       setLote(data as Lote);
+      if ((pes as any)?.data_pesagem) setDataPesagem((pes as any).data_pesagem);
       const tb = ((pes as any)?.tipo_balanca as "individual" | "balancao" | null) ?? "individual";
       setTipoBalanca(tb);
       const q = Number((pes as any)?.quantidade_padrao_balancao ?? 2);
@@ -219,10 +219,10 @@ export default function PecuaristaPesagemExecPage() {
         }
 
         const fimNaFila = fila.find(
-          (i) => i.op.kind === "update" && i.op.table === "pesagens_lote_pecuarista" && i.op.id === pesagemId && i.op.values?.data_pesagem,
+          (i) => i.op.kind === "update" && i.op.table === "pesagens_lote_pecuarista" && i.op.id === pesagemId && (i.op.values?.hora_fim || i.op.values?.data_pesagem),
         );
         if (fimNaFila && fimNaFila.op.kind === "update") {
-          setDataFimLocal(fimNaFila.op.values.data_pesagem);
+          setDataFimLocal(fimNaFila.op.values.hora_fim ?? fimNaFila.op.values.data_pesagem);
           clearPesagemAtiva(pesagemId);
         } else if (lt) {
           setPesagemAtiva({
@@ -374,8 +374,8 @@ export default function PecuaristaPesagemExecPage() {
       .select("peso_kg, created_at, pesagem_lote_id, pesagens_lote_pecuarista!inner(data_pesagem, lote_id, lotes_pecuarista!inner(nome_lote))")
       .eq("animal_id", animalId)
       .order("created_at", { ascending: false })
-      .limit(1);
-    const row = ((p as any[]) ?? [])[0];
+      .limit(100);
+    const row: any = escolherPesoAnterior(((p as any[]) ?? []), dataPesagem, pesagemId);
     if (!row) return { animalId, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
     return {
       animalId,
@@ -420,8 +420,8 @@ export default function PecuaristaPesagemExecPage() {
     let gmd: number | null = null;
     let dias: number | null = null;
     if (prev.peso_anterior_kg != null && prev.data_anterior) {
-      dias = daysBetween(prev.data_anterior, agora);
-      gmd = (peso - prev.peso_anterior_kg) / dias;
+      dias = diasEntrePesagens(prev.data_anterior, dataPesagem);
+      if (dias) gmd = (peso - prev.peso_anterior_kg) / dias;
     }
 
     const pesoRowId = crypto.randomUUID();
@@ -507,7 +507,7 @@ export default function PecuaristaPesagemExecPage() {
       id: pesagemId,
       values: {
         peso_total, quantidade_animais: qtd, peso_medio: peso_total / qtd,
-        data_pesagem: dataFim,
+        hora_fim: dataFim,
         hora_inicio: horaInicio ?? dataFim,
       },
     });
@@ -555,13 +555,14 @@ export default function PecuaristaPesagemExecPage() {
         .neq("id", pesagemId)
         .gt("quantidade_animais", 0)
         .order("data_pesagem", { ascending: false })
-        .limit(1);
-      const a = ((ant as any[]) ?? [])[0];
+        .limit(100);
+      const diaAtual = dataLocalSP(dataPesagem);
+      const a = ((ant as any[]) ?? []).find((x) => dataLocalSP(x.data_pesagem) < diaAtual);
       if (a) {
         mediaAnterior = Number(a.peso_medio);
         dataAnterior = a.data_pesagem;
-        dias = daysBetween(dataAnterior!, dataFim);
-        gmdLote = (peso_medio - mediaAnterior) / dias;
+        dias = diasEntrePesagens(dataAnterior!, dataPesagem);
+        if (dias) gmdLote = (peso_medio - mediaAnterior) / dias;
       }
     }
 
@@ -571,7 +572,7 @@ export default function PecuaristaPesagemExecPage() {
       .update({
         peso_total, quantidade_animais: qtd, peso_medio,
         gmd: gmdLote,
-        data_pesagem: dataFim,
+        hora_fim: dataFim,
         hora_inicio: horaIniFinal,
       })
       .eq("id", pesagemId);
@@ -588,7 +589,7 @@ export default function PecuaristaPesagemExecPage() {
 
     let pdfUrl: string | null = null;
     const identificados: PecuaristaPesoIdentificado[] = linhasId.map((l) => ({
-      numero: l.numero, peso_kg: l.peso_kg, data: l.data,
+      numero: l.numero, peso_kg: l.peso_kg, data: dataPesagem,
       peso_anterior_kg: l.peso_anterior_kg, data_anterior: l.data_anterior,
       lote_anterior: l.lote_anterior, gmd_individual: l.gmd_individual, dias: l.dias,
     }));
@@ -604,8 +605,9 @@ export default function PecuaristaPesagemExecPage() {
           cidade: (fz as any)?.cidade ?? null,
           lote: lote.nome_lote, codigoLote: lote.codigo,
           categoria: categoriaLabel, identificado: isId,
-          data: dataFim,
+          data: dataPesagem,
           horaInicio: horaIniFinal,
+          horaFim: dataFim,
         },
         totais: {
           quantidade: qtd, peso_total, peso_medio,
@@ -641,7 +643,8 @@ export default function PecuaristaPesagemExecPage() {
         dias, gmd: gmdLote,
         identificados: isId ? identificados : undefined,
         semId: !isId ? semId : undefined,
-        dataFim,
+        dataFim: dataPesagem,
+        horaFim: dataFim,
         horaInicio: horaIniFinal,
       },
     });

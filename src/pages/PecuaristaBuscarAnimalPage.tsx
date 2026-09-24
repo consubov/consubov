@@ -64,6 +64,7 @@ export default function PecuaristaBuscarAnimalPage() {
       lote_nome: r.pesagens_lote_pecuarista?.lotes_pecuarista?.nome_lote ?? "—",
       lote_codigo: r.pesagens_lote_pecuarista?.lotes_pecuarista?.codigo ?? "",
     }));
+    list.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
     setHistorico(list);
   }
 
