@@ -343,25 +343,25 @@ export default function PesadorPesagemExecPage() {
   }
 
 
+  /** Registros desta pesagem ainda na fila local (pesos, leituras e o fechamento). */
+  function pendentesDaPesagem() {
+    const ids = new Set<string>();
+    for (const p of pesos) {
+      if (syncSnap.pendingRefIds.has(p.id)) ids.add(p.id);
+      if (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id)) ids.add(p.leitura_balancao_id);
+    }
+    if (pesagem && syncSnap.pendingRefIds.has(pesagem.id)) ids.add(pesagem.id);
+    return ids.size;
+  }
+
   async function handleFinalizar() {
     if (!pesagem || pesos.length === 0) {
       toast({ title: "Nenhum peso registrado", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const restantes = await flushMaAndCount();
-    if (restantes > 0) {
-      setSaving(false);
-      toast({
-        title: "Pesos aguardando envio",
-        description: `${restantes} registro(s) ainda não chegaram ao servidor. Os dados estão salvos no aparelho — tente finalizar quando a internet melhorar.`,
-        variant: "destructive",
-      });
-      return;
-    }
     let valorTotal: number | null = null;
     if (!semValores) {
-      const { calcularAnimais, totalizar } = await import("@/lib/pesagemCompra");
       const categoriasMap: Record<string, { tipo_preco: any; preco_valor: number }> = {};
       for (const c of categoriasLote) {
         categoriasMap[c.categoria] = { tipo_preco: c.tipo_preco, preco_valor: c.preco_valor };
@@ -379,17 +379,35 @@ export default function PesadorPesagemExecPage() {
       const totals = totalizar(calcularAnimais(cfg, pesos as any));
       valorTotal = totals.totalValor;
     }
-    const { error } = await supabase
-      .from("pesagens_compra")
-      .update({
+    // Fechamento vai para a mesma fila local — funciona offline.
+    enqueueMa(pesagem.id, {
+      kind: "update",
+      table: "pesagens_compra",
+      id: pesagem.id,
+      values: {
         status: "finalizada",
         finalizada_at: new Date().toISOString(),
         valor_total_pago: valorTotal,
-      })
-      .eq("id", pesagem.id);
+      },
+    });
+    setFinalizadoLocal(true);
     setSaving(false);
-    if (error) {
-      toast({ title: "Erro ao finalizar", description: error.message, variant: "destructive" });
+    // Se a internet ajudar, segue direto para o resumo como antes.
+    const restantes = await flushMaAndCount();
+    if (restantes === 0) navigate(`/pesador/pesagem/${pesagem.id}/resumo`);
+  }
+
+  async function handleIrParaPdf() {
+    if (!pesagem) return;
+    setSaving(true);
+    const restantes = await flushMaAndCount();
+    setSaving(false);
+    if (restantes > 0) {
+      toast({
+        title: "PDF ainda não disponível",
+        description: `Aguardando sincronizar ${restantes} registro(s) antes de gerar o PDF. Tente de novo quando a internet voltar.`,
+        variant: "destructive",
+      });
       return;
     }
     navigate(`/pesador/pesagem/${pesagem.id}/resumo`);
