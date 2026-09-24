@@ -106,7 +106,8 @@ export default function PecuaristaPesagemExecPage() {
   useEffect(() => {
     if (!loteId || !pesagemId) return;
     (async () => {
-      const [{ data }, { data: pes }] = await Promise.all([
+      const fila = await getMaQueueItems();
+      const [{ data: dataServer }, { data: pesServer }] = await Promise.all([
         supabase
           .from("lotes_pecuarista")
           .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id")
@@ -116,7 +117,11 @@ export default function PecuaristaPesagemExecPage() {
           .select("tipo_balanca, quantidade_padrao_balancao, hora_inicio, data_pesagem")
           .eq("id", pesagemId).maybeSingle(),
       ]);
-      setLote(data as Lote);
+      const lotePendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "lotes_pecuarista" && item.op.row.id === loteId);
+      const pesagemPendente = fila.find((item) => item.op.kind === "insert" && item.op.table === "pesagens_lote_pecuarista" && item.op.row.id === pesagemId);
+      const data = (dataServer ?? (lotePendente?.op.kind === "insert" ? lotePendente.op.row : null)) as Lote | null;
+      const pes = pesServer ?? (pesagemPendente?.op.kind === "insert" ? pesagemPendente.op.row : null);
+      setLote(data);
       if ((pes as any)?.data_pesagem) setDataPesagem((pes as any).data_pesagem);
       const tb = ((pes as any)?.tipo_balanca as "individual" | "balancao" | null) ?? "individual";
       setTipoBalanca(tb);
@@ -127,7 +132,6 @@ export default function PecuaristaPesagemExecPage() {
 
       // ---- Retomada: servidor + fila local ----
       try {
-        const fila = await getMaQueueItems();
         const lt = data as Lote | null;
 
         // hora de início

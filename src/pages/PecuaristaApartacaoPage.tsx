@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Check, Loader2, Scale, Split, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { gerarPecuaristaApartacaoPdf, type ApartacaoDestinoSection, type PecuaristaPesoIdentificado, type PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
+import { enqueueMa, getMaPendingRows, nextMaLoteCodigo } from "@/lib/maisArrobasQueue";
 
 const CATEGORIAS_PADRAO: Array<{ slug: string; label: string }> = [
   { slug: "boi_gordo", label: "Boi Gordo" },
@@ -163,14 +164,16 @@ export default function PecuaristaApartacaoPage() {
 
   async function nextCodigo(pecuaristaId: string, usados: Set<string>): Promise<string> {
     if (usados.size === 0) {
-      const { data } = await supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", pecuaristaId);
+      const [{ data }, pending] = await Promise.all([
+        supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", pecuaristaId),
+        getMaPendingRows("lotes_pecuarista"),
+      ]);
       (data ?? []).forEach((r: any) => usados.add(r.codigo));
+      pending.filter((r) => r.pecuarista_id === pecuaristaId).forEach((r) => usados.add(r.codigo));
     }
-    for (let i = 1; i <= 999; i++) {
-      const c = String(i).padStart(3, "0");
-      if (!usados.has(c)) { usados.add(c); return c; }
-    }
-    throw new Error("Limite de 999 lotes atingido");
+    const codigo = nextMaLoteCodigo(usados);
+    usados.add(codigo);
+    return codigo;
   }
 
   async function preparar() {
@@ -198,15 +201,13 @@ export default function PecuaristaApartacaoPage() {
     }
     setPreparando(true);
     try {
-      // create apartacao
-      const { data: apRow, error: eAp } = await supabase.from("apartacoes_pecuarista").insert({
-        lote_origem_id: lote.id,
-        pecuarista_id: lote.pecuarista_id,
-        quantidade_lotes_destino: qtd,
-        data_apartacao: dataPesagem,
-      }).select("id").single();
-      if (eAp || !apRow) throw eAp ?? new Error("Falha ao criar apartação");
-      const apId = (apRow as any).id as string;
+      // A apartação recebe UUID local para que seus lotes e destinos possam
+      // manter as chaves estrangeiras em ordem mesmo sem rede.
+      const apId = crypto.randomUUID();
+      enqueueMa(apId, { kind: "insert", table: "apartacoes_pecuarista", row: {
+        id: apId, lote_origem_id: lote.id, pecuarista_id: lote.pecuarista_id,
+        quantidade_lotes_destino: qtd, data_apartacao: dataPesagem,
+      } });
 
       const usadosCod = new Set<string>();
       const destinosFeitos: Destino[] = [];
@@ -224,16 +225,19 @@ export default function PecuaristaApartacaoPage() {
           let categoria = c.categoriaSlug;
           let categoria_customizada_id: string | null = null;
           if (c.criandoNova) {
-            const { data: cat, error: e1 } = await supabase.from("categorias_pecuarista")
-              .insert({ pecuarista_id: lote.pecuarista_id, nome: c.novaCategoria.trim() }).select("id").single();
-            if (e1) throw e1;
+            const categoriaId = crypto.randomUUID();
+            enqueueMa(categoriaId, { kind: "insert", table: "categorias_pecuarista", row: {
+              id: categoriaId, pecuarista_id: lote.pecuarista_id, nome: c.novaCategoria.trim(),
+            } });
             categoria = "customizada";
-            categoria_customizada_id = (cat as any).id;
+            categoria_customizada_id = categoriaId;
           } else if (c.categoriaSlug === "customizada") {
             categoria_customizada_id = c.categoriaCustomId;
           }
           const cod = await nextCodigo(lote.pecuarista_id, usadosCod);
-          const { data: novo, error: e2 } = await supabase.from("lotes_pecuarista").insert({
+          const novoId = crypto.randomUUID();
+          const novo = {
+            id: novoId,
             pecuarista_id: lote.pecuarista_id,
             fazenda_id: lote.fazenda_id,
             nome_lote: c.nome.trim(),
@@ -242,24 +246,25 @@ export default function PecuaristaApartacaoPage() {
             categoria_customizada_id,
             identificado: lote.identificado,
             status: "ativo",
-          }).select("id, nome_lote, codigo").single();
-          if (e2) throw e2;
-          destLote = { id: (novo as any).id, nome_lote: (novo as any).nome_lote, codigo: (novo as any).codigo, identificado: lote.identificado };
+          };
+          enqueueMa(novoId, { kind: "insert", table: "lotes_pecuarista", row: novo });
+          destLote = { id: novoId, nome_lote: novo.nome_lote, codigo: novo.codigo, identificado: lote.identificado };
         }
 
         // apartacao_destinos_pecuarista: faixa de peso por destino
         const r = ranges[i];
-        const { data: destRow, error: eDest } = await supabase.from("apartacao_destinos_pecuarista").insert({
+        const destinoId = crypto.randomUUID();
+        enqueueMa(destinoId, { kind: "insert", table: "apartacao_destinos_pecuarista", row: {
+          id: destinoId,
           apartacao_id: apId,
           lote_destino_id: destLote.id,
           peso_min: r.min,
           peso_max: r.max,
           ordem: i + 1,
-        }).select("id").single();
-        if (eDest || !destRow) throw eDest ?? new Error("Falha ao gravar destino");
+        } });
 
         destinosFeitos.push({
-          id: (destRow as any).id,
+          id: destinoId,
           lote_id: destLote.id,
           nome_lote: destLote.nome_lote,
           codigo: destLote.codigo,
