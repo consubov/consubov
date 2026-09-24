@@ -28,6 +28,7 @@ const CATEGORIA_LABELS: Record<string, string> = {
 };
 
 export default function PesadorPesagemResumoPage() {
+  useMaOffline(); // re-renderiza quando o Modo Offline desliga sozinho
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
