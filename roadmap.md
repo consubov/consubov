@@ -7,3 +7,4 @@
 - [x] Telas de destino reconhecem registros ainda pendentes.
 - [x] Tipos e testes focados validados.
 - [x] Fase B: Modo Offline (cache completo), Sincronizar com desativação automática, PDF oculto offline, indicador de pendências.
+- [x] Fase C: GMD offline (animal e lote) pelo cache + recálculo no servidor ao sincronizar.

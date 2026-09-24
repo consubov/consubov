@@ -13,6 +13,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMa, flushMaAndCount, getMaQueueItems, type MaQueueItem } from "@/lib/maisArrobasQueue";
+import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
 
 export type MaPerfil = "pesador" | "pecuarista";
 
@@ -149,8 +150,12 @@ export async function baixarDadosOffline(perfil: MaPerfil) {
  */
 export async function sincronizarOffline(): Promise<number> {
   if (!navigator.onLine) throw new Error("Sem internet. Conecte-se para sincronizar.");
+  const alvosGmd = state.perfil === "pecuarista" ? coletarAlvosGmd(await getMaQueueItems()) : null;
   const restantes = await flushMaAndCount();
   if (restantes > 0) return restantes;
+  if (alvosGmd) {
+    try { await recalcularGmdServidor(alvosGmd); } catch (e) { console.warn("[maOffline] recálculo de GMD falhou", e); }
+  }
   if (state.perfil) await downloadTables(state.perfil);
   setState({ active: false, downloadedAt: new Date().toISOString() });
   return 0;
