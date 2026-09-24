@@ -8,6 +8,7 @@ import { Check, CloudOff, Loader2, Scale, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { enqueueMa, undoMa, flushMaAndCount } from "@/lib/maisArrobasQueue";
 import { useMaisArrobasSync } from "@/hooks/useMaisArrobasSync";
+import { calcularAnimais, totalizar } from "@/lib/pesagemCompra";
 
 type Pesagem = {
   id: string;
@@ -90,6 +91,7 @@ export default function PesadorPesagemExecPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
+  const [finalizadoLocal, setFinalizadoLocal] = useState(false);
 
   const [pesagem, setPesagem] = useState<Pesagem | null>(null);
   const [clienteNome, setClienteNome] = useState<string>("");
@@ -432,6 +434,49 @@ export default function PesadorPesagemExecPage() {
     : "misto";
 
   const animalNum = pesos.length + 1;
+
+  if (finalizadoLocal) {
+    const pend = pendentesDaPesagem();
+    const pesosPend = pesos.filter(
+      (p) => syncSnap.pendingRefIds.has(p.id) || (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id)),
+    ).length;
+    return (
+      <div className="space-y-4 pb-28">
+        <div className="rounded-lg border bg-card p-4 space-y-3 text-center">
+          <Check className="w-8 h-8 mx-auto text-primary" />
+          <div className="font-semibold">Pesagem finalizada</div>
+          <div className="text-sm text-muted-foreground">{clienteNome} • {pesos.length} animais</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary">{pesos.length - pesosPend}</p>
+              <p className="text-xs text-muted-foreground">confirmados no servidor</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
+                {pesosPend > 0 && <CloudOff className="w-5 h-5" />}{pesosPend}
+              </p>
+              <p className="text-xs text-muted-foreground">pendentes de envio</p>
+            </div>
+          </div>
+          {pend > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Os dados estão salvos no aparelho e serão enviados automaticamente quando a internet voltar.
+              O PDF fica disponível depois que tudo for sincronizado.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Tudo sincronizado. O PDF já pode ser gerado.</p>
+          )}
+        </div>
+        <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/pesador/clientes")}>Voltar</Button>
+          <Button className="flex-1" onClick={() => void handleIrParaPdf()} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-28">
