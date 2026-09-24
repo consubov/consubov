@@ -393,3 +393,24 @@ if (typeof window !== "undefined") {
     lastPending = count;
   });
 }
+
+// ---------- exclusão local (usado só pela exclusão de lote do Pecuarista) ----------
+/** Retrato do cache local (tabela → linhas). */
+export async function getMaCacheTables(): Promise<Map<string, Record<string, any>[]>> {
+  await loadMem();
+  return new Map(mem);
+}
+
+/** Remove do cache local as linhas cujo id esteja no conjunto. */
+export async function removeMaCachedIds(ids: Set<string>) {
+  if (ids.size === 0) return;
+  await loadMem();
+  const db = await getDb();
+  for (const [t, rows] of mem) {
+    const filtradas = rows.filter((r) => !ids.has(String(r?.id)));
+    if (filtradas.length !== rows.length) {
+      mem.set(t, filtradas);
+      await db.put(STORE, filtradas, t);
+    }
+  }
+}

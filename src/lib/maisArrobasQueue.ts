@@ -430,3 +430,38 @@ if (typeof window !== "undefined") {
     if (memQueue.length) scheduleFlush(1000);
   });
 }
+
+// ---------- exclusão local (usado só pela exclusão de lote do Pecuarista) ----------
+/** Item atualmente em envio (não pode ser cancelado). */
+export function getMaProcessingId() { return flushing; }
+
+/** Remove da fila itens que ainda não estão em envio e casam com o filtro. */
+export async function removeMaQueueItemsWhere(pred: (item: MaQueueItem) => boolean) {
+  await ensureLoaded();
+  const remover = memQueue.filter((i) => !isProcessing(i.id) && pred(i));
+  if (remover.length === 0) return 0;
+  memQueue = memQueue.filter((i) => !remover.includes(i));
+  await Promise.all(remover.map((i) => persistDelete(i.id)));
+  emit();
+  return remover.length;
+}
+
+/** Todas as confirmações locais (qualquer tabela). */
+export async function getAllMaAcknowledged(): Promise<Array<{ table: string; row: Record<string, any> }>> {
+  const db = await getDb();
+  return ((await db.getAll(ACK_STORE)) as MaAcknowledgedInsert[]) ?? [];
+}
+
+/** Apaga confirmações locais cujo id esteja no conjunto. */
+export async function removeMaAcknowledgedIds(ids: Set<string>) {
+  if (ids.size === 0) return;
+  const db = await getDb();
+  const tx = db.transaction(ACK_STORE, "readwrite");
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    const item = cursor.value as MaAcknowledgedInsert;
+    if (ids.has(String(item.row?.id))) await cursor.delete();
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+}
