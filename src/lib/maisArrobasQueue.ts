@@ -274,6 +274,12 @@ export async function flushMaAndCount(): Promise<number> {
   return memQueue.length;
 }
 
+/** Leitura (somente) dos itens da fila, já carregados do aparelho. */
+export async function getMaQueueItems(): Promise<MaQueueItem[]> {
+  await ensureLoaded();
+  return [...memQueue];
+}
+
 export function getMaSnapshot() {
   return {
     pendingRefIds: new Set(memQueue.map((i) => i.refId)),
