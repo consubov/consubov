@@ -89,6 +89,7 @@ function Chip({
 export default function PesadorPesagemExecPage() {
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
+  const syncSnap = useMaisArrobasSync();
 
   const [pesagem, setPesagem] = useState<Pesagem | null>(null);
   const [clienteNome, setClienteNome] = useState<string>("");
