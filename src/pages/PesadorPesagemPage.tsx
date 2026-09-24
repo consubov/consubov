@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Loader2, FileDown, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { downloadPdfFromUrl } from "@/lib/downloadPdf";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -112,6 +113,14 @@ export default function PesadorPesagemPage() {
     }
   }
 
+  async function handleDownloadPdf(url: string, pesagemId: string) {
+    try {
+      await downloadPdfFromUrl(url, `pesagem-${pesagemId}.pdf`, { allowRemoteFallback: false });
+    } catch {
+      toast.error("Não foi possível baixar o PDF. Tente novamente.");
+    }
+  }
+
   const items = useMemo(() => {
     return pesagens.map((p) => ({
       ...p,
@@ -187,13 +196,15 @@ export default function PesadorPesagemPage() {
                       </Link>
                     ))}
                     {p.pdf_url && (
-                      <button
+                      <Button
                         type="button"
-                        onClick={() => void downloadPdfFromUrl(p.pdf_url!, `pesagem-${p.id}.pdf`)}
-                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handleDownloadPdf(p.pdf_url, p.id)}
+                        className="h-7 px-2 text-xs text-muted-foreground"
                       >
-                        <FileDown className="w-3 h-3" /> PDF
-                      </button>
+                        <FileDown className="w-3.5 h-3.5 mr-1" /> Baixar PDF
+                      </Button>
                     )}
                     <button
                       type="button"

@@ -240,8 +240,8 @@ export default function PesadorPesagemResumoPage() {
       await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
       setPdfUrl(url);
       toast({ title: "PDF gerado com sucesso" });
-    } catch (e: any) {
-      toast({ title: "Erro ao gerar PDF", description: e.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Erro ao gerar PDF", description: "Tente novamente.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -265,7 +265,21 @@ export default function PesadorPesagemResumoPage() {
       if (e?.name === "AbortError") return;
     }
     // Sem compartilhamento de arquivo: baixa o PDF (nunca expõe a URL técnica).
-    await downloadPdfFromUrl(pdfUrl, fileName);
+    try {
+      await downloadPdfFromUrl(pdfUrl, fileName, { allowRemoteFallback: false });
+    } catch {
+      toast({ title: "Não foi possível baixar o PDF", description: "Tente novamente.", variant: "destructive" });
+    }
+  }
+
+  async function handleDownload() {
+    if (!pdfUrl) return;
+    const fileName = `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`;
+    try {
+      await downloadPdfFromUrl(pdfUrl, fileName, { allowRemoteFallback: false });
+    } catch {
+      toast({ title: "Não foi possível baixar o PDF", description: "Tente novamente.", variant: "destructive" });
+    }
   }
 
   return (
@@ -409,7 +423,7 @@ export default function PesadorPesagemResumoPage() {
             <Button
               variant="outline"
               className="h-11"
-              onClick={() => void downloadPdfFromUrl(pdfUrl!, `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`)}
+              onClick={() => void handleDownload()}
             >
               <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
             </Button>
