@@ -1,3 +1,4 @@
+import { reloadWhenAuthIdle } from "@/lib/authIdle";
 import { useEffect, useState } from "react";
 import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export function UpdateBanner() {
       // SW já se atualizou — basta recarregar buscando bypass do cache
       const url = new URL(window.location.href);
       url.searchParams.set("__v", String(Date.now()));
-      window.location.replace(url.toString());
+      reloadWhenAuthIdle(() => window.location.replace(url.toString()));
     }
   };
 

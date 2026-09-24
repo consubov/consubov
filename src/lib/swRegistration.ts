@@ -1,3 +1,4 @@
+import { reloadWhenAuthIdle } from "@/lib/authIdle";
 import { useEffect, useState, useCallback } from "react";
 import { hasCriticalOperations, onCriticalOperationsDrained } from "./criticalOperations";
 
@@ -74,7 +75,7 @@ function hardReloadToLatest(version = lastKnownRemoteVersion) {
   reloadingForUpdate = true;
   setForcedReloadCount(version, reloadCount + 1);
   logSw("Reload após update", version);
-  window.location.replace(buildReloadUrl(version));
+  reloadWhenAuthIdle(() => window.location.replace(buildReloadUrl(version)));
 }
 
 function explicitUpdateReload(updateToken = Date.now().toString()) {
@@ -92,7 +93,7 @@ function explicitUpdateReload(updateToken = Date.now().toString()) {
   url.searchParams.delete("_update");
   url.searchParams.set("__v", updateToken);
   logSw("Executando reload obrigatório do clique", url.toString());
-  window.location.replace(url.toString());
+  reloadWhenAuthIdle(() => window.location.replace(url.toString()));
 }
 
 function scheduleExplicitUpdateFallback(updateToken?: string) {
@@ -527,7 +528,7 @@ export function useSWUpdate() {
     await clearAppCaches();
     const regs = await navigator.serviceWorker?.getRegistrations();
     if (regs) await Promise.all(regs.map((r) => r.unregister()));
-    window.location.reload();
+    reloadWhenAuthIdle(() => window.location.reload());
   }, []);
 
   return { updateAvailable, applyUpdate, forceRefresh };

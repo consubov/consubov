@@ -1,3 +1,4 @@
+import { reloadWhenAuthIdle } from "./lib/authIdle";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -45,7 +46,7 @@ async function recoverFromChunkError() {
   } catch {
     /* ignore */
   }
-  window.location.reload();
+  reloadWhenAuthIdle(() => window.location.reload());
 }
 
 function installChunkErrorRecovery() {
