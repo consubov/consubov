@@ -101,19 +101,22 @@ export default function PesadorPesagemNovoPage() {
         setLoading(false);
         return;
       }
-      const [{ data, error }, pending] = await Promise.all([
-        supabase
+      const pending = await getMaPendingRows("clientes_pesador");
+      const local = pending.find((row) => row.id === clienteId) as Cliente | undefined;
+      if (local) {
+        setCliente(local);
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
         .from("clientes_pesador")
         .select("id, nome, nome_fazenda, cidade")
         .eq("id", clienteId)
-        .maybeSingle(),
-        getMaPendingRows("clientes_pesador"),
-      ]);
-      const local = pending.find((row) => row.id === clienteId) as Cliente | undefined;
-      if (error && !local) {
+        .maybeSingle();
+      if (error) {
         toast({ title: "Erro ao carregar cliente", description: error.message, variant: "destructive" });
       }
-      setCliente((data as Cliente | null) ?? local ?? null);
+      setCliente(data as Cliente | null);
       setLoading(false);
     })();
   }, [clienteId]);

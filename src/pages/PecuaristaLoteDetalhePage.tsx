@@ -53,14 +53,13 @@ export default function PecuaristaLoteDetalhePage() {
   useEffect(() => {
     if (!loteId) return;
     (async () => {
-      const [{ data: l }, pendingLotes] = await Promise.all([
-        supabase
+      const pendingLotes = await getMaPendingRows("lotes_pecuarista");
+      const loteLocal = pendingLotes.find((row) => row.id === loteId) as Lote | undefined;
+      const { data: l } = loteLocal ? { data: null } : await supabase
         .from("lotes_pecuarista")
         .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status")
-        .eq("id", loteId).maybeSingle(),
-        getMaPendingRows("lotes_pecuarista"),
-      ]);
-      const loteAtual = (l as Lote | null) ?? pendingLotes.find((row) => row.id === loteId) as Lote | undefined ?? null;
+        .eq("id", loteId).maybeSingle();
+      const loteAtual = (l as Lote | null) ?? loteLocal ?? null;
       setLote(loteAtual);
       if (loteAtual?.categoria === "customizada" && loteAtual.categoria_customizada_id) {
         const [{ data: c }, pendingCats] = await Promise.all([
@@ -69,7 +68,7 @@ export default function PecuaristaLoteDetalhePage() {
         ]);
         setCatNome((c as any)?.nome ?? pendingCats.find((row) => row.id === loteAtual.categoria_customizada_id)?.nome ?? "Personalizada");
       }
-      const { data: p } = await supabase
+      const { data: p } = loteLocal ? { data: [] as any[] } : await supabase
         .from("pesagens_lote_pecuarista")
         .select("id, data_pesagem, peso_medio, quantidade_animais, gmd")
         .eq("lote_id", loteId)

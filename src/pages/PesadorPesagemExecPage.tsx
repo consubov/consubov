@@ -117,14 +117,19 @@ export default function PesadorPesagemExecPage() {
     (async () => {
       if (!pesagemId) return;
       const fila = await getMaQueueItems();
-      const { data: pServer, error } = await supabase
-        .from("pesagens_compra")
-        .select("id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, sem_valores, status, tipo_balanca, quantidade_padrao_balancao")
-        .eq("id", pesagemId).maybeSingle();
       const pLocal = fila.find((item) => item.op.kind === "insert" && item.op.table === "pesagens_compra" && item.op.row.id === pesagemId);
-      const p = (pServer ?? (pLocal?.op.kind === "insert" ? pLocal.op.row : null)) as Pesagem | null;
-      if (error || !p) {
-        toast({ title: "Pesagem não encontrada", description: error?.message, variant: "destructive" });
+      let p = (pLocal?.op.kind === "insert" ? pLocal.op.row : null) as Pesagem | null;
+      let loadError: string | undefined;
+      if (!p) {
+        const { data, error } = await supabase
+          .from("pesagens_compra")
+          .select("id, cliente_id, categoria, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, sem_valores, status, tipo_balanca, quantidade_padrao_balancao")
+          .eq("id", pesagemId).maybeSingle();
+        p = data as Pesagem | null;
+        loadError = error?.message;
+      }
+      if (!p) {
+        toast({ title: "Pesagem não encontrada", description: loadError, variant: "destructive" });
         navigate("/pesador/clientes");
         return;
       }
@@ -132,13 +137,13 @@ export default function PesadorPesagemExecPage() {
       const qDef = (p as any).quantidade_padrao_balancao;
       if (qDef && qDef >= 2 && qDef <= 5) setQtdBalancaoAtual(qDef);
       if ((p as Pesagem).tipo_preco === "misto") {
-        const { data: cats } = await supabase
-          .from("pesagens_compra_categorias")
-          .select("categoria, tipo_preco, preco_valor")
-          .eq("pesagem_id", pesagemId);
         const locais = fila
           .filter((item) => item.op.kind === "insert" && item.op.table === "pesagens_compra_categorias" && item.op.row.pesagem_id === pesagemId)
           .map((item) => item.op.kind === "insert" ? item.op.row : {});
+        const { data: cats } = pLocal ? { data: [] as any[] } : await supabase
+          .from("pesagens_compra_categorias")
+          .select("id, categoria, tipo_preco, preco_valor")
+          .eq("pesagem_id", pesagemId);
         const todas = [...(cats ?? []), ...locais.filter((local) => !(cats ?? []).some((cat: any) => cat.id === local.id))];
         setCategoriasLote(
           todas.map((r: any) => ({
@@ -148,21 +153,21 @@ export default function PesadorPesagemExecPage() {
           }))
         );
       }
-      const { data: c } = await supabase
+      const clienteLocal = fila.find((item) => item.op.kind === "insert" && item.op.table === "clientes_pesador" && item.op.row.id === p.cliente_id);
+      const { data: c } = clienteLocal ? { data: null } : await supabase
         .from("clientes_pesador")
         .select("nome")
-        .eq("id", (p as Pesagem).cliente_id)
+        .eq("id", p.cliente_id)
         .maybeSingle();
-      const clienteLocal = fila.find((item) => item.op.kind === "insert" && item.op.table === "clientes_pesador" && item.op.row.id === p.cliente_id);
-      const nomeCliente = (c?.nome as string) ?? (clienteLocal?.op.kind === "insert" ? String(clienteLocal.op.row.nome ?? "") : "");
+      const nomeCliente = (c?.nome as string | undefined) ?? (clienteLocal?.op.kind === "insert" ? String(clienteLocal.op.row.nome ?? "") : "");
       setClienteNome(nomeCliente);
 
       // ---- Retomada: pesos do servidor + pesos ainda na fila local ----
-      const { data: srv } = await supabase
-        .from("pesos_pesagem_compra")
-        .select("id, ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual, leitura_balancao_id")
-        .eq("pesagem_id", pesagemId)
-        .order("ordem");
+      const { data: srv } = pLocal ? { data: [] as any[] } : await supabase
+          .from("pesos_pesagem_compra")
+          .select("id, ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual, leitura_balancao_id")
+          .eq("pesagem_id", pesagemId)
+          .order("ordem");
       const removidos = new Set(
         fila.filter((i) => i.op.kind === "delete" && i.op.table === "pesos_pesagem_compra").map((i) => i.refId),
       );
