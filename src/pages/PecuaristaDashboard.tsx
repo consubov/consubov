@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
+import { ModoOfflinePanel } from "@/components/maisarrobas/ModoOfflinePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -65,17 +67,17 @@ export default function PecuaristaDashboard() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await maGetUser();
       if (!user) { setLoading(false); return; }
-      const { data: p } = await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
+      const { data: p } = await maFrom("pecuaristas").select("id").eq("user_id", user.id).maybeSingle();
       if (!p) { setLoading(false); return; }
       const pid = (p as any).id as string;
       setPecuaristaId(pid);
 
       const [fz, lts, cats] = await Promise.all([
-        supabase.from("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid).order("nome_fazenda"),
-        supabase.from("lotes_pecuarista").select("id, fazenda_id, categoria, categoria_customizada_id, status, identificado").eq("pecuarista_id", pid),
-        supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
+        maFrom("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid).order("nome_fazenda"),
+        maFrom("lotes_pecuarista").select("id, fazenda_id, categoria, categoria_customizada_id, status, identificado").eq("pecuarista_id", pid),
+        maFrom("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
       ]);
       setFazendas((fz.data ?? []) as any);
       setLotes(((lts.data ?? []) as any) as Lote[]);
@@ -85,8 +87,7 @@ export default function PecuaristaDashboard() {
 
       const loteIds = (lts.data ?? []).map((l: any) => l.id);
       if (loteIds.length > 0) {
-        const { data: pesRows } = await supabase
-          .from("pesagens_lote_pecuarista")
+        const { data: pesRows } = await maFrom("pesagens_lote_pecuarista")
           .select("id, lote_id, data_pesagem, quantidade_animais, gmd")
           .in("lote_id", loteIds)
           .order("data_pesagem", { ascending: false });
@@ -95,8 +96,7 @@ export default function PecuaristaDashboard() {
 
         const pesIds = pes.map(p => p.id);
         if (pesIds.length > 0) {
-          const { data: pesos } = await supabase
-            .from("pesos_animais_pecuarista")
+          const { data: pesos } = await maFrom("pesos_animais_pecuarista")
             .select("pesagem_lote_id, gmd_individual")
             .in("pesagem_lote_id", pesIds);
           const grp: Record<string, Array<{ gmd_individual: number | null }>> = {};
@@ -275,6 +275,7 @@ export default function PecuaristaDashboard() {
         <h1 className="text-2xl font-bold text-foreground">{greeting}{nome ? `, ${nome}` : ""}!</h1>
         <p className="text-sm text-muted-foreground">Bem-vindo ao Mais Arrobas.</p>
       </div>
+      <ModoOfflinePanel perfil="pecuarista" />
 
       {loading ? (
         <Card><CardContent className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></CardContent></Card>

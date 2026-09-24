@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,17 +49,17 @@ export default function PecuaristaHistoricoPage() {
 
   async function load() {
     setLoading(true);
-    const { data: authUser } = await supabase.auth.getUser();
+    const { data: authUser } = await maGetUser();
     const uid = authUser.user?.id;
     if (!uid) { setLoading(false); return; }
-    const { data: p } = await supabase.from("pecuaristas").select("id").eq("user_id", uid).maybeSingle();
+    const { data: p } = await maFrom("pecuaristas").select("id").eq("user_id", uid).maybeSingle();
     const pid = (p as any)?.id as string | undefined;
     if (!pid) { setLoading(false); return; }
 
     const [lotesRes, fazRes, catRes] = await Promise.all([
-      supabase.from("lotes_pecuarista").select("id, nome_lote, fazenda_id, categoria, categoria_customizada_id").eq("pecuarista_id", pid),
-      supabase.from("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid),
-      supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
+      maFrom("lotes_pecuarista").select("id, nome_lote, fazenda_id, categoria, categoria_customizada_id").eq("pecuarista_id", pid),
+      maFrom("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid),
+      maFrom("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
     ]);
     const lotes = (lotesRes.data ?? []) as any[];
     const fazMap: Record<string, string> = {};
@@ -78,8 +79,7 @@ export default function PecuaristaHistoricoPage() {
     const collected: Item[] = [];
 
     if (loteIds.length > 0) {
-      const { data: pes } = await supabase
-        .from("pesagens_lote_pecuarista")
+      const { data: pes } = await maFrom("pesagens_lote_pecuarista")
         .select("id, lote_id, data_pesagem, gmd, pdf_url, apartacao_id")
         .in("lote_id", loteIds)
         .not("pdf_url", "is", null)
@@ -101,8 +101,7 @@ export default function PecuaristaHistoricoPage() {
         });
       }
 
-      const { data: aps } = await supabase
-        .from("apartacoes_pecuarista")
+      const { data: aps } = await maFrom("apartacoes_pecuarista")
         .select("id, lote_origem_id, data_apartacao, pdf_url")
         .eq("pecuarista_id", pid)
         .not("pdf_url", "is", null)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Loader2, FileDown, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { downloadPdfFromUrl } from "@/lib/downloadPdf";
@@ -51,20 +52,18 @@ export default function PesadorPesagemPage() {
 
   async function load() {
     setLoading(true);
-    const { data: authUser } = await supabase.auth.getUser();
+    const { data: authUser } = await maGetUser();
     const uid = authUser.user?.id;
     if (!uid) { setLoading(false); return; }
 
-    const { data: pes } = await supabase
-      .from("pesadores")
+    const { data: pes } = await maFrom("pesadores")
       .select("id")
       .eq("user_id", uid)
       .maybeSingle();
     const pesadorId = (pes as any)?.id as string | undefined;
     if (!pesadorId) { setLoading(false); return; }
 
-    const { data: pAll } = await supabase
-      .from("pesagens_compra")
+    const { data: pAll } = await maFrom("pesagens_compra")
       .select("id, cliente_id, categoria, finalizada_at, pdf_url, valor_total_pago, sem_valores")
       .eq("pesador_id", pesadorId)
       .not("finalizada_at", "is", null)
@@ -74,8 +73,7 @@ export default function PesadorPesagemPage() {
 
     const clienteIds = Array.from(new Set(rows.map((r) => r.cliente_id)));
     if (clienteIds.length > 0) {
-      const { data: cs } = await supabase
-        .from("clientes_pesador")
+      const { data: cs } = await maFrom("clientes_pesador")
         .select("id, nome")
         .in("id", clienteIds);
       const cmap: Record<string, string> = {};
@@ -92,10 +90,10 @@ export default function PesadorPesagemPage() {
     setDeleting(true);
     try {
       // filhos primeiro (ordem correta)
-      await supabase.from("pesos_pesagem_compra").delete().eq("pesagem_id", toDelete.id);
-      await supabase.from("leituras_balancao_pesador").delete().eq("pesagem_id", toDelete.id);
-      await supabase.from("pesagens_compra_categorias").delete().eq("pesagem_id", toDelete.id);
-      const { error } = await supabase.from("pesagens_compra").delete().eq("id", toDelete.id);
+      await maFrom("pesos_pesagem_compra").delete().eq("pesagem_id", toDelete.id);
+      await maFrom("leituras_balancao_pesador").delete().eq("pesagem_id", toDelete.id);
+      await maFrom("pesagens_compra_categorias").delete().eq("pesagem_id", toDelete.id);
+      const { error } = await maFrom("pesagens_compra").delete().eq("id", toDelete.id);
       if (error) throw error;
       if (toDelete.pdf_url) {
         const path = extractStoragePath(toDelete.pdf_url, "relatorios");

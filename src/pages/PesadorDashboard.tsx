@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
+import { ModoOfflinePanel } from "@/components/maisarrobas/ModoOfflinePanel";
 import { Loader2, Scale, CalendarDays, Users, DollarSign } from "lucide-react";
 import { calcularAnimais, totalizar, type PesagemCompraCfg, type PesoAnimal } from "@/lib/pesagemCompra";
 import { Button } from "@/components/ui/button";
@@ -90,12 +92,11 @@ export default function PesadorDashboard() {
 
   useEffect(() => {
     (async () => {
-      const { data: authUser } = await supabase.auth.getUser();
+      const { data: authUser } = await maGetUser();
       const uid = authUser.user?.id;
       if (!uid) { setLoading(false); return; }
 
-      const { data: pes } = await supabase
-        .from("pesadores")
+      const { data: pes } = await maFrom("pesadores")
         .select("id, nome, nome_empresa")
         .eq("user_id", uid)
         .maybeSingle();
@@ -104,8 +105,7 @@ export default function PesadorDashboard() {
       setNomeEmpresa((pes as any)?.nome_empresa ?? "");
       if (!pesadorId) { setLoading(false); return; }
 
-      const { data: pAll } = await supabase
-        .from("pesagens_compra")
+      const { data: pAll } = await maFrom("pesagens_compra")
         .select("id, cliente_id, categoria, finalizada_at, tipo_preco, preco_valor, modo_percentual, percentual_fixo, preco_arroba, preco_kg, preco_fixo_animal, valor_total_pago, sem_valores")
         .eq("pesador_id", pesadorId)
         .not("finalizada_at", "is", null)
@@ -115,8 +115,7 @@ export default function PesadorDashboard() {
 
       const ids = rows.map((r) => r.id);
       if (ids.length > 0) {
-        const { data: pesos } = await supabase
-          .from("pesos_pesagem_compra")
+        const { data: pesos } = await maFrom("pesos_pesagem_compra")
           .select("pesagem_id, ordem, peso_kg, percentual_individual, tipo_preco_individual, categoria_individual")
           .in("pesagem_id", ids);
         const map: Record<string, PesoAnimal[]> = {};
@@ -134,8 +133,7 @@ export default function PesadorDashboard() {
 
         const mistoIds = rows.filter((r) => r.tipo_preco === "misto").map((r) => r.id);
         if (mistoIds.length > 0) {
-          const { data: cats } = await supabase
-            .from("pesagens_compra_categorias")
+          const { data: cats } = await maFrom("pesagens_compra_categorias")
             .select("pesagem_id, categoria, tipo_preco, preco_valor")
             .in("pesagem_id", mistoIds);
           const cmap: Record<string, CategoriaMap> = {};
@@ -150,8 +148,7 @@ export default function PesadorDashboard() {
         }
       }
 
-      const { count } = await supabase
-        .from("clientes_pesador")
+      const { count } = await maFrom("clientes_pesador")
         .select("id", { count: "exact", head: true })
         .eq("pesador_id", pesadorId);
       setTotalClientes(count ?? 0);
@@ -304,6 +301,7 @@ export default function PesadorDashboard() {
           <p className="text-sm text-muted-foreground">{nomeEmpresa}</p>
         )}
       </div>
+      <ModoOfflinePanel perfil="pesador" />
 
       <div className="grid grid-cols-2 gap-3">
         <KpiCard icon={<Scale className="w-4 h-4" />} label="Animais pesados no ano" value={stats.animaisAno.toString()} />

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { dataEscolhidaParaIso, diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
 import { dataLocalSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -122,27 +123,26 @@ export default function PecuaristaApartacaoPage() {
     if (horaInicio || !apId) return;
     const agora = new Date().toISOString();
     setHoraInicio(agora);
-    await supabase.from("apartacoes_pecuarista").update({ hora_inicio: agora }).eq("id", apId);
+    await maFrom("apartacoes_pecuarista").update({ hora_inicio: agora }).eq("id", apId);
   }
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loteId) return;
     (async () => {
-      const { data: l } = await supabase
-        .from("lotes_pecuarista")
+      const { data: l } = await maFrom("lotes_pecuarista")
         .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, fazenda_id, pecuarista_id, status")
         .eq("id", loteId).maybeSingle();
       const lo = l as Lote | null;
       setLote(lo);
       if (lo) {
         const [{ data: cats }, { data: lotes }, { data: codigos }] = await Promise.all([
-          supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", lo.pecuarista_id).order("nome"),
-          supabase.from("lotes_pecuarista")
+          maFrom("categorias_pecuarista").select("id, nome").eq("pecuarista_id", lo.pecuarista_id).order("nome"),
+          maFrom("lotes_pecuarista")
             .select("id, nome_lote, codigo, identificado, status")
             .eq("fazenda_id", lo.fazenda_id).neq("id", lo.id).eq("status", "ativo")
             .order("nome_lote"),
-          supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", lo.pecuarista_id),
+          maFrom("lotes_pecuarista").select("codigo").eq("pecuarista_id", lo.pecuarista_id),
         ]);
         setCustomCats((cats as CatCustom[]) || []);
         setLotesFazenda(((lotes as LoteExistente[]) || []).filter(x => x.identificado === lo.identificado));
@@ -298,16 +298,14 @@ export default function PecuaristaApartacaoPage() {
 
   async function buscarAnimalPorNumero(numero: string): Promise<PrevInfo> {
     if (!lote) return { animalId: null, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
-    const { data: an } = await supabase
-      .from("animais_pecuarista")
+    const { data: an } = await maFrom("animais_pecuarista")
       .select("id")
       .eq("pecuarista_id", lote.pecuarista_id)
       .eq("numero", numero)
       .maybeSingle();
     if (!an) return { animalId: null, numero, peso_anterior_kg: null, data_anterior: null, lote_anterior: null };
     const animalId = (an as any).id as string;
-    const { data: p } = await supabase
-      .from("pesos_animais_pecuarista")
+    const { data: p } = await maFrom("pesos_animais_pecuarista")
       .select("peso_kg, created_at, pesagem_lote_id, pesagens_lote_pecuarista!inner(data_pesagem, lote_id, lotes_pecuarista!inner(nome_lote))")
       .eq("animal_id", animalId)
       .order("created_at", { ascending: false })
@@ -412,8 +410,7 @@ export default function PecuaristaApartacaoPage() {
         const peso_medio = peso_total / qtd;
 
         // GMD do lote destino: compara com pesagem anterior desse destino
-        const { data: ant } = await supabase
-          .from("pesagens_lote_pecuarista")
+        const { data: ant } = await maFrom("pesagens_lote_pecuarista")
           .select("id, data_pesagem, peso_medio")
           .eq("lote_id", d.lote_id)
           .gt("quantidade_animais", 0)
@@ -429,7 +426,7 @@ export default function PecuaristaApartacaoPage() {
         }
 
         // cria pesagem do destino
-        const { data: pRow, error: eP } = await supabase.from("pesagens_lote_pecuarista").insert({
+        const { data: pRow, error: eP } = await maFrom("pesagens_lote_pecuarista").insert({
           lote_id: d.lote_id,
           apartacao_id: apartacaoId,
           data_pesagem: dataPesagem,
@@ -452,15 +449,15 @@ export default function PecuaristaApartacaoPage() {
           for (const l of lins) {
             let animalId = l.animal_id;
             if (!animalId) {
-              const { data: novo, error: eA } = await supabase.from("animais_pecuarista")
+              const { data: novo, error: eA } = await maFrom("animais_pecuarista")
                 .insert({ pecuarista_id: lote.pecuarista_id, numero: l.numero, lote_atual_id: d.lote_id })
                 .select("id").single();
               if (eA || !novo) throw eA ?? new Error("Falha ao criar animal");
               animalId = (novo as any).id;
             } else {
-              await supabase.from("animais_pecuarista").update({ lote_atual_id: d.lote_id }).eq("id", animalId);
+              await maFrom("animais_pecuarista").update({ lote_atual_id: d.lote_id }).eq("id", animalId);
             }
-            const { error: ePe } = await supabase.from("pesos_animais_pecuarista").insert({
+            const { error: ePe } = await maFrom("pesos_animais_pecuarista").insert({
               pesagem_lote_id: pesagemId,
               animal_id: animalId,
               peso_kg: l.peso_kg,
@@ -490,11 +487,11 @@ export default function PecuaristaApartacaoPage() {
       }
 
       // Cabeçalho dados
-      const { data: fz } = await supabase.from("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
-      const { data: pc } = await supabase.from("pecuaristas").select("nome").eq("id", lote.pecuarista_id).maybeSingle();
+      const { data: fz } = await maFrom("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
+      const { data: pc } = await maFrom("pecuaristas").select("nome").eq("id", lote.pecuarista_id).maybeSingle();
       let categoriaLabel = CATEGORIAS_PADRAO.find(c => c.slug === lote.categoria)?.label ?? lote.categoria;
       if (lote.categoria === "customizada" && lote.categoria_customizada_id) {
-        const { data: c } = await supabase.from("categorias_pecuarista").select("nome").eq("id", lote.categoria_customizada_id).maybeSingle();
+        const { data: c } = await maFrom("categorias_pecuarista").select("nome").eq("id", lote.categoria_customizada_id).maybeSingle();
         categoriaLabel = (c as any)?.nome ?? "Personalizada";
       }
 
@@ -515,17 +512,18 @@ export default function PecuaristaApartacaoPage() {
       });
       let pdfUrl: string | null = null;
       try {
+        if (isMaOffline()) throw new Error("offline");
         const path = `pecuarista/apartacoes/${apartacaoId}-${Date.now()}.pdf`;
         const { error: upErr } = await supabase.storage.from("relatorios")
           .upload(path, blob, { contentType: "application/pdf", upsert: true });
         if (!upErr) {
           const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
           pdfUrl = pub.publicUrl;
-          await supabase.from("apartacoes_pecuarista")
+          await maFrom("apartacoes_pecuarista")
             .update({ pdf_url: pdfUrl, hora_fim: dataFim, hora_inicio: horaIniFinal })
             .eq("id", apartacaoId);
         } else {
-          await supabase.from("apartacoes_pecuarista")
+          await maFrom("apartacoes_pecuarista")
             .update({ hora_fim: dataFim, hora_inicio: horaIniFinal })
             .eq("id", apartacaoId);
         }

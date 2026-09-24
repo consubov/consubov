@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,11 +83,11 @@ export default function PecuaristaFazendaDetalhePage() {
   useEffect(() => {
     if (!user || !fazendaId) return;
     (async () => {
-      const pid = roleData.roleId ?? (await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
+      const pid = roleData.roleId ?? (await maFrom("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
       setPecuaristaId(pid);
       if (!pid) { setLoading(false); return; }
       const [{ data: fz }, fazendasPendentes] = await Promise.all([
-        supabase.from("fazendas_pecuarista").select("nome_fazenda").eq("id", fazendaId).maybeSingle(),
+        maFrom("fazendas_pecuarista").select("nome_fazenda").eq("id", fazendaId).maybeSingle(),
         getMaPendingRows("fazendas_pecuarista"),
       ]);
       const fazendaLocal = fazendasPendentes.find((row) => row.id === fazendaId);
@@ -94,7 +95,7 @@ export default function PecuaristaFazendaDetalhePage() {
       const [, , codigos] = await Promise.all([
         loadLotes(),
         loadCats(pid),
-        supabase.from("lotes_pecuarista").select("codigo").eq("pecuarista_id", pid),
+        maFrom("lotes_pecuarista").select("codigo").eq("pecuarista_id", pid),
       ]);
       setCodigosOcupados((codigos.data ?? []).map((row: any) => row.codigo));
     })();
@@ -104,8 +105,7 @@ export default function PecuaristaFazendaDetalhePage() {
   async function loadLotes() {
     if (!fazendaId) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("lotes_pecuarista")
+    const { data } = await maFrom("lotes_pecuarista")
       .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status, encerrado_at")
       .eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false });
@@ -116,8 +116,7 @@ export default function PecuaristaFazendaDetalhePage() {
     const ids = base.map((l) => l.id);
     let mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
     if (ids.length > 0) {
-      const { data: ps } = await supabase
-        .from("pesagens_lote_pecuarista")
+      const { data: ps } = await maFrom("pesagens_lote_pecuarista")
         .select("lote_id, data_pesagem, gmd, quantidade_animais")
         .in("lote_id", ids)
         .gt("quantidade_animais", 0)
@@ -143,7 +142,7 @@ export default function PecuaristaFazendaDetalhePage() {
 
   async function loadCats(pid: string) {
     const [{ data }, pending] = await Promise.all([
-      supabase.from("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid).order("nome"),
+      maFrom("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid).order("nome"),
       getMaPendingRows("categorias_pecuarista"),
     ]);
     setCustomCats(mergeMaRows((data as CatCustom[]) || [], pending as CatCustom[])
@@ -179,8 +178,7 @@ export default function PecuaristaFazendaDetalhePage() {
   }
 
   async function openEdit(l: Lote) {
-    const { count } = await supabase
-      .from("pesagens_lote_pecuarista")
+    const { count } = await maFrom("pesagens_lote_pecuarista")
       .select("id", { count: "exact", head: true })
       .eq("lote_id", l.id);
     setEditingId(l.id);
@@ -226,7 +224,7 @@ export default function PecuaristaFazendaDetalhePage() {
         if (!editingHasPesagens) {
           payload.identificado = form.identificado === "sim";
         }
-        const { error } = await supabase.from("lotes_pecuarista").update(payload).eq("id", editingId);
+        const { error } = await maFrom("lotes_pecuarista").update(payload).eq("id", editingId);
         if (error) throw error;
         toast.success("Lote atualizado!");
       } else {
@@ -262,8 +260,7 @@ export default function PecuaristaFazendaDetalhePage() {
 
   async function encerrar(id: string) {
     if (!confirm("Encerrar este lote?")) return;
-    const { error } = await supabase
-      .from("lotes_pecuarista")
+    const { error } = await maFrom("lotes_pecuarista")
       .update({ status: "encerrado", encerrado_at: new Date().toISOString() })
       .eq("id", id);
     if (error) toast.error("Erro: " + error.message);
@@ -272,9 +269,9 @@ export default function PecuaristaFazendaDetalhePage() {
 
   async function apagar(l: Lote) {
     const [{ count: cPes }, { count: cOri }, { count: cDest }] = await Promise.all([
-      supabase.from("pesagens_lote_pecuarista").select("id", { count: "exact", head: true }).eq("lote_id", l.id),
-      supabase.from("apartacoes_pecuarista").select("id", { count: "exact", head: true }).eq("lote_origem_id", l.id),
-      supabase.from("apartacao_destinos_pecuarista").select("id", { count: "exact", head: true }).eq("lote_destino_id", l.id),
+      maFrom("pesagens_lote_pecuarista").select("id", { count: "exact", head: true }).eq("lote_id", l.id),
+      maFrom("apartacoes_pecuarista").select("id", { count: "exact", head: true }).eq("lote_origem_id", l.id),
+      maFrom("apartacao_destinos_pecuarista").select("id", { count: "exact", head: true }).eq("lote_destino_id", l.id),
     ]);
     const temHistorico = (cPes ?? 0) > 0 || (cOri ?? 0) > 0 || (cDest ?? 0) > 0;
     if (temHistorico) {

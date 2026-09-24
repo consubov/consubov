@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,21 +56,19 @@ export default function PecuaristaLoteDetalhePage() {
     (async () => {
       const pendingLotes = await getMaPendingRows("lotes_pecuarista");
       const loteLocal = pendingLotes.find((row) => row.id === loteId) as Lote | undefined;
-      const { data: l } = loteLocal ? { data: null } : await supabase
-        .from("lotes_pecuarista")
+      const { data: l } = loteLocal ? { data: null } : await maFrom("lotes_pecuarista")
         .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status")
         .eq("id", loteId).maybeSingle();
       const loteAtual = (l as Lote | null) ?? loteLocal ?? null;
       setLote(loteAtual);
       if (loteAtual?.categoria === "customizada" && loteAtual.categoria_customizada_id) {
         const [{ data: c }, pendingCats] = await Promise.all([
-          supabase.from("categorias_pecuarista").select("nome").eq("id", loteAtual.categoria_customizada_id).maybeSingle(),
+          maFrom("categorias_pecuarista").select("nome").eq("id", loteAtual.categoria_customizada_id).maybeSingle(),
           getMaPendingRows("categorias_pecuarista"),
         ]);
         setCatNome((c as any)?.nome ?? pendingCats.find((row) => row.id === loteAtual.categoria_customizada_id)?.nome ?? "Personalizada");
       }
-      const { data: p } = loteLocal ? { data: [] as any[] } : await supabase
-        .from("pesagens_lote_pecuarista")
+      const { data: p } = loteLocal ? { data: [] as any[] } : await maFrom("pesagens_lote_pecuarista")
         .select("id, data_pesagem, peso_medio, quantidade_animais, gmd")
         .eq("lote_id", loteId)
         .gt("quantidade_animais", 0)

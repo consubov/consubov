@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,8 +109,7 @@ export default function PesadorPesagemNovoPage() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("clientes_pesador")
+      const { data, error } = await maFrom("clientes_pesador")
         .select("id, nome, nome_fazenda, cidade")
         .eq("id", clienteId)
         .maybeSingle();

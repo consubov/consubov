@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 
 export default function PecuaristaLayout() {
   const { signOut, user } = useAuth();
@@ -19,8 +20,7 @@ export default function PecuaristaLayout() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("pecuaristas")
+      const { data } = await maFrom("pecuaristas")
         .select("nome")
         .eq("user_id", user.id)
         .maybeSingle();

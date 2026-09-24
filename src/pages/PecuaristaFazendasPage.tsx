@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export default function PecuaristaFazendasPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const pid = roleData.roleId ?? (await supabase.from("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
+      const pid = roleData.roleId ?? (await maFrom("pecuaristas").select("id").eq("user_id", user.id).maybeSingle()).data?.id ?? null;
       setPecuaristaId(pid);
       if (pid) await load(pid);
       else setLoading(false);
@@ -41,8 +42,7 @@ export default function PecuaristaFazendasPage() {
 
   async function load(pid: string) {
     setLoading(true);
-    const { data } = await supabase
-      .from("fazendas_pecuarista")
+    const { data } = await maFrom("fazendas_pecuarista")
       .select("id, nome_fazenda, cidade, uf")
       .eq("pecuarista_id", pid)
       .order("nome_fazenda");

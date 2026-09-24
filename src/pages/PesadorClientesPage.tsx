@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,8 +62,7 @@ export default function PesadorClientesPage() {
   async function loadClientes() {
     if (!pesadorId) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("clientes_pesador")
+    const { data, error } = await maFrom("clientes_pesador")
       .select("*")
       .eq("pesador_id", pesadorId)
       .order("nome", { ascending: true });
@@ -124,8 +124,7 @@ export default function PesadorClientesPage() {
     };
 
     if (editing) {
-      const { error } = await supabase
-        .from("clientes_pesador")
+      const { error } = await maFrom("clientes_pesador")
         .update(payload)
         .eq("id", editing.id)
         .eq("pesador_id", pesadorId);
@@ -150,8 +149,7 @@ export default function PesadorClientesPage() {
   async function handleDelete() {
     if (!toDelete || !pesadorId) return;
     setDeleting(true);
-    const { count, error: cErr } = await supabase
-      .from("pesagens_compra")
+    const { count, error: cErr } = await maFrom("pesagens_compra")
       .select("id", { count: "exact", head: true })
       .eq("cliente_id", toDelete.id);
     if (cErr) {
@@ -169,8 +167,7 @@ export default function PesadorClientesPage() {
       });
       return;
     }
-    const { error } = await supabase
-      .from("clientes_pesador")
+    const { error } = await maFrom("clientes_pesador")
       .delete()
       .eq("id", toDelete.id)
       .eq("pesador_id", pesadorId);

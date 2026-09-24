@@ -6,3 +6,4 @@
 - [x] Código de lote combina servidor e pendentes locais.
 - [x] Telas de destino reconhecem registros ainda pendentes.
 - [x] Tipos e testes focados validados.
+- [x] Fase B: Modo Offline (cache completo), Sincronizar com desativação automática, PDF oculto offline, indicador de pendências.
