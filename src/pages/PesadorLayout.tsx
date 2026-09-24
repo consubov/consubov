@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { AtualizarAppButton } from "@/components/maisArrobas/AtualizarAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Users, History, Settings } from "lucide-react";
