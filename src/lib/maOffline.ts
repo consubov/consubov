@@ -14,6 +14,7 @@ import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueMa, flushMaAndCount, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
 import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
+import { hasCriticalOperations, onCriticalOperationsDrained } from "@/lib/criticalOperations";
 
 export type MaPerfil = "pesador" | "pecuarista";
 
@@ -408,7 +409,15 @@ if (typeof window !== "undefined") {
       void getMaQueueItems().then((items) => unirAlvos(coletarAlvosGmd(items)));
     }
     // Só desliga na transição "tinha pendência → zerou" com internet.
-    if (state.active && lastPending > 0 && count === 0 && navigator.onLine) void autoDesligar();
+    if (state.active && lastPending > 0 && count === 0 && navigator.onLine) {
+      // Nunca desliga no meio de uma pesagem em andamento: espera ela terminar.
+      if (hasCriticalOperations()) {
+        const off = onCriticalOperationsDrained(() => {
+          off();
+          if (getMaSnapshot().pendingCount === 0 && navigator.onLine) void autoDesligar();
+        });
+      } else void autoDesligar();
+    }
     lastPending = count;
   });
 }
