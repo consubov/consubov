@@ -59,6 +59,7 @@ export default function PecuaristaPesagemExecPage() {
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
+  const [dataFimLocal, setDataFimLocal] = useState<string | null>(null);
 
   const [lote, setLote] = useState<Lote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -348,20 +349,64 @@ export default function PecuaristaPesagemExecPage() {
     setLinhasSem((prev) => prev.slice(0, -1));
   }
 
+  /** Registros desta pesagem ainda na fila local. */
+  function pendentesDaPesagem() {
+    const ids = new Set<string>();
+    for (const l of linhasId) {
+      if (syncSnap.pendingRefIds.has(l.pesoRowId)) ids.add(l.pesoRowId);
+    }
+    for (const l of leiturasBalancao) {
+      if (syncSnap.pendingRefIds.has(l.id)) ids.add(l.id);
+    }
+    if (pesagemId && syncSnap.pendingRefIds.has(pesagemId)) ids.add(pesagemId);
+    return ids.size;
+  }
+
+  /** Finaliza a pesagem — funciona offline (vai para a fila local). */
   async function finalizar() {
     if (!lote || !pesagemId) return;
     const isId = lote.identificado;
     const qtd = isId ? linhasId.length : linhasSem.length;
     if (qtd === 0) return toast.error("Nenhum peso registrado.");
+    const pesos = isId ? linhasId.map((l) => l.peso_kg) : linhasSem.map((l) => l.peso_kg);
+    const peso_total = pesos.reduce((s, v) => s + v, 0);
+    const dataFim = new Date().toISOString();
+    enqueueMa(pesagemId, {
+      kind: "update",
+      table: "pesagens_lote_pecuarista",
+      id: pesagemId,
+      values: {
+        peso_total, quantidade_animais: qtd, peso_medio: peso_total / qtd,
+        data_pesagem: dataFim,
+        hora_inicio: horaInicio ?? dataFim,
+      },
+    });
+    setDataFimLocal(dataFim);
     setFinalizando(true);
     const restantes = await flushMaAndCount();
+    setFinalizando(false);
+    // Com tudo sincronizado segue direto para o PDF, como antes.
+    if (restantes === 0) await gerarPdfEResumo(dataFim);
+  }
+
+  /** Gera o PDF — exige que todos os registros estejam no servidor. */
+  async function tentarGerarPdf() {
+    if (!dataFimLocal) return;
+    setFinalizando(true);
+    const restantes = await flushMaAndCount();
+    setFinalizando(false);
     if (restantes > 0) {
-      setFinalizando(false);
       return toast.error(
-        `${restantes} registro(s) ainda aguardam envio. Os dados estão salvos no aparelho — finalize quando a internet melhorar.`,
+        `Aguardando sincronizar ${restantes} registro(s) antes de gerar o PDF. Tente de novo quando a internet voltar.`,
       );
     }
-    setFinalizando(false);
+    await gerarPdfEResumo(dataFimLocal);
+  }
+
+  async function gerarPdfEResumo(dataFim: string) {
+    if (!lote || !pesagemId) return;
+    const isId = lote.identificado;
+    const qtd = isId ? linhasId.length : linhasSem.length;
     const pesos = isId ? linhasId.map((l) => l.peso_kg) : linhasSem.map((l) => l.peso_kg);
     const peso_total = pesos.reduce((s, v) => s + v, 0);
     const peso_medio = peso_total / qtd;
@@ -371,6 +416,7 @@ export default function PecuaristaPesagemExecPage() {
     let dataAnterior: string | null = null;
     let mediaAnterior: number | null = null;
     let dias: number | null = null;
+    setFinalizando(true);
     if (!isId) {
       const { data: ant } = await supabase
         .from("pesagens_lote_pecuarista")
@@ -384,14 +430,11 @@ export default function PecuaristaPesagemExecPage() {
       if (a) {
         mediaAnterior = Number(a.peso_medio);
         dataAnterior = a.data_pesagem;
-        const agora = new Date().toISOString();
-        dias = daysBetween(dataAnterior!, agora);
+        dias = daysBetween(dataAnterior!, dataFim);
         gmdLote = (peso_medio - mediaAnterior) / dias;
       }
     }
 
-    setFinalizando(true);
-    const dataFim = new Date().toISOString();
     const horaIniFinal = horaInicio ?? dataFim;
     const { error } = await supabase
       .from("pesagens_lote_pecuarista")
