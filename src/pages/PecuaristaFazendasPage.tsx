@@ -43,7 +43,7 @@ export default function PecuaristaFazendasPage() {
   async function load(pid: string) {
     setLoading(true);
     const { data } = await maFrom("fazendas_pecuarista")
-      .select("id, nome_fazenda, cidade, uf")
+      .select("id, pecuarista_id, nome_fazenda, cidade, uf")
       .eq("pecuarista_id", pid)
       .order("nome_fazenda");
     const pending = await getMaPendingRows("fazendas_pecuarista");

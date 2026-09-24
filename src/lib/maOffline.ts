@@ -12,8 +12,9 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
-import { enqueueMa, flushMaAndCount, getMaQueueItems, type MaQueueItem } from "@/lib/maisArrobasQueue";
+import { enqueueMa, flushMaAndCount, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
 import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
+import { hasCriticalOperations, onCriticalOperationsDrained } from "@/lib/criticalOperations";
 
 export type MaPerfil = "pesador" | "pecuarista";
 
@@ -149,8 +150,13 @@ export async function baixarDadosOffline(perfil: MaPerfil) {
  * Retorna quantos itens ainda ficaram pendentes.
  */
 export async function sincronizarOffline(): Promise<number> {
+  manualSync = true;
+  try { return await sincronizarOfflineInterno(); } finally { manualSync = false; }
+}
+
+async function sincronizarOfflineInterno(): Promise<number> {
   if (!navigator.onLine) throw new Error("Sem internet. Conecte-se para sincronizar.");
-  const alvosGmd = state.perfil === "pecuarista" ? coletarAlvosGmd(await getMaQueueItems()) : null;
+  const alvosGmd = state.perfil === "pecuarista" ? unirAlvos(coletarAlvosGmd(await getMaQueueItems())) : null;
   const restantes = await flushMaAndCount();
   if (restantes > 0) return restantes;
   if (alvosGmd) {
@@ -362,3 +368,56 @@ export const maFrom = ((table: string) => {
   if (state.active) return new OfflineQuery(table) as any;
   return (supabase as any).from(table);
 }) as unknown as typeof supabase.from;
+
+// ---------- desligamento automático quando a fila esvazia sozinha ----------
+let manualSync = false;
+let autoRunning = false;
+let lastPending = 0;
+// Alvos de GMD vistos na fila enquanto o modo está ativo (os itens somem ao serem enviados).
+const alvosVistos = { pesoIds: new Set<string>(), pesagemIds: new Set<string>() };
+function unirAlvos(a: { pesoIds: string[]; pesagemIds: string[] }) {
+  a.pesoIds.forEach((id) => alvosVistos.pesoIds.add(id));
+  a.pesagemIds.forEach((id) => alvosVistos.pesagemIds.add(id));
+  return { pesoIds: [...alvosVistos.pesoIds], pesagemIds: [...alvosVistos.pesagemIds] };
+}
+
+async function autoDesligar() {
+  if (autoRunning || manualSync || !state.active) return;
+  autoRunning = true;
+  try {
+    if (state.perfil === "pecuarista" && (alvosVistos.pesoIds.size || alvosVistos.pesagemIds.size)) {
+      try {
+        await recalcularGmdServidor({ pesoIds: [...alvosVistos.pesoIds], pesagemIds: [...alvosVistos.pesagemIds] });
+      } catch (e) { console.warn("[maOffline] recálculo de GMD falhou", e); }
+    }
+    if (getMaSnapshot().pendingCount > 0 || !state.active) return;
+    if (state.perfil) await downloadTables(state.perfil);
+    alvosVistos.pesoIds.clear();
+    alvosVistos.pesagemIds.clear();
+    setState({ active: false, downloadedAt: new Date().toISOString() });
+  } catch (e) {
+    console.warn("[maOffline] desligamento automático falhou", e);
+  } finally {
+    autoRunning = false;
+  }
+}
+
+if (typeof window !== "undefined") {
+  subscribeMa(() => {
+    const count = getMaSnapshot().pendingCount;
+    if (state.active && state.perfil === "pecuarista" && count > 0) {
+      void getMaQueueItems().then((items) => unirAlvos(coletarAlvosGmd(items)));
+    }
+    // Só desliga na transição "tinha pendência → zerou" com internet.
+    if (state.active && lastPending > 0 && count === 0 && navigator.onLine) {
+      // Nunca desliga no meio de uma pesagem em andamento: espera ela terminar.
+      if (hasCriticalOperations()) {
+        const off = onCriticalOperationsDrained(() => {
+          off();
+          if (getMaSnapshot().pendingCount === 0 && navigator.onLine) void autoDesligar();
+        });
+      } else void autoDesligar();
+    }
+    lastPending = count;
+  });
+}

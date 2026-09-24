@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser, isMaOffline } from "@/lib/maOffline";
@@ -27,6 +28,7 @@ const CATEGORIA_LABELS: Record<string, string> = {
 };
 
 export default function PesadorPesagemResumoPage() {
+  useMaOffline(); // re-renderiza quando o Modo Offline desliga sozinho
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
