@@ -1,0 +1,301 @@
+/**
+ * Fila local + sincronização em segundo plano do Mais Arrobas (Pesador e
+ * Pecuarista). Segue os mesmos princípios da fila do Capataz (gravar primeiro
+ * no aparelho, enviar depois, reenvio idempotente), mas usa um banco local
+ * PRÓPRIO para não interferir na infraestrutura do Consubov.
+ *
+ * - Cada operação carrega o id gerado no cliente; inserts viram
+ *   upsert(onConflict: "id", ignoreDuplicates) → reenviar nunca duplica.
+ * - Processamento em ordem (FIFO): uma leitura de balanção sempre chega antes
+ *   dos pesos que dependem dela; o animal antes do peso.
+ * - Falha de rede não descarta nada: a operação fica na fila e é reenviada.
+ */
+import { openDB, type IDBPDatabase } from "idb";
+import { supabase } from "@/integrations/supabase/client";
+
+export type MaOp =
+  | { kind: "insert"; table: string; row: Record<string, any> }
+  | { kind: "update"; table: string; id: string; values: Record<string, any> }
+  | { kind: "delete"; table: string; id: string }
+  | {
+      /** Peso de animal identificado (Pecuarista): resolve/cria o animal pelo
+       *  número no momento do envio e grava o peso com id fixo. */
+      kind: "pecuarista_peso_id";
+      pesoId: string;
+      animalIdLocal: string;
+      pecuaristaId: string;
+      numero: string;
+      loteId: string;
+      pesagemLoteId: string;
+      pesoKg: number;
+      gmdIndividual: number | null;
+      leituraBalancaoId: string | null;
+    };
+
+export interface MaQueueItem {
+  id: string; // id da fila
+  refId: string; // id do registro (peso/leitura) — usado no indicador visual
+  op: MaOp;
+  createdAt: string;
+  attempts: number;
+  lastError?: string;
+}
+
+const DB_NAME = "mais-arrobas-sync";
+const STORE = "queue";
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+function getDb() {
+  if (!dbPromise) {
+    dbPromise = openDB(DB_NAME, 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
+      },
+      terminated() {
+        dbPromise = null;
+      },
+    }).catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
+  }
+  return dbPromise;
+}
+
+// ---------- estado em memória (espelho da fila) + assinantes ----------
+let memQueue: MaQueueItem[] = [];
+let loaded = false;
+let lastError: string | null = null;
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((l) => l());
+}
+
+async function ensureLoaded() {
+  if (loaded) return;
+  try {
+    const db = await getDb();
+    const all = ((await db.getAll(STORE)) as MaQueueItem[]) ?? [];
+    all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    // mescla com itens enfileirados antes do carregamento
+    const ids = new Set(all.map((i) => i.id));
+    memQueue = [...all, ...memQueue.filter((i) => !ids.has(i.id))];
+  } catch (err) {
+    console.error("[maisArrobasQueue] load failed", err);
+  }
+  loaded = true;
+  emit();
+}
+
+async function persistPut(item: MaQueueItem) {
+  try {
+    const db = await getDb();
+    await db.put(STORE, item);
+  } catch (err) {
+    console.error("[maisArrobasQueue] persist failed", err);
+  }
+}
+
+async function persistDelete(id: string) {
+  try {
+    const db = await getDb();
+    await db.delete(STORE, id);
+  } catch (err) {
+    console.error("[maisArrobasQueue] delete failed", err);
+  }
+}
+
+let seq = 0;
+function nextCreatedAt() {
+  // garante ordem estável mesmo com várias operações no mesmo milissegundo
+  seq = (seq + 1) % 1000;
+  return `${new Date().toISOString()}#${String(seq).padStart(3, "0")}`;
+}
+
+/** Enfileira uma operação. Retorna imediatamente (não espera o servidor). */
+export function enqueueMa(refId: string, op: MaOp) {
+  const item: MaQueueItem = {
+    id: crypto.randomUUID(),
+    refId,
+    op,
+    createdAt: nextCreatedAt(),
+    attempts: 0,
+  };
+  memQueue = [...memQueue, item];
+  emit();
+  void persistPut(item).then(() => scheduleFlush(0));
+}
+
+/**
+ * Desfazer um registro. Se o insert dele ainda não saiu do aparelho, apenas
+ * remove da fila (nada chega ao servidor). Caso contrário enfileira o delete.
+ */
+export function undoMa(refId: string, table: string) {
+  const pendentes = memQueue.filter((i) => i.refId === refId && !isProcessing(i.id));
+  const temInsertPendente = pendentes.some(
+    (i) => i.op.kind === "insert" || i.op.kind === "pecuarista_peso_id",
+  );
+  if (temInsertPendente) {
+    memQueue = memQueue.filter((i) => !pendentes.includes(i));
+    pendentes.forEach((i) => void persistDelete(i.id));
+    emit();
+    return;
+  }
+  enqueueMa(refId, { kind: "delete", table, id: refId });
+}
+
+// ---------- processamento ----------
+let flushing: string | null = null; // id do item em envio
+let timer: ReturnType<typeof setTimeout> | null = null;
+
+function isProcessing(id: string) {
+  return flushing === id;
+}
+
+function scheduleFlush(ms: number) {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    timer = null;
+    void flushMa();
+  }, ms);
+}
+
+function withTimeout<T>(p: PromiseLike<T>, ms = 15000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("Tempo esgotado ao enviar")), ms);
+    Promise.resolve(p).then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
+async function runOp(op: MaOp) {
+  const sb = supabase as any;
+  if (op.kind === "insert") {
+    const { error } = await withTimeout(
+      sb.from(op.table).upsert(op.row, { onConflict: "id", ignoreDuplicates: true }),
+    ) as any;
+    if (error) throw error;
+    return;
+  }
+  if (op.kind === "update") {
+    const { error } = await withTimeout(sb.from(op.table).update(op.values).eq("id", op.id)) as any;
+    if (error) throw error;
+    return;
+  }
+  if (op.kind === "delete") {
+    const { error } = await withTimeout(sb.from(op.table).delete().eq("id", op.id)) as any;
+    if (error) throw error;
+    return;
+  }
+  // pecuarista_peso_id
+  const { data: an, error: eBusca } = await withTimeout(
+    sb.from("animais_pecuarista").select("id")
+      .eq("pecuarista_id", op.pecuaristaId).eq("numero", op.numero).maybeSingle(),
+  ) as any;
+  if (eBusca) throw eBusca;
+  let animalId: string;
+  if (an) {
+    animalId = an.id;
+    const { error } = await withTimeout(
+      sb.from("animais_pecuarista").update({ lote_atual_id: op.loteId }).eq("id", animalId),
+    ) as any;
+    if (error) throw error;
+  } else {
+    animalId = op.animalIdLocal;
+    const { error } = await withTimeout(
+      sb.from("animais_pecuarista").upsert(
+        { id: animalId, pecuarista_id: op.pecuaristaId, numero: op.numero, lote_atual_id: op.loteId },
+        { onConflict: "id", ignoreDuplicates: true },
+      ),
+    ) as any;
+    if (error) throw error;
+  }
+  const { error: eP } = await withTimeout(
+    sb.from("pesos_animais_pecuarista").upsert(
+      {
+        id: op.pesoId,
+        pesagem_lote_id: op.pesagemLoteId,
+        animal_id: animalId,
+        peso_kg: op.pesoKg,
+        gmd_individual: op.gmdIndividual,
+        leitura_balancao_id: op.leituraBalancaoId,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    ),
+  ) as any;
+  if (eP) throw eP;
+}
+
+let retryDelay = 3000;
+
+/** Envia a fila em ordem. Para no primeiro erro e tenta de novo depois. */
+export async function flushMa(): Promise<void> {
+  await ensureLoaded();
+  if (flushing) return;
+  while (memQueue.length > 0) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      scheduleFlush(10000);
+      return;
+    }
+    const item = memQueue[0];
+    flushing = item.id;
+    try {
+      await runOp(item.op);
+      memQueue = memQueue.filter((i) => i.id !== item.id);
+      await persistDelete(item.id);
+      lastError = null;
+      retryDelay = 3000;
+      flushing = null;
+      emit();
+    } catch (err: any) {
+      flushing = null;
+      const msg = err?.message ?? String(err);
+      const updated = { ...item, attempts: item.attempts + 1, lastError: msg };
+      memQueue = memQueue.map((i) => (i.id === item.id ? updated : i));
+      void persistPut(updated);
+      lastError = msg;
+      console.warn("[maisArrobasQueue] envio falhou, nova tentativa em", retryDelay, "ms:", msg);
+      emit();
+      scheduleFlush(retryDelay);
+      retryDelay = Math.min(retryDelay * 2, 60000);
+      return;
+    }
+  }
+}
+
+/** Tenta esvaziar a fila e informa quantos itens ainda restam. */
+export async function flushMaAndCount(): Promise<number> {
+  await flushMa();
+  // se outro envio já estava em andamento, espera ele terminar
+  for (let i = 0; i < 60 && flushing; i++) await new Promise((r) => setTimeout(r, 250));
+  return memQueue.length;
+}
+
+export function getMaSnapshot() {
+  return {
+    pendingRefIds: new Set(memQueue.map((i) => i.refId)),
+    pendingCount: memQueue.length,
+    lastError,
+  };
+}
+
+export function subscribeMa(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+// dispara ao voltar a internet e ao carregar
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    retryDelay = 3000;
+    scheduleFlush(500);
+  });
+  void ensureLoaded().then(() => {
+    if (memQueue.length) scheduleFlush(1000);
+  });
+}
