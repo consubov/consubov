@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PastoMapaData } from "@/hooks/useMapaData";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
+import { isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 
 interface Props {
   open: boolean;
@@ -29,10 +31,16 @@ export default function MapaTransferenciaModal({
   const [pesoMedio, setPesoMedio] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [step, setStep] = useState<"input" | "confirm">("input");
+  const [categoriaDestino, setCategoriaDestino] = useState("");
+  const destinoSemCategoria = !!selectedDestino && !isCategoriaValida(selectedDestino.categoria);
+  useEffect(() => {
+    setCategoriaDestino(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
+  }, [selectedDestino?.pasto_id, pasto?.pasto_id]);
+  const categoriaOk = !destinoSemCategoria || isCategoriaValida(categoriaDestino);
 
   const qtd = parseInt(quantidade) || 0;
   const pesoTransf = parseFloat(pesoMedio) || (pasto?.peso_medio_kg ?? 0);
-  const isValid = qtd > 0 && pasto && qtd <= pasto.num_animais && selectedDestino && selectedDestino.pasto_id !== pasto.pasto_id;
+  const isValid = qtd > 0 && pasto && qtd <= pasto.num_animais && selectedDestino && selectedDestino.pasto_id !== pasto.pasto_id && categoriaOk;
 
   function handleClose() {
     setQuantidade("");
@@ -49,7 +57,9 @@ export default function MapaTransferenciaModal({
   }
 
   async function handleConfirm() {
-    if (!pasto || !selectedDestino || !isValid) return;
+    if (!pasto || !selectedDestino) return;
+    if (!categoriaOk) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!isValid) return;
     setConfirmando(true);
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
@@ -101,6 +111,7 @@ export default function MapaTransferenciaModal({
         if (pasto.categoria) destinoUpdate.categoria = pasto.categoria;
         if (pasto.sexo) destinoUpdate.sexo = pasto.sexo;
       }
+      if (destinoSemCategoria) destinoUpdate.categoria = categoriaDestino;
 
       const { error: errD } = await supabase.from("pastos")
         .update(destinoUpdate)
@@ -169,6 +180,10 @@ export default function MapaTransferenciaModal({
                 </Button>
               )}
             </div>
+
+            {destinoSemCategoria && (
+              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+            )}
 
             {qtd > 0 && selectedDestino && qtd <= pasto.num_animais && (
               <div className="bg-muted rounded-md p-3 text-sm space-y-1">
