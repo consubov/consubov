@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Loader2, ArrowRightLeft, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
+import { faltaCategoria, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 
 interface Retiro {
   id: string;
@@ -211,10 +211,6 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
     setActionLoading(true);
     try {
       // Categoria obrigatória no pasto destino (validado antes de mexer em qualquer pasto)
-      const { data: destCheck } = await supabase
-        .from("pastos").select("id, categoria")
-        .eq("retiro_destino_id" as any, "__never__").limit(0);
-      void destCheck;
       const { data: destPrimeiro } = await supabase
         .from("pastos").select("categoria")
         .eq("retiro_id", t.retiro_destino_id).eq("ativo", true).order("nome").limit(1);
