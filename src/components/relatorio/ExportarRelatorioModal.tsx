@@ -569,6 +569,14 @@ export default function ExportarRelatorioModal({
           .eq("ano_referencia", ano);
         lancCat = (lc as any[]) ?? [];
       }
+      // Categoria sempre a gravada no lançamento (lancamentos.categoria), não a da view.
+      const catIds = lancCat.map(l => l.id).filter(Boolean);
+      const catById: Record<string, string | null> = {};
+      for (let i = 0; i < catIds.length; i += 200) {
+        const { data: cr } = await supabase.from("lancamentos").select("id, categoria").in("id", catIds.slice(i, i + 200));
+        (cr ?? []).forEach((r: any) => { catById[r.id] = r.categoria; });
+      }
+      lancCat = lancCat.map(l => ({ ...l, categoria: l.id in catById ? catById[l.id] : l.categoria }));
       const SEM_CAT = "Sem categoria";
       const CATS = ["Recria 1", "Recria 2", "Engorda"];
       type CatAcc = { sacos: number; custoTotal: number; kgTotal: number; animalDias: number; gmds: number[]; diasTotal: number; ultimoPorPasto: Map<string, { t: string; n: number }> };
