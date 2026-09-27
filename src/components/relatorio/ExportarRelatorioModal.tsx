@@ -625,7 +625,8 @@ export default function ExportarRelatorioModal({
       const categoriaMetrics: CatMetricsPDF[] = catOrder.map(cat => {
         const e = catMap[cat];
         let totalAnimais = 0;
-        e.ultimoPorPasto.forEach(v => { totalAnimais += v.n; });
+        ultimoPorPastoGlobal.forEach(v => { if (v.cat === cat) totalAnimais += v.n; });
+
         const consumoMedio = e.animalDias > 0 ? (e.kgTotal * 1000) / e.animalDias : 0;
         const custoMedio = e.animalDias > 0 ? (e.custoTotal / e.animalDias) * 30 : 0;
         const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
