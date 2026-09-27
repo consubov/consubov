@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
 import { fetchFazendaIdDoRetiro, fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
 interface Produto {
@@ -14,6 +16,7 @@ interface Produto {
 }
 
 interface Props {
+  categoriaAtual?: string | null;
   open: boolean;
   onClose: () => void;
   pastoId: string;
@@ -22,19 +25,21 @@ interface Props {
   onPastoUpdated: () => void;
 }
 
-export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome, retiroId, onPastoUpdated }: Props) {
+export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pastoId, pastoNome, retiroId, onPastoUpdated }: Props) {
   const [quantidade, setQuantidade] = useState("");
   const [pesoMedio, setPesoMedio] = useState("");
   const [produtoId, setProdutoId] = useState("");
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [categoria, setCategoria] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setQuantidade("");
     setPesoMedio("");
     setProdutoId("");
+    setCategoria(isCategoriaValida(categoriaAtual) ? (categoriaAtual as string) : "");
     setLoading(true);
 
     (async () => {
@@ -50,9 +55,10 @@ export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome,
     })();
   }, [open, retiroId]);
 
-  const isValid = parseInt(quantidade) > 0 && parseFloat(pesoMedio) > 0 && produtoId;
+  const isValid = parseInt(quantidade) > 0 && parseFloat(pesoMedio) > 0 && produtoId && !faltaCategoria(parseInt(quantidade) || 0, categoria);
 
   const handleSave = async () => {
+    if (faltaCategoria(parseInt(quantidade) || 0, categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
     if (!isValid) return;
     setSaving(true);
     try {
@@ -62,6 +68,7 @@ export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome,
           num_animais: parseInt(quantidade),
           peso_medio_kg: parseFloat(pesoMedio),
           produto_id: produtoId,
+          categoria,
         })
         .eq("id", pastoId);
       if (error) throw error;
@@ -132,6 +139,8 @@ export default function EntradaAnimaisModal({ open, onClose, pastoId, pastoNome,
                 </Select>
               )}
             </div>
+
+            <CategoriaPastoSelect value={categoria} onChange={setCategoria} />
 
             <Button onClick={handleSave} className="w-full" disabled={saving || !isValid}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Entrada"}
