@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, GitFork, Loader2, Check, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 import ExportarPesagemModal from "@/components/pesagem/ExportarPesagemModal";
 import type { AnimalPesagem } from "@/utils/gerarPdfPesagem";
 
@@ -194,6 +195,21 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
       for (const lote of lotes) {
         if (stats[lote.ordem].qtd > 0 && !destinos[lote.ordem]) {
           toast.error(`Selecione destino para ${lote.nome}`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Categoria obrigatória em todo pasto que vai receber animais
+      const destIdsCheck = Array.from(new Set(lotes
+        .filter((l) => stats[l.ordem].qtd > 0 && destinos[l.ordem])
+        .map((l) => destinos[l.ordem] as string)));
+      if (destIdsCheck.length > 0) {
+        const { data: catRows, error: catErr } = await supabase
+          .from("pastos").select("id, categoria").in("id", destIdsCheck);
+        if (catErr) throw catErr;
+        if ((catRows ?? []).some((r) => !isCategoriaValida(r.categoria))) {
+          toast.error(MSG_CATEGORIA_OBRIGATORIA);
           setSaving(false);
           return;
         }
