@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Settings, Package, BarChart3, Target, Weight } from "lucide-react";
 import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
+import { camposProdutoParaRetiro } from "@/lib/retiroProduto";
 
 interface Produto {
   id: string;
@@ -100,18 +101,7 @@ export default function RetiroConfigSection({ retiroId }: Props) {
 
   function handleProductChange(produtoId: string) {
     const prod = produtos.find((p) => p.id === produtoId);
-    setConfig((prev) => ({
-      ...prev,
-      produto_id: produtoId || null,
-      peso_saco_kg: prod?.peso_saco_kg ?? prev.peso_saco_kg,
-      preco_por_kg: prod?.preco_por_kg ?? prev.preco_por_kg,
-      consumo_recria1: prod?.consumo_recria1 ?? prev.consumo_recria1,
-      consumo_recria2: prod?.consumo_recria2 ?? prev.consumo_recria2,
-      consumo_engorda: prod?.consumo_engorda ?? prev.consumo_engorda,
-      margem_recria1: prod?.margem_recria1 ?? prev.margem_recria1,
-      margem_recria2: prod?.margem_recria2 ?? prev.margem_recria2,
-      margem_engorda: prod?.margem_engorda ?? prev.margem_engorda,
-    }));
+    setConfig((prev) => ({ ...prev, ...camposProdutoParaRetiro(prod, produtoId, prev) }));
   }
 
   function numOrNull(val: string): number | null {
