@@ -769,7 +769,7 @@ export default function GerenteDashboard() {
       {/* Retiro Detail Sheet */}
       <Sheet open={!!selectedRetiro} onOpenChange={(open) => !open && setSelectedRetiro(null)}>
         <SheetContent side="bottom" className="h-[85vh] overflow-auto">
-          {selectedRetiro && <RetiroDetail retiro={selectedRetiro} />}
+          {selectedRetiro && <RetiroDetail retiro={selectedRetiro} fazendaId={activeFazendaId} />}
         </SheetContent>
       </Sheet>
 
@@ -791,7 +791,7 @@ export default function GerenteDashboard() {
 }
 
 // ---- Retiro Detail ----
-function RetiroDetail({ retiro }: { retiro: RetiroComDados }) {
+function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId: string | null }) {
   const navRetiro = useNavigate();
   const { mes, ano } = usePainelPeriodo();
   const { pastos: pastosLista, loading: pastosListaLoading } = usePastosRetiro(retiro.id ?? null, mes, ano);
