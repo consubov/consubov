@@ -33,7 +33,7 @@ export default function TransferenciaModal({
   const [categoriaDestino, setCategoriaDestino] = useState("");
 
   const qtd = parseInt(quantidade) || 0;
-  const isValid = qtd > 0 && pasto && qtd <= pasto.num_animais && destinoId && destinoId !== pasto.id && categoriaOk;
+  const isValid = qtd > 0 && pasto && qtd <= pasto.num_animais && destinoId && destinoId !== pasto.id;
   const destino = pastos.find(p => p.id === destinoId);
   const destinoSemCategoria = !!destino && !isCategoriaValida(destino.categoria);
   const categoriaOk = !destinoSemCategoria || isCategoriaValida(categoriaDestino);
@@ -207,7 +207,7 @@ export default function TransferenciaModal({
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>Cancelar</Button>
           {step === 'input' ? (
-            <Button onClick={() => setStep('confirm')} disabled={!isValid}>
+            <Button onClick={() => setStep('confirm')} disabled={!isValid || !categoriaOk}>
               Avançar
             </Button>
           ) : (
