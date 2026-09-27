@@ -21,7 +21,11 @@ import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
 import { fetchVinculosPorProduto, salvarVinculosProduto } from "@/lib/produtosFazenda";
 
 const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
-const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Ração", "Suplemento", "Outro"];
+const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Proteinado 0,1%", "Proteinado 0,3%", "Proteinado 0,5%", "Ração", "Suplemento", "Outro"];
+
+function tipoExibido(p: any): string {
+  return p?.tipo === "Outro" && p?.tipo_outro ? p.tipo_outro : p?.tipo ?? "";
+}
 
 interface Produto {
   id: string;
@@ -38,6 +42,7 @@ interface ProdutoForm {
   marca: string;
   nome: string;
   tipo: string;
+  tipo_outro: string;
   peso_saco_kg: number;
   preco_por_kg: string;
   consumo_por_100kg: string;
@@ -53,7 +58,7 @@ interface ProdutoForm {
 }
 
 const emptyForm: ProdutoForm = {
-  marca: "", nome: "", tipo: "", peso_saco_kg: 25, preco_por_kg: "",
+  marca: "", nome: "", tipo: "", tipo_outro: "", peso_saco_kg: 25, preco_por_kg: "",
   consumo_por_100kg: "",
   consumo_recria1: "", consumo_recria2: "", consumo_engorda: "",
   margem_mais_recria1_pct: "", margem_menos_recria1_pct: "",
@@ -82,16 +87,23 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
 
   async function loadFazendas() {
     if (modo === "gerente") {
-      if (!user) return;
+      // Mesma fonte e lógica do seletor de fazenda do Painel do Gerente.
+      const gerenteId = roleData?.roleId;
+      if (!gerenteId) return;
       const { data } = await supabase
-        .from("gerentes")
-        .select("fazenda_id, fazendas(nome)")
-        .eq("user_id", user.id)
-        .eq("ativo", true);
-      const list = ((data ?? []) as any[])
-        .filter((g) => g.fazenda_id)
-        .map((g) => ({ id: g.fazenda_id as string, nome: g.fazendas?.nome ?? "Fazenda" }));
-      setFazendasOpcoes(list);
+        .from("gerentes_fazendas")
+        .select("fazenda_id, fazendas(id, nome)")
+        .eq("gerente_id", gerenteId);
+      const opcoes = ((data ?? []) as any[]).flatMap((item) => {
+        const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
+        return fazenda?.id ? [{ id: fazenda.id as string, nome: fazenda.nome as string }] : [];
+      });
+      if (opcoes.length === 0 && roleData?.fazendaId) {
+        const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
+        setFazendasOpcoes(fazenda ? [fazenda as { id: string; nome: string }] : []);
+        return;
+      }
+      setFazendasOpcoes(opcoes);
     } else {
       const { data } = await supabase
         .from("fazendas")
@@ -122,7 +134,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
     (async () => {
       await loadFazendas();
     })();
-  }, [modo, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modo, user?.id, roleData?.roleId, roleData?.fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadProdutos(fazendasPermitidasIds);
@@ -145,6 +157,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
       marca: a.marca ?? "",
       nome: p.nome,
       tipo: a.tipo ?? "",
+      tipo_outro: a.tipo_outro ?? "",
       peso_saco_kg: p.peso_saco_kg,
       preco_por_kg: p.preco_por_kg?.toString() ?? "",
       consumo_por_100kg: a.consumo_por_100kg?.toString() ?? "",
@@ -165,6 +178,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
     if (!form.nome.trim()) { toast.error("Nome do produto é obrigatório."); return; }
     if (!form.marca.trim()) { toast.error("Marca é obrigatória."); return; }
     if (!form.tipo) { toast.error("Tipo é obrigatório."); return; }
+    if (form.tipo === "Outro" && !form.tipo_outro.trim()) { toast.error("Informe qual é o tipo."); return; }
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
     if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
@@ -188,6 +202,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
       nome: form.nome.trim(),
       marca: form.marca.trim(),
       tipo: form.tipo,
+      tipo_outro: form.tipo === "Outro" ? form.tipo_outro.trim() : null,
       peso_saco_kg: form.peso_saco_kg,
       preco_por_kg: parseFloat(form.preco_por_kg) || null,
       consumo_por_100kg: numOrNull(form.consumo_por_100kg),
@@ -286,7 +301,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
                     <TableCell>{p.nome}</TableCell>
                     <TableCell>
                       {(p as any).tipo ? (
-                        <Badge variant="outline" className="text-xs">{(p as any).tipo}</Badge>
+                        <Badge variant="outline" className="text-xs">{tipoExibido(p)}</Badge>
                       ) : "—"}
                     </TableCell>
                     <TableCell>{p.peso_saco_kg} kg</TableCell>
@@ -329,7 +344,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
             </div>
             <div className="space-y-2">
               <Label>Tipo *</Label>
-              <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })}>
+              <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v, tipo_outro: v === "Outro" ? form.tipo_outro : "" })}>
                 <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                 <SelectContent>
                   {TIPO_OPTIONS.map((t) => (
@@ -337,6 +352,12 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {form.tipo === "Outro" && (
+                <div className="space-y-2 pt-1">
+                  <Label>Qual tipo? *</Label>
+                  <Input value={form.tipo_outro} onChange={(e) => setForm({ ...form, tipo_outro: e.target.value })} placeholder="Descreva o tipo" />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Peso do Saco (kg) *</Label>
