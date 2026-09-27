@@ -569,36 +569,43 @@ export default function ExportarRelatorioModal({
           .eq("ano_referencia", ano);
         lancCat = (lc as any[]) ?? [];
       }
-      // Categoria sempre a gravada no lançamento (lancamentos.categoria), não a da view.
+      // Categoria e num_animais sempre da tabela lancamentos (a view inflava a contagem).
       const catIds = lancCat.map(l => l.id).filter(Boolean);
-      const catById: Record<string, string | null> = {};
+      const lancById: Record<string, { categoria: string | null; num_animais: number | null }> = {};
       for (let i = 0; i < catIds.length; i += 200) {
-        const { data: cr } = await supabase.from("lancamentos").select("id, categoria").in("id", catIds.slice(i, i + 200));
-        (cr ?? []).forEach((r: any) => { catById[r.id] = r.categoria; });
+        const { data: cr } = await supabase.from("lancamentos").select("id, categoria, num_animais").in("id", catIds.slice(i, i + 200));
+        (cr ?? []).forEach((r: any) => { lancById[r.id] = { categoria: r.categoria, num_animais: r.num_animais }; });
       }
-      lancCat = lancCat.map(l => ({ ...l, categoria: l.id in catById ? catById[l.id] : l.categoria }));
+      lancCat = lancCat.map(l => ({ ...l, categoria: l.id in lancById ? lancById[l.id].categoria : l.categoria }));
       const SEM_CAT = "Sem categoria";
       const CATS = ["Recria 1", "Recria 2", "Engorda"];
-      type CatAcc = { sacos: number; custoTotal: number; kgTotal: number; animalDias: number; gmds: number[]; diasTotal: number; ultimoPorPasto: Map<string, { t: string; n: number }> };
+      type CatAcc = { sacos: number; custoTotal: number; kgTotal: number; animalDias: number; gmds: number[]; diasTotal: number };
       const catMap: Record<string, CatAcc> = {};
-      const novoAcc = (): CatAcc => ({ sacos: 0, custoTotal: 0, kgTotal: 0, animalDias: 0, gmds: [], diasTotal: 0, ultimoPorPasto: new Map() });
+      const novoAcc = (): CatAcc => ({ sacos: 0, custoTotal: 0, kgTotal: 0, animalDias: 0, gmds: [], diasTotal: 0 });
       CATS.forEach(c => { catMap[c] = novoAcc(); });
+
+      // Animais: o último lançamento de cada pasto no período conta UMA única vez,
+      // na categoria (lancamentos.categoria) desse último lançamento.
+      const ultimoPorPastoGlobal = new Map<string, { t: string; cat: string; n: number }>();
+
 
       lancCat.forEach(l => {
         const cat = (l.categoria && String(l.categoria).trim()) || SEM_CAT;
         if (!catMap[cat]) catMap[cat] = novoAcc();
         const entry = catMap[cat];
-        const animais = Number(l.num_animais ?? 0);
+        const animais = l.id in lancById && lancById[l.id].num_animais != null
+          ? Number(lancById[l.id].num_animais)
+          : Number(l.num_animais ?? 0);
         const sacos = Number(l.num_sacos ?? 0);
         const dias = Number(l.dias_no_pasto ?? 0);
         entry.sacos += sacos;
         entry.diasTotal += dias;
         entry.animalDias += animais * dias;
 
-        // Animais: num_animais do lançamento mais recente de cada pasto
         const t = String(l.created_at ?? "");
-        const prev = entry.ultimoPorPasto.get(l.pasto_id);
-        if (!prev || t > prev.t) entry.ultimoPorPasto.set(l.pasto_id, { t, n: animais });
+        const prevUlt = ultimoPorPastoGlobal.get(l.pasto_id);
+        if (!prevUlt || t >= prevUlt.t) ultimoPorPastoGlobal.set(l.pasto_id, { t, cat, n: animais });
+
 
         const pasto = pastos.find(p => p.id === l.pasto_id);
         const retiro = retirosData.find(r => r.id === l.retiro_id);
@@ -618,7 +625,8 @@ export default function ExportarRelatorioModal({
       const categoriaMetrics: CatMetricsPDF[] = catOrder.map(cat => {
         const e = catMap[cat];
         let totalAnimais = 0;
-        e.ultimoPorPasto.forEach(v => { totalAnimais += v.n; });
+        ultimoPorPastoGlobal.forEach(v => { if (v.cat === cat) totalAnimais += v.n; });
+
         const consumoMedio = e.animalDias > 0 ? (e.kgTotal * 1000) / e.animalDias : 0;
         const custoMedio = e.animalDias > 0 ? (e.custoTotal / e.animalDias) * 30 : 0;
         const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
