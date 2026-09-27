@@ -3749,6 +3749,7 @@ export type Database = {
           peso_saco_kg: number
           preco_por_kg: number | null
           tipo: string | null
+          tipo_outro: string | null
         }
         Insert: {
           administrador_id?: string | null
@@ -3774,6 +3775,7 @@ export type Database = {
           peso_saco_kg?: number
           preco_por_kg?: number | null
           tipo?: string | null
+          tipo_outro?: string | null
         }
         Update: {
           administrador_id?: string | null
@@ -3799,6 +3801,7 @@ export type Database = {
           peso_saco_kg?: number
           preco_por_kg?: number | null
           tipo?: string | null
+          tipo_outro?: string | null
         }
         Relationships: [
           {
