@@ -375,7 +375,7 @@ export default function CapatazDashboard() {
 
   // Abate & Transfer
   const [abateOpen, setAbateOpen] = useState(false);
-  const [abatePasto, setAbatePasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
+  const [abatePasto, setAbatePasto] = useState<{ id: string; nome: string; num_animais: number; categoria?: string | null } | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferPasto, setTransferPasto] = useState<{ id: string; nome: string; num_animais: number } | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
