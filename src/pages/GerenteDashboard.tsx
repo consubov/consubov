@@ -12,6 +12,7 @@ import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
 import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
+import GerenteProdutoRetiroCard from "@/components/gerente/GerenteProdutoRetiroCard";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
