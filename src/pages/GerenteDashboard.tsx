@@ -816,6 +816,10 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
       </SheetHeader>
 
       <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
+
+      {retiro.id && fazendaId && (
+        <GerenteProdutoRetiroCard retiroId={retiro.id} retiroNome={retiro.nome} fazendaId={fazendaId} />
+      )}
     </>
   );
 }
