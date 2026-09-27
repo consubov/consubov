@@ -4,13 +4,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  // Guarda SOMENTE o e-mail no aparelho. A senha nunca é armazenada pelo app.
+  const REMEMBER_KEY = "consubov_lembrar_email";
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem(REMEMBER_KEY) ?? ""; } catch { return ""; }
+  });
+  const [lembrarEmail, setLembrarEmail] = useState(() => {
+    try { return !!localStorage.getItem(REMEMBER_KEY); } catch { return false; }
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +34,12 @@ export default function Login() {
     if (error) {
       setError("Email ou senha inválidos.");
       setLoading(false);
+      return;
     }
+    try {
+      if (lembrarEmail) localStorage.setItem(REMEMBER_KEY, email.trim());
+      else localStorage.removeItem(REMEMBER_KEY);
+    } catch { /* armazenamento indisponível */ }
     // redirect is handled by App.tsx based on role
   };
 
@@ -72,6 +85,16 @@ export default function Login() {
                 required
                 autoComplete="current-password"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="lembrar-email"
+                checked={lembrarEmail}
+                onCheckedChange={(v) => setLembrarEmail(v === true)}
+              />
+              <Label htmlFor="lembrar-email" className="text-sm font-normal cursor-pointer">
+                Lembrar meu e-mail
+              </Label>
             </div>
             {error && (
               <p className="text-sm text-destructive font-medium">{error}</p>
