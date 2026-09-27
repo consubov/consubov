@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -110,9 +111,11 @@ export default function EditarQuantidadeCapatazModal({
   const isValid =
     form.nome.trim().length > 0 &&
     Number.isFinite(qtdNum) && qtdNum >= 0 &&
-    (form.peso === "" || (Number.isFinite(pesoNum) && (pesoNum ?? 0) >= 0));
+    (form.peso === "" || (Number.isFinite(pesoNum) && (pesoNum ?? 0) >= 0)) &&
+    !faltaCategoria(qtdNum, form.categoria);
 
   async function handleSave() {
+    if (faltaCategoria(qtdNum, form.categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
     if (!isValid) return;
     setSalvando(true);
     try {
@@ -227,6 +230,7 @@ export default function EditarQuantidadeCapatazModal({
                     <SelectItem value="Recria 1">Recria 1</SelectItem>
                     <SelectItem value="Recria 2">Recria 2</SelectItem>
                     <SelectItem value="Engorda">Engorda</SelectItem>
+                    <SelectItem value="Cria">Cria</SelectItem>
                   </SelectContent>
                 </Select>
                 {categoriaCalculada && (

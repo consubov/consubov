@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ArrowLeft, Loader2, TreePine, ClipboardList, Package, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
 import type { Tables } from "@/integrations/supabase/types";
 import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 
@@ -45,6 +47,7 @@ export default function PastoDetailPage() {
   const [transferQtd, setTransferQtd] = useState("");
   const [transferDestino, setTransferDestino] = useState("");
   const [savingTransfer, setSavingTransfer] = useState(false);
+  const [categoriaDestino, setCategoriaDestino] = useState("");
 
   async function loadData() {
     if (!pastoId || !retiroId || !fazendaId) return;
@@ -115,6 +118,7 @@ export default function PastoDetailPage() {
   function openTransfer() {
     setTransferQtd("");
     setTransferDestino("");
+    setCategoriaDestino(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
     setTransferOpen(true);
   }
 
@@ -128,6 +132,8 @@ export default function PastoDetailPage() {
 
     const destino = pastosDoRetiro.find(p => p.id === transferDestino);
     if (!destino) { toast.error("Pasto destino não encontrado."); return; }
+    const destinoSemCat = !isCategoriaValida(destino.categoria);
+    if (destinoSemCat && !isCategoriaValida(categoriaDestino)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
 
     setSavingTransfer(true);
     try {
@@ -142,7 +148,7 @@ export default function PastoDetailPage() {
 
       // Update destination pasto
       const newDestino = destino.num_animais + qtd;
-      const { error: errDestino } = await supabase.from("pastos").update({ num_animais: newDestino }).eq("id", destino.id);
+      const { error: errDestino } = await supabase.from("pastos").update(destinoSemCat ? { num_animais: newDestino, categoria: categoriaDestino } : { num_animais: newDestino }).eq("id", destino.id);
       if (errDestino) throw errDestino;
 
       // Record lancamento
@@ -165,7 +171,7 @@ export default function PastoDetailPage() {
       setPasto({ ...pasto, num_animais: newOrigem });
       setPastosDoRetiro(prev => prev.map(p => {
         if (p.id === pasto.id) return { ...p, num_animais: newOrigem };
-        if (p.id === destino.id) return { ...p, num_animais: newDestino };
+        if (p.id === destino.id) return { ...p, num_animais: newDestino, categoria: destinoSemCat ? categoriaDestino : p.categoria };
         return p;
       }));
 
@@ -188,6 +194,7 @@ export default function PastoDetailPage() {
   const destinosDisponiveis = pastosDoRetiro.filter(p => p.id !== pasto.id);
   const destinoSelecionado = destinosDisponiveis.find(p => p.id === transferDestino);
   const qtdNum = parseInt(transferQtd) || 0;
+  const destinoPrecisaCat = !!destinoSelecionado && !isCategoriaValida(destinoSelecionado.categoria);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -343,6 +350,9 @@ export default function PastoDetailPage() {
                 </SelectContent>
               </Select>
             </div>
+            {destinoPrecisaCat && (
+              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+            )}
             {qtdNum > 0 && destinoSelecionado && (
               <div className="bg-muted rounded-md p-3 text-sm">
                 <strong>{qtdNum}</strong> animais saem de <strong>{pasto.nome}</strong> → <strong>{destinoSelecionado.nome}</strong>
@@ -356,7 +366,7 @@ export default function PastoDetailPage() {
             <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
             <Button
               onClick={handleTransfer}
-              disabled={savingTransfer || !transferDestino || qtdNum <= 0 || qtdNum > pasto.num_animais}
+              disabled={savingTransfer || !transferDestino || qtdNum <= 0 || qtdNum > pasto.num_animais || (destinoPrecisaCat && !isCategoriaValida(categoriaDestino))}
             >
               {savingTransfer ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Transferência"}
             </Button>

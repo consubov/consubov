@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PastoMapaData } from "@/hooks/useMapaData";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 
 interface Props {
   open: boolean;
@@ -24,10 +26,14 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
   const [pesoMedio, setPesoMedio] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
+  const [categoria, setCategoria] = useState("");
+  useEffect(() => {
+    if (open) setCategoria(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
+  }, [open, pasto?.pasto_id]);
 
   const qtd = parseInt(quantidade);
   const peso = parseFloat(pesoMedio);
-  const isValid = origem.trim().length > 0 && qtd > 0 && peso > 0;
+  const isValid = origem.trim().length > 0 && qtd > 0 && peso > 0 && !faltaCategoria(qtd, categoria);
 
   const handleOpen = (o: boolean) => {
     if (!o) {
@@ -40,7 +46,9 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
   };
 
   const handleConfirm = async () => {
-    if (!pasto || !isValid) return;
+    if (!pasto) return;
+    if (faltaCategoria(qtd, categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!isValid) return;
     setSaving(true);
     try {
       // 1. Check ciclo is open
@@ -76,6 +84,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
         .update({
           num_animais: qtdTotal,
           peso_medio_kg: Math.round(novoPeso * 10) / 10,
+          categoria,
         })
         .eq("id", pasto.pasto_id);
       if (updErr) throw updErr;
@@ -144,6 +153,8 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
               placeholder="Ex: 350"
             />
           </div>
+
+          <CategoriaPastoSelect value={categoria} onChange={setCategoria} />
 
           <div>
             <label className="text-sm font-medium mb-1 block">Data da movimentação</label>

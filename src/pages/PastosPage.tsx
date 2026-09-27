@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, TreePine } from "lucide-react";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Pasto = Tables<"pastos">;
@@ -146,6 +147,7 @@ export default function PastosPage() {
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("O nome é obrigatório."); return; }
+    if (faltaCategoria(form.num_animais, form.categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
     if (!form.retiro_id) { toast.error("Selecione um retiro."); return; }
 
     setSaving(true);
@@ -292,6 +294,7 @@ export default function PastosPage() {
                     <SelectItem value="Recria 1">Recria 1</SelectItem>
                     <SelectItem value="Recria 2">Recria 2</SelectItem>
                     <SelectItem value="Engorda">Engorda</SelectItem>
+                    <SelectItem value="Cria">Cria</SelectItem>
                     
                   </SelectContent>
                 </Select>

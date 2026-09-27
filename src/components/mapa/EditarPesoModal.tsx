@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PastoMapaData } from "@/hooks/useMapaData";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 
 interface Props {
   open: boolean;
@@ -18,26 +20,32 @@ interface Props {
 export default function EditarPesoModal({ open, onClose, pasto, onDone }: Props) {
   const [peso, setPeso] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [categoria, setCategoria] = useState("");
+  const precisaCategoria = !!pasto && faltaCategoria(pasto.num_animais, pasto.categoria);
 
   function handleOpen() {
     if (pasto?.peso_medio_kg) setPeso(pasto.peso_medio_kg.toString());
+    setCategoria(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
   }
 
   function handleClose() {
     setPeso("");
+    setCategoria("");
     setSalvando(false);
     onClose();
   }
 
   const pesoNum = parseFloat(peso) || 0;
-  const isValid = pesoNum > 0;
+  const isValid = pesoNum > 0 && (!precisaCategoria || isCategoriaValida(categoria));
 
   async function handleSave() {
-    if (!pasto || !isValid) return;
+    if (!pasto) return;
+    if (precisaCategoria && !isCategoriaValida(categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!isValid) return;
     setSalvando(true);
     try {
       const { error } = await supabase.from("pastos")
-        .update({ peso_medio_kg: pesoNum })
+        .update(precisaCategoria ? { peso_medio_kg: pesoNum, categoria } : { peso_medio_kg: pesoNum })
         .eq("id", pasto.pasto_id);
       if (error) throw error;
 
@@ -69,6 +77,7 @@ export default function EditarPesoModal({ open, onClose, pasto, onDone }: Props)
               value={peso} onChange={e => setPeso(e.target.value)}
               placeholder={pasto.peso_medio_kg?.toString() || "0"} autoFocus />
           </div>
+          {precisaCategoria && <CategoriaPastoSelect value={categoria} onChange={setCategoria} />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>Cancelar</Button>

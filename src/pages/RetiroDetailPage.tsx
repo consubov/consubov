@@ -24,6 +24,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import BulkPastosModal from "@/components/retiro/BulkPastosModal";
 import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Retiro = Tables<"retiros">;
@@ -168,6 +169,7 @@ export default function RetiroDetailPage() {
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("O nome é obrigatório."); return; }
+    if (faltaCategoria(form.num_animais, form.categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
     setSaving(true);
     const payload = {
       nome: form.nome.trim(),
@@ -395,6 +397,7 @@ export default function RetiroDetailPage() {
                     <SelectItem value="Recria 1">Recria 1</SelectItem>
                     <SelectItem value="Recria 2">Recria 2</SelectItem>
                     <SelectItem value="Engorda">Engorda</SelectItem>
+                    <SelectItem value="Cria">Cria</SelectItem>
                     
                   </SelectContent>
                 </Select>

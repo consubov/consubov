@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
+import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
 
 interface TransferenciaModalProps {
   open: boolean;
   onClose: () => void;
-  pasto: { id: string; nome: string; num_animais: number } | null;
-  pastos: { id: string; nome: string; num_animais: number }[];
+  pasto: { id: string; nome: string; num_animais: number; categoria?: string | null } | null;
+  pastos: { id: string; nome: string; num_animais: number; categoria?: string | null }[];
   fazendaId: string;
   retiroId: string;
   mesOperacional: number;
@@ -28,10 +30,17 @@ export default function TransferenciaModal({
   const [destinoId, setDestinoId] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
+  const [categoriaDestino, setCategoriaDestino] = useState("");
 
   const qtd = parseInt(quantidade) || 0;
   const isValid = qtd > 0 && pasto && qtd <= pasto.num_animais && destinoId && destinoId !== pasto.id;
   const destino = pastos.find(p => p.id === destinoId);
+  const destinoSemCategoria = !!destino && !isCategoriaValida(destino.categoria);
+  const categoriaOk = !destinoSemCategoria || isCategoriaValida(categoriaDestino);
+  function escolherDestino(id: string) {
+    setDestinoId(id);
+    setCategoriaDestino(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
+  }
   const destinosDisponiveis = pastos.filter(p => pasto && p.id !== pasto.id);
 
   function handleClose() {
@@ -43,7 +52,9 @@ export default function TransferenciaModal({
   }
 
   async function handleConfirm() {
-    if (!pasto || !isValid || !destino) return;
+    if (!pasto || !destino) return;
+    if (!categoriaOk) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!isValid) return;
     setConfirmando(true);
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
@@ -108,6 +119,7 @@ export default function TransferenciaModal({
           if (origemData.peso_abate_meta_kg != null) destinoUpdate.peso_abate_meta_kg = origemData.peso_abate_meta_kg;
         }
       }
+      if (destinoSemCategoria) destinoUpdate.categoria = categoriaDestino;
       const { error: errDestino } = await supabase.from("pastos")
         .update(destinoUpdate)
         .eq("id", destinoId);
@@ -161,7 +173,7 @@ export default function TransferenciaModal({
             </div>
             <div className="space-y-2">
               <Label>Pasto destino</Label>
-              <Select value={destinoId} onValueChange={setDestinoId}>
+              <Select value={destinoId} onValueChange={escolherDestino}>
                 <SelectTrigger><SelectValue placeholder="Selecione o pasto" /></SelectTrigger>
                 <SelectContent>
                   {destinosDisponiveis.map(p => (
@@ -170,6 +182,9 @@ export default function TransferenciaModal({
                 </SelectContent>
               </Select>
             </div>
+            {destinoSemCategoria && (
+              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+            )}
             {qtd > 0 && destino && qtd <= pasto.num_animais && (
               <div className="bg-muted rounded-md p-3 text-sm">
                 <strong>{qtd}</strong> animais saem de <strong>{pasto.nome}</strong> → <strong>{destino.nome}</strong>
@@ -192,7 +207,7 @@ export default function TransferenciaModal({
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>Cancelar</Button>
           {step === 'input' ? (
-            <Button onClick={() => setStep('confirm')} disabled={!isValid}>
+            <Button onClick={() => setStep('confirm')} disabled={!isValid || !categoriaOk}>
               Avançar
             </Button>
           ) : (
