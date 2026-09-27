@@ -10,3 +10,4 @@
 - [x] Fase C: GMD offline (animal e lote) pelo cache + recálculo no servidor ao sincronizar.
 - [x] Sincronização offline: recuperar código de lote duplicado e manter cadastros confirmados visíveis até atualizar o cache.
 - [x] PDF do Pesador: impedir que o fallback de download exponha a URL técnica do Storage.
+- [x] PDF Seção 5: "Animais" lido da tabela lancamentos (não da view), último lançamento por pasto contado uma única vez na categoria dele (v1.107.0).
