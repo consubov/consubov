@@ -96,6 +96,8 @@ export interface FazendaCache {
   nome: string;
   intervalo_padrao_dias: number;
   auditoria_fotos_por_bloco: number;
+  /** Efetivo (retiro → fazenda → padrão). Ausente em caches antigos = obrigatória. */
+  exigir_foto_cocho?: boolean;
 }
 
 export interface SyncQueueItem {

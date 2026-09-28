@@ -14,6 +14,7 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { calcularConsumo, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+import { resolverAuditoria } from "@/lib/auditoriaConfig";
 import { verificarFotoObrigatoria, registrarSalgaAuditoria, getSorteioAtual, syncSorteioToSupabase } from "@/lib/auditoriaSort";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -709,14 +710,14 @@ export default function CapatazDashboard() {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
-        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id")
+        .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id, auditoria_fotos_por_bloco, exigir_foto_cocho")
         .eq("id", activeRetiroId!)
         .maybeSingle();
 
       if (retiroData) {
         const { data: fazenda } = await supabase
           .from("fazendas")
-          .select("nome, intervalo_padrao_dias, auditoria_fotos_por_bloco")
+          .select("nome, intervalo_padrao_dias, auditoria_fotos_por_bloco, exigir_foto_cocho")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
 
@@ -739,7 +740,8 @@ export default function CapatazDashboard() {
             id: retiroData.fazenda_id,
             nome: fazenda.nome || '',
             intervalo_padrao_dias: fazenda.intervalo_padrao_dias ?? 4,
-            auditoria_fotos_por_bloco: (fazenda as any).auditoria_fotos_por_bloco ?? 3,
+            auditoria_fotos_por_bloco: resolverAuditoria(retiroData as any, fazenda as any).fotosPorBloco,
+            exigir_foto_cocho: resolverAuditoria(retiroData as any, fazenda as any).exigirFotoCocho,
           };
           await cacheFazenda(fCache);
           setFazendaCache(fCache);
@@ -1548,6 +1550,7 @@ export default function CapatazDashboard() {
           tipo={formTipo}
           justificativaFalhaQr={formJustificativa}
           auditoriaExigida={formAuditoriaExigida}
+          exigirFotoCocho={fazendaCache?.exigir_foto_cocho ?? true}
           initialDraft={formDraft}
           onDraftChange={setFormDraft}
           onSave={handleSaveSalga}

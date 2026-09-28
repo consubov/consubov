@@ -30,6 +30,7 @@ import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
   TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
   Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu, Gauge, Scale,
+  Camera,
 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
@@ -330,6 +331,15 @@ export default function GerenteDashboard() {
                       >
                         <Package className="w-5 h-5 text-primary" />
                         Produtos
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/auditoria-fotos"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <Camera className="w-5 h-5 text-primary" />
+                        Auditoria de Fotos
                       </button>
                     </li>
                     <li>
