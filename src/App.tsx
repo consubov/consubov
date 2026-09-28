@@ -1,3 +1,4 @@
+import { GerenteFabricaGuard } from "@/hooks/useGerenteTemFabrica";
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -311,8 +312,8 @@ const App = () => (
 
               <Route path="/gerente" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteDashboard /></ProtectedRoute>} />
               <Route path="/gerente/fazendas/:fazendaId/retiros/:retiroId/painel" element={<ProtectedRoute allowedRoles={["gerente"]}><LegacyRetiroPainelRedirect /></ProtectedRoute>} />
-              <Route path="/gerente/materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><MateriasPrimasPage /></ProtectedRoute>} />
-              <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><EntradaMateriasPrimasPage /></ProtectedRoute>} />
+              <Route path="/gerente/materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><GerenteFabricaGuard><MateriasPrimasPage /></GerenteFabricaGuard></ProtectedRoute>} />
+              <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><GerenteFabricaGuard><EntradaMateriasPrimasPage /></GerenteFabricaGuard></ProtectedRoute>} />
               <Route path="/gerente/produtos" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteProdutosPage /></ProtectedRoute>} />
               <Route path="/gerente/auditoria-fotos" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteAuditoriaFotosPage /></ProtectedRoute>} />
               <Route path="/gerente/gmd" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteGmdPage /></ProtectedRoute>} />

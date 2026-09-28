@@ -11,7 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
  * Retorna null enquanto carrega.
  */
 export function useGerenteTemFabrica(): boolean | null {
-  const { role, roleData } = useAuth();
+  const { roleData } = useAuth();
+  const role = roleData.role;
   const [tem, setTem] = useState<boolean | null>(null);
 
   useEffect(() => {

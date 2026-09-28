@@ -1,3 +1,4 @@
+import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
 import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
@@ -101,6 +102,7 @@ function writeGerenteFiltros(v: GerenteFiltrosSalvos) {
 
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
+  const temFabrica = useGerenteTemFabrica() === true;
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
@@ -334,6 +336,7 @@ export default function GerenteDashboard() {
                 <Separator />
                 <nav className="flex-1 overflow-y-auto p-2">
                   <ul className="space-y-1">
+                    {temFabrica && (<>
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/materias-primas"), 220); }}
@@ -352,6 +355,7 @@ export default function GerenteDashboard() {
                         Entrada Matéria-Prima
                       </button>
                     </li>
+                    </>)}
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/produtos"), 220); }}
