@@ -595,7 +595,38 @@ export default function PainelInteligenciaPage() {
       if (filtroCategoria !== "all") filtros.push({ label: "Categoria", valor: filtroCategoria });
       if (filtroSexo !== "all") filtros.push({ label: "Sexo", valor: filtroSexo });
 
-      const categoriasExibidas = filtroCategoria === "all" ? metricasCategoria : metricasCategoria.filter(m => m.categoria === filtroCategoria);
+      // Animais: busca direta no banco no momento de gerar (sem dados em memória),
+      // mesma regra do card "Total Animais": pastos ativos de retiros/fazendas ativos,
+      // agrupados pela categoria do pasto.
+      const SEM_CAT_PDF = "Sem categoria";
+      const [fFresh, rFresh, pFresh] = await Promise.all([
+        supabase.from("fazendas").select("id, cidade, estado").eq("ativo", true),
+        supabase.from("retiros").select("id, fazenda_id").eq("ativo", true),
+        supabase.from("pastos").select("retiro_id, num_animais, categoria").eq("ativo", true),
+      ]);
+      if (fFresh.error || rFresh.error || pFresh.error) throw (fFresh.error || rFresh.error || pFresh.error);
+      const fazFresh = new Map((fFresh.data ?? []).map((f: any) => [f.id, f]));
+      const retFresh = new Map((rFresh.data ?? []).map((r: any) => [r.id, r]));
+      const animaisFresh: Record<string, number> = {};
+      (pFresh.data ?? []).forEach((p: any) => {
+        const n = Number(p.num_animais) || 0;
+        if (n <= 0) return;
+        const ret: any = retFresh.get(p.retiro_id);
+        const faz: any = ret ? fazFresh.get(ret.fazenda_id) : null;
+        if (!faz) return;
+        if (filtroFazenda !== "all" && faz.id !== filtroFazenda) return;
+        if (filtroEstado !== "all" && faz.estado !== filtroEstado) return;
+        if (filtroCidade !== "all" && faz.cidade !== filtroCidade) return;
+        const cat = (p.categoria && String(p.categoria).trim()) || SEM_CAT_PDF;
+        animaisFresh[cat] = (animaisFresh[cat] ?? 0) + n;
+      });
+      const baseMetricas = metricasCategoria.map(m => ({ ...m, totalAnimais: animaisFresh[m.categoria] ?? 0 }));
+      Object.keys(animaisFresh).forEach(cat => {
+        if (!baseMetricas.some(m => m.categoria === cat)) {
+          baseMetricas.push({ categoria: cat, consumoMedio: 0, totalAnimais: animaisFresh[cat], totalSacos: 0, custoMedio: 0, custoPorKgGanho: 0, gmd: 0, custoTotal: 0 });
+        }
+      });
+      const categoriasExibidas = filtroCategoria === "all" ? baseMetricas : baseMetricas.filter(m => m.categoria === filtroCategoria);
 
       const pdfData: PainelPDFData = {
         fazendaNome: filtroFazenda !== "all" ? (fazendaById[filtroFazenda]?.nome ?? "Fazenda") : "Todas as Fazendas",

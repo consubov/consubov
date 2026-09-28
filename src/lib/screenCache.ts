@@ -20,6 +20,16 @@ export function setScreenCache<T>(key: string, value: T) {
   store.set(key, value);
 }
 
+/** Escopos que dependem de pastos.num_animais (Painel da Fazenda). */
+const PASTOS_SCOPES = ["gerente", "painelExtra"];
+
+/** Remove de imediato as entradas desses escopos (próxima abertura busca do banco). */
+export function dropScreenCacheScopes(scopes: string[]) {
+  for (const k of Array.from(store.keys())) {
+    if (scopes.some((sc) => k.startsWith(`${sc}|`))) store.delete(k);
+  }
+}
+
 /**
  * Chamar depois de qualquer gravação. As telas abertas buscam de novo em
  * segundo plano; as demais sempre revalidam ao abrir, então os dados
@@ -50,6 +60,7 @@ export function installWriteInvalidation() {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
       if (res.ok && method !== "GET" && method !== "HEAD" && url.includes("/rest/v1/") && !url.includes("/rest/v1/rpc/")) {
+        if (url.includes("/rest/v1/pastos")) dropScreenCacheScopes(PASTOS_SCOPES);
         invalidateScreenCache();
       }
     } catch { /* ignore */ }
