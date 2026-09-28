@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pencil } from "lucide-react";
 import { CATEGORIAS_PASTO } from "@/lib/categoriaPasto";
+import { CircularMonthSelect } from "@/components/gerente/CircularMonthSelect";
 
 // Fase de configuração apenas: grava em gmd_config e fazendas (gmd_modo, verao_mes_*).
 // Não calcula peso projetado nem altera pastos/consumo.
@@ -316,17 +317,19 @@ export default function GerenteGmdPage() {
                     {!editing ? (
                       <p>{v.ini && v.fim ? `Verão: ${MESES[v.ini - 1]} a ${MESES[v.fim - 1]}` : "Verão: não definido"}</p>
                     ) : (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span>Verão: de</span>
-                        <Select value={draftVerao.ini ? String(draftVerao.ini) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, ini: Number(x) }))}>
-                          <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
-                          <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
-                        </Select>
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 whitespace-nowrap">
+                        <span>Verão:</span>
+                        <CircularMonthSelect
+                          value={draftVerao.ini}
+                          onChange={(ini) => setDraftVerao((d) => ({ ...d, ini }))}
+                          ariaLabel="Mês de início do verão"
+                        />
                         <span>até</span>
-                        <Select value={draftVerao.fim ? String(draftVerao.fim) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, fim: Number(x) }))}>
-                          <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
-                          <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <CircularMonthSelect
+                          value={draftVerao.fim}
+                          onChange={(fim) => setDraftVerao((d) => ({ ...d, fim }))}
+                          ariaLabel="Mês de fim do verão"
+                        />
                       </div>
                     )}
                     <p className="text-muted-foreground">{descreverInverno(v.ini, v.fim)}</p>
