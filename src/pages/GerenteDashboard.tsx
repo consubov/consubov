@@ -711,6 +711,11 @@ export default function GerenteDashboard() {
             )}
           </div>
 
+          {activeFazendaId && (
+            <PremiacaoSemestral fazendas={[{ id: activeFazendaId, nome: "" }]} />
+          )}
+
+
           {/* GMD Ranking */}
           <div>
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
