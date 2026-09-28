@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, Customized, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +101,87 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
     );
   };
 
+  /** Linhas-guia pontilhadas (cinza claro) do ponto até o eixo X — só nos meses com valor. */
+  const GuideLines = (p: any) => {
+    const { xAxisMap, yAxisMap, offset } = p;
+    const xAxis: any = Object.values(xAxisMap || {})[0];
+    const yAxis: any = Object.values(yAxisMap || {})[0];
+    if (!xAxis || !yAxis || !offset) return null;
+    const bottom = offset.top + offset.height;
+    const bw = xAxis.scale?.bandwidth ? xAxis.scale.bandwidth() / 2 : 0;
+    return (
+      <g style={{ pointerEvents: "none" }}>
+        {pontos.map((pt) => {
+          if (pt.valor == null) return null;
+          const x = xAxis.scale(pt.mes) + bw;
+          return (
+            <line
+              key={pt.idx}
+              x1={x}
+              y1={yAxis.scale(pt.valor) + 6}
+              x2={x}
+              y2={bottom + 6}
+              stroke="hsl(var(--border))"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+          );
+        })}
+      </g>
+    );
+  };
+
+  /** Rótulos em pílula branca (fundo arredondado + borda cinza clara), sempre acima do ponto.
+   *  Mês selecionado: texto na cor da marca (dourado). */
+  const PillLabels = (p: any) => {
+    const { xAxisMap, yAxisMap, offset } = p;
+    const xAxis: any = Object.values(xAxisMap || {})[0];
+    const yAxis: any = Object.values(yAxisMap || {})[0];
+    if (!xAxis || !yAxis) return null;
+    const bw = xAxis.scale?.bandwidth ? xAxis.scale.bandwidth() / 2 : 0;
+    const topLimit = (offset?.top ?? 0) + 10;
+    const leftLimit = (offset?.left ?? 0);
+    const rightLimit = leftLimit + (offset?.width ?? 0);
+    return (
+      <g style={{ pointerEvents: "none" }}>
+        {pontos.map((pt) => {
+          if (pt.valor == null) return null;
+          const sel = pt.idx === mesDestaque;
+          const text = String(Math.round(pt.valor));
+          const w = text.length * 6.4 + 12;
+          const h = 15;
+          const cx = Math.min(Math.max(xAxis.scale(pt.mes) + bw, leftLimit + w / 2), rightLimit - w / 2);
+          const y = Math.max(yAxis.scale(pt.valor) - 14, topLimit);
+          return (
+            <g key={pt.idx}>
+              <rect
+                x={cx - w / 2}
+                y={y - h / 2}
+                width={w}
+                height={h}
+                rx={h / 2}
+                fill="hsl(var(--card))"
+                stroke="hsl(var(--border))"
+                strokeWidth={1}
+              />
+              <text
+                x={cx}
+                y={y + 3.2}
+                textAnchor="middle"
+                fontSize={9}
+                fontWeight={700}
+                fill={sel ? "hsl(var(--secondary))" : "hsl(var(--foreground))"}
+              >
+                {text}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
+
   return (
     <Card>
       <CardHeader className="pb-1 pt-3 px-4 flex-row items-center justify-between space-y-0">
@@ -142,13 +223,9 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
                 }}
               />
               <Line type="monotone" dataKey="valor" stroke="hsl(var(--primary))" strokeWidth={2}
-                connectNulls={false} dot={Dot} activeDot={{ r: 5 }} isAnimationActive={false}>
-                {mostrarRotulos && (
-                  <LabelList dataKey="valor" position="top" offset={8}
-                    formatter={(v: any) => (v == null ? "" : String(Math.round(Number(v))))}
-                    style={{ fontSize: 9, fontWeight: 700, fill: "hsl(var(--foreground))" }} />
-                )}
-              </Line>
+                connectNulls={false} dot={Dot} activeDot={{ r: 5 }} isAnimationActive={false} />
+              <Customized component={(p: any) => <GuideLines {...p} />} />
+              <Customized component={(p: any) => (mostrarRotulos ? <PillLabels {...p} /> : null)} />
             </LineChart>
           </ResponsiveContainer>
         </div>
