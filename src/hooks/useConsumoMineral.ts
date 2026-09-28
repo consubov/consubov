@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { FormulaConfig } from "@/lib/formulasSistema";
+import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 
 export interface ConsumoMineralRetiro {
   retiro_id: string;
@@ -119,8 +120,9 @@ interface UseConsumoMineralParams {
 }
 
 export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoMineralParams) {
-  const [data, setData] = useState<ConsumoMineralRetiro[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = screenCacheKey("consumoMineral", [fazendaId, retiroId, mes, ano]);
+  const [data, setData] = useState<ConsumoMineralRetiro[]>(() => getScreenCache<ConsumoMineralRetiro[]>(cacheKey) ?? []);
+  const [loading, setLoading] = useState(() => !getScreenCache(cacheKey));
 
   const fetchData = useCallback(async () => {
     if (!fazendaId) {
@@ -128,7 +130,7 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!getScreenCache(cacheKey)) setLoading(true);
     try {
       const { data: result, error } = await supabase.rpc("get_consumo_mineral", {
         p_fazenda_id: fazendaId,
@@ -143,6 +145,7 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
         if (retiroId) {
           rows = rows.filter(r => r.retiro_id === retiroId);
         }
+        setScreenCache(cacheKey, rows);
         setData(rows);
       }
     } catch (e) {
@@ -151,9 +154,13 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, mes, ano, retiroId]);
+  }, [fazendaId, mes, ano, retiroId, cacheKey]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const cached = getScreenCache<ConsumoMineralRetiro[]>(cacheKey);
+    if (cached) { setData(cached); setLoading(false); }
+    void fetchData();
+  }, [fetchData, cacheKey]);
 
   // Realtime invalidation
   useEffect(() => {
@@ -166,19 +173,9 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
     return () => { supabase.removeChannel(channel); };
   }, [fetchData, fazendaId, retiroId, mes, ano]);
 
-  // Refetch on focus
-  useEffect(() => {
-    const handleFocus = () => void fetchData();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") void fetchData();
-    };
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [fetchData]);
+  // Volta do segundo plano: uma única atualização silenciosa após 5 min.
+  useResumeRefresh(() => { void fetchData(); });
+  useScreenCacheInvalidation(() => { void fetchData(); });
 
   return { data, loading, refresh: fetchData };
 }

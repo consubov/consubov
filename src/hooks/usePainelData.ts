@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+
+interface PainelExtraCache { fazendaNome: string; retiros: Retiro[]; pastos: Pasto[]; lancamentos: Lancamento[]; consumoRealByRetiro: Record<string, number>; }
 
 // ---------- Types ----------
 interface Retiro {
@@ -89,12 +92,14 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   const { fazendaId, retiroId, mes, ano } = filters;
   const formulas = useFormulasSistema();
   const applyFormulas = options?.useFormulasSistema === true;
-  const [fazendaNome, setFazendaNome] = useState("");
-  const [retiros, setRetiros] = useState<Retiro[]>([]);
-  const [pastos, setPastos] = useState<Pasto[]>([]);
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [extraLoading, setExtraLoading] = useState(true);
-  const [consumoRealByRetiro, setConsumoRealByRetiro] = useState<Record<string, number>>({});
+  const cacheKey = screenCacheKey("painelExtra", [fazendaId, retiroId, mes, ano]);
+  const initialCache = getScreenCache<PainelExtraCache>(cacheKey);
+  const [fazendaNome, setFazendaNome] = useState(initialCache?.fazendaNome ?? "");
+  const [retiros, setRetiros] = useState<Retiro[]>(initialCache?.retiros ?? []);
+  const [pastos, setPastos] = useState<Pasto[]>(initialCache?.pastos ?? []);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>(initialCache?.lancamentos ?? []);
+  const [extraLoading, setExtraLoading] = useState(!initialCache);
+  const [consumoRealByRetiro, setConsumoRealByRetiro] = useState<Record<string, number>>(initialCache?.consumoRealByRetiro ?? {});
 
   // ---------- Centralized RPC for consumption metrics ----------
   const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
@@ -114,7 +119,8 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
       setExtraLoading(false);
       return;
     }
-    setExtraLoading(true);
+    if (!getScreenCache(cacheKey)) setExtraLoading(true);
+    const snap: PainelExtraCache = { fazendaNome: "", retiros: [], pastos: [], lancamentos: [], consumoRealByRetiro: {} };
     try {
       const [fazRes, retirosRes] = await Promise.all([
         supabase.from("fazendas").select("nome").eq("id", fazendaId).single(),
@@ -122,9 +128,11 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
           .eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
-      setFazendaNome(fazRes.data?.nome ?? "");
+      snap.fazendaNome = fazRes.data?.nome ?? "";
+      setFazendaNome(snap.fazendaNome);
       const allRetiros = (retirosRes.data ?? []) as Retiro[];
       const retList = retiroId ? allRetiros.filter((r) => r.id === retiroId) : allRetiros;
+      snap.retiros = retList;
       setRetiros(retList);
 
       let retiroIds = retList.map(r => r.id);
@@ -146,8 +154,10 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
             return q;
           })(),
         ]);
-        setPastos((pastosRes.data ?? []) as Pasto[]);
-        setLancamentos(((lancRes.data as unknown) ?? []) as Lancamento[]);
+        snap.pastos = (pastosRes.data ?? []) as Pasto[];
+        snap.lancamentos = ((lancRes.data as unknown) ?? []) as Lancamento[];
+        setPastos(snap.pastos);
+        setLancamentos(snap.lancamentos);
 
         // Consumo canônico por retiro: RPC get_painel_mae (ponderado por cab-dias)
         const entries = await Promise.all(retiroIds.map(async (rid) => {
@@ -160,38 +170,38 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
           const row = Array.isArray(rows) ? rows[0] : rows;
           return [rid, Number(row?.consumo_real_g_cab_dia) || 0] as const;
         }));
-        setConsumoRealByRetiro(Object.fromEntries(entries));
+        snap.consumoRealByRetiro = Object.fromEntries(entries);
+        setConsumoRealByRetiro(snap.consumoRealByRetiro);
       } else {
         setPastos([]);
         setLancamentos([]);
         setConsumoRealByRetiro({});
       }
+      setScreenCache(cacheKey, snap);
     } catch (e) {
       console.error("usePainelData error:", e);
     } finally {
       setExtraLoading(false);
     }
-  }, [fazendaId, retiroId, mes, ano]);
+  }, [fazendaId, retiroId, mes, ano, cacheKey]);
 
-  useEffect(() => { loadExtraData(); }, [loadExtraData]);
+  useEffect(() => {
+    const c = getScreenCache<PainelExtraCache>(cacheKey);
+    if (c) {
+      setFazendaNome(c.fazendaNome); setRetiros(c.retiros); setPastos(c.pastos);
+      setLancamentos(c.lancamentos); setConsumoRealByRetiro(c.consumoRealByRetiro); setExtraLoading(false);
+    }
+    void loadExtraData();
+  }, [loadExtraData, cacheKey]);
 
   useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], () => {
     loadExtraData();
     refreshConsumo();
   });
 
-  useEffect(() => {
-    const handleFocus = () => { void loadExtraData(); void refreshConsumo(); };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") { void loadExtraData(); void refreshConsumo(); }
-    };
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [loadExtraData, refreshConsumo]);
+  // O consumo (useConsumoMineral) cuida do próprio retorno ao app.
+  useResumeRefresh(() => { void loadExtraData(); });
+  useScreenCacheInvalidation(() => { void loadExtraData(); });
 
   const loading = consumoLoading || extraLoading;
 
