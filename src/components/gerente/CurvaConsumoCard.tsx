@@ -54,42 +54,28 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
     if (!fazendaId) { setDados(null); return; }
     setLoading(true);
     try {
-      const meses = Array.from({ length: 12 }, (_, i) => i + 1);
-      let valores: (number | null)[];
-      if (!prod) {
-        // Mesma função do card "Consumo Real": get_painel_mae, um mês por chamada.
-        const res = await Promise.all(meses.map((m) => (supabase as any).rpc("get_painel_mae", {
-          p_fazenda_id: fazendaId, p_retiro_id: retiroId ?? null, p_mes: m, p_ano: anoSel,
-        })));
-        valores = res.map((r: any) => {
-          if (r.error) throw r.error;
-          const row = Array.isArray(r.data) ? r.data[0] : r.data;
-          const v = row?.consumo_real_g_cab_dia;
-          return v == null ? null : Number(v);
-        });
-      } else {
-        // Mesma conta do card com produto (usePainelProduto): view_lancamento_consumo_real dos pastos do produto.
-        const pastoIds = await pastosDoProduto(fazendaId, retiroId, prod);
-        valores = Array(12).fill(null);
-        if (pastoIds.length) {
-          const { data, error } = await (supabase as any).from("view_lancamento_consumo_real")
-            .select("mes_referencia, kg_fornecido, cab_dias_assumidos")
-            .in("pasto_id", pastoIds).eq("ano_referencia", anoSel).limit(10000);
-          if (error) throw error;
-          const kg = Array(12).fill(0), cab = Array(12).fill(0);
-          for (const r of (data ?? []) as any[]) {
-            const i = Number(r.mes_referencia) - 1;
-            if (i < 0 || i > 11) continue;
-            kg[i] += Number(r.kg_fornecido) || 0;
-            cab[i] += Number(r.cab_dias_assumidos) || 0;
-          }
-          valores = kg.map((k, i) => (cab[i] > 0 ? Number(((k * 1000) / cab[i]).toFixed(2)) : null));
-        }
-      }
-      let q = (supabase as any).from("view_lancamento_consumo_real").select("ano_referencia").eq("fazenda_id", fazendaId);
+      // Fonte única: view_lancamento_consumo_real agrupada por mês — mesma conta
+      // do card "Consumo Real" (SUM(kg)*1000 / SUM(cab_dias_assumidos)).
+      // Produto: a view não tem coluna de produto, então o filtro é ignorado
+      // (nota "Curva de todos os produtos" é exibida no rodapé do card).
+      let q = (supabase as any).from("view_lancamento_consumo_real")
+        .select("ano_referencia, mes_referencia, kg_fornecido, cab_dias_assumidos")
+        .eq("fazenda_id", fazendaId);
       if (retiroId) q = q.eq("retiro_id", retiroId);
-      const { data: anosData } = await q.limit(10000);
-      const anosSet = new Set<number>(((anosData ?? []) as any[]).map((r) => Number(r.ano_referencia)).filter(Boolean));
+      const { data, error } = await q.limit(10000);
+      if (error) throw error;
+      const kg = Array(12).fill(0), cab = Array(12).fill(0);
+      const anosSet = new Set<number>();
+      for (const r of (data ?? []) as any[]) {
+        const a = Number(r.ano_referencia);
+        if (a) anosSet.add(a);
+        if (a !== anoSel) continue;
+        const i = Number(r.mes_referencia) - 1;
+        if (i < 0 || i > 11) continue;
+        kg[i] += Number(r.kg_fornecido) || 0;
+        cab[i] += Number(r.cab_dias_assumidos) || 0;
+      }
+      const valores = kg.map((k: number, i: number) => (cab[i] > 0 ? Number(((k * 1000) / cab[i]).toFixed(2)) : null));
       const novo = { anos: Array.from(anosSet).sort((a, b) => b - a), valores };
       setScreenCache(key, novo);
       setDados(novo);
