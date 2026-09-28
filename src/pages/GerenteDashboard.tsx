@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +103,7 @@ export default function GerenteDashboard() {
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
+  const [scoreAberto, setScoreAberto] = useState<string | null>(null);
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
   // Filtros guardados na sessão: ao voltar para a tela (ou se o iPhone
   // descartar o app da memória) eles são restaurados em vez de zerados.
