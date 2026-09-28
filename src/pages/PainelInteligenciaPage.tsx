@@ -577,6 +577,11 @@ export default function PainelInteligenciaPage() {
     });
   }, [filteredLancamentos, pastoById, pastos, retiroById, fazendaById, filtroFazenda, filtroEstado, filtroCidade]);
 
+  const animaisPorCategoria = useMemo(
+    () => Object.fromEntries(metricasCategoria.map(m => [m.categoria, m.totalAnimais])),
+    [metricasCategoria],
+  );
+
   const MESES_NOMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
   async function handleExportPDF() {
@@ -1101,6 +1106,7 @@ export default function PainelInteligenciaPage() {
         produtoById={produtoById}
         filtroCategoria={filtroCategoria}
         getEffectiveProdutoId={getEffectiveProdutoId}
+        animaisPorCategoria={animaisPorCategoria}
       />
 
       {/* RANKING TABLE */}

@@ -51,11 +51,13 @@ interface Props {
   produtoById: Record<string, Produto>;
   filtroCategoria: string;
   getEffectiveProdutoId: (l: Lancamento) => string | null;
+  /** Animais por categoria do pasto (mesma regra do card "Total Animais"). */
+  animaisPorCategoria?: Record<string, number>;
 }
 
 export default function MetricasPorCategoria({
   filteredLancamentos, consumosPorLanc, pastoById, retiroById, produtoById,
-  filtroCategoria, getEffectiveProdutoId,
+  filtroCategoria, getEffectiveProdutoId, animaisPorCategoria,
 }: Props) {
   const metricas = useMemo(() => {
     const catMap: Record<string, {
@@ -102,8 +104,12 @@ export default function MetricasPorCategoria({
     });
 
     const result: CatMetrics[] = [];
-    CATEGORIAS.forEach(cat => {
-      const e = catMap[cat];
+    const extras = animaisPorCategoria
+      ? Object.keys(animaisPorCategoria).filter(c => !(CATEGORIAS as readonly string[]).includes(c) && c !== "Sem categoria")
+      : [];
+    const ordem: string[] = [...CATEGORIAS, ...extras, ...(animaisPorCategoria?.["Sem categoria"] ? ["Sem categoria"] : [])];
+    ordem.forEach(cat => {
+      const e = catMap[cat] ?? { weightedSum: 0, totalAnimais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 };
       const consumoMedio = e.totalAnimais > 0
         ? e.weightedSum / e.totalAnimais : 0;
       const gmd = e.gmds.length > 0
@@ -116,7 +122,7 @@ export default function MetricasPorCategoria({
       result.push({
         categoria: cat,
         consumoMedio,
-        totalAnimais: e.totalAnimais,
+        totalAnimais: animaisPorCategoria ? (animaisPorCategoria[cat] ?? 0) : e.totalAnimais,
         totalSacos: e.sacos,
         custoMedio,
         custoPorKgGanho,
@@ -126,7 +132,7 @@ export default function MetricasPorCategoria({
     });
 
     return result;
-  }, [filteredLancamentos, pastoById, produtoById, getEffectiveProdutoId]);
+  }, [filteredLancamentos, pastoById, produtoById, getEffectiveProdutoId, animaisPorCategoria]);
 
   const categoriasExibidas = filtroCategoria === "all"
     ? metricas
