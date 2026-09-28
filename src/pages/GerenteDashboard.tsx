@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +103,7 @@ export default function GerenteDashboard() {
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
+  const [scoreAberto, setScoreAberto] = useState<string | null>(null);
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
   // Filtros guardados na sessão: ao voltar para a tela (ou se o iPhone
   // descartar o app da memória) eles são restaurados em vez de zerados.
@@ -682,14 +683,28 @@ export default function GerenteDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {capatazScores.map((s, i) => (
-                      <TableRow key={s.retiro}>
-                        <TableCell className="text-center font-semibold text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="text-sm">{s.retiro}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{s.capataz}</TableCell>
-                        <TableCell className={`text-right ${scoreColor(s.score)}`}>{fmtNum(s.score, 1)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {capatazScores.map((s, i) => {
+                      const aberto = scoreAberto === s.retiroId;
+                      return (
+                        <Fragment key={s.retiroId}>
+                          <TableRow className="cursor-pointer" onClick={() => setScoreAberto(aberto ? null : s.retiroId)}>
+                            <TableCell className="text-center font-semibold text-muted-foreground">{i + 1}</TableCell>
+                            <TableCell className="text-sm">{s.retiro}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{s.capataz}</TableCell>
+                            <TableCell className={`text-right ${scoreColor(s.score)}`}>{fmtNum(s.score, 1)}/10</TableCell>
+                          </TableRow>
+                          {aberto && (
+                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                              <TableCell colSpan={4} className="text-xs space-y-1 py-2">
+                                <p><span className="font-semibold">Meta {fmtNum(s.scoreMeta, 1)}/{s.pesoMeta}</span> — {s.detalheMeta}</p>
+                                <p><span className="font-semibold">Salga {fmtNum(s.scoreSalga, 1)}/{s.pesoSalga}</span> — {s.detalheSalga}</p>
+                                <p><span className="font-semibold">Cocho {s.scoreCocho != null ? fmtNum(s.scoreCocho, 1) : "—"}/{s.pesoCocho}</span> — {s.detalheCocho}</p>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </Card>

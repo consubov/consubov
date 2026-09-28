@@ -26,12 +26,7 @@ function getMargemMenosPct(categoria: string, p: MargensPct): number | null {
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
-import {
-  fetchScoreWeights,
-  computeScoreCapataz,
-  computeAtrasoMedioSalga,
-  fetchNotaCochoConsultor,
-} from "@/lib/scoreCapataz";
+import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -105,17 +100,6 @@ export default function ExportarRelatorioModal({
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const produtoSelecionado = produtoId && produtoId !== "todos" ? produtoId : null;
       const { start, end, label } = getDateRange(periodoSelecionado);
-
-      const scoreWeights = await fetchScoreWeights();
-      const { data: fazendaRow } = await supabase
-        .from("fazendas")
-        .select("intervalo_padrao_dias")
-        .eq("id", fazendaId)
-        .maybeSingle();
-      const diasIntervalo = Number(fazendaRow?.intervalo_padrao_dias ?? 3);
-
-      // Nota de cocho da visita técnica do Consultor (mês/ano ou range selecionado)
-      const cochoData = await fetchNotaCochoConsultor(fazendaNome, start, end);
 
       let retQuery = supabase.from("retiros")
         .select("id, nome, capataz, produto_id, ultima_salga_em")
@@ -382,6 +366,19 @@ export default function ExportarRelatorioModal({
 
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
+      // Nota do Capataz: fonte única compartilhada com a aba Ranking do Painel.
+      const scores = await fetchScoresCapataz({
+        fazendaId,
+        start,
+        end,
+        periodo: periodoSelecionado === "mensal" ? "mensal" : periodoSelecionado === "anual" ? "anual" : "range",
+        mes,
+        ano,
+        retiroId: retiroSelecionado,
+        pastoIds: produtoSelecionado ? pastoIds : null,
+      });
+      const diasIntervalo = scores.diasIntervalo;
+
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
         const rPastos = pastos.filter(p => p.retiro_id === ret.id);
         const rPastoIds = new Set(rPastos.map(p => p.id));
@@ -423,32 +420,8 @@ export default function ExportarRelatorioModal({
         }, 0);
         const custoDiario = consumoMedio > 0 && precoKg > 0 ? (consumoMedio / 1000) * precoKg : 0;
 
-        // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
-        // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
-        let pastosNaMeta = 0;
-        for (const p of pastosNoPeriodo) {
-          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
-          const sorted = [...pLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
-          const last = sorted[0];
-          const idx = last ? Number(last.indice_consumo ?? 0) : 0;
-          const st = idx > 0 ? formulas.classificacao.classify(idx) : (last?.status_consumo ?? null);
-          if (st === "Ideal") pastosNaMeta++;
-        }
 
-        const atrasoMedioDias = computeAtrasoMedioSalga(
-          rLanc.map(l => ({ pasto_id: l.pasto_id as string, created_at: l.created_at ?? null })),
-          diasIntervalo,
-        );
-
-        const scoreCalc = computeScoreCapataz({
-          pastosNaMeta,
-          totalPastosComLanc: pastosNoPeriodo.length,
-          atrasoMedioDias,
-          diasIntervalo,
-          notaMediaVisita: cochoData?.nota ?? null,
-          notaEscalaMax: 5,
-          dataVisita: cochoData?.dataVisita ?? null,
-        }, scoreWeights);
+        const scoreCalc = scores.byRetiro[ret.id]?.result ?? scores.semSalga;
 
         const pastoReport: PastoReportData[] = pastosNoPeriodo.map(p => {
           const pLanc = rLanc.filter(l => l.pasto_id === p.id);
