@@ -31,6 +31,24 @@ const FORCE_RELOAD_STORAGE_KEY = "consubov:forced-reload-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 const notifiedUpdateVersions = new Set<string>();
 let explicitUpdateFallbackTimer: number | null = null;
+let userRequestedUpdate = false;
+
+/**
+ * Abertura "do zero": só nos primeiros segundos após carregar a página e antes
+ * de o app ir para segundo plano. Fora disso, nunca recarregamos sozinhos —
+ * apenas mostramos o aviso "Nova versão disponível".
+ */
+const COLD_START_WINDOW_MS = 15000;
+const pageLoadedAt = Date.now();
+let wentToBackground = false;
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") wentToBackground = true;
+  });
+}
+function isColdStart() {
+  return !wentToBackground && Date.now() - pageLoadedAt < COLD_START_WINDOW_MS;
+}
 
 function buildReloadUrl(version = lastKnownRemoteVersion) {
   const url = new URL(window.location.href);
@@ -59,6 +77,11 @@ function setForcedReloadCount(version: string, count: number) {
 }
 
 function hardReloadToLatest(version = lastKnownRemoteVersion) {
+  if (!userRequestedUpdate && !isColdStart()) {
+    logSw("Nova versão ativa — só mostrando o aviso (sem recarregar sozinho)", version);
+    notifyListeners(true);
+    return;
+  }
   if (hasCriticalOperations()) {
     logSw("Reload adiado — operação crítica em andamento");
     schedulePostDrainAction(() => hardReloadToLatest(version));
@@ -164,6 +187,7 @@ function bindControllerChangeReload() {
  */
 export async function applyPendingUpdateNow(updateToken?: string) {
   logSw("Iniciando aplicação explícita da atualização", updateToken ?? "sem token");
+  userRequestedUpdate = true;
   if (!("serviceWorker" in navigator)) {
     explicitUpdateReload(updateToken);
     return;
