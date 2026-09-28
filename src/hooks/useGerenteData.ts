@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
@@ -74,7 +75,12 @@ export interface PainelData {
   statusDistribution: StatusDistribution;
 }
 
-export interface CapatazScore { retiro: string; capataz: string; score: number; }
+export interface CapatazScore {
+  retiroId: string; retiro: string; capataz: string; score: number;
+  scoreMeta: number; scoreSalga: number; scoreCocho: number | null;
+  pesoMeta: number; pesoSalga: number; pesoCocho: number;
+  detalheMeta: string; detalheSalga: string; detalheCocho: string;
+}
 export interface GmdRankItem { retiro: string; capataz: string; gmd: number; }
 
 interface GerenteCache {
@@ -358,26 +364,32 @@ export function useGerenteData(filters?: GerenteFilters) {
     });
   }, [retiros, pastos, lancamentos, consumoData, fazendaData]);
 
-  // Computed: capataz scores
-  const capatazScores = useMemo<CapatazScore[]>(() => {
-    const numDias = ciclo?.duracao_dias ?? ciclo?.num_dias ?? 30;
-    return retirosComDados.map(r => {
-      const rLanc = r.lancamentos;
-      // Simplified score - no consumo_g_cab_dia available
-      const consumoScore = 0;
-      const expected = r.pastos.length * (numDias / 3);
-      const regScore = expected > 0 ? Math.min(1, rLanc.length / expected) * 2.5 : 0;
-      const dates = rLanc.filter(l => l.created_at).map(l => new Date(l.created_at!).getTime()).sort((a, b) => a - b);
-      let intScore = 0;
-      if (dates.length >= 2) {
-        const intervals: number[] = [];
-        for (let i = 1; i < dates.length; i++) intervals.push(diasCalendarioSP(dates[i - 1], dates[i]) ?? 0);
-        const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-        intScore = avg <= 4 ? 2.5 : Math.max(0, 2.5 - (avg - 4) * 0.25);
-      }
-      return { retiro: r.nome, capataz: r.capataz, score: Number(Math.min(10, consumoScore + regScore + intScore).toFixed(1)) };
-    }).sort((a, b) => b.score - a.score);
-  }, [retirosComDados, ciclo]);
+  // Nota do Capataz: fonte única compartilhada com a Seção 2 do PDF.
+  const [capatazScores, setCapatazScores] = useState<CapatazScore[]>([]);
+  const [scoresTick, setScoresTick] = useState(0);
+  useEffect(() => {
+    if (!fazendaId) { setCapatazScores([]); return; }
+    let cancelled = false;
+    const anual = filters != null && filters.mes == null;
+    const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
+    const end = anual ? new Date(consumoAno, 11, 31, 23, 59, 59) : new Date(consumoAno, consumoMes, 0, 23, 59, 59);
+    fetchScoresCapataz({
+      fazendaId, start, end,
+      periodo: anual ? "anual" : "mensal",
+      mes: consumoMes, ano: consumoAno,
+    }).then(({ list }) => {
+      if (cancelled) return;
+      setCapatazScores(list.map((s) => ({
+        retiroId: s.retiroId, retiro: s.retiro, capataz: s.capataz, score: s.score,
+        scoreMeta: Number(s.result.scoreMeta.toFixed(1)),
+        scoreSalga: Number(s.result.scoreSalga.toFixed(1)),
+        scoreCocho: s.result.scoreCocho != null ? Number(s.result.scoreCocho.toFixed(1)) : null,
+        pesoMeta: s.result.pesoMeta, pesoSalga: s.result.pesoSalga, pesoCocho: s.result.pesoCocho,
+        detalheMeta: s.result.detalheMeta, detalheSalga: s.result.detalheSalga, detalheCocho: s.result.detalheCocho,
+      })));
+    }).catch((e) => console.error("Score capataz error:", e));
+    return () => { cancelled = true; };
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -424,6 +436,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const obsResolvidas = useMemo(() => observacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [observacoes]);
 
   const refresh = useCallback(async () => {
+    setScoresTick((t) => t + 1);
     await Promise.all([loadData(), refreshConsumo()]);
   }, [loadData, refreshConsumo]);
 
