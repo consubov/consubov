@@ -1648,6 +1648,7 @@ export type Database = {
           criado_em: string | null
           estado: string
           exigir_foto_cocho: boolean
+          gmd_modo: string | null
           id: string
           intervalo_padrao_dias: number
           nome: string
@@ -1662,6 +1663,7 @@ export type Database = {
           criado_em?: string | null
           estado?: string
           exigir_foto_cocho?: boolean
+          gmd_modo?: string | null
           id?: string
           intervalo_padrao_dias?: number
           nome: string
@@ -1676,6 +1678,7 @@ export type Database = {
           criado_em?: string | null
           estado?: string
           exigir_foto_cocho?: boolean
+          gmd_modo?: string | null
           id?: string
           intervalo_padrao_dias?: number
           nome?: string
