@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   LogOut, Beef, Droplets, Target, Package, DollarSign,
-  TrendingUp, Award, ChevronRight, Bell, CheckCircle2,
+  TrendingUp, Award, ChevronRight, Bell, CheckCircle2, CalendarClock,
   Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu, Gauge, Scale,
   Camera,
 } from "lucide-react";
@@ -375,6 +375,15 @@ export default function GerenteDashboard() {
                       >
                         <TrendingUp className="w-5 h-5 text-primary" />
                         GMD
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/previsao-abate"), 220); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                      >
+                        <CalendarClock className="w-5 h-5 text-primary" />
+                        Previsão de Abate
                       </button>
                     </li>
                     <li>
