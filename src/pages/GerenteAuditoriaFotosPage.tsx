@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { GerenteFazendaSelect, useGerenteFazendaAtiva } from "@/components/gerente/GerenteFazendaSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +25,6 @@ function fotosLabel(n: number) {
 
 export default function GerenteAuditoriaFotosPage() {
   const navigate = useNavigate();
-  const { roleData } = useAuth();
   const { fazendas, fazendaId, setFazendaId, carregado } = useGerenteFazendaAtiva();
   const [faz, setFaz] = useState<FazCfg>({ auditoria_fotos_por_bloco: null, exigir_foto_cocho: null });
   const [retiros, setRetiros] = useState<RetiroCfg[]>([]);

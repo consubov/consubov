@@ -70,9 +70,11 @@ const emptyForm: ProdutoForm = {
 interface ProdutosPageProps {
   /** "gerente" restringe as fazendas vinculáveis às fazendas do gerente logado. */
   modo?: "admin" | "gerente";
+  /** Gerente: fazenda ativa do filtro; lista e vínculos ficam restritos a ela. */
+  fazendaAtivaId?: string;
 }
 
-export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
+export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: ProdutosPageProps) {
   const { roleData, user } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,12 +102,14 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
         const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
         return fazenda?.id ? [{ id: fazenda.id as string, nome: fazenda.nome as string }] : [];
       });
-      if (opcoes.length === 0 && roleData?.fazendaId) {
+      let lista = opcoes;
+      if (lista.length === 0 && roleData?.fazendaId) {
         const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
-        setFazendasOpcoes(fazenda ? [fazenda as { id: string; nome: string }] : []);
-        return;
+        lista = fazenda ? [fazenda as { id: string; nome: string }] : [];
       }
-      setFazendasOpcoes(opcoes);
+      // Nenhuma gravação fora da fazenda selecionada no filtro.
+      if (fazendaAtivaId) lista = lista.filter((f) => f.id === fazendaAtivaId);
+      setFazendasOpcoes(lista);
     } else {
       const { data } = await supabase
         .from("fazendas")
@@ -136,7 +140,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
     (async () => {
       await loadFazendas();
     })();
-  }, [modo, user?.id, roleData?.roleId, roleData?.fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modo, fazendaAtivaId, user?.id, roleData?.roleId, roleData?.fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadProdutos(fazendasPermitidasIds);

@@ -47,6 +47,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
   const [confirmModo, setConfirmModo] = useState<Modo | null>(null);
 
   useEffect(() => { onEditingChange?.(editing); }, [editing, onEditingChange]);
+  useEffect(() => () => onEditingChange?.(false), [onEditingChange]);
 
   async function load() {
     setLoading(true);
