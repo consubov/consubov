@@ -11,4 +11,4 @@
 - [x] Sincronização offline: recuperar código de lote duplicado e manter cadastros confirmados visíveis até atualizar o cache.
 - [x] PDF do Pesador: impedir que o fallback de download exponha a URL técnica do Storage.
 - [x] PDF Seção 5: "Animais" lido da tabela lancamentos (não da view), último lançamento por pasto contado uma única vez na categoria dele (v1.107.0).
-- [ ] PDF Seção 4: substituir a previsão calculada no app pelo resultado de previsao_abate, respeitando fazenda/retiro e paginação.
+- [ ] PDF Seção 4: confirmar origem antiga de peso/GMD; substituir por previsao_abate somente se não houver perda de pesagens reais.
