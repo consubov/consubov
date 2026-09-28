@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { GerenteFazendaSelect, useGerenteFazendaAtiva } from "@/components/gerente/GerenteFazendaSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,8 +27,7 @@ function fotosLabel(n: number) {
 export default function GerenteAuditoriaFotosPage() {
   const navigate = useNavigate();
   const { roleData } = useAuth();
-  const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
-  const [fazendaId, setFazendaId] = useState("");
+  const { fazendas, fazendaId, setFazendaId, carregado } = useGerenteFazendaAtiva();
   const [faz, setFaz] = useState<FazCfg>({ auditoria_fotos_por_bloco: null, exigir_foto_cocho: null });
   const [retiros, setRetiros] = useState<RetiroCfg[]>([]);
   const [draftFaz, setDraftFaz] = useState<FazCfg>(faz);
@@ -37,25 +37,8 @@ export default function GerenteAuditoriaFotosPage() {
   const [saving, setSaving] = useState(false);
   const [editInt, setEditInt] = useState(false);
 
-  // Mesma fonte do seletor de fazenda do Painel do Gerente (gerentes_fazendas).
-  useEffect(() => {
-    (async () => {
-      const gerenteId = roleData?.roleId;
-      if (!gerenteId) return;
-      const { data } = await supabase.from("gerentes_fazendas").select("fazenda_id, fazendas(id, nome)").eq("gerente_id", gerenteId);
-      let opcoes = ((data ?? []) as any[]).flatMap((it) => {
-        const f = Array.isArray(it.fazendas) ? it.fazendas[0] : it.fazendas;
-        return f?.id ? [{ id: f.id as string, nome: f.nome as string }] : [];
-      });
-      if (opcoes.length === 0 && roleData?.fazendaId) {
-        const { data: f } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
-        opcoes = f ? [f as any] : [];
-      }
-      setFazendas(opcoes);
-      if (opcoes[0]) setFazendaId(opcoes[0].id);
-      else setLoading(false);
-    })();
-  }, [roleData?.roleId, roleData?.fazendaId]);
+  // Fazenda ativa compartilhada com o Painel do Gerente.
+  useEffect(() => { if (carregado && !fazendaId) setLoading(false); }, [carregado, fazendaId]);
 
   async function load(id: string) {
     setLoading(true);
@@ -115,12 +98,7 @@ export default function GerenteAuditoriaFotosPage() {
         <h1 className="text-base font-bold">Intervalo e Auditoria</h1>
       </header>
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
-        {fazendas.length > 1 && (
-          <Select value={fazendaId} onValueChange={setFazendaId} disabled={editing || editInt}>
-            <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
-            <SelectContent>{fazendas.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
+        <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={setFazendaId} dirty={editing || editInt} />
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : !fazendaId ? (
