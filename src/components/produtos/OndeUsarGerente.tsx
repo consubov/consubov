@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +15,6 @@ import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 import { camposProdutoParaRetiro, type ProdutoParaRetiro } from "@/lib/retiroProduto";
 
-interface Fazenda { id: string; nome: string }
 interface Produto extends ProdutoParaRetiro { id: string; nome: string; marca: string | null }
 interface RetiroRow { id: string; nome: string; produto_id: string | null }
 interface PastoRow { id: string; nome: string; produto_id: string | null; retiro_id: string; num_animais: number; categoria: string | null }
@@ -29,7 +27,6 @@ const cor = (i: number) => (i < 0 ? "hsl(var(--muted-foreground))" : `hsl(var(--
 interface Props { fazendaId: string; retiroInicial?: string | null; onDirtyChange?: (d: boolean) => void }
 
 export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChange }: Props) {
-  const { roleData } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [disponiveis, setDisponiveis] = useState<string[]>([]);
   const [retiros, setRetiros] = useState<RetiroRow[]>([]);
@@ -113,6 +110,8 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
   });
   const conflitosALimpar = seguirRetiro ? conflitos : [];
   const qtdPend = retirosMudados.length + pastosMudados.length;
+  useEffect(() => { onDirtyChange?.(qtdPend > 0); }, [qtdPend, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   function setPastoProduto(ids: string[], valor: string) {
     setPastoPend((prev) => {
