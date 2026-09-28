@@ -40,6 +40,7 @@ interface SalgaFormProps {
   tipo: 'salga' | 'falha_qr';
   justificativaFalhaQr?: string;
   auditoriaExigida: boolean;
+  exigirFotoCocho?: boolean;
   initialDraft?: SalgaFormDraft | null;
   onDraftChange?: (draft: SalgaFormDraft) => void;
   onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => void;
@@ -50,7 +51,7 @@ interface SalgaFormProps {
 
 export default function SalgaForm({
   pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
-  auditoriaExigida, initialDraft, onDraftChange, onSave, onBack, numAnimais, sugestao
+  auditoriaExigida, exigirFotoCocho = true, initialDraft, onDraftChange, onSave, onBack, numAnimais, sugestao
 }: SalgaFormProps) {
   const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? (sugestao ? String(sugestao.sacosSugeridos) : ""));
   const [observacoes, setObservacoes] = useState<Observacao[]>(initialDraft?.observacoes ?? []);
@@ -132,7 +133,7 @@ export default function SalgaForm({
 
   const canSave = () => {
     if (cochoChecked) {
-      return !!fotoCocho;
+      return exigirFotoCocho ? !!fotoCocho : true;
     }
     if (sacos === "" || parseInt(sacos) < 0 || isNaN(parseInt(sacos))) return false;
     if (auditoriaExigida && !fotoAuditoria) return false;
@@ -204,8 +205,8 @@ export default function SalgaForm({
         {cochoChecked && (
           <Card className="border-blue-300 bg-blue-50">
             <CardContent className="p-3 space-y-2">
-              <label className="text-sm font-medium text-blue-800 block">📸 Foto do cocho (obrigatória)</label>
-              {!fotoCocho && (
+              <label className="text-sm font-medium text-blue-800 block">📸 Foto do cocho ({exigirFotoCocho ? "obrigatória" : "opcional"})</label>
+              {!fotoCocho && exigirFotoCocho && (
                 <p className="text-xs text-blue-600 font-semibold">⚠ Tire a foto do cocho cheio antes de salvar</p>
               )}
               {fotoCocho ? (
