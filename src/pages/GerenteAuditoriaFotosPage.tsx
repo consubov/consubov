@@ -11,6 +11,7 @@ import {
   AUDITORIA_FOTOS_PADRAO, EXIGIR_FOTO_COCHO_PADRAO, descreverAuditoria, resolverAuditoria,
   salvarAuditoriaFazenda, salvarAuditoriaRetiro,
 } from "@/lib/auditoriaConfig";
+import IntervaloSalgasCard from "@/components/gerente/IntervaloSalgasCard";
 
 interface RetiroCfg { id: string; nome: string; auditoria_fotos_por_bloco: number | null; exigir_foto_cocho: boolean | null }
 interface FazCfg { auditoria_fotos_por_bloco: number | null; exigir_foto_cocho: boolean | null }
@@ -34,6 +35,7 @@ export default function GerenteAuditoriaFotosPage() {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editInt, setEditInt] = useState(false);
 
   // Mesma fonte do seletor de fazenda do Painel do Gerente (gerentes_fazendas).
   useEffect(() => {
@@ -110,11 +112,11 @@ export default function GerenteAuditoriaFotosPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/gerente")} className="text-primary-foreground hover:bg-primary-foreground/10">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-base font-bold">Auditoria de Fotos</h1>
+        <h1 className="text-base font-bold">Intervalo e Auditoria</h1>
       </header>
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
         {fazendas.length > 1 && (
-          <Select value={fazendaId} onValueChange={setFazendaId} disabled={editing}>
+          <Select value={fazendaId} onValueChange={setFazendaId} disabled={editing || editInt}>
             <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
             <SelectContent>{fazendas.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
           </Select>
@@ -125,6 +127,7 @@ export default function GerenteAuditoriaFotosPage() {
           <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p>
         ) : (
           <>
+            <IntervaloSalgasCard fazendaId={fazendaId} onEditingChange={setEditInt} />
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm">Padrão da fazenda</CardTitle></CardHeader>
               <CardContent className="space-y-3">

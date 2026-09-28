@@ -370,7 +370,7 @@ export default function GerenteDashboard() {
                         className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
                       >
                         <Camera className="w-5 h-5 text-primary" />
-                        Auditoria de Fotos
+                        Intervalo e Auditoria
                       </button>
                     </li>
                     <li>
