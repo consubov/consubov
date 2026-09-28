@@ -69,8 +69,9 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   const [sanitario, setSanitario] = useState<any>(null);
   const [consumoGlobal, setConsumoGlobal] = useState<number | null>(null);
   const [statusGlobal, setStatusGlobal] = useState<string | null>(null);
-  const [ultimaSalga, setUltimaSalga] = useState<{ data: string; sacos: number } | null>(null);
+  const [ultimaSalga, setUltimaSalga] = useState<{ data: string; sacos: number; motivo?: string | null } | null>(null);
   const [ultimoCocho, setUltimoCocho] = useState<string | null>(null);
+  const [motivoCocho, setMotivoCocho] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
