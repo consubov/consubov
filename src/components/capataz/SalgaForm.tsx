@@ -119,13 +119,6 @@ export default function SalgaForm({
     }
   };
 
-  // Auto-open camera for mandatory audit
-  useEffect(() => {
-    if (auditoriaExigida && !fotoAuditoria && !cochoChecked) {
-      const timer = setTimeout(() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [auditoriaExigida]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     onDraftChange?.({ sacos, observacoes, fotoAuditoria, addingObs, obsTexto, obsFoto, cochoChecked, fotoCocho });
@@ -293,12 +286,13 @@ export default function SalgaForm({
               </div>
             ) : (
               <Button
-                variant="outline"
-                className={`gap-2 ${auditoriaExigida ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
+                variant={auditoriaExigida ? "destructive" : "outline"}
+                size={auditoriaExigida ? "lg" : "default"}
+                className={`gap-2 ${auditoriaExigida ? 'w-full text-base' : ''}`}
                 onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}
               >
                 <Camera className="w-4 h-4" />
-                {auditoriaExigida ? '📷 Tirar Foto (obrigatória)' : '+ Foto de auditoria'}
+                {auditoriaExigida ? 'Tirar foto (obrigatória)' : '+ Foto de auditoria'}
               </Button>
             )}
           </div>

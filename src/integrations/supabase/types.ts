@@ -1963,6 +1963,81 @@ export type Database = {
         }
         Relationships: []
       }
+      fotos_salga: {
+        Row: {
+          caminho: string
+          criado_em: string
+          enviado_por: string | null
+          fazenda_id: string
+          id: string
+          lancamento_id: string
+          pasto_id: string
+          tamanho_bytes: number | null
+          tipo: string
+          tirada_em: string | null
+        }
+        Insert: {
+          caminho: string
+          criado_em?: string
+          enviado_por?: string | null
+          fazenda_id: string
+          id?: string
+          lancamento_id: string
+          pasto_id: string
+          tamanho_bytes?: number | null
+          tipo?: string
+          tirada_em?: string | null
+        }
+        Update: {
+          caminho?: string
+          criado_em?: string
+          enviado_por?: string | null
+          fazenda_id?: string
+          id?: string
+          lancamento_id?: string
+          pasto_id?: string
+          tamanho_bytes?: number | null
+          tipo?: string
+          tirada_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fotos_salga_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fotos_salga_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "view_consumo_consolidado"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fotos_salga_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "view_consumo_mineral"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fotos_salga_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "view_consumo_tempo_real"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fotos_salga_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "view_lancamento_consumo_real"
+            referencedColumns: ["lancamento_id"]
+          },
+        ]
+      }
       gerentes: {
         Row: {
           ativo: boolean | null
@@ -6892,6 +6967,8 @@ export type Database = {
       is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
       is_operador_fabrica: { Args: { _user_id: string }; Returns: boolean }
+      pode_enviar_foto_salga: { Args: { _lanc: string }; Returns: boolean }
+      pode_ver_fotos_fazenda: { Args: { _faz: string }; Returns: boolean }
       previsao_abate: {
         Args: { p_fazenda: string }
         Returns: {
