@@ -308,7 +308,7 @@ function formatDate(value: string | null) {
   return year && month && day ? `${day}/${month}/${year}` : "—";
 }
 
-function PrevisaoAbateTable({ rows, showTotal }: { rows: PrevisaoAbatePDFRow[]; showTotal: boolean }) {
+function PrevisaoAbateTable({ rows, totals }: { rows: PrevisaoAbatePDFRow[]; totals?: { pastos: number; animais: number } }) {
   const cols = [
     { label: "Pasto", width: "13%" },
     { label: "Retiro", width: "13%" },
@@ -340,11 +340,11 @@ function PrevisaoAbateTable({ rows, showTotal }: { rows: PrevisaoAbatePDFRow[]; 
           <Text style={[s.tableCell, { width: cols[8].width, fontSize: 6 }]}>{formatDate(row.dataPrevista)}</Text>
         </View>
       ))}
-      {showTotal && (
+      {totals && (
         <View style={[s.tableRow, { backgroundColor: lightGreen, borderTop: `1 solid ${green}` }]} wrap={false}>
           <Text style={[s.tableCell, { width: "37%", fontFamily: "Helvetica-Bold", color: green }]}>TOTAL</Text>
-          <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{rows.length} pasto(s)</Text>
-          <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(rows.reduce((sum, row) => sum + row.numAnimais, 0))} animais</Text>
+          <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{totals.pastos} pasto(s)</Text>
+          <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(totals.animais)} animais</Text>
         </View>
       )}
     </View>
@@ -365,14 +365,14 @@ function PrevisaoAbatePages({ previsao, data }: { previsao: PrevisaoAbatePDFData
             Calculada em {previsao.calculadaEm} · Peso-alvo e janela conforme configuração da fazenda/retiro
           </Text>
           {rows.length > 0 ? (
-            <PrevisaoAbateTable rows={rows} showTotal={pageIndex === partes.length - 1} />
+            <PrevisaoAbateTable
+              rows={rows}
+              totals={pageIndex === partes.length - 1 ? { pastos: totalPastos, animais: totalAnimais } : undefined}
+            />
           ) : (
             <Text style={{ fontSize: 8, color: "#666", marginTop: 4 }}>
               Nenhum lote atinge o peso-alvo dentro da janela configurada.
             </Text>
-          )}
-          {pageIndex === partes.length - 1 && totalPastos > 0 && (
-            <Text style={{ fontSize: 0, color: "#FFFFFF" }}>{totalPastos} {totalAnimais}</Text>
           )}
           <Footer fazendaNome={data.fazendaNome} />
         </Page>
