@@ -152,6 +152,10 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
             </LineChart>
           </ResponsiveContainer>
         </div>
+        )}
+        {prod && !erro && (
+          <p className="text-[10px] text-muted-foreground text-center mt-1">Curva de todos os produtos</p>
+        )}
       </CardContent>
     </Card>
   );
