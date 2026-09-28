@@ -31,6 +31,11 @@ function fmtDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
+function fmtShortDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
 const catLabels: Record<string, string> = {
   vermifugo: "Vermífugo",
   vacina: "Vacina",
@@ -194,9 +199,9 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
               <Item label="Categoria" value={pasto.categoria || "—"} />
               <Item label="Sexo" value={pasto.sexo || "—"} />
               <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
-              <Item label="Última salga" value={ultimaSalga ? `${fmtDate(ultimaSalga.data)} (${ultimaSalga.sacos} sacos)` : "—"} />
+              <Item label="Última salga" value={ultimaSalga ? `${fmtShortDate(ultimaSalga.data)} (${ultimaSalga.sacos} sacos)` : "—"} />
               {ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
-                <Item label="Último Cocho Cheio" value={fmtDate(ultimoCocho)} />
+                <Item label="Último Cocho Cheio" value={fmtShortDate(ultimoCocho)} />
               )}
             </div>
           </div>
