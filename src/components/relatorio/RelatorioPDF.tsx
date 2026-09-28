@@ -22,6 +22,25 @@ export interface RelatorioPDFData {
   geradoPor: string;
   retiros: RetiroReportData[];
   categoriaMetrics?: CatMetricsPDF[];
+  previsaoAbate?: PrevisaoAbatePDFData | null;
+}
+
+export interface PrevisaoAbatePDFRow {
+  pastoId: string;
+  pasto: string;
+  retiro: string;
+  categoria: string | null;
+  numAnimais: number;
+  pesoAtual: number;
+  pesoAlvo: number;
+  gmdHoje: number | null;
+  diasParaAlvo: number;
+  dataPrevista: string | null;
+}
+
+export interface PrevisaoAbatePDFData {
+  calculadaEm: string;
+  rows: PrevisaoAbatePDFRow[];
 }
 
 export interface PastoReportData {
@@ -281,40 +300,84 @@ function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
   );
 }
 
-function PrevisaoAbate({ retiros }: { retiros: RetiroReportData[] }) {
-  const allPastos = retiros.flatMap(r => r.pastos.map(p => ({ retiro: r.nome, ...p })));
+const PREVISAO_ROWS_PER_PAGE = 38;
+
+function formatDate(value: string | null) {
+  if (!value) return "—";
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : "—";
+}
+
+function PrevisaoAbateTable({ rows, showTotal }: { rows: PrevisaoAbatePDFRow[]; showTotal: boolean }) {
   const cols = [
-    { label: "Retiro", width: "16%" },
-    { label: "Pasto", width: "16%" },
-    { label: "Peso (kg)", width: "16%" },
-    { label: "GMD", width: "14%" },
-    { label: "Meta (kg)", width: "16%" },
-    { label: "Previsão", width: "22%" },
+    { label: "Pasto", width: "13%" },
+    { label: "Retiro", width: "13%" },
+    { label: "Categoria", width: "11%" },
+    { label: "Animais", width: "8%" },
+    { label: "Peso atual (kg)", width: "11%" },
+    { label: "Peso-alvo (kg)", width: "11%" },
+    { label: "GMD (kg/dia)", width: "11%" },
+    { label: "Dias", width: "7%" },
+    { label: "Data prevista", width: "15%" },
   ];
   return (
-    <View>
-      <Text style={s.sectionTitle}>SEÇÃO 4 — PREVISÃO DE ABATE</Text>
-      <View style={s.table}>
-        <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
-        </View>
-        {allPastos.map((p, i) => {
-          const pronto = p.pesoMedioKg >= p.pesoAbateMetaKg;
-          const diasAbate = !pronto && p.gmdKgDia > 0 ? Math.ceil((p.pesoAbateMetaKg - p.pesoMedioKg) / p.gmdKgDia) : null;
-          const prevLabel = pronto ? "Pronto" : diasAbate != null ? `${diasAbate} dias` : "—";
-          return (
-            <View key={`${p.retiro}-${p.nome}`} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-              <Text style={[s.tableCell, { width: cols[0].width }]}>{p.retiro}</Text>
-              <Text style={[s.tableCell, { width: cols[1].width }]}>{p.nome}</Text>
-              <Text style={[s.tableCell, { width: cols[2].width }]}>{fmtNum(p.pesoMedioKg, 1)}</Text>
-              <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(p.gmdKgDia, 3)}</Text>
-              <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(p.pesoAbateMetaKg, 0)}</Text>
-              <Text style={[s.tableCell, { width: cols[5].width, color: pronto ? "#2E7D32" : "#333" }]}>{prevLabel}</Text>
-            </View>
-          );
-        })}
+    <View style={s.table}>
+      <View style={s.tableHeader}>
+        {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 5.5 }]}>{c.label}</Text>)}
       </View>
+      {rows.map((row, index) => (
+        <View key={row.pastoId} style={index % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
+          <Text style={[s.tableCell, { width: cols[0].width, fontSize: 6 }]}>{row.pasto}</Text>
+          <Text style={[s.tableCell, { width: cols[1].width, fontSize: 6 }]}>{row.retiro}</Text>
+          <Text style={[s.tableCell, { width: cols[2].width, fontSize: 6 }]}>{row.categoria ?? "—"}</Text>
+          <Text style={[s.tableCell, { width: cols[3].width, fontSize: 6 }]}>{fmtNum(row.numAnimais)}</Text>
+          <Text style={[s.tableCell, { width: cols[4].width, fontSize: 6 }]}>{fmtNum(row.pesoAtual, 1)}</Text>
+          <Text style={[s.tableCell, { width: cols[5].width, fontSize: 6 }]}>{fmtNum(row.pesoAlvo, 1)}</Text>
+          <Text style={[s.tableCell, { width: cols[6].width, fontSize: 6 }]}>{row.gmdHoje == null ? "—" : fmtNum(row.gmdHoje, 3)}</Text>
+          <Text style={[s.tableCell, row.diasParaAlvo === 0 ? { width: cols[7].width, fontSize: 6, color: "#2E7D32", fontFamily: "Helvetica-Bold" } : { width: cols[7].width, fontSize: 6 }]}>
+            {row.diasParaAlvo === 0 ? "Pronto" : fmtNum(row.diasParaAlvo)}
+          </Text>
+          <Text style={[s.tableCell, { width: cols[8].width, fontSize: 6 }]}>{formatDate(row.dataPrevista)}</Text>
+        </View>
+      ))}
+      {showTotal && (
+        <View style={[s.tableRow, { backgroundColor: lightGreen, borderTop: `1 solid ${green}` }]} wrap={false}>
+          <Text style={[s.tableCell, { width: "37%", fontFamily: "Helvetica-Bold", color: green }]}>TOTAL</Text>
+          <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{rows.length} pasto(s)</Text>
+          <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(rows.reduce((sum, row) => sum + row.numAnimais, 0))} animais</Text>
+        </View>
+      )}
     </View>
+  );
+}
+
+function PrevisaoAbatePages({ previsao, data }: { previsao: PrevisaoAbatePDFData; data: RelatorioPDFData }) {
+  const partes = previsao.rows.length > 0 ? chunk(previsao.rows, PREVISAO_ROWS_PER_PAGE) : [[]];
+  const totalPastos = previsao.rows.length;
+  const totalAnimais = previsao.rows.reduce((sum, row) => sum + row.numAnimais, 0);
+  return (
+    <>
+      {partes.map((rows, pageIndex) => (
+        <Page key={`previsao-${pageIndex}`} size="A4" style={[s.page, { paddingBottom: 42 }]}>
+          <Header data={data} />
+          <Text style={s.sectionTitle}>SEÇÃO 4 — PREVISÃO DE ABATE</Text>
+          <Text style={{ fontSize: 7, color: "#666", marginBottom: 6 }}>
+            Calculada em {previsao.calculadaEm} · Peso-alvo e janela conforme configuração da fazenda/retiro
+          </Text>
+          {rows.length > 0 ? (
+            <PrevisaoAbateTable rows={rows} showTotal={pageIndex === partes.length - 1} />
+          ) : (
+            <Text style={{ fontSize: 8, color: "#666", marginTop: 4 }}>
+              Nenhum lote atinge o peso-alvo dentro da janela configurada.
+            </Text>
+          )}
+          {pageIndex === partes.length - 1 && totalPastos > 0 && (
+            <Text style={{ fontSize: 0, color: "#FFFFFF" }}>{totalPastos} {totalAnimais}</Text>
+          )}
+          <Footer fazendaNome={data.fazendaNome} />
+        </Page>
+      ))}
+    </>
   );
 }
 
@@ -819,14 +882,16 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
         <ResumoGeral retiros={data.retiros} />
         <ScoreEficiencia retiros={data.retiros} />
         <RankingGMD retiros={data.retiros} />
-        <PrevisaoAbate retiros={data.retiros} />
-
-        {data.categoriaMetrics && data.categoriaMetrics.length > 0 && (
-          <MetricasCategoria metrics={data.categoriaMetrics} />
-        )}
-
         <Footer fazendaNome={data.fazendaNome} />
       </Page>
+      {data.previsaoAbate && <PrevisaoAbatePages previsao={data.previsaoAbate} data={data} />}
+      {data.categoriaMetrics && data.categoriaMetrics.length > 0 && (
+        <Page size="A4" style={s.page} wrap>
+          <Header data={data} />
+          <MetricasCategoria metrics={data.categoriaMetrics} />
+          <Footer fazendaNome={data.fazendaNome} />
+        </Page>
+      )}
       {data.retiros.map((r, retiroIndex) => (
         <Fragment key={r.nome}>
           <Page key={`detalhe-${r.nome}`} size="A4" style={s.page} wrap>
