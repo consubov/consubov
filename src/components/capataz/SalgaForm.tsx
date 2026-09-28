@@ -119,13 +119,6 @@ export default function SalgaForm({
     }
   };
 
-  // Auto-open camera for mandatory audit
-  useEffect(() => {
-    if (auditoriaExigida && !fotoAuditoria && !cochoChecked) {
-      const timer = setTimeout(() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [auditoriaExigida]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     onDraftChange?.({ sacos, observacoes, fotoAuditoria, addingObs, obsTexto, obsFoto, cochoChecked, fotoCocho });

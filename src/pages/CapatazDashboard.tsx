@@ -53,6 +53,7 @@ import {
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { compressImageDataUrl } from "@/lib/imageCompression";
+import { iniciarFilaFotosSalga } from "@/lib/fotoSalgaQueue";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -260,6 +261,9 @@ export default function CapatazDashboard() {
 
   // Restaura o retiro ativo persistido e carrega a lista de vínculos
   // (cache local primeiro, depois servidor quando houver conexão).
+  // Fila separada de fotos de auditoria (não interfere na sincronização das salgas).
+  useEffect(() => iniciarFilaFotosSalga(), []);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
