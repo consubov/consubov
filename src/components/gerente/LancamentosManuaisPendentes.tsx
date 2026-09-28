@@ -8,12 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CheckCircle2, XCircle, Clock, Loader2, ClipboardList, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { dataLocalSP } from "@/lib/diasCalendario";
+
+/** Data informada → meio-dia em America/Sao_Paulo (ISO). */
+function meioDiaSP(iso: string): string {
+  return `${dataLocalSP(iso)}T12:00:00-03:00`;
+}
+function ddmm(iso: string): string {
+  const [, m, d] = dataLocalSP(iso).split("-");
+  return `${d}/${m}`;
+}
 
 interface ItemView {
   id: string;
   pasto_id: string;
   num_sacos: number;
   data_salga: string;
+  cocho_cheio: boolean;
+  motivo: string | null;
   pasto_nome?: string;
   num_animais?: number;
 }
@@ -43,6 +55,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
   const [recusarOpen, setRecusarOpen] = useState(false);
   const [recusarTarget, setRecusarTarget] = useState<SolicitacaoView | null>(null);
   const [motivoRecusa, setMotivoRecusa] = useState("");
+  const [dupPrompt, setDupPrompt] = useState<{ s: SolicitacaoView; msgs: string[] } | null>(null);
 
   const load = useCallback(async () => {
     if (!fazendaId) return;
@@ -67,7 +80,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       const [itensRes, retirosRes] = await Promise.all([
         (supabase as any)
           .from("solicitacoes_lancamento_itens")
-          .select("id, solicitacao_id, pasto_id, num_sacos, data_salga")
+          .select("id, solicitacao_id, pasto_id, num_sacos, data_salga, cocho_cheio, motivo")
           .in("solicitacao_id", solIds),
         supabase.from("retiros").select("id, nome").in("id", retiroIds),
       ]);
@@ -91,6 +104,8 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
             pasto_id: i.pasto_id,
             num_sacos: i.num_sacos,
             data_salga: i.data_salga,
+            cocho_cheio: i.cocho_cheio === true,
+            motivo: i.motivo ?? null,
             pasto_nome: pastoMap.get(i.pasto_id)?.nome ?? "Pasto",
             num_animais: pastoMap.get(i.pasto_id)?.num_animais ?? 0,
           })),
@@ -128,13 +143,45 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
     };
   }, [fazendaId, load]);
 
+  // Aviso (não bloqueia) de lançamento já existente no mesmo pasto e data (SP)
   const handleAprovar = async (s: SolicitacaoView) => {
     if (!user?.id) return;
+    setActionId(s.id);
+    try {
+      const pastoIds = Array.from(new Set(s.itens.map((i) => i.pasto_id)));
+      const { data: exist } = await supabase
+        .from("lancamentos")
+        .select("pasto_id, data_salga_informada, created_at")
+        .in("pasto_id", pastoIds);
+      const msgs: string[] = [];
+      for (const it of s.itens) {
+        const dia = dataLocalSP(it.data_salga);
+        const hit = (exist ?? []).some(
+          (l: any) => l.pasto_id === it.pasto_id && dataLocalSP(l.data_salga_informada ?? l.created_at) === dia
+        );
+        if (hit) msgs.push(`${it.pasto_nome}: Já existe lançamento neste pasto em ${ddmm(it.data_salga)}`);
+      }
+      if (msgs.length > 0) {
+        setDupPrompt({ s, msgs });
+        setActionId(null);
+        return;
+      }
+    } catch (e) {
+      console.warn("[Aprovar] checagem de duplicidade falhou", e);
+    }
+    setActionId(null);
+    await aprovarConfirmado(s);
+  };
+
+  const aprovarConfirmado = async (s: SolicitacaoView) => {
+    if (!user?.id) return;
+    setDupPrompt(null);
     setActionId(s.id);
     try {
       // 1) Verifica estoque por (mes, ano) — soma sacos por bucket
       const buckets = new Map<string, number>(); // key: `${mes}-${ano}` -> sacos
       for (const it of s.itens) {
+        if (it.cocho_cheio) continue; // cocho cheio não baixa estoque
         const d = new Date(it.data_salga);
         const key = `${d.getMonth() + 1}-${d.getFullYear()}`;
         buckets.set(key, (buckets.get(key) || 0) + it.num_sacos);
@@ -168,22 +215,25 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       // 2) Cria um lancamento por item (origem manual + aprovado)
       const lancPayloads = s.itens.map((it) => {
         const d = new Date(it.data_salga);
+        const dataSP = meioDiaSP(it.data_salga);
         return {
           pasto_id: it.pasto_id,
           retiro_id: s.retiro_id,
           fazenda_id: s.fazenda_id,
-          num_sacos: it.num_sacos,
+          num_sacos: it.cocho_cheio ? 0 : it.num_sacos,
+          cocho_cheio: it.cocho_cheio,
+          observacao: it.motivo,
+          created_at: dataSP,
           num_animais: it.num_animais ?? 0,
           dias_no_pasto: 1,
           origem: "manual",
           status_aprovacao: "aprovado",
-          data_salga_informada: it.data_salga,
+          data_salga_informada: dataSP,
           criado_por: s.capataz_user_id,
           aprovado_por: user.id,
           aprovado_em: new Date().toISOString(),
           mes_referencia: d.getMonth() + 1,
           ano_referencia: d.getFullYear(),
-          cocho_cheio: false,
         } as any;
       });
 
@@ -225,6 +275,20 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
           origem: "lancamento_manual",
           referencia_id: s.id,
         });
+      }
+
+      // 4b) Última salga do retiro: só se a data informada for mais recente
+      try {
+        const maisRecente = s.itens
+          .map((it) => meioDiaSP(it.data_salga))
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+        const { data: ret } = await supabase.from("retiros").select("ultima_salga_em").eq("id", s.retiro_id).maybeSingle();
+        const atual = (ret as any)?.ultima_salga_em as string | null | undefined;
+        if (maisRecente && (!atual || new Date(maisRecente).getTime() > new Date(atual).getTime())) {
+          await supabase.from("retiros").update({ ultima_salga_em: maisRecente } as any).eq("id", s.retiro_id);
+        }
+      } catch (e) {
+        console.warn("[Aprovar] ultima_salga_em", e);
       }
 
       // 5) Marca solicitação como aprovada
@@ -328,14 +392,21 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                       const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
                       const isCustom = dItem !== dataGer;
                       return (
-                        <div key={it.id} className="flex items-center justify-between text-xs">
-                          <span className="truncate">
-                            <strong className="text-foreground">{it.pasto_nome}</strong>
-                            <span className="text-muted-foreground"> — {it.num_sacos} sacos</span>
-                          </span>
-                          <span className={isCustom ? "text-primary font-medium shrink-0 ml-2" : "text-muted-foreground shrink-0 ml-2"}>
-                            {dItem}
-                          </span>
+                        <div key={it.id} className="text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="truncate flex items-center gap-1">
+                              <strong className="text-foreground">{it.pasto_nome}</strong>
+                              {it.cocho_cheio ? (
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1">Cocho cheio</Badge>
+                              ) : (
+                                <span className="text-muted-foreground"> — {it.num_sacos} sacos</span>
+                              )}
+                            </span>
+                            <span className={isCustom ? "text-primary font-medium shrink-0 ml-2" : "text-muted-foreground shrink-0 ml-2"}>
+                              {dItem}
+                            </span>
+                          </div>
+                          {it.motivo && <p className="text-[11px] text-muted-foreground italic">Motivo: {it.motivo}</p>}
                         </div>
                       );
                     })}
@@ -368,6 +439,24 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
           })}
         </div>
       </div>
+
+      <Dialog open={!!dupPrompt} onOpenChange={(o) => { if (!o) setDupPrompt(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar aprovação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1">
+            {dupPrompt?.msgs.map((m, i) => (
+              <p key={i} className="text-xs text-muted-foreground">{m}</p>
+            ))}
+            <p className="text-xs pt-1">Deseja aprovar mesmo assim?</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDupPrompt(null)}>Cancelar</Button>
+            <Button onClick={() => dupPrompt && aprovarConfirmado(dupPrompt.s)}>Aprovar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={recusarOpen} onOpenChange={setRecusarOpen}>
         <DialogContent className="max-w-sm">
