@@ -48,38 +48,55 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
   const [loading, setLoading] = useState(false);
   const [largura, setLargura] = useState(0);
 
+  const [erro, setErro] = useState(false);
+
   const carregar = useCallback(async () => {
     if (!fazendaId) { setDados(null); return; }
     setLoading(true);
     try {
-      let pastoIds: string[] | null = null;
-      if (prod) pastoIds = await pastosDoProduto(fazendaId, retiroId, prod);
-      const base = () => {
-        let q = (supabase as any).from("view_lancamento_consumo_real").eq("fazenda_id", fazendaId);
-        if (retiroId) q = q.eq("retiro_id", retiroId);
-        if (pastoIds) q = q.in("pasto_id", pastoIds.length ? pastoIds : ["00000000-0000-0000-0000-000000000000"]);
-        return q;
-      };
-      // Mesma fórmula do get_painel_mae: SUM(kg)*1000 / SUM(cab_dias_assumidos), numa única consulta anual.
-      const [anoRes, anosRes] = await Promise.all([
-        base().select("mes_referencia, kg_fornecido, cab_dias_assumidos").eq("ano_referencia", anoSel).limit(10000),
-        base().select("ano_referencia").limit(10000),
-      ].map((q: any) => q));
-      const kg = Array(12).fill(0), cab = Array(12).fill(0), tem = Array(12).fill(false);
-      for (const r of (anoRes.data ?? []) as any[]) {
-        const i = Number(r.mes_referencia) - 1;
-        if (i < 0 || i > 11) continue;
-        kg[i] += Number(r.kg_fornecido) || 0;
-        cab[i] += Number(r.cab_dias_assumidos) || 0;
-        tem[i] = true;
+      const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+      let valores: (number | null)[];
+      if (!prod) {
+        // Mesma função do card "Consumo Real": get_painel_mae, um mês por chamada.
+        const res = await Promise.all(meses.map((m) => (supabase as any).rpc("get_painel_mae", {
+          p_fazenda_id: fazendaId, p_retiro_id: retiroId ?? null, p_mes: m, p_ano: anoSel,
+        })));
+        valores = res.map((r: any) => {
+          if (r.error) throw r.error;
+          const row = Array.isArray(r.data) ? r.data[0] : r.data;
+          const v = row?.consumo_real_g_cab_dia;
+          return v == null ? null : Number(v);
+        });
+      } else {
+        // Mesma conta do card com produto (usePainelProduto): view_lancamento_consumo_real dos pastos do produto.
+        const pastoIds = await pastosDoProduto(fazendaId, retiroId, prod);
+        valores = Array(12).fill(null);
+        if (pastoIds.length) {
+          const { data, error } = await (supabase as any).from("view_lancamento_consumo_real")
+            .select("mes_referencia, kg_fornecido, cab_dias_assumidos")
+            .in("pasto_id", pastoIds).eq("ano_referencia", anoSel).limit(10000);
+          if (error) throw error;
+          const kg = Array(12).fill(0), cab = Array(12).fill(0);
+          for (const r of (data ?? []) as any[]) {
+            const i = Number(r.mes_referencia) - 1;
+            if (i < 0 || i > 11) continue;
+            kg[i] += Number(r.kg_fornecido) || 0;
+            cab[i] += Number(r.cab_dias_assumidos) || 0;
+          }
+          valores = kg.map((k, i) => (cab[i] > 0 ? Number(((k * 1000) / cab[i]).toFixed(2)) : null));
+        }
       }
-      const valores = kg.map((k, i) => (tem[i] && cab[i] > 0 ? Math.round((k * 1000 / cab[i]) * 100) / 100 : null));
-      const anosSet = new Set<number>(((anosRes.data ?? []) as any[]).map((r) => Number(r.ano_referencia)).filter(Boolean));
+      let q = (supabase as any).from("view_lancamento_consumo_real").select("ano_referencia").eq("fazenda_id", fazendaId);
+      if (retiroId) q = q.eq("retiro_id", retiroId);
+      const { data: anosData } = await q.limit(10000);
+      const anosSet = new Set<number>(((anosData ?? []) as any[]).map((r) => Number(r.ano_referencia)).filter(Boolean));
       const novo = { anos: Array.from(anosSet).sort((a, b) => b - a), valores };
       setScreenCache(key, novo);
       setDados(novo);
+      setErro(false);
     } catch (e) {
       console.error("CurvaConsumo", e);
+      setErro(true);
     } finally {
       setLoading(false);
     }
