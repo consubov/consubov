@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      abate_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          fazenda_id: string
+          id: string
+          janela_dias: number
+          peso_alvo_kg: number
+          retiro_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          fazenda_id: string
+          id?: string
+          janela_dias: number
+          peso_alvo_kg: number
+          retiro_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          fazenda_id?: string
+          id?: string
+          janela_dias?: number
+          peso_alvo_kg?: number
+          retiro_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abate_config_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abate_config_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       abates: {
         Row: {
           ano: number
@@ -6847,6 +6892,22 @@ export type Database = {
       is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
       is_operador_fabrica: { Args: { _user_id: string }; Returns: boolean }
+      previsao_abate: {
+        Args: { p_fazenda: string }
+        Returns: {
+          categoria: string
+          data_prevista: string
+          dias_para_alvo: number
+          gmd_hoje: number
+          janela_dias: number
+          num_animais: number
+          pasto: string
+          pasto_id: string
+          peso_alvo: number
+          peso_atual: number
+          retiro: string
+        }[]
+      }
       register_push_subscription: {
         Args: { p_enabled?: boolean; p_endpoint: string; p_subscription: Json }
         Returns: {
