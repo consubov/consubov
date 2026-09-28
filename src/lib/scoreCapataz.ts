@@ -154,25 +154,16 @@ export function computeAtrasoMedioSalga(
  * cujas avaliacoes_score existem. Se não houver, retorna null.
  */
 export async function fetchNotaCochoConsultor(
-  fazendaNome: string,
+  fazendaId: string,
   start: Date,
   end: Date,
 ): Promise<{ nota: number; dataVisita: string } | null> {
   try {
-    // Fazendas do consultor com nome bater (case-insensitive)
-    const { data: fc } = await supabase
-      .from("fazendas_consultor")
-      .select("id")
-      .ilike("nome_fazenda", fazendaNome)
-      .is("deleted_at", null);
-    if (!fc || fc.length === 0) return null;
-    const fcIds = fc.map((r: any) => r.id);
-
-    // Visitas técnicas no período
+    // Ligação pela fazenda (ID), nunca pelo nome.
     const { data: visitas } = await supabase
       .from("visitas_tecnicas")
       .select("id, hora_inicio, created_at")
-      .in("fazenda_consultor_id", fcIds)
+      .eq("fazenda_id", fazendaId)
       .gte("hora_inicio", start.toISOString())
       .lte("hora_inicio", end.toISOString())
       .order("hora_inicio", { ascending: false });
