@@ -538,7 +538,7 @@ export default function GerenteDashboard() {
             <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
             <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelDataView.custoMensal)} />
             <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelMaeView.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
-            <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(painelDataView.gmdMedio, 3)} sub="kg/dia" />
+            <MetricCard icon={TrendingUp} label="GMD Médio" value={painelData.gmdMedio == null ? "—" : fmtNum(painelData.gmdMedio, 3)} sub={painelData.gmdMedio == null ? "GMD não configurado" : "kg/dia · GMD configurado (projeção)"} />
             <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
             <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />
             <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
@@ -615,7 +615,7 @@ export default function GerenteDashboard() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">GMD</p>
-                      <p className="text-sm font-bold text-primary">{fmtNum(r.gmd, 3)}</p>
+                      <p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p>
                     </div>
                   </div>
                   {/* Interval info */}
@@ -744,7 +744,7 @@ export default function GerenteDashboard() {
                         <TableCell className="text-center font-semibold text-muted-foreground">{i + 1}</TableCell>
                         <TableCell className="text-sm">{r.retiro}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{r.capataz}</TableCell>
-                        <TableCell className="text-right font-bold text-primary">{fmtNum(r.gmd, 3)}</TableCell>
+                        <TableCell className="text-right font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -883,7 +883,7 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
           <div><p className="text-[10px] text-muted-foreground">Animais</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
           <div><p className="text-[10px] text-muted-foreground">Sacos</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
           <div><p className="text-[10px] text-muted-foreground">Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
-          <div><p className="text-[10px] text-muted-foreground">GMD</p><p className="text-lg font-bold text-primary">{fmtNum(retiro.gmd, 3)}</p></div>
+          <div><p className="text-[10px] text-muted-foreground">GMD</p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
         </div>
         <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
           <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>

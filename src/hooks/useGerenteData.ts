@@ -1,3 +1,4 @@
+import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
@@ -45,7 +46,7 @@ export interface Observacao {
 export interface RetiroComDados {
   id: string; nome: string; capataz: string;
   totalAnimais: number; sacosUtilizados: number;
-  consumoMedio: number; gmd: number; pastos: Pasto[];
+  consumoMedio: number; gmd: number | null; pastos: Pasto[];
   lancamentos: Lancamento[];
   intervaloDefinido: number;
   intervaloRealMedio: number | null;
@@ -71,7 +72,7 @@ export interface StatusDistribution {
 export interface PainelData {
   totalAnimais: number; consumoMedio: number; pastosNaMeta: number;
   totalPastos: number; sacosUtilizados: number; custoDiario: number;
-  custoMensal: number; eficiencia: number; gmdMedio: number;
+  custoMensal: number; eficiencia: number; gmdMedio: number | null;
   statusDistribution: StatusDistribution;
 }
 
@@ -81,7 +82,7 @@ export interface CapatazScore {
   pesoMeta: number; pesoSalga: number; pesoCocho: number;
   detalheMeta: string; detalheSalga: string; detalheCocho: string;
 }
-export interface GmdRankItem { retiro: string; capataz: string; gmd: number; }
+export interface GmdRankItem { retiro: string; capataz: string; gmd: number | null; animais: number; }
 
 interface GerenteCache {
   gerenteNome: string; fazendaData: FazendaRow; ciclo: Ciclo | null; ciclosDisponiveis: Ciclo[];
@@ -264,6 +265,19 @@ export function useGerenteData(filters?: GerenteFilters) {
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
 
+  // GMD de cada pasto via gmd_do_pasto (hoje no mês em andamento; último dia em meses passados).
+  const [gmdPastos, setGmdPastos] = useState<Record<string, number | null>>({});
+  const gmdPastoIds = pastos.map(p => p.id).join(",");
+  useEffect(() => {
+    if (!gmdPastoIds) { setGmdPastos({}); return; }
+    let cancel = false;
+    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+    fetchGmdPastos(gmdPastoIds.split(","), dia)
+      .then((m) => { if (!cancel) setGmdPastos(m); })
+      .catch((e) => console.error("GMD pastos error:", e));
+    return () => { cancel = true; };
+  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
+
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
     // Consumo Médio e Eficiência são computados aqui com a mesma fórmula
@@ -285,13 +299,8 @@ export function useGerenteData(filters?: GerenteFilters) {
     // Eficiência vem de get_painel_mae: por pasto 100 - |1 - índice global| x 100,
     // ponderada por cabeças-dia — idêntica ao Painel do Retiro/Fazenda.
     const eficiencia = painelMae.eficiencia;
-    const pastosComLancamento = new Set(painelLancamentos.map(l => l.pasto_id));
-    const gmdValoresRetiro = painelPastos
-      .filter(p => pastosComLancamento.has(p.id) && p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0)
-      .map(p => Number(p.gmd_kg_dia));
-    const gmdMedio = filters?.painelRetiroId
-      ? (gmdValoresRetiro.length > 0 ? gmdValoresRetiro.reduce((a, b) => a + b, 0) / gmdValoresRetiro.length : 0)
-      : consumoAgg.gmdMedio;
+    // GMD configurado (projeção): gmd_do_pasto, ponderado por animais.
+    const gmdMedio = gmdPonderado(painelPastos, gmdPastos);
 
     return {
       totalAnimais: painelPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
@@ -305,7 +314,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia]);
+  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, gmdPastos]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloDefinido = fazendaData.intervalo_padrao_dias;
@@ -324,7 +333,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
       );
       const sacosUtilizados = rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
-      const gmd = rpcRow ? Number(rpcRow.gmd_medio) : 0;
+      const gmd = gmdPonderado(rPastos, gmdPastos);
 
       const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
       const validIntervals = sortedRLanc
@@ -362,7 +371,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         ultimaSalga,
       };
     });
-  }, [retiros, pastos, lancamentos, consumoData, fazendaData]);
+  }, [retiros, pastos, lancamentos, consumoData, fazendaData, gmdPastos]);
 
   // Nota do Capataz: fonte única compartilhada com a Seção 2 do PDF.
   const [capatazScores, setCapatazScores] = useState<CapatazScore[]>([]);
@@ -393,8 +402,8 @@ export function useGerenteData(filters?: GerenteFilters) {
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
-      .map(r => ({ retiro: r.nome, capataz: r.capataz, gmd: Number(r.gmd.toFixed(3)) }))
-      .sort((a, b) => b.gmd - a.gmd);
+      .map(r => ({ retiro: r.nome, capataz: r.capataz, gmd: r.gmd == null ? null : Number(r.gmd.toFixed(3)), animais: r.totalAnimais }))
+      .sort((a, b) => (b.gmd ?? -Infinity) - (a.gmd ?? -Infinity) || b.animais - a.animais);
   }, [retirosComDados]);
 
   // Alertas de atraso
