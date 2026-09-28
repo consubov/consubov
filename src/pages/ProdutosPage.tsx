@@ -112,7 +112,9 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
         const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
         lista = fazenda ? [fazenda as { id: string; nome: string }] : [];
       }
-      // Nenhuma gravação fora da fazenda selecionada no filtro.
+      // Cadastro/edição: todas as fazendas vinculadas do gerente (sem fallback abaixo).
+      setFazendasTodasGerente(lista);
+      // Lista/painel e botão Vincular: apenas a fazenda selecionada no filtro.
       if (fazendaAtivaId) lista = lista.filter((f) => f.id === fazendaAtivaId);
       setFazendasOpcoes(lista);
     } else {
