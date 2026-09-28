@@ -197,7 +197,11 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       const { error: itErr } = await (supabase as any)
         .from("solicitacoes_lancamento_itens")
         .insert(itensPayload);
-      if (itErr) throw itErr;
+      if (itErr) {
+        // Evita pedido sem pastos: apaga o cabeçalho recém-criado
+        await (supabase as any).from("solicitacoes_lancamento_manual").delete().eq("id", solIns.id);
+        throw itErr;
+      }
 
       toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
       void sendPush(
