@@ -102,11 +102,22 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
   }, [fazendaId, retiroIds]);
 
   useEffect(() => { void carregar(); }, [carregar]);
-  // Atualização automática a cada 60 s, sem recarregar a tela.
+  // Atualização automática a cada 60 s, sem recarregar a tela (reserva caso o Realtime caia).
   useEffect(() => {
     const iv = setInterval(() => { void carregar(true); }, 60_000);
     return () => clearInterval(iv);
   }, [carregar]);
+  // Realtime: qualquer evento na tabela operacoes_capataz atualiza na hora (RLS filtra o que chega).
+  useEffect(() => {
+    if (!fazendaId) return;
+    const channel = supabase
+      .channel(`operacoes-capataz-${fazendaId}`)
+      .on("postgres_changes" as any, { event: "*", schema: "public", table: "operacoes_capataz" }, () => {
+        void carregar(true);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [fazendaId, carregar]);
 
   const linhas = useMemo(() => {
     if (!dados) return [];
