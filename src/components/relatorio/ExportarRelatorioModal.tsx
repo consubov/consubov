@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import RelatorioPDF, { type RelatorioPDFData, type RetiroReportData, type PastoReportData, type CatMetricsPDF } from "./RelatorioPDF";
+import RelatorioPDF, { type RelatorioPDFData, type RetiroReportData, type PastoReportData, type CatMetricsPDF, type PrevisaoAbatePDFData } from "./RelatorioPDF";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -182,6 +182,44 @@ export default function ExportarRelatorioModal({
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
         .in("retiro_id", retiroIds).eq("ativo", true);
       let pastos = pastosData ?? [];
+      const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
+
+      // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
+      // O escopo de retiro é aplicado pelos IDs antes do filtro de produto do relatório.
+      const { data: abateConfigRows, error: abateConfigError } = await (supabase as any)
+        .from("abate_config")
+        .select("id")
+        .eq("fazenda_id", fazendaId)
+        .limit(1);
+      if (abateConfigError) throw abateConfigError;
+
+      let previsaoAbate: PrevisaoAbatePDFData | null = null;
+      if ((abateConfigRows ?? []).length > 0) {
+        const { data: previsaoRows, error: previsaoError } = await (supabase as any)
+          .rpc("previsao_abate", { p_fazenda: fazendaId });
+        if (previsaoError) throw previsaoError;
+        const rows = ((previsaoRows ?? []) as any[])
+          .filter(row => pastoIdsEscopoRelatorio.has(row.pasto_id))
+          .map(row => ({
+            pastoId: String(row.pasto_id),
+            pasto: String(row.pasto ?? "—"),
+            retiro: String(row.retiro ?? "—"),
+            categoria: row.categoria == null ? null : String(row.categoria),
+            numAnimais: Number(row.num_animais ?? 0),
+            pesoAtual: Number(row.peso_atual ?? 0),
+            pesoAlvo: Number(row.peso_alvo ?? 0),
+            gmdHoje: row.gmd_hoje == null ? null : Number(row.gmd_hoje),
+            diasParaAlvo: Number(row.dias_para_alvo ?? 0),
+            dataPrevista: row.data_prevista == null ? null : String(row.data_prevista),
+          }))
+          .sort((a, b) => a.diasParaAlvo - b.diasParaAlvo);
+        previsaoAbate = {
+          calculadaEm: new Date().toLocaleDateString("pt-BR", {
+            day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo",
+          }),
+          rows,
+        };
+      }
       let pastoIds = pastos.map(p => p.id);
 
       // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
@@ -643,6 +681,7 @@ export default function ExportarRelatorioModal({
         geradoPor,
         retiros: retiroReportData,
         categoriaMetrics,
+        previsaoAbate,
       };
 
       const blob = await pdf(<RelatorioPDF data={reportData} />).toBlob();
