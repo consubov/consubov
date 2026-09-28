@@ -83,11 +83,16 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
   const [form, setForm] = useState<ProdutoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [fazendasOpcoes, setFazendasOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  /** Gerente: TODAS as fazendas vinculadas (gerentes_fazendas) — usado só no cadastro/edição. */
+  const [fazendasTodasGerente, setFazendasTodasGerente] = useState<{ id: string; nome: string }[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
   const [vincularProduto, setVincularProduto] = useState<any | null>(null);
 
+  // Lista do painel/botão Vincular: restrita à fazenda do topo.
   const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
+  // Cadastro/edição: todas as fazendas do gerente (escopo permitido de vínculo).
+  const fazendasVinculaveisIds = fazendasTodasGerente.map((f) => f.id);
 
   async function loadFazendas() {
     if (modo === "gerente") {
