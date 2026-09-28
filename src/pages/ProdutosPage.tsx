@@ -13,12 +13,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import FazendasMultiSelect from "@/components/produtos/FazendasMultiSelect";
 import { fetchVinculosPorProduto, salvarVinculosProduto } from "@/lib/produtosFazenda";
+import VincularProdutoGerenteModal from "@/components/produtos/VincularProdutoGerenteModal";
 
 const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
 const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Proteinado 0,1%", "Proteinado 0,3%", "Proteinado 0,5%", "Ração", "Suplemento", "Outro"];
@@ -82,6 +83,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
   const [fazendasOpcoes, setFazendasOpcoes] = useState<{ id: string; nome: string }[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
+  const [vincularProduto, setVincularProduto] = useState<any | null>(null);
 
   const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
 
@@ -182,6 +184,11 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
     if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
+    if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasPermitidasIds.includes(id))) {
+      toast.error("Selecione pelo menos uma fazenda vinculada.");
+      return;
+    }
+
     setSaving(true);
     const numOrNull = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
     const consumo_recria1 = numOrNull(form.consumo_recria1);
@@ -232,11 +239,17 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
         const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
         if (error) throw error;
         produtoId = (data as any)?.id ?? null;
-        toast.success("Produto cadastrado!");
       }
       if (produtoId) {
-        await salvarVinculosProduto(produtoId, fazendasSelecionadas, escopo);
+        try {
+          await salvarVinculosProduto(produtoId, fazendasSelecionadas, escopo);
+        } catch (vErr: any) {
+          // Produto novo sem vínculo ficaria invisível para o gerente: desfaz o cadastro.
+          if (!editingId) await supabase.from("produtos").delete().eq("id", produtoId);
+          throw new Error(`não foi possível vincular às fazendas (${vErr?.message || "erro"})`);
+        }
       }
+      if (!editingId) toast.success("Produto cadastrado!");
       setDialogOpen(false);
       loadProdutos(fazendasPermitidasIds);
     } catch (err: any) {
@@ -291,7 +304,7 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Peso Saco</TableHead>
                   <TableHead>Custo/kg</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -308,6 +321,11 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
                     <TableCell>{p.preco_por_kg ? `R$ ${Number(p.preco_por_kg).toFixed(2)}` : "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        {modo === "gerente" && (
+                          <Button variant="outline" size="sm" className="gap-1" onClick={() => setVincularProduto(p)}>
+                            <Link2 className="w-3.5 h-3.5" /> Vincular
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                       </div>
@@ -318,6 +336,16 @@ export default function ProdutosPage({ modo = "admin" }: ProdutosPageProps) {
             </Table>
           </div>
         </Card>
+      )}
+
+      {modo === "gerente" && (
+        <VincularProdutoGerenteModal
+          open={!!vincularProduto}
+          produto={vincularProduto}
+          fazendas={fazendasOpcoes}
+          onClose={() => setVincularProduto(null)}
+          onSaved={() => loadProdutos(fazendasPermitidasIds)}
+        />
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
