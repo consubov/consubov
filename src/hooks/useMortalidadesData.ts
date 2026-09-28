@@ -1,13 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 
 export function useMortalidadesData(
   fazendaId: string | undefined,
   ano: number,
   retiroId?: string,
 ) {
-  const [mortalidadesAno, setMortalidadesAno] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = screenCacheKey("mortalidades", [fazendaId, retiroId, ano]);
+  const [mortalidadesAno, setMortalidadesAno] = useState(() => getScreenCache<number>(cacheKey) ?? 0);
+  const [loading, setLoading] = useState(() => getScreenCache(cacheKey) === undefined);
 
   const load = useCallback(async () => {
     if (!fazendaId) { setLoading(false); return; }
@@ -22,32 +24,23 @@ export function useMortalidadesData(
 
       const { data } = await query;
       const total = ((data as any[]) ?? []).reduce((s: number, r: any) => s + (r.quantidade || 0), 0);
+      setScreenCache(cacheKey, total);
       setMortalidadesAno(total);
     } catch (e) {
       console.error("useMortalidadesData error:", e);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, ano, retiroId]);
-
-  useEffect(() => { load(); }, [load]);
+  }, [fazendaId, ano, retiroId, cacheKey]);
 
   useEffect(() => {
-    if (!fazendaId) return;
+    const cached = getScreenCache<number>(cacheKey);
+    if (cached !== undefined) { setMortalidadesAno(cached); setLoading(false); }
+    void load();
+  }, [load, cacheKey]);
 
-    const handleFocus = () => { void load(); };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fazendaId, load]);
+  useResumeRefresh(() => { void load(); }, !!fazendaId);
+  useScreenCacheInvalidation(() => { void load(); });
 
   useEffect(() => {
     if (!fazendaId) return;
