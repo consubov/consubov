@@ -4317,28 +4317,34 @@ export type Database = {
       }
       solicitacoes_lancamento_itens: {
         Row: {
+          cocho_cheio: boolean
           created_at: string
           data_salga: string
           id: string
           lancamento_id: string | null
+          motivo: string | null
           num_sacos: number
           pasto_id: string
           solicitacao_id: string
         }
         Insert: {
+          cocho_cheio?: boolean
           created_at?: string
           data_salga: string
           id?: string
           lancamento_id?: string | null
+          motivo?: string | null
           num_sacos: number
           pasto_id: string
           solicitacao_id: string
         }
         Update: {
+          cocho_cheio?: boolean
           created_at?: string
           data_salga?: string
           id?: string
           lancamento_id?: string | null
+          motivo?: string | null
           num_sacos?: number
           pasto_id?: string
           solicitacao_id?: string

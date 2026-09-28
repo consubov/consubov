@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,7 +31,7 @@ interface SolicitacaoRow {
   status: string;
   motivo_recusa: string | null;
   created_at: string;
-  itens: { id: string; pasto_id: string; num_sacos: number; data_salga: string }[];
+  itens: { id: string; pasto_id: string; num_sacos: number; data_salga: string; cocho_cheio?: boolean | null; motivo?: string | null }[];
 }
 
 interface Props {
@@ -41,7 +42,9 @@ interface Props {
   fazendaId: string;
 }
 
-type PastoEntry = { sacos: string; data: Date };
+type PastoEntry = { sacos: string; data: Date; cocho: boolean; motivo: string };
+
+const MOTIVO_MIN = 5;
 
 export default function LancamentoManualModal({ open, onOpenChange, pastos, retiroId, fazendaId }: Props) {
   const { user } = useAuth();
@@ -86,17 +89,22 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     setGeneralDateOpen(false);
   };
 
-  const updateSacos = (pastoId: string, sacos: string) => {
+  const isVazio = (e: PastoEntry) => !e.cocho && (!e.sacos || e.sacos === "0") && !e.motivo.trim();
+
+  const patchEntry = (pastoId: string, patch: Partial<PastoEntry>) => {
     setEntries((prev) => {
-      const cur = prev[pastoId];
-      if (!sacos || sacos === "0") {
-        // remove se vazio
+      const cur: PastoEntry = prev[pastoId] ?? { sacos: "", data: dataGeral, cocho: false, motivo: "" };
+      const next = { ...cur, ...patch };
+      if (next.cocho) next.sacos = "";
+      if (isVazio(next)) {
         const { [pastoId]: _, ...rest } = prev;
         return rest;
       }
-      return { ...prev, [pastoId]: { sacos, data: cur?.data ?? dataGeral } };
+      return { ...prev, [pastoId]: next };
     });
   };
+
+  const updateSacos = (pastoId: string, sacos: string) => patchEntry(pastoId, { sacos });
 
   const updateData = (pastoId: string, d: Date | undefined) => {
     if (!d) return;
@@ -127,7 +135,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       const ids = sList.map((s) => s.id);
       const { data: itens } = await supabase
         .from("solicitacoes_lancamento_itens" as any)
-        .select("id, solicitacao_id, pasto_id, num_sacos, data_salga")
+        .select("id, solicitacao_id, pasto_id, num_sacos, data_salga, cocho_cheio, motivo")
         .in("solicitacao_id", ids);
       const grouped: SolicitacaoRow[] = sList.map((s: any) => ({
         ...s,
@@ -144,11 +152,16 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
   const handleSubmit = async () => {
     if (!user?.id) return;
     const filled = Object.entries(entries)
-      .map(([pid, e]) => ({ pid, sacos: parseInt(e.sacos, 10), data: e.data }))
-      .filter((e) => Number.isFinite(e.sacos) && e.sacos > 0);
+      .map(([pid, e]) => ({ pid, cocho: e.cocho, sacos: e.cocho ? 0 : parseInt(e.sacos, 10), data: e.data, motivo: e.motivo.trim() }))
+      .filter((e) => e.cocho || (Number.isFinite(e.sacos) && e.sacos > 0));
 
     if (filled.length === 0) {
-      toast.error("Preencha a quantidade de sacos em pelo menos um pasto");
+      toast.error("Preencha os sacos ou marque \"Cocho cheio\" em pelo menos um pasto");
+      return;
+    }
+    const semMotivo = filled.find((e) => e.motivo.length < MOTIVO_MIN);
+    if (semMotivo) {
+      toast.error(`Informe o motivo do lançamento manual (mín. ${MOTIVO_MIN} caracteres) em ${pastoMap.get(semMotivo.pid)?.nome ?? "pasto"}`);
       return;
     }
 
@@ -177,6 +190,8 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
         pasto_id: e.pid,
         num_sacos: e.sacos,
         data_salga: e.data.toISOString(),
+        cocho_cheio: e.cocho,
+        motivo: e.motivo,
       }));
 
       const { error: itErr } = await (supabase as any)
@@ -212,8 +227,8 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
   };
 
-  const totalPreenchido = Object.values(entries).reduce((s, e) => s + (parseInt(e.sacos, 10) || 0), 0);
-  const countPreenchido = Object.values(entries).filter((e) => parseInt(e.sacos, 10) > 0).length;
+  const totalPreenchido = Object.values(entries).reduce((s, e) => s + (e.cocho ? 0 : parseInt(e.sacos, 10) || 0), 0);
+  const countPreenchido = Object.values(entries).filter((e) => e.cocho || parseInt(e.sacos, 10) > 0).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,8 +317,9 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                               min="0"
                               inputMode="numeric"
                               placeholder="Sacos"
-                              value={entry?.sacos ?? ""}
+                              value={entry?.cocho ? "0" : entry?.sacos ?? ""}
                               onChange={(e) => updateSacos(p.id, e.target.value)}
+                              disabled={!!entry?.cocho}
                               className="h-9 text-sm"
                             />
                             <Popover
@@ -328,7 +344,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                                   onSelect={(d) => {
                                     if (!entry) {
                                       // se ainda não tem entry, cria com sacos vazio? Melhor exigir sacos primeiro
-                                      if (d) setEntries((prev) => ({ ...prev, [p.id]: { sacos: prev[p.id]?.sacos ?? "", data: d } }));
+                                      if (d) patchEntry(p.id, { data: d });
                                     } else {
                                       updateData(p.id, d);
                                     }
@@ -342,6 +358,28 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                               </PopoverContent>
                             </Popover>
                           </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor={`cc-${p.id}`} className="text-xs">Cocho cheio</Label>
+                            <Switch
+                              id={`cc-${p.id}`}
+                              checked={!!entry?.cocho}
+                              onCheckedChange={(v) => patchEntry(p.id, { cocho: v })}
+                            />
+                          </div>
+                          {entry && (
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Motivo do lançamento manual *</Label>
+                              <Input
+                                value={entry.motivo}
+                                onChange={(e) => patchEntry(p.id, { motivo: e.target.value })}
+                                placeholder="Ex.: Celular sem bateria, QR danificado"
+                                className="h-9 text-sm"
+                              />
+                              {entry.motivo.trim().length < MOTIVO_MIN && (
+                                <p className="text-[10px] text-destructive">Obrigatório (mín. {MOTIVO_MIN} caracteres)</p>
+                              )}
+                            </div>
+                          )}
                           {isCustom && (
                             <p className="text-[11px] text-primary">
                               Data específica: {format(dataPasto, "dd/MM/yyyy")}
@@ -384,7 +422,8 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                             return (
                               <p key={it.id} className="text-[11px] text-muted-foreground">
                                 <span className="text-foreground font-medium">{pasto?.nome ?? "Pasto"}</span>
-                                {" — "}{it.num_sacos} sacos · {dItem}
+                                {" — "}{it.cocho_cheio ? "Cocho cheio" : `${it.num_sacos} sacos`} · {dItem}
+                                {it.motivo ? <span className="block italic">Motivo: {it.motivo}</span> : null}
                               </p>
                             );
                           })}
