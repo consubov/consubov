@@ -271,7 +271,7 @@ function ScoreEficiencia({ retiros }: { retiros: RetiroReportData[] }) {
 }
 
 function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
-  const sorted = [...retiros].sort((a, b) => b.gmd - a.gmd);
+  const sorted = [...retiros].sort((a, b) => (b.gmd ?? -Infinity) - (a.gmd ?? -Infinity) || (b.totalAnimais ?? 0) - (a.totalAnimais ?? 0));
   const cols = [
     { label: "#", width: "8%" },
     { label: "Retiro", width: "25%" },
@@ -291,7 +291,7 @@ function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
             <Text style={[s.tableCell, { width: cols[0].width }]}>{i + 1}</Text>
             <Text style={[s.tableCell, { width: cols[1].width }]}>{r.nome}</Text>
             <Text style={[s.tableCell, { width: cols[2].width }]}>{r.capataz}</Text>
-            <Text style={[s.tableCell, { width: cols[3].width, fontFamily: "Helvetica-Bold" }]}>{fmtNum(r.gmd, 3)}</Text>
+            <Text style={[s.tableCell, { width: cols[3].width, fontFamily: "Helvetica-Bold" }]}>{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</Text>
             <Text style={[s.tableCell, { width: cols[4].width }]}>{r.totalAnimais}</Text>
           </View>
         ))}
