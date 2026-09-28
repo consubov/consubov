@@ -3128,6 +3128,8 @@ export type Database = {
           peso_abate_meta_kg: number | null
           peso_entrada: number | null
           peso_medio_kg: number | null
+          peso_motor_data: string | null
+          peso_motor_kg: number | null
           produto_id: string | null
           qr_uuid: string
           retiro_id: string
@@ -3154,6 +3156,8 @@ export type Database = {
           peso_abate_meta_kg?: number | null
           peso_entrada?: number | null
           peso_medio_kg?: number | null
+          peso_motor_data?: string | null
+          peso_motor_kg?: number | null
           produto_id?: string | null
           qr_uuid?: string
           retiro_id: string
@@ -3180,6 +3184,8 @@ export type Database = {
           peso_abate_meta_kg?: number | null
           peso_entrada?: number | null
           peso_medio_kg?: number | null
+          peso_motor_data?: string | null
+          peso_motor_kg?: number | null
           produto_id?: string | null
           qr_uuid?: string
           retiro_id?: string
@@ -6833,6 +6839,10 @@ export type Database = {
           peso_medio_kg: number
         }[]
       }
+      gmd_do_pasto: {
+        Args: { p_dia: string; p_pasto: string }
+        Returns: number
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
@@ -6864,6 +6874,7 @@ export type Database = {
         }
         Returns: string
       }
+      rodar_motor_gmd: { Args: never; Returns: number }
       send_push_async: {
         Args: {
           p_admins_only?: boolean
