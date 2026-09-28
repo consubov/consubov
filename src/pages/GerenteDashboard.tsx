@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,15 +84,33 @@ function scoreColor(score: number) {
   return "text-destructive font-bold";
 }
 
+const GERENTE_FILTROS_KEY = "consubov:gerente-filtros";
+interface GerenteFiltrosSalvos { fazenda: string; retiro: string; produto: string; mes: number; ano: number; }
+function readGerenteFiltros(): GerenteFiltrosSalvos | null {
+  try {
+    const raw = sessionStorage.getItem(GERENTE_FILTROS_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as GerenteFiltrosSalvos;
+    return typeof v?.mes === "number" && typeof v?.ano === "number" ? v : null;
+  } catch { return null; }
+}
+function writeGerenteFiltros(v: GerenteFiltrosSalvos) {
+  try { sessionStorage.setItem(GERENTE_FILTROS_KEY, JSON.stringify(v)); } catch { /* ignore */ }
+}
+
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
-  const [fazendaSelecionadaId, setFazendaSelecionadaId] = useState(roleData.fazendaId ?? "");
-  const [painelRetiroId, setPainelRetiroId] = useState("todos");
-  const [painelProdutoId, setPainelProdutoId] = useState("todos");
+  // Filtros guardados na sessão: ao voltar para a tela (ou se o iPhone
+  // descartar o app da memória) eles são restaurados em vez de zerados.
+  const [savedFiltros] = useState(() => readGerenteFiltros());
+  const skipResetRef = useRef({ retiro: !!savedFiltros, produto: !!savedFiltros });
+  const [fazendaSelecionadaId, setFazendaSelecionadaId] = useState(savedFiltros?.fazenda || roleData.fazendaId || "");
+  const [painelRetiroId, setPainelRetiroId] = useState(savedFiltros?.retiro ?? "todos");
+  const [painelProdutoId, setPainelProdutoId] = useState(savedFiltros?.produto ?? "todos");
 
   useEffect(() => {
     if (!roleData.roleId) return;
@@ -126,6 +144,7 @@ export default function GerenteDashboard() {
   // Ao trocar de fazenda, o retiro selecionado volta para "Todos os retiros"
   // (nunca pode ficar um retiro da fazenda anterior).
   useEffect(() => {
+    if (skipResetRef.current.retiro) { skipResetRef.current.retiro = false; return; }
     setPainelRetiroId("todos");
   }, [activeFazendaId]);
 
@@ -133,13 +152,20 @@ export default function GerenteDashboard() {
 
   // Trocar fazenda ou retiro reseta o filtro de produto.
   useEffect(() => {
+    if (skipResetRef.current.produto) { skipResetRef.current.produto = false; return; }
     setPainelProdutoId("todos");
   }, [activeFazendaId, painelRetiroId]);
 
   useEffect(() => {
+    if (savedFiltros) { setPeriodo(savedFiltros.mes, savedFiltros.ano); return; }
     const periodoAtual = getCurrentPainelPeriodo();
     setPeriodo(periodoAtual.mes, periodoAtual.ano);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setPeriodo]);
+
+  useEffect(() => {
+    writeGerenteFiltros({ fazenda: fazendaSelecionadaId, retiro: painelRetiroId, produto: painelProdutoId, mes, ano });
+  }, [fazendaSelecionadaId, painelRetiroId, painelProdutoId, mes, ano]);
 
   const filters = useMemo<GerenteFilters>(() => ({
     ano,
