@@ -94,22 +94,6 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
                   : formatDate(pasto.ultima_salga)}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Última salga:</span>
-              <span className="font-medium">
-                {pasto.ultima_salga
-                  ? `${formatShortDate(pasto.ultima_salga)} (${pasto.ultima_salga_sacos ?? 0} sacos)`
-                  : "—"}
-              </span>
-            </div>
-            {pasto.ultimo_cocho_cheio && (!pasto.ultima_salga || new Date(pasto.ultimo_cocho_cheio).getTime() > new Date(pasto.ultima_salga).getTime()) && (
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Último Cocho Cheio:</span>
-                <span className="font-medium">{formatShortDate(pasto.ultimo_cocho_cheio)}</span>
-              </div>
-            )}
           </div>
         </div>
       </DialogContent>

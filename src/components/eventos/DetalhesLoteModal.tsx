@@ -134,7 +134,7 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
       .then(({ data }) => {
         const rows = data ?? [];
         const effectiveDate = (row: typeof rows[number]) => row.data_salga_informada || row.created_at;
-        const salgas = rows.filter((row) => !row.cocho_cheio).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
+        const salgas = rows.filter((row) => !row.cocho_cheio && row.num_sacos > 0).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
         const cochos = rows.filter((row) => row.cocho_cheio).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
         const salga = salgas[0];
         const cocho = cochos[0];

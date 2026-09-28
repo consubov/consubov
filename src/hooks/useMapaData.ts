@@ -16,9 +16,9 @@ export interface PastoMapaData {
   status_consumo: string | null; // status global
   ultima_movimentacao: string | null;
   ultima_salga: string | null;
-  ultima_salga_sacos: number | null;
-  ultimo_cocho_cheio: string | null;
-  ultima_visita_tipo: "salga" | "cocho_cheio" | null;
+  ultima_salga_sacos?: number | null;
+  ultimo_cocho_cheio?: string | null;
+  ultima_visita_tipo?: "salga" | "cocho_cheio" | null;
   data_fim_carencia: string | null;
   label_offset_x: number;
   label_offset_y: number;
@@ -170,6 +170,7 @@ export function useMapaData(fazendaId: string | undefined, mes: number, ano: num
     const ultimaSalgaMap = new Map<string, VisitaRow>();
     const ultimoCochoMap = new Map<string, VisitaRow>();
     for (const visita of visitas) {
+      if (!visita.cocho_cheio && visita.num_sacos <= 0) continue;
       const destino = visita.cocho_cheio ? ultimoCochoMap : ultimaSalgaMap;
       const atual = destino.get(visita.pasto_id);
       if (!atual || new Date(visitaDate(visita)).getTime() > new Date(visitaDate(atual)).getTime()) {
