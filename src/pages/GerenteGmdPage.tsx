@@ -6,12 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pencil } from "lucide-react";
 import { CATEGORIAS_PASTO } from "@/lib/categoriaPasto";
 
-// Fase de configuração apenas: grava em gmd_config e fazendas.verao_mes_*.
+// Fase de configuração apenas: grava em gmd_config e fazendas (gmd_modo, verao_mes_*).
 // Não calcula peso projetado nem altera pastos/consumo.
+
+type Modo = "geral" | "categoria" | "retiro";
+const MODOS: { v: Modo; label: string }[] = [
+  { v: "geral", label: "Geral" },
+  { v: "categoria", label: "Por categoria" },
+  { v: "retiro", label: "Por retiro" },
+];
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const GMD_MIN = -1;
@@ -22,10 +34,8 @@ interface GmdRow {
   gmd_kg: number | null; gmd_verao_kg: number | null; gmd_inverno_kg: number | null;
 }
 
-// Valores de formulário (texto) por escopo
-interface ScopeForm { verao: string; inverno: string; cat: Record<string, string> }
-
-const emptyForm = (): ScopeForm => ({ verao: "", inverno: "", cat: Object.fromEntries(CATEGORIAS_PASTO.map((c) => [c, ""])) });
+type CatForm = Record<string, string>;
+const emptyCat = (): CatForm => Object.fromEntries(CATEGORIAS_PASTO.map((c) => [c, ""]));
 
 const fmt = (n: number | null | undefined) => (n == null ? "" : Number(n).toFixed(3).replace(".", ","));
 
@@ -37,28 +47,24 @@ function parseGmd(s: string): number | null | "invalid" {
   return Math.round(n * 1000) / 1000;
 }
 
-function formFromRows(rows: GmdRow[], retiroId: string | null): ScopeForm {
-  const f = emptyForm();
-  for (const r of rows.filter((x) => (x.retiro_id ?? null) === retiroId)) {
-    if (!r.categoria) { f.verao = fmt(r.gmd_verao_kg); f.inverno = fmt(r.gmd_inverno_kg); }
-    else if (r.categoria in f.cat) f.cat[r.categoria] = fmt(r.gmd_kg);
+function modoDaLinha(r: GmdRow): Modo {
+  if (r.retiro_id) return "retiro";
+  return r.categoria ? "categoria" : "geral";
+}
+
+function catFromRows(rows: GmdRow[], retiroId: string | null): CatForm {
+  const f = emptyCat();
+  for (const r of rows) {
+    if ((r.retiro_id ?? null) === retiroId && r.categoria && r.categoria in f) f[r.categoria] = fmt(r.gmd_kg);
   }
   return f;
 }
 
-const formVazio = (f: ScopeForm) => !f.verao.trim() && !f.inverno.trim() && Object.values(f.cat).every((v) => !v.trim());
-
 function descreverInverno(ini: number | null, fim: number | null): string {
   if (!ini || !fim) return "Inverno: ano todo (verão não definido)";
-  const inv: number[] = [];
-  for (let m = 1; m <= 12; m++) {
-    const noVerao = ini <= fim ? m >= ini && m <= fim : m >= ini || m <= fim;
-    if (!noVerao) inv.push(m);
-  }
-  if (inv.length === 0) return "Inverno: nenhum mês (verão o ano todo)";
-  // início do inverno = mês seguinte ao fim do verão
   const start = (fim % 12) + 1;
   const end = ini === 1 ? 12 : ini - 1;
+  if (start === ini) return "Inverno: nenhum mês (verão o ano todo)";
   return `Inverno: ${MESES[start - 1]} a ${MESES[end - 1]}`;
 }
 
@@ -69,13 +75,19 @@ export default function GerenteGmdPage() {
   const [fazendaId, setFazendaId] = useState("");
   const [retiros, setRetiros] = useState<{ id: string; nome: string }[]>([]);
   const [rows, setRows] = useState<GmdRow[]>([]);
+  const [modo, setModo] = useState<Modo | null>(null);
   const [verao, setVerao] = useState<{ ini: number | null; fim: number | null }>({ ini: null, fim: null });
+
+  const [draftModo, setDraftModo] = useState<Modo | null>(null);
   const [draftVerao, setDraftVerao] = useState(verao);
-  const [forms, setForms] = useState<Record<string, ScopeForm>>({});
+  const [draftGeral, setDraftGeral] = useState({ verao: "", inverno: "" });
+  const [draftCat, setDraftCat] = useState<Record<string, CatForm>>({});
+
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Mesma fonte do seletor de fazenda do Painel do Gerente (gerentes_fazendas).
   useEffect(() => {
@@ -100,10 +112,12 @@ export default function GerenteGmdPage() {
   async function load(id: string) {
     setLoading(true);
     const [{ data: f }, { data: r }, { data: g }] = await Promise.all([
-      supabase.from("fazendas").select("verao_mes_inicio, verao_mes_fim" as any).eq("id", id).maybeSingle(),
+      supabase.from("fazendas").select("verao_mes_inicio, verao_mes_fim, gmd_modo" as any).eq("id", id).maybeSingle(),
       supabase.from("retiros").select("id, nome").eq("fazenda_id", id).eq("ativo", true).order("nome"),
       (supabase as any).from("gmd_config").select("id, fazenda_id, retiro_id, categoria, gmd_kg, gmd_verao_kg, gmd_inverno_kg").eq("fazenda_id", id),
     ]);
+    const m = (f as any)?.gmd_modo;
+    setModo(m === "geral" || m === "categoria" || m === "retiro" ? m : null);
     setVerao({ ini: (f as any)?.verao_mes_inicio ?? null, fim: (f as any)?.verao_mes_fim ?? null });
     setRetiros((r ?? []) as any);
     setRows((g ?? []) as GmdRow[]);
@@ -113,42 +127,66 @@ export default function GerenteGmdPage() {
 
   useEffect(() => { if (fazendaId) void load(fazendaId); }, [fazendaId]);
 
-  function startEdit() {
-    const fs: Record<string, ScopeForm> = { faz: formFromRows(rows, null) };
-    for (const r of retiros) fs[r.id] = formFromRows(rows, r.id);
-    setForms(fs);
+  function startEdit(novoModo?: Modo) {
+    const geral = rows.find((x) => !x.retiro_id && !x.categoria);
+    setDraftGeral({ verao: fmt(geral?.gmd_verao_kg), inverno: fmt(geral?.gmd_inverno_kg) });
+    const cats: Record<string, CatForm> = { faz: catFromRows(rows, null) };
+    for (const r of retiros) cats[r.id] = catFromRows(rows, r.id);
+    setDraftCat(cats);
     setDraftVerao(verao);
+    setDraftModo(novoModo ?? modo);
     setEditing(true);
   }
 
-  async function save() {
-    if ((draftVerao.ini == null) !== (draftVerao.fim == null)) {
-      toast.error("Informe o mês de início e o de fim do verão.");
-      return;
-    }
-    // Validação de todos os campos
-    const escopos: { key: string; retiroId: string | null; nome: string }[] = [
-      { key: "faz", retiroId: null, nome: "Fazenda" },
-      ...retiros.map((r) => ({ key: r.id, retiroId: r.id, nome: r.nome })),
-    ];
-    for (const e of escopos) {
-      const f = forms[e.key];
-      const vals = [f.verao, f.inverno, ...Object.values(f.cat)];
-      if (vals.some((v) => parseGmd(v) === "invalid")) {
-        toast.error(`${e.nome}: GMD deve estar entre -1,000 e 3,000 kg/dia.`);
-        return;
+  function onEscolherModo(v: string) {
+    const m = v as Modo;
+    if (!editing) startEdit(m);
+    else setDraftModo(m);
+  }
+
+  const linhasOutroModo = (m: Modo) => rows.filter((r) => modoDaLinha(r) !== m);
+
+  function pedirSalvar() {
+    if (!draftModo) { toast.error("Escolha como o GMD será definido nesta fazenda."); return; }
+    if (draftModo === "geral") {
+      if ((draftVerao.ini == null) !== (draftVerao.fim == null)) { toast.error("Informe o mês de início e o de fim do verão."); return; }
+      if ([draftGeral.verao, draftGeral.inverno].some((v) => parseGmd(v) === "invalid")) {
+        toast.error("GMD deve estar entre -1,000 e 3,000 kg/dia."); return;
+      }
+    } else {
+      const chaves = draftModo === "categoria" ? ["faz"] : retiros.map((r) => r.id);
+      for (const k of chaves) {
+        if (Object.values(draftCat[k] ?? {}).some((v) => parseGmd(v) === "invalid")) {
+          const nome = k === "faz" ? "Fazenda" : retiros.find((r) => r.id === k)?.nome;
+          toast.error(`${nome}: GMD deve estar entre -1,000 e 3,000 kg/dia.`); return;
+        }
       }
     }
+    if (draftModo !== modo && linhasOutroModo(draftModo).length > 0) { setConfirmOpen(true); return; }
+    void save();
+  }
 
+  async function save() {
+    if (!draftModo) return;
+    setConfirmOpen(false);
     setSaving(true);
     const agora = new Date().toISOString();
     const por = roleData?.roleId ?? null;
+    const tbl = () => (supabase as any).from("gmd_config");
     try {
-      const { error: ef } = await supabase.from("fazendas")
-        .update({ verao_mes_inicio: draftVerao.ini, verao_mes_fim: draftVerao.fim } as any).eq("id", fazendaId);
+      // 1. Apaga regras que não pertencem ao modo escolhido
+      const apagar = linhasOutroModo(draftModo).map((r) => r.id);
+      if (apagar.length) {
+        const { error } = await tbl().delete().in("id", apagar);
+        if (error) throw error;
+      }
+
+      // 2. Modo (e estações, só no modo geral)
+      const fazPatch: any = { gmd_modo: draftModo };
+      if (draftModo === "geral") { fazPatch.verao_mes_inicio = draftVerao.ini; fazPatch.verao_mes_fim = draftVerao.fim; }
+      const { error: ef } = await supabase.from("fazendas").update(fazPatch).eq("id", fazendaId);
       if (ef) throw ef;
 
-      const tbl = () => (supabase as any).from("gmd_config");
       const upsertLinha = async (retiroId: string | null, categoria: string | null, campos: Record<string, number | null>) => {
         const existente = rows.find((x) => (x.retiro_id ?? null) === retiroId && (x.categoria ?? null) === categoria);
         const tudoVazio = Object.values(campos).every((v) => v == null);
@@ -170,14 +208,20 @@ export default function GerenteGmdPage() {
         }
       };
 
-      for (const e of escopos) {
-        const f = forms[e.key];
-        await upsertLinha(e.retiroId, null, {
-          gmd_verao_kg: parseGmd(f.verao) as number | null,
-          gmd_inverno_kg: parseGmd(f.inverno) as number | null,
+      // 3. Regras do modo escolhido
+      if (draftModo === "geral") {
+        await upsertLinha(null, null, {
+          gmd_verao_kg: parseGmd(draftGeral.verao) as number | null,
+          gmd_inverno_kg: parseGmd(draftGeral.inverno) as number | null,
         });
-        for (const c of CATEGORIAS_PASTO) {
-          await upsertLinha(e.retiroId, c, { gmd_kg: parseGmd(f.cat[c]) as number | null });
+      } else {
+        const escopos = draftModo === "categoria"
+          ? [{ key: "faz", retiroId: null as string | null }]
+          : retiros.map((r) => ({ key: r.id, retiroId: r.id as string | null }));
+        for (const e of escopos) {
+          for (const c of CATEGORIAS_PASTO) {
+            await upsertLinha(e.retiroId, c, { gmd_kg: parseGmd(draftCat[e.key]?.[c] ?? "") as number | null });
+          }
         }
       }
       toast.success("Configuração de GMD salva");
@@ -189,61 +233,45 @@ export default function GerenteGmdPage() {
     }
   }
 
+  const modoAtual = editing ? draftModo : modo;
   const v = editing ? draftVerao : verao;
 
-  const renderEscopo = (key: string, retiroId: string | null) => {
-    if (!editing) {
-      const f = formFromRows(rows, retiroId);
-      if (retiroId && formVazio(f)) return <p className="text-sm text-muted-foreground">Seguindo a fazenda</p>;
-      const umSo = (!!f.verao) !== (!!f.inverno);
-      return (
-        <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium">GMD Geral: </span>
-            {!f.verao && !f.inverno ? <span className="text-muted-foreground">não definido</span> : (
-              <span>Verão {f.verao || "—"} · Inverno {f.inverno || "—"} kg/dia{umSo && <span className="text-muted-foreground"> (usado o ano todo)</span>}</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-1">
-            {CATEGORIAS_PASTO.map((c) => (
-              <div key={c}><span className="text-muted-foreground">{c}:</span> {f.cat[c] ? `${f.cat[c]} kg/dia` : "—"}</div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    const f = forms[key];
-    const upd = (patch: Partial<ScopeForm>) => setForms((all) => ({ ...all, [key]: { ...all[key], ...patch } }));
-    const umSo = (!!f.verao.trim()) !== (!!f.inverno.trim());
-    const campo = (val: string, on: (s: string) => void, label: string) => {
-      const inval = parseGmd(val) === "invalid";
-      return (
-        <div className="space-y-1">
-          <label className="text-xs font-medium">{label}</label>
-          <Input inputMode="decimal" placeholder="0,000" value={val} onChange={(e) => on(e.target.value)} className={inval ? "border-destructive" : ""} />
-        </div>
-      );
-    };
+  const campo = (key: string, val: string, on: (s: string) => void, label: string) => {
+    const inval = parseGmd(val) === "invalid";
     return (
-      <div className="space-y-3">
-        <div>
-          <div className="text-xs font-semibold mb-1">GMD Geral (kg/dia)</div>
-          <div className="grid grid-cols-2 gap-2">
-            {campo(f.verao, (s) => upd({ verao: s }), "Verão")}
-            {campo(f.inverno, (s) => upd({ inverno: s }), "Inverno")}
-          </div>
-          {umSo && <p className="text-xs text-muted-foreground mt-1">Usado o ano todo</p>}
-        </div>
-        <div>
-          <div className="text-xs font-semibold mb-1">GMD por categoria (kg/dia)</div>
-          <div className="grid grid-cols-2 gap-2">
-            {CATEGORIAS_PASTO.map((c) => campo(f.cat[c], (s) => upd({ cat: { ...f.cat, [c]: s } }), c))}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">Valores entre -1,000 e 3,000. Campo vazio = sem regra.</p>
+      <div key={key} className="space-y-1">
+        <label className="text-xs font-medium">{label}</label>
+        <Input inputMode="decimal" placeholder="0,000" value={val} onChange={(e) => on(e.target.value)} className={inval ? "border-destructive" : ""} />
       </div>
     );
   };
+
+  const renderCategorias = (key: string, retiroId: string | null) => {
+    if (!editing) {
+      const f = catFromRows(rows, retiroId);
+      return (
+        <div className="grid grid-cols-2 gap-1 text-sm">
+          {CATEGORIAS_PASTO.map((c) => (
+            <div key={c}>
+              <span className="text-muted-foreground">{c}:</span>{" "}
+              {f[c] ? `${f[c]} kg/dia` : <span className="text-muted-foreground italic">Sem GMD definido</span>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    const f = draftCat[key] ?? emptyCat();
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {CATEGORIAS_PASTO.map((c) => campo(c, f[c], (s) => setDraftCat((all) => ({ ...all, [key]: { ...f, [c]: s } })), c))}
+      </div>
+    );
+  };
+
+  const geralLido = rows.find((x) => !x.retiro_id && !x.categoria);
+  const gV = editing ? draftGeral.verao : fmt(geralLido?.gmd_verao_kg);
+  const gI = editing ? draftGeral.inverno : fmt(geralLido?.gmd_inverno_kg);
+  const umSo = (!!gV.trim()) !== (!!gI.trim());
 
   return (
     <div className="min-h-screen bg-background">
@@ -267,66 +295,122 @@ export default function GerenteGmdPage() {
         ) : (
           <>
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Estações</CardTitle></CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {!editing ? (
-                  <p>{v.ini && v.fim ? `Verão: ${MESES[v.ini - 1]} a ${MESES[v.fim - 1]}` : "Verão: não definido"}</p>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span>Verão: de</span>
-                    <Select value={draftVerao.ini ? String(draftVerao.ini) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, ini: Number(x) }))}>
-                      <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
-                      <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <span>até</span>
-                    <Select value={draftVerao.fim ? String(draftVerao.fim) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, fim: Number(x) }))}>
-                      <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
-                      <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <p className="text-muted-foreground">{descreverInverno(v.ini, v.fim)}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">GMD da fazenda</CardTitle></CardHeader>
-              <CardContent>{renderEscopo("faz", null)}</CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">GMD por retiro</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Modo de GMD</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-                {retiros.map((r) => {
-                  const aberto = !!abertos[r.id];
-                  return (
-                    <div key={r.id} className="border rounded-md">
-                      <button className="w-full flex items-center justify-between p-2 text-sm font-medium" onClick={() => setAbertos((a) => ({ ...a, [r.id]: !aberto }))}>
-                        <span>{r.nome}</span>
-                        <span className="flex items-center gap-2 text-xs text-muted-foreground font-normal">
-                          {!editing && formVazio(formFromRows(rows, r.id)) && "Seguindo a fazenda"}
-                          {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </span>
-                      </button>
-                      {aberto && <div className="p-2 pt-0">{renderEscopo(r.id, r.id)}</div>}
-                    </div>
-                  );
-                })}
-                {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                <RadioGroup value={modoAtual ?? ""} onValueChange={onEscolherModo} className="flex flex-wrap gap-4">
+                  {MODOS.map((m) => (
+                    <label key={m.v} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <RadioGroupItem value={m.v} /> {m.label}
+                    </label>
+                  ))}
+                </RadioGroup>
+                {!modoAtual && <p className="text-sm text-muted-foreground">Escolha como o GMD será definido nesta fazenda</p>}
               </CardContent>
             </Card>
+
+            {modoAtual === "geral" && (
+              <>
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm">Estações</CardTitle></CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {!editing ? (
+                      <p>{v.ini && v.fim ? `Verão: ${MESES[v.ini - 1]} a ${MESES[v.fim - 1]}` : "Verão: não definido"}</p>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>Verão: de</span>
+                        <Select value={draftVerao.ini ? String(draftVerao.ini) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, ini: Number(x) }))}>
+                          <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
+                          <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <span>até</span>
+                        <Select value={draftVerao.fim ? String(draftVerao.fim) : ""} onValueChange={(x) => setDraftVerao((d) => ({ ...d, fim: Number(x) }))}>
+                          <SelectTrigger className="w-32"><SelectValue placeholder="mês" /></SelectTrigger>
+                          <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <p className="text-muted-foreground">{descreverInverno(v.ini, v.fim)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm">GMD Geral (kg/dia)</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {!editing ? (
+                      <p className="text-sm">
+                        {!gV && !gI ? <span className="text-muted-foreground italic">Sem GMD definido</span> : <>Verão {gV || "—"} · Inverno {gI || "—"} kg/dia</>}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {campo("v", draftGeral.verao, (s) => setDraftGeral((d) => ({ ...d, verao: s })), "Verão")}
+                        {campo("i", draftGeral.inverno, (s) => setDraftGeral((d) => ({ ...d, inverno: s })), "Inverno")}
+                      </div>
+                    )}
+                    {umSo && <p className="text-xs text-muted-foreground">Usado o ano todo</p>}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {modoAtual === "categoria" && (
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">GMD por categoria (kg/dia)</CardTitle></CardHeader>
+                <CardContent>{renderCategorias("faz", null)}</CardContent>
+              </Card>
+            )}
+
+            {modoAtual === "retiro" && (
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">GMD por retiro (kg/dia, por categoria)</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  {retiros.map((r) => {
+                    const aberto = !!abertos[r.id];
+                    const vazio = Object.values(catFromRows(rows, r.id)).every((x) => !x);
+                    return (
+                      <div key={r.id} className="border rounded-md">
+                        <button className="w-full flex items-center justify-between p-2 text-sm font-medium" onClick={() => setAbertos((a) => ({ ...a, [r.id]: !aberto }))}>
+                          <span>{r.nome}</span>
+                          <span className="flex items-center gap-2 text-xs text-muted-foreground font-normal">
+                            {!editing && vazio && "Sem GMD definido"}
+                            {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </span>
+                        </button>
+                        {aberto && <div className="p-2 pt-0">{renderCategorias(r.id, r.id)}</div>}
+                      </div>
+                    );
+                  })}
+                  {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                </CardContent>
+              </Card>
+            )}
+
+            {editing && modoAtual && modoAtual !== "geral" && (
+              <p className="text-xs text-muted-foreground">Valores entre -1,000 e 3,000. Campo vazio = sem regra.</p>
+            )}
 
             {!editing ? (
-              <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
+              modo && <Button onClick={() => startEdit()} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
             ) : (
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
-                <Button className="flex-1" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+                <Button className="flex-1" onClick={pedirSalvar} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
               </div>
             )}
           </>
         )}
       </main>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trocar o modo de GMD?</AlertDialogTitle>
+            <AlertDialogDescription>As regras do modo anterior serão apagadas.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void save()}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
