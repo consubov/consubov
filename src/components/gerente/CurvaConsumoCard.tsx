@@ -19,24 +19,6 @@ interface Props {
   ano: number;
 }
 
-/** Pastos cujo produto ativo (ocupação aberta → pasto → retiro) é o produto — mesma regra do filtro do painel. */
-async function pastosDoProduto(fazendaId: string, retiroId: string | null, produtoId: string): Promise<string[]> {
-  const { data: rs } = await supabase.from("retiros").select("id, produto_id").eq("fazenda_id", fazendaId).eq("ativo", true);
-  let retiros = (rs ?? []) as { id: string; produto_id: string | null }[];
-  if (retiroId) retiros = retiros.filter((r) => r.id === retiroId);
-  if (!retiros.length) return [];
-  const rp: Record<string, string | null> = {};
-  for (const r of retiros) rp[r.id] = r.produto_id;
-  const { data: ps } = await supabase.from("pastos").select("id, retiro_id, produto_id").in("retiro_id", retiros.map((r) => r.id)).eq("ativo", true);
-  const pastos = (ps ?? []) as { id: string; retiro_id: string; produto_id: string | null }[];
-  if (!pastos.length) return [];
-  const { data: oc } = await (supabase as any).from("ocupacoes_pasto").select("pasto_id, produto_id, data_entrada")
-    .in("pasto_id", pastos.map((p) => p.id)).is("data_saida", null).order("data_entrada", { ascending: false });
-  const op: Record<string, string> = {};
-  for (const o of (oc ?? []) as any[]) if (o.produto_id && !op[o.pasto_id]) op[o.pasto_id] = o.produto_id;
-  return pastos.filter((p) => (op[p.id] ?? p.produto_id ?? rp[p.retiro_id] ?? null) === produtoId).map((p) => p.id);
-}
-
 interface Dados { anos: number[]; valores: (number | null)[] }
 
 export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, ano }: Props) {
@@ -136,6 +118,11 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
         </div>
       </CardHeader>
       <CardContent className="px-2 pb-3">
+        {erro ? (
+          <div className="h-[220px] w-full flex items-center justify-center">
+            <p className="text-xs text-muted-foreground">Não foi possível carregar a curva</p>
+          </div>
+        ) : (
         <div className="h-[220px] w-full">
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setLargura(w)}>
             <LineChart data={pontos} margin={{ top: 20, right: 12, left: -18, bottom: 0 }}>
