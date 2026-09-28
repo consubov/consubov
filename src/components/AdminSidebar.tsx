@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale, Sparkles, UserPlus, FunctionSquare } from "lucide-react";
+import { LayoutDashboard, Landmark, UserCog, HardHat, QrCode, Package, ClipboardEdit, Settings, Bell, Globe, Brain, CalendarDays, Building2, Camera, ShieldAlert, ScanLine, Factory, Stethoscope, Scale, Sparkles, UserPlus, FunctionSquare, Trophy } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,7 @@ const menuItems = [
   { title: "Consultores", url: "/admin/consultores", icon: Stethoscope },
   { title: "Pesadores", url: "/admin/pesadores", icon: Scale },
   { title: "Fórmulas do Sistema", url: "/admin/formulas-sistema", icon: FunctionSquare },
+  { title: "Premiação", url: "/admin/premiacao", icon: Trophy },
 ];
 
 export function AdminSidebar() {

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PremiacaoSemestral from "@/components/ranking/PremiacaoSemestral";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -710,6 +711,11 @@ export default function GerenteDashboard() {
               </Card>
             )}
           </div>
+
+          {activeFazendaId && (
+            <PremiacaoSemestral fazendas={[{ id: activeFazendaId, nome: "" }]} />
+          )}
+
 
           {/* GMD Ranking */}
           <div>
