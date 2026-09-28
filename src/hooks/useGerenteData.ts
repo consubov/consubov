@@ -8,6 +8,7 @@ import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
@@ -76,6 +77,11 @@ export interface PainelData {
 export interface CapatazScore { retiro: string; capataz: string; score: number; }
 export interface GmdRankItem { retiro: string; capataz: string; gmd: number; }
 
+interface GerenteCache {
+  gerenteNome: string; fazendaData: FazendaRow; ciclo: Ciclo | null; ciclosDisponiveis: Ciclo[];
+  retiros: Retiro[]; pastos: Pasto[]; lancamentos: Lancamento[]; produtos: Produto[]; observacoes: Observacao[];
+}
+
 const CONSUMO_META = 50; // g/cab/dia target
 
 export interface GerenteFilters {
@@ -105,22 +111,31 @@ export function useGerenteData(filters?: GerenteFilters) {
     consumoAno,
   );
 
-  const [loading, setLoading] = useState(true);
-  const [gerenteNome, setGerenteNome] = useState("");
-  const [fazendaData, setFazendaData] = useState<FazendaRow>({ nome: '', intervalo_padrao_dias: 3 });
-  const [ciclo, setCiclo] = useState<Ciclo | null>(null);
-  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>([]);
-  const [retiros, setRetiros] = useState<Retiro[]>([]);
-  const [pastos, setPastos] = useState<Pasto[]>([]);
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [observacoes, setObservacoes] = useState<Observacao[]>([]);
+  const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
+  const ic = getScreenCache<GerenteCache>(cacheKey);
+  const [loading, setLoading] = useState(!ic);
+  const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
+  const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
+  const [ciclo, setCiclo] = useState<Ciclo | null>(ic?.ciclo ?? null);
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>(ic?.ciclosDisponiveis ?? []);
+  const [retiros, setRetiros] = useState<Retiro[]>(ic?.retiros ?? []);
+  const [pastos, setPastos] = useState<Pasto[]>(ic?.pastos ?? []);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>(ic?.lancamentos ?? []);
+  const [produtos, setProdutos] = useState<Produto[]>(ic?.produtos ?? []);
+  const [observacoes, setObservacoes] = useState<Observacao[]>(ic?.observacoes ?? []);
+
+  const applyCache = useCallback((c: GerenteCache) => {
+    setGerenteNome(c.gerenteNome); setFazendaData(c.fazendaData); setCiclo(c.ciclo);
+    setCiclosDisponiveis(c.ciclosDisponiveis); setRetiros(c.retiros); setPastos(c.pastos);
+    setLancamentos(c.lancamentos); setProdutos(c.produtos); setObservacoes(c.observacoes);
+  }, []);
 
   const fazendaNome = fazendaData.nome;
 
   const loadData = useCallback(async () => {
     if (!fazendaId) { setLoading(false); return; }
-    setLoading(true);
+    if (!getScreenCache(cacheKey)) setLoading(true);
+    const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
     try {
       const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
         supabase.from("gerentes").select("nome").eq("id", roleData.roleId!).single(),
@@ -130,12 +145,12 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
-      setGerenteNome(gerenteRes.data?.nome ?? "");
+      snap.gerenteNome = (gerenteRes.data?.nome ?? "");
       const fData = fazendaRes.data as any;
-      setFazendaData({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
+      snap.fazendaData = ({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
 
       const allCiclos = (allCiclosRes.data ?? []) as Ciclo[];
-      setCiclosDisponiveis(allCiclos);
+      snap.ciclosDisponiveis = (allCiclos);
 
       let activeCiclo: Ciclo | null = null;
       if (filters) {
@@ -153,7 +168,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       } else {
         activeCiclo = allCiclos.find(c => !c.fechado) ?? null;
       }
-      setCiclo(activeCiclo);
+      snap.ciclo = (activeCiclo);
 
       const retirosList = (retirosRes.data ?? []).map((r: any) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
@@ -161,7 +176,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
         produto_id: r.produto_id ?? null,
       })) as Retiro[];
-      setRetiros(retirosList);
+      snap.retiros = (retirosList);
 
       const retiroIds = retirosList.map(r => r.id);
       if (retiroIds.length > 0) {
@@ -170,7 +185,7 @@ export function useGerenteData(filters?: GerenteFilters) {
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
         const pastosList = (pastosRes.data ?? []) as Pasto[];
-        setPastos(pastosList);
+        snap.pastos = (pastosList);
 
         let lancQuery = supabase.from("view_consumo_tempo_real" as any)
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
@@ -187,34 +202,40 @@ export function useGerenteData(filters?: GerenteFilters) {
 
         const lancRes = await lancQuery;
         const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
-        setLancamentos(lancList);
+        snap.lancamentos = (lancList);
 
         console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
-        setPastos([]);
-        setLancamentos([]);
+        snap.pastos = ([]);
+        snap.lancamentos = ([]);
       }
 
       const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
       let produtosQuery = supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
       if (produtoIdsFazenda) produtosQuery = produtosQuery.in("id", produtoIdsFazenda);
       const produtosRes = await produtosQuery;
-      setProdutos((produtosRes.data ?? []) as Produto[]);
+      snap.produtos = ((produtosRes.data ?? []) as Produto[]);
 
       try {
         const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
-        setObservacoes((obsRes.data ?? []) as Observacao[]);
+        snap.observacoes = ((obsRes.data ?? []) as Observacao[]);
       } catch {
-        setObservacoes([]);
+        snap.observacoes = ([]);
       }
+      setScreenCache(cacheKey, snap);
+      applyCache(snap);
     } catch (e) {
       console.error("Error loading gerente data:", e);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
+  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const c = getScreenCache<GerenteCache>(cacheKey);
+    if (c) { applyCache(c); setLoading(false); }
+    void loadData();
+  }, [loadData, cacheKey, applyCache]);
 
   // Realtime: auto-refresh when key tables change
   useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], () => {
@@ -222,20 +243,9 @@ export function useGerenteData(filters?: GerenteFilters) {
     refreshConsumo();
   });
 
-  useEffect(() => {
-    const handleFocus = () => { void loadData(); };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void loadData();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [loadData]);
+  // Volta do segundo plano: uma única atualização silenciosa após 5 min.
+  useResumeRefresh(() => { void loadData(); });
+  useScreenCacheInvalidation(() => { void loadData(); });
 
   useEffect(() => {
     const channel = supabase.channel("gerente-rt")
