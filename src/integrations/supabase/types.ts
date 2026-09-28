@@ -6967,6 +6967,7 @@ export type Database = {
       is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
       is_operador_fabrica: { Args: { _user_id: string }; Returns: boolean }
+      limpar_fotos_antigas: { Args: never; Returns: Json }
       pode_enviar_foto_salga: { Args: { _lanc: string }; Returns: boolean }
       pode_ver_fotos_fazenda: { Args: { _faz: string }; Returns: boolean }
       previsao_abate: {
