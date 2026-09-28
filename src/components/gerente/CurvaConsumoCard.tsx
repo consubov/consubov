@@ -90,6 +90,17 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
   const mesDestaque = anoSel === ano ? mes : null;
   const mostrarRotulos = largura >= 320;
 
+  const Dot = (p: any) => {
+    const { cx, cy, payload } = p;
+    if (cx == null || cy == null || payload?.valor == null) return null;
+    const sel = payload.idx === mesDestaque;
+    return (
+      <circle key={payload.idx} cx={cx} cy={cy} r={sel ? 6 : 3}
+        fill={sel ? "hsl(var(--secondary))" : "hsl(var(--primary))"}
+        stroke="hsl(var(--background))" strokeWidth={sel ? 2 : 1} />
+    );
+  };
+
   /** Linhas-guia pontilhadas (cinza claro) do ponto até o eixo X — só nos meses com valor. */
   const GuideLines = (p: any) => {
     const { xAxisMap, yAxisMap, offset } = p;
