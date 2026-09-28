@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFormulasConfig } from "@/lib/formulasSistema";
 import {
-  computeAtrasoMedioSalga,
+  computeAtrasoSalgaPorPasto,
   computeScoreCapataz,
   fetchNotaCochoConsultor,
   fetchScoreWeights,
@@ -103,10 +103,18 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
       if (rows.length < PAGE) break;
     }
   }
-  const retiroInfo: Record<string, { nome: string; capataz: string }> = {};
+  const retiroInfo: Record<string, { nome: string; capataz: string; intervalo: number | null }> = {};
   if (retiroIds.length > 0) {
-    const { data } = await supabase.from("retiros").select("id, nome, capataz").in("id", retiroIds);
-    for (const r of data ?? []) retiroInfo[r.id] = { nome: r.nome, capataz: r.capataz ?? "" };
+    const { data } = await supabase.from("retiros").select("id, nome, capataz, intervalo_padrao_dias" as any).in("id", retiroIds);
+    for (const r of (data ?? []) as any[]) retiroInfo[r.id] = { nome: r.nome, capataz: r.capataz ?? "", intervalo: r.intervalo_padrao_dias ?? null };
+  }
+
+  // Intervalo de cada pasto: pasto → retiro → fazenda (igual a intervalo_do_pasto).
+  const intervaloPastoProprio: Record<string, number | null> = {};
+  const todosPastos = Array.from(new Set([...lancamentos, ...cochos].map((l) => l.pasto_id)));
+  for (let i = 0; i < todosPastos.length; i += 200) {
+    const { data } = await supabase.from("pastos").select("id, intervalo_padrao_dias" as any).in("id", todosPastos.slice(i, i + 200));
+    for (const p of (data ?? []) as any[]) intervaloPastoProprio[p.id] = p.intervalo_padrao_dias ?? null;
   }
 
   const byRetiro: Record<string, ScoreRetiro> = {};
@@ -124,19 +132,25 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
       if (st === "Ideal") pastosNaMeta++;
     }
 
-    const atrasoMedioDias = computeAtrasoMedioSalga(
+    const intervaloDoPasto = (pid: string) =>
+      Number(intervaloPastoProprio[pid] ?? retiroInfo[rid]?.intervalo ?? diasIntervalo);
+    const atraso = computeAtrasoSalgaPorPasto(
       [
         ...rLanc.map((l) => ({ pasto_id: l.pasto_id, created_at: l.created_at ?? null })),
         ...cochos.filter((c) => c.retiro_id === rid).map((c) => ({ pasto_id: c.pasto_id, created_at: c.created_at ?? null })),
       ],
-      diasIntervalo,
+      intervaloDoPasto,
     );
+    const atrasoMedioDias = atraso.atrasoMedio;
 
     const result = computeScoreCapataz({
       pastosNaMeta,
       totalPastosComLanc: pastoIdsNoPeriodo.length,
       atrasoMedioDias,
       diasIntervalo,
+      razaoAtraso: atraso.razaoMedia,
+      intervaloMin: atraso.intervaloMin ?? undefined,
+      intervaloMax: atraso.intervaloMax ?? undefined,
       notaMediaVisita: cochoData?.nota ?? null,
       notaEscalaMax: 5,
       dataVisita: cochoData?.dataVisita ?? null,

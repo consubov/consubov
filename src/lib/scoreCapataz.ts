@@ -52,6 +52,11 @@ export interface ScoreInputs {
   totalPastosComLanc: number;
   atrasoMedioDias: number | null; // null se não houver 2+ lançamentos
   diasIntervalo: number;
+  /** Média de (atraso do pasto ÷ intervalo do pasto). Se informado, substitui atraso÷diasIntervalo. */
+  razaoAtraso?: number | null;
+  /** Faixa de intervalos dos pastos considerados (texto do PDF). */
+  intervaloMin?: number;
+  intervaloMax?: number;
   notaMediaVisita: number | null; // 0..5, ou null se sem visita no período
   notaEscalaMax: number;          // tipicamente 5
   dataVisita: string | null;      // ISO
@@ -78,7 +83,10 @@ export function computeScoreCapataz(inputs: ScoreInputs, w: ScoreWeights): Score
     : 0;
 
   let scoreSalga = 0;
-  if (inputs.atrasoMedioDias != null && inputs.diasIntervalo > 0) {
+  if (inputs.atrasoMedioDias != null && inputs.razaoAtraso != null) {
+    const ratio = Math.min(1, Math.max(0, inputs.razaoAtraso));
+    scoreSalga = w.pesoSalga * (1 - ratio);
+  } else if (inputs.atrasoMedioDias != null && inputs.diasIntervalo > 0) {
     const ratio = Math.min(1, Math.max(0, inputs.atrasoMedioDias / inputs.diasIntervalo));
     scoreSalga = w.pesoSalga * (1 - ratio);
   } else if (inputs.atrasoMedioDias != null) {
@@ -98,8 +106,11 @@ export function computeScoreCapataz(inputs: ScoreInputs, w: ScoreWeights): Score
     ? `${inputs.pastosNaMeta} de ${inputs.totalPastosComLanc} pastos na faixa ideal`
     : "sem lançamentos no período";
 
+  const iMin = inputs.intervaloMin ?? inputs.diasIntervalo;
+  const iMax = inputs.intervaloMax ?? inputs.diasIntervalo;
+  const textoIntervalo = iMin === iMax ? `intervalo configurado: ${iMin} dias` : `intervalos de ${iMin} a ${iMax} dias`;
   const detalheSalga = inputs.atrasoMedioDias != null
-    ? `atraso médio de ${inputs.atrasoMedioDias.toFixed(1).replace(".", ",")} dias (intervalo configurado: ${inputs.diasIntervalo} dias)`
+    ? `atraso médio de ${inputs.atrasoMedioDias.toFixed(1).replace(".", ",")} dias (${textoIntervalo})`
     : "sem dados suficientes de salga";
 
   const detalheCocho = inputs.notaMediaVisita != null && inputs.dataVisita
@@ -127,6 +138,18 @@ export function computeAtrasoMedioSalga(
   lancamentos: Array<{ pasto_id: string; created_at: string | null }>,
   diasIntervalo: number,
 ): number | null {
+  return computeAtrasoSalgaPorPasto(lancamentos, () => diasIntervalo).atrasoMedio;
+}
+
+/**
+ * Igual a computeAtrasoMedioSalga, mas cada pasto é medido contra o próprio
+ * intervalo (pasto → retiro → fazenda). Retorna também a média de
+ * (atraso ÷ intervalo) e a faixa de intervalos dos pastos considerados.
+ */
+export function computeAtrasoSalgaPorPasto(
+  lancamentos: Array<{ pasto_id: string; created_at: string | null }>,
+  intervaloDoPasto: (pastoId: string) => number,
+): { atrasoMedio: number | null; razaoMedia: number | null; intervaloMin: number | null; intervaloMax: number | null } {
   // Visitas = salgas com produto + Cocho Cheio. Várias visitas do mesmo
   // pasto no mesmo dia (calendário America/Sao_Paulo) contam como uma só.
   const porPasto = new Map<string, Map<string, number>>();
@@ -140,17 +163,24 @@ export function computeAtrasoMedioSalga(
     porPasto.set(l.pasto_id, m);
   }
   const atrasos: number[] = [];
-  for (const dias of porPasto.values()) {
+  const razoes: number[] = [];
+  const ints: number[] = [];
+  for (const [pastoId, dias] of porPasto.entries()) {
     const times = Array.from(dias.values());
     if (times.length < 2) continue;
     times.sort((a, b) => a - b);
     const gaps: number[] = [];
     for (let i = 1; i < times.length; i++) gaps.push(diasCalendarioSP(times[i - 1], times[i]) ?? 0);
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-    atrasos.push(Math.max(0, avgGap - diasIntervalo));
+    const intv = intervaloDoPasto(pastoId);
+    const atraso = Math.max(0, avgGap - intv);
+    atrasos.push(atraso);
+    razoes.push(intv > 0 ? atraso / intv : 0);
+    ints.push(intv);
   }
-  if (atrasos.length === 0) return null;
-  return atrasos.reduce((a, b) => a + b, 0) / atrasos.length;
+  if (atrasos.length === 0) return { atrasoMedio: null, razaoMedia: null, intervaloMin: null, intervaloMax: null };
+  const media = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
+  return { atrasoMedio: media(atrasos), razaoMedia: media(razoes), intervaloMin: Math.min(...ints), intervaloMax: Math.max(...ints) };
 }
 
 /**
