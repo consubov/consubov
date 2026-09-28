@@ -53,6 +53,7 @@ export default function FazendaDetailPage() {
   const [saving, setSaving] = useState(false);
   const [fazendaEdit, setFazendaEdit] = useState<FazendaEditForm>({ intervalo_padrao_dias: 3 });
   const [savingFazenda, setSavingFazenda] = useState(false);
+  const [editingIntervalo, setEditingIntervalo] = useState(false);
 
   async function loadData() {
     if (!fazendaId) return;
@@ -162,32 +163,59 @@ export default function FazendaDetailPage() {
                 <Label htmlFor="intervalo" className="text-sm font-medium">Intervalo padrão entre salgas (dias)</Label>
                 <p className="text-xs text-muted-foreground">Define o intervalo ideal de salga para todos os retiros</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="intervalo"
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={fazendaEdit.intervalo_padrao_dias}
-                  onChange={(e) => setFazendaEdit({ intervalo_padrao_dias: parseInt(e.target.value) || 3 })}
-                  className="w-20 text-center"
-                />
-                <Button
-                  size="sm"
-                  disabled={savingFazenda}
-                  onClick={async () => {
-                    setSavingFazenda(true);
-                    const { error } = await supabase.from("fazendas").update({
-                      intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias,
-                    } as any).eq("id", fazendaId!);
-                    setSavingFazenda(false);
-                    if (error) { toast.error("Erro ao salvar"); return; }
-                    toast.success("Intervalo atualizado!");
-                  }}
-                >
-                  {savingFazenda ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
-                </Button>
-              </div>
+              {editingIntervalo ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="intervalo"
+                    type="number"
+                    min={1}
+                    max={30}
+                    autoFocus
+                    value={fazendaEdit.intervalo_padrao_dias}
+                    onChange={(e) => setFazendaEdit({ intervalo_padrao_dias: parseInt(e.target.value) || 3 })}
+                    className="w-20 text-center"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={savingFazenda}
+                    onClick={async () => {
+                      setSavingFazenda(true);
+                      const { error } = await supabase.from("fazendas").update({
+                        intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias,
+                      } as any).eq("id", fazendaId!);
+                      setSavingFazenda(false);
+                      if (error) { toast.error("Erro ao salvar"); return; }
+                      setFazenda(f => f ? { ...f, intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias } : f);
+                      setEditingIntervalo(false);
+                      toast.success("Intervalo atualizado!");
+                    }}
+                  >
+                    {savingFazenda ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={savingFazenda} onClick={() => {
+                    setFazendaEdit({ intervalo_padrao_dias: fazenda?.intervalo_padrao_dias ?? 3 });
+                    setEditingIntervalo(false);
+                  }}>
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {fazenda.intervalo_padrao_dias ?? 3} dia{(fazenda.intervalo_padrao_dias ?? 3) === 1 ? "" : "s"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setFazendaEdit({ intervalo_padrao_dias: fazenda.intervalo_padrao_dias ?? 3 });
+                      setEditingIntervalo(true);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" /> Editar
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
