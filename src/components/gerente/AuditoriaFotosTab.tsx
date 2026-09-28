@@ -132,7 +132,7 @@ export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Prop
           const ids = rows.map((r) => r.lancamento_id);
           const lmap: Record<string, any> = {};
           if (ids.length) {
-            const { data: ls } = await supabase.from("lancamentos").select("id, retiro_id, num_sacos, consumo_g_cab_dia, criado_por").in("id", ids);
+            const { data: ls } = await supabase.from("lancamentos").select("id, retiro_id, num_sacos, consumo_g_cab_dia, criado_por, origem, observacao").in("id", ids);
             (ls || []).forEach((l: any) => { lmap[l.id] = l; });
           }
           rows.forEach((r) => {
@@ -143,13 +143,14 @@ export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Prop
               pastoId: r.pasto_id, retiroId: ret, caminho: r.caminho,
               capataz: capatazes.porUser[l?.criado_por || r.enviado_por] || (ret ? capatazes.porRetiro[ret] : "") || "—",
               sacos: l?.num_sacos ?? null, consumo: l?.consumo_g_cab_dia ?? null,
+              texto: l?.origem === "manual" ? l?.observacao ?? null : null,
             });
           });
         })());
       }
       if (quer("cocho")) {
         jobs.push((async () => {
-          let q = supabase.from("lancamentos").select("id, pasto_id, retiro_id, created_at, num_sacos, consumo_g_cab_dia, criado_por")
+          let q = supabase.from("lancamentos").select("id, pasto_id, retiro_id, created_at, num_sacos, consumo_g_cab_dia, criado_por, origem, observacao")
             .eq("fazenda_id", fazendaId).eq("cocho_cheio", true).not("foto_cocho_url", "is", null)
             .gte("created_at", iniIso).order("created_at", { ascending: false }).limit(n);
           if (fimIso) q = q.lt("created_at", fimIso);
@@ -159,6 +160,7 @@ export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Prop
             key: `c-${r.id}`, tipo: "cocho", id: r.id, data: r.created_at, pastoId: r.pasto_id, retiroId: r.retiro_id,
             capataz: capatazes.porUser[r.criado_por] || capatazes.porRetiro[r.retiro_id] || "—",
             sacos: r.num_sacos, consumo: r.consumo_g_cab_dia,
+            texto: r.origem === "manual" ? r.observacao ?? null : null,
           }));
         })());
       }
@@ -359,6 +361,7 @@ function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
           {(item.tipo === "auditoria" || item.tipo === "cocho") && (
             <p>Sacos: {item.sacos ?? "—"} · Consumo: {item.consumo != null ? `${Math.round(item.consumo)} g/cab/dia` : "—"}</p>
           )}
+          {(item.tipo === "auditoria" || item.tipo === "cocho") && item.texto && <p>Motivo (manual): {item.texto}</p>}
           {item.tipo === "observacao" && item.texto && <p>{item.texto}</p>}
           {item.tipo === "mortalidade" && item.texto && <p>Causa: {item.texto}</p>}
         </div>

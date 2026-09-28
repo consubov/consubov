@@ -135,7 +135,7 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
 
     supabase
       .from("lancamentos")
-      .select("cocho_cheio, num_sacos, data_salga_informada, created_at")
+      .select("cocho_cheio, num_sacos, data_salga_informada, created_at, origem, observacao")
       .eq("pasto_id", pasto.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -145,8 +145,9 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
         const cochos = rows.filter((row) => row.cocho_cheio).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
         const salga = salgas[0];
         const cocho = cochos[0];
-        setUltimaSalga(salga ? { data: effectiveDate(salga), sacos: salga.num_sacos } : null);
+        setUltimaSalga(salga ? { data: effectiveDate(salga), sacos: salga.num_sacos, motivo: (salga as any).origem === "manual" ? (salga as any).observacao ?? null : null } : null);
         setUltimoCocho(cocho ? effectiveDate(cocho) : null);
+        setMotivoCocho(cocho && (cocho as any).origem === "manual" ? (cocho as any).observacao ?? null : null);
       });
   }, [open, pasto?.id]);
 
@@ -204,6 +205,10 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
               <Item label="Última salga" value={ultimaSalga ? `${fmtShortDate(ultimaSalga.data)} (${ultimaSalga.sacos} sacos)` : "—"} />
               {ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
                 <Item label="Último Cocho Cheio" value={fmtShortDate(ultimoCocho)} />
+              )}
+              {ultimaSalga?.motivo && <Item label="Motivo (salga manual)" value={ultimaSalga.motivo} />}
+              {motivoCocho && ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
+                <Item label="Motivo (cocho cheio manual)" value={motivoCocho} />
               )}
             </div>
           </div>
