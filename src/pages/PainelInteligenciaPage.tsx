@@ -544,17 +544,38 @@ export default function PainelInteligenciaPage() {
       if (pasto?.gmd_kg_dia && pasto.gmd_kg_dia > 0) entry.gmds.push(pasto.gmd_kg_dia);
     });
 
-    return CATEGORIAS_PDF.map(cat => {
-      const e = catMap[cat];
+    // Animais: MESMA regra do card "Total Animais" do Painel da Fazenda —
+    // soma de pastos.num_animais (pastos ativos de retiros ativos), agrupada
+    // pela categoria do pasto; pasto com animais e sem categoria => "Sem categoria".
+    const SEM_CAT = "Sem categoria";
+    const animaisPorCat: Record<string, number> = {};
+    pastos.forEach(p => {
+      const n = Number(p.num_animais) || 0;
+      if (n <= 0) return;
+      const ret = retiroById[p.retiro_id];
+      if (!ret) return;
+      const faz = fazendaById[ret.fazenda_id];
+      if (!faz) return;
+      if (filtroFazenda !== "all" && faz.id !== filtroFazenda) return;
+      if (filtroEstado !== "all" && faz.estado !== filtroEstado) return;
+      if (filtroCidade !== "all" && faz.cidade !== filtroCidade) return;
+      const cat = (p.categoria && String(p.categoria).trim()) || SEM_CAT;
+      animaisPorCat[cat] = (animaisPorCat[cat] ?? 0) + n;
+    });
+    const extras = Object.keys(animaisPorCat).filter(c => !(CATEGORIAS_PDF as readonly string[]).includes(c) && c !== SEM_CAT);
+    const ordem = [...CATEGORIAS_PDF, ...extras, ...(animaisPorCat[SEM_CAT] ? [SEM_CAT] : [])];
+
+    return ordem.map(cat => {
+      const e = catMap[cat] ?? { weightedSum: 0, totalAnimais: 0, sacos: 0, custoTotal: 0, gmds: [], diasTotal: 0 };
       const consumoMedio = e.totalAnimais > 0 ? e.weightedSum / e.totalAnimais : 0;
       const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
       const custoMedio = e.totalAnimais > 0 ? e.custoTotal / e.totalAnimais : 0;
       const avgDias = e.sacos > 0 ? e.diasTotal / e.sacos : 30;
       const kgGanho = e.totalAnimais > 0 && gmd > 0 ? e.totalAnimais * gmd * avgDias : 0;
       const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
-      return { categoria: cat, consumoMedio, totalAnimais: e.totalAnimais, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
+      return { categoria: cat, consumoMedio, totalAnimais: animaisPorCat[cat] ?? 0, totalSacos: e.sacos, custoMedio, custoPorKgGanho, gmd, custoTotal: e.custoTotal };
     });
-  }, [filteredLancamentos, pastoById]);
+  }, [filteredLancamentos, pastoById, pastos, retiroById, fazendaById, filtroFazenda, filtroEstado, filtroCidade]);
 
   const MESES_NOMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
