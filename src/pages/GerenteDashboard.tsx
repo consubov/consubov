@@ -749,6 +749,7 @@ export default function GerenteDashboard() {
                     ))}
                   </TableBody>
                 </Table>
+                <p className="text-[10px] text-muted-foreground px-3 pb-2">GMD configurado (projeção), ponderado pelos animais.</p>
               </Card>
             )}
           </div>
