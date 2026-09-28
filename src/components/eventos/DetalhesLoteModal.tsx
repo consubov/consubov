@@ -26,14 +26,16 @@ interface Props {
   onVerHistorico: () => void;
 }
 
+const TZ_SP = "America/Sao_Paulo";
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ_SP });
 }
 
 function fmtShortDate(iso: string | null | undefined) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TZ_SP });
 }
 
 const catLabels: Record<string, string> = {

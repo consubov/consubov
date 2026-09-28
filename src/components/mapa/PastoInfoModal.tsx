@@ -26,14 +26,16 @@ function statusBadge(status: string | null) {
   );
 }
 
+const TZ_SP = "America/Sao_Paulo";
+
 function formatDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ_SP });
 }
 
 function formatShortDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TZ_SP });
 }
 
 interface Props {
