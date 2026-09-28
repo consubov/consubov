@@ -62,6 +62,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
   const [sanitario, setSanitario] = useState<any>(null);
   const [consumoGlobal, setConsumoGlobal] = useState<number | null>(null);
   const [statusGlobal, setStatusGlobal] = useState<string | null>(null);
+  const [ultimaSalga, setUltimaSalga] = useState<{ data: string; sacos: number } | null>(null);
+  const [ultimoCocho, setUltimoCocho] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +92,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
       setSanitario(null);
       setConsumoGlobal(null);
       setStatusGlobal(null);
+      setUltimaSalga(null);
+      setUltimoCocho(null);
       return;
     }
 
@@ -120,6 +124,22 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
       .then(({ data }) => {
         setConsumoGlobal(data?.consumo_global_g_cab_dia != null ? Number(data.consumo_global_g_cab_dia) : null);
         setStatusGlobal(data?.status_global ?? null);
+      });
+
+    supabase
+      .from("lancamentos")
+      .select("cocho_cheio, num_sacos, data_salga_informada, created_at")
+      .eq("pasto_id", pasto.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const rows = data ?? [];
+        const effectiveDate = (row: typeof rows[number]) => row.data_salga_informada || row.created_at;
+        const salgas = rows.filter((row) => !row.cocho_cheio).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
+        const cochos = rows.filter((row) => row.cocho_cheio).sort((a, b) => new Date(effectiveDate(b)).getTime() - new Date(effectiveDate(a)).getTime());
+        const salga = salgas[0];
+        const cocho = cochos[0];
+        setUltimaSalga(salga ? { data: effectiveDate(salga), sacos: salga.num_sacos } : null);
+        setUltimoCocho(cocho ? effectiveDate(cocho) : null);
       });
   }, [open, pasto?.id]);
 
@@ -174,7 +194,10 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
               <Item label="Categoria" value={pasto.categoria || "—"} />
               <Item label="Sexo" value={pasto.sexo || "—"} />
               <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
-              <Item label="Última salga" value={fmtDate(pasto.ultima_salga)} />
+              <Item label="Última salga" value={ultimaSalga ? `${fmtDate(ultimaSalga.data)} (${ultimaSalga.sacos} sacos)` : "—"} />
+              {ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
+                <Item label="Último Cocho Cheio" value={fmtDate(ultimoCocho)} />
+              )}
             </div>
           </div>
 
