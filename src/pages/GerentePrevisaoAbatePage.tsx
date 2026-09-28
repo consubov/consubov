@@ -150,15 +150,18 @@ export default function GerentePrevisaoAbatePage() {
     const f = draft[key] ?? { peso: "", dias: "" };
     const set = (patch: Partial<Form>) => setDraft((d) => ({ ...d, [key]: { ...f, ...patch } }));
     return (
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Peso-alvo (kg)</label>
-          <Input inputMode="decimal" placeholder="Ex.: 540" value={f.peso} onChange={(e) => set({ peso: e.target.value })} />
+      <div className="space-y-1">
+        <div className="flex gap-2">
+          <div className="flex-1 min-w-0 space-y-1">
+            <label className="block text-xs font-medium whitespace-nowrap leading-none">Peso-alvo (kg)</label>
+            <Input inputMode="decimal" placeholder="Ex.: 540" className="h-9 w-full" value={f.peso} onChange={(e) => set({ peso: e.target.value })} />
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            <label className="block text-xs font-medium whitespace-nowrap leading-none">Janela (dias)</label>
+            <Input inputMode="numeric" placeholder="Ex.: 60" className="h-9 w-full" value={f.dias} onChange={(e) => set({ dias: e.target.value })} />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Mostrar quando faltar até (dias)</label>
-          <Input inputMode="numeric" placeholder="Ex.: 60" value={f.dias} onChange={(e) => set({ dias: e.target.value })} />
-        </div>
+        <p className="text-xs text-muted-foreground leading-snug">O lote aparece na previsão quando faltar até esse número de dias para atingir o peso-alvo.</p>
       </div>
     );
   };
