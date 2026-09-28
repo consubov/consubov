@@ -31,6 +31,11 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
+function formatShortDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -83,7 +88,11 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">Última salga:</span>
-              <span className="font-medium">{formatDate(pasto.ultima_salga)}</span>
+              <span className="font-medium">
+                {pasto.ultima_visita_tipo === "cocho_cheio"
+                  ? `${formatShortDate(pasto.ultimo_cocho_cheio)} — Cocho Cheio`
+                  : formatDate(pasto.ultima_salga)}
+              </span>
             </div>
           </div>
         </div>
