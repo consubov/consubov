@@ -46,6 +46,7 @@ import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
 import GerenteProdutosPage from "./pages/GerenteProdutosPage";
 import GerenteAuditoriaFotosPage from "./pages/GerenteAuditoriaFotosPage";
+import GerenteGmdPage from "./pages/GerenteGmdPage";
 import FabricaDashboard from "./pages/FabricaDashboard";
 import ConferenciaPage from "./pages/ConferenciaPage";
 import ConsultoresPage from "./pages/ConsultoresPage";
@@ -309,6 +310,7 @@ const App = () => (
               <Route path="/gerente/entrada-materias-primas" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><EntradaMateriasPrimasPage /></ProtectedRoute>} />
               <Route path="/gerente/produtos" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteProdutosPage /></ProtectedRoute>} />
               <Route path="/gerente/auditoria-fotos" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteAuditoriaFotosPage /></ProtectedRoute>} />
+              <Route path="/gerente/gmd" element={<ProtectedRoute allowedRoles={["gerente"]}><GerenteGmdPage /></ProtectedRoute>} />
               <Route path="/capataz" element={<ProtectedRoute allowedRoles={["capataz"]}><CapatazRoute /></ProtectedRoute>} />
               <Route path="/capataz/transferencia-retiro" element={<ProtectedRoute allowedRoles={["capataz", "administrador"]}><ErrorBoundary><TransferenciaRetiroPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/escritorio" element={<ProtectedRoute allowedRoles={["escritorio"]}><EscritorioLayout /></ProtectedRoute>} />
