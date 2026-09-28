@@ -201,7 +201,7 @@ export default function AdminFazendaPainelPage() {
                   <div><p className="text-xs text-muted-foreground">Animais</p><p className="text-sm font-bold">{r.totalAnimais}</p></div>
                   <div><p className="text-xs text-muted-foreground">Sacos</p><p className="text-sm font-bold">{r.sacosUtilizados}</p></div>
                   <div><p className="text-xs text-muted-foreground">Consumo</p><p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">GMD</p><p className="text-sm font-bold text-primary">{fmtNum(r.gmd, 3)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">GMD</p><p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p></div>
                 </div>
               </CardContent>
             </Card>

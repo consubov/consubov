@@ -1,3 +1,4 @@
+import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, calcularCategoriaViva, classificarConsumo4, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
@@ -166,6 +167,11 @@ export default function ExportarRelatorioModal({
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
         .in("retiro_id", retiroIds).eq("ativo", true);
       let pastos = pastosData ?? [];
+      // GMD configurado (projeção): gmd_do_pasto, direto do banco na hora de gerar.
+      const gmdDia = periodoSelecionado === "mensal" ? dataReferenciaGmd(mes, ano)
+        : periodoSelecionado === "anual" ? dataReferenciaGmd(null, ano)
+        : (() => { const hoje = dataReferenciaGmd(null, 9999); const fim = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`; return fim < hoje ? fim : hoje; })();
+      const gmdPastos = await fetchGmdPastos(pastos.map((p: any) => p.id), gmdDia);
       const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
 
       // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
@@ -406,8 +412,7 @@ export default function ExportarRelatorioModal({
           ? painelMaeByRetiro[ret.id].consumo_real_g_cab_dia
           : computeConsumoMedioPonderado(rLanc);
 
-        const gVals = pastosNoPeriodo.filter(p => p.gmd_kg_dia != null && Number(p.gmd_kg_dia) > 0).map(p => Number(p.gmd_kg_dia));
-        const gmd = gVals.length > 0 ? gVals.reduce((a, b) => a + b, 0) / gVals.length : 0;
+        const gmd = gmdPonderado(rPastos, gmdPastos);
 
         // Custo por pasto: usa o produto do próprio pasto quando existir,
         // caindo para o produto do retiro.
@@ -599,9 +604,10 @@ export default function ExportarRelatorioModal({
       // soma de pastos.num_animais dos pastos ativos dos retiros ativos (respeitando
       // o filtro de retiro), agrupada pela categoria do pasto.
       const animaisPorCat: Record<string, number> = {};
+      const gmdPorCat: Record<string, { soma: number; anim: number }> = {};
       {
         const { data: pastosAnimais } = await supabase.from("pastos")
-          .select("num_animais, categoria")
+          .select("id, num_animais, categoria")
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
         (pastosAnimais ?? []).forEach((p: any) => {
@@ -609,6 +615,8 @@ export default function ExportarRelatorioModal({
           if (n <= 0) return;
           const cat = (p.categoria && String(p.categoria).trim()) || SEM_CAT;
           animaisPorCat[cat] = (animaisPorCat[cat] ?? 0) + n;
+          const g = gmdPastos[p.id];
+          if (g != null) { const a = (gmdPorCat[cat] ??= { soma: 0, anim: 0 }); a.soma += n * g; a.anim += n; }
           if (!catMap[cat]) catMap[cat] = novoAcc();
         });
       }
@@ -648,7 +656,7 @@ export default function ExportarRelatorioModal({
 
         const consumoMedio = e.animalDias > 0 ? (e.kgTotal * 1000) / e.animalDias : 0;
         const custoMedio = e.animalDias > 0 ? (e.custoTotal / e.animalDias) * 30 : 0;
-        const gmd = e.gmds.length > 0 ? e.gmds.reduce((a, b) => a + b, 0) / e.gmds.length : 0;
+        const gmd = gmdPorCat[cat]?.anim ? gmdPorCat[cat].soma / gmdPorCat[cat].anim : 0;
         const avgDias = e.sacos > 0 ? e.diasTotal / e.sacos : 30;
         const kgGanho = totalAnimais > 0 && gmd > 0 ? totalAnimais * gmd * avgDias : 0;
         const custoPorKgGanho = kgGanho > 0 ? e.custoTotal / kgGanho : 0;
