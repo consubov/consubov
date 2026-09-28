@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 
 export interface AbatesResumo {
   abatidosMes: number;
@@ -7,8 +8,9 @@ export interface AbatesResumo {
 }
 
 export function useAbatesData(fazendaId: string | undefined, mes: number, ano: number, retiroId?: string) {
-  const [data, setData] = useState<AbatesResumo>({ abatidosMes: 0, abatidosAno: 0 });
-  const [loading, setLoading] = useState(true);
+  const cacheKey = screenCacheKey("abates", [fazendaId, retiroId, mes, ano]);
+  const [data, setData] = useState<AbatesResumo>(() => getScreenCache<AbatesResumo>(cacheKey) ?? { abatidosMes: 0, abatidosAno: 0 });
+  const [loading, setLoading] = useState(() => !getScreenCache(cacheKey));
 
   const load = useCallback(async () => {
     if (!fazendaId) { setLoading(false); return; }
@@ -22,32 +24,24 @@ export function useAbatesData(fazendaId: string | undefined, mes: number, ano: n
       const [mesRes, anoRes] = await Promise.all([mesQuery, anoQuery]);
       const abatidosMes = ((mesRes.data as any[]) ?? []).reduce((s: number, r: any) => s + (r.quantidade || 0), 0);
       const abatidosAno = ((anoRes.data as any[]) ?? []).reduce((s: number, r: any) => s + (r.quantidade || 0), 0);
-      setData({ abatidosMes, abatidosAno });
+      const next = { abatidosMes, abatidosAno };
+      setScreenCache(cacheKey, next);
+      setData(next);
     } catch (e) {
       console.error("useAbatesData error:", e);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, mes, ano, retiroId]);
-
-  useEffect(() => { load(); }, [load]);
+  }, [fazendaId, mes, ano, retiroId, cacheKey]);
 
   useEffect(() => {
-    if (!fazendaId) return;
+    const cached = getScreenCache<AbatesResumo>(cacheKey);
+    if (cached) { setData(cached); setLoading(false); }
+    void load();
+  }, [load, cacheKey]);
 
-    const handleFocus = () => { void load(); };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fazendaId, load]);
+  useResumeRefresh(() => { void load(); }, !!fazendaId);
+  useScreenCacheInvalidation(() => { void load(); });
 
   // Realtime
   useEffect(() => {

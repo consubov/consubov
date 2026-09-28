@@ -7,6 +7,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { registerSW } from "./lib/swRegistration";
 import { resetServiceWorkerStateOnFirstLoad } from "./lib/swReset";
 import { applyPwaProfile } from "./lib/pwaManifest";
+import { installWriteInvalidation } from "./lib/screenCache";
 
 /**
  * Tela branca por chunk quebrado: quando o HTML novo aponta para um asset que
@@ -70,6 +71,11 @@ function render() {
 
 async function bootstrap() {
   installChunkErrorRecovery();
+  installWriteInvalidation();
+  // App abriu bem: libera uma nova recuperação futura (no máximo 1 reload seguido).
+  window.setTimeout(() => {
+    try { sessionStorage.removeItem(CHUNK_RECOVERY_KEY); } catch { /* ignore */ }
+  }, 10000);
 
   // Nada aqui pode impedir a renderização — se falhar, o app abre mesmo assim.
   try {
