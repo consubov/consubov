@@ -41,7 +41,7 @@ import { UserNotificationToggle } from "@/components/UserNotificationToggle";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
-import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
+import AuditoriaFotosTab from "@/components/gerente/AuditoriaFotosTab";
 import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
 import GerenteNotificacoesBell from "@/components/gerente/GerenteNotificacoesBell";
 
@@ -480,7 +480,7 @@ export default function GerenteDashboard() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="sync" className="text-xs data-[state=active]:text-primary">Sync</TabsTrigger>
+          <TabsTrigger value="auditoria" className="text-xs data-[state=active]:text-primary">Auditoria</TabsTrigger>
         </TabsList>
 
         {/* ===== PAINEL ===== */}
@@ -836,10 +836,10 @@ export default function GerenteDashboard() {
           </div>
         </TabsContent>
 
-        {/* ===== SYNC ===== */}
-        <TabsContent value="sync" className="flex-1 overflow-auto p-4 mt-0">
-          {roleData.fazendaId ? (
-            <SyncCapatazPanel fazendaIdsScope={[roleData.fazendaId]} />
+        {/* ===== AUDITORIA (fotos dos capatazes, carregadas só ao tocar) ===== */}
+        <TabsContent value="auditoria" className="flex-1 overflow-auto p-4 mt-0">
+          {activeFazendaId ? (
+            <AuditoriaFotosTab fazendaId={activeFazendaId} retiros={retirosList} mes={mes} ano={ano} />
           ) : (
             <p className="text-center text-muted-foreground text-sm py-8">Carregando...</p>
           )}
