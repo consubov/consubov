@@ -24,6 +24,7 @@ const TZ = "America/Sao_Paulo";
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 const fmtDataHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const diaBR = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ });
 
 /** Calcula o status de um capataz num retiro a partir dos eventos (ordem crescente). */
 function calcularEstado(base: Estado, evs: Evento[], lancs: Lanc[], userId: string, agora: number): Estado {
@@ -125,29 +126,32 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
       const lancsR = dados.lancs.filter((l) => l.retiro_id === r.id);
       const ultLanc = lancsR[0];
       const caps = dados.caps[r.id] ?? [];
-      const itens = caps.map((c) => {
+      const todos = caps.map((c) => {
         const evs = c.user_id ? dados.eventos.filter((e) => e.user_id === c.user_id && e.retiro_id === r.id) : [];
-        // Estreia: última sincronização com sucesso ou, se não houver, última salga do retiro.
+        // Estreia: somente a sincronização/salga do próprio capataz.
         let base: Estado = { k: "nao" };
         const ok = c.user_id ? dados.syncOk[c.user_id] : undefined;
         const ultDele = c.user_id ? lancsR.find((l) => l.criado_por === c.user_id) : undefined;
         if (ok) base = { k: "fin", t: ok, por: c.nome };
         else if (ultDele) base = { k: "fin", t: ultDele.created_at, por: c.nome };
-        else if (ultLanc) base = { k: "fin", t: ultLanc.created_at, por: (ultLanc.criado_por && dados.nomePorUser[ultLanc.criado_por]) || "—" };
         const firstT = evs[0]?.ocorrido_em;
         if (base.k === "fin" && firstT && base.t > firstT) base = { k: "nao" };
         return { nome: c.nome, st: c.user_id ? calcularEstado(base, evs, lancsR, c.user_id, agora) : base };
       });
+      const fins = todos.filter((i) => i.st.k === "fin").map((i) => i.st as Extract<Estado, { k: "fin" }>);
+      const ultFin = fins.length ? fins.slice().sort((a, b) => b.t.localeCompare(a.t))[0] : null;
+      const diaUlt = ultFin ? diaBR(ultFin.t) : null;
+      const itens = todos.filter((i) => i.st.k === "and" || (i.st.k === "fin" && diaBR(i.st.t) === diaUlt));
       let geral: Estado = { k: "nao" };
       if (itens.some((i) => i.st.k === "and")) {
         const ands = itens.filter((i) => i.st.k === "and").map((i) => i.st as Extract<Estado, { k: "and" }>);
         geral = ands.sort((a, b) => a.desde.localeCompare(b.desde))[0];
-      } else {
-        const fins = itens.filter((i) => i.st.k === "fin").map((i) => i.st as Extract<Estado, { k: "fin" }>);
-        if (fins.length) geral = fins.sort((a, b) => b.t.localeCompare(a.t))[0];
-        else if (caps.length === 0 && ultLanc) geral = { k: "fin", t: ultLanc.created_at, por: (ultLanc.criado_por && dados.nomePorUser[ultLanc.criado_por]) || "—" };
+      } else if (ultFin) {
+        geral = ultFin;
+      } else if (caps.length === 0 && ultLanc) {
+        geral = { k: "fin", t: ultLanc.created_at, por: "—" };
       }
-      return { id: r.id, nome: r.nome, itens, geral };
+      return { id: r.id, nome: r.nome, itens, geral, semCaps: caps.length === 0 };
     }).sort((a, b) => {
       const d = peso(a.geral) - peso(b.geral);
       if (d) return d;
@@ -183,7 +187,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
                   <StatusTag st={l.geral} agora={agora} compacto />
                 </div>
                 {l.itens.length === 0 ? (
-                  <p className="mt-1 text-xs text-muted-foreground">Sem capataz vinculado</p>
+                  l.semCaps ? <p className="mt-1 text-xs text-muted-foreground">Sem capataz vinculado</p> : null
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {l.itens.map((i) => (
@@ -209,7 +213,7 @@ function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compact
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-        {compacto ? `Finalizado ${fmtDataHora(st.t)}` : `${fmtDataHora(st.t)} · sincronizado por ${st.por}`}
+        {compacto ? `Finalizado ${fmtDataHora(st.t)}` : `${fmtDataHora(st.t)} · sincronizou`}
       </span>
     );
   }
