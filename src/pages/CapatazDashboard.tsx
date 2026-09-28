@@ -55,6 +55,7 @@ import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { compressImageDataUrl } from "@/lib/imageCompression";
 import { iniciarFilaFotosSalga } from "@/lib/fotoSalgaQueue";
 import { iniciarFilaOperacoes, reportOperacao } from "@/lib/operacaoReporter";
+import { getTotalPendingCount } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -1377,6 +1378,8 @@ export default function CapatazDashboard() {
     runSync: runSyncForEngine,
     enabled: backgroundBootReady && Boolean(user?.id),
     onSyncSuccess: async (previousLastSyncedAt) => {
+      // Evento "sincronizou" (enviar-e-esquecer, nunca aguardado).
+      void getTotalPendingCount().then((p) => reportOperacao('sincronizou', { userId: user?.id, retiroId: activeRetiroId, fazendaId, capatazNome: userName, pendentes: p })).catch(() => {});
       // Auto-generate the latest salga PDF and offer immediate download
       if (!retiro?.id || !fazendaId) return;
       try {
