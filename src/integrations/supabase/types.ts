@@ -3239,6 +3239,7 @@ export type Database = {
           dias_no_pasto: number | null
           gmd_kg_dia: number | null
           id: string
+          intervalo_padrao_dias: number | null
           label_offset_x: number | null
           label_offset_y: number | null
           label_rotation: number | null
@@ -3267,6 +3268,7 @@ export type Database = {
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
+          intervalo_padrao_dias?: number | null
           label_offset_x?: number | null
           label_offset_y?: number | null
           label_rotation?: number | null
@@ -3295,6 +3297,7 @@ export type Database = {
           dias_no_pasto?: number | null
           gmd_kg_dia?: number | null
           id?: string
+          intervalo_padrao_dias?: number | null
           label_offset_x?: number | null
           label_offset_y?: number | null
           label_rotation?: number | null
@@ -4176,6 +4179,7 @@ export type Database = {
           gmd_recria1: number | null
           gmd_recria2: number | null
           id: string
+          intervalo_padrao_dias: number | null
           margem_engorda: number | null
           margem_recria1: number | null
           margem_recria2: number | null
@@ -4203,6 +4207,7 @@ export type Database = {
           gmd_recria1?: number | null
           gmd_recria2?: number | null
           id?: string
+          intervalo_padrao_dias?: number | null
           margem_engorda?: number | null
           margem_recria1?: number | null
           margem_recria2?: number | null
@@ -4230,6 +4235,7 @@ export type Database = {
           gmd_recria1?: number | null
           gmd_recria2?: number | null
           id?: string
+          intervalo_padrao_dias?: number | null
           margem_engorda?: number | null
           margem_recria1?: number | null
           margem_recria2?: number | null
@@ -6963,6 +6969,7 @@ export type Database = {
         Args: { p_dia: string; p_pasto: string }
         Returns: number
       }
+      intervalo_do_pasto: { Args: { _pasto: string }; Returns: number }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_consultor: { Args: { _user_id: string }; Returns: boolean }
       is_escritorio: { Args: { _user_id: string }; Returns: boolean }
