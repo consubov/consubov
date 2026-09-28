@@ -83,11 +83,16 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
   const [form, setForm] = useState<ProdutoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [fazendasOpcoes, setFazendasOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  /** Gerente: TODAS as fazendas vinculadas (gerentes_fazendas) — usado só no cadastro/edição. */
+  const [fazendasTodasGerente, setFazendasTodasGerente] = useState<{ id: string; nome: string }[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
   const [vincularProduto, setVincularProduto] = useState<any | null>(null);
 
+  // Lista do painel/botão Vincular: restrita à fazenda do topo.
   const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
+  // Cadastro/edição: todas as fazendas do gerente (escopo permitido de vínculo).
+  const fazendasVinculaveisIds = fazendasTodasGerente.map((f) => f.id);
 
   async function loadFazendas() {
     if (modo === "gerente") {
@@ -107,7 +112,9 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
         const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
         lista = fazenda ? [fazenda as { id: string; nome: string }] : [];
       }
-      // Nenhuma gravação fora da fazenda selecionada no filtro.
+      // Cadastro/edição: todas as fazendas vinculadas do gerente (sem fallback abaixo).
+      setFazendasTodasGerente(lista);
+      // Lista/painel e botão Vincular: apenas a fazenda selecionada no filtro.
       if (fazendaAtivaId) lista = lista.filter((f) => f.id === fazendaAtivaId);
       setFazendasOpcoes(lista);
     } else {
@@ -150,7 +157,10 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     setEditingId(null);
     setForm(emptyForm);
     setFazendasSelecionadas(
-      modo === "gerente" && fazendasOpcoes.length === 1 ? [fazendasOpcoes[0].id] : [],
+      modo === "gerente"
+        // Padrão: a fazenda selecionada no filtro do topo.
+        ? (fazendaAtivaId ? [fazendaAtivaId] : fazendasVinculaveisIds.length === 1 ? [fazendasVinculaveisIds[0]] : [])
+        : [],
     );
     setDialogOpen(true);
   }
@@ -188,7 +198,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
     if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
-    if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasPermitidasIds.includes(id))) {
+    if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasVinculaveisIds.includes(id))) {
       toast.error("Selecione pelo menos uma fazenda vinculada.");
       return;
     }
@@ -232,7 +242,8 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     };
 
     try {
-      const escopo = modo === "gerente" ? fazendasPermitidasIds : undefined;
+      // Escopo de vínculo: todas as fazendas vinculadas do gerente (a do filtro já vem marcada por padrão).
+      const escopo = modo === "gerente" ? fazendasVinculaveisIds : undefined;
       let produtoId = editingId;
       if (editingId) {
         const { error } = await supabase.from("produtos").update(payload).eq("id", editingId);
@@ -422,7 +433,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
 
             <div className="border-t pt-3">
               <FazendasMultiSelect
-                fazendas={fazendasOpcoes}
+                fazendas={modo === "gerente" ? fazendasTodasGerente : fazendasOpcoes}
                 selected={fazendasSelecionadas}
                 onChange={setFazendasSelecionadas}
                 emptyMessage={
