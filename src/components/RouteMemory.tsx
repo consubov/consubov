@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
@@ -27,6 +27,7 @@ export function RouteMemory() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, roleResolved } = useAuth();
+  const navType = useNavigationType();
   const restoredRef = useRef(false);
   const fullPath = location.pathname + location.search;
 
@@ -49,8 +50,11 @@ export function RouteMemory() {
     try { sessionStorage.setItem(LAST_ROUTE_KEY, fullPath); } catch { /* ignore */ }
 
     const key = SCROLL_PREFIX + fullPath;
+    // Só devolve a rolagem ao voltar (ou reabrir); abrir uma tela nova começa do topo.
     let saved = 0;
-    try { saved = Number(sessionStorage.getItem(key) || 0); } catch { /* ignore */ }
+    if (navType !== "PUSH") {
+      try { saved = Number(sessionStorage.getItem(key) || 0); } catch { /* ignore */ }
+    }
 
     let cancelled = false;
     let tries = 0;
@@ -84,7 +88,7 @@ export function RouteMemory() {
       window.removeEventListener("touchstart", onUserScroll);
       window.removeEventListener("wheel", onUserScroll);
     };
-  }, [fullPath, location.pathname, role]);
+  }, [fullPath, location.pathname, role, navType]);
 
   return null;
 }

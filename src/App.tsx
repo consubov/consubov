@@ -107,6 +107,7 @@ import SyncVetMeuPainelPage from "./pages/SyncVetMeuPainelPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
+import { RouteMemory } from "@/components/RouteMemory";
 
 function PushNotificationsBootstrap() {
   usePushNotifications();
@@ -255,6 +256,7 @@ const App = () => (
         <PainelPeriodoProvider>
           <AuthProvider>
             <PwaProfileSync />
+            <RouteMemory />
             <PushNotificationsBootstrap />
             <PesagemEmAndamentoPrompt />
 
