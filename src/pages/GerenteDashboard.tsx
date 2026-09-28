@@ -9,6 +9,7 @@ import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { usePainelProduto } from "@/hooks/usePainelProduto";
+import CurvaConsumoCard from "@/components/gerente/CurvaConsumoCard";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
@@ -580,6 +581,14 @@ export default function GerenteDashboard() {
               </CardContent>
             </Card>
           )}
+
+          <CurvaConsumoCard
+            fazendaId={activeFazendaId || null}
+            retiroId={activeRetiroId ?? null}
+            produtoId={painelProdutoId}
+            mes={mes}
+            ano={ano}
+          />
         </TabsContent>
 
         {/* ===== RETIROS ===== */}
