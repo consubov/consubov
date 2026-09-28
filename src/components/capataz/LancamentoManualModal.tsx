@@ -215,7 +215,9 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       void loadHistorico();
     } catch (e: any) {
       console.error("[LancManual] submit", e);
-      toast.error(e?.message || "Falha ao enviar solicitação");
+      const msg: string = e?.message || "";
+      const isNetwork = e?.name === "TypeError" || /failed to fetch|network|networkerror|fetch failed|load failed/i.test(msg);
+      toast.error(isNetwork ? "Sem internet — verifique a conexão e tente de novo" : (msg || "Falha ao enviar solicitação"));
     } finally {
       setSubmitting(false);
     }
