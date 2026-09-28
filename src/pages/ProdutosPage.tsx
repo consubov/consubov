@@ -157,7 +157,10 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     setEditingId(null);
     setForm(emptyForm);
     setFazendasSelecionadas(
-      modo === "gerente" && fazendasOpcoes.length === 1 ? [fazendasOpcoes[0].id] : [],
+      modo === "gerente"
+        // Padrão: a fazenda selecionada no filtro do topo.
+        ? (fazendaAtivaId ? [fazendaAtivaId] : fazendasVinculaveisIds.length === 1 ? [fazendasVinculaveisIds[0]] : [])
+        : [],
     );
     setDialogOpen(true);
   }
