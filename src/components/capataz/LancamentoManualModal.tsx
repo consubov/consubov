@@ -197,7 +197,11 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       const { error: itErr } = await (supabase as any)
         .from("solicitacoes_lancamento_itens")
         .insert(itensPayload);
-      if (itErr) throw itErr;
+      if (itErr) {
+        // Evita pedido sem pastos: apaga o cabeçalho recém-criado
+        await (supabase as any).from("solicitacoes_lancamento_manual").delete().eq("id", solIns.id);
+        throw itErr;
+      }
 
       toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
       void sendPush(
@@ -211,7 +215,9 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
       void loadHistorico();
     } catch (e: any) {
       console.error("[LancManual] submit", e);
-      toast.error(e?.message || "Falha ao enviar solicitação");
+      const msg: string = e?.message || "";
+      const isNetwork = e?.name === "TypeError" || /failed to fetch|network|networkerror|fetch failed|load failed/i.test(msg);
+      toast.error(isNetwork ? "Sem internet — verifique a conexão e tente de novo" : (msg || "Falha ao enviar solicitação"));
     } finally {
       setSubmitting(false);
     }
