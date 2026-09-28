@@ -125,7 +125,10 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
     }
 
     const atrasoMedioDias = computeAtrasoMedioSalga(
-      rLanc.map((l) => ({ pasto_id: l.pasto_id, created_at: l.created_at ?? null })),
+      [
+        ...rLanc.map((l) => ({ pasto_id: l.pasto_id, created_at: l.created_at ?? null })),
+        ...cochos.filter((c) => c.retiro_id === rid).map((c) => ({ pasto_id: c.pasto_id, created_at: c.created_at ?? null })),
+      ],
       diasIntervalo,
     );
 
