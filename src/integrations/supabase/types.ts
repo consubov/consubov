@@ -1651,6 +1651,8 @@ export type Database = {
           id: string
           intervalo_padrao_dias: number
           nome: string
+          verao_mes_fim: number | null
+          verao_mes_inicio: number | null
         }
         Insert: {
           administrador_id?: string | null
@@ -1663,6 +1665,8 @@ export type Database = {
           id?: string
           intervalo_padrao_dias?: number
           nome: string
+          verao_mes_fim?: number | null
+          verao_mes_inicio?: number | null
         }
         Update: {
           administrador_id?: string | null
@@ -1675,6 +1679,8 @@ export type Database = {
           id?: string
           intervalo_padrao_dias?: number
           nome?: string
+          verao_mes_fim?: number | null
+          verao_mes_inicio?: number | null
         }
         Relationships: [
           {
@@ -1992,6 +1998,57 @@ export type Database = {
             columns: ["gerente_id"]
             isOneToOne: false
             referencedRelation: "gerentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmd_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          categoria: string | null
+          fazenda_id: string
+          gmd_inverno_kg: number | null
+          gmd_kg: number | null
+          gmd_verao_kg: number | null
+          id: string
+          retiro_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          categoria?: string | null
+          fazenda_id: string
+          gmd_inverno_kg?: number | null
+          gmd_kg?: number | null
+          gmd_verao_kg?: number | null
+          id?: string
+          retiro_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          categoria?: string | null
+          fazenda_id?: string
+          gmd_inverno_kg?: number | null
+          gmd_kg?: number | null
+          gmd_verao_kg?: number | null
+          id?: string
+          retiro_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmd_config_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmd_config_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
             referencedColumns: ["id"]
           },
         ]
