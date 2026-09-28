@@ -69,7 +69,7 @@ export interface RetiroReportData {
   totalAnimais: number;
   sacosUtilizados: number;
   consumoMedio: number;
-  gmd: number;
+  gmd: number | null;
   pesoMedioKg?: number;
   data: string;
   produtoNome: string;
@@ -296,6 +296,7 @@ function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
           </View>
         ))}
       </View>
+      <Text style={{ fontSize: 6, color: "#666", marginTop: 2 }}>GMD configurado (projeção), ponderado pelos animais.</Text>
     </View>
   );
 }
