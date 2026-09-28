@@ -198,7 +198,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
     if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
 
-    if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasPermitidasIds.includes(id))) {
+    if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasVinculaveisIds.includes(id))) {
       toast.error("Selecione pelo menos uma fazenda vinculada.");
       return;
     }
@@ -242,7 +242,8 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     };
 
     try {
-      const escopo = modo === "gerente" ? fazendasPermitidasIds : undefined;
+      // Escopo de vínculo: todas as fazendas vinculadas do gerente (a do filtro já vem marcada por padrão).
+      const escopo = modo === "gerente" ? fazendasVinculaveisIds : undefined;
       let produtoId = editingId;
       if (editingId) {
         const { error } = await supabase.from("produtos").update(payload).eq("id", editingId);
@@ -432,7 +433,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
 
             <div className="border-t pt-3">
               <FazendasMultiSelect
-                fazendas={fazendasOpcoes}
+                fazendas={modo === "gerente" ? fazendasTodasGerente : fazendasOpcoes}
                 selected={fazendasSelecionadas}
                 onChange={setFazendasSelecionadas}
                 emptyMessage={
