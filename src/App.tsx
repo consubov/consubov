@@ -63,6 +63,7 @@ import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
 import ConsultorConfiguracoesPage from "./pages/ConsultorConfiguracoesPage";
 
 import FormulasSistemaPage from "./pages/FormulasSistemaPage";
+import AdminPremiacaoPage from "./pages/AdminPremiacaoPage";
 import PesadorLayout from "./pages/PesadorLayout";
 import PesadorDashboard from "./pages/PesadorDashboard";
 import PesadorClientesPage from "./pages/PesadorClientesPage";
@@ -304,6 +305,7 @@ const App = () => (
                 <Route path="consultores" element={<ConsultoresPage />} />
                 <Route path="pesadores" element={<PesadoresPage />} />
                 <Route path="formulas-sistema" element={<FormulasSistemaPage />} />
+                <Route path="premiacao" element={<AdminPremiacaoPage />} />
                 <Route path="syncvet-onboarding" element={<AdminSyncVetOnboardingPage />} />
               </Route>
 
