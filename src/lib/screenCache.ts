@@ -20,10 +20,41 @@ export function setScreenCache<T>(key: string, value: T) {
   store.set(key, value);
 }
 
-/** Chamar depois de qualquer gravação que mude os dados das telas. */
+/**
+ * Chamar depois de qualquer gravação. As telas abertas buscam de novo em
+ * segundo plano; as demais sempre revalidam ao abrir, então os dados
+ * guardados servem só para mostrar algo na hora, sem piscar.
+ */
+let invalidateTimer: number | null = null;
 export function invalidateScreenCache() {
-  store.clear();
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(INVALIDATE_EVENT));
+  if (typeof window === "undefined") return;
+  if (invalidateTimer !== null) window.clearTimeout(invalidateTimer);
+  invalidateTimer = window.setTimeout(() => {
+    invalidateTimer = null;
+    window.dispatchEvent(new Event(INVALIDATE_EVENT));
+  }, 300);
+}
+
+/**
+ * Detecta qualquer gravação no banco (POST/PATCH/PUT/DELETE em /rest/v1, exceto
+ * consultas rpc) e invalida o cache. Não altera a requisição em si.
+ */
+let writeHookInstalled = false;
+export function installWriteInvalidation() {
+  if (writeHookInstalled || typeof window === "undefined" || typeof window.fetch !== "function") return;
+  writeHookInstalled = true;
+  const original = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = await original(input, init);
+    try {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+      if (res.ok && method !== "GET" && method !== "HEAD" && url.includes("/rest/v1/") && !url.includes("/rest/v1/rpc/")) {
+        invalidateScreenCache();
+      }
+    } catch { /* ignore */ }
+    return res;
+  };
 }
 
 /** Telas montadas recarregam em segundo plano quando o cache é invalidado. */
