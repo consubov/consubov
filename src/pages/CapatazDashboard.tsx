@@ -54,6 +54,8 @@ import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { compressImageDataUrl } from "@/lib/imageCompression";
 import { iniciarFilaFotosSalga } from "@/lib/fotoSalgaQueue";
+import { iniciarFilaOperacoes, reportOperacao } from "@/lib/operacaoReporter";
+import { getTotalPendingCount } from "@/lib/offlineDb";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -263,6 +265,8 @@ export default function CapatazDashboard() {
   // (cache local primeiro, depois servidor quando houver conexão).
   // Fila separada de fotos de auditoria (não interfere na sincronização das salgas).
   useEffect(() => iniciarFilaFotosSalga(), []);
+  // Fila separada de eventos de operação (Painel de Operações do Gerente).
+  useEffect(() => iniciarFilaOperacoes(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -943,6 +947,7 @@ export default function CapatazDashboard() {
     }
     setSalgaCount(0);
     setPrepStatus('done');
+    reportOperacao('iniciou', { userId: user?.id, retiroId: activeRetiroId, fazendaId, capatazNome: userName });
   };
 
   // Check if pasto already has salga today
@@ -1373,6 +1378,8 @@ export default function CapatazDashboard() {
     runSync: runSyncForEngine,
     enabled: backgroundBootReady && Boolean(user?.id),
     onSyncSuccess: async (previousLastSyncedAt) => {
+      // Evento "sincronizou" (enviar-e-esquecer, nunca aguardado).
+      void getTotalPendingCount().then((p) => reportOperacao('sincronizou', { userId: user?.id, retiroId: activeRetiroId, fazendaId, capatazNome: userName, pendentes: p })).catch(() => {});
       // Auto-generate the latest salga PDF and offer immediate download
       if (!retiro?.id || !fazendaId) return;
       try {
@@ -1578,7 +1585,7 @@ export default function CapatazDashboard() {
         {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setScreen('home')} className="text-primary-foreground hover:bg-primary/80">
+            <Button variant="ghost" size="icon" onClick={() => { setScreen('home'); reportOperacao('cancelou', { userId: user?.id, retiroId: activeRetiroId, fazendaId, capatazNome: userName, pendentes: salgaCount }); }} className="text-primary-foreground hover:bg-primary/80">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg font-bold">Modo Salga</h1>

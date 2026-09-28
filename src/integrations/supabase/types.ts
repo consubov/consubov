@@ -3190,6 +3190,60 @@ export type Database = {
           },
         ]
       }
+      operacoes_capataz: {
+        Row: {
+          capataz_nome: string | null
+          evento_id: string
+          fazenda_id: string
+          id: string
+          ocorrido_em: string
+          pendentes: number | null
+          recebido_em: string
+          retiro_id: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          capataz_nome?: string | null
+          evento_id: string
+          fazenda_id: string
+          id?: string
+          ocorrido_em: string
+          pendentes?: number | null
+          recebido_em?: string
+          retiro_id: string
+          tipo: string
+          user_id?: string
+        }
+        Update: {
+          capataz_nome?: string | null
+          evento_id?: string
+          fazenda_id?: string
+          id?: string
+          ocorrido_em?: string
+          pendentes?: number | null
+          recebido_em?: string
+          retiro_id?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operacoes_capataz_fazenda_id_fkey"
+            columns: ["fazenda_id"]
+            isOneToOne: false
+            referencedRelation: "fazendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operacoes_capataz_retiro_id_fkey"
+            columns: ["retiro_id"]
+            isOneToOne: false
+            referencedRelation: "retiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operadores_fabrica: {
         Row: {
           ativo: boolean | null

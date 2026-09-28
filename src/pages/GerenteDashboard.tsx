@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import AuditoriaFotosTab from "@/components/gerente/AuditoriaFotosTab";
+import PainelOperacoes from "@/components/gerente/PainelOperacoes";
 import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
 import GerenteNotificacoesBell from "@/components/gerente/GerenteNotificacoesBell";
 
@@ -839,7 +840,10 @@ export default function GerenteDashboard() {
         {/* ===== AUDITORIA (fotos dos capatazes, carregadas só ao tocar) ===== */}
         <TabsContent value="auditoria" className="flex-1 overflow-auto p-4 mt-0">
           {activeFazendaId ? (
-            <AuditoriaFotosTab fazendaId={activeFazendaId} retiros={retirosList} mes={mes} ano={ano} />
+            <div className="space-y-3">
+              <PainelOperacoes fazendaId={activeFazendaId} retiros={retirosList} />
+              <AuditoriaFotosTab fazendaId={activeFazendaId} retiros={retirosList} mes={mes} ano={ano} />
+            </div>
           ) : (
             <p className="text-center text-muted-foreground text-sm py-8">Carregando...</p>
           )}
