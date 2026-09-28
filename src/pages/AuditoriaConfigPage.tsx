@@ -16,6 +16,7 @@ export default function AuditoriaConfigPage() {
   const [loading, setLoading] = useState(true);
   const [retirosProprios, setRetirosProprios] = useState<{ id: string; nome: string; auditoria_fotos_por_bloco: number | null; exigir_foto_cocho: boolean | null }[]>([]);
   const [fazendaCocho, setFazendaCocho] = useState<boolean | null>(null);
+  const [intervaloResumo, setIntervaloResumo] = useState<{ modo: string; fazenda: number; itens: string[] } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -50,6 +51,22 @@ export default function AuditoriaConfigPage() {
       ]);
       setRetirosProprios(((rets ?? []) as any[]).filter(retiroTemConfigPropria));
       setFazendaCocho((faz as any)?.exigir_foto_cocho ?? null);
+
+      // Intervalo entre salgas definido pelo gerente (somente leitura).
+      const { data: fi } = await supabase.from("fazendas").select("intervalo_padrao_dias, intervalo_modo" as any).eq("id", selectedFazendaId).maybeSingle();
+      const modo = (fi as any)?.intervalo_modo === "retiro" || (fi as any)?.intervalo_modo === "pasto" ? (fi as any).intervalo_modo : "fazenda";
+      const fazInt = Number((fi as any)?.intervalo_padrao_dias ?? 4);
+      const retList = (rets ?? []) as any[];
+      let itens: string[] = [];
+      if (modo === "retiro") {
+        const { data: ri } = await supabase.from("retiros").select("nome, intervalo_padrao_dias" as any).eq("fazenda_id", selectedFazendaId).not("intervalo_padrao_dias" as any, "is", null).order("nome");
+        itens = ((ri ?? []) as any[]).map((r) => `${r.nome}: ${r.intervalo_padrao_dias} dias`);
+      } else if (modo === "pasto" && retList.length) {
+        const nomeRet = Object.fromEntries(retList.map((r) => [r.id, r.nome]));
+        const { data: pi } = await supabase.from("pastos").select("nome, retiro_id, intervalo_padrao_dias" as any).in("retiro_id", retList.map((r) => r.id)).not("intervalo_padrao_dias" as any, "is", null).order("nome");
+        itens = ((pi ?? []) as any[]).map((p) => `${nomeRet[p.retiro_id] ?? ""} › ${p.nome}: ${p.intervalo_padrao_dias} dias`);
+      }
+      setIntervaloResumo({ modo, fazenda: fazInt, itens });
     })();
   }, [selectedFazendaId]);
 
@@ -130,6 +147,25 @@ export default function AuditoriaConfigPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {intervaloResumo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Intervalo entre salgas</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-foreground">
+              Modo: {intervaloResumo.modo === "fazenda" ? "fazenda" : intervaloResumo.modo === "retiro" ? "por retiro" : "por pasto"}
+              {" · "}Padrão da fazenda: {intervaloResumo.fazenda} dias
+              {intervaloResumo.itens.length > 0 && ` · ${intervaloResumo.itens.join(" · ")}`}
+            </p>
+            {intervaloResumo.modo !== "fazenda" && intervaloResumo.itens.length === 0 && (
+              <p className="text-xs text-muted-foreground">Nenhum valor próprio definido; todos usam o padrão da fazenda.</p>
+            )}
+            <p className="text-xs text-muted-foreground">Definido pelos gerentes. Somente leitura.</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
