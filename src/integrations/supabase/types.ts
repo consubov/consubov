@@ -1647,6 +1647,7 @@ export type Database = {
           cidade: string
           criado_em: string | null
           estado: string
+          exigir_foto_cocho: boolean
           id: string
           intervalo_padrao_dias: number
           nome: string
@@ -1658,6 +1659,7 @@ export type Database = {
           cidade: string
           criado_em?: string | null
           estado?: string
+          exigir_foto_cocho?: boolean
           id?: string
           intervalo_padrao_dias?: number
           nome: string
@@ -1669,6 +1671,7 @@ export type Database = {
           cidade?: string
           criado_em?: string | null
           estado?: string
+          exigir_foto_cocho?: boolean
           id?: string
           intervalo_padrao_dias?: number
           nome?: string
@@ -3974,12 +3977,14 @@ export type Database = {
         Row: {
           alerta_atraso_enviado: boolean
           ativo: boolean | null
+          auditoria_fotos_por_bloco: number | null
           capataz: string
           consumo_engorda: number | null
           consumo_recria1: number | null
           consumo_recria2: number | null
           criado_em: string | null
           estoque_sacos: number | null
+          exigir_foto_cocho: boolean | null
           fazenda_id: string
           gmd_engorda: number | null
           gmd_recria1: number | null
@@ -3999,12 +4004,14 @@ export type Database = {
         Insert: {
           alerta_atraso_enviado?: boolean
           ativo?: boolean | null
+          auditoria_fotos_por_bloco?: number | null
           capataz: string
           consumo_engorda?: number | null
           consumo_recria1?: number | null
           consumo_recria2?: number | null
           criado_em?: string | null
           estoque_sacos?: number | null
+          exigir_foto_cocho?: boolean | null
           fazenda_id: string
           gmd_engorda?: number | null
           gmd_recria1?: number | null
@@ -4024,12 +4031,14 @@ export type Database = {
         Update: {
           alerta_atraso_enviado?: boolean
           ativo?: boolean | null
+          auditoria_fotos_por_bloco?: number | null
           capataz?: string
           consumo_engorda?: number | null
           consumo_recria1?: number | null
           consumo_recria2?: number | null
           criado_em?: string | null
           estoque_sacos?: number | null
+          exigir_foto_cocho?: boolean | null
           fazenda_id?: string
           gmd_engorda?: number | null
           gmd_recria1?: number | null
