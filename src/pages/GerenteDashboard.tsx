@@ -13,7 +13,6 @@ import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { usePastosRetiro } from "@/hooks/usePastosRetiro";
 import PastosListaRetiro from "@/components/pastos/PastosListaRetiro";
-import GerenteProdutoRetiroCard from "@/components/gerente/GerenteProdutoRetiroCard";
 import { useAbatesData } from "@/hooks/useAbatesData";
 import { useMortalidadesData } from "@/hooks/useMortalidadesData";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
@@ -898,7 +897,9 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
       <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
 
       {retiro.id && fazendaId && (
-        <GerenteProdutoRetiroCard retiroId={retiro.id} retiroNome={retiro.nome} fazendaId={fazendaId} />
+        <Button onClick={() => navRetiro(`/gerente/produtos?aba=onde-usar&retiro=${retiro.id}`)} variant="outline" size="sm" className="mt-4 w-full">
+          Gerenciar em Produtos › Onde usar
+        </Button>
       )}
     </>
   );

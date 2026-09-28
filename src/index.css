@@ -27,6 +27,15 @@
     --accent: 45 76% 46%;
     --accent-foreground: 150 30% 10%;
 
+    --produto-1: 152 45% 32%;
+    --produto-2: 42 80% 45%;
+    --produto-3: 210 65% 45%;
+    --produto-4: 12 70% 50%;
+    --produto-5: 280 40% 48%;
+    --produto-6: 180 55% 35%;
+    --produto-7: 330 55% 48%;
+    --produto-8: 25 40% 38%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
@@ -67,6 +76,15 @@
 
     --accent: 45 76% 46%;
     --accent-foreground: 150 30% 10%;
+
+    --produto-1: 152 45% 32%;
+    --produto-2: 42 80% 45%;
+    --produto-3: 210 65% 45%;
+    --produto-4: 12 70% 50%;
+    --produto-5: 280 40% 48%;
+    --produto-6: 180 55% 35%;
+    --produto-7: 330 55% 48%;
+    --produto-8: 25 40% 38%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 60 10% 95%;
