@@ -420,17 +420,6 @@ export default function ExportarRelatorioModal({
         }, 0);
         const custoDiario = consumoMedio > 0 && precoKg > 0 ? (consumoMedio / 1000) * precoKg : 0;
 
-        // Pastos na Meta (mesma regra do card do painel): pastos com lançamento
-        // no mês cujo último indice_consumo cai na faixa "Ideal" da fórmula.
-        let pastosNaMeta = 0;
-        for (const p of pastosNoPeriodo) {
-          const pLanc = rLanc.filter(l => l.pasto_id === p.id);
-          const sorted = [...pLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
-          const last = sorted[0];
-          const idx = last ? Number(last.indice_consumo ?? 0) : 0;
-          const st = idx > 0 ? formulas.classificacao.classify(idx) : (last?.status_consumo ?? null);
-          if (st === "Ideal") pastosNaMeta++;
-        }
 
         const scoreCalc = scores.byRetiro[ret.id]?.result ?? scores.semSalga;
 
