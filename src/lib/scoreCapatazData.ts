@@ -42,6 +42,8 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
   byRetiro: Record<string, ScoreRetiro>;
   list: ScoreRetiro[];
   diasIntervalo: number;
+  /** Nota de um retiro sem salga no período (mesma regra de antes). */
+  semSalga: ScoreResult;
 }> {
   const { fazendaId, start, end, periodo, mes, ano, retiroId, pastoIds } = opts;
 
@@ -122,5 +124,14 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
   }
 
   const list = Object.values(byRetiro).sort((a, b) => b.score - a.score || a.retiro.localeCompare(b.retiro, "pt-BR"));
-  return { byRetiro, list, diasIntervalo };
+  const semSalga = computeScoreCapataz({
+    pastosNaMeta: 0,
+    totalPastosComLanc: 0,
+    atrasoMedioDias: null,
+    diasIntervalo,
+    notaMediaVisita: cochoData?.nota ?? null,
+    notaEscalaMax: 5,
+    dataVisita: cochoData?.dataVisita ?? null,
+  }, weights);
+  return { byRetiro, list, diasIntervalo, semSalga };
 }
