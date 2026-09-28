@@ -26,12 +26,10 @@ const TODOS = "__todos__";
 const byNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, "pt-BR", { numeric: true });
 const cor = (i: number) => (i < 0 ? "hsl(var(--muted-foreground))" : `hsl(var(--produto-${(i % 8) + 1}))`);
 
-interface Props { retiroInicial?: string | null }
+interface Props { fazendaId: string; retiroInicial?: string | null; onDirtyChange?: (d: boolean) => void }
 
-export default function OndeUsarGerente({ retiroInicial }: Props) {
+export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChange }: Props) {
   const { roleData } = useAuth();
-  const [fazendas, setFazendas] = useState<Fazenda[]>([]);
-  const [fazendaId, setFazendaId] = useState("");
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [disponiveis, setDisponiveis] = useState<string[]>([]);
   const [retiros, setRetiros] = useState<RetiroRow[]>([]);
@@ -49,31 +47,6 @@ export default function OndeUsarGerente({ retiroInicial }: Props) {
   const [seguirRetiro, setSeguirRetiro] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Fazendas do gerente (mesma fonte do Painel do Gerente)
-  useEffect(() => {
-    (async () => {
-      const gerenteId = roleData?.roleId;
-      if (!gerenteId) return;
-      const { data } = await supabase.from("gerentes_fazendas").select("fazenda_id, fazendas(id, nome)").eq("gerente_id", gerenteId);
-      let ops = ((data ?? []) as any[]).flatMap((it) => {
-        const f = Array.isArray(it.fazendas) ? it.fazendas[0] : it.fazendas;
-        return f?.id ? [{ id: f.id as string, nome: f.nome as string }] : [];
-      });
-      if (ops.length === 0 && roleData?.fazendaId) {
-        const { data: f } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
-        ops = f ? [f as Fazenda] : [];
-      }
-      ops.sort(byNome);
-      setFazendas(ops);
-      if (retiroInicial) {
-        const { data: r } = await supabase.from("retiros").select("fazenda_id").eq("id", retiroInicial).maybeSingle();
-        const fid = (r as any)?.fazenda_id;
-        if (fid && ops.some((o) => o.id === fid)) { setFazendaId(fid); return; }
-      }
-      setFazendaId(ops[0]?.id ?? "");
-      if (ops.length === 0) setLoading(false);
-    })();
-  }, [roleData?.roleId, roleData?.fazendaId, retiroInicial]);
 
   const load = useCallback(async () => {
     if (!fazendaId) return;
@@ -223,12 +196,6 @@ export default function OndeUsarGerente({ retiroInicial }: Props) {
     <div className={barra ? "pb-36" : ""}>
       {/* Filtros */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-        {fazendas.length > 1 && (
-          <Select value={fazendaId} onValueChange={(v) => { if (qtdPend && !confirm("Descartar alterações não salvas?")) return; setFazendaId(v); setFRetiro(TODOS); setFProduto(TODOS); }}>
-            <SelectTrigger className="w-40 shrink-0"><SelectValue /></SelectTrigger>
-            <SelectContent>{fazendas.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
         <Select value={fRetiro} onValueChange={setFRetiro}>
           <SelectTrigger className="w-36 shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>
