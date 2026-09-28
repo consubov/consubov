@@ -149,7 +149,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id").eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       snap.gerenteNome = (gerenteRes.data?.nome ?? "");
@@ -317,7 +317,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, gmdPastos]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
-    const intervaloDefinido = fazendaData.intervalo_padrao_dias;
+    const intervaloFazenda = fazendaData.intervalo_padrao_dias;
     const now = new Date();
 
     // Consumo/índice/dias já vêm ajustados dinamicamente pela view
@@ -328,6 +328,8 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rPastos = pastos.filter(p => p.retiro_id === r.id);
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
+      // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
+      const intervaloDefinido = Number((r as any).intervalo_padrao_dias ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
