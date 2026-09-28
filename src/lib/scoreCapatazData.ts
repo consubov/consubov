@@ -78,6 +78,31 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
   }
 
   const retiroIds = Array.from(new Set(lancamentos.map((l) => l.retiro_id)));
+
+  // Cocho Cheio do período: só as datas, usadas como visita no item Salga.
+  // Retiro só com Cocho Cheio (sem salga com produto) continua fora do ranking.
+  const cochos: Array<{ pasto_id: string; retiro_id: string; created_at: string | null }> = [];
+  if (retiroIds.length > 0) {
+    for (let from = 0; ; from += PAGE) {
+      let q = (supabase as any)
+        .from("lancamentos")
+        .select("id, pasto_id, retiro_id, created_at, num_sacos")
+        .eq("fazenda_id", fazendaId)
+        .eq("cocho_cheio", true)
+        .in("retiro_id", retiroIds)
+        .order("id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (periodo === "mensal") q = q.eq("mes_referencia", mes).eq("ano_referencia", ano);
+      else if (periodo === "anual") q = q.eq("ano_referencia", ano);
+      else q = q.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+      if (pastoIds) q = q.in("pasto_id", pastoIds);
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      cochos.push(...rows.filter((r) => r.pasto_id && r.retiro_id && Number(r.num_sacos ?? 0) <= 0));
+      if (rows.length < PAGE) break;
+    }
+  }
   const retiroInfo: Record<string, { nome: string; capataz: string }> = {};
   if (retiroIds.length > 0) {
     const { data } = await supabase.from("retiros").select("id, nome, capataz").in("id", retiroIds);
@@ -100,7 +125,10 @@ export async function fetchScoresCapataz(opts: FetchScoresOptions): Promise<{
     }
 
     const atrasoMedioDias = computeAtrasoMedioSalga(
-      rLanc.map((l) => ({ pasto_id: l.pasto_id, created_at: l.created_at ?? null })),
+      [
+        ...rLanc.map((l) => ({ pasto_id: l.pasto_id, created_at: l.created_at ?? null })),
+        ...cochos.filter((c) => c.retiro_id === rid).map((c) => ({ pasto_id: c.pasto_id, created_at: c.created_at ?? null })),
+      ],
       diasIntervalo,
     );
 

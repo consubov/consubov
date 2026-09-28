@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { dataLocalSP, diasCalendarioSP } from "@/lib/diasCalendario";
 
 /**
  * Score do Capataz — lê pesos das 4 fórmulas em `formulas_sistema`
@@ -127,15 +127,21 @@ export function computeAtrasoMedioSalga(
   lancamentos: Array<{ pasto_id: string; created_at: string | null }>,
   diasIntervalo: number,
 ): number | null {
-  const porPasto = new Map<string, number[]>();
+  // Visitas = salgas com produto + Cocho Cheio. Várias visitas do mesmo
+  // pasto no mesmo dia (calendário America/Sao_Paulo) contam como uma só.
+  const porPasto = new Map<string, Map<string, number>>();
   for (const l of lancamentos) {
     if (!l.created_at) continue;
-    const arr = porPasto.get(l.pasto_id) ?? [];
-    arr.push(new Date(l.created_at).getTime());
-    porPasto.set(l.pasto_id, arr);
+    const t = new Date(l.created_at).getTime();
+    if (!Number.isFinite(t)) continue;
+    const dia = dataLocalSP(t);
+    const m = porPasto.get(l.pasto_id) ?? new Map<string, number>();
+    if (!m.has(dia)) m.set(dia, t);
+    porPasto.set(l.pasto_id, m);
   }
   const atrasos: number[] = [];
-  for (const times of porPasto.values()) {
+  for (const dias of porPasto.values()) {
+    const times = Array.from(dias.values());
     if (times.length < 2) continue;
     times.sort((a, b) => a - b);
     const gaps: number[] = [];
