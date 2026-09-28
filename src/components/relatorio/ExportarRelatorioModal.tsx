@@ -595,10 +595,23 @@ export default function ExportarRelatorioModal({
       const novoAcc = (): CatAcc => ({ sacos: 0, custoTotal: 0, kgTotal: 0, animalDias: 0, gmds: [], diasTotal: 0 });
       CATS.forEach(c => { catMap[c] = novoAcc(); });
 
-      // Animais: o último lançamento de cada pasto no período conta UMA única vez,
-      // na categoria (lancamentos.categoria) desse último lançamento.
-      const ultimoPorPastoGlobal = new Map<string, { t: string; cat: string; n: number }>();
-
+      // Animais: MESMA fonte e regra do card "Total Animais" do Painel da Fazenda —
+      // soma de pastos.num_animais dos pastos ativos dos retiros ativos (respeitando
+      // o filtro de retiro), agrupada pela categoria do pasto.
+      const animaisPorCat: Record<string, number> = {};
+      {
+        const { data: pastosAnimais } = await supabase.from("pastos")
+          .select("num_animais, categoria")
+          .in("retiro_id", retiroIds)
+          .eq("ativo", true);
+        (pastosAnimais ?? []).forEach((p: any) => {
+          const n = Number(p.num_animais) || 0;
+          if (n <= 0) return;
+          const cat = (p.categoria && String(p.categoria).trim()) || SEM_CAT;
+          animaisPorCat[cat] = (animaisPorCat[cat] ?? 0) + n;
+          if (!catMap[cat]) catMap[cat] = novoAcc();
+        });
+      }
 
       lancCat.forEach(l => {
         const cat = (l.categoria && String(l.categoria).trim()) || SEM_CAT;
@@ -612,10 +625,6 @@ export default function ExportarRelatorioModal({
         entry.sacos += sacos;
         entry.diasTotal += dias;
         entry.animalDias += animais * dias;
-
-        const t = String(l.created_at ?? "");
-        const prevUlt = ultimoPorPastoGlobal.get(l.pasto_id);
-        if (!prevUlt || t >= prevUlt.t) ultimoPorPastoGlobal.set(l.pasto_id, { t, cat, n: animais });
 
 
         const pasto = pastos.find(p => p.id === l.pasto_id);
@@ -635,8 +644,7 @@ export default function ExportarRelatorioModal({
       const catOrder = [...CATS, ...Object.keys(catMap).filter(c => !CATS.includes(c) && c !== SEM_CAT), ...(catMap[SEM_CAT] ? [SEM_CAT] : [])];
       const categoriaMetrics: CatMetricsPDF[] = catOrder.map(cat => {
         const e = catMap[cat];
-        let totalAnimais = 0;
-        ultimoPorPastoGlobal.forEach(v => { if (v.cat === cat) totalAnimais += v.n; });
+        const totalAnimais = animaisPorCat[cat] ?? 0;
 
         const consumoMedio = e.animalDias > 0 ? (e.kgTotal * 1000) / e.animalDias : 0;
         const custoMedio = e.animalDias > 0 ? (e.custoTotal / e.animalDias) * 30 : 0;
