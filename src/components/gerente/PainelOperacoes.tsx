@@ -187,7 +187,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
                   <StatusTag st={l.geral} agora={agora} compacto />
                 </div>
                 {l.itens.length === 0 ? (
-                  <p className="mt-1 text-xs text-muted-foreground">Sem capataz vinculado</p>
+                  l.semCaps ? <p className="mt-1 text-xs text-muted-foreground">Sem capataz vinculado</p> : null
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {l.itens.map((i) => (
@@ -213,7 +213,7 @@ function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compact
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-        {compacto ? `Finalizado ${fmtDataHora(st.t)}` : `${fmtDataHora(st.t)} · sincronizado por ${st.por}`}
+        {compacto ? `Finalizado ${fmtDataHora(st.t)}` : `${fmtDataHora(st.t)} · sincronizou`}
       </span>
     );
   }
