@@ -184,7 +184,6 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
   );
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (fazendas.length === 0) return <p className="text-sm text-muted-foreground p-4">Você não está vinculado a nenhuma fazenda.</p>;
 
   const retirosVisiveis = retiros.filter((r) => fRetiro === TODOS || r.id === fRetiro)
     .filter((r) => pastosFiltrados.some((p) => p.retiro_id === r.id) || (fProduto === TODOS && !busca.trim()));
