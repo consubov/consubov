@@ -2,7 +2,7 @@
 
 ## Status
 
-`PLANNED`
+`CONCLUDED`
 
 ## Objetivo
 
@@ -70,19 +70,19 @@ consubov/
 
 ## Requisitos
 
-- [ ] branch de trabalho `refactor/monorepo`;
-- [ ] Lovable removido do runtime/build/dependências;
-- [ ] frontend atual executando em `apps/web`;
-- [ ] um único package manager;
-- [ ] workspace configurado;
-- [ ] Turborepo configurado;
-- [ ] build do web funcionando;
-- [ ] testes existentes executáveis;
-- [ ] aliases e service worker preservados;
-- [ ] Supabase preservado;
-- [ ] nenhum redesign;
-- [ ] nenhum fluxo funcional removido;
-- [ ] documentação atualizada.
+- [x] branch de trabalho `refactor/monorepo`;
+- [x] Lovable removido do runtime/build/dependências;
+- [x] frontend atual executando em `apps/web`;
+- [x] um único package manager;
+- [x] workspace configurado;
+- [x] Turborepo configurado;
+- [x] build do web funcionando;
+- [x] testes existentes executáveis;
+- [x] aliases e service worker preservados;
+- [x] Supabase preservado;
+- [x] nenhum redesign;
+- [x] nenhum fluxo funcional removido;
+- [x] documentação atualizada.
 
 ## Estratégia de execução
 
@@ -90,16 +90,16 @@ Fazer mudanças incrementais e validar a aplicação entre as etapas. Evitar ref
 
 ## Critérios de aceite
 
-- [ ] instalação limpa funciona;
-- [ ] comando de desenvolvimento sobe o web;
-- [ ] build de produção funciona;
-- [ ] testes relevantes passam;
-- [ ] rotas principais carregam;
-- [ ] autenticação permanece funcional;
-- [ ] funcionalidades offline afetadas foram verificadas;
-- [ ] aparência permanece equivalente ao estado anterior;
-- [ ] nenhuma dependência Lovable permanece;
-- [ ] documentação reflete a estrutura final.
+- [x] instalação limpa funciona;
+- [x] comando de desenvolvimento sobe o web;
+- [x] build de produção funciona;
+- [x] testes relevantes passam;
+- [x] rotas principais carregam;
+- [x] autenticação permanece funcional;
+- [x] funcionalidades offline afetadas foram verificadas;
+- [x] aparência permanece equivalente ao estado anterior;
+- [x] nenhuma dependência Lovable permanece;
+- [x] documentação reflete a estrutura final.
 
 ## Handoff
 
