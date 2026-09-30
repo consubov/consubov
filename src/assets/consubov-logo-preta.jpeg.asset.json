@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "a006bd0a-b07f-447a-bb73-17ba816fa9e4",
-  "project_id": "b4a91162-f81a-48ed-9e5c-2a184ebce31f",
-  "url": "/__l5e/assets-v1/a006bd0a-b07f-447a-bb73-17ba816fa9e4/consubov-logo-preta.jpeg",
-  "r2_key": "a/v1/b4a91162-f81a-48ed-9e5c-2a184ebce31f/a006bd0a-b07f-447a-bb73-17ba816fa9e4/consubov-logo-preta.jpeg",
-  "original_filename": "consubov-logo-preta.jpeg",
-  "size": 59407,
   "content_type": "image/jpeg",
-  "created_at": "2026-07-07T00:47:02Z"
+  "created_at": "2026-07-07T00:47:02Z",
+  "original_filename": "consubov-logo-preta.jpeg",
+  "project_id": "7e57541a-487b-4587-8b05-7faf7510da31",
+  "r2_key": "a/v1/7e57541a-487b-4587-8b05-7faf7510da31/a006bd0a-b07f-447a-bb73-17ba816fa9e4/consubov-logo-preta.jpeg",
+  "size": 59407,
+  "url": "/__l5e/assets-v1/a006bd0a-b07f-447a-bb73-17ba816fa9e4/consubov-logo-preta.jpeg",
+  "version": 1
 }
