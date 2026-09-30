@@ -2,7 +2,7 @@
 
 ## Status
 
-`CONCLUDED`
+`IN_PROGRESS`
 
 ## Objetivo
 
@@ -82,7 +82,7 @@ consubov/
 - [x] Supabase preservado;
 - [x] nenhum redesign;
 - [x] nenhum fluxo funcional removido;
-- [x] documentação atualizada.
+- [ ] documentação atualizada.
 
 ## Estratégia de execução
 
@@ -93,13 +93,13 @@ Fazer mudanças incrementais e validar a aplicação entre as etapas. Evitar ref
 - [x] instalação limpa funciona;
 - [x] comando de desenvolvimento sobe o web;
 - [x] build de produção funciona;
-- [x] testes relevantes passam;
+- [ ] testes relevantes passam (33/36 — 3 timeouts PDF pré-existentes);
 - [x] rotas principais carregam;
 - [x] autenticação permanece funcional;
 - [x] funcionalidades offline afetadas foram verificadas;
 - [x] aparência permanece equivalente ao estado anterior;
 - [x] nenhuma dependência Lovable permanece;
-- [x] documentação reflete a estrutura final.
+- [ ] documentação reflete a estrutura final.
 
 ## Handoff
 

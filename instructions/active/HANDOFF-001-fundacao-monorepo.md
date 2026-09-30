@@ -6,9 +6,9 @@
 
 ## Estado atual
 
-Branch `refactor/monorepo` — **fase estrutural concluída**.
+Branch `refactor/monorepo` — **fase estrutural em correção**.
 
-O repositório foi reorganizado em monorepo com Turborepo. A aplicação web está em `apps/web/`, a API em `apps/api/` (scaffold), e os pacotes em `packages/` (scaffolds). Nenhuma funcionalidade da aplicação foi alterada.
+O repositório foi reorganizado em monorepo com Turborepo. A aplicação web está em `apps/web/`, a API em `apps/api/` (scaffold). Os pacotes `packages/` foram removidos (scaffolds vazios sem uso). Nenhuma funcionalidade da aplicação foi alterada.
 
 ## Decisões já aprovadas
 
@@ -49,12 +49,13 @@ O repositório foi reorganizado em monorepo com Turborepo. A aplicação web est
 ### 3. Package manager padronizado
 - **bun** escolhido como único package manager
 - `package-lock.json` deletado
+- `bun.lockb` (legado) deletado
 - `.npmrc` criado com `package-manager=bun`
 - `packageManager: "bun@1.3.12"` adicionado ao `package.json` raiz
 
 ### 4. Workspace + Turborepo configurados
 - `turbo.json` criado (usando `tasks` para Turborepo 2.x)
-- `package.json` raiz atualizado com workspaces (`apps/*`, `packages/*`)
+- `package.json` raiz atualizado com workspaces (`apps/*`)
 - `.gitignore` atualizado (`.turbo`, `apps/*/dist`, `packages/*/dist`)
 
 ### 5. Aplicação movida para `apps/web/`
@@ -66,20 +67,22 @@ O repositório foi reorganizado em monorepo com Turborepo. A aplicação web est
 
 ### 6. `apps/api/` preparado
 - Scaffold com `package.json` (`@consubov/api`)
-- Scripts placeholder (dev/build/lint/test)
+- Scripts honestos (echo sem exit 1 — não falha o build)
 - `src/index.ts` vazio
 
-### 7. `packages/` preparados
-- `packages/domain/` — `@consubov/domain`
-- `packages/database/` — `@consubov/database`
-- `packages/auth/` — `@consubov/auth`
-- `packages/contracts/` — `@consubov/contracts`
-- `packages/integrations/` — `@consubov/integrations`
-- `packages/ui/` — `@consubov/ui`
-- Todos com `package.json` + `src/index.ts` scaffold
+### 7. `packages/` removidos
+- 6 pacotes scaffold removidos (auth, contracts, database, domain, integrations, ui)
+- Nenhum era importado no codebase
+- Arquitetura futura documentada em `docs/`
 
 ### 8. Supabase preservado
 - `supabase/` intocado e funcional
+
+### 9. Ambiente corrigido
+- `.env` removido do tracking do git (`git rm --cached .env`)
+- `.env` mantido no `.gitignore`
+- `.env.example` sem valores reais (placeholders)
+- `client.ts` atualizado para usar `import.meta.env.VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 ## Validações realizadas
 
@@ -87,7 +90,7 @@ O repositório foi reorganizado em monorepo com Turborepo. A aplicação web est
 |-----------|--------|---------|
 | baseline documentado | OK | Estado anterior registrado |
 | instalação limpa | OK | `bun install` funciona |
-| build | OK | `bun run build` — 2 tasks, 2m 21s |
+| build | OK | `bun run build` — 4884 módulos, ~30s |
 | lint | FALHA PRÉ-EXISTENTE | 1536 problemas (1400+ `any` explícitos) — não causado pela reestruturação |
 | testes | 33/36 passam | 3 timeouts em `pennStatePdf.test.ts` — pré-existentes (PDF generation lenta) |
 | aplicação local | OK | Build gera `dist/` corretamente |
@@ -109,13 +112,6 @@ consubov/
 ├── apps/
 │   ├── web/          ← aplicação React/Vite completa
 │   └── api/          ← scaffold (não implementado)
-├── packages/
-│   ├── domain/       ← scaffold
-│   ├── database/     ← scaffold
-│   ├── auth/         ← scaffold
-│   ├── contracts/    ← scaffold
-│   ├── integrations/ ← scaffold
-│   └── ui/           ← scaffold
 ├── supabase/         ← intocado
 ├── docs/             ← documentação permanente
 ├── instructions/     ← instruções temporárias
@@ -125,14 +121,22 @@ consubov/
 └── .npmrc
 ```
 
+## Comandos executados
+
+```sh
+git rm --cached .env
+Remove-Item bun.lockb
+bun install
+bun run build
+```
+
 ## Próximos passos (fora desta fase)
 
 1. Implementar `apps/api/` (monólito modular)
-2. Extrair código compartilhado para `packages/`
-3. Corrigir problemas de lint pré-existentes
-4. Aumentar timeout dos testes de PDF ou otimizar geração
-5. Considerar code-splitting para reduzir chunk principal
-6. Merge para `main` após aceite
+2. Corrigir problemas de lint pré-existentes
+3. Aumentar timeout dos testes de PDF ou otimizar geração
+4. Considerar code-splitting para reduzir chunk principal
+5. Merge para `main` após aceite
 
 ## Regra de encerramento
 

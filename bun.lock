@@ -104,30 +104,6 @@
         "vitest": "^3.2.4",
       },
     },
-    "packages/auth": {
-      "name": "@consubov/auth",
-      "version": "0.0.0",
-    },
-    "packages/contracts": {
-      "name": "@consubov/contracts",
-      "version": "0.0.0",
-    },
-    "packages/database": {
-      "name": "@consubov/database",
-      "version": "0.0.0",
-    },
-    "packages/domain": {
-      "name": "@consubov/domain",
-      "version": "0.0.0",
-    },
-    "packages/integrations": {
-      "name": "@consubov/integrations",
-      "version": "0.0.0",
-    },
-    "packages/ui": {
-      "name": "@consubov/ui",
-      "version": "0.0.0",
-    },
   },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
@@ -141,18 +117,6 @@
     "@babel/runtime": ["@babel/runtime@7.28.2", "", {}, "sha512-KHp2IflsnGywDjBWDkR9iEqiWSpc8GIi0lgTT3mOElT0PP1tG26P4tmFI2YvAdzgq9RGyoHZQEIEdZy6Ec5xCA=="],
 
     "@consubov/api": ["@consubov/api@workspace:apps/api"],
-
-    "@consubov/auth": ["@consubov/auth@workspace:packages/auth"],
-
-    "@consubov/contracts": ["@consubov/contracts@workspace:packages/contracts"],
-
-    "@consubov/database": ["@consubov/database@workspace:packages/database"],
-
-    "@consubov/domain": ["@consubov/domain@workspace:packages/domain"],
-
-    "@consubov/integrations": ["@consubov/integrations@workspace:packages/integrations"],
-
-    "@consubov/ui": ["@consubov/ui@workspace:packages/ui"],
 
     "@consubov/web": ["@consubov/web@workspace:apps/web"],
 
