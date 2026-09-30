@@ -1,0 +1,12 @@
+{
+  "name": "@consubov/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'API dev server not yet implemented'",
+    "build": "echo 'API build not yet implemented'",
+    "lint": "echo 'API lint not yet implemented'",
+    "test": "echo 'API tests not yet implemented'"
+  }
+}
