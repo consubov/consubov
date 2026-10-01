@@ -24,7 +24,19 @@ Por padrão a API usa a porta `3000`. Para alterar localmente, defina `PORT`.
 - `GET /api/v1/openapi.json`
 - `GET /api/docs`
 
-Toda resposta inclui `x-request-id`. Uma requisição que já tenha `x-request-id` ou `x-correlation-id` tem esse identificador reutilizado quando ele é válido.
+Toda resposta inclui `x-request-id`.
+
+## Segurança local
+
+`src/security/` contém apenas contratos e regras puras:
+
+- contexto autenticado com tenant explícito;
+- principal `user` ou `integration`;
+- escopos namespaced no formato `recurso:acao`;
+- autorização tenant-first;
+- porta para verificação futura de credenciais.
+
+Nenhum token, API key, Supabase Auth ou banco é verificado nesta fase.
 
 ## Scripts
 
@@ -35,4 +47,4 @@ bun run test
 bun run lint
 ```
 
-O script `lint` executa o TypeScript em modo estrito sem emitir arquivos. O TypeScript já faz parte do workspace web existente, então esta fase não adiciona dependências nem altera o lockfile.
+O script `lint` executa o TypeScript em modo estrito sem emitir arquivos.
