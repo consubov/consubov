@@ -29,6 +29,8 @@ No plano GitHub Free, proteções/rulesets de branch não são aplicáveis a est
 
 O workflow de CI roda em Pull Requests para `main` e pode ser disparado manualmente. Execuções concorrentes do mesmo PR são canceladas para reduzir consumo dos minutos incluídos.
 
+O contrato canônico de validação está no script raiz `bun run check`, que executa typecheck, build e testes. O CI usa esse mesmo script e complementa-o com o smoke HTTP loopback da API. `bun run lint` não é um gate enquanto inclui a dívida legada conhecida do web; isso não deve ser contornado com relaxamento de regras.
+
 ## Codespaces
 
 O ambiente recomendado para trabalho remoto é o GitHub Codespaces usando `.devcontainer/devcontainer.json`.

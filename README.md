@@ -70,6 +70,9 @@ Não versionar credenciais ou arquivos `.env`.
 - `bun run test` — testes de todos os workspaces;
 - `bun run test:web` / `bun run test:api` — testes isolados por app;
 - `bun run typecheck` — typecheck dos workspaces que possuem contrato estrito (atualmente a API);
+- `bun run check` — contrato canônico local e do CI: typecheck, build e testes;
 - `bun run lint` — executa os lints declarados por todos os workspaces, incluindo a dívida legada conhecida do web.
+
+O CI executa `bun run check` e, em seguida, um smoke HTTP do artefato compilado da API usando somente `127.0.0.1`. O smoke permanece explícito no workflow porque gerencia o processo temporário e verifica respostas HTTP reais. Ele não acessa Supabase nem qualquer serviço externo.
 
 Consulte os READMEs em `apps/web` e `apps/api` para responsabilidades e comandos específicos. A arquitetura futura está separada do inventário atual em [`docs/02-arquitetura.md`](./docs/02-arquitetura.md).
