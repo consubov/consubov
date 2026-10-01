@@ -9,7 +9,7 @@ Reduzir o acoplamento direto entre hooks/componentes React e o client Supabase s
 Fluxo preferencial:
 
 ```text
-Component
+Component / Page
   ↓
 Hook / Controller
   ↓
@@ -27,6 +27,7 @@ Services/use cases são introduzidos somente quando houver regra de negócio rea
 - preservar cache, realtime e offline existentes;
 - não alterar regras de negócio durante a extração;
 - não criar repositories vazios ou genéricos;
+- não criar service/use case que apenas delega ao repository;
 - testes devem cobrir o contrato do repository e regressões críticas do hook quando aplicável.
 
 ## Slices concluídos
@@ -65,6 +66,40 @@ Semântica preservada:
 - valores com `@` continuam rejeitados para impedir exibição de e-mail como nome;
 - ausência de nome válido continua usando metadata/fallback no hook.
 
+### Premiação Admin
+
+`AdminPremiacaoPage` deixou de consultar Supabase diretamente.
+
+Estrutura:
+
+```text
+AdminPremiacaoPage
+  ↓
+useAdminPremiacaoFazendas
+  ↓
+adminPremiacaoRepository
+  ↓
+Supabase client
+```
+
+Consulta preservada:
+
+```text
+from("fazendas")
+select("id, nome")
+eq("ativo", true)
+order("nome")
+```
+
+Semântica preservada:
+
+- somente fazendas ativas;
+- ordenação por nome;
+- ausência de `data` resulta em lista vazia;
+- seletor e renderização da página não mudaram.
+
+Não existe service intermediário neste slice porque não há regra de negócio entre hook e repository.
+
 ## Próximos slices
 
-Priorizar hooks pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
+Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.

@@ -4,26 +4,30 @@
 
 `refactor/admin-premiacao-data-access`
 
-## Estado inicial
+## Implementado
 
-`AdminPremiacaoPage` consulta diretamente o Supabase para listar fazendas ativas.
+- criado `apps/web/src/features/admin-premiacao/repositories/adminPremiacaoRepository.ts`;
+- criado `apps/web/src/features/admin-premiacao/hooks/useAdminPremiacaoFazendas.ts`;
+- `AdminPremiacaoPage` deixou de importar Supabase;
+- preservada a consulta `fazendas -> id,nome -> ativo=true -> order(nome)`;
+- preservado fallback para lista vazia;
+- adicionados testes do repository e hook;
+- não foi criado service sem regra de negócio real.
 
-## Restrições
+## Validação
 
-- sem redesign;
-- sem regra nova;
-- sem migrations;
-- sem serviço remoto novo;
-- sem Vercel;
-- sem alteração de auth.
+Pull Request #17:
 
-## Plano
+- GitHub Actions `build-and-test`: SUCCESS na implementação funcional;
+- build do monorepo passou;
+- testes do monorepo passaram;
+- smoke HTTP da API passou;
+- nenhuma migration, conexão nova, Vercel ou regra de negócio foi adicionada.
 
-1. criar repository de fazendas para premiação;
-2. criar hook de carregamento;
-3. remover acesso direto ao Supabase da página;
-4. adicionar testes;
-5. abrir PR e validar CI;
-6. consolidar conhecimento em `docs/12-web-data-access.md`;
-7. remover PRD/handoff;
-8. merge somente após CI verde.
+## Pendências
+
+A issue #5 continua aberta para outros slices. Fluxos com cache/realtime/offline permanecem para etapas específicas com regressão dedicada.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.
