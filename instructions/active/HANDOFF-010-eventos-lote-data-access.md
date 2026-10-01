@@ -4,26 +4,29 @@
 
 `refactor/eventos-lote-data-access`
 
-## Estado inicial
+## Implementado
 
-`useEventosLote.ts` contém três leituras diretas do Supabase: eventos, última pesagem e último evento sanitário.
+- criado `apps/web/src/features/lotes/repositories/eventosLoteRepository.ts`;
+- `useEventosLote.ts` deixou de importar Supabase;
+- preservadas as consultas de eventos, última pesagem e último sanitário;
+- `refreshKey` continua participando da dependência de recarga;
+- `calcCarenciaDias` permaneceu sem alteração;
+- adicionados testes dos três contratos e fallbacks.
 
-## Restrições
+## Validação
 
-- sem regra nova;
-- sem alterações sanitárias;
-- sem migrations;
-- sem cache/realtime/offline novo;
-- sem Vercel;
-- sem API nova.
+Pull Request #19:
 
-## Plano
+- GitHub Actions `build-and-test`: SUCCESS na implementação funcional;
+- build do monorepo passou;
+- testes do monorepo passaram;
+- smoke HTTP da API passou;
+- nenhuma migration, cache/realtime/offline novo, conexão nova ou Vercel foi adicionado.
 
-1. extrair somente as consultas para repository;
-2. manter estado/orquestração nos hooks;
-3. testar os três contratos;
-4. abrir PR;
-5. validar CI;
-6. consolidar em `docs/12-web-data-access.md`;
-7. remover PRD/handoff;
-8. merge somente com CI verde.
+## Pendências
+
+A issue #5 continua aberta. Hooks com cache, realtime, offline e guards de autorização permanecem para slices dedicados.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.
