@@ -12,6 +12,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 6. [Contrato do sistema atual](./06-contrato-sistema-atual.md)
 7. [Fundação do monorepositório](./07-fundacao-monorepo.md)
 8. [GitHub Free e Codespaces](./08-github-free-codespaces.md)
+9. [Fundação local da API](./09-api-foundation.md)
 
 ## Regra
 

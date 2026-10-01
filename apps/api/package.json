@@ -3,5 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Reserved scaffold for the future Consubov API. No runtime is implemented yet."
+  "description": "Local Consubov API foundation. No remote database integration yet.",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun --sourcemap=external",
+    "lint": "bunx tsc --noEmit --project tsconfig.json",
+    "test": "bun test"
+  }
 }
