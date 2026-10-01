@@ -4,25 +4,29 @@
 
 `refactor/pastos-retiro-data-access`
 
-## Estado inicial
+## Implementado
 
-`usePastosRetiro` executa diretamente três consultas Supabase em paralelo e compõe os resultados no próprio hook.
+- criado `apps/web/src/features/pastos/repositories/pastosRetiroRepository.ts`;
+- `usePastosRetiro` deixou de importar Supabase;
+- as três consultas existentes foram preservadas;
+- composição, somas e defaults permaneceram no hook;
+- logs de erro foram preservados;
+- adicionados testes dos contratos de consulta e retorno das fontes.
 
-## Restrições
+## Validação
 
-- não alterar composição dos dados;
-- não alterar views/tabelas;
-- não introduzir cache/realtime/offline;
-- sem migrations;
-- sem Vercel;
-- sem regra de negócio nova.
+Pull Request #18:
 
-## Plano
+- GitHub Actions `build-and-test`: SUCCESS na implementação funcional;
+- build do monorepo passou;
+- testes do monorepo passaram;
+- smoke HTTP da API passou;
+- nenhuma migration, cache/realtime/offline novo, conexão nova ou Vercel foi adicionado.
 
-1. extrair somente as consultas para repository;
-2. manter composição no hook;
-3. testar os contratos das três queries;
-4. abrir PR;
-5. validar CI;
-6. consolidar em `docs/12-web-data-access.md`;
-7. remover PRD/handoff e mergear somente com CI verde.
+## Pendências
+
+A issue #5 continua aberta. Hooks com realtime, cache e offline permanecem para slices dedicados.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.

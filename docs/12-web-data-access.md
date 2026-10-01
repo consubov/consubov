@@ -100,6 +100,28 @@ Semântica preservada:
 
 Não existe service intermediário neste slice porque não há regra de negócio entre hook e repository.
 
+### Pastos do Retiro
+
+`usePastosRetiro` deixou de acessar Supabase diretamente.
+
+O repository concentra somente as três leituras:
+
+```text
+pastos
+view_painel_mae_pasto_atual
+view_painel_mae_pasto
+```
+
+A composição continua no hook para preservar a regra existente:
+
+- mapa da visão atual por `pasto_id`;
+- soma de `num_sacos` por pasto no mês/ano;
+- defaults numéricos e nulos;
+- logs de erro por fonte;
+- fallback para lista vazia em exceção.
+
+Nenhuma regra de cálculo foi movida ou alterada nesta fase.
+
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
