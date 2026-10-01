@@ -8,25 +8,36 @@
 
 `refactor/landing-data-access`
 
-## Estado inicial
+## Implementado
 
-`useLandingContent` importa diretamente `@/integrations/supabase/client` e executa a query de `landing_page_content` dentro do hook.
+- criado `apps/web/src/features/landing/repositories/landingContentRepository.ts`;
+- a consulta de `landing_page_content` saiu de `useLandingContent`;
+- tipos públicos `LandingContent` e `LandingSlug` continuam exportados pelo hook;
+- fallback e parsing do hook foram preservados;
+- adicionados testes unitários do repository.
 
-## Restrições
+## Comportamento preservado
 
-- sem redesign;
-- sem alteração de conteúdo;
-- sem nova regra de negócio;
-- sem migrations;
-- sem Supabase remoto novo;
-- sem Vercel;
-- sem merge sem CI.
+- filtro por `landing_slug`;
+- dados convertidos para mapa chave/valor;
+- `valor: null` vira string vazia;
+- resposta sem dados continua resultando em objeto vazio;
+- nenhuma chamada extra ao Supabase foi adicionada.
 
-## Plano
+## Validação
 
-1. criar `features/landing/repositories/landingContentRepository.ts`;
-2. mover a query para o repository;
-3. manter tipos e exports públicos compatíveis;
-4. adicionar teste unitário do repository;
-5. rodar build/test via CI;
-6. registrar validações e parar para revisão.
+Pull Request #15:
+
+- GitHub Actions `build-and-test`: SUCCESS;
+- CI executou instalação congelada, lint/typecheck da API, build do monorepo, smoke HTTP da API e testes do monorepo;
+- nenhum arquivo funcional fora do slice de landing foi alterado.
+
+## Riscos/Pendências
+
+- outros hooks ainda acessam Supabase diretamente;
+- a migração deve continuar em slices pequenos;
+- hooks com cache/realtime/offline exigem PRDs próprios ou escopo explícito para preservar invariantes.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.
