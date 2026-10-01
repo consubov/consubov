@@ -4,26 +4,29 @@
 
 `refactor/pesagem-resultado-data-access`
 
-## Estado inicial
+## Implementado
 
-`usePesagemResultado` faz duas leituras diretas do Supabase e calcula GMD/resultado no próprio hook.
+- criado `apps/web/src/features/pesagens/repositories/pesagemResultadoRepository.ts`;
+- `usePesagemResultado` deixou de importar Supabase;
+- preservadas as queries de pesagem atual e anterior;
+- repository preserva `data` e `error` para manter logs/fallbacks anteriores;
+- cálculo de GMD, primeira pesagem, nomes e quantidade permaneceram no hook;
+- adicionados testes dos dois contratos e fallbacks nulos.
 
-## Restrições
+## Validação
 
-- não alterar fórmula;
-- não alterar UI;
-- sem migrations;
-- sem cache/realtime/offline novo;
-- sem Vercel;
-- sem API nova.
+Pull Request #20:
 
-## Plano
+- GitHub Actions `build-and-test`: SUCCESS na implementação funcional;
+- build do monorepo passou;
+- testes do monorepo passaram;
+- smoke HTTP da API passou;
+- nenhuma migration, cache/realtime/offline novo, conexão nova ou Vercel foi adicionado.
 
-1. extrair somente as duas consultas para repository;
-2. manter cálculo e composição no hook;
-3. testar os contratos;
-4. abrir PR;
-5. validar CI;
-6. consolidar em `docs/12-web-data-access.md`;
-7. remover PRD/handoff;
-8. merge somente com CI verde.
+## Pendências
+
+A issue #5 continua aberta. Fluxos com cache, realtime, offline e mutações ficam para etapas dedicadas.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.

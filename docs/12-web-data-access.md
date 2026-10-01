@@ -143,6 +143,29 @@ Semântica preservada:
 - `calcCarenciaDias` permaneceu no hook sem alteração;
 - ausência de dados mantém lista vazia ou `null` conforme o contrato anterior.
 
+### Resultado de Pesagem
+
+`usePesagemResultado` deixou de acessar Supabase diretamente.
+
+O repository concentra somente as duas leituras:
+
+```text
+pesagem atual por id
+pesagem anterior do mesmo lote
+```
+
+A lógica de domínio permaneceu no hook:
+
+- identificação de primeira pesagem;
+- fallback de quantidade de animais;
+- nomes de pasto/fazenda;
+- diferença de peso;
+- cálculo de dias;
+- cálculo, sinal e valor absoluto do GMD;
+- mensagens de erro e fallbacks de loading.
+
+As queries continuam usando os mesmos selects, filtros, ordenação e limite da implementação anterior.
+
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
