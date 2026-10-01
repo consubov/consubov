@@ -11,6 +11,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 5. [Fluxo de desenvolvimento](./05-fluxo-de-desenvolvimento.md)
 6. [Contrato do sistema atual](./06-contrato-sistema-atual.md)
 7. [Fundação do monorepositório](./07-fundacao-monorepo.md)
+8. [GitHub Free e Codespaces](./08-github-free-codespaces.md)
 
 ## Regra
 
