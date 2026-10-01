@@ -56,7 +56,7 @@ Consubov Developers
 
 ## Integrações
 
-Integrações devem ser isoladas do domínio principal.
+No futuro, integrações devem ser isoladas do domínio principal. O exemplo abaixo não representa a estrutura atual e não autoriza criar packages sem múltiplos consumidores reais.
 
 ```text
 packages/integrations/

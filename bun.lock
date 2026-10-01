@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "vite_react_shadcn_ts",
+      "name": "consubov",
       "devDependencies": {
         "turbo": "^2.5.0",
       },
@@ -11,6 +11,9 @@
     "apps/api": {
       "name": "@consubov/api",
       "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "^5.8.3",
+      },
     },
     "apps/web": {
       "name": "@consubov/web",

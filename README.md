@@ -15,7 +15,7 @@ docs/           # documentação permanente
 instructions/   # PRDs e handoffs temporários
 ```
 
-Pacotes compartilhados em `packages/` serão criados somente quando houver código reutilizável real.
+Não existe `packages/` nesta etapa. Pacotes compartilhados serão criados somente quando houver código ou configuração com consumidores reais em mais de um workspace.
 
 ## Ambiente local
 
@@ -63,7 +63,13 @@ Não versionar credenciais ou arquivos `.env`.
 
 ## Scripts
 
-- `bun run dev` — desenvolvimento
-- `bun run build` — build das aplicações com build implementado
-- `bun run lint` — lint/typecheck dos workspaces
-- `bun run test` — testes
+- `bun run dev` — inicia os dois apps em modo de desenvolvimento;
+- `bun run dev:web` / `bun run dev:api` — inicia somente um app;
+- `bun run build` — build de todos os workspaces que implementam a tarefa;
+- `bun run build:web` / `bun run build:api` — build isolado por app;
+- `bun run test` — testes de todos os workspaces;
+- `bun run test:web` / `bun run test:api` — testes isolados por app;
+- `bun run typecheck` — typecheck dos workspaces que possuem contrato estrito (atualmente a API);
+- `bun run lint` — executa os lints declarados por todos os workspaces, incluindo a dívida legada conhecida do web.
+
+Consulte os READMEs em `apps/web` e `apps/api` para responsabilidades e comandos específicos. A arquitetura futura está separada do inventário atual em [`docs/02-arquitetura.md`](./docs/02-arquitetura.md).
