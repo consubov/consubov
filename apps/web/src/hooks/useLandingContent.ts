@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchLandingContent,
+  type LandingContent,
+  type LandingSlug,
+} from "@/features/landing/repositories/landingContentRepository";
 
-export type LandingContent = Record<string, string>;
-export type LandingSlug = "consubov" | "relatto";
+export type { LandingContent, LandingSlug };
 
 export function useLandingContent(slug: LandingSlug = "consubov") {
   const [data, setData] = useState<LandingContent>({});
@@ -11,19 +14,13 @@ export function useLandingContent(slug: LandingSlug = "consubov") {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    supabase
-      .from("landing_page_content")
-      .select("chave, valor")
-      .eq("landing_slug", slug)
-      .then(({ data: rows }) => {
-        if (!mounted) return;
-        const map: LandingContent = {};
-        (rows || []).forEach((r) => {
-          map[r.chave] = r.valor || "";
-        });
-        setData(map);
-        setLoading(false);
-      });
+
+    void fetchLandingContent(slug).then((content) => {
+      if (!mounted) return;
+      setData(content);
+      setLoading(false);
+    });
+
     return () => {
       mounted = false;
     };
