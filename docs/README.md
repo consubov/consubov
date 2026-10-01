@@ -15,6 +15,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 9. [Fundação local da API](./09-api-foundation.md)
 10. [Autenticação, autorização e tenancy](./10-auth-tenancy-contracts.md)
 11. [Regressão offline e sincronização](./11-offline-sync-regression.md)
+12. [Migração progressiva de acesso a dados do web](./12-web-data-access.md)
 
 ## Regra
 
