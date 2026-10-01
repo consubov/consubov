@@ -4,23 +4,27 @@
 
 `refactor/user-name-data-access`
 
-## Estado inicial
+## Implementado
 
-`useNomeUsuario` acessa diretamente o Supabase e percorre tabelas de papel até encontrar um `nome` válido.
+- criado `apps/web/src/features/users/repositories/userNameRepository.ts`;
+- `useNomeUsuario` deixou de importar Supabase;
+- a ordem das tabelas fornecida pelo hook foi preservada;
+- a regra de rejeitar nomes com `@` foi centralizada e preservada;
+- fallback por metadata/texto continua no hook;
+- adicionados testes unitários do repository.
 
-## Restrições
+## Validação
 
-- não alterar auth;
-- não alterar regras de papel;
-- não alterar UI;
-- não alterar banco/migrations;
-- não conectar Vercel.
+Pull Request #16:
 
-## Plano
+- GitHub Actions `build-and-test`: SUCCESS;
+- build e testes do monorepo passaram;
+- nenhum arquivo de autenticação, roles, banco ou UI foi alterado.
 
-1. criar repository de nome do usuário;
-2. mover queries para o repository;
-3. preservar a API do hook;
-4. adicionar testes;
-5. validar em CI;
-6. consolidar em docs e encerrar instrução.
+## Pendências
+
+A migração de acesso a dados continua aberta no issue #5. Próximos candidatos devem continuar pequenos e isolados; hooks com realtime/cache/offline exigem cuidado adicional.
+
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.

@@ -29,7 +29,9 @@ Services/use cases são introduzidos somente quando houver regra de negócio rea
 - não criar repositories vazios ou genéricos;
 - testes devem cobrir o contrato do repository e regressões críticas do hook quando aplicável.
 
-## Primeiro slice concluído
+## Slices concluídos
+
+### Landing page
 
 `useLandingContent` deixou de importar o client Supabase diretamente.
 
@@ -39,14 +41,29 @@ A consulta de `landing_page_content` agora vive em:
 apps/web/src/features/landing/repositories/landingContentRepository.ts
 ```
 
-O repository preserva a semântica anterior:
+Semântica preservada:
 
-- filtra por `landing_slug`;
-- transforma pares `chave/valor` em mapa;
+- filtro por `landing_slug`;
+- pares `chave/valor` convertidos em mapa;
 - valor nulo vira string vazia;
 - ausência de dados produz objeto vazio.
 
-O hook continua responsável apenas por estado React, loading e helpers de fallback/parsing.
+### Nome do usuário
+
+`useNomeUsuario` também deixou de importar o client Supabase diretamente.
+
+A leitura sequencial das tabelas de papel agora vive em:
+
+```text
+apps/web/src/features/users/repositories/userNameRepository.ts
+```
+
+Semântica preservada:
+
+- a ordem de tabelas fornecida pelo chamador continua sendo respeitada;
+- o primeiro nome válido encerra a busca;
+- valores com `@` continuam rejeitados para impedir exibição de e-mail como nome;
+- ausência de nome válido continua usando metadata/fallback no hook.
 
 ## Próximos slices
 
