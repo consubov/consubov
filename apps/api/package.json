@@ -1,0 +1,7 @@
+{
+  "name": "@consubov/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reserved scaffold for the future Consubov API. No runtime is implemented yet."
+}

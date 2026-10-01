@@ -1,24 +1,47 @@
-# Remix of Consubov.app
+# Consubov
 
-Consubov.app
+Monorepositório do Consubov. A aplicação existente continua em React/Vite e usa Supabase/PostgreSQL nesta fase.
 
-This project was built with [Lovable](https://lovable.dev).
+## Estrutura atual
 
-## Build with Lovable
+```text
+apps/
+├── web/        # aplicação atual
+└── api/        # scaffold reservado; API ainda não implementada
+supabase/       # migrations, functions e configuração existentes
+docs/           # documentação permanente
+instructions/   # PRDs e handoffs temporários
+```
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/7e57541a-487b-4587-8b05-7faf7510da31).
+Pacotes compartilhados em `packages/` serão criados somente quando houver código reutilizável real.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Ambiente local
 
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+1. Instale Bun.
+2. Copie `.env.example` para `.env` na raiz.
+3. Preencha as variáveis locais sem versionar o arquivo.
+4. Execute:
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
 ```
+
+O `apps/web` carrega o arquivo de ambiente da raiz do monorepo.
+
+## Variáveis de produção
+
+Na Vercel, configure pelo menos:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_VAPID_PUBLIC_KEY` quando push estiver habilitado
+
+Não versionar credenciais ou arquivos `.env`.
+
+## Scripts
+
+- `bun run dev` — desenvolvimento
+- `bun run build` — build das aplicações que possuem build implementado
+- `bun run lint` — lint
+- `bun run test` — testes
