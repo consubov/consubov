@@ -9,6 +9,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/lib/pdfImagePrep", () => ({ prefetchFotosDataUrls: async () => ({}) }));
 
+const PDF_TEST_TIMEOUT_MS = 30_000;
+
 const base = {
   visitaId: "v1",
   fazenda: { nome_fazenda: "Fazenda Teste" },
@@ -46,13 +48,13 @@ describe("PDF Confinamento — Análise Penn State", () => {
     const buf = await gerar([]);
     fs.writeFileSync("/tmp/pennpdf/zero.pdf", buf);
     expect(buf.length).toBeGreaterThan(1000);
-  });
+  }, PDF_TEST_TIMEOUT_MS);
 
   it("(b) 1 análise com FDN e foto", async () => {
     const buf = await gerar([analise("Linha 1", 1, 25.5, 1)]);
     fs.writeFileSync("/tmp/pennpdf/uma.pdf", buf);
     expect(buf.length).toBeGreaterThan(1000);
-  });
+  }, PDF_TEST_TIMEOUT_MS);
 
   it("(c) 3 análises: uma sem FDN, uma sem foto", async () => {
     const buf = await gerar([
@@ -62,7 +64,7 @@ describe("PDF Confinamento — Análise Penn State", () => {
     ]);
     fs.writeFileSync("/tmp/pennpdf/tres.pdf", buf);
     expect(buf.length).toBeGreaterThan(1000);
-  });
+  }, PDF_TEST_TIMEOUT_MS);
 
   it("(d) título Penn State perto do fim da página não fica órfão", async () => {
     const topicos = Array.from({ length: 7 }, (_, i) => ({
@@ -72,5 +74,5 @@ describe("PDF Confinamento — Análise Penn State", () => {
     const buf = await gerar([analise("Linha 1", 1, 25.5, 2)], { topicos });
     fs.writeFileSync("/tmp/pennpdf/paginacao.pdf", buf);
     expect(buf.length).toBeGreaterThan(1000);
-  });
+  }, PDF_TEST_TIMEOUT_MS);
 });

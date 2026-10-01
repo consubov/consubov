@@ -35,7 +35,9 @@ function injectSwBuildTimestamp(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
+  // Environment files live at the monorepo root so web/API tooling shares one source.
+  envDir: path.resolve(__dirname, "../.."),
   define: {
     __APP_BUILD_VERSION__: JSON.stringify(buildTimestamp),
   },
