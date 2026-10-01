@@ -29,8 +29,50 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Lint API
+        working-directory: apps/api
+        run: bun run lint
+
       - name: Build
         run: bun run build
+
+      - name: Smoke API HTTP
+        shell: bash
+        run: |
+          PORT=3000 bun apps/api/dist/index.js >/tmp/consubov-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for _ in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:3000/api/v1/health >/tmp/health.json; then
+              READY=1
+              break
+            fi
+            sleep 0.25
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/consubov-api.log
+            exit 1
+          fi
+
+          test "$(cat /tmp/health.json)" = '{"status":"ok"}'
+          test "$(curl --fail --silent http://127.0.0.1:3000/api/v1/readiness)" = '{"status":"ready"}'
+
+          curl --fail --silent http://127.0.0.1:3000/api/v1/openapi.json >/tmp/openapi.json
+          grep -q '"openapi":"3.1.0"' /tmp/openapi.json
+          grep -q '"/api/v1/health"' /tmp/openapi.json
+          grep -q '"/api/v1/readiness"' /tmp/openapi.json
+          grep -q '"/api/docs"' /tmp/openapi.json
+
+          curl --fail --silent http://127.0.0.1:3000/api/docs >/tmp/docs.html
+          grep -q 'Consubov Developers' /tmp/docs.html
+
+          STATUS="$(curl --silent --output /tmp/not-found.json --write-out '%{http_code}' http://127.0.0.1:3000/does-not-exist)"
+          test "$STATUS" = "404"
+          grep -q '"code":"NOT_FOUND"' /tmp/not-found.json
+          grep -q '"requestId":"' /tmp/not-found.json
 
       - name: Test
         run: bun run test
