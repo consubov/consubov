@@ -66,3 +66,13 @@ A migração de acesso a dados descrita em `12-web-data-access.md` está pausada
 ## Git
 
 `main` é a branch oficial. Trabalhos relevantes usam branches temporárias e Pull Request antes do merge.
+
+## Auditoria estrutural final
+
+A auditoria de fechamento confirmou que a estrutura atual possui somente os workspaces executáveis `@consubov/web` e `@consubov/api`, um único lockfile Bun, tarefas reais no Turbo e configurações específicas mantidas em seus apps proprietários. Não há `packages/`, imports cruzados entre apps, diretórios vazios ou scaffolds de reserva.
+
+O ambiente reproduzível usa Bun 1.3.12, instalação com lockfile congelado e portas locais 3000/8080. O CI delega ao contrato raiz `bun run check` e complementa a validação com smoke HTTP local da API. Nenhum desses fluxos requer secrets, banco remoto, migrations ou deploy.
+
+Referências residuais ao Lovable foram removidas dos metadados do web e de um fixture Playwright órfão. Bun permanece como o único package manager do repositório.
+
+Com isso, a fundação estrutural está concluída. Persistência da API, retomada da migração de repositories, integrações, autenticação real, deploy, evolução funcional e tratamento incremental do lint legado são trabalhos futuros e exigem escopo próprio; eles não são gaps da estrutura do monorepositório.
