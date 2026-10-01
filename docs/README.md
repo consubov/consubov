@@ -14,6 +14,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 8. [GitHub Free e Codespaces](./08-github-free-codespaces.md)
 9. [Fundação local da API](./09-api-foundation.md)
 10. [Autenticação, autorização e tenancy](./10-auth-tenancy-contracts.md)
+11. [Regressão offline e sincronização](./11-offline-sync-regression.md)
 
 ## Regra
 
