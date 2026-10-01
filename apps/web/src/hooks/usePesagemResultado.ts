@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchPesagemAnterior,
+  fetchPesagemAtual,
+} from "@/features/pesagens/repositories/pesagemResultadoRepository";
 
 export interface PesagemResultado {
   loading: boolean;
@@ -42,12 +45,10 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
 
     setData(EMPTY);
 
-    (async () => {
+    void (async () => {
       try {
-        const { data: atual, error: e1 } = await (supabase.from("pesagens") as any)
-          .select("*, pastos(nome, num_animais, retiros(fazendas(nome)))")
-          .eq("id", pesagemId)
-          .maybeSingle();
+        const { data: atual, error: e1 } =
+          await fetchPesagemAtual(pesagemId);
 
         if (e1 || !atual) {
           console.error("Erro ao buscar pesagem atual:", e1);
@@ -55,16 +56,15 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
           return;
         }
 
-        const { data: anteriores, error: e2 } = await (supabase.from("pesagens") as any)
-          .select("media_calculada, data_pesagem")
-          .eq("lote_id", atual.lote_id)
-          .neq("id", pesagemId)
-          .order("data_pesagem", { ascending: false })
-          .limit(1);
+        const { data: anteriores, error: e2 } =
+          await fetchPesagemAnterior(atual.lote_id, pesagemId);
 
         if (e2) console.error("Erro ao buscar pesagem anterior:", e2);
 
-        const anterior = Array.isArray(anteriores) && anteriores.length > 0 ? anteriores[0] : null;
+        const anterior =
+          Array.isArray(anteriores) && anteriores.length > 0
+            ? anteriores[0]
+            : null;
 
         const pesoAtual = Number(atual.media_calculada) || 0;
         const qtdAnimais =
@@ -100,11 +100,14 @@ export function usePesagemResultado(pesagemId: string | null | undefined) {
         const dias = Math.max(
           1,
           Math.round(
-            (new Date(atual.data_pesagem).getTime() - new Date(anterior.data_pesagem).getTime()) / msDia,
+            (new Date(atual.data_pesagem).getTime() -
+              new Date(anterior.data_pesagem).getTime()) /
+              msDia,
           ),
         );
         const gmdCalc = Math.round((ganho / dias) * 100) / 100;
-        const sinal: "+" | "-" | "" = gmdCalc > 0 ? "+" : gmdCalc < 0 ? "-" : "";
+        const sinal: "+" | "-" | "" =
+          gmdCalc > 0 ? "+" : gmdCalc < 0 ? "-" : "";
 
         if (!cancelled) {
           setData({
