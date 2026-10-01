@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { findFazendaIdByRetiro } from "@/features/gerente-produtos/repositories/gerenteProdutosRepository";
 import { GerenteFazendaSelect, useGerenteFazendaAtiva } from "@/components/gerente/GerenteFazendaSelect";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,8 +21,7 @@ export default function GerenteProdutosPage() {
     if (!carregado || !retiro || retiroAplicado.current) return;
     retiroAplicado.current = true;
     (async () => {
-      const { data } = await supabase.from("retiros").select("fazenda_id").eq("id", retiro).maybeSingle();
-      const fid = (data as any)?.fazenda_id;
+      const fid = await findFazendaIdByRetiro(retiro);
       if (fid) setFazendaId(fid);
     })();
   }, [carregado, retiro, setFazendaId]);
