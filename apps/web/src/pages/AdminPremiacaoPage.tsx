@@ -1,16 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PremiacaoSemestral from "@/components/ranking/PremiacaoSemestral";
+import { useAdminPremiacaoFazendas } from "@/features/admin-premiacao/hooks/useAdminPremiacaoFazendas";
 
 export default function AdminPremiacaoPage() {
-  const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
+  const fazendas = useAdminPremiacaoFazendas();
   const [fazendaId, setFazendaId] = useState("todas");
-
-  useEffect(() => {
-    supabase.from("fazendas").select("id, nome").eq("ativo", true).order("nome")
-      .then(({ data }) => setFazendas(data ?? []));
-  }, []);
 
   const alvo = useMemo(
     () => (fazendaId === "todas" ? fazendas : fazendas.filter((f) => f.id === fazendaId)),
