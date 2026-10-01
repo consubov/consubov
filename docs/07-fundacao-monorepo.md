@@ -57,6 +57,8 @@ O comando raiz `bun run lint` não está verde porque inclui o lint completo do 
 
 Na fase estrutural seguinte, a API passou a declarar localmente o TypeScript que utiliza e a raiz ganhou um comando `typecheck` explícito. Os testes não dependem de build no grafo do Turbo: cada validação permanece uma tarefa real e independente. Atalhos com sufixos `:web` e `:api` permitem executar desenvolvimento, build e testes por workspace sem substituir os agregados.
 
+O contrato canônico verde para desenvolvimento e CI é `bun run check`: typecheck dos workspaces que o declaram, build e testes, nessa ordem. O CI não entra diretamente em um workspace para simular esse contrato. Depois dele, o workflow sobe o artefato compilado da API e executa um smoke HTTP exclusivamente em `127.0.0.1`. O lint completo permanece disponível como diagnóstico separado, sem falso verde.
+
 Supabase/banco remoto, migrations remotas e Vercel/deploy permanecem bloqueados até autorização e PRD específicos. Validações locais não devem usar secrets reais nem fazer chamadas a produção.
 
 A migração de acesso a dados descrita em `12-web-data-access.md` está pausada por decisão do proprietário. A fundação estrutural não deve criar repositories, mover regras de negócio ou conectar a API a persistência.

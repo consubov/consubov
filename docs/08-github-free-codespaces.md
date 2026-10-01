@@ -40,10 +40,10 @@ O workflow principal roda em Pull Requests para `main` e por disparo manual.
 Validações:
 
 - instalação com lockfile congelado;
-- lint/typecheck da API;
-- build do monorepo;
+- contrato raiz `bun run check` (typecheck, build e testes);
 - smoke HTTP da API;
-- testes do monorepo.
+
+O smoke inicia somente o artefato local e consulta `127.0.0.1`; não depende de rede externa, banco ou secrets. O lint completo do web possui dívida legada conhecida e não é apresentado como gate verde.
 
 ## Limitação operacional
 

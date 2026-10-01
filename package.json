@@ -17,6 +17,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "check": "bun run typecheck && bun run build && bun run test",
     "test:web": "turbo run test --filter=@consubov/web",
     "test:api": "turbo run test --filter=@consubov/api"
   },
