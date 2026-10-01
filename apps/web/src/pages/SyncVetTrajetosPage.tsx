@@ -1,19 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  loadSyncVetTrajetos,
+  type SyncVetTrajeto as Trajeto,
+  type SyncVetTrajetoFazenda as Fazenda,
+} from "@/features/syncvet-trajetos/repositories/syncVetTrajetosRepository";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Loader2, Route as RouteIcon, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
-
-type Trajeto = {
-  id: string;
-  data: string;
-  fazenda_id: string;
-  distancia_km: number | null;
-  duracao_min: number | null;
-  origem_endereco: string | null;
-};
-type Fazenda = { id: string; nome: string };
 
 function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -42,21 +36,9 @@ export default function SyncVetTrajetosPage() {
     if (!user || !empresaId) return;
     setLoading(true);
     try {
-      const { data: eq } = await supabase.from("syncvet_equipe")
-        .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).maybeSingle();
-      const vetId = (eq as { id: string } | null)?.id;
-      if (!vetId) { setTrajetos([]); return; }
-
-      const [{ data: tr }, { data: faz }] = await Promise.all([
-        supabase.from("syncvet_trajetos")
-          .select("id, data, fazenda_id, distancia_km, duracao_min, origem_endereco")
-          .eq("veterinario_id", vetId)
-          .order("data", { ascending: false })
-          .limit(200),
-        supabase.from("syncvet_fazendas").select("id, nome").eq("empresa_id", empresaId),
-      ]);
-      setTrajetos((tr as Trajeto[]) || []);
-      setFazendas((faz as Fazenda[]) || []);
+      const result = await loadSyncVetTrajetos(empresaId, user.id);
+      setTrajetos(result.trajetos);
+      if (result.fazendas) setFazendas(result.fazendas);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar trajetos");

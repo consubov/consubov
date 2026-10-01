@@ -1,43 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  loadSyncVetAuditoria,
+  type SyncVetAuditoriaRow,
+} from "@/features/syncvet-auditoria/repositories/syncVetAuditoriaRepository";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
 
-type Row = {
-  id: string;
-  equipe_id: string | null;
-  acao: string;
-  entidade: string;
-  entidade_id: string | null;
-  detalhes: Record<string, unknown> | null;
-  gps_lat: number | null;
-  gps_lng: number | null;
-  dispositivo: string | null;
-  created_at: string;
-};
-
 export default function SyncVetAuditoriaPage() {
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<SyncVetAuditoriaRow[]>([]);
   const [equipeMap, setEquipeMap] = useState<Map<string, string>>(new Map());
 
   const load = useCallback(async () => {
     if (!empresaId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const { data: eq } = await supabase.from("syncvet_equipe").select("id, nome").eq("empresa_id", empresaId);
-      setEquipeMap(new Map(((eq as { id: string; nome: string }[]) || []).map(e => [e.id, e.nome])));
-      const { data } = await supabase
-        .from("syncvet_auditoria")
-        .select("*")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(300);
-      setRows((data as Row[]) || []);
+      const result = await loadSyncVetAuditoria(empresaId);
+      setEquipeMap(new Map(result.equipes.map(e => [e.id, e.nome])));
+      setRows(result.rows);
     } finally {
       setLoading(false);
     }

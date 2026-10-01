@@ -134,6 +134,27 @@ A lógica de domínio permaneceu no hook:
 
 As queries continuam usando os mesmos selects, filtros, ordenação e limite da implementação anterior.
 
+### Produtos do Gerente — atalho por retiro
+
+`GerenteProdutosPage` deixou de consultar diretamente o retiro usado pelo
+atalho do painel. O repository preserva a consulta a `retiros`, o select de
+`fazenda_id`, o filtro por `id`, o `maybeSingle` e o fallback nulo.
+
+### Auditoria SyncVet
+
+`SyncVetAuditoriaPage` deixou de importar o client Supabase. Seu repository
+preserva as leituras sequenciais de equipes e auditoria, inclusive os filtros
+por `empresa_id`, a ordenação decrescente por `created_at`, o limite de 300
+registros e os fallbacks de listas vazias.
+
+### Trajetos SyncVet
+
+`SyncVetTrajetosPage` agora acessa o repository específico da feature. Foram
+preservados a resolução da equipe por `empresa_id` e `user_id`, o
+`maybeSingle`, o filtro de trajetos pelo veterinário resolvido, a ordenação
+decrescente por data, o limite de 200 e o filtro de fazendas por `empresa_id`.
+Sem equipe ou dados, as mesmas listas vazias continuam sendo retornadas.
+
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
