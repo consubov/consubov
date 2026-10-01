@@ -1,0 +1,40 @@
+name: Bug
+description: Registrar comportamento incorreto ou regressao
+title: "[Bug] "
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumo
+      description: Descreva o comportamento incorreto.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      description: Liste os passos minimos para reproduzir.
+    validations:
+      required: true
+  - type: dropdown
+    id: connectivity
+    attributes:
+      label: Conectividade
+      options:
+        - Online
+        - Offline
+        - Alternando entre online e offline
+        - Nao se aplica
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Perfil, tela, fazenda/lote de teste, console ou evidencia sem dados sensiveis.

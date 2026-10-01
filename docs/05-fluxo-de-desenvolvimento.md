@@ -15,27 +15,31 @@ chore/...
 
 Após validação:
 
-1. merge em `main`;
-2. remover a branch temporária;
-3. manter apenas branches que ainda tenham trabalho ativo.
+1. abrir Pull Request para `main`;
+2. aguardar o CI;
+3. revisar o diff e os critérios do PRD;
+4. fazer merge em `main`;
+5. remover a branch temporária.
 
-## Reorganização atual
+## GitHub Free em repositório privado
 
-Branch de trabalho:
+O projeto usa o fluxo de Pull Request + GitHub Actions como controle operacional.
 
-```text
-refactor/monorepo
-```
+No plano GitHub Free, proteções/rulesets de branch não são aplicáveis a este repositório privado. Por isso, a disciplina de não alterar `main` diretamente é uma regra de projeto e deve ser respeitada por pessoas e agentes.
 
-Ela deve ser integrada à `main` somente após:
+O workflow de CI roda em Pull Requests para `main` e pode ser disparado manualmente. Execuções concorrentes do mesmo PR são canceladas para reduzir consumo dos minutos incluídos.
 
-- build válido;
-- testes relevantes aprovados;
-- aplicação visualmente preservada;
-- fluxos funcionais preservados;
-- Supabase funcionando;
-- offline/sincronização preservados quando afetados;
-- documentação atualizada.
+## Codespaces
+
+O ambiente recomendado para trabalho remoto é o GitHub Codespaces usando `.devcontainer/devcontainer.json`.
+
+Regras:
+
+- usar maquina de 2 cores quando suficiente;
+- parar o Codespace quando não estiver em uso;
+- não gravar secrets no repositório;
+- não conectar Supabase remoto ou Vercel sem PRD/autorizaçao especifica;
+- trabalhar sempre em branch temporária.
 
 ## PRDs e handoffs
 
