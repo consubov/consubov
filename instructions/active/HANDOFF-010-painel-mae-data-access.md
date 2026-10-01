@@ -4,25 +4,21 @@
 
 `refactor/painel-mae-data-access`
 
-## Estado inicial
+## Implementado
 
-`usePainelMae` chama diretamente a RPC Supabase `get_painel_mae` e faz o mapeamento dos valores para o contrato do hook.
+- criado `apps/web/src/features/painel/repositories/painelMaeRepository.ts`;
+- `usePainelMae` deixou de importar Supabase;
+- preservada a RPC `get_painel_mae`;
+- preservados `p_fazenda_id`, `p_retiro_id`, `p_mes` e `p_ano`;
+- mapeamento, defaults, fallback e logging permaneceram no hook;
+- adicionados testes do contrato da RPC.
 
-## Restrições
+## Validação
 
-- não alterar RPC;
-- não alterar mapeamento;
-- não alterar UI;
-- sem migrations;
-- sem cache/realtime/offline novo;
-- sem Vercel.
+Pull Request #21 executa o workflow padrão do projeto com instalação, typecheck da API, build, smoke HTTP e testes do monorepo.
 
-## Plano
+Nenhuma migration, conexão nova, cache/realtime/offline novo ou Vercel foi adicionado.
 
-1. extrair somente a chamada RPC para repository;
-2. manter mapeamento/fallback no hook;
-3. testar nome da RPC e parâmetros;
-4. abrir PR e validar CI;
-5. consolidar em `docs/12-web-data-access.md`;
-6. remover PRD/handoff;
-7. merge somente com CI verde.
+## Encerramento
+
+Conhecimento permanente consolidado em `docs/12-web-data-access.md`.
