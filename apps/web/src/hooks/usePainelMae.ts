@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchPainelMae,
+  type PainelMaeRpcRow,
+} from "@/features/painel/repositories/painelMaeRepository";
 
 export interface PainelMaeData {
   consumo_real_g_cab_dia: number;
@@ -37,21 +40,30 @@ export function usePainelMae(
       setData(empty);
       return;
     }
+
     setLoading(true);
+
     try {
-      const { data: rows, error } = await (supabase as any).rpc("get_painel_mae", {
-        p_fazenda_id: fazendaId,
-        p_retiro_id: retiroId ?? null,
-        p_mes: mes,
-        p_ano: ano,
+      const { data: rows, error } = await fetchPainelMae({
+        fazendaId,
+        retiroId: retiroId ?? null,
+        mes,
+        ano,
       });
+
       if (error) throw error;
-      const row = Array.isArray(rows) ? rows[0] : rows;
+
+      const row: PainelMaeRpcRow | null = Array.isArray(rows)
+        ? (rows[0] ?? null)
+        : rows;
+
       setData(
         row
           ? {
-              consumo_real_g_cab_dia: Number(row.consumo_real_g_cab_dia) || 0,
-              consumo_global_g_cab_dia: Number(row.consumo_global_g_cab_dia) || 0,
+              consumo_real_g_cab_dia:
+                Number(row.consumo_real_g_cab_dia) || 0,
+              consumo_global_g_cab_dia:
+                Number(row.consumo_global_g_cab_dia) || 0,
               eficiencia: Number(row.eficiencia) || 0,
               pastos_na_meta_num: Number(row.pastos_na_meta_num) || 0,
               pastos_na_meta_den: Number(row.pastos_na_meta_den) || 0,
@@ -59,8 +71,8 @@ export function usePainelMae(
             }
           : empty,
       );
-    } catch (e) {
-      console.error("usePainelMae error:", e);
+    } catch (error) {
+      console.error("usePainelMae error:", error);
       setData(empty);
     } finally {
       setLoading(false);
