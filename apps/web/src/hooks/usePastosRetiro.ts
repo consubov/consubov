@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchPastosRetiroSources,
+  type PainelPastoAtualRow,
+} from "@/features/pastos/repositories/pastosRetiroRepository";
 
 export interface PastoRetiroItem {
   id: string;
@@ -22,7 +25,11 @@ export interface PastoRetiroItem {
  * `view_painel_mae_pasto_atual` (consumo_global_g_cab_dia / status_global),
  * exatamente como o Mapa do Retiro.
  */
-export function usePastosRetiro(retiroId: string | null | undefined, mes: number, ano: number) {
+export function usePastosRetiro(
+  retiroId: string | null | undefined,
+  mes: number,
+  ano: number,
+) {
   const [pastos, setPastos] = useState<PastoRetiroItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,65 +38,75 @@ export function usePastosRetiro(retiroId: string | null | undefined, mes: number
       setPastos([]);
       return;
     }
+
     setLoading(true);
+
     try {
-      const [pastosRes, atualRes, mesRes] = await Promise.all([
-        supabase
-          .from("pastos")
-          .select("id, nome, num_animais, peso_medio_kg, gmd_kg_dia")
-          .eq("retiro_id", retiroId)
-          .eq("ativo", true)
-          .order("nome"),
-        (supabase as any)
-          .from("view_painel_mae_pasto_atual")
-          .select("pasto_id, consumo_global_g_cab_dia, indice_global, status_global, num_animais, peso_medio_kg")
-          .eq("retiro_id", retiroId),
-        (supabase as any)
-          .from("view_painel_mae_pasto")
-          .select("pasto_id, num_sacos")
-          .eq("retiro_id", retiroId)
-          .eq("mes_referencia", mes)
-          .eq("ano_referencia", ano),
-      ]);
+      const { pastosRes, atualRes, mesRes } =
+        await fetchPastosRetiroSources(retiroId, mes, ano);
 
-      if ((pastosRes as any).error) console.error("usePastosRetiro pastos error:", (pastosRes as any).error);
-      if ((atualRes as any).error) console.error("usePastosRetiro view_painel_mae_pasto_atual error:", (atualRes as any).error);
-      if ((mesRes as any).error) console.error("usePastosRetiro view_painel_mae_pasto error:", (mesRes as any).error);
+      if (pastosRes.error) {
+        console.error("usePastosRetiro pastos error:", pastosRes.error);
+      }
+      if (atualRes.error) {
+        console.error(
+          "usePastosRetiro view_painel_mae_pasto_atual error:",
+          atualRes.error,
+        );
+      }
+      if (mesRes.error) {
+        console.error(
+          "usePastosRetiro view_painel_mae_pasto error:",
+          mesRes.error,
+        );
+      }
 
-      const atualMap = new Map<string, any>();
-      for (const row of (atualRes.data ?? [])) {
+      const atualMap = new Map<string, PainelPastoAtualRow>();
+      for (const row of atualRes.data ?? []) {
         if (!atualMap.has(row.pasto_id)) atualMap.set(row.pasto_id, row);
       }
+
       const sacosMap = new Map<string, number>();
-      for (const row of (mesRes.data ?? [])) {
-        sacosMap.set(row.pasto_id, (sacosMap.get(row.pasto_id) ?? 0) + (Number(row.num_sacos) || 0));
+      for (const row of mesRes.data ?? []) {
+        sacosMap.set(
+          row.pasto_id,
+          (sacosMap.get(row.pasto_id) ?? 0) + (Number(row.num_sacos) || 0),
+        );
       }
 
       setPastos(
-        (pastosRes.data ?? []).map((p: any) => {
+        (pastosRes.data ?? []).map((p) => {
           const vp = atualMap.get(p.id);
+
           return {
             id: p.id,
             nome: p.nome,
             num_animais: Number(p.num_animais) || 0,
-            peso_medio_kg: p.peso_medio_kg != null ? Number(p.peso_medio_kg) : null,
+            peso_medio_kg:
+              p.peso_medio_kg != null ? Number(p.peso_medio_kg) : null,
             gmd_kg_dia: p.gmd_kg_dia != null ? Number(p.gmd_kg_dia) : null,
-            consumo_global_g_cab_dia: vp?.consumo_global_g_cab_dia != null ? Number(vp.consumo_global_g_cab_dia) : null,
-            indice_global: vp?.indice_global != null ? Number(vp.indice_global) : null,
+            consumo_global_g_cab_dia:
+              vp?.consumo_global_g_cab_dia != null
+                ? Number(vp.consumo_global_g_cab_dia)
+                : null,
+            indice_global:
+              vp?.indice_global != null ? Number(vp.indice_global) : null,
             status_global: vp?.status_global ?? null,
             num_sacos: sacosMap.get(p.id) ?? 0,
           } satisfies PastoRetiroItem;
         }),
       );
-    } catch (e) {
-      console.error("usePastosRetiro error:", e);
+    } catch (error) {
+      console.error("usePastosRetiro error:", error);
       setPastos([]);
     } finally {
       setLoading(false);
     }
   }, [retiroId, mes, ano]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return { pastos, loading, refresh: load };
 }
