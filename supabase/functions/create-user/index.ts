@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, getAdminClient } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,24 +19,30 @@ const jsonResponse = (body: Record<string, unknown>, status: number) =>
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
 const isDuplicateAuthError = (message: string) =>
   /already been registered|already registered|email_exists/i.test(message);
 
-async function findAuthUserByEmail(adminClient: ReturnType<typeof createClient>, email: string) {
+async function findAuthUserByEmail(
+  adminClient: ReturnType<typeof createClient>,
+  email: string
+) {
   let page = 1;
   const perPage = 200;
 
   while (true) {
-    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage,
+    });
 
     if (error) {
       return { user: null, error };
     }
 
-    const user = data.users.find((entry) => normalizeEmail(entry.email ?? "") === email) ?? null;
+    const user = data.users.find(
+      (entry) => normalizeEmail(entry.email ?? "") === email
+    ) ?? null;
 
     if (user) {
       return { user, error: null };
@@ -55,6 +62,14 @@ Deno.serve(async (req) => {
   }
 
   console.log("[create-user] Função invocada");
+
+  const authResult = await requireAdmin(req);
+  if (authResult.error) {
+    return authResult.error;
+  }
+  const callerAdmin = authResult.admin!;
+
+  console.log("[create-user] Caller autenticado:", { adminId: callerAdmin.id, email: callerAdmin.email });
 
   try {
     const rawBody = await req.json().catch(() => null);
@@ -116,17 +131,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "A senha deve ter no mínimo 6 caracteres" }, 400);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error("[create-user] Variáveis de ambiente não configuradas");
-      return jsonResponse({ error: "Configuração do servidor incompleta" }, 500);
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const adminClient = getAdminClient();
 
     if (shouldCreateAdminRecord) {
       const { data: existingAdmin, error: adminLookupError } = await adminClient
@@ -197,7 +202,7 @@ Deno.serve(async (req) => {
       } else if (/password|senha/i.test(authError.message)) {
         return jsonResponse({ error: authError.message }, 400);
       } else {
-        return jsonResponse({ error: `Falha ao criar usuário: ${authError.message}` }, 500);
+        return jsonResponse({ error: "Falha ao criar usuário" }, 500);
       }
     } else {
       userId = authData.user?.id ?? null;
@@ -266,6 +271,6 @@ Deno.serve(async (req) => {
     }
   } catch (err: any) {
     console.error("[create-user] Erro inesperado:", err.message);
-    return jsonResponse({ error: "Erro interno do servidor: " + err.message }, 500);
+    return jsonResponse({ error: "Erro interno do servidor" }, 500);
   }
 });

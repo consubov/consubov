@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, getAdminClient } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,12 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const authResult = await requireAdmin(req);
+  if (authResult.error) {
+    return authResult.error;
+  }
+  const callerAdmin = authResult.admin!;
+
   try {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
@@ -24,18 +31,9 @@ Deno.serve(async (req) => {
     }
 
     const action = body.action as string;
-    console.log("[manage-admin] action:", action);
+    console.log("[manage-admin] action:", action, "caller:", callerAdmin.id);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return json({ error: "Configuração do servidor incompleta" }, 500);
-    }
-
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const admin = getAdminClient();
 
     // ─── UPDATE ───
     if (action === "update") {
@@ -100,7 +98,7 @@ Deno.serve(async (req) => {
           );
           if (authErr) {
             console.error("[manage-admin] Erro ao atualizar Auth:", authErr.message);
-            return json({ error: "Falha ao atualizar credenciais: " + authErr.message }, 500);
+            return json({ error: "Falha ao atualizar credenciais" }, 500);
           }
         }
       }
@@ -117,18 +115,17 @@ Deno.serve(async (req) => {
 
       if (dbErr) {
         console.error("[manage-admin] Erro ao atualizar DB:", dbErr.message);
-        return json({ error: "Falha ao atualizar dados: " + dbErr.message }, 500);
+        return json({ error: "Falha ao atualizar dados" }, 500);
       }
 
-      console.log("[manage-admin] Admin atualizado:", admin_id);
+      console.log("[manage-admin] Admin atualizado:", admin_id, "por:", callerAdmin.id);
       return json({ success: true, message: "Administrador atualizado com sucesso" }, 200);
     }
 
     // ─── DELETE ───
     if (action === "delete") {
-      const { admin_id, requesting_user_id } = body as {
+      const { admin_id } = body as {
         admin_id: string;
-        requesting_user_id: string;
       };
 
       if (!admin_id) {
@@ -146,8 +143,8 @@ Deno.serve(async (req) => {
         return json({ error: "Administrador não encontrado" }, 404);
       }
 
-      // Prevent self-deletion
-      if (targetAdmin.user_id && targetAdmin.user_id === requesting_user_id) {
+      // Prevent self-deletion using authenticated caller's user_id
+      if (targetAdmin.user_id && targetAdmin.user_id === callerAdmin.user_id) {
         return json({ error: "Você não pode excluir a si mesmo" }, 400);
       }
 
@@ -166,7 +163,7 @@ Deno.serve(async (req) => {
         const { error: authErr } = await admin.auth.admin.deleteUser(targetAdmin.user_id);
         if (authErr) {
           console.error("[manage-admin] Erro ao deletar Auth:", authErr.message);
-          return json({ error: "Falha ao remover acesso: " + authErr.message }, 500);
+          return json({ error: "Falha ao remover acesso" }, 500);
         }
       }
 
@@ -178,16 +175,16 @@ Deno.serve(async (req) => {
 
       if (dbErr) {
         console.error("[manage-admin] Erro ao deletar DB:", dbErr.message);
-        return json({ error: "Falha ao excluir administrador: " + dbErr.message }, 500);
+        return json({ error: "Falha ao excluir administrador" }, 500);
       }
 
-      console.log("[manage-admin] Admin excluído:", admin_id);
+      console.log("[manage-admin] Admin excluído:", admin_id, "por:", callerAdmin.id);
       return json({ success: true, message: "Administrador excluído com sucesso" }, 200);
     }
 
     return json({ error: "Ação inválida. Use 'update' ou 'delete'" }, 400);
   } catch (err: any) {
     console.error("[manage-admin] Erro inesperado:", err.message);
-    return json({ error: "Erro interno: " + err.message }, 500);
+    return json({ error: "Erro interno do servidor" }, 500);
   }
 });
