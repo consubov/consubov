@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   screenCacheKey,
   useResumeRefresh,
 } from "@/lib/screenCache";
+
+const testDir = path.dirname(fileURLToPath(import.meta.url));
 
 function collectSourceFiles(directory: string): string[] {
   if (!fs.existsSync(directory)) return [];
@@ -73,7 +76,7 @@ describe("invariantes de cache Gerente/Admin", () => {
   });
 
   it("arquivos do Capataz não importam screenCache", () => {
-    const srcRoot = path.resolve(__dirname, "..");
+    const srcRoot = path.resolve(testDir, "..");
     const candidates = collectSourceFiles(srcRoot).filter((file) => {
       const relative = path.relative(srcRoot, file).replaceAll("\\", "/");
       return /(^|\/)capataz(\/|$)/i.test(relative) || /Capataz/.test(path.basename(file));
@@ -92,7 +95,7 @@ describe("invariantes de cache Gerente/Admin", () => {
 describe("invariantes de atualização e sincronização", () => {
   it("service worker preserva a regra de não auto-reload após background/cold start", () => {
     const source = fs.readFileSync(
-      path.resolve(__dirname, "../lib/swRegistration.ts"),
+      path.resolve(testDir, "../lib/swRegistration.ts"),
       "utf8",
     );
 
@@ -110,7 +113,7 @@ describe("invariantes de atualização e sincronização", () => {
 
   it("Mais Arrobas mantém reenvio idempotente e recuperação de código de lote", () => {
     const source = fs.readFileSync(
-      path.resolve(__dirname, "../lib/maisArrobasQueue.ts"),
+      path.resolve(testDir, "../lib/maisArrobasQueue.ts"),
       "utf8",
     );
 
