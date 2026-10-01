@@ -122,6 +122,27 @@ A composição continua no hook para preservar a regra existente:
 
 Nenhuma regra de cálculo foi movida ou alterada nesta fase.
 
+### Eventos do Lote
+
+`useEventosLote.ts` deixou de acessar Supabase diretamente.
+
+O repository concentra três leituras independentes:
+
+```text
+eventos_lote
+pesagens
+eventos_sanitarios
+```
+
+Semântica preservada:
+
+- eventos continuam ordenados por `data_evento` decrescente;
+- última pesagem continua ordenada por `data_pesagem`, limitada a um registro e usando `maybeSingle`;
+- último sanitário continua ordenado por `data_aplicacao`, limitado a um registro e usando `maybeSingle`;
+- `refreshKey` continua disparando a recarga da lista;
+- `calcCarenciaDias` permaneceu no hook sem alteração;
+- ausência de dados mantém lista vazia ou `null` conforme o contrato anterior.
+
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
