@@ -1,0 +1,29 @@
+name: Feature
+description: Propor funcionalidade ou evolucao do produto
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Qual problema de usuario ou operacao precisa ser resolvido?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Resultado esperado
+      description: Descreva o resultado sem prescrever arquitetura quando nao for necessario.
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Regras conhecidas
+      description: Registre somente regras confirmadas. Nao invente regra de negocio.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceite
+    validations:
+      required: true
