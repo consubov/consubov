@@ -49,6 +49,19 @@ Stack traces não são enviados para o cliente.
 
 Esta fase não adiciona dependências de runtime. Ela usa apenas APIs Web padrão suportadas pelo Bun.
 
+## Validação da fundação
+
+O Pull Request #11 validou em GitHub Actions:
+
+- Bun 1.3.12 e `bun install --frozen-lockfile`;
+- typecheck estrito da API;
+- build de `@consubov/api` e `@consubov/web`;
+- smoke HTTP real de health, readiness, OpenAPI, docs e 404;
+- 6/6 testes da API;
+- 36/36 testes existentes do web.
+
+Warnings observados no build do web permanecem fora do escopo desta fundação: uso de `eval` em configuração existente, avisos de chunk grande e imports dinâmicos/estáticos mistos.
+
 ## Fora desta fase
 
 - persistência;

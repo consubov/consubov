@@ -44,7 +44,10 @@ Por padrão, `@consubov/api` usa a porta `3000`.
 
 O repositório possui `.devcontainer/devcontainer.json` para criar um ambiente reproduzível com Bun 1.3.12.
 
-O Codespace instala dependências com `bun install --frozen-lockfile` e prepara a porta `8080` para o web.
+O Codespace instala dependências com `bun install --frozen-lockfile` e prepara:
+
+- porta `3000` para a API local;
+- porta `8080` para o web.
 
 Credenciais e arquivos `.env` não fazem parte da imagem nem do repositório.
 

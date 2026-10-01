@@ -10,7 +10,7 @@
 
 ## Estado atual
 
-A fundação local da API foi implementada e aguarda validação do CI/revisão.
+Implementação concluída e validada no PR #11. Aguardando apenas encerramento/merge da fase.
 
 ## Restrições preservadas
 
@@ -22,15 +22,15 @@ A fundação local da API foi implementada e aguarda validação do CI/revisão.
 - nenhuma regra de negócio adicionada;
 - nenhum `packages/` vazio criado.
 
-## Dependências
+## Dependências e decisão
 
 Nenhuma dependência de runtime foi adicionada.
 
-Decisão: usar o servidor HTTP nativo do Bun + APIs Web padrão nesta fundação reduz superfície de dependências e atende completamente aos quatro endpoints atuais. Framework poderá ser introduzido quando rotas de domínio, validação compartilhada ou middleware justificarem o custo.
+A fundação usa servidor HTTP nativo do Bun + APIs Web padrão. Isso atende a superfície atual com menor dependência. Framework poderá ser introduzido quando rotas de domínio, validação compartilhada ou middleware justificarem.
 
-O lint da API usa o TypeScript já instalado pelo workspace web, sem alterar `bun.lock`.
+O lint da API usa o TypeScript já instalado no workspace, sem alterar `bun.lock`.
 
-## Estrutura criada
+## Estrutura
 
 ```text
 apps/api/
@@ -51,42 +51,50 @@ apps/api/
 - `GET /api/v1/health` → `200 {"status":"ok"}`;
 - `GET /api/v1/readiness` → `200 {"status":"ready"}`;
 - `GET /api/v1/openapi.json` → OpenAPI 3.1;
-- `GET /api/docs` → documentação navegável gerada do OpenAPI;
+- `GET /api/docs` → documentação baseada no OpenAPI;
 - rotas inexistentes → erro `NOT_FOUND` padronizado;
 - toda resposta inclui `x-request-id`.
 
-## Decisões
+## Resultado do CI
 
-- runtime stateless;
-- request id reutiliza `x-request-id` ou `x-correlation-id` válido e gera UUID quando ausente;
-- erros internos podem registrar stack apenas em logs do processo;
-- stack trace nunca é serializado na resposta;
-- documentação não depende de CDN ou serviço externo.
+Workflow do PR #11 concluído com sucesso.
 
-## Validação esperada no CI
+- instalação: `bun install --frozen-lockfile` — OK, 1272 packages;
+- API lint/typecheck: `bunx tsc --noEmit --project tsconfig.json` — OK;
+- build: 2/2 workspaces — OK;
+- bundle API: 9.28 KB + source map;
+- smoke HTTP real — OK para health, readiness, OpenAPI, docs e 404;
+- testes API: 6/6 — OK;
+- testes web: 36/36 — OK;
+- total Turbo test: 2/2 tasks — OK.
 
-O PR deve executar:
+## Auditoria do diff
 
-1. `bun install --frozen-lockfile`;
-2. `cd apps/api && bun run lint`;
-3. `bun run build`;
-4. `bun run test`.
+Arquivos funcionais de `apps/web`: nenhum alterado.
 
-Após o CI, registrar aqui resultados exatos e SHA final antes do merge.
-
-## Arquivos alterados
+Mudanças limitadas a:
 
 - `apps/api/**`;
-- `.github/workflows/ci.yml` apenas para validar lint da API;
-- `README.md`;
-- `docs/README.md`;
-- `docs/09-api-foundation.md`;
-- este handoff.
+- CI para lint/smoke da API;
+- devcontainer para expor a porta 3000;
+- README/documentação;
+- PRD/handoff desta fase.
 
-Nenhum arquivo funcional de `apps/web` foi alterado.
+## Warnings fora do escopo
 
-## Riscos e pendências
+O build do web reporta warnings existentes no código atual:
 
-- a API ainda não possui autenticação, tenancy ou persistência por decisão de escopo;
-- o lint atual da API é typecheck estrito; uma configuração ESLint compartilhada pode ser introduzida futuramente quando existir necessidade real;
-- smoke HTTP será validado adicionalmente quando houver executor com processo local persistente; os testes exercitam o mesmo handler Fetch diretamente.
+- uso de `eval` em `ConfiguracoesGeraisPage.tsx`;
+- chunk principal acima do limite recomendado;
+- módulos com import dinâmico e estático simultaneamente;
+- `actions/checkout@v4` gera aviso de runtime Node legado no GitHub Actions.
+
+Nenhum desses warnings foi introduzido pela API e eles não quebram o CI.
+
+## Próximo passo
+
+Após merge:
+
+1. encerrar a issue #3;
+2. remover branch temporária quando possível;
+3. iniciar PRD separado para contratos de autenticação/autorização/tenancy, ainda sem banco remoto.

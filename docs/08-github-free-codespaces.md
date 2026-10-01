@@ -22,7 +22,8 @@ Configuração atual:
 - imagem TypeScript/Node baseada em Debian;
 - Bun 1.3.12;
 - `bun install --frozen-lockfile` após criação;
-- porta 8080 preparada para preview da aplicação web;
+- porta `3000` preparada para a API local;
+- porta `8080` preparada para o web;
 - sem secrets embutidos.
 
 Para reduzir consumo:
@@ -39,8 +40,10 @@ O workflow principal roda em Pull Requests para `main` e por disparo manual.
 Validações:
 
 - instalação com lockfile congelado;
-- build;
-- testes.
+- lint/typecheck da API;
+- build do monorepo;
+- smoke HTTP da API;
+- testes do monorepo.
 
 ## Limitação operacional
 

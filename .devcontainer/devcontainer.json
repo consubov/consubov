@@ -7,8 +7,12 @@
     }
   },
   "postCreateCommand": "bun install --frozen-lockfile",
-  "forwardPorts": [8080],
+  "forwardPorts": [3000, 8080],
   "portsAttributes": {
+    "3000": {
+      "label": "Consubov API",
+      "onAutoForward": "notify"
+    },
     "8080": {
       "label": "Consubov Web",
       "onAutoForward": "notify"
