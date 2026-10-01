@@ -3,10 +3,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 
 const BodySchema = z.object({
-  origem_lat: z.number(),
-  origem_lng: z.number(),
-  destino_lat: z.number(),
-  destino_lng: z.number(),
+  origem_lat: z.number().min(-90).max(90),
+  origem_lng: z.number().min(-180).max(180),
+  destino_lat: z.number().min(-90).max(90),
+  destino_lng: z.number().min(-180).max(180),
 });
 
 // Haversine — distância em linha reta entre dois pontos (km)
@@ -24,6 +24,14 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Função pura de cálculo, sem escrita: somente POST (antes qualquer
+  // método com corpo caía no fluxo; GET sem body estourava 500 com detalhe).
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Método não permitido' }), {
+      status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json', Allow: 'POST, OPTIONS' },
+    });
+  }
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -70,8 +78,10 @@ Deno.serve(async (req) => {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('syncvet-calcular-trajeto error', err);
-    return new Response(JSON.stringify({ error: String(err instanceof Error ? err.message : err) }), {
+    // Nunca devolver detalhe interno (antes: String(err) expunha mensagens
+    // de validação/internas ao cliente).
+    console.error('syncvet-calcular-trajeto error');
+    return new Response(JSON.stringify({ error: 'Erro interno' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

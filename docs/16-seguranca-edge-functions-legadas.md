@@ -180,7 +180,7 @@ repo); RBAC por perfil, senha fixa `Consubov@2025`, auditoria persistente
 `EXECUTADO` = `index.test.ts` da função, verde em 2026-10-01
 (`bunx vitest@3.2.4 run`, workdir `supabase/functions`).
 
-| Caso | delete-equipe (15) | analisar-retiro (11) | reset-password (10) | calcular-trajeto |
+| Caso | delete-equipe (15) | analisar-retiro (11) | reset-password (11) | calcular-trajeto |
 |---|---|---|---|---|
 | Anônimo → 401 | EXECUTADO | EXECUTADO | EXECUTADO | código exige Bearer |
 | Token inválido → 401 | EXECUTADO | EXECUTADO | EXECUTADO | `getClaims` |
@@ -195,14 +195,23 @@ repo); RBAC por perfil, senha fixa `Consubov@2025`, auditoria persistente
 
 ## 11. Validação SEC-04 (comandos reais, 2026-10-01)
 
-- `bunx vitest@3.2.4 run` (workdir `supabase/functions`): ver §12 de QA;
-  7 falhas pré-existentes em `_shared/auth.test.ts` (mock usa
-  `@supabase/supabase-js`, `auth.ts` importa `https://esm.sh/...` — SEC-01).
+- Testes (workdir `supabase/functions`, executado via vitest 3.2.4 do
+  `apps/web` sob node — equivalente ao `bunx vitest@3.2.4 run` do §5):
+  **8 arquivos, 83 passam** (37 novos SEC-04: 15 delete-equipe + 11
+  analisar-retiro + 11 reset-password); 7 falhas pré-existentes em
+  `_shared/auth.test.ts` (mock usa `@supabase/supabase-js`, `auth.ts`
+  importa `https://esm.sh/...` — SEC-01, sem regressão: baseline 46+7).
 - `syncvet-calcular-trajeto`: parse TS validado via esbuild (imports `npm:`
   não resolvidos pelo runner vitest; sem teste executável).
 - Sweeps: nenhum `*.message` de erro interno retornado ao cliente nos 4
   arquivos; nenhum `console.*` com token/segredo/PII; service role só
   server-side. `bun.lock`/`package.json`: só o trabalho SEC-02 (não tocados).
+- `bun run typecheck` (turbo; só `@consubov/api` possui o script, web não
+  tem): 1 successful. `bun run build` (api + web): 2 successful, EXIT=0.
+- `bun run lint`: api OK (`tsc --noEmit`); web EXIT=1 com 1528 problems
+  (1422 errors, 106 warnings) — dívida pré-existente (README declara 1422),
+  zero menções a `supabase/functions`; nenhum arquivo em `apps/*` foi
+  alterado por este PRD.
 
 ## 12. QA SEC-04
 

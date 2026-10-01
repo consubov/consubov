@@ -11,22 +11,31 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Troca de credencial: somente POST (antes aceitava qualquer método).
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Método não permitido" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json", Allow: "POST, OPTIONS" } }
+    );
+  }
+
   try {
-    const { user_id, password } = await req.json();
+    // Verify the caller is an admin (antes de ler o corpo: anônimo recebe
+    // 401 independentemente do payload).
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { user_id, password } = await req.json().catch(() => ({}));
 
     if (!user_id || !password) {
       return new Response(
         JSON.stringify({ error: "user_id e password são obrigatórios" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Verify the caller is an admin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -70,8 +79,11 @@ Deno.serve(async (req) => {
     });
 
     if (error) {
+      // Mensagem do Auth pode permitir enumeração (ex.: "User not found"):
+      // detalhe fica no log do servidor, cliente recebe erro genérico.
+      console.error("reset-password: falha ao redefinir senha");
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: "Não foi possível redefinir a senha" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -80,9 +92,10 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (_err) {
+    console.error("reset-password: erro interno");
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: "Erro interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
