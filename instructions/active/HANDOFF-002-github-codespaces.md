@@ -19,19 +19,39 @@ A fase começou a partir da `main` após o merge da fundação do monorepo.
 - não tocar em migrations ou dados remotos;
 - não fazer merge direto sem CI/revisão.
 
-## Plano
+## Implementado
 
-1. criar devcontainer mínimo e reproduzível;
-2. ajustar CI para branches/PRs atuais sem referência à branch antiga;
-3. adicionar templates de PR/issues;
-4. configurar atualizações de GitHub Actions;
-5. documentar fluxo e limitações do GitHub Free privado;
-6. abrir PR e aguardar CI;
-7. após aceite, consolidar conhecimento em `docs/` e remover PRD/handoff.
+- `.devcontainer/devcontainer.json` com Bun 1.3.12, instalação congelada e porta 8080;
+- CI apenas em Pull Requests para `main` + disparo manual, com concurrency e timeout;
+- template de Pull Request;
+- templates de issue para bug e feature;
+- Dependabot mensal apenas para GitHub Actions;
+- README atualizado com Codespaces;
+- documentação do fluxo GitHub Free/Codespaces;
+- backlog criado em issues para API, tenancy, encapsulamento de dados e regressão offline;
+- integrações reais com Supabase e Vercel registradas como bloqueadas.
 
-## Validações esperadas
+## Issues criadas
+
+- #3 — Fundação da API versionada sem banco remoto
+- #4 — Contratos de autenticação, autorização e tenancy
+- #5 — Encapsular acesso a dados do web progressivamente
+- #6 — Ampliar regressão offline e sincronização
+- #7 — Integração real com Supabase/PostgreSQL, RLS e multitenancy (BLOQUEADO)
+- #8 — Deploy inicial e configuração Vercel (BLOQUEADO)
+
+## Codespaces
+
+A página de criação foi validada para o repositório e branch desta fase, usando máquina de 2 cores.
+
+A automação do navegador conseguiu navegar e ler a página, mas o comando de clique do Browser MTS falhou por erro interno de referência de aba. Por isso, a criação efetiva do Codespace ainda precisa ser confirmada após o merge ou iniciada manualmente pelo botão do README.
+
+## Validações
+
+O Pull Request desta fase deve confirmar:
 
 - `bun install --frozen-lockfile`;
 - `bun run build`;
-- `bun run test`;
-- inspeção estática garantindo ausência de secrets e integrações remotas novas.
+- `bun run test`.
+
+A fase não altera arquivos funcionais da aplicação nem integrações remotas.
