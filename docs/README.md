@@ -16,6 +16,9 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 10. [Autenticação, autorização e tenancy](./10-auth-tenancy-contracts.md)
 11. [Regressão offline e sincronização](./11-offline-sync-regression.md)
 12. [Migração progressiva de acesso a dados do web](./12-web-data-access.md)
+13. [Política de mudanças estruturais](./13-politica-mudancas-estruturais.md)
+14. [Política de código open source e terceiros](./14-politica-codigo-terceiros.md)
+16. [Segurança das edge functions legadas (seed-app-secrets + cleanup-demo-accounts)](./16-seguranca-edge-functions-legadas.md)
 
 ## Regra
 

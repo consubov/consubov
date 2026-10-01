@@ -3,5 +3,3 @@ project_id = "zptkqeiyvkqogrimbvna"
 verify_jwt = false
 [functions.relatto-demo-signup]
 verify_jwt = false
-[functions.cleanup-demo-accounts]
-verify_jwt = false

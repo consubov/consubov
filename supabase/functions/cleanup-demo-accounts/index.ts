@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireAdmin, getAdminClient } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,32 +7,55 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const json = (body: Record<string, unknown>, status: number) =>
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+const json = (body: Record<string, unknown>, status: number, extra?: Record<string, string>) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...jsonHeaders, ...extra },
   });
+
+// Mensagens de erro podem ecoar a URL do projeto ou a credencial; redige antes de logar.
+const redact = (message: string) => {
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return key ? message.split(key).join("[REDACTED]") : message;
+};
+
+// Campos que o client pode enviar por engano/fraude: nunca concedem privilégio algum.
+const IDENTITY_KEYS = ["user_id", "role", "admin", "requested_by"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
-    return json({ error: "Configuração do servidor incompleta" }, 500);
+  // Operação destrutiva só via POST; demais métodos param antes da lógica.
+  if (req.method !== "POST") {
+    return json({ error: "Método não permitido" }, 405, { Allow: "POST, OPTIONS" });
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  // Identidade e autorização vêm exclusivamente do token; nada do body conta.
+  const authResult = await requireAdmin(req);
+  if (authResult.error) {
+    // auditoria de acesso negado sem PII (somente o status)
+    console.warn("[cleanup-demo-accounts] acesso negado", authResult.error.status);
+    return authResult.error;
+  }
+  const callerAdmin = authResult.admin!;
 
   try {
-    // Permite forçar a limpeza imediata (teste) com { force: true }
-    let force = false;
-    if (req.method === "POST") {
-      const body = await req.json().catch(() => ({}));
-      force = (body as Record<string, unknown>).force === true;
+    const parsed = await req.json().catch(() => ({}));
+    const body: Record<string, unknown> =
+      typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {};
+
+    // Identidade forjada no body é ignorada; registra só as chaves (sem valores/PII).
+    const ignored = IDENTITY_KEYS.filter((key) => key in body);
+    if (ignored.length) {
+      console.log("[cleanup-demo-accounts] campos de identidade ignorados no body:", ignored.join(", "));
     }
+
+    // force pula o corte de 24h, mas só é interpretado DEPOIS da autorização acima.
+    const force = body.force === true;
+
+    const admin = getAdminClient();
 
     const limite = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -43,6 +66,7 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     if (!demos || demos.length === 0) {
+      console.log(`[cleanup-demo-accounts] admin=${callerAdmin.id} force=${force} removidos=0`);
       return json({ success: true, removidos: 0 }, 200);
     }
 
@@ -143,16 +167,21 @@ Deno.serve(async (req) => {
 
       if (demo.user_id) {
         const { error: delErr } = await admin.auth.admin.deleteUser(demo.user_id as string);
-        if (delErr) console.error("[cleanup-demo-accounts] auth delete", delErr.message);
+        // não loga o objeto err: pode ecoar identificadores do usuário
+        if (delErr) console.error("[cleanup-demo-accounts] falha ao excluir usuário auth do demo", consultorId);
       }
 
       removidos += 1;
     }
 
-    console.log(`[cleanup-demo-accounts] contas demo removidas: ${removidos}`);
+    console.log(`[cleanup-demo-accounts] admin=${callerAdmin.id} force=${force} removidos=${removidos}`);
     return json({ success: true, removidos }, 200);
   } catch (err) {
-    console.error("[cleanup-demo-accounts] erro", err);
-    return json({ error: String(err) }, 500);
+    // resposta genérica + detalhe redigido: String(err) pode vazar config ou dado sensível
+    console.error(
+      "[cleanup-demo-accounts] erro inesperado:",
+      err instanceof Error ? redact(err.message) : "detalhe indisponível"
+    );
+    return json({ error: "Erro interno do servidor" }, 500);
   }
 });
