@@ -6,8 +6,6 @@ Reduzir o acoplamento direto entre hooks/componentes React e o client Supabase s
 
 ## Padrão
 
-Fluxo preferencial:
-
 ```text
 Component / Page
   ↓
@@ -36,41 +34,29 @@ Services/use cases são introduzidos somente quando houver regra de negócio rea
 
 `useLandingContent` deixou de importar o client Supabase diretamente.
 
-A consulta de `landing_page_content` agora vive em:
+Repository:
 
 ```text
 apps/web/src/features/landing/repositories/landingContentRepository.ts
 ```
 
-Semântica preservada:
-
-- filtro por `landing_slug`;
-- pares `chave/valor` convertidos em mapa;
-- valor nulo vira string vazia;
-- ausência de dados produz objeto vazio.
+Semântica preservada: filtro por `landing_slug`, mapa chave/valor, valor nulo como string vazia e objeto vazio quando não há dados.
 
 ### Nome do usuário
 
-`useNomeUsuario` também deixou de importar o client Supabase diretamente.
+`useNomeUsuario` deixou de importar o client Supabase diretamente.
 
-A leitura sequencial das tabelas de papel agora vive em:
+Repository:
 
 ```text
 apps/web/src/features/users/repositories/userNameRepository.ts
 ```
 
-Semântica preservada:
-
-- a ordem de tabelas fornecida pelo chamador continua sendo respeitada;
-- o primeiro nome válido encerra a busca;
-- valores com `@` continuam rejeitados para impedir exibição de e-mail como nome;
-- ausência de nome válido continua usando metadata/fallback no hook.
+Semântica preservada: ordem das tabelas, primeiro nome válido, rejeição de valores com `@` e fallback por metadata/texto.
 
 ### Premiação Admin
 
 `AdminPremiacaoPage` deixou de consultar Supabase diretamente.
-
-Estrutura:
 
 ```text
 AdminPremiacaoPage
@@ -82,66 +68,48 @@ adminPremiacaoRepository
 Supabase client
 ```
 
-Consulta preservada:
-
-```text
-from("fazendas")
-select("id, nome")
-eq("ativo", true)
-order("nome")
-```
-
-Semântica preservada:
-
-- somente fazendas ativas;
-- ordenação por nome;
-- ausência de `data` resulta em lista vazia;
-- seletor e renderização da página não mudaram.
-
-Não existe service intermediário neste slice porque não há regra de negócio entre hook e repository.
+Consulta preservada: `fazendas`, `id, nome`, `ativo = true` e ordenação por `nome`. Ausência de dados continua resultando em lista vazia.
 
 ### Pastos do Retiro
 
 `usePastosRetiro` deixou de acessar Supabase diretamente.
 
-O repository concentra somente as três leituras:
-
-```text
-pastos
-view_painel_mae_pasto_atual
-view_painel_mae_pasto
-```
-
-A composição continua no hook para preservar a regra existente:
-
-- mapa da visão atual por `pasto_id`;
-- soma de `num_sacos` por pasto no mês/ano;
-- defaults numéricos e nulos;
-- logs de erro por fonte;
-- fallback para lista vazia em exceção.
-
-Nenhuma regra de cálculo foi movida ou alterada nesta fase.
+O repository concentra as leituras de `pastos`, `view_painel_mae_pasto_atual` e `view_painel_mae_pasto`. A composição, somas, defaults, logs e fallback continuam no hook.
 
 ### Eventos do Lote
 
 `useEventosLote.ts` deixou de acessar Supabase diretamente.
 
-O repository concentra três leituras independentes:
+O repository concentra leituras de `eventos_lote`, `pesagens` e `eventos_sanitarios`, preservando ordenação, limites, `maybeSingle`, `refreshKey`, cálculo de carência e fallbacks.
+
+### Painel Mãe
+
+`usePainelMae` deixou de acessar Supabase diretamente.
+
+A chamada da RPC agora vive em:
 
 ```text
-eventos_lote
-pesagens
-eventos_sanitarios
+apps/web/src/features/painel/repositories/painelMaeRepository.ts
+```
+
+Contrato preservado:
+
+```text
+rpc("get_painel_mae", {
+  p_fazenda_id,
+  p_retiro_id,
+  p_mes,
+  p_ano
+})
 ```
 
 Semântica preservada:
 
-- eventos continuam ordenados por `data_evento` decrescente;
-- última pesagem continua ordenada por `data_pesagem`, limitada a um registro e usando `maybeSingle`;
-- último sanitário continua ordenado por `data_aplicacao`, limitado a um registro e usando `maybeSingle`;
-- `refreshKey` continua disparando a recarga da lista;
-- `calcCarenciaDias` permaneceu no hook sem alteração;
-- ausência de dados mantém lista vazia ou `null` conforme o contrato anterior.
+- `p_retiro_id = null` continua agregando a fazenda inteira;
+- erro da RPC continua acionando o fallback existente;
+- mapeamento numérico continua no hook;
+- campos ausentes ou inválidos continuam caindo para zero;
+- ausência de linha continua usando o objeto vazio existente.
 
 ### Resultado de Pesagem
 
