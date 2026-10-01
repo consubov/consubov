@@ -1,19 +1,36 @@
 # Arquitetura
 
-## Estratégia
+## Estrutura atual
 
-O Consubov será organizado como **monorepositório** e o backend evoluirá como **monólito modular**.
+O Consubov está organizado como monorepositório com dois workspaces executáveis e sem packages compartilhados.
 
-### Monorepositório
+```text
+consubov/
+├── apps/
+│   ├── web/        # aplicação React/Vite existente
+│   └── api/        # API Bun local, stateless e sem persistência
+├── supabase/       # artefatos existentes; sem execução remota nesta fase
+├── docs/
+├── instructions/
+├── package.json
+├── bun.lock
+└── turbo.json
+```
 
-Organiza aplicações e pacotes relacionados em um único repositório.
+Não existe `packages/` atualmente. Configurações específicas permanecem com o app que as utiliza, e um package só deve nascer quando houver reutilização real por mais de um workspace.
+
+A migração progressiva de acesso a dados do web está pausada. O web continua com o comportamento e as integrações existentes; a API não está conectada ao Supabase/PostgreSQL.
+
+## Arquitetura futura
+
+A direção aprovada é evoluir o backend como **monólito modular**. A árvore abaixo representa possibilidades futuras, não diretórios que devam ser criados antecipadamente.
 
 ```text
 consubov/
 ├── apps/
 │   ├── web/
 │   └── api/
-├── packages/
+├── packages/              # somente packages com múltiplos consumidores reais
 │   ├── domain/
 │   ├── database/
 │   ├── auth/
@@ -26,7 +43,7 @@ consubov/
 └── instructions/
 ```
 
-### Monólito modular
+### Organização futura do monólito modular
 
 O backend é uma única aplicação implantável, porém dividido por domínios com fronteiras explícitas.
 
@@ -46,7 +63,7 @@ apps/api/
 └── integrations/
 ```
 
-## Fluxo desejado
+## Fluxo futuro desejado
 
 ```text
 Web / Mobile / Sistemas externos

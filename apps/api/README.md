@@ -44,7 +44,8 @@ Nenhum token, API key, Supabase Auth ou banco é verificado nesta fase.
 bun run dev
 bun run build
 bun run test
+bun run typecheck
 bun run lint
 ```
 
-O script `lint` executa o TypeScript em modo estrito sem emitir arquivos.
+O script `typecheck` usa o TypeScript declarado neste workspace em modo estrito e sem emitir arquivos. `lint` é um alias compatível para essa mesma validação.
