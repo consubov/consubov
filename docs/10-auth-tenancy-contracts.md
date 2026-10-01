@@ -58,3 +58,15 @@ As mensagens não incluem o identificador do tenant alvo.
 Ele admite credenciais de usuário do tipo bearer e credenciais próprias de integração do tipo API key, sem definir implementação. Isso permite cumprir a regra de não reutilizar senha de usuário para sistemas externos.
 
 Nenhum adapter de Supabase, JWT, banco ou API key real faz parte desta fase.
+
+## Validação
+
+O Pull Request #12 passou no CI com:
+
+- lint/typecheck da API;
+- build do monorepo;
+- smoke HTTP da API foundation;
+- 13/13 testes da API, incluindo 7 testes de segurança;
+- 36/36 testes existentes do web.
+
+Nenhum arquivo funcional de `apps/web` foi alterado.
