@@ -3,6 +3,8 @@ name: Security Code Scan
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -42,5 +44,35 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run ESLint security scan
-        run: bunx eslint apps/api apps/web --max-warnings=0
+      - name: Run ESLint security scan (API)
+        working-directory: apps/api
+        run: bunx eslint . --max-warnings=0
+
+      # NOTE: apps/web possui débito legado de lint (~1424 errors / ~115 warnings)
+      # fora de escopo por FRONT LOCK. Este passo permanece vermelho até que o
+      # frontend seja autorizado a ser remediado. Não mascarar com continue-on-error.
+      - name: Run ESLint security scan (Web - esperado FAIL por débito legado)
+        working-directory: apps/web
+        run: bunx eslint . --max-warnings=0
+
+  dependency-vulnerability-scan:
+    runs-on: ubuntu-latest
+    name: Dependency Vulnerability Scan
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@4a438575045573fff4c0378427bc6ce004571e6b # v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Política: vulnerabilidades high/critical quebram o gate (exit 1).
+      # Observação: o comando `bun audit` existe na versão 1.3.12 usada aqui
+      # (verificado localmente com `bun audit --help`). Não usar `npm audit`.
+      - name: Run dependency vulnerability scan
+        run: bun audit --audit-level=high

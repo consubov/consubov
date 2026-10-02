@@ -1,9 +1,44 @@
 const requestIdHeader = {
-  description: "Correlation identifier for the request.",
+  description:
+    "Identifier of the single HTTP exchange that produced this response. Echoed from the incoming x-request-id header when valid, otherwise generated. Distinct from x-correlation-id, which may span multiple exchanges.",
   schema: {
     type: "string",
   },
 } as const;
+
+const requestIdParameter = {
+  in: "header",
+  name: "x-request-id",
+  required: false,
+  description:
+    "Client-supplied identifier for this specific request. When present, valid and at most 128 characters, it is echoed back in the x-request-id response header and in error bodies; otherwise a new id is generated.",
+  schema: {
+    type: "string",
+  },
+} as const;
+
+const correlationIdParameter = {
+  in: "header",
+  name: "x-correlation-id",
+  required: false,
+  description:
+    "Client-supplied correlation identifier that ties related requests of one business operation together. When absent or invalid, it falls back to the resolved requestId. Echoed as correlationId in error bodies.",
+  schema: {
+    type: "string",
+  },
+} as const;
+
+const errorResponse = (description: string) => ({
+  description,
+  headers: {
+    "x-request-id": requestIdHeader,
+  },
+  content: {
+    "application/json": {
+      schema: { $ref: "#/components/schemas/ApiError" },
+    },
+  },
+});
 
 const statusSchema = (value: string) => ({
   type: "object",
@@ -17,19 +52,25 @@ const statusSchema = (value: string) => ({
   },
 });
 
+const trackingParameters = [
+  { $ref: "#/components/parameters/RequestId" },
+  { $ref: "#/components/parameters/CorrelationId" },
+] as const;
+
 export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Consubov API",
     version: "0.1.0",
     description:
-      "Local API foundation. Persistence, authentication and remote integrations are intentionally not connected yet.",
+      "Local API foundation. Persistence, authentication and remote integrations are intentionally not connected yet.\n\nError model: every error response body follows the ApiError schema ({ error: { code, message, requestId, correlationId } }). Status codes emitted today: 401 UNAUTHORIZED for admin/internal routes while authentication is unimplemented (deny-by-default), 404 NOT_FOUND when no route matches the path and method, and 500 INTERNAL_ERROR for unhandled failures (stack traces are never serialized).",
   },
   paths: {
     "/api/v1/health": {
       get: {
         operationId: "getHealth",
         summary: "Process health",
+        parameters: trackingParameters,
         responses: {
           "200": {
             description: "The API process is healthy.",
@@ -42,6 +83,9 @@ export const openApiDocument = {
               },
             },
           },
+          "500": errorResponse(
+            "Unhandled failure while processing the request.",
+          ),
         },
       },
     },
@@ -49,6 +93,7 @@ export const openApiDocument = {
       get: {
         operationId: "getReadiness",
         summary: "Process readiness",
+        parameters: trackingParameters,
         responses: {
           "200": {
             description:
@@ -62,6 +107,9 @@ export const openApiDocument = {
               },
             },
           },
+          "500": errorResponse(
+            "Unhandled failure while processing the request.",
+          ),
         },
       },
     },
@@ -69,6 +117,7 @@ export const openApiDocument = {
       get: {
         operationId: "getOpenApiDocument",
         summary: "OpenAPI contract",
+        parameters: trackingParameters,
         responses: {
           "200": {
             description: "The current OpenAPI 3.1 contract.",
@@ -83,6 +132,9 @@ export const openApiDocument = {
               },
             },
           },
+          "500": errorResponse(
+            "Unhandled failure while processing the request.",
+          ),
         },
       },
     },
@@ -90,6 +142,7 @@ export const openApiDocument = {
       get: {
         operationId: "getApiDocs",
         summary: "Consubov Developers documentation",
+        parameters: trackingParameters,
         responses: {
           "200": {
             description: "Navigable API documentation generated from OpenAPI.",
@@ -104,30 +157,40 @@ export const openApiDocument = {
               },
             },
           },
+          "500": errorResponse(
+            "Unhandled failure while processing the request.",
+          ),
         },
       },
     },
   },
   components: {
+    parameters: {
+      RequestId: requestIdParameter,
+      CorrelationId: correlationIdParameter,
+    },
     schemas: {
       ApiError: {
         type: "object",
         additionalProperties: false,
         required: ["error"],
         properties: {
-              error: {
+          error: {
             type: "object",
             additionalProperties: false,
-             required: ["code", "message", "requestId"],
-             properties: {
-               code: {
-                 type: "string",
-                 enum: ["NOT_FOUND", "UNAUTHORIZED", "INTERNAL_ERROR"],
-               },
+            required: ["code", "message", "requestId", "correlationId"],
+            properties: {
+              code: {
+                type: "string",
+                enum: ["NOT_FOUND", "UNAUTHORIZED", "INTERNAL_ERROR"],
+              },
               message: {
                 type: "string",
               },
-               requestId: {
+              requestId: {
+                type: "string",
+              },
+              correlationId: {
                 type: "string",
               },
             },
@@ -137,4 +200,3 @@ export const openApiDocument = {
     },
   },
 } as const;
-

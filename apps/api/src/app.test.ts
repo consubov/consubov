@@ -112,7 +112,7 @@ describe("Consubov API foundation", () => {
   });
 
   test("500 internal server error returns standardized error without stack trace", async () => {
-    const { routes } = require("./routes");
+    const routes = (await import("./routes")).routes;
     routes.push({
       path: "/api/test/fail",
       method: "GET",
@@ -198,9 +198,9 @@ describe("Consubov API foundation", () => {
     expect(JSON.stringify(body).toLowerCase()).not.toContain("stack");
   });
 
-  test("inventory and OpenAPI paths do not diverge", () => {
-    const { routes } = require("./routes");
-    const { openApiDocument } = require("./openapi");
+  test("inventory and OpenAPI paths do not diverge", async () => {
+    const routes = (await import("./routes")).routes;
+    const openApiDocument = (await import("./openapi")).openApiDocument;
 
     const pathsFromInventory = routes.map((r: { path: string }) => r.path).sort();
     const pathsFromOpenApi = Object.keys(openApiDocument.paths).sort();
@@ -217,7 +217,7 @@ describe("Consubov API foundation", () => {
   });
 
   test("admin routes are denied by default without proper policy/auth", async () => {
-    const { routes } = require("./routes");
+    const routes = (await import("./routes")).routes;
 
     // Temporarily add a test admin route
     routes.push({
@@ -262,3 +262,5 @@ describe("Consubov API foundation", () => {
     expect(html).toContain("/api/v1/openapi.json");
   });
 });
+
+

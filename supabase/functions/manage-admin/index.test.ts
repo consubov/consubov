@@ -291,6 +291,135 @@ describe("manage-admin edge function", () => {
     expect(data.success).toBe(true);
   });
 
+  it("blocks deletion of the last active admin", async () => {
+    setupAuth({ id: "admin-123", email: "admin@test.com" }, null);
+    setupFromMocks([
+      createAdminFromMock({ id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" }),
+      createHandlerFromMock({
+        select: {
+          single: vi.fn().mockResolvedValue({
+            data: { id: "admin-2", user_id: "admin-456" },
+            error: null,
+          }),
+        },
+      }),
+      {
+        select: vi.fn(() => createMockChain({
+          mockResponse: { count: 1, error: null },
+        })),
+      },
+    ]);
+
+    const req = createMockRequest(
+      { action: "delete", admin_id: "admin-2" },
+      "Bearer valid-admin-token"
+    );
+    const res = await manageAdminHandler(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("Não é possível excluir o único administrador do sistema");
+    expect(mockClient.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("emits structured audit for update without sensitive values", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    setupAuth({ id: "admin-123", email: "admin@test.com" }, null);
+    setupFromMocks([
+      createAdminFromMock({ id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" }),
+      createHandlerFromMock({
+        select: {
+          single: vi.fn().mockResolvedValue({
+            data: { id: "admin-2", user_id: "admin-456", email: "admin2@test.com" },
+            error: null,
+          }),
+        },
+      }),
+      createHandlerFromMock({
+        select: {
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        },
+      }),
+      createHandlerFromMock({
+        update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
+      }),
+    ]);
+
+    mockClient.auth.admin.updateUser.mockResolvedValue({ error: null });
+
+    const req = createMockRequest(
+      { action: "update", admin_id: "admin-2", nome: "Updated", email: "updated@test.com", nova_senha: "supersecret123" },
+      "Bearer valid-admin-token"
+    );
+    const res = await manageAdminHandler(req);
+    expect(res.status).toBe(200);
+
+    const logged = [...logSpy.mock.calls, ...errorSpy.mock.calls]
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .join("\n");
+
+    expect(logged).not.toContain("updated@test.com");
+    expect(logged).not.toContain("supersecret123");
+
+    const auditLine = logSpy.mock.calls
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .find((line) => line.includes('"audit":true') && line.includes('"action":"update"') && line.includes('"result":"success"'));
+    expect(auditLine).toBeDefined();
+    expect(auditLine).toContain('"actor":"admin-1"');
+    expect(auditLine).toContain('"target":"admin-2"');
+    expect(auditLine).toContain('"nome"');
+    expect(auditLine).toContain('"nova_senha"');
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("emits structured audit for delete and never logs credentials", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    setupAuth({ id: "admin-123", email: "admin@test.com" }, null);
+    setupFromMocks([
+      createAdminFromMock({ id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" }),
+      createHandlerFromMock({
+        select: {
+          single: vi.fn().mockResolvedValue({
+            data: { id: "admin-2", user_id: "admin-456" },
+            error: null,
+          }),
+        },
+      }),
+      createHandlerFromMock({
+        select: vi.fn(() => createMockChain({
+          mockResponse: { count: 2, error: null },
+        })),
+      }),
+      createHandlerFromMock({
+        delete: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
+      }),
+    ]);
+
+    mockClient.auth.admin.deleteUser.mockResolvedValue({ error: null });
+
+    const req = createMockRequest(
+      { action: "delete", admin_id: "admin-2" },
+      "Bearer valid-admin-token"
+    );
+    const res = await manageAdminHandler(req);
+    expect(res.status).toBe(200);
+
+    const auditLine = logSpy.mock.calls
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .find((line) => line.includes('"audit":true') && line.includes('"action":"delete"') && line.includes('"result":"success"'));
+    expect(auditLine).toBeDefined();
+    expect(auditLine).toContain('"actor":"admin-1"');
+    expect(auditLine).toContain('"target":"admin-2"');
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
   it("rejects invalid action", async () => {
     setupAuth({ id: "admin-123", email: "admin@test.com" }, null);
     setupFromMocks([

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import {
   FakeAuthorizationAdapter,
+  FakeIdentityVerifierAdapter,
   FakeTenantContextAdapter,
   FakeTenancyRepository,
 } from "./fakes";
@@ -67,6 +68,71 @@ describe("FakeAuthorizationAdapter", () => {
   });
 });
 
+describe("FakeIdentityVerifierAdapter", () => {
+  const baseIdentity = {
+    tenantId: createTenantId("tenant-1"),
+    principal: { kind: "user" as const, id: createPrincipalId("user-1") },
+    scopes: [createPermissionScope("resource:read")],
+    claims: {
+      principalId: "user-1",
+      principalKind: "user" as const,
+      tenantId: createTenantId("tenant-1"),
+      scopes: [createPermissionScope("resource:read")],
+      expired: false,
+      revoked: false,
+    },
+  };
+
+  it("resolves a user principal with positive scopes", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("token-user", { identity: baseIdentity });
+    const result = await verifier.verifyAndResolve({ kind: "bearer", value: "token-user" });
+    expect(result?.principal.kind).toBe("user");
+    expect(result?.scopes).toContain("resource:read");
+  });
+
+  it("resolves an integration principal", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("key-integration", {
+      identity: {
+        ...baseIdentity,
+        principal: { kind: "integration" as const, id: createPrincipalId("int-1") },
+      },
+    });
+    const result = await verifier.verifyAndResolve({ kind: "api-key", value: "key-integration" });
+    expect(result?.principal.kind).toBe("integration");
+  });
+
+  it("returns null for missing or unknown credentials", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "" })).toBeNull();
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "unknown" })).toBeNull();
+  });
+
+  it("returns null for expired or revoked credentials", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("expired", { identity: baseIdentity, expired: true });
+    verifier.register("revoked", { identity: baseIdentity, revoked: true });
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "expired" })).toBeNull();
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "revoked" })).toBeNull();
+  });
+
+  it("returns null when tenant context cannot be resolved", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("no-tenant", {
+      identity: { ...baseIdentity, tenantId: "" as never },
+    });
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "no-tenant" })).toBeNull();
+  });
+
+  it("scopes are preserved for negative authorization cases", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("limited", { identity: { ...baseIdentity, scopes: [] as const } });
+    const result = await verifier.verifyAndResolve({ kind: "bearer", value: "limited" });
+    expect(result?.scopes).toEqual([]);
+  });
+});
+
 describe("FakeTenancyRepository", () => {
   let repo: FakeTenancyRepository;
 
@@ -96,7 +162,8 @@ describe("FakeTenancyRepository", () => {
       principalId: createPrincipalId("user-1"),
       status: MembershipStatus.ACTIVE,
       role: "admin",
-      joinedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     repo.createMembership(membership);
@@ -129,7 +196,8 @@ describe("FakeTenancyRepository", () => {
       principalId: createPrincipalId("user-1"),
       status: MembershipStatus.ACTIVE,
       role: "admin",
-      joinedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     repo.createTenant(tenant);
@@ -156,9 +224,10 @@ describe("FakeTenancyRepository", () => {
       id: "membership-1",
       tenantId: createTenantId("tenant-1"),
       principalId: createPrincipalId("user-1"),
-      status: MembershipStatus.PENDING,
+      status: "PENDING" as MembershipStatus,
       role: "admin",
-      joinedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     repo.createTenant(tenant);
@@ -183,3 +252,4 @@ describe("FakeTenancyRepository", () => {
     expect(activeTenant).toBeNull();
   });
 });
+

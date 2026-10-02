@@ -1,15 +1,13 @@
 import { describe, it, expect, beforeEach, vi, Mock } from "vitest";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-vi.mock("@supabase/supabase-js", () => ({
+vi.mock("https://esm.sh/@supabase/supabase-js@2", () => ({
   createClient: vi.fn(),
 }));
 
 const mockAdminClient = {
   auth: {
-    admin: {
-      getUser: vi.fn(),
-    },
+    getUser: vi.fn(),
   },
   from: vi.fn(() => ({
     select: vi.fn(() => ({
@@ -21,6 +19,8 @@ const mockAdminClient = {
     })),
   })),
 };
+
+const originalDenoEnvGet = (globalThis as any).Deno.env.get;
 
 let requireAdmin: (req: Request) => Promise<{ admin: any; error: Response | null }>;
 
@@ -48,11 +48,14 @@ function createMockRequest(authHeader?: string): Request {
 describe("requireAdmin auth helper", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    (globalThis as any).Deno.env.get = originalDenoEnvGet;
     await loadAuthHelper();
   });
 
   it("returns 500 when SUPABASE_URL is not configured", async () => {
-    vi.stubEnv("SUPABASE_URL", undefined);
+    (globalThis as any).Deno.env.get = vi.fn((key: string) =>
+      key === "SUPABASE_SERVICE_ROLE_KEY" ? "test-service-role-key" : undefined,
+    );
     vi.resetModules();
     (createClient as Mock).mockReturnValue(mockAdminClient);
     const mod = await import("../_shared/auth.ts");
@@ -63,7 +66,9 @@ describe("requireAdmin auth helper", () => {
   });
 
   it("returns 500 when SUPABASE_SERVICE_ROLE_KEY is not configured", async () => {
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", undefined);
+    (globalThis as any).Deno.env.get = vi.fn((key: string) =>
+      key === "SUPABASE_URL" ? "http://localhost:54321" : undefined,
+    );
     vi.resetModules();
     (createClient as Mock).mockReturnValue(mockAdminClient);
     const mod = await import("../_shared/auth.ts");
@@ -89,7 +94,7 @@ describe("requireAdmin auth helper", () => {
   });
 
   it("returns 401 when token is invalid", async () => {
-    mockAdminClient.auth.admin.getUser.mockResolvedValue({
+    mockAdminClient.auth.getUser.mockResolvedValue({
       data: { user: null },
       error: { message: "Invalid token" },
     });
@@ -102,7 +107,7 @@ describe("requireAdmin auth helper", () => {
   });
 
   it("returns 403 when user is not an active admin", async () => {
-    mockAdminClient.auth.admin.getUser.mockResolvedValue({
+    mockAdminClient.auth.getUser.mockResolvedValue({
       data: { user: { id: "user-123", email: "user@test.com" } },
       error: null,
     });
@@ -124,7 +129,7 @@ describe("requireAdmin auth helper", () => {
   });
 
   it("returns admin when user is an active admin", async () => {
-    mockAdminClient.auth.admin.getUser.mockResolvedValue({
+    mockAdminClient.auth.getUser.mockResolvedValue({
       data: { user: { id: "admin-123", email: "admin@test.com" } },
       error: null,
     });
@@ -152,3 +157,5 @@ describe("requireAdmin auth helper", () => {
     });
   });
 });
+
+

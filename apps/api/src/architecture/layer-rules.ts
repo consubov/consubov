@@ -153,11 +153,14 @@ export function collectSourceFiles(root: string): SourceFile[] {
   const files: SourceFile[] = [];
 
   function walk(dir: string): void {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
       if (statSync(full).isDirectory()) {
         walk(full);
       } else if (entry.endsWith(".ts") && !entry.endsWith(".test.ts")) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
         files.push({ path: full, content: readFileSync(full, "utf8") });
       }
     }

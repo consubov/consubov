@@ -8,7 +8,7 @@ Esta documentação registra a fundação de contratos de infraestrutura da arqu
 3. **Pertencimento:** A interface (port) pertence ao módulo que a consome (ex: o repositório do domínio de Farm pertence ao módulo Farm). Contratos transversais pertencem a `apps/api/src/shared/ports`.
 4. **Dependência Interna:** Contratos devem importar apenas tipos internos do domínio/aplicação.
 
-## 1. Segurança e Tenancy (`apps/api/src/modules/security/domain/`)
+## 1. Segurança e Tenancy (`apps/api/src/modules/identity-tenancy/domain/`)
 
 - **IdentityVerifierPort**: Avalia as credenciais para retornar a identidade já autenticada (`VerifiedIdentity`). Independente do modelo JWT ou API Key.
 - **TenantContextPort**: Resolve o contexto aplicacional do *tenant* a partir da identidade confirmada, retornando o `AuthenticatedRequestContext`. Não acoplado a regras definitivas de membership.
@@ -25,16 +25,16 @@ Esta documentação registra a fundação de contratos de infraestrutura da arqu
 
 ## 3. Armazenamento e Integrações Externas
 
-- **FileStoragePort (`apps/api/src/modules/storage/domain/`)**: Contrato abstraindo o armazenamento de arquivos (salvar, remover, obter referência), obrigatoriamente exigindo contexto de tenant. Sem dependência ao S3 ou Storage do Supabase.
+- **FileStoragePort (`apps/api/src/modules/files/domain/ports.ts`)**: Contrato abstraindo o armazenamento de arquivos (salvar, remover, obter referência), obrigatoriamente exigindo contexto de tenant. Sem dependência ao S3 ou Storage do Supabase.
   - *Adaptadores Atuais:* FakeFileStorageAdapter.
-- **NotificationPort (`apps/api/src/modules/notifications/domain/`)**: Responsável pelo disparo de alertas/comunicações para o usuário, independentemente de canal (Push, E-mail, SMS).
+- **NotificationPort (`apps/api/src/modules/notifications/domain/ports.ts`)**: Responsável pelo disparo de alertas/comunicações para o usuário, independentemente de canal (Push, E-mail, SMS).
   - *Adaptadores Atuais:* FakeNotificationAdapter.
 
-## 4. Persistência de Domínio (`apps/api/src/modules/farm/domain/repositories/`)
+## 4. Persistência de Domínio (`apps/api/src/modules/farms/domain/`)
 
 - Em vez de um repositório CRUD genérico e sem semântica para toda aplicação, cada módulo de negócio que precisa persistir dados define sua própria interface específica.
-- **Exemplo Real:** `FarmRepository` no módulo Farm. Contrato permite a recuperação, criação e deleção baseada estritamente nos tipos do próprio domínio.
-  - *Adaptadores Atuais:* FakeFarmRepository. As implementações concretas remotas (ex: via Postgres/Supabase) serão tratadas na Fase 3.5.
+- **Exemplo Real:** `FarmRepository` no módulo Farms (`apps/api/src/modules/farms/domain/ports.ts`). Contrato permite a recuperação, criação e deleção baseada estritamente nos tipos do próprio domínio.
+  - *Adaptadores Atuais:* FakeFarmRepository (`apps/api/src/modules/farms/infrastructure/FakeFarmRepository.ts`). As implementações concretas remotas (ex: via Postgres/Supabase) serão tratadas na Fase 3.5.
 
 ## 5. Infraestrutura Compartilhada e Core (`apps/api/src/shared/ports/`)
 

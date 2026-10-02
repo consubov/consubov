@@ -1,5 +1,5 @@
 import type { AuthorizationDecision } from "./errors";
-import type { Claims, VerifiedIdentityWithClaims } from "./claims";
+import type { VerifiedIdentityWithClaims } from "./claims";
 import type {
   AuthenticatedRequestContext,
   PermissionScope,
@@ -52,3 +52,4 @@ export interface AuthorizationPort {
     requirement: AccessRequirement,
   ): Promise<AuthorizationDecision>;
 }
+

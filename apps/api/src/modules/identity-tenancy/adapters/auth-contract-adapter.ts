@@ -1,5 +1,4 @@
 import type { Claims, VerifiedIdentityWithClaims } from "../domain/claims";
-import type { AuthenticatedRequestContext } from "../domain/identity";
 import type { AuthContractPort } from "../domain/AuthContractPort";
 import type { FakeTenancyRepository } from "./fakes";
 import { FakeTenantContextAdapter } from "./fakes";
@@ -27,7 +26,7 @@ export class FakeAuthContractAdapter implements AuthContractPort {
       scopes: [] as const,
     };
 
-    const context = await this.tenantContext.resolveContext(identity, "generated-request-id");
+    await this.tenantContext.resolveContext(identity, "generated-request-id");
 
     const claims: Claims = {
       principalId: membership.principalId as string,
@@ -41,3 +40,4 @@ export class FakeAuthContractAdapter implements AuthContractPort {
     return { ...identity, claims } as VerifiedIdentityWithClaims;
   }
 }
+

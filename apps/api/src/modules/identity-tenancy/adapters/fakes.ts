@@ -3,10 +3,13 @@ import type { AuthorizationDecision } from "../domain/errors";
 import { createAuthenticatedRequestContext } from "../domain/identity";
 import type {
   AccessRequirement,
+  AuthenticationCredential,
   AuthorizationPort,
+  IdentityVerifierPort,
   TenantContextPort,
   VerifiedIdentity,
 } from "../domain/ports";
+import type { Claims, VerifiedIdentityWithClaims } from "../domain/claims";
 import type { AuthenticatedRequestContext } from "../domain/identity";
 import { MembershipStatus, type Tenant, type Membership, type ActiveTenant } from "../domain/tenant-model";
 
@@ -34,6 +37,38 @@ export class FakeAuthorizationAdapter implements AuthorizationPort {
       resourceTenantId: requirement.resourceTenantId,
       requiredScopes: requirement.requiredScopes,
     });
+  }
+}
+
+export type FakeIdentityRecord = {
+  identity: VerifiedIdentityWithClaims;
+  expired?: boolean;
+  revoked?: boolean;
+};
+
+export class FakeIdentityVerifierAdapter implements IdentityVerifierPort {
+  constructor(private records: Map<string, FakeIdentityRecord> = new Map()) {}
+
+  register(credentialValue: string, record: FakeIdentityRecord): void {
+    this.records.set(credentialValue, record);
+  }
+
+  async verifyAndResolve(
+    credential: AuthenticationCredential,
+  ): Promise<VerifiedIdentityWithClaims | null> {
+    if (!credential || typeof credential.value !== "string" || credential.value.trim() === "") {
+      return null;
+    }
+    const record = this.records.get(credential.value);
+    if (!record) return null;
+    const claims: Claims = {
+      ...record.identity.claims,
+      expired: record.expired ?? record.identity.claims.expired,
+      revoked: record.revoked ?? record.identity.claims.revoked,
+    };
+    if (claims.expired || claims.revoked) return null;
+    if (!record.identity.tenantId) return null;
+    return { ...record.identity, claims };
   }
 }
 

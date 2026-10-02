@@ -11,23 +11,23 @@ As entidades do ecossistema CONSUBOV são classificadas de acordo com seu modelo
 
 ### Classe A — Sincronizável e Mutável
 Entidades de campo que sofrem edições e exclusões locais offline e precisam ser sincronizadas bidirecionalmente ou via fila idempotente.
-* **Entidades:** `visitas_tecnicas`, `visita_pastos`, `visita_currais`, `visita_topicos`, `avaliacoes_score`, `avaliacoes_fabrica_quesito`, `visita_fotos`, `visita_topico_fotos`, `pesagens`, `lotes`.
-* **Regra de Exclusão:** **NÃO UTILIZAR HARD DELETE**. Devem usar Exclusão Lógica (`deleted_at`) ou Tombstone com ID estável.
+* **Entidades:** [PENDENTE] — lista concreta a confirmar por evidência (PRD/código).
+* **Regra de Exclusão:** [PENDENTE] — tendência: sem hard delete enquanto houver clientes offline; Exclusão Lógica (`deleted_at`) ou Tombstone.
 
 ### Classe B — Sincronizável Append-Only / Eventos
 Registros imutáveis por natureza, gerados como série temporal ou log de eventos operacionais.
-* **Entidades:** `movimentacoes_estoque`, `historico_pesagens`, `historico_transferencias`, `registros_telemetria`, `audit_logs`.
-* **Regra de Exclusão:** **EXCLUSÃO PROIBIDA**. Eventos corrigidos devem gerar um novo evento compensatório.
+* **Entidades:** [PENDENTE] — lista concreta a confirmar por evidência (PRD/código).
+* **Regra de Exclusão:** [PENDENTE] — tendência: exclusão proibida; eventos corrigidos geram evento compensatório.
 
 ### Classe C — Somente Servidor (Server-Only)
 Dados e configurações gerenciados exclusivamente no servidor/admin via painel Web online.
-* **Entidades:** `tenants` (empresas), `usuarios_globais`, `perfis_acesso`, `configuracoes_sistema`.
-* **Regra de Exclusão:** Exclusão controlada via regras de domínio administrativas (ex.: soft delete ou desativação de conta).
+* **Entidades:** [PENDENTE] — lista concreta a confirmar por evidência (PRD/código).
+* **Regra de Exclusão:** [PENDENTE] — tendência: exclusão controlada por regras de domínio administrativas.
 
 ### Classe D — Cache / Projeções Descartáveis
 Dados armazenados localmente apenas para desempenho e suporte visual offline, sem status de fonte da verdade.
-* **Entidades:** `snapshots` (visitas), `screenCache` (Gerente/Admin), cache de imagens locais (`foto_blob`), índices temporários de buscas.
-* **Regra de Exclusão:** **HARD DELETE PERMITIDO**. Podem ser apagados/expurgados localmente sem impacto na sincronização central.
+* **Entidades:** [PENDENTE] — lista concreta a confirmar por evidência (PRD/código).
+* **Regra de Exclusão:** [PENDENTE] — tendência: hard delete permitido localmente.
 
 ### Classe E — PENDENTE
 Entidades sob levantamento em PRDs futuros ou com regras de negócio ainda não consolidadas.
@@ -71,13 +71,9 @@ export type SyncTombstone = {
 
 ## 5. Resolução de Conflitos e Processamento Idempotente
 
-1. **Delete x Update Concorrentes**:
-   - Se um comando de `delete` é processado no servidor, atualizações posteriores enviadas por clientes offline com timestamp local anterior ou posterior ao delete **não devem ressuscitar** a entidade automaticamente.
-   - O Tombstone/Delete possui precedência sobre *updates* tardios (*Delete Wins*).
-2. **Idempotência no Retry**:
-   - Reenviar um comando de exclusão (`delete`) para um registro que já não existe ou já foi marcado como apagado deve retornar sucesso e confirmação (operação neutra e idempotente).
-3. **Regra de Negócio Específica (Estoque, Transferências, Pesagens)**:
-   - Não utilizar estratégia *Last-Write-Wins* (LWW) genérica para movimentações físicas e financeiras. Exclusões ou estornos nestes domínios exigem validação de saldo e criação de lançamentos de ajuste.
+1. **Delete x Update Concorrentes**: [PENDENTE] — sem decisão aprovada comprovada. Tendência de design: o Tombstone/Delete possuiria precedência sobre *updates* tardios (*Delete Wins*), impedindo ressurreição da entidade.
+2. **Idempotência no Retry**: Reenviar um comando de exclusão (`delete`) para um registro que já não existe ou já foi marcado como apagado deve retornar sucesso e confirmação (operação neutra e idempotente).
+3. **Regra de Negócio Específica (Estoque, Transferências, Pesagens)**: [PENDENTE] — sem decisão aprovada comprovada. Tendência: não utilizar LWW genérico; exclusões/estornos exigiriam validação de saldo e lançamentos de ajuste.
 
 ---
 

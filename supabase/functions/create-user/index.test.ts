@@ -227,7 +227,7 @@ describe("create-user edge function", () => {
     expect(data.message).toBe("Administrador criado com sucesso");
   });
 
-  it("treats invalid role in body as regular user", async () => {
+  it("returns 400 when role is not in the allowlist", async () => {
     mockClient.auth.getUser.mockResolvedValue({
       data: { user: { id: "admin-123", email: "admin@test.com" } },
       error: null,
@@ -244,20 +244,123 @@ describe("create-user edge function", () => {
         })),
       })),
     });
-    mockClient.auth.admin.createUser.mockResolvedValue({
-      data: { user: { id: "new-user-123", email: "new@test.com" } },
-      error: null,
-    });
 
     const req = createMockRequest(
       { email: "new@test.com", senha: "123456", role: "invalid-role" },
       "Bearer valid-admin-token"
     );
     const res = await createUserHandler(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("Role inválida");
+    expect(mockClient.auth.admin.createUser).not.toHaveBeenCalled();
+  });
+
+  it("preserves legacy payload: nome without role creates administrator", async () => {
+    mockClient.auth.getUser.mockResolvedValue({
+      data: { user: { id: "admin-123", email: "admin@test.com" } },
+      error: null,
+    });
+    mockClient.from
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" },
+                error: null,
+              }),
+            })),
+          })),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      });
+    mockClient.auth.admin.createUser.mockResolvedValue({
+      data: { user: { id: "new-admin-123", email: "legacy@test.com" } },
+      error: null,
+    });
+    mockClient.from.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const req = createMockRequest(
+      { email: "legacy@test.com", senha: "123456", nome: "Legacy Admin" },
+      "Bearer valid-admin-token"
+    );
+    const res = await createUserHandler(req);
     expect(res.status).toBe(201);
     const data = await res.json();
-    expect(data.success).toBe(true);
-    expect(data.message).toBe("Usuário criado com sucesso");
+    expect(data.message).toBe("Administrador criado com sucesso");
+  });
+
+  it("does not log PII (nome, email, telefone, role) and emits structured audit", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockClient.auth.getUser.mockResolvedValue({
+      data: { user: { id: "admin-123", email: "admin@test.com" } },
+      error: null,
+    });
+    mockClient.from
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" },
+                error: null,
+              }),
+            })),
+          })),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          })),
+        })),
+      });
+    mockClient.auth.admin.createUser.mockResolvedValue({
+      data: { user: { id: "new-admin-123", email: "pii@test.com" } },
+      error: null,
+    });
+    mockClient.from.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const req = createMockRequest(
+      { email: "pii@test.com", senha: "123456", nome: "Nome Secreto", telefone: "11999998888", role: "administrador" },
+      "Bearer valid-admin-token"
+    );
+    const res = await createUserHandler(req);
+    expect(res.status).toBe(201);
+
+    const logged = [...logSpy.mock.calls, ...errorSpy.mock.calls]
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .join("\n");
+
+    expect(logged).not.toContain("pii@test.com");
+    expect(logged).not.toContain("Nome Secreto");
+    expect(logged).not.toContain("11999998888");
+    expect(logged).not.toContain('"role"');
+
+    const auditLine = logSpy.mock.calls
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .find((line) => line.includes('"audit":true'));
+    expect(auditLine).toBeDefined();
+    expect(auditLine).toContain('"actor":"admin-1"');
+    expect(auditLine).toContain('"action":"create-user"');
+    expect(auditLine).toContain('"result":"success"');
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it("does not leak sensitive data in error responses", async () => {

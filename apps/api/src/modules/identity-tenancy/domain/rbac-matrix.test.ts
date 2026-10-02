@@ -1,4 +1,4 @@
-import { RBAC_MATRIX, checkPermission, UserProfile, Resource, Permission } from './rbac-matrix';
+import { RBAC_MATRIX, checkPermission, UserProfile, Resource } from './rbac-matrix';
 
 describe('RBAC Matrix', () => {
   const profiles: UserProfile[] = [
@@ -58,3 +58,4 @@ describe('RBAC Matrix', () => {
     });
   });
 });
+

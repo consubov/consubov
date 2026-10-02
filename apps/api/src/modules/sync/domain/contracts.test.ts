@@ -15,23 +15,7 @@ import {
   SYNC_RETRY_DELAY_CAP_MS,
   SYNC_UPSERT_DEFAULT_CONFLICT_TARGET,
   type SyncCommand,
-  type SyncMutation,
 } from "./index";
-
-function mutation(overrides: Partial<SyncMutation> = {}): SyncMutation {
-  return {
-    id: overrides.id ?? "mut-1",
-    visitaId: "visita-1",
-    table: "visitas_tecnicas",
-    rowId: "row-1",
-    operation: "update",
-    patch: {},
-    createdAt: "2026-01-01T00:00:00.000Z",
-    tries: 0,
-    status: "pending",
-    ...overrides,
-  };
-}
 
 describe("sync contracts preserved from the running queue", () => {
   test("keeps the proven retry and deferral ceilings", () => {
@@ -81,3 +65,4 @@ describe("sync contracts preserved from the running queue", () => {
     expect(command.acknowledgedAt).toBeNull();
   });
 });
+

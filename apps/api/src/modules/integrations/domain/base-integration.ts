@@ -19,7 +19,7 @@ export interface IntegrationContract {
   finalidade: string;
 
   /** Authentication mechanism contract */
-  auth: any;
+  auth: unknown;
 
   /** Tenant scoping for the integration */
   tenantScope: string;
@@ -53,16 +53,16 @@ export interface IntegrationContract {
   errorHandling: string;
 
   /** Rate limiting contract */
-  rateLimit: any;
+  rateLimit: unknown;
 
   /** Cost documentation contract */
-  cost: any;
+  cost: unknown;
 
   /** Schema for data sent to external service */
-  dataSent: any;
+  dataSent: unknown;
 
   /** Schema for data received from external service */
-  dataReceived: any;
+  dataReceived: unknown;
 
   /** Policy for handling service unavailability */
   unavailabilityPolicy: string;

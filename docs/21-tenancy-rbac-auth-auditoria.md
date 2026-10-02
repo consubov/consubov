@@ -31,20 +31,20 @@ Representa a relação entre um Principal (Usuário/Integração) e um Tenant.
 - `principalId`: Referência ao Principal
 - `status`: Estado da membresia (`MembershipStatus`)
 - `role`: Papel atribuído dentro do tenant
-- `joinedAt`: Data de adesão
+- `createdAt` / `updatedAt`: Timestamps de ciclo de vida
 
 **ActiveTenant**
 Contrato composto utilizado para resolver o contexto de acesso atual, unindo a entidade Tenant e a Membesia ativa do principal.
 
 #### Estados de Membesia (MembershipStatus)
+O enum real em `apps/api/src/modules/identity-tenancy/domain/tenant-model.ts` contém apenas:
 - `ACTIVE`: Acesso total conforme role.
-- `PENDING`: Cadastro aguardando validação.
-- `SUSPENDED`: Acesso bloqueado administrativamente.
-- `INVITED`: Convite enviado, aguardando aceite.
+
+Estados `PENDING`, `SUSPENDED` e `INVITED` **não existem no código** → [PENDENTE] decisão futura.
 
 ## 2B.2 Matriz RBAC (Roles-Based Access Control)
 
-A matriz de permissões define a relação entre Perfis de Usuário e Recursos do Sistema.
+A matriz de permissões define a relação entre Perfis de Usuário e Recursos do Sistema. Os valores abaixo refletem literalmente o código; **nenhuma célula é uma decisão aprovada comprovada** (ver 2C para o mapa de evidência).
 
 - **Localização**: `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.ts`
 - **Estados**:
@@ -64,4 +64,22 @@ A matriz de permissões define a relação entre Perfis de Usuário e Recursos d
 | Pesador | DENY | N/A | N/A | N/A | N/A | ALLOW | ALLOW | N/A | DENY | N/A | ALLOW | DENY |
 | Pecuarista | PEND | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY |
 | SyncVet | DENY | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY | ALLOW | DENY |
+
+## 2C. Mapa de Evidência — Matriz RBAC (Bloco H)
+
+Auditoria somente-leitura de `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.ts`.
+
+### Evidência disponível
+- `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.test.ts` — testa apenas **estrutura**: matriz completa (9 perfis × 12 recursos), `checkPermission` retornando exatamente o valor da matriz, e valores válidos no conjunto `ALLOW | DENY | PENDENTE | N/A`. Ou seja, o teste só **auto-referencia** a matriz.
+- Nenhum consumidor de runtime importa `rbac-matrix.ts` / `checkPermission` / `RBAC_MATRIX` fora de `domain/index.ts` (re-export) e do próprio teste. A matriz **não** está integrada ao runtime.
+
+### Conclusão por perfil/recurso
+| Perfil \ Recurso | Estado da evidência |
+| :--- | :--- |
+| Todos os `ALLOW`/`DENY` da tabela 2B.2 | [PENDENTE] — sem teste comportamental ou PRD aprovado que comprove a decisão; a matriz apenas se auto-referencia. |
+| Células `PENDENTE`/`N/A` da tabela 2B.2 | [PENDENTE] — mesmas condições; só existem literalmente na matriz. |
+| `checkPermission(profile, resource)` | Comprovado por teste: retorna o valor literal da matriz. |
+| Completude 9×12 e valores válidos | Comprovado por teste estrutural. |
+
+> Regra aplicada: nenhuma decisão de permissão (`ALLOW`/`DENY`) é afirmada como aprovada sem evidência externa; todas as células concretas permanecem [PENDENTE] até que um teste comportamental ou PRD as comprove. A matriz não foi integrada ao runtime.
 

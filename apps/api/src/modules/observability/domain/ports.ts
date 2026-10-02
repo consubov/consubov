@@ -1,5 +1,7 @@
 import type { AuditEvent } from "./audit-contract";
 
+export type { AuditEvent } from "./audit-contract";
+
 export interface AuditLogPort {
   log(entry: AuditEvent): Promise<void>;
 }

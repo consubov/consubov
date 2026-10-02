@@ -1,7 +1,7 @@
 export interface FeatureFlagContext {
   tenantId?: string;
   userId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface FeatureFlagPort {
