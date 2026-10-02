@@ -91,6 +91,82 @@ pesagens:write
 estoque:read
 ```
 
+### Modelo ApiConsumer
+
+O modelo `ApiConsumer` representa um principal de integração com as seguintes características:
+
+- **Isolamento de Tenant**: Cada `ApiConsumer` está associado a um único tenant e não pode acessar dados de outros tenants
+- **Escopos**: Permissões granulares no formato `recurso:acao` (ex: `animais:write`)
+- **Credenciais**: API keys ou JWTs específicos para integração (não reutilizam credenciais de usuário)
+- **Revocação**: Credenciais podem ser revogadas a qualquer momento pelo admin do tenant
+- **Expiração**: Credenciais têm validade configurável (padrão: 90 dias) e requerem rotação periódica
+- **Auditoria**: Todas as ações são registradas com o `consumerId` para rastreabilidade
+
+### Contrato de Subscription de Webhook
+
+Webhooks são gerenciados através do modelo `WebhookSubscription` com as seguintes garantias:
+
+- **event_id estável**: Cada evento publicado tem um `event_id` UUID v4 imutável que permanece o mesmo em todas as tentativas de entrega
+- **Idempotência**: O mesmo `event_id` nunca será entregue duas vezes para a mesma subscription (garantido pelo provedor de mensageria)
+- **Estratégia de Retry/Backoff**:
+  - Tentativa imediata → 1min → 5min → 15min → 1h → 6h → 12h (exponencial com jitter)
+  - Máximo de 7 tentativas antes de marcar como failed
+  - Dead Letter Queue após esgotar tentativas
+- **Formato do Payload**: 
+  ```json
+  {
+    "event_id": "uuid-v4",
+    "event_type": "fazenda.atualizada",
+    "timestamp": "ISO 8601 UTC",
+    "payload": {/* dados do evento específicos */},
+    "version": "1.0"
+  }
+  ```
+
+### Envelope de Evento Interno
+
+Eventos internos entre módulos seguem o envelope padrão:
+
+```json
+{
+  "event_id": "uuid-v4",
+  "event_type": "dominio.nome.evento",
+  "timestamp": "ISO 8601 UTC",
+  "version": "1.0",
+  "payload": {
+    // dados específicos do evento
+  },
+  "metadata": {
+    "source_module": "string",
+    "correlation_id": "opcional-uuid",
+    "tenant_id": "uuid"
+  }
+}
+```
+
+- **Versioning**: O campo `version` permite evolução segura do schema; consumers devem ignorar campos desconhecidos
+- **Relation to EventPublisherPort**: O `EventPublisherPort` é responsável por publicar eventos neste envelope padrão, garantindo consistência entre módulos
+- **Imutabilidade**: Uma vez publicado, o envelope não pode ser alterado
+
+### Contrato Base do Adapter de Integração
+
+Todos os adapters de integração externa devem seguir este contrato:
+
+#### Campos Obrigatórios:
+- `owner`: Equipe ou sistema responsável pelo adapter
+- `purpose`: Descrição clara da finalidade da integração
+- `auth`: Mecanismo de autenticação usado (API key, OAuth, mTLS, etc.)
+- `rate_limit`: Limites configurados para o provider externo
+- `timeout`: Configuração de timeout para chamadas externas
+- `circuit_breaker`: Configuração do padrão circuit breaker
+
+#### Regras:
+- **SDKs devem ficar nos adapters**: Nenhum SDK de provider externo pode ser importado diretamente pelos módulos de domínio ou application
+- **Adaptadores ficam em**: `modules/<dominio>/integrations/` ou `packages/integrations/` quando houver múltiplos consumidores
+- **Portas, não implementações**: Adapters implementam portas definidas no domínio (ex: `NotificationSenderPort`)
+- **Teste com dublês**: Adapters devem ser testáveis com fakes/mocks sem depender de providers reais
+- **Nenhuma lógica de negócio**: Adapters fazem apenas tradução de dados e chamadas de rede; regras de negócio ficam no domínio
+
 ## Erros e Correlação
 
 ### Envelope de Erro Padronizado

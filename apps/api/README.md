@@ -6,6 +6,16 @@ Fundação local da API do Consubov.
 
 Esta aplicação é deliberadamente stateless e ainda não possui integração com banco de dados, Supabase remoto, autenticação real ou deploy.
 
+### Novos Contratos de Integração
+
+A API implementa contratos de extensibilidade definidos na Fase 2A:
+- **ApiConsumer**: principals de integração com isolamento de tenant, escopos granulares e credenciais revogáveis/expiráveis.
+- **Webhook Subscription**: entrega de eventos com `event_id` estável, idempotência e estratégia de retry/backoff.
+- **Internal Event Envelope**: padronização de eventos internos com versionamento via `EventPublisherPort`.
+- **Base Integration Adapter**: contrato obrigatório para adapters externos (owner, purpose, auth, etc), mantendo SDKs isolados.
+
+Esta aplicação é deliberadamente stateless e ainda não possui integração com banco de dados, Supabase remoto, autenticação real ou deploy.
+
 ## Desenvolvimento
 
 A partir da raiz do monorepo:

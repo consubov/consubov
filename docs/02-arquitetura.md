@@ -168,6 +168,26 @@ A arquitetura deve permitir:
 - observabilidade;
 - extração futura de módulos para serviços independentes sem reescrever o domínio.
 
+## Extensibilidade e Integrações
+
+O Consubov suporta extensibilidade através de dois mecanismos principais:
+
+### ApiConsumer como Principal Separado
+- Integrações externas autenticam-se como `ApiConsumer` principals, distintos de usuários finais
+- Isolamento de tenant estrito: cada consumer acessa apenas dados do seu tenant
+- Autorização por escopos granulares (`recurso:acao`)
+- Credenciais dedicadas com revocação e expiração configuráveis
+
+### Abordagem Baseada em Adapters
+- Integrações com sistemas externos são implementadas como adapters
+- Adapters ficam em `modules/<dominio>/integrations/` ou `packages/integrations/` quando reutilizados
+- SDKs de providers externos devem permanecer dentro dos adapters (não vazar para domínio/application)
+- Adapters implementam portas definidas no domínio (ex: `NotificationSenderPort`, `EventPublisherPort`)
+- Nenhuma lógica de negócio nos adapters - apenas tradução de dados e chamadas de rede
+- Todos os adapters seguem contrato base com campos obrigatórios: owner, purpose, auth, rate_limit, timeout, circuit_breaker
+
+Essas abordagens garantem que integrações externas não acoplem o domínio principal e mantenham os limites arquiteturais estabelecidos.
+
 ## Regra de dependência
 
 A UI não deve concentrar regra de negócio.
