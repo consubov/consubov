@@ -26,9 +26,60 @@ Por padrão a API usa a porta `3000`. Para alterar localmente, defina `PORT`.
 
 Toda resposta inclui `x-request-id`.
 
+## Erros e Rastreabilidade
+
+Erros retornam um envelope padronizado contendo `code`, `message`, `requestId` e `correlationId`:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Route not found",
+    "requestId": "...",
+    "correlationId": "..."
+  }
+}
+```
+
+- `x-request-id`: rastreia a requisição individual (gerado ou preservado).
+- `x-correlation-id`: rastreia a cadeia de correlação (utiliza fallback para `requestId` quando não informado).
+- Stack traces e dados sensíveis nunca são expostos nas respostas da API.
+
+
+## Estrutura de módulos
+
+```text
+src/
+├── app.ts, http.ts, openapi.ts, docs.ts   # fundação HTTP stateless
+├── architecture/                          # regras arquiteturais automatizadas
+└── modules/
+    ├── index.ts                           # superfície pública (namespaces)
+    ├── identity-tenancy/                  # identidade, tenant, escopo, autorização
+    ├── farms/  pastures/  livestock/
+    ├── nutrition/  feed-mill/  inventory/
+    ├── weighing/  visits/  reporting/
+    ├── notifications/  files/  sync/
+    └── saas-admin/  integrations/
+```
+
+Os 15 módulos do ADR-0003 existem porque há contrato, regra pura ou porta real em
+cada um. `apps/api/src/modules/index.ts` os expõe como namespace, para que dois
+módulos nunca colidam por nome exportado; a API pública de cada módulo é o seu
+próprio `index.ts`, e novos consumidores não importam arquivo interno de domínio.
+
+Convenção: `modules/<module>/{domain,application,interfaces/http,platform,integrations}`.
+Só existe diretório quando há código real naquela camada — nesta fase só `domain/`,
+mais `adapters/` e `infrastructure/`, que contêm apenas dublês em memória para
+teste. Regra de dependência: `interfaces/http → application → domain`;
+`platform`/`integrations` ficam fora do domínio.
+O teste `architecture/layer-rules.test.ts` falha se a regra for violada.
+
+`src/modules/observability/` e `src/shared/` vêm de trabalho anterior a
+esta fase e não fazem parte dos 15 módulos; ver `docs/02-arquitetura.md`.
+
 ## Segurança local
 
-`src/security/` contém apenas contratos e regras puras:
+`src/modules/identity-tenancy/domain/` contém apenas contratos e regras puras:
 
 - contexto autenticado com tenant explícito;
 - principal `user` ou `integration`;

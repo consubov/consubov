@@ -15,35 +15,75 @@ GET /api/docs
 
 Todos os endpoints são stateless.
 
-## Request ID
+## Superfícies da API e Inventário Central (FASE 2A.1)
 
-Cada requisição recebe um identificador exposto no header `x-request-id`.
+A API define formalmente quatro superfícies semânticas em `apps/api/src/routes.ts`:
+1. `/api/v1/...` — Produto
+2. `/api/v1/sync/...` — Contratos de sincronização futura
+3. `/api/public/v1/...` — API pública futura para parceiros
+4. `/api/admin/...` — Endpoints administrativos
 
-Quando o cliente envia `x-request-id` ou `x-correlation-id`, o valor é preservado se for não vazio e tiver no máximo 128 caracteres. Caso contrário, a API gera um UUID.
+### Política de Endpoints Administrativos
+- **Autenticação obrigatória**: Deny-by-default para qualquer endpoint administrativo ou interno (`surface: "admin"` ou `internal: true`).
+- **Autorização server-side** e **tenant/escopo explícito**.
+- Stack traces e segredos nunca são expostos.
 
-Erros HTTP incluem o mesmo identificador no corpo para correlação com logs.
+## Request ID e Correlation ID
+
+Cada requisição recebe um identificador de requisição individual exposto no header `x-request-id` e um identificador de correlação exposto/recebido via `x-correlation-id`.
+
+- **`request_id` (`x-request-id`)**:
+  - Identifica uma requisição HTTP individual.
+  - Sempre gerado ou preservado (quando fornecido e válido, até 128 caracteres).
+  - Nunca reutiliza ID inválido ou vazio enviado pelo cliente.
+  - Retornado no header da resposta e no envelope de erro.
+
+- **`correlation_id` (`x-correlation-id`)**:
+  - Conecta múltiplas operações ou chamadas relacionadas.
+  - Se o header `x-correlation-id` for enviado e válido, é preservado separadamente.
+  - Não substitui automaticamente o `request_id`.
+  - Política de fallback: se ausente, utiliza o `request_id` como fallback interno, garantindo rastreabilidade consistente em logs e respostas.
+
+- **`trace_id` (Futuro)**:
+  - Preparado conceitualmente para futura integração com ferramentas de rastreamento distribuído (sem acoplamento ou SDK nesta fase).
 
 ## Erros
 
-Erros públicos usam um envelope estável:
+Erros públicos usam um envelope estável e padronizado:
 
 ```json
 {
   "error": {
     "code": "NOT_FOUND",
     "message": "Route not found",
-    "requestId": "..."
+    "requestId": "...",
+    "correlationId": "..."
   }
 }
 ```
 
-Stack traces não são enviados para o cliente.
+### Códigos de erro estáveis atuais
+- `NOT_FOUND` (404)
+- `UNAUTHORIZED` (401)
+- `INTERNAL_ERROR` (500)
+
+### Regras de segurança de erros
+- Stack traces nunca são expostos em respostas HTTP (ficam restritos aos logs do processo).
+- Segredos, tokens, queries e PII nunca são serializados em mensagens ou logs de erro.
+
 
 ## OpenAPI e documentação
 
-`/api/v1/openapi.json` é o contrato da superfície implementada.
+`/api/v1/openapi.json` é o contrato formal e obrigatório da superfície implementada.
+- **Versão**: OpenAPI 3.1.0.
+- **Geração de Tipos**: Schemas centralizados sob `components/schemas` viabilizam a futura geração de clientes TypeScript fortemente tipados via ferramentas como `openapi-typescript` ou `kubb`.
 
-`/api/docs` é uma interface local sem dependências externas que lê esse contrato e lista as operações disponíveis. Uma interface mais sofisticada pode ser adotada depois sem mudar o contrato.
+### Checklist Mínimo para Novas Rotas (FASE 2A.2)
+Ao adicionar qualquer novo endpoint, certifique-se de:
+1. **Registrar no Inventário Central**: Adicionar a entrada correspondente em `apps/api/src/routes.ts`.
+2. **Documentar no OpenAPI**: Mapear o `path`, `method`, `summary`, headers (`x-request-id`), schema de request/response e possíveis códigos de erro (ex: `ApiError`) em `apps/api/src/openapi.ts`.
+3. **Autenticação & Tenant**: Declarar explicitamente exigência de auth/tenant e scopes necessários quando aplicável.
+4. **Validar Anti-Divergência**: Executar a suíte de testes (`bun test`) para garantir que o teste de divergência `routes <-> openapi` passe com sucesso.
 
 ## Dependências
 

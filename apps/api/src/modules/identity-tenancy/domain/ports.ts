@@ -1,4 +1,6 @@
+import type { AuthorizationDecision } from "./errors";
 import type {
+  AuthenticatedRequestContext,
   PermissionScope,
   Principal,
   TenantId,
@@ -31,4 +33,23 @@ export interface IdentityVerifierPort {
   verify(
     credential: AuthenticationCredential,
   ): Promise<VerifiedIdentity | null>;
+}
+
+export interface TenantContextPort {
+  resolveContext(
+    identity: VerifiedIdentity,
+    requestId: string,
+  ): Promise<AuthenticatedRequestContext>;
+}
+
+export type AccessRequirement = {
+  resourceTenantId: TenantId;
+  requiredScopes?: readonly PermissionScope[];
+};
+
+export interface AuthorizationPort {
+  authorize(
+    context: AuthenticatedRequestContext,
+    requirement: AccessRequirement,
+  ): Promise<AuthorizationDecision>;
 }

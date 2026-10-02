@@ -115,19 +115,19 @@ export const openApiDocument = {
         additionalProperties: false,
         required: ["error"],
         properties: {
-          error: {
+              error: {
             type: "object",
             additionalProperties: false,
-            required: ["code", "message", "requestId"],
-            properties: {
-              code: {
-                type: "string",
-                enum: ["NOT_FOUND", "INTERNAL_ERROR"],
-              },
+             required: ["code", "message", "requestId"],
+             properties: {
+               code: {
+                 type: "string",
+                 enum: ["NOT_FOUND", "UNAUTHORIZED", "INTERNAL_ERROR"],
+               },
               message: {
                 type: "string",
               },
-              requestId: {
+               requestId: {
                 type: "string",
               },
             },
@@ -137,3 +137,4 @@ export const openApiDocument = {
     },
   },
 } as const;
+

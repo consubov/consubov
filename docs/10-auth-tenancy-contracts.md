@@ -7,15 +7,25 @@ Definir fronteiras de segurança antes de conectar qualquer provedor de identida
 ## Localização
 
 ```text
-apps/api/src/security/
-├── authorization.ts
-├── errors.ts
-├── identity.ts
-├── ports.ts
-└── security.test.ts
+apps/api/src/modules/identity-tenancy/
+├── index.ts                    # API pública do módulo
+├── domain/
+│   ├── authorization.ts
+│   ├── errors.ts
+│   ├── identity.ts
+│   ├── index.ts
+│   ├── ports.ts
+│   └── identity-tenancy.test.ts
+└── adapters/                   # dublês de teste, sem provider real
 ```
 
+`identity-tenancy` é o primeiro módulo físico do monólito modular da API (FASE 2.1 do PRD-ARC-02) e é quem possui `TenantId`, `PrincipalId` e `PermissionScope`. Os demais módulos consomem esses tipos pela API pública do módulo, nunca por arquivo interno.
+
+O caminho anterior `apps/api/src/security/` não existe mais. A pasta `src/security/` foi movida para dentro do módulo sem alteração de semântica: os mesmos tipos, a mesma ordem de verificação tenant antes de escopo, os mesmos códigos de falha e os mesmos testes.
+
 Como esses contratos ainda são usados somente pela API, eles permanecem em `apps/api`. Um pacote compartilhado só deve ser criado quando houver consumidor real fora da API.
+
+Relacionado: a fazenda não é o tenant. `farms` não carrega `TenantId` porque `fazendas` não tem coluna de tenant e o mapeamento entre tenant e fazenda não tem prova no legado — ver `docs/02-arquitetura.md`.
 
 ## Contexto autenticado
 

@@ -20,7 +20,13 @@ interface PushOptions {
 export async function sendPush(title: string, body: string, url: string, opts: PushOptions) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const authToken = session?.access_token ?? SUPABASE_ANON_KEY;
+    const authToken = session?.access_token;
+    // PRD-SEC-03: sem sessão não há identidade para o servidor autorizar;
+    // o fallback anônimo (anon key como Bearer) permitiria chamada sem auth.
+    if (!authToken) {
+      console.warn("[pushService] Sessão ausente: push cancelado (exige caller autenticado).");
+      return;
+    }
 
     const payload: Record<string, unknown> = { title, body, url };
     if (opts.fazendaId) payload.fazenda_id = opts.fazendaId;

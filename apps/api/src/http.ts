@@ -1,11 +1,13 @@
 export const REQUEST_ID_HEADER = "x-request-id";
+export const CORRELATION_ID_HEADER = "x-correlation-id";
 
-export type ApiErrorCode = "NOT_FOUND" | "INTERNAL_ERROR";
+export type ApiErrorCode =
+  | "NOT_FOUND"
+  | "UNAUTHORIZED"
+  | "INTERNAL_ERROR";
 
 export function resolveRequestId(request: Request): string {
-  const candidate =
-    request.headers.get(REQUEST_ID_HEADER) ??
-    request.headers.get("x-correlation-id");
+  const candidate = request.headers.get(REQUEST_ID_HEADER);
 
   const normalized = candidate?.trim();
   if (normalized && normalized.length <= 128) {
@@ -13,6 +15,17 @@ export function resolveRequestId(request: Request): string {
   }
 
   return crypto.randomUUID();
+}
+
+export function resolveCorrelationId(request: Request, requestId: string): string {
+  const candidate = request.headers.get(CORRELATION_ID_HEADER);
+
+  const normalized = candidate?.trim();
+  if (normalized && normalized.length <= 128) {
+    return normalized;
+  }
+
+  return requestId;
 }
 
 function responseHeaders(
@@ -59,6 +72,7 @@ export function apiErrorResponse(
   message: string,
   status: number,
   requestId: string,
+  correlationId: string,
 ): Response {
   return jsonResponse(
     {
@@ -66,6 +80,7 @@ export function apiErrorResponse(
         code,
         message,
         requestId,
+        correlationId,
       },
     },
     status,

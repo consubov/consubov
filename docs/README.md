@@ -18,7 +18,10 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 12. [Migração progressiva de acesso a dados do web](./12-web-data-access.md)
 13. [Política de mudanças estruturais](./13-politica-mudancas-estruturais.md)
 14. [Política de código open source e terceiros](./14-politica-codigo-terceiros.md)
+15. [Ports e Adapters Fundamentais (FASE 2.3)](./15-ports-adapters-fundamentais.md)
 16. [Segurança das edge functions legadas (seed-app-secrets + cleanup-demo-accounts)](./16-seguranca-edge-functions-legadas.md)
+19. [Segurança da edge function send-push-notification (PRD-SEC-03)](./19-seguranca-push.md)
+20. [Exclusão e sincronização futura (FASE 2.6)](./19-exclusao-sync-futuro.md)
 
 ## Regra
 

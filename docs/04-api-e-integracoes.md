@@ -13,6 +13,15 @@ O Consubov terá uma API própria para uso interno e integrações externas, com
 - autorização por tenant e escopo;
 - idempotência em operações críticas.
 
+### Superfícies da API
+
+A API é organizada em superfícies semânticas para separar o ciclo de vida e o público-alvo:
+
+- `/api/v1/...` (Produto): API principal para consumo da aplicação Web e Mobile.
+- `/api/v1/sync/...` (Sincronização): Contratos dedicados a sincronização offline-first.
+- `/api/public/v1/...` (Pública): API futura para parceiros e integrações externas (comercial).
+- `/api/admin/...` (Administrativa): Endpoints de gerenciamento interno, proibidos para acesso público.
+
 ### Prefixo
 
 ```text
@@ -82,6 +91,34 @@ pesagens:write
 estoque:read
 ```
 
-## Compatibilidade
+## Erros e Correlação
 
-Mudanças incompatíveis em contratos públicos exigem nova versão ou estratégia explícita de depreciação.
+### Envelope de Erro Padronizado
+
+Todas as respostas de erro da API seguem um formato estável e desacoplado da infraestrutura interna:
+
+```json
+{
+  "error": {
+    "code": "STABLE_ERROR_CODE",
+    "message": "Mensagem pública sanitizada e segura",
+    "requestId": "req-12345",
+    "correlationId": "corr-67890"
+  }
+}
+```
+
+### Rastreabilidade (Headers e IDs)
+- `x-request-id`: Identificador único da requisição individual.
+- `x-correlation-id`: Identificador de contexto/transação distribuída. Se ausente no request, assume o valor de `requestId` como fallback.
+- `trace_id`: Reservado para observabilidade futura (OpenTelemetry/tracing).
+
+### Códigos de Erro Estáveis
+- `NOT_FOUND`: Rota ou recurso não encontrado (HTTP 404).
+- `UNAUTHORIZED`: Autenticação necessária ou inválida (HTTP 401).
+- `INTERNAL_ERROR`: Erro inesperado do servidor (HTTP 500).
+
+### Diretrizes de Segurança
+- Stack traces e detalhes de erros internos jamais são enviados para o cliente.
+- Nenhuma PII, segredo ou detalhe do provedor é exposto nas mensagens de erro.
+
