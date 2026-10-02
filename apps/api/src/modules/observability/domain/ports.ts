@@ -1,14 +1,7 @@
-export type AuditLogEntry = {
-  actorId: string;
-  tenantId: string;
-  action: string;
-  result: "success" | "failure";
-  requestId: string;
-  context?: Record<string, unknown>; // Must not contain PII
-};
+import type { AuditEvent } from "./audit-contract";
 
 export interface AuditLogPort {
-  log(entry: AuditLogEntry): Promise<void>;
+  log(entry: AuditEvent): Promise<void>;
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

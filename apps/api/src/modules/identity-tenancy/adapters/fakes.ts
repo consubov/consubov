@@ -69,4 +69,16 @@ export class FakeTenancyRepository {
 
     return { tenant, membership };
   }
+
+  getActiveTenantByPrincipal(principalId: string): ActiveTenant | null {
+    const membership = Array.from(this.memberships.values()).find(
+      (m) => m.principalId === principalId && m.status === MembershipStatus.ACTIVE
+    );
+    if (!membership) return null;
+
+    const tenant = this.tenants.get(membership.tenantId);
+    if (!tenant) return null;
+
+    return { tenant, membership };
+  }
 }

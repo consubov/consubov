@@ -1,5 +1,5 @@
 import type {
-  AuditLogEntry,
+  AuditEvent,
   AuditLogPort,
   LogLevel,
   TelemetryEvent,
@@ -8,9 +8,9 @@ import type {
 } from "../domain/ports";
 
 export class FakeAuditLogAdapter implements AuditLogPort {
-  public logs: AuditLogEntry[] = [];
+  public logs: AuditEvent[] = [];
 
-  async log(entry: AuditLogEntry): Promise<void> {
+  async log(entry: AuditEvent): Promise<void> {
     this.logs.push(entry);
   }
 }

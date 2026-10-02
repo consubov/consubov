@@ -1,4 +1,5 @@
 import type { AuthorizationDecision } from "./errors";
+import type { Claims, VerifiedIdentityWithClaims } from "./claims";
 import type {
   AuthenticatedRequestContext,
   PermissionScope,
@@ -30,9 +31,7 @@ export type VerifiedIdentity = {
  * specific identity provider.
  */
 export interface IdentityVerifierPort {
-  verify(
-    credential: AuthenticationCredential,
-  ): Promise<VerifiedIdentity | null>;
+  verifyAndResolve(credential: AuthenticationCredential): Promise<VerifiedIdentityWithClaims | null>;
 }
 
 export interface TenantContextPort {
