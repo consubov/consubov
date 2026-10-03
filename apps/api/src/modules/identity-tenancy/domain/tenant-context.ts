@@ -29,6 +29,16 @@ export const TENANT_CONTEXT_BOUNDARIES = [
 
 export type TenantContextBoundary = (typeof TENANT_CONTEXT_BOUNDARIES)[number];
 
+export type TenantScopedQuery<TQuery> = Readonly<{
+  context: TenantExecutionContext;
+  query: TQuery;
+}>;
+
+export type TenantScopedCommand<TCommand> = Readonly<{
+  context: TenantExecutionContext;
+  command: TCommand;
+}>;
+
 export function createTenantExecutionContext(input: TenantExecutionContext): TenantExecutionContext {
   if (!input.tenantId) throw new Error("tenantId is required");
   if (!input.principalId) throw new Error("principalId is required");

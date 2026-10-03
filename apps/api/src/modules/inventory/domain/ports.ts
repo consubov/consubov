@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { RetiroId } from "../../pastures";
 import type { EstoqueRetiro } from "./consumo";
 import type { MovimentacaoEstoque } from "./movimentacao";
@@ -18,11 +19,13 @@ export interface EstoqueRetiroLeituraPort {
   buscarSaldoDoBucket(
     retiroId: RetiroId,
     periodo: BucketPeriodo,
+    context: TenantExecutionContext,
   ): Promise<EstoqueRetiro | null>;
 
   listarSaldosPorPeriodo(
     retiroIds: readonly RetiroId[],
     periodo: BucketPeriodo,
+    context: TenantExecutionContext,
   ): Promise<readonly EstoqueRetiro[]>;
 }
 
@@ -30,15 +33,18 @@ export interface MovimentacaoEstoqueLeituraPort {
   listarPorPeriodo(
     retiroId: RetiroId,
     periodo: BucketPeriodo,
+    context: TenantExecutionContext,
   ): Promise<readonly MovimentacaoEstoque[]>;
 }
 
 export interface TransferenciaEstoqueLeituraPort {
   buscarPorId(
     id: TransferenciaEstoque["id"],
+    context: TenantExecutionContext,
   ): Promise<TransferenciaEstoque | null>;
 
   listarEnvolvendoRetiros(
     retiroIds: readonly RetiroId[],
+    context: TenantExecutionContext,
   ): Promise<readonly TransferenciaEstoque[]>;
 }

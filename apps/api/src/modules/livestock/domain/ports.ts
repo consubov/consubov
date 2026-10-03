@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { PastoId, RetiroId } from "../../pastures";
 import type {
   AbateRebanho,
@@ -26,13 +27,16 @@ export type FiltroEventosRetiro = {
 export interface EventosRebanhoLeituraPort {
   listarAbates(
     filtro: FiltroEventosRetiro & PeriodoMensal,
+    context: TenantExecutionContext,
   ): Promise<readonly AbateRebanho[]>;
 
   listarMortalidades(
     filtro: FiltroEventosRetiro,
+    context: TenantExecutionContext,
   ): Promise<readonly MortalidadeRebanho[]>;
 
   listarMovimentacoesDePastos(
     pastoIds: readonly PastoId[],
+    context: TenantExecutionContext,
   ): Promise<readonly MovimentacaoRebanho[]>;
 }

@@ -62,3 +62,14 @@ export const RBAC_MATRIX: Record<UserProfile, Record<Resource, Permission>> = {
 export function checkPermission(profile: UserProfile, resource: Resource): Permission {
   return RBAC_MATRIX[profile][resource];
 }
+
+/**
+ * Security gate for the planning matrix: only an explicit ALLOW authorizes.
+ * PENDENTE, DENY and N/A are all deny-by-default.
+ */
+export function isPermissionAllowed(
+  profile: UserProfile,
+  resource: Resource,
+): boolean {
+  return checkPermission(profile, resource) === "ALLOW";
+}

@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { FarmId, FarmRecord } from "../domain/farm";
 import { createFarmId } from "../domain/farm";
 import type { FarmReaderPort } from "../domain/ports";
@@ -5,7 +6,10 @@ import type { FarmReaderPort } from "../domain/ports";
 export class FakeFarmRepository implements FarmReaderPort {
   private farms = new Map<string, FarmRecord>();
 
-  async findById(id: FarmId): Promise<FarmRecord | null> {
+  async findById(
+    id: FarmId,
+    _context: TenantExecutionContext,
+  ): Promise<FarmRecord | null> {
     return this.farms.get(id) ?? null;
   }
 

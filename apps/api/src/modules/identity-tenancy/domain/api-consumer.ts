@@ -2,6 +2,20 @@ import type { PermissionScope, TenantId } from "./identity";
 
 export type ApiConsumerStatus = "active" | "revoked";
 
+export type ApiPublicAccessPolicy = Readonly<{
+  exposure: "disabled";
+  credentialMechanism: null;
+}>;
+
+/**
+ * Phase-2 gate: no public API is exposed until a real consumer and access
+ * policy exist. Credential material is therefore intentionally unconfigured.
+ */
+export const API_PUBLIC_ACCESS_POLICY: ApiPublicAccessPolicy = Object.freeze({
+  exposure: "disabled",
+  credentialMechanism: null,
+});
+
 export type ApiConsumer = {
   consumerId: string;
   name: string;

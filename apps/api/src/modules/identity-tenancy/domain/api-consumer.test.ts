@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createPermissionScope, createTenantId } from "./identity";
 import {
+  API_PUBLIC_ACCESS_POLICY,
   evaluateApiConsumerCredential,
   rotateApiConsumerCredentialReference,
   toApiConsumerAuditContext,
@@ -21,6 +22,13 @@ const baseConsumer = (): ApiConsumer => ({
 });
 
 describe("api consumer credential lifecycle", () => {
+  test("keeps the public API disabled until a real credential mechanism is approved", () => {
+    expect(API_PUBLIC_ACCESS_POLICY).toEqual({
+      exposure: "disabled",
+      credentialMechanism: null,
+    });
+  });
+
   test("rejects revoked consumer", () => {
     expect(evaluateApiConsumerCredential({ ...baseConsumer(), status: "revoked" }, new Date())).toEqual({
       allowed: false,

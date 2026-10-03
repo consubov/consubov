@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { FarmId, FarmRecord } from "./farm";
 
 /**
@@ -5,5 +6,5 @@ import type { FarmId, FarmRecord } from "./farm";
  * dos dados e a API não está conectada a nenhuma persistência.
  */
 export interface FarmReaderPort {
-  findById(id: FarmId): Promise<FarmRecord | null>;
+  findById(id: FarmId, context: TenantExecutionContext): Promise<FarmRecord | null>;
 }

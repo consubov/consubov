@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { AssinanteRecord } from "./assinante";
 import type { AssinanteId, VisitaId } from "./identificadores";
 import type { AvaliacaoScoreRecord } from "./score";
@@ -15,13 +16,23 @@ import type { VisitaRecord } from "./visita";
  * da visita (apps/web/src/lib/pennStateStore.ts:125-132).
  */
 export interface VisitaReader {
-  findById(visitaId: VisitaId): Promise<VisitaRecord | null>;
-  listPastos(visitaId: VisitaId): Promise<readonly VisitaPastoRecord[]>;
-  listAssinantes(visitaId: VisitaId): Promise<readonly AssinanteRecord[]>;
+  findById(visitaId: VisitaId, context: TenantExecutionContext): Promise<VisitaRecord | null>;
+  listPastos(
+    visitaId: VisitaId,
+    context: TenantExecutionContext,
+  ): Promise<readonly VisitaPastoRecord[]>;
+  listAssinantes(
+    visitaId: VisitaId,
+    context: TenantExecutionContext,
+  ): Promise<readonly AssinanteRecord[]>;
   listAvaliacoes(
     visitaPastoIds: readonly string[],
+    context: TenantExecutionContext,
   ): Promise<readonly AvaliacaoScoreRecord[]>;
-  listPennStateAnalises(visitaId: VisitaId): Promise<readonly PennStateAnaliseRecord[]>;
+  listPennStateAnalises(
+    visitaId: VisitaId,
+    context: TenantExecutionContext,
+  ): Promise<readonly PennStateAnaliseRecord[]>;
 }
 
 /**
@@ -35,17 +46,42 @@ export interface VisitaReader {
  * (apps/web/src/lib/pennStateStore.ts:125-132).
  */
 export interface VisitaWriter {
-  save(visita: VisitaRecord): Promise<void>;
-  softDelete(visitaId: VisitaId): Promise<void>;
-  insertPasto(pasto: VisitaPastoRecord): Promise<VisitaPastoRecord>;
-  deletePastoWithScores(visitaPastoId: string): Promise<void>;
-  insertAssinante(assinante: AssinanteRecord): Promise<AssinanteRecord>;
-  updateAssinante(assinante: AssinanteRecord): Promise<void>;
-  deleteAssinante(assinateId: AssinanteId): Promise<void>;
-  insertAvaliacao(avaliacao: AvaliacaoScoreRecord): Promise<AvaliacaoScoreRecord>;
-  deleteAvaliacao(avaliacaoId: string): Promise<void>;
+  save(visita: VisitaRecord, context: TenantExecutionContext): Promise<void>;
+  softDelete(visitaId: VisitaId, context: TenantExecutionContext): Promise<void>;
+  insertPasto(
+    pasto: VisitaPastoRecord,
+    context: TenantExecutionContext,
+  ): Promise<VisitaPastoRecord>;
+  deletePastoWithScores(
+    visitaPastoId: string,
+    context: TenantExecutionContext,
+  ): Promise<void>;
+  insertAssinante(
+    assinante: AssinanteRecord,
+    context: TenantExecutionContext,
+  ): Promise<AssinanteRecord>;
+  updateAssinante(
+    assinante: AssinanteRecord,
+    context: TenantExecutionContext,
+  ): Promise<void>;
+  deleteAssinante(
+    assinateId: AssinanteId,
+    context: TenantExecutionContext,
+  ): Promise<void>;
+  insertAvaliacao(
+    avaliacao: AvaliacaoScoreRecord,
+    context: TenantExecutionContext,
+  ): Promise<AvaliacaoScoreRecord>;
+  deleteAvaliacao(
+    avaliacaoId: string,
+    context: TenantExecutionContext,
+  ): Promise<void>;
   upsertPennStateAnalise(
     analise: PennStateAnaliseRecord,
+    context: TenantExecutionContext,
   ): Promise<PennStateAnaliseRecord>;
-  softDeletePennStateAnalise(analiseId: string): Promise<void>;
+  softDeletePennStateAnalise(
+    analiseId: string,
+    context: TenantExecutionContext,
+  ): Promise<void>;
 }

@@ -2,6 +2,7 @@
  * Ports of the integration boundary. Adapters implement them; this module ships
  * no implementation, no client and no channel.
  */
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type {
   IntegrationCaller,
   IntegrationContent,
@@ -24,7 +25,10 @@ export type PushDeliveryRequest = {
 
 /** Send of an accepted push request. */
 export interface PushNotificationPort {
-  deliver(request: PushDeliveryRequest): Promise<IntegrationDeliveryReport>;
+  deliver(
+    request: PushDeliveryRequest,
+    context: TenantExecutionContext,
+  ): Promise<IntegrationDeliveryReport>;
 }
 
 /** Estimate of a route between two points. */

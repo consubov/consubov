@@ -1,4 +1,5 @@
 import type { TenantId, PrincipalId } from "../domain/identity";
+import type { TenantReportTimeZone } from "./report-timezone";
 
 export enum MembershipStatus {
   ACTIVE = "ACTIVE",
@@ -8,6 +9,7 @@ export interface Tenant {
   id: TenantId;
   name: string;
   slug: string;
+  reportTimeZone: TenantReportTimeZone | null;
   createdAt: Date;
   updatedAt: Date;
 }

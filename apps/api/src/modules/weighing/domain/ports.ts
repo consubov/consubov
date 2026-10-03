@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { FechamentoPesagem } from "./fechamento";
 import type {
   AnimalId,
@@ -30,9 +31,15 @@ export type PesoAnteriorDeAnimal = PesagemAnteriorCandidata<number> & {
 };
 
 export interface PesagemDeLoteLeituraPort {
-  buscarPorId(pesagemId: PesagemId): Promise<PesagemDeLote | null>;
+  buscarPorId(
+    pesagemId: PesagemId,
+    context: TenantExecutionContext,
+  ): Promise<PesagemDeLote | null>;
 
-  listarPorLote(loteId: LoteId): Promise<readonly PesagemDeLote[]>;
+  listarPorLote(
+    loteId: LoteId,
+    context: TenantExecutionContext,
+  ): Promise<readonly PesagemDeLote[]>;
 }
 
 export interface PesoAnteriorLeituraPort {
@@ -43,6 +50,7 @@ export interface PesoAnteriorLeituraPort {
    */
   historicoDoAnimal(
     animalId: AnimalId,
+    context: TenantExecutionContext,
   ): Promise<readonly PesoAnteriorDeAnimal[]>;
 }
 
@@ -59,14 +67,17 @@ export interface PesoAnteriorLeituraPort {
  * adaptador; o domínio não tem fila.
  */
 export interface PesagemDeLoteEscritaPort {
-  registrarLeituraBalancao(leitura: {
-    readonly id: LeituraBalancaoId;
-    readonly pesagemLoteId: PesagemId;
-    readonly ordem: number;
-    readonly pesoTotalKg: number;
-    readonly quantidadeAnimais: number;
-    readonly pesoIndividualKg: number;
-  }): Promise<void>;
+  registrarLeituraBalancao(
+    leitura: {
+      readonly id: LeituraBalancaoId;
+      readonly pesagemLoteId: PesagemId;
+      readonly ordem: number;
+      readonly pesoTotalKg: number;
+      readonly quantidadeAnimais: number;
+      readonly pesoIndividualKg: number;
+    },
+    context: TenantExecutionContext,
+  ): Promise<void>;
 
   registrarPesosAnimais(
     pesos: readonly {
@@ -77,18 +88,22 @@ export interface PesagemDeLoteEscritaPort {
       readonly gmdIndividualKgDia: number | null;
       readonly leituraBalancaoId: LeituraBalancaoId | null;
     }[],
+    context: TenantExecutionContext,
   ): Promise<void>;
 
   /**
    * `horaInicio` e `horaFim` chegam prontos porque o instante é decidido fora do
    * domínio (PecuaristaPesagemExecPage.tsx:504-511).
    */
-  finalizarPesagem(input: {
-    readonly pesagemLoteId: PesagemId;
-    readonly loteId: LoteId;
-    readonly fechamento: FechamentoPesagem;
-    readonly dataPesagem: string;
-    readonly horaInicio: string | null;
-    readonly horaFim: string;
-  }): Promise<void>;
+  finalizarPesagem(
+    input: {
+      readonly pesagemLoteId: PesagemId;
+      readonly loteId: LoteId;
+      readonly fechamento: FechamentoPesagem;
+      readonly dataPesagem: string;
+      readonly horaInicio: string | null;
+      readonly horaFim: string;
+    },
+    context: TenantExecutionContext,
+  ): Promise<void>;
 }

@@ -167,6 +167,7 @@ describe("FakeTenancyRepository", () => {
       id: createTenantId("tenant-1"),
       name: "Test Tenant",
       slug: "test-tenant",
+      reportTimeZone: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -209,6 +210,7 @@ describe("FakeTenancyRepository", () => {
       id: createTenantId("tenant-1"),
       name: "Test Tenant",
       slug: "test-tenant",
+      reportTimeZone: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -244,6 +246,7 @@ describe("FakeTenancyRepository", () => {
       id: createTenantId("tenant-1"),
       name: "Tenant 1",
       slug: "tenant-1",
+      reportTimeZone: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -251,6 +254,7 @@ describe("FakeTenancyRepository", () => {
       id: createTenantId("tenant-2"),
       name: "Tenant 2",
       slug: "tenant-2",
+      reportTimeZone: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -275,6 +279,7 @@ describe("FakeTenancyRepository", () => {
       id: createTenantId("tenant-1"),
       name: "Test Tenant",
       slug: "test-tenant",
+      reportTimeZone: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type {
   NotificationContent,
   NotificationDestinatario,
@@ -18,6 +19,7 @@ export class FakeNotificationAdapter implements NotificationPort {
   async dispatch(
     content: NotificationContent,
     destinatarios: readonly NotificationDestinatario[],
+    _context: TenantExecutionContext,
   ): Promise<NotificationDispatchResult | NotificationSkipped> {
     if (this.proximoPulado) {
       const pulado = this.proximoPulado;

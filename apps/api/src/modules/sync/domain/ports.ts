@@ -10,17 +10,18 @@ import type {
   SyncMutation,
   SyncParentKind,
 } from "./contracts";
+import type { TenantExecutionContext } from "../../identity-tenancy";
 
 /** Read side of the durable local queue. */
 export interface SyncQueueReader {
-  listMutations(): Promise<readonly SyncMutation[]>;
-  countPendingMutations(): Promise<number>;
+  listMutations(context: TenantExecutionContext): Promise<readonly SyncMutation[]>;
+  countPendingMutations(context: TenantExecutionContext): Promise<number>;
 }
 
 /** Write side of the durable local queue. */
 export interface SyncQueueWriter {
-  putMutation(mutation: SyncMutation): Promise<void>;
-  deleteMutation(mutationId: string): Promise<void>;
+  putMutation(mutation: SyncMutation, context: TenantExecutionContext): Promise<void>;
+  deleteMutation(mutationId: string, context: TenantExecutionContext): Promise<void>;
 }
 
 /** Raw outcome of a parent lookup, before it is classified by `resolveParentLookup`. */
@@ -54,9 +55,11 @@ export interface SyncTransport {
   sendMutation(
     mutation: SyncMutation,
     onConflict: string,
+    context: TenantExecutionContext,
   ): Promise<SyncSendResult>;
   lookupParent(
     kind: SyncParentKind,
     parentId: string,
+    context: TenantExecutionContext,
   ): Promise<SyncParentLookupResult>;
 }

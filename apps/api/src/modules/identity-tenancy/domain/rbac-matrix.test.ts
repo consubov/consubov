@@ -1,4 +1,10 @@
-import { RBAC_MATRIX, checkPermission, UserProfile, Resource } from './rbac-matrix';
+import {
+  RBAC_MATRIX,
+  checkPermission,
+  isPermissionAllowed,
+  type UserProfile,
+  type Resource,
+} from "./rbac-matrix";
 
 describe('RBAC Matrix', () => {
   const profiles: UserProfile[] = [
@@ -49,11 +55,21 @@ describe('RBAC Matrix', () => {
     });
   });
 
-  test('each cell contains a valid permission value', () => {
-    profiles.forEach(profile => {
-      resources.forEach(resource => {
+  test("each cell contains a valid permission value", () => {
+    profiles.forEach((profile) => {
+      resources.forEach((resource) => {
         const permission = RBAC_MATRIX[profile][resource];
-        expect(['ALLOW', 'DENY', 'PENDENTE', 'N/A']).toContain(permission);
+        expect(["ALLOW", "DENY", "PENDENTE", "N/A"]).toContain(permission);
+      });
+    });
+  });
+
+  test("never authorizes cells without an explicit ALLOW decision", () => {
+    profiles.forEach((profile) => {
+      resources.forEach((resource) => {
+        expect(isPermissionAllowed(profile, resource)).toBe(
+          RBAC_MATRIX[profile][resource] === "ALLOW",
+        );
       });
     });
   });

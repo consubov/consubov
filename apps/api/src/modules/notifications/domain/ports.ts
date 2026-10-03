@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type {
   InAppNotificationRecord,
   NotificationContent,
@@ -15,15 +16,16 @@ export interface NotificationPort {
   dispatch(
     content: NotificationContent,
     destinatarios: readonly NotificationDestinatario[],
+    context: TenantExecutionContext,
   ): Promise<NotificationDispatchResult | NotificationSkipped>;
 }
 
 /**
  * Leitura dos avisos dentro do aplicativo. A tabela `notificacoes` não tem coluna
- * de dono, então esta porta não recebe principal e qualquer filtragem por usuário
- * depende de regra que ainda não existe.
+ * de dono, então o contexto de tenant é obrigatório na fronteira, mas não inventa
+ * uma regra de ownership por usuário que ainda não existe.
  */
 export interface InAppNotificationReaderPort {
-  list(): Promise<readonly InAppNotificationRecord[]>;
-  markAsRead(id: string): Promise<void>;
+  list(context: TenantExecutionContext): Promise<readonly InAppNotificationRecord[]>;
+  markAsRead(id: string, context: TenantExecutionContext): Promise<void>;
 }

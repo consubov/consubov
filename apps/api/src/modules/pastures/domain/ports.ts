@@ -1,3 +1,4 @@
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { PastoId, RetiroId } from "./identity";
 import type { OcupacaoPastoRecord, PastoRecord, RetiroRecord } from "./records";
 
@@ -6,15 +7,24 @@ import type { OcupacaoPastoRecord, PastoRecord, RetiroRecord } from "./records";
  * remoto) fica fora do domínio e é resolvida pelo orquestrador.
  */
 export interface PastoReaderPort {
-  findById(pastoId: PastoId): Promise<PastoRecord | null>;
-  listByRetiro(retiroId: RetiroId): Promise<readonly PastoRecord[]>;
+  findById(pastoId: PastoId, context: TenantExecutionContext): Promise<PastoRecord | null>;
+  listByRetiro(
+    retiroId: RetiroId,
+    context: TenantExecutionContext,
+  ): Promise<readonly PastoRecord[]>;
 }
 
 export interface RetiroReaderPort {
-  findById(retiroId: RetiroId): Promise<RetiroRecord | null>;
-  listByFazenda(fazendaId: string): Promise<readonly RetiroRecord[]>;
+  findById(retiroId: RetiroId, context: TenantExecutionContext): Promise<RetiroRecord | null>;
+  listByFazenda(
+    fazendaId: string,
+    context: TenantExecutionContext,
+  ): Promise<readonly RetiroRecord[]>;
 }
 
 export interface OcupacaoReaderPort {
-  findByRetiro(retiroId: RetiroId): Promise<readonly OcupacaoPastoRecord[]>;
+  findByRetiro(
+    retiroId: RetiroId,
+    context: TenantExecutionContext,
+  ): Promise<readonly OcupacaoPastoRecord[]>;
 }
