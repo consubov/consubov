@@ -97,6 +97,11 @@ describe("FakeIdentityVerifierAdapter", () => {
       identity: {
         ...baseIdentity,
         principal: { kind: "integration" as const, id: createPrincipalId("int-1") },
+        claims: {
+          ...baseIdentity.claims,
+          principalId: "int-1",
+          principalKind: "integration" as const,
+        },
       },
     });
     const result = await verifier.verifyAndResolve({ kind: "api-key", value: "key-integration" });
@@ -138,7 +143,13 @@ describe("FakeIdentityVerifierAdapter", () => {
 
   it("scopes are preserved for negative authorization cases", async () => {
     const verifier = new FakeIdentityVerifierAdapter();
-    verifier.register("limited", { identity: { ...baseIdentity, scopes: [] as const } });
+    verifier.register("limited", {
+      identity: {
+        ...baseIdentity,
+        scopes: [] as const,
+        claims: { ...baseIdentity.claims, scopes: [] as const },
+      },
+    });
     const result = await verifier.verifyAndResolve({ kind: "bearer", value: "limited" });
     expect(result?.scopes).toEqual([]);
   });

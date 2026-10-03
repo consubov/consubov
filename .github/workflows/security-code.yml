@@ -49,19 +49,29 @@ jobs:
         run: bunx eslint . --max-warnings=0
 
       # O Web possui débito legado de lint geral e está congelado para edição.
-      # Este gate executa somente as regras SAST de segurança já aprovadas, sem
-      # esconder findings de segurança e sem transformar lint legado em falso bloqueio.
+      # Este gate cria configuração temporária somente no runner para executar as
+      # regras SAST aprovadas, sem alterar apps/web/** no repositório.
       - name: Run ESLint security scan (Web - security rules only)
         working-directory: apps/web
-        run: >-
-          bunx eslint src
-          --no-config-lookup
-          --ext .ts,.tsx
-          --parser @typescript-eslint/parser
-          --plugin security
-          --rule 'security/detect-eval-with-expression:error'
-          --rule 'security/detect-non-literal-fs-filename:error'
-          --rule 'security/detect-possible-timing-attacks:error'
+        shell: bash
+        run: |
+          cat > .eslint-security-ci.mjs <<'EOF'
+          import tseslint from "typescript-eslint";
+          import security from "eslint-plugin-security";
+
+          export default [{
+            files: ["src/**/*.{ts,tsx}"],
+            languageOptions: { parser: tseslint.parser },
+            plugins: { security },
+            rules: {
+              "security/detect-eval-with-expression": "error",
+              "security/detect-non-literal-fs-filename": "error",
+              "security/detect-possible-timing-attacks": "error",
+            },
+          }];
+          EOF
+          trap 'rm -f .eslint-security-ci.mjs' EXIT
+          bunx eslint src --config .eslint-security-ci.mjs --max-warnings=0
 
   dependency-vulnerability-scan:
     runs-on: ubuntu-latest
