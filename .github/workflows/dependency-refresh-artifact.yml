@@ -43,6 +43,12 @@ jobs:
           import { readFile, writeFile } from "node:fs/promises";
 
           const root = JSON.parse(await readFile("package.json", "utf8"));
+          root.devDependencies = {
+            ...root.devDependencies,
+            "minimatch": "3.1.5",
+            "brace-expansion": "1.1.20",
+            "picomatch": "2.3.2"
+          };
           root.overrides = {
             "lodash": "4.18.0",
             "flatted": "3.4.2",
@@ -55,20 +61,13 @@ jobs:
             "ws": "8.21.0",
             "browserslist": "4.28.7",
             "d3-color": "3.1.0",
-            "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb",
-            "eslint>minimatch": "3.1.5",
-            "@eslint/config-array>minimatch": "3.1.5",
-            "@eslint/eslintrc>minimatch": "3.1.5",
-            "minimatch@<4>brace-expansion": "1.1.20",
-            "anymatch>picomatch": "2.3.2",
-            "micromatch>picomatch": "2.3.2",
-            "readdirp>picomatch": "2.3.2"
+            "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
           };
           await writeFile("package.json", JSON.stringify(root, null, 2) + "\n");
 
           const web = JSON.parse(await readFile("apps/web/package.json", "utf8"));
           web.devDependencies.vite = "^6.4.3";
-          web.devDependencies.vitest = "^3.2.6";
+          web.devDependencies.vitest = "^5.0.3";
           await writeFile("apps/web/package.json", JSON.stringify(web, null, 2) + "\n");
           EOF
           bun install
