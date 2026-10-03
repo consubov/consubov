@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { caminhoDoEscopo } from "../domain/arquivo";
 import { FakeFileStorageAdapter } from "./FakeFileStorageAdapter";
-import type { TenantExecutionContext } from "../../modules/identity-tenancy/domain/tenant-context";
+import type { TenantExecutionContext } from "../../identity-tenancy";
 
 describe("FakeFileStorageAdapter", () => {
   const mockContext: TenantExecutionContext = {

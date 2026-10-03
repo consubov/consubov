@@ -3,7 +3,7 @@ import type {
   ArquivoReferencia,
   StoreFileCommand,
 } from "./arquivo";
-import type { TenantExecutionContext } from "../../identity-tenancy/domain/tenant-context";
+import type { TenantExecutionContext } from "../../identity-tenancy";
 
 /**
  * Fronteira de armazenamento de objetos. Nenhum provider está conectado nesta

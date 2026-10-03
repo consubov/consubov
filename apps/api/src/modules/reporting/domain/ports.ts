@@ -1,6 +1,6 @@
 import type { PastoId, RetiroId } from "../../pastures";
 import type { PrincipalId } from "../../identity-tenancy";
-import type { TenantExecutionContext } from "../../identity-tenancy/domain/tenant-context";
+import type { TenantExecutionContext } from "../../identity-tenancy";
 import type { PainelMetricsAggregate, RetiroMetricsAggregate } from "./agregados";
 import type { RelatorioDespesasRecord } from "./relatorio-despesas";
 
