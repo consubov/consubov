@@ -1,85 +1,88 @@
-# Tenancy, RBAC e Auditoria
+# Tenancy, RBAC, Auth e Auditoria — FASE 2B
 
-## 2. Modelagem de Tenancy
+> Estado: contratos locais preparados; provider remoto não conectado. Decisões sem evidência permanecem `[PENDENTE]`.
 
-### 2B.5 Audit Contract and Minimization Policy
+## 2B.1 Modelo canônico de tenant
 
-The `AuditEvent` contract defined in `apps/api/src/modules/observability/domain/audit-contract.ts` centralizes audit logging across the system. It captures identifiers such as `audit_id`, `actorId`, `tenantId`, optional `farmId`, device origin, timestamps, command and request correlation identifiers, versioning, the performed `action`, and a `result` enum (`success`, `denied`, `failed`, `conflict`). Flags for `retry` and optional `conflictRef` are included, alongside a `changesSummary` that describes persisted changes without containing the actual payload.
+Tenant representa a organização/empresa contratante, nunca uma fazenda. Um tenant pode possuir múltiplas fazendas.
 
-**Strict minimization policy**: The audit log must never store passwords, tokens, API keys, personal emails, CPF numbers, or any other Personally Identifiable Information (PII). Implementations should only record metadata and a concise summary of what changed, never the raw values. A regex scan can be used in tests to ensure compliance.
+O contrato local contém `Tenant`, `Membership` e `ActiveTenant`. O catálogo canônico atual de membership possui **somente `ACTIVE`**. Estados adicionais não são inferidos; quando o produto exigir convite, suspensão ou estados intermediários, eles devem ser aprovados antes de entrar no enum.
 
----
+Operações tenant-scoped devem transportar contexto explícito. `TenantExecutionContext` exige `tenantId`, `principalId`, `requestId` e `correlationId`. O contrato enumera as fronteiras onde esse contexto é obrigatório quando aplicável: queries, commands, arquivos, jobs, eventos, cache, realtime, relatórios e sync. **Ausência de tenant nunca significa acesso global.**
 
-## 2. Modelagem de Tenancy
+Operações realmente globais devem possuir política própria e explícita; não reutilizam ausência de `tenantId` como atalho.
 
-### 2.1 Estrutura de Contratos (Domínio)
+### Auditoria de materialização do contexto
 
-Os contratos de tenancy estão definidos em `apps/api/src/modules/identity-tenancy/domain/tenant-model.ts`.
+O tipo canônico existe, mas a auditoria pré-FASE 3 mostrou que ele **ainda não está materializado em todas as assinaturas**. Isso não deve ser escondido por uma constante arquitetural:
 
-#### 2B.1 Contratos de Entidade
+| Fronteira | Evidência no código atual | Estado |
+|---|---|---|
+| queries/commands de domínio | diversos readers/writers recebem apenas IDs/filtros (`farms`, `pastures`, `inventory`, `visits`, `weighing`) | `[PENDENTE]` integração gradual |
+| arquivos | `FileStoragePort`/`SignedUrlPort` não recebem contexto de tenant | `[PENDENTE]` |
+| jobs | `JobQueuePort.enqueue` não recebe contexto de tenant | `[PENDENTE]` |
+| eventos | `EventPublisherPort.publish` é genérico e `EventEnvelope.tenantId` permanece opcional para eventos que podem ser globais | `[PENDENTE]` por evento |
+| cache/config | não existe cache port canônico; `FeatureFlagContext.tenantId` é opcional para suportar flags globais | `[PENDENTE]` por uso |
+| realtime | não existe port da nova API nesta fase | `[PENDENTE]` até primeiro uso |
+| relatórios | `reporting/domain/ports.ts` não recebe `TenantExecutionContext` | `[PENDENTE]` |
+| sync | `SyncQueueReader/Writer` e `SyncTransport` não recebem contexto de tenant | `[PENDENTE]` para o motor futuro |
 
-**Tenant**
-- `id`: TenantId (Identificador único e imutável)
-- `name`: Nome legível do tenant
-- `slug`: Identificador único em URL
-- `createdAt` / `updatedAt`: Timestamps de ciclo de vida
+Conclusão: o contrato comum está pronto, mas o checklist de “contexto obrigatório em todas as fronteiras” **não pode ser marcado concluído ainda** sem alterar consumidores/adapters de forma incremental e executar a suíte completa. A FASE 3 não deve introduzir novos acessos tenant-scoped sem contexto explícito.
 
-**Membership**
-Representa a relação entre um Principal (Usuário/Integração) e um Tenant.
-- `id`: Identificador da relação
-- `tenantId`: Referência ao Tenant
-- `principalId`: Referência ao Principal
-- `status`: Estado da membresia (`MembershipStatus`)
-- `role`: Papel atribuído dentro do tenant
-- `createdAt` / `updatedAt`: Timestamps de ciclo de vida
+## 2B.2 RBAC
 
-**ActiveTenant**
-Contrato composto utilizado para resolver o contexto de acesso atual, unindo a entidade Tenant e a Membesia ativa do principal.
+A matriz estrutural cobre os 9 perfis e 12 recursos do Checklist, mas não existe evidência aprovada suficiente para transformar a maior parte das células em regra canônica de backend. Por isso `RBAC_MATRIX` é evidence-first: todas as células permanecem `PENDENTE` até haver decisão aprovada ou evidência comportamental server-side para aquele par perfil/recurso.
 
-#### Estados de Membesia (MembershipStatus)
-O enum real em `apps/api/src/modules/identity-tenancy/domain/tenant-model.ts` contém apenas:
-- `ACTIVE`: Acesso total conforme role.
+Visibilidade de menu, rota ou redirect no frontend **não é** autorização de backend. A nova API continua autorizando por tenant + scopes por meio de `AuthorizationPort`.
 
-Estados `PENDING`, `SUSPENDED` e `INVITED` **não existem no código** → [PENDENTE] decisão futura.
+Evidência específica já observada no legado:
 
-## 2B.2 Matriz RBAC (Roles-Based Access Control)
+- `create-user`: caller precisa ser administrador ativo para criar usuário/administrador;
+- `manage-admin`: caller precisa ser administrador ativo para alterar/remover administradores, com bloqueio de self-delete e do último admin ativo;
+- `send-push-notification`: autorização varia por caller e escopo de fazenda/fábrica/admin, sem broadcast arbitrário.
 
-A matriz de permissões define a relação entre Perfis de Usuário e Recursos do Sistema. Os valores abaixo refletem literalmente o código; **nenhuma célula é uma decisão aprovada comprovada** (ver 2C para o mapa de evidência).
+Esses fatos não autorizam extrapolar `ALLOW` para recursos inteiros.
 
-- **Localização**: `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.ts`
-- **Estados**:
-  - `ALLOW`: Acesso explicitamente permitido.
-  - `DENY`: Acesso explicitamente negado.
-  - `PENDENTE`: Permissão aguardando definição de regra de negócio.
-  - `N/A`: Recurso não aplicável ao perfil.
+## 2B.3 Alçadas
 
-| Perfil \\ Recurso | Usuários | Fazendas | Retiros | Pastos | Prod/Dietas | Operações | Relatórios | Estoque | Visitas | Fábrica | Pesagens | SaaS Admin |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Admin | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW |
-| Gerente | PEND | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY |
-| Capataz | DENY | ALLOW | ALLOW | ALLOW | PEND | ALLOW | ALLOW | PEND | ALLOW | DENY | ALLOW | DENY |
-| Escritório | PEND | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | PEND | ALLOW | DENY |
-| Op. Fábrica | DENY | N/A | N/A | N/A | ALLOW | ALLOW | ALLOW | ALLOW | DENY | ALLOW | ALLOW | DENY |
-| Consultor | DENY | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY |
-| Pesador | DENY | N/A | N/A | N/A | N/A | ALLOW | ALLOW | N/A | DENY | N/A | ALLOW | DENY |
-| Pecuarista | PEND | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY |
-| SyncVet | DENY | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW | DENY | ALLOW | DENY |
+| Alçada | Evidência atual | Estado canônico |
+|---|---|---|
+| criação de usuário/administrador | `create-user` exige administrador ativo | comprovado apenas para o fluxo legado |
+| gestão de administradores | `manage-admin` exige administrador ativo | comprovado apenas para o fluxo legado |
+| criação de capataz | regra canônica não consolidada | `[PENDENTE]` |
+| autocadastro de fazenda | sem regra canônica aprovada | `[PENDENTE]` |
+| alterações estruturais | sem matriz server-side aprovada por ação | `[PENDENTE]` |
+| aprovações | variam por fluxo legado | `[PENDENTE]` |
+| operações administrativas globais | evidência parcial em `create-user`/`manage-admin` | `[PENDENTE]` para o SaaS novo |
 
-## 2C. Mapa de Evidência — Matriz RBAC (Bloco H)
+Nenhuma alçada nova deve ser implementada por inferência.
 
-Auditoria somente-leitura de `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.ts`.
+## 2B.4 Auth por contrato
 
-### Evidência disponível
-- `apps/api/src/modules/identity-tenancy/domain/rbac-matrix.test.ts` — testa apenas **estrutura**: matriz completa (9 perfis × 12 recursos), `checkPermission` retornando exatamente o valor da matriz, e valores válidos no conjunto `ALLOW | DENY | PENDENTE | N/A`. Ou seja, o teste só **auto-referencia** a matriz.
-- Nenhum consumidor de runtime importa `rbac-matrix.ts` / `checkPermission` / `RBAC_MATRIX` fora de `domain/index.ts` (re-export) e do próprio teste. A matriz **não** está integrada ao runtime.
+Contratos atuais:
 
-### Conclusão por perfil/recurso
-| Perfil \ Recurso | Estado da evidência |
-| :--- | :--- |
-| Todos os `ALLOW`/`DENY` da tabela 2B.2 | [PENDENTE] — sem teste comportamental ou PRD aprovado que comprove a decisão; a matriz apenas se auto-referencia. |
-| Células `PENDENTE`/`N/A` da tabela 2B.2 | [PENDENTE] — mesmas condições; só existem literalmente na matriz. |
-| `checkPermission(profile, resource)` | Comprovado por teste: retorna o valor literal da matriz. |
-| Completude 9×12 e valores válidos | Comprovado por teste estrutural. |
+- principal `user | integration`;
+- claims mínimos: principal, tenant, scopes, `expired`, `revoked`;
+- `IdentityVerifierPort`, `TenantContextPort` e `AuthorizationPort`;
+- fake verifier rejeita credencial inexistente, expirada ou revogada.
 
-> Regra aplicada: nenhuma decisão de permissão (`ALLOW`/`DENY`) é afirmada como aprovada sem evidência externa; todas as células concretas permanecem [PENDENTE] até que um teste comportamental ou PRD as comprove. A matriz não foi integrada ao runtime.
+Política de expiração/reautenticação:
 
+1. credencial expirada ou revogada **não resolve identidade**;
+2. quando existir boundary HTTP autenticado, falha de autenticação expirada/revogada resulta em **401**;
+3. **403** é reservado para identidade válida sem autorização suficiente;
+4. refresh/reautenticação pertence ao adapter/provider futuro;
+5. refresh nunca pode ampliar tenant/scopes silenciosamente;
+6. nenhuma duração de sessão, refresh token ou provider é definida nesta fase.
+
+## 2B.5 Auditoria
+
+`AuditEvent`/`AuditLogPort` cobrem ator, tenant, fazenda/contexto quando aplicável, origem, horário, command/request/correlation IDs, versão conhecida, ação, resultado, retry, conflito e resumo da alteração.
+
+Política de minimização:
+
+- nunca persistir senha, token, API key, secret ou payload sensível integral;
+- PII só quando houver necessidade operacional aprovada;
+- `changesSummary` descreve campos/efeito, não valores sensíveis.
+
+Adapters atuais são fakes/in-memory; não há persistência remota de auditoria nesta fase.

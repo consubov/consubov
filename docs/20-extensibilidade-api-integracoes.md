@@ -1,30 +1,54 @@
 # Extensibilidade e Integrações da API
 
-## Mecanismo de Credenciais Final
-_Obs.: ainda em definição._ [PENDENTE] para:
-- API Keys estáticas com rotação programada (sem período aprovado)
-- JWTs de curta duração para chamadas server-to-server
-- OAuth 2.0 Client Credentials para integrações de alto nível
-- Armazenamento seguro de segredos (nenhum vault decidido)
-- Revogação instantânea via dashboard de administração
+## API consumer
 
-> **Sem endpoints externos, brokers ou provedores configurados na fase atual.**
-> Todas as integráveis descritas abaixo são contratuais e ainda não implementadas. O isolamento por tenant e ponto de autorização RBAC será mantido estritamente antes de qualquer produção.
+O modelo `ApiConsumer` prepara integrações futuras sem publicar API externa nesta fase.
 
-## Limites de Rate (Rate Limits)
-[PENDENTE] — sem decisão aprovada comprovada:
-- Limites por tenant, por escopo e global (valores numéricos não definidos)
-- Estratégia de retry/backoff e cronograma específico
-- Dead Letter Queue
+Contratos definidos:
 
-## Política Comercial
-[PENDENTE] — sem plano aprovado comprovado:
-- Planos (Gratuito/Profissional/Enterprise), quotas mensais e recursos
-- SLAs e tempos de suporte
-- Modelo de pagamento
+- consumidor identificado por `consumerId`;
+- tenant explícito quando aplicável; `tenantId = null` nunca concede acesso global automaticamente;
+- scopes namespaced;
+- estado `active | revoked`;
+- `credentialReference` opaca, sem segredo em claro;
+- expiração por `expiresAt`; credencial expirada ou revogada é negada;
+- rotação representada pela substituição da referência opaca, sem transportar segredo;
+- auditoria usa `consumerId`, tenant quando aplicável e origem;
+- rate limit e quota são representáveis por referências de política, sem valores numéricos inventados.
 
-- Cada integração deve adotar mecanismo de revogação de credenciais e manter auditoria de chamadas (logs com `tenant_id`, `consumer_id`, `event_id`).
+Continuam `[PENDENTE]` até existir primeiro caso real:
 
----
+- mecanismo final da credencial externa (API key/JWT/OAuth/etc.);
+- periodicidade de rotação;
+- valores de quota/rate limit;
+- política comercial.
 
-> **Nota**: Esta documentação descreve contratos e políticas ainda não materializadas. Nenhum endpoint real, broker ou provedor externo está em operação até o momento. O isolamento de tenant e a estratégia RBAC permanecem como requisitos de segurança críticos.
+## Webhooks futuros
+
+Existe contrato conceitual, não dispatcher.
+
+Definido:
+
+- `eventId` estável;
+- retries preservam `eventId` + `subscriptionId`;
+- chave de idempotência conceitual por subscription/event;
+- `secretReference` guarda somente referência do segredo de assinatura;
+- tentativa de entrega registra número da tentativa, horário, resultado e status HTTP opcional, sem payload/secret;
+- backoff e desativação usam referências de política abstratas, sem inventar cronograma ou limiar;
+- logs de entrega devem ser sanitizados;
+- consumidores futuros devem ser idempotentes.
+
+Não implementado nesta fase:
+
+- endpoint público real;
+- provider/HMAC concreto;
+- broker;
+- fila cloud;
+- retry remoto real;
+- DLQ.
+
+## Integrações externas
+
+Integrações continuam atrás de ports/adapters. Contratos devem declarar owner, finalidade, auth, tenant/scope, timeout, retry, idempotência quando aplicável, circuit breaker quando necessário, logs, erro, disponibilidade, dados enviados/recebidos, rate limit, custo e estratégia de substituição.
+
+Nenhuma integração pode contornar tenancy/RBAC.

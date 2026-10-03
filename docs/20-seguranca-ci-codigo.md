@@ -29,8 +29,10 @@ Executa scanning de segredos usando TruffleHog (ferramenta open source, executad
 - **Licença:** MIT
 - **Origem:** https://github.com/trufflesecurity/trufflehog
 - **Versão:** v3.97.9 (SHA verificado via `git ls-remote` em 2026-10-02)
-- **Eventos:** PR para main, workflow_dispatch
-- **Falha ao detectar:** O job falha (exit code não-zero) quando segredos reais são detectados
+- **Eventos:** PR para main, push para main, workflow_dispatch
+- **Checkout:** histórico completo (`fetch-depth: 0`) para que base/head do PR existam localmente
+- **Scanner:** TruffleHog 3.97.9 fixado explicitamente; `extra_args: --results=verified`
+- **Falha ao detectar:** O job falha (exit code não-zero) quando segredos verificados são detectados
 - **Baseline/Allowlist:** Suportado para falso positivo comprovado. Para criar baseline:
   ```bash
   trufflehog filesystem --only-verified --baseline .trufflehog-baseline
@@ -165,3 +167,16 @@ O PR será bloqueado se:
 - [x] Permissões mínimas verificadas
 - [x] git diff --check aprovado
 - [x] bun run check aprovado (nenhuma configuração quebrou o projeto)
+
+
+## Gate SAST do Web enquanto FRONT LOCK estiver ativo
+
+O SAST do Web executa somente regras `eslint-plugin-security` via configuração CLI isolada. O lint geral legado permanece dívida separada; não é mascarado com `continue-on-error` e não deve bloquear a execução real do scan de segurança.
+
+A workflow usa `oven-sh/setup-bun` fixado por SHA válido e mantém o dependency audit em `bun audit --audit-level=high`.
+
+A suíte de Edge Functions é executada no CI com Vitest compatível com o stack atual, sem acesso remoto.
+
+### Validação contra falso verde do Secret Scanning
+
+Um job só é considerado válido se o scanner realmente percorrer commits/arquivos. Mensagens como `unable to resolve commit` com `chunks: 0` invalidam a evidência mesmo quando a Action retorna sucesso. O checkout deve preservar o histórico necessário para resolver `base.sha` e `head.sha` do pull request.

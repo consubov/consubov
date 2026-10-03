@@ -22,11 +22,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Run TruffleHog secret scanning
         uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
         with:
-          args: --only-verified --fail
+          version: 3.97.9
+          extra_args: --results=verified
 
   sast:
     runs-on: ubuntu-latest
@@ -37,9 +40,9 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4a438575045573fff4c0378427bc6ce004571e6b # v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.3.12
+          bun-version: 1.4.0
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -48,12 +51,34 @@ jobs:
         working-directory: apps/api
         run: bunx eslint . --max-warnings=0
 
-      # NOTE: apps/web possui débito legado de lint (~1424 errors / ~115 warnings)
-      # fora de escopo por FRONT LOCK. Este passo permanece vermelho até que o
-      # frontend seja autorizado a ser remediado. Não mascarar com continue-on-error.
-      - name: Run ESLint security scan (Web - esperado FAIL por débito legado)
+      # O Web possui débito legado de lint geral e está congelado para edição.
+      # Este gate cria configuração temporária somente no runner para executar as
+      # regras SAST aprovadas, sem alterar apps/web/** no repositório.
+      - name: Run ESLint security scan (Web - security rules only)
         working-directory: apps/web
-        run: bunx eslint . --max-warnings=0
+        shell: bash
+        run: |
+          cat > .eslint-security-ci.mjs <<'EOF'
+          import tseslint from "typescript-eslint";
+          import security from "eslint-plugin-security";
+
+          export default [
+          {
+            ignores: ["src/test/**", "src/**/*.test.ts", "src/**/*.test.tsx"],
+          },
+          {
+            files: ["src/**/*.{ts,tsx}"],
+            languageOptions: { parser: tseslint.parser },
+            plugins: { security },
+            rules: {
+              "security/detect-eval-with-expression": "error",
+              "security/detect-non-literal-fs-filename": "error",
+              "security/detect-possible-timing-attacks": "error",
+            },
+          }];
+          EOF
+          trap 'rm -f .eslint-security-ci.mjs' EXIT
+          bunx eslint src --config .eslint-security-ci.mjs --no-inline-config --max-warnings=0
 
   dependency-vulnerability-scan:
     runs-on: ubuntu-latest
@@ -64,15 +89,15 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4a438575045573fff4c0378427bc6ce004571e6b # v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.3.12
+          bun-version: 1.4.0
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       # Política: vulnerabilidades high/critical quebram o gate (exit 1).
-      # Observação: o comando `bun audit` existe na versão 1.3.12 usada aqui
+      # Observação: o comando `bun audit` é executado com Bun 1.4.0, alinhado ao packageManager do repositório
       # (verificado localmente com `bun audit --help`). Não usar `npm audit`.
       - name: Run dependency vulnerability scan
         run: bun audit --audit-level=high

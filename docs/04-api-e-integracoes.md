@@ -91,71 +91,40 @@ pesagens:write
 estoque:read
 ```
 
-### Modelo ApiConsumer
+### Modelo `ApiConsumer`
 
-O modelo `ApiConsumer` representa um principal de integração com as seguintes características:
+O modelo `ApiConsumer` prepara o principal de integração futura sem publicar um mecanismo externo real.
 
-- **Isolamento de Tenant**: Cada `ApiConsumer` está associado a um único tenant e não pode acessar dados de outros tenants
-- **Escopos**: Permissões granulares no formato `recurso:acao` (ex: `animais:write`)
-- **Credenciais**: API keys ou JWTs específicos para integração (não reutilizam credenciais de usuário)
-- **Revocação**: Credenciais podem ser revogadas a qualquer momento pelo admin do tenant
-- **Expiração**: Credenciais têm validade configurável (padrão: 90 dias) e requerem rotação periódica
-- **Auditoria**: Todas as ações são registradas com o `consumerId` para rastreabilidade
+- tenant é explícito quando aplicável; ausência de tenant nunca concede acesso global automaticamente;
+- scopes usam `recurso:acao`;
+- status `active | revoked`;
+- segredo não é armazenado no contrato, apenas `credentialReference`;
+- `expiresAt` permite negar credencial expirada;
+- rotação troca a referência opaca sem transportar o segredo;
+- auditoria identifica `consumerId`, tenant quando aplicável e origem;
+- quota/rate limit podem apontar para política configurável, sem valor numérico inventado.
 
-### Contrato de Subscription de Webhook
+Mecanismo final de credencial, periodicidade de rotação, quotas e política comercial continuam `[PENDENTE]`.
 
-Webhooks são gerenciados através do modelo `WebhookSubscription` com as seguintes garantias:
+### Webhooks futuros
 
-- **event_id estável**: Cada evento publicado tem um `event_id` UUID v4 imutável que permanece o mesmo em todas as tentativas de entrega
-- **Idempotência**: O mesmo `event_id` nunca será entregue duas vezes para a mesma subscription (garantido pelo provedor de mensageria)
-- **Estratégia de Retry/Backoff**:
-  - Tentativa imediata → 1min → 5min → 15min → 1h → 6h → 12h (exponencial com jitter)
-  - Máximo de 7 tentativas antes de marcar como failed
-  - Dead Letter Queue após esgotar tentativas
-- **Formato do Payload**: 
-  ```json
-  {
-    "event_id": "uuid-v4",
-    "event_type": "fazenda.atualizada",
-    "timestamp": "ISO 8601 UTC",
-    "payload": {/* dados do evento específicos */},
-    "version": "1.0"
-  }
-  ```
+O contrato atual é conceitual:
 
-### Envelope de Evento Interno
+- `eventId` é estável entre retries;
+- idempotência usa o par subscription/event;
+- assinatura usa somente referência de segredo;
+- tentativa de entrega registra metadados sanitizados, nunca payload sensível integral;
+- backoff e desativação são políticas abstratas, sem cronograma/limiar inventado;
+- não existe dispatcher, broker, DLQ ou provider concreto nesta fase.
 
-Eventos internos entre módulos seguem o envelope padrão:
+### Envelope de evento interno
 
-```json
-{
-  "event_id": "uuid-v4",
-  "event_type": "dominio.nome.evento",
-  "timestamp": "ISO 8601 UTC",
-  "version": "1.0",
-  "payload": {
-    // dados específicos do evento
-  },
-  "metadata": {
-    "source_module": "string",
-    "correlation_id": "opcional-uuid",
-    "tenant_id": "uuid"
-  }
-}
-```
+O envelope em `apps/api/src/shared/domain/events.ts` mantém id, tipo, versão, timestamp, tenant quando aplicável, correlação/causação opcionais e payload. Eventos não substituem autorização/transação e consumidores devem ser idempotentes.
 
-- **Versioning**: O campo `version` permite evolução segura do schema; consumers devem ignorar campos desconhecidos
-- **Relation to EventPublisherPort**: O `EventPublisherPort` é responsável por publicar eventos neste envelope padrão, garantindo consistência entre módulos
-- **Imutabilidade**: Uma vez publicado, o envelope não pode ser alterado
+### Contrato base do adapter de integração
 
-### Contrato Base do Adapter de Integração
+Integrações futuras devem declarar owner/finalidade, autenticação, tenant/scope, timeout, retry, idempotência quando aplicável, circuit breaker quando necessário, logs, rate limit, custo, dados enviados/recebidos, indisponibilidade e estratégia de substituição. Valores concretos dependentes de provider permanecem `[PENDENTE]`.
 
-Todos os adapters de integração externa devem seguir este contrato:
-
-#### Campos Obrigatórios:
-- `owner`: Equipe ou sistema responsável pelo adapter
-- `purpose`: Descrição clara da finalidade da integração
-- `auth`: Mecanismo de autenticação usado (API key, OAuth, mTLS, etc.)
 - `rate_limit`: Limites configurados para o provider externo
 - `timeout`: Configuração de timeout para chamadas externas
 - `circuit_breaker`: Configuração do padrão circuit breaker

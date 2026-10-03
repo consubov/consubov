@@ -252,6 +252,17 @@ describe("Consubov API foundation", () => {
     );
   });
 
+  test("OpenAPI exposes future-contract policies without inventing endpoint features", async () => {
+    const { openApiDocument } = await import("./openapi");
+    const policy = openApiDocument["x-consubov-contract-policy"];
+
+    expect(policy.idempotency.header).toBe("Idempotency-Key");
+    expect(policy.pagination.rule).toContain("Collection endpoints");
+    expect(policy.filteringAndOrdering.rule).toContain("allowlisted");
+    expect(policy.rateLimit.rule).toContain("real rate-limit implementation");
+    expect(policy.deprecation.rule).toContain("deprecated=true");
+  });
+
   test("API docs are navigable and load the OpenAPI contract", async () => {
     const response = await request("/api/docs");
     const html = await response.text();

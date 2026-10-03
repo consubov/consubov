@@ -363,6 +363,58 @@ describe("create-user edge function", () => {
     errorSpy.mockRestore();
   });
 
+  it("does not expose provider password-policy details", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockClient.auth.getUser.mockResolvedValue({
+      data: { user: { id: "admin-123", email: "admin@test.com" } },
+      error: null,
+    });
+    mockClient.from.mockReturnValue({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: "admin-1", user_id: "admin-123", email: "admin@test.com", nome: "Admin" },
+              error: null,
+            }),
+          })),
+        })),
+      })),
+    });
+    mockClient.auth.admin.createUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: "Password rejected by provider internal policy: leaked-detail" },
+    });
+
+    const req = createMockRequest(
+      { email: "new@test.com", senha: "12345678" },
+      "Bearer valid-admin-token"
+    );
+    const res = await createUserHandler(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("Senha inválida");
+    expect(data.error).not.toContain("provider");
+    expect(data.error).not.toContain("leaked-detail");
+
+    const logged = [...logSpy.mock.calls, ...errorSpy.mock.calls]
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .join("\n");
+    expect(logged).not.toContain("leaked-detail");
+    expect(logged).not.toContain("Password rejected by provider internal policy");
+    expect(logged).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+
+    const auditLine = logSpy.mock.calls
+      .map((call) => call.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+      .find((line) => line.includes('"audit":true') && line.includes('"result":"weak_password"'));
+    expect(auditLine).toBeDefined();
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
   it("does not leak sensitive data in error responses", async () => {
     mockClient.auth.getUser.mockResolvedValue({
       data: { user: { id: "admin-123", email: "admin@test.com" } },
