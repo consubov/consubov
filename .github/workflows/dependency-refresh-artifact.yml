@@ -1,85 +1,33 @@
-name: Temporary Dependency Apply
+name: Dependency Remediation Verification
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply:
-    if: github.head_ref == 'fix/pre-phase3-gates-20261003'
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Setup Bun 1.4
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.0
 
-      - name: Apply validated security candidate
-        shell: bash
-        run: |
-          bun - <<'EOF'
-          import { readFile, writeFile } from "node:fs/promises";
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-          const root = JSON.parse(await readFile("package.json", "utf8"));
-          root.packageManager = "bun@1.4.0";
-          root.overrides = {
-            "lodash@>=4.0.0 <=4.17.23": "4.18.0",
-            "flatted@<3.4.2": "3.4.2",
-            "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
-            "@remix-run/router@<=1.23.1": "1.23.2",
-            "postcss@<=8.5.22": "8.5.23",
-            "form-data@>=4.0.0 <4.0.6": "4.0.6",
-            "nanoid@<3.3.18": "3.3.18",
-            "glob@>=10.2.0 <10.5.0": "10.5.0",
-            "ws@>=8.0.0 <8.21.0": "8.21.0",
-            "browserslist@<=4.28.6": "4.28.7",
-            "d3-color@>=1.0.2 <3.1.0": "3.1.0",
-            "minimatch@<3.1.5": "3.1.5",
-            "minimatch@>=9.0.0 <9.0.7": "9.0.7",
-            "brace-expansion@<1.1.20": "1.1.20",
-            "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
-            "picomatch@<2.3.2": "2.3.2",
-            "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
-          };
-          await writeFile("package.json", JSON.stringify(root, null, 2) + "\n");
+      - name: Dependency audit
+        run: bun audit --audit-level=high
 
-          const web = JSON.parse(await readFile("apps/web/package.json", "utf8"));
-          web.devDependencies.vite = "^6.4.3";
-          web.devDependencies.vitest = "^5.0.3";
-          await writeFile("apps/web/package.json", JSON.stringify(web, null, 2) + "\n");
-          EOF
-          bun install
+      - name: Project regression
+        run: bun run check
 
-      - name: Verify patched source and audit
-        shell: bash
-        run: |
-          grep -q 'FSDevelop-braces-d0d575e' bun.lock
-          bun audit --audit-level=high
-
-      - name: Run regression suite
-        shell: bash
-        run: |
-          bun run check
-          (cd supabase/functions && bunx vitest@3.2.4 run)
-
-      - name: Commit validated dependency candidate
-        shell: bash
-        run: |
-          git add package.json apps/web/package.json bun.lock
-          if git diff --cached --quiet; then
-            echo "Candidate already applied; nothing to commit."
-            exit 0
-          fi
-          git config user.name "consubov-ci"
-          git config user.email "consubov-ci@users.noreply.github.com"
-          git commit -m "chore(deps): aplicar remediacao de vulnerabilidades"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+      - name: Edge Functions regression
+        working-directory: supabase/functions
+        run: bunx vitest@3.2.4 run
