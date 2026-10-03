@@ -47,7 +47,7 @@ jobs:
           ws
           picomatch
           browserslist
-          --recursive
+
 
       - name: Capture audit result
         shell: bash
