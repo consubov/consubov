@@ -11,9 +11,9 @@ import type { TenantExecutionContext } from "../../identity-tenancy";
  * criada pela FASE 2.1.
  */
 export interface FileStoragePort {
-  store(command: StoreFileCommand, context?: TenantExecutionContext): Promise<ArquivoReferencia>;
-  findRef(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<ArquivoReferencia | null>;
-  remove(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<void>;
+  store(command: StoreFileCommand, context: TenantExecutionContext): Promise<ArquivoReferencia>;
+  findRef(caminho: ArquivoCaminho, context: TenantExecutionContext): Promise<ArquivoReferencia | null>;
+  remove(caminho: ArquivoCaminho, context: TenantExecutionContext): Promise<void>;
 }
 
 /**
@@ -30,6 +30,6 @@ export interface SignedUrlPort {
   createSignedUrl(
     caminho: ArquivoCaminho,
     ttlSegundos: number,
-    context?: TenantExecutionContext,
+    context: TenantExecutionContext,
   ): Promise<string>;
 }
