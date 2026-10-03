@@ -26,28 +26,8 @@ jobs:
       - name: Install frozen baseline
         run: bun install --frozen-lockfile
 
-      - name: Refresh vulnerable packages within declared ranges
-        run: >
-          bun update
-          lodash
-          brace-expansion
-          vite
-          minimatch
-          form-data
-          braces
-          d3-color
-          flatted
-          rollup
-          @remix-run/router
-          js-yaml
-          glob
-          nanoid
-          postcss
-          vitest
-          ws
-          picomatch
-          browserslist
-
+      - name: Refresh dependencies within declared ranges
+        run: bun update
 
       - name: Capture audit result
         shell: bash
