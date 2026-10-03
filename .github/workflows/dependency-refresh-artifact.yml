@@ -1,0 +1,76 @@
+name: Temporary Dependency Refresh
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    if: github.head_ref == 'fix/pre-phase3-gates-20261003'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.3.12
+
+      - name: Install frozen baseline
+        run: bun install --frozen-lockfile
+
+      - name: Refresh vulnerable packages within declared ranges
+        run: >
+          bun update
+          lodash
+          brace-expansion
+          vite
+          minimatch
+          form-data
+          braces
+          d3-color
+          flatted
+          rollup
+          @remix-run/router
+          js-yaml
+          glob
+          nanoid
+          postcss
+          vitest
+          ws
+          picomatch
+          browserslist
+          --recursive
+
+      - name: Capture audit result
+        shell: bash
+        run: |
+          set +e
+          bun audit --audit-level=high | tee dependency-refresh-audit.txt
+          echo "audit_exit=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Package updated dependency files
+        shell: bash
+        run: |
+          mkdir -p dependency-refresh/apps/web dependency-refresh/apps/api
+          cp package.json bun.lock dependency-refresh/
+          cp apps/web/package.json dependency-refresh/apps/web/package.json
+          cp apps/api/package.json dependency-refresh/apps/api/package.json
+          cp dependency-refresh-audit.txt dependency-refresh/
+          git diff -- package.json apps/web/package.json apps/api/package.json bun.lock > dependency-refresh/dependency-update.patch
+
+      - name: Upload dependency refresh
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-refresh
+          path: dependency-refresh
+          if-no-files-found: error
+          retention-days: 1
