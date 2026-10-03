@@ -11,7 +11,7 @@ jobs:
   refresh:
     if: github.head_ref == 'fix/pre-phase3-gates-20261003'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -26,31 +26,104 @@ jobs:
       - name: Install frozen baseline
         run: bun install --frozen-lockfile
 
-      - name: Refresh dependencies within declared ranges
-        run: bun update
-
-      - name: Capture audit result
+      - name: Prove baseline audit is red
         shell: bash
         run: |
           set +e
-          bun audit --audit-level=high | tee dependency-refresh-audit.txt
-          echo "audit_exit=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          bun audit --audit-level=high > baseline-audit.txt 2>&1
+          STATUS=$?
+          set -e
+          cat baseline-audit.txt
+          test "$STATUS" -ne 0
+
+      - name: Apply candidate security versions
+        shell: bash
+        run: |
+          bun - <<'EOF'
+          import { readFile, writeFile } from "node:fs/promises";
+
+          const root = JSON.parse(await readFile("package.json", "utf8"));
+          root.overrides = {
+            ...(root.overrides ?? {}),
+            "lodash@>=4.0.0 <=4.17.23": "4.18.0",
+            "brace-expansion@<1.1.20": "1.1.20",
+            "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
+            "minimatch@<3.1.5": "3.1.5",
+            "flatted@<3.4.2": "3.4.2",
+            "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+            "rollup@>=4.0.0 <4.59.0": "4.59.0",
+            "@remix-run/router@<=1.23.1": "1.23.2",
+            "postcss@<=8.5.22": "8.5.23",
+            "form-data@>=4.0.0 <4.0.6": "4.0.6",
+            "nanoid@<3.3.18": "3.3.18",
+            "glob@>=10.2.0 <10.5.0": "10.5.0",
+            "ws@>=8.0.0 <8.21.0": "8.21.0",
+            "picomatch@<2.3.2": "2.3.2",
+            "browserslist@<=4.28.6": "4.28.7",
+            "d3-color@>=1.0.2 <3.1.0": "3.1.0",
+            "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
+          };
+          await writeFile("package.json", JSON.stringify(root, null, 2) + "\n");
+
+          const web = JSON.parse(await readFile("apps/web/package.json", "utf8"));
+          web.devDependencies.vite = "^6.4.3";
+          web.devDependencies.vitest = "^3.2.6";
+          await writeFile("apps/web/package.json", JSON.stringify(web, null, 2) + "\n");
+          EOF
+          bun install
+
+      - name: Verify patched braces depth guard
+        shell: bash
+        run: |
+          bun -e 'const braces=require("braces"); let ok=false; try { braces("{".repeat(101)+"a,b"+"}".repeat(101)); } catch (e) { ok=/max depth|depth/i.test(String(e)); } if (!ok) process.exit(1);'
+
+      - name: Run dependency audit candidate
+        shell: bash
+        run: |
+          set +e
+          bun audit --audit-level=high | tee candidate-audit.txt
+          AUDIT=${PIPESTATUS[0]}
+          set -e
+          echo "candidate_audit_exit=$AUDIT" >> "$GITHUB_ENV"
           exit 0
 
-      - name: Package updated dependency files
+      - name: Run project check
+        shell: bash
+        run: |
+          set +e
+          bun run check > candidate-check.txt 2>&1
+          CHECK=$?
+          set -e
+          cat candidate-check.txt
+          echo "candidate_check_exit=$CHECK" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Test Supabase Edge Functions
+        shell: bash
+        run: |
+          set +e
+          (cd supabase/functions && bunx vitest@3.2.4 run) > candidate-edge.txt 2>&1
+          EDGE=$?
+          set -e
+          cat candidate-edge.txt
+          echo "candidate_edge_exit=$EDGE" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Package candidate
         shell: bash
         run: |
           mkdir -p dependency-refresh/apps/web dependency-refresh/apps/api
           cp package.json bun.lock dependency-refresh/
           cp apps/web/package.json dependency-refresh/apps/web/package.json
           cp apps/api/package.json dependency-refresh/apps/api/package.json
-          cp dependency-refresh-audit.txt dependency-refresh/
+          cp baseline-audit.txt candidate-audit.txt candidate-check.txt candidate-edge.txt dependency-refresh/
           git diff -- package.json apps/web/package.json apps/api/package.json bun.lock > dependency-refresh/dependency-update.patch
+          printf 'audit=%s\ncheck=%s\nedge=%s\n' "$candidate_audit_exit" "$candidate_check_exit" "$candidate_edge_exit" > dependency-refresh/status.txt
 
-      - name: Upload dependency refresh
+      - name: Upload dependency candidate
         uses: actions/upload-artifact@v4
         with:
-          name: dependency-refresh
+          name: dependency-security-candidate
           path: dependency-refresh
           if-no-files-found: error
           retention-days: 1
