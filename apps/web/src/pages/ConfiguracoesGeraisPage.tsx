@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { evaluateArithmeticExpression } from "@/lib/safeArithmetic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -107,9 +108,9 @@ function testFormula(formula: string): { result: number | null; error?: string }
     if (remaining.length > 0) {
       return { result: null, error: `Variável desconhecida: ${remaining}` };
     }
-    // eslint-disable-next-line no-eval
-    const result = eval(expr);
-    if (typeof result !== "number" || !isFinite(result)) {
+
+    const result = evaluateArithmeticExpression(expr);
+    if (!Number.isFinite(result)) {
       return { result: null, error: "Resultado inválido (infinito ou NaN)" };
     }
     return { result: Math.round(result * 1000) / 1000 };
