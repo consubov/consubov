@@ -1,20 +1,20 @@
-name: Temporary Dependency Refresh
+name: Temporary Dependency Apply
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  refresh:
+  apply:
     if: github.head_ref == 'fix/pre-phase3-gates-20261003'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.event.pull_request.head.ref }}
 
@@ -23,20 +23,7 @@ jobs:
         with:
           bun-version: 1.4.0
 
-      - name: Install frozen baseline
-        run: bun install --frozen-lockfile
-
-      - name: Prove baseline audit is red
-        shell: bash
-        run: |
-          set +e
-          bun audit --audit-level=high > baseline-audit.txt 2>&1
-          STATUS=$?
-          set -e
-          cat baseline-audit.txt
-          test "$STATUS" -ne 0
-
-      - name: Apply candidate security versions
+      - name: Apply validated security candidate
         shell: bash
         run: |
           bun - <<'EOF'
@@ -72,57 +59,27 @@ jobs:
           EOF
           bun install
 
-      - name: Verify patched braces source is locked
-        shell: bash
-        run: grep -q 'FSDevelop-braces-d0d575e' bun.lock
-
-      - name: Run dependency audit candidate
+      - name: Verify patched source and audit
         shell: bash
         run: |
-          set +e
-          bun audit --audit-level=high | tee candidate-audit.txt
-          AUDIT=${PIPESTATUS[0]}
-          set -e
-          echo "candidate_audit_exit=$AUDIT" >> "$GITHUB_ENV"
-          exit 0
+          grep -q 'FSDevelop-braces-d0d575e' bun.lock
+          bun audit --audit-level=high
 
-      - name: Run project check
+      - name: Run regression suite
         shell: bash
         run: |
-          set +e
-          bun run check > candidate-check.txt 2>&1
-          CHECK=$?
-          set -e
-          cat candidate-check.txt
-          echo "candidate_check_exit=$CHECK" >> "$GITHUB_ENV"
-          exit 0
+          bun run check
+          (cd supabase/functions && bunx vitest@3.2.4 run)
 
-      - name: Test Supabase Edge Functions
+      - name: Commit validated dependency candidate
         shell: bash
         run: |
-          set +e
-          (cd supabase/functions && bunx vitest@3.2.4 run) > candidate-edge.txt 2>&1
-          EDGE=$?
-          set -e
-          cat candidate-edge.txt
-          echo "candidate_edge_exit=$EDGE" >> "$GITHUB_ENV"
-          exit 0
-
-      - name: Package candidate
-        shell: bash
-        run: |
-          mkdir -p dependency-refresh/apps/web dependency-refresh/apps/api
-          cp package.json bun.lock dependency-refresh/
-          cp apps/web/package.json dependency-refresh/apps/web/package.json
-          cp apps/api/package.json dependency-refresh/apps/api/package.json
-          cp baseline-audit.txt candidate-audit.txt candidate-check.txt candidate-edge.txt dependency-refresh/
-          git diff -- package.json apps/web/package.json apps/api/package.json bun.lock > dependency-refresh/dependency-update.patch
-          printf 'audit=%s\ncheck=%s\nedge=%s\n' "$candidate_audit_exit" "$candidate_check_exit" "$candidate_edge_exit" > dependency-refresh/status.txt
-
-      - name: Upload dependency candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-security-candidate
-          path: dependency-refresh
-          if-no-files-found: error
-          retention-days: 1
+          git add package.json apps/web/package.json bun.lock
+          if git diff --cached --quiet; then
+            echo "Candidate already applied; nothing to commit."
+            exit 0
+          fi
+          git config user.name "consubov-ci"
+          git config user.email "consubov-ci@users.noreply.github.com"
+          git commit -m "chore(deps): aplicar remediacao de vulnerabilidades"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
