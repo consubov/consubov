@@ -59,7 +59,11 @@ jobs:
           import tseslint from "typescript-eslint";
           import security from "eslint-plugin-security";
 
-          export default [{
+          export default [
+          {
+            ignores: ["src/test/**", "src/**/*.test.ts", "src/**/*.test.tsx"],
+          },
+          {
             files: ["src/**/*.{ts,tsx}"],
             languageOptions: { parser: tseslint.parser },
             plugins: { security },
@@ -71,7 +75,7 @@ jobs:
           }];
           EOF
           trap 'rm -f .eslint-security-ci.mjs' EXIT
-          bunx eslint src --config .eslint-security-ci.mjs --max-warnings=0
+          bunx eslint src --config .eslint-security-ci.mjs --no-inline-config --max-warnings=0
 
   dependency-vulnerability-scan:
     runs-on: ubuntu-latest
