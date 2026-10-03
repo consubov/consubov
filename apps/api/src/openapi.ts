@@ -65,6 +65,24 @@ export const openApiDocument = {
     description:
       "Local API foundation. Persistence, authentication and remote integrations are intentionally not connected yet.\n\nError model: every error response body follows the ApiError schema ({ error: { code, message, requestId, correlationId } }). Status codes emitted today: 401 UNAUTHORIZED for admin/internal routes while authentication is unimplemented (deny-by-default), 404 NOT_FOUND when no route matches the path and method, and 500 INTERNAL_ERROR for unhandled failures (stack traces are never serialized).",
   },
+  "x-consubov-contract-policy": {
+    idempotency: {
+      header: "Idempotency-Key",
+      rule: "Retryable mutating operations must document and preserve a stable idempotency key when duplicate effects are possible.",
+    },
+    pagination: {
+      rule: "Collection endpoints that can grow without a safe fixed bound must document their pagination contract. The concrete strategy is endpoint-specific.",
+    },
+    filteringAndOrdering: {
+      rule: "Filters and sort fields must be explicitly allowlisted and documented per endpoint; arbitrary provider/query syntax is not part of the public contract.",
+    },
+    rateLimit: {
+      rule: "Only endpoints with a real rate-limit implementation document rate-limit behavior and headers. Do not advertise limits that do not exist.",
+    },
+    deprecation: {
+      rule: "Deprecated operations must be marked with OpenAPI deprecated=true and document the replacement/version transition before removal.",
+    },
+  },
   paths: {
     "/api/v1/health": {
       get: {

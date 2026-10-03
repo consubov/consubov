@@ -199,3 +199,30 @@ export const MAX_LOCAL_LOT_CODE = 999;
 
 /** Width of a local lot code (`maisArrobasQueue.ts:402`). */
 export const LOCAL_LOT_CODE_WIDTH = 3;
+
+/**
+ * Minimum tombstone-retention rule before a canonical server-side checkpoint
+ * exists. A tombstone cannot be purged unless a trustworthy checkpoint exists
+ * and every known offline client has advanced beyond it. Without that evidence,
+ * retention is unbounded by time: automatic purge is forbidden.
+ */
+export type TombstoneRetentionEvidence = {
+  hasCanonicalCheckpoint: boolean;
+  allKnownClientsAdvanced: boolean;
+};
+
+export type TombstonePurgeDecision =
+  | { allowed: true }
+  | { allowed: false; reason: "checkpoint-unavailable" | "clients-not-advanced" };
+
+export function evaluateTombstonePurge(
+  evidence: TombstoneRetentionEvidence,
+): TombstonePurgeDecision {
+  if (!evidence.hasCanonicalCheckpoint) {
+    return { allowed: false, reason: "checkpoint-unavailable" };
+  }
+  if (!evidence.allKnownClientsAdvanced) {
+    return { allowed: false, reason: "clients-not-advanced" };
+  }
+  return { allowed: true };
+}

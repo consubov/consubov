@@ -23,4 +23,13 @@ Duas workflows rodam em `pull_request` para `main`, em `push` para `main` e por
 
 - TruffleHog roda com `--only-verified --fail`: qualquer segredo verificado
   commitado quebra o gate.
-- ESLint roda com `--max-warnings=0`: warnings de segurança também quebram o gate.
+- API: ESLint executa a configuração completa do workspace com `--max-warnings=0`.
+- Web: enquanto `apps/web/**` estiver congelado, o SAST executa somente as regras
+  `eslint-plugin-security` aprovadas via CLI e ignora o lint geral legado. Isso
+  não usa `continue-on-error` e não mascara finding de segurança.
+- O débito de lint geral do Web permanece registrado separadamente e não deve ser
+  declarado resolvido até haver autorização específica para tocar o frontend.
+
+### Edge Functions
+- A suíte de `supabase/functions` deve rodar no CI com `bunx vitest@3.2.4 run`, versão compatível com o Vite atual do monorepo.
+- Nenhum teste de Edge pode acessar Supabase remoto ou executar operação destrutiva real.

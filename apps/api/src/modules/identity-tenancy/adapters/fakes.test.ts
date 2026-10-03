@@ -125,6 +125,17 @@ describe("FakeIdentityVerifierAdapter", () => {
     expect(await verifier.verifyAndResolve({ kind: "bearer", value: "no-tenant" })).toBeNull();
   });
 
+  it("rejects inconsistent verified identity claims", async () => {
+    const verifier = new FakeIdentityVerifierAdapter();
+    verifier.register("mismatch", {
+      identity: {
+        ...baseIdentity,
+        claims: { ...baseIdentity.claims, tenantId: createTenantId("tenant-2") },
+      },
+    });
+    expect(await verifier.verifyAndResolve({ kind: "bearer", value: "mismatch" })).toBeNull();
+  });
+
   it("scopes are preserved for negative authorization cases", async () => {
     const verifier = new FakeIdentityVerifierAdapter();
     verifier.register("limited", { identity: { ...baseIdentity, scopes: [] as const } });
@@ -212,29 +223,40 @@ describe("FakeTenancyRepository", () => {
     }
   });
 
-  it("should return null when membership is not active", () => {
-    const tenant = {
+  it("keeps the canonical membership catalog limited to ACTIVE", () => {
+    expect(Object.values(MembershipStatus)).toEqual(["ACTIVE"]);
+  });
+
+  it("does not infer an active tenant when a principal has multiple memberships", () => {
+    const userId = createPrincipalId("user-1");
+    const tenant1 = {
       id: createTenantId("tenant-1"),
-      name: "Test Tenant",
-      slug: "test-tenant",
+      name: "Tenant 1",
+      slug: "tenant-1",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const membership = {
-      id: "membership-1",
-      tenantId: createTenantId("tenant-1"),
-      principalId: createPrincipalId("user-1"),
-      status: "PENDING" as MembershipStatus,
-      role: "admin",
+    const tenant2 = {
+      id: createTenantId("tenant-2"),
+      name: "Tenant 2",
+      slug: "tenant-2",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    repo.createTenant(tenant1);
+    repo.createTenant(tenant2);
+    repo.createMembership({
+      id: "membership-1", tenantId: tenant1.id, principalId: userId,
+      status: MembershipStatus.ACTIVE, role: "role-1", createdAt: new Date(), updatedAt: new Date(),
+    });
+    repo.createMembership({
+      id: "membership-2", tenantId: tenant2.id, principalId: userId,
+      status: MembershipStatus.ACTIVE, role: "role-2", createdAt: new Date(), updatedAt: new Date(),
+    });
 
-    repo.createTenant(tenant);
-    repo.createMembership(membership);
-
-    const activeTenant = repo.getActiveTenant("tenant-1", "user-1");
-    expect(activeTenant).toBeNull();
+    expect(repo.listActiveTenantsByPrincipal("user-1")).toHaveLength(2);
+    expect(repo.getActiveTenantByPrincipal("user-1")).toBeNull();
+    expect(repo.getActiveTenant("tenant-1", "user-1")?.tenant.id).toBe("tenant-1");
   });
 
   it("should return null when no membership exists for principal", () => {

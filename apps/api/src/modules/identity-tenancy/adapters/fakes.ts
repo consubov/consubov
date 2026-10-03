@@ -68,6 +68,11 @@ export class FakeIdentityVerifierAdapter implements IdentityVerifierPort {
     };
     if (claims.expired || claims.revoked) return null;
     if (!record.identity.tenantId) return null;
+    if (claims.tenantId !== record.identity.tenantId) return null;
+    if (claims.principalId !== record.identity.principal.id) return null;
+    if (claims.principalKind !== record.identity.principal.kind) return null;
+    if (claims.scopes.length !== record.identity.scopes.length) return null;
+    if (claims.scopes.some((scope, index) => scope !== record.identity.scopes[index])) return null;
     return { ...record.identity, claims };
   }
 }
@@ -105,15 +110,23 @@ export class FakeTenancyRepository {
     return { tenant, membership };
   }
 
+  listActiveTenantsByPrincipal(principalId: string): readonly ActiveTenant[] {
+    return Array.from(this.memberships.values())
+      .filter((membership) =>
+        membership.principalId === principalId && membership.status === MembershipStatus.ACTIVE
+      )
+      .flatMap((membership) => {
+        const tenant = this.tenants.get(membership.tenantId);
+        return tenant ? [{ tenant, membership }] : [];
+      });
+  }
+
+  /**
+   * Safe convenience for tests that have exactly one active tenant. Multiple
+   * memberships are ambiguous and must be resolved explicitly by tenant id.
+   */
   getActiveTenantByPrincipal(principalId: string): ActiveTenant | null {
-    const membership = Array.from(this.memberships.values()).find(
-      (m) => m.principalId === principalId && m.status === MembershipStatus.ACTIVE
-    );
-    if (!membership) return null;
-
-    const tenant = this.tenants.get(membership.tenantId);
-    if (!tenant) return null;
-
-    return { tenant, membership };
+    const activeTenants = this.listActiveTenantsByPrincipal(principalId);
+    return activeTenants.length === 1 ? activeTenants[0] : null;
   }
 }

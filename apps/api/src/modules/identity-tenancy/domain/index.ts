@@ -6,4 +6,5 @@ export * from "./errors";
 export * from "./identity";
 export * from "./ports";
 export * from "./rbac-matrix";
+export * from "./tenant-context";
 export * from "./tenant-model";

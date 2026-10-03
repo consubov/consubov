@@ -15,6 +15,7 @@ import {
   SYNC_RETRY_DELAY_CAP_MS,
   SYNC_UPSERT_DEFAULT_CONFLICT_TARGET,
   type SyncCommand,
+  evaluateTombstonePurge,
 } from "./index";
 
 describe("sync contracts preserved from the running queue", () => {
@@ -48,6 +49,23 @@ describe("sync contracts preserved from the running queue", () => {
 
   test("keeps the local lot code range", () => {
     expect(MAX_LOCAL_LOT_CODE).toBe(999);
+  });
+
+  test("never purges tombstones without canonical checkpoint evidence", () => {
+    expect(evaluateTombstonePurge({
+      hasCanonicalCheckpoint: false,
+      allKnownClientsAdvanced: true,
+    })).toEqual({ allowed: false, reason: "checkpoint-unavailable" });
+
+    expect(evaluateTombstonePurge({
+      hasCanonicalCheckpoint: true,
+      allKnownClientsAdvanced: false,
+    })).toEqual({ allowed: false, reason: "clients-not-advanced" });
+
+    expect(evaluateTombstonePurge({
+      hasCanonicalCheckpoint: true,
+      allKnownClientsAdvanced: true,
+    })).toEqual({ allowed: true });
   });
 
   test("describes a remote sync command with its default command text", () => {

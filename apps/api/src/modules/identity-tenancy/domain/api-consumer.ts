@@ -1,60 +1,66 @@
+import type { PermissionScope, TenantId } from "./identity";
+
+export type ApiConsumerStatus = "active" | "revoked";
+
 export type ApiConsumer = {
-  /**
-   * Unique identifier for the API consumer.
-   */
   consumerId: string;
-
-  /**
-   * Human-readable name for the API consumer.
-   */
   name: string;
-
-  /**
-   * Tenant identifier. Nullable because global consumers may be allowed only by explicit rule.
-   * When null, the consumer is not tied to a specific tenant and must follow global rules.
-   */
-  tenantId: string | null;
-
-  /**
-   * Scopes granted to this consumer. Reuses the existing PermissionScope contract (namespaced resource:action format).
-   * Do not create a new catalog of scopes; reuse the same strings used elsewhere in the system.
-   * Stored as readonly array to prevent accidental mutation.
-   */
-  scopes: readonly string[];
-
-  /**
-   * Current status of the consumer credentials.
-   * 'active' - credentials are valid and can be used.
-   * 'revoked' - credentials have been revoked and cannot be used.
-   */
-  status: 'active' | 'revoked';
-
-  /**
-   * Reference to the stored credential (e.g., key ID or hash reference).
-   * Never store the actual secret in plain text; this is only a reference to the credential stored securely elsewhere.
-   */
+  /** Null never implies global access; global consumers require an explicit policy. */
+  tenantId: TenantId | null;
+  scopes: readonly PermissionScope[];
+  status: ApiConsumerStatus;
+  /** Opaque reference only. Never store the credential secret in this contract. */
   credentialReference: string;
-
-  /**
-   * Timestamp when the consumer was created.
-   */
   createdAt: Date;
-
-  /**
-   * Timestamp when the consumer was revoked (if applicable).
-   * Null if the consumer is still active.
-   */
   revokedAt: Date | null;
-
-  /**
-   * Timestamp when the consumer credentials expire (if applicable).
-   * Null if the credentials do not expire or expiration is managed elsewhere.
-   */
   expiresAt: Date | null;
-
-  /**
-   * Integration identifier indicating the origin or source of this consumer.
-   * Used for auditing and tracking which system or integration created/uses this consumer.
-   */
   origin: string;
 };
+
+export type ApiConsumerAuditContext = {
+  consumerId: string;
+  tenantId: TenantId | null;
+  origin: string;
+};
+
+/**
+ * Quota/rate-limit are represented by policy references only. Numerical limits
+ * remain a product/commercial decision and are not invented in the domain.
+ */
+export type ApiConsumerUsagePolicy = {
+  rateLimitPolicyReference?: string;
+  quotaPolicyReference?: string;
+};
+
+export type ApiConsumerCredentialDecision =
+  | { allowed: true }
+  | { allowed: false; reason: "revoked" | "expired" };
+
+export function evaluateApiConsumerCredential(
+  consumer: ApiConsumer,
+  now: Date,
+): ApiConsumerCredentialDecision {
+  if (consumer.status === "revoked") return { allowed: false, reason: "revoked" };
+  if (consumer.expiresAt !== null && consumer.expiresAt.getTime() <= now.getTime()) {
+    return { allowed: false, reason: "expired" };
+  }
+  return { allowed: true };
+}
+
+/** Rotation is represented by replacing only the opaque credential reference. */
+export function rotateApiConsumerCredentialReference(
+  consumer: ApiConsumer,
+  credentialReference: string,
+): ApiConsumer {
+  const nextReference = credentialReference.trim();
+  if (!nextReference) throw new Error("credentialReference is required");
+  return { ...consumer, credentialReference: nextReference };
+}
+
+export function toApiConsumerAuditContext(consumer: ApiConsumer): ApiConsumerAuditContext {
+  return {
+    consumerId: consumer.consumerId,
+    tenantId: consumer.tenantId,
+    origin: consumer.origin,
+  };
+}
