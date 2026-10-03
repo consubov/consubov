@@ -3,6 +3,7 @@ import type {
   ArquivoReferencia,
   StoreFileCommand,
 } from "./arquivo";
+import type { TenantExecutionContext } from "../../identity-tenancy/domain/tenant-context";
 
 /**
  * Fronteira de armazenamento de objetos. Nenhum provider está conectado nesta
@@ -10,9 +11,9 @@ import type {
  * criada pela FASE 2.1.
  */
 export interface FileStoragePort {
-  store(command: StoreFileCommand): Promise<ArquivoReferencia>;
-  findRef(caminho: ArquivoCaminho): Promise<ArquivoReferencia | null>;
-  remove(caminho: ArquivoCaminho): Promise<void>;
+  store(command: StoreFileCommand, context?: TenantExecutionContext): Promise<ArquivoReferencia>;
+  findRef(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<ArquivoReferencia | null>;
+  remove(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<void>;
 }
 
 /**
@@ -29,5 +30,6 @@ export interface SignedUrlPort {
   createSignedUrl(
     caminho: ArquivoCaminho,
     ttlSegundos: number,
+    context?: TenantExecutionContext,
   ): Promise<string>;
 }

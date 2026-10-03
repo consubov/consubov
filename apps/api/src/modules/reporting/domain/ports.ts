@@ -1,12 +1,13 @@
 import type { PastoId, RetiroId } from "../../pastures";
 import type { PrincipalId } from "../../identity-tenancy";
+import type { TenantExecutionContext } from "../../identity-tenancy/domain/tenant-context";
 import type { PainelMetricsAggregate, RetiroMetricsAggregate } from "./agregados";
 import type { RelatorioDespesasRecord } from "./relatorio-despesas";
 
 /** Leitura dos metadados de relatório de despesas, sem itens (migrations/20260713181955:2-11,23-31). */
 export interface RelatorioDespesasReader {
-  findById(id: string): Promise<RelatorioDespesasRecord | null>;
-  listByConsultor(consultorId: PrincipalId): Promise<readonly RelatorioDespesasRecord[]>;
+  findById(id: string, context: TenantExecutionContext): Promise<RelatorioDespesasRecord | null>;
+  listByConsultor(consultorId: PrincipalId, context: TenantExecutionContext): Promise<readonly RelatorioDespesasRecord[]>;
 }
 
 /** Mês e ano de referência dos lançamentos (painelMetrics.ts:38-40). */
@@ -27,8 +28,8 @@ export type PainelMetricsFiltro = PeriodoReferencia & {
  * módulos (apps/web/src/lib/painelMetrics.ts:298-350,352-399).
  */
 export interface PainelMetricsReader {
-  aggregate(filtro: PainelMetricsFiltro): Promise<PainelMetricsAggregate>;
-  aggregateByRetiro(filtro: PainelMetricsFiltro): Promise<RetiroMetricsAggregate>;
+  aggregate(filtro: PainelMetricsFiltro, context: TenantExecutionContext): Promise<PainelMetricsAggregate>;
+  aggregateByRetiro(filtro: PainelMetricsFiltro, context: TenantExecutionContext): Promise<RetiroMetricsAggregate>;
 }
 
 /**
@@ -41,5 +42,6 @@ export interface GmdProjectionReader {
   read(
     pastoIds: readonly PastoId[],
     dia: string,
+    context: TenantExecutionContext,
   ): Promise<ReadonlyMap<PastoId, number | null>>;
 }
