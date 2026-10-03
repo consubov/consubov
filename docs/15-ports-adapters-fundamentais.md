@@ -18,7 +18,7 @@ Esta documentação registra a fundação de contratos de infraestrutura da arqu
 
 *Adaptadores Atuais:* FakeTenantContextAdapter, FakeAuthorizationAdapter (para testes unitários).
 
-> **Estado pré-FASE 3:** o contrato comum de execução existe, mas sua materialização em todas as fronteiras ainda é incremental. Não marcar arquivos/jobs/eventos/relatórios/sync como tenant-safe apenas pela existência do tipo; verificar a assinatura real de cada port e seu consumidor.
+> **Estado ao fechar a FASE 2:** o contrato comum de execução está materializado nas fronteiras tenant-scoped existentes. Queries/commands usam contratos tenant-scoped; arquivos, jobs, eventos, notificações/push, relatórios e sync exigem `TenantExecutionContext`. Contratos explicitamente globais permanecem separados.
 
 ## 2. Observabilidade (`apps/api/src/modules/observability/domain/`)
 
@@ -32,13 +32,13 @@ Esta documentação registra a fundação de contratos de infraestrutura da arqu
 - **FileStoragePort (`apps/api/src/modules/files/domain/ports.ts`)**: abstrai armazenamento de arquivos (salvar, remover e obter referência), sem dependência de S3 ou Storage do Supabase.
   - *Estado atual:* materializado com `TenantExecutionContext` em todas as assinaturas.
   - *Adaptadores Atuais:* FakeFileStorageAdapter.
-- **NotificationPort (`apps/api/src/modules/notifications/domain/ports.ts`)**: responsável pelo disparo de alertas/comunicações para o usuário, independentemente de canal (Push, E-mail, SMS).
+- **NotificationPort (`apps/api/src/modules/notifications/domain/ports.ts`)**: responsável pelo disparo de alertas/comunicações para o usuário, independentemente de canal (Push, E-mail, SMS), exigindo `TenantExecutionContext` na fronteira tenant-scoped.
   - *Adaptadores Atuais:* FakeNotificationAdapter.
 
 ## 4. Persistência de Domínio (`apps/api/src/modules/farms/domain/`)
 
 - Em vez de um repositório CRUD genérico e sem semântica para toda aplicação, cada módulo de negócio que precisa persistir dados define sua própria interface específica.
-- **Exemplo Real:** `FarmRepository` no módulo Farms (`apps/api/src/modules/farms/domain/ports.ts`). Contrato permite a recuperação, criação e deleção baseada estritamente nos tipos do próprio domínio.
+- **Exemplo Real:** `FarmReaderPort` no módulo Farms (`apps/api/src/modules/farms/domain/ports.ts`). O contrato de leitura recebe `TenantExecutionContext`; escrita continua apenas como atalho do fake de teste nesta fase.
   - *Adaptadores Atuais:* FakeFarmRepository (`apps/api/src/modules/farms/infrastructure/FakeFarmRepository.ts`).
   - *Gate remoto:* FASE 3.5 pode usar adapters de memória/fixture e persistência local controlada quando aprovada. Implementação contra PostgreSQL/Supabase remoto permanece bloqueada até a FASE 8 e autorização explícita.
 
@@ -49,20 +49,22 @@ Contratos transversais e frequentemente consumidos em diferentes pontos da aplic
   - *Adaptadores Atuais:* SystemClock (real), FakeClock (para manipulação em testes).
 - **IdGeneratorPort**: Geração de identificadores da aplicação (IDs agnósticos).
   - *Adaptadores Atuais:* UUIDGenerator (baseado em crypto native), FakeIdGenerator.
-- **EventPublisherPort**: Publicação de eventos internos da arquitetura, desacoplada de broker externo. O envelope de evento pode carregar tenant, mas a assinatura transversal atual ainda não recebe `TenantExecutionContext` como argumento obrigatório; aplicar contexto por evento/uso conforme 2B.1.
-- **JobQueuePort**: Contrato base para registrar tarefas assíncronas com idempotency key e atraso. A assinatura atual ainda não materializa `TenantExecutionContext`; jobs tenant-scoped deverão recebê-lo explicitamente quando integrados.
+- **EventPublisherPort**: Publicação de eventos internos da arquitetura, desacoplada de broker externo, com `TenantExecutionContext` obrigatório.
+- **JobQueuePort**: Contrato base para registrar tarefas assíncronas com idempotency key, atraso e `TenantExecutionContext` obrigatório.
 - **FeatureFlagPort**: Verificação simples de alternância de fluxos (`isEnabled`). O contexto permite tenant opcional para suportar flags globais e por tenant; isso não autoriza tratar ausência de tenant como bypass de autorização.
 
-## 6. Fronteiras ainda abertas antes da FASE 3
+## 6. Gate ao encerrar a FASE 2
 
-A fundação de ports/adapters está concluída, mas os itens abaixo não devem ser confundidos com implementação final:
+A fundação de ports/adapters e os contratos de tenancy estão concluídos para esta fase:
 
-- materialização de `TenantExecutionContext` em queries/commands e em arquivos, jobs, eventos, relatórios e sync;
-- status adicionais de membership além de `ACTIVE`, que dependem de regra aprovada;
-- matriz RBAC e alçadas ainda sem evidência canônica suficiente;
-- adapters remotos de banco/storage/realtime, bloqueados para a fase própria.
+- `TenantExecutionContext` é obrigatório nas fronteiras tenant-scoped existentes;
+- membership possui somente o estado comprovado `ACTIVE`; estados futuros exigem decisão própria;
+- RBAC é evidence-first e deny-by-default: somente `ALLOW` explícito autoriza;
+- alçadas sem evidência ficam `DENY_UNTIL_APPROVED`;
+- cache/realtime ainda não possuem adapter concreto da nova arquitetura e devem respeitar `TENANT_CONTEXT_BOUNDARIES` quando forem criados;
+- adapters remotos de banco/storage/realtime continuam bloqueados para a fase própria.
 
-Essas pendências são deliberadas: não inventar regra de negócio ou provider apenas para deixar o checklist verde.
+Fechar a FASE 2 não concede permissões novas nem conecta providers remotos.
 
 ## Proteção e CI
-O arquivo `apps/api/src/architecture/layer-rules.test.ts` e a suíte de validação de arquitetura garantem ativamente que as pastas correspondentes a `domain` e `application` **não importam ou referenciam provedores externos** ou bibliotecas impuras (ex: `@supabase/*`, `react`, `aws-sdk`, `firebase`).
+`apps/api/src/architecture/layer-rules.test.ts` protege pureza de camadas e `apps/api/src/architecture/tenant-context-rules.test.ts` protege as fronteiras tenant-scoped materializadas. A suíte garante que domínio/application não dependam de providers externos e que ports sensíveis não percam o contexto de tenant por regressão.

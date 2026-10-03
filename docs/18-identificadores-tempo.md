@@ -63,36 +63,39 @@ const createdAtServer = new Date().toISOString(); // "2023-10-02T15:30:45.123Z"
 
 ## 3. Timezone
 
-### 3.1 Contrato de timezone
-- **[PENDENTE]** Timezone padrão por tenant para relatórios: sem decisão aprovada; qualquer valor depende de PRD futuro.
-- **Não inventar**: não criar timezone padrão de negócio sem evidência.
-- **Explicitamente documentado**: timezone deve ser explicitamente definido quando houver decisão.
+### 3.1 Contrato de timezone concluído
 
-### 3.2 Exemplo
-```ts
-// [PENDENTE] Exemplo ilustrativo futuro; timezone canônico não decidido.
-interface Tenant {
-  id: TenantId;
-  name: string;
-  timezone: string; // ex.: IANA tz, apenas após decisão
-}
-```
+O timezone de relatórios é uma configuração **explícita do tenant**, representada por `Tenant.reportTimeZone: TenantReportTimeZone | null`.
 
-### 3.3 Evidência do legado para relatórios e datas civis
+Regras:
+- o valor configurado deve ser um timezone IANA válido;
+- `null` significa "ainda não configurado", nunca "usar o timezone do browser";
+- não existe fallback silencioso de negócio;
+- relatórios/períodos civis que dependam de timezone devem resolver a configuração explicitamente antes do cálculo;
+- `requireTenantReportTimeZone` falha quando a configuração não existe, em vez de inventar um valor.
 
-O Web atual não usa uma política única de timezone. O levantamento pré-FASE 3 encontrou comportamentos distintos que devem ser preservados até existir decisão explícita:
+O contrato está em `apps/api/src/modules/identity-tenancy/domain/report-timezone.ts` e possui testes próprios.
 
-- `apps/web/src/lib/gmdConfigurado.ts` calcula a data de referência com `Intl.DateTimeFormat(..., { timeZone: "America/Sao_Paulo" })`; este é um comportamento específico do GMD e **não prova** timezone canônico do tenant.
-- `apps/web/src/hooks/usePainelPeriodo.tsx` inicializa `mes`/`ano` com `new Date().getMonth()/getFullYear()`, portanto usa o timezone local do browser/dispositivo.
-- `apps/web/src/pages/RelatorioSalgaPage.tsx` cria início/fim de dia, semana e mês com `Date` local e converte os limites para UTC via `toISOString()` antes de consultar `created_at`.
-- `apps/web/src/pages/ConsultorDespesasPage.tsx` usa `date-fns` sobre `new Date()` para janelas semanal/quinzenal/mensal e trata datas civis `yyyy-MM-dd` separadamente.
-- `useAbatesData` e `useMortalidadesData` consultam colunas explícitas `mes`/`ano`, sem derivar o período de um timestamp no cliente.
+### 3.2 Evidência do legado preservada
 
-Conclusão de evidência: existe mistura entre timezone fixo de domínio, timezone do dispositivo e períodos civis já materializados. Unificar isso agora mudaria comportamento de relatório e não deve ser feito antes da FASE 4 sem decisão e testes de regressão.
+O Web atual continua com semânticas diferentes e **não foi alterado** nesta fase:
 
-### 3.4 Gate antes da FASE 3
+- `apps/web/src/lib/gmdConfigurado.ts` usa `America/Sao_Paulo` em um fluxo específico;
+- `apps/web/src/hooks/usePainelPeriodo.tsx` usa o timezone local do browser/dispositivo;
+- `apps/web/src/pages/RelatorioSalgaPage.tsx` calcula limites civis locais antes de convertê-los para UTC;
+- `apps/web/src/pages/ConsultorDespesasPage.tsx` trabalha com janelas civis via `date-fns`;
+- `useAbatesData` e `useMortalidadesData` usam campos civis `mes`/`ano`.
 
-O contrato técnico está fechado sem escolher timezone de negócio: instantes são UTC e datas civis são separadas. A escolha do timezone padrão para relatórios por tenant continua uma decisão explícita do produto; não é seguro inferi-la do dispositivo, fazenda ou usuário.
+Esses comportamentos continuam sendo compatibilidade do legado. A nova arquitetura não os transforma em timezone canônico por inferência.
+
+### 3.3 Gate para fases seguintes
+
+A FASE 2 considera o contrato concluído porque:
+- instantes autoritativos permanecem UTC;
+- datas civis continuam separadas de instantes;
+- timezone de relatório é propriedade explícita do tenant;
+- ausência de configuração é um estado explícito e seguro;
+- a escolha do valor de cada tenant ocorre na configuração/migração correspondente, sem default arbitrário nesta fase.
 
 ## 4. Convenções de API
 

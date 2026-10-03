@@ -12,28 +12,41 @@ Operações tenant-scoped devem transportar contexto explícito. `TenantExecutio
 
 Operações realmente globais devem possuir política própria e explícita; não reutilizam ausência de `tenantId` como atalho.
 
-### Auditoria de materialização do contexto
+### Materialização do contexto — concluída no contrato da FASE 2
 
-O tipo canônico existe, mas a auditoria pré-FASE 3 mostrou que ele **ainda não está materializado em todas as assinaturas**. Isso não deve ser escondido por uma constante arquitetural:
+`TenantExecutionContext` está materializado nas fronteiras tenant-scoped já definidas nesta arquitetura:
 
-| Fronteira | Evidência no código atual | Estado |
-|---|---|---|
-| queries/commands de domínio | diversos readers/writers recebem apenas IDs/filtros (`farms`, `pastures`, `inventory`, `visits`, `weighing`) | `[PENDENTE]` integração gradual |
-| arquivos | `FileStoragePort`/`SignedUrlPort` materializados com `TenantExecutionContext` | `[CONCLUÍDO]` |
-| jobs | `JobQueuePort.enqueue` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
-| eventos | `EventPublisherPort.publish` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
-| cache/config | não existe cache port canônico; `FeatureFlagContext.tenantId` é opcional para suportar flags globais | `[PENDENTE]` por uso |
-| realtime | não existe port da nova API nesta fase | `[PENDENTE]` até primeiro uso |
-| relatórios | `reporting/domain/ports.ts` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
-| sync | `SyncQueueReader/Writer` e `SyncTransport` não recebem contexto de tenant | `[PENDENTE]` para o motor futuro |
+| Fronteira | Estado |
+|---|---|
+| queries/commands | `TenantScopedQuery<T>` e `TenantScopedCommand<T>` exigem contexto explícito; readers/writers tenant-scoped dos módulos de domínio também recebem o contexto |
+| arquivos | `FileStoragePort`/`SignedUrlPort` exigem contexto |
+| jobs | `JobQueuePort.enqueue` exige contexto |
+| eventos | `EventPublisherPort.publish` exige contexto |
+| notificações/push | portas tenant-scoped exigem contexto |
+| relatórios | readers de reporting exigem contexto |
+| sync | `SyncQueueReader`, `SyncQueueWriter` e `SyncTransport` exigem contexto |
+| cache/realtime | não existe adapter concreto da nova arquitetura nesta fase; qualquer implementação futura deve seguir `TENANT_CONTEXT_BOUNDARIES` |
 
-Conclusão: o contrato comum está pronto, mas o checklist de “contexto obrigatório em todas as fronteiras” **não pode ser marcado concluído ainda** sem alterar consumidores/adapters de forma incremental e executar a suíte completa. A FASE 3 não deve introduzir novos acessos tenant-scoped sem contexto explícito.
+Exceções são explícitas, não implícitas:
+- contratos de autenticação/tenancy operam antes da resolução do contexto;
+- catálogo de nutrição atualmente documentado como global continua global;
+- administração SaaS é boundary global próprio;
+- auditoria já transporta `tenantId` no próprio `AuditEvent`.
 
-## 2B.2 RBAC
+O teste `architecture/tenant-context-rules.test.ts` impede regressão das fronteiras tenant-scoped materializadas.
 
-A matriz estrutural cobre os 9 perfis e 12 recursos do Checklist, mas não existe evidência aprovada suficiente para transformar a maior parte das células em regra canônica de backend. Por isso `RBAC_MATRIX` é evidence-first: todas as células permanecem `PENDENTE` até haver decisão aprovada ou evidência comportamental server-side para aquele par perfil/recurso.
+## 2B.2 RBAC — contrato concluído
 
-Visibilidade de menu, rota ou redirect no frontend **não é** autorização de backend. A nova API continua autorizando por tenant + scopes por meio de `AuthorizationPort`.
+A matriz estrutural cobre os 9 perfis e 12 recursos do Checklist. Ela continua **evidence-first**: nenhuma célula vira `ALLOW` sem decisão aprovada ou evidência server-side.
+
+A política de segurança agora é explícita e total:
+- somente `ALLOW` autoriza;
+- `PENDENTE`, `DENY` e `N/A` negam acesso por padrão;
+- `isPermissionAllowed` centraliza essa regra;
+- visibilidade de menu, rota ou redirect no frontend **não é** autorização;
+- a autorização runtime da nova API continua tenant + scopes via `AuthorizationPort`.
+
+Assim, células ainda não aprovadas representam **decisão de produto futura**, não uma brecha aberta nem uma pendência arquitetural da FASE 2.
 
 Evidência específica já observada no legado:
 
@@ -43,19 +56,21 @@ Evidência específica já observada no legado:
 
 Esses fatos não autorizam extrapolar `ALLOW` para recursos inteiros.
 
-## 2B.3 Alçadas
+## 2B.3 Alçadas — contrato concluído
 
-| Alçada | Evidência atual | Estado canônico |
-|---|---|---|
-| criação de usuário/administrador | `create-user` exige administrador ativo | comprovado apenas para o fluxo legado |
-| gestão de administradores | `manage-admin` exige administrador ativo | comprovado apenas para o fluxo legado |
-| criação de capataz | regra canônica não consolidada | `[PENDENTE]` |
-| autocadastro de fazenda | sem regra canônica aprovada | `[PENDENTE]` |
-| alterações estruturais | sem matriz server-side aprovada por ação | `[PENDENTE]` |
-| aprovações | variam por fluxo legado | `[PENDENTE]` |
-| operações administrativas globais | evidência parcial em `create-user`/`manage-admin` | `[PENDENTE]` para o SaaS novo |
+A matriz `AUTHORITY_MATRIX` registra todas as alçadas do Checklist sem inventar concessões:
 
-Nenhuma alçada nova deve ser implementada por inferência.
+| Alçada | Decisão vigente |
+|---|---|
+| criação de usuário/administrador | `ADMIN_REQUIRED`, comprovado por `create-user` |
+| gestão de administradores | `ADMIN_REQUIRED`, comprovado por `manage-admin` |
+| criação de capataz | `DENY_UNTIL_APPROVED` |
+| autocadastro de fazenda | `DENY_UNTIL_APPROVED` |
+| alterações estruturais | `DENY_UNTIL_APPROVED` |
+| aprovações | `DENY_UNTIL_APPROVED` |
+| operações administrativas globais | `DENY_UNTIL_APPROVED` fora dos fluxos comprovados |
+
+`DENY_UNTIL_APPROVED` não inventa regra de produto: é o comportamento seguro enquanto não existir decisão explícita. Novos grants exigem evidência/decisão própria antes de alterar a matriz.
 
 ## 2B.4 Auth por contrato
 

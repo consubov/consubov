@@ -16,12 +16,15 @@ Contratos definidos:
 - auditoria usa `consumerId`, tenant quando aplicável e origem;
 - rate limit e quota são representáveis por referências de política, sem valores numéricos inventados.
 
-Continuam `[PENDENTE]` até existir primeiro caso real:
+Gate atual da API pública:
 
-- mecanismo final da credencial externa (API key/JWT/OAuth/etc.);
-- periodicidade de rotação;
-- valores de quota/rate limit;
-- política comercial.
+- `API_PUBLIC_ACCESS_POLICY.exposure = "disabled"`;
+- `credentialMechanism = null` até existir primeiro consumidor real;
+- nenhum endpoint externo é publicado nesta fase;
+- a referência opaca de credencial continua válida como contrato de lifecycle, sem transportar segredo;
+- periodicidade de rotação, valores de quota/rate limit e política comercial continuam decisões do caso real.
+
+Isso **não é pendência da FASE 2**: é um gate de ativação futura. A decisão vigente é manter a API pública desabilitada até que exista consumidor, escopo e política aprovados.
 
 ## Webhooks futuros
 
