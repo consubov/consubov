@@ -14,7 +14,7 @@ import type { TenantExecutionContext } from "../../identity-tenancy/domain/tenan
 export class FakeFileStorageAdapter implements FileStoragePort {
   private storage = new Map<string, ArquivoReferencia>();
 
-  async store(command: StoreFileCommand, context?: TenantExecutionContext): Promise<ArquivoReferencia> {
+  async store(command: StoreFileCommand, context: TenantExecutionContext): Promise<ArquivoReferencia> {
     const caminho = caminhoDoEscopo(command.escopo, command.nomeArquivo);
     const ref: ArquivoReferencia = { caminho, url: `mem://${caminho}` };
 
@@ -23,11 +23,11 @@ export class FakeFileStorageAdapter implements FileStoragePort {
     return ref;
   }
 
-  async findRef(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<ArquivoReferencia | null> {
+  async findRef(caminho: ArquivoCaminho, context: TenantExecutionContext): Promise<ArquivoReferencia | null> {
     return this.storage.get(caminho) ?? null;
   }
 
-  async remove(caminho: ArquivoCaminho, context?: TenantExecutionContext): Promise<void> {
+  async remove(caminho: ArquivoCaminho, context: TenantExecutionContext): Promise<void> {
     this.storage.delete(caminho);
   }
 }

@@ -19,12 +19,12 @@ O tipo canônico existe, mas a auditoria pré-FASE 3 mostrou que ele **ainda nã
 | Fronteira | Evidência no código atual | Estado |
 |---|---|---|
 | queries/commands de domínio | diversos readers/writers recebem apenas IDs/filtros (`farms`, `pastures`, `inventory`, `visits`, `weighing`) | `[PENDENTE]` integração gradual |
-| arquivos | `FileStoragePort`/`SignedUrlPort` não recebem contexto de tenant | `[PENDENTE]` |
-| jobs | `JobQueuePort.enqueue` não recebe contexto de tenant | `[PENDENTE]` |
-| eventos | `EventPublisherPort.publish` é genérico e `EventEnvelope.tenantId` permanece opcional para eventos que podem ser globais | `[PENDENTE]` por evento |
+| arquivos | `FileStoragePort`/`SignedUrlPort` materializados com `TenantExecutionContext` | `[CONCLUÍDO]` |
+| jobs | `JobQueuePort.enqueue` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
+| eventos | `EventPublisherPort.publish` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
 | cache/config | não existe cache port canônico; `FeatureFlagContext.tenantId` é opcional para suportar flags globais | `[PENDENTE]` por uso |
 | realtime | não existe port da nova API nesta fase | `[PENDENTE]` até primeiro uso |
-| relatórios | `reporting/domain/ports.ts` não recebe `TenantExecutionContext` | `[PENDENTE]` |
+| relatórios | `reporting/domain/ports.ts` materializado com `TenantExecutionContext` | `[CONCLUÍDO]` |
 | sync | `SyncQueueReader/Writer` e `SyncTransport` não recebem contexto de tenant | `[PENDENTE]` para o motor futuro |
 
 Conclusão: o contrato comum está pronto, mas o checklist de “contexto obrigatório em todas as fronteiras” **não pode ser marcado concluído ainda** sem alterar consumidores/adapters de forma incremental e executar a suíte completa. A FASE 3 não deve introduzir novos acessos tenant-scoped sem contexto explícito.

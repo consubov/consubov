@@ -30,7 +30,7 @@ Esta documentação registra a fundação de contratos de infraestrutura da arqu
 ## 3. Armazenamento e Integrações Externas
 
 - **FileStoragePort (`apps/api/src/modules/files/domain/ports.ts`)**: abstrai armazenamento de arquivos (salvar, remover e obter referência), sem dependência de S3 ou Storage do Supabase.
-  - *Estado atual:* a assinatura ainda não recebe `TenantExecutionContext` explicitamente. Essa materialização permanece rastreada no item 2B.1 do Checklist Mestre e deve ser feita de forma incremental antes de qualquer adapter remoto real.
+  - *Estado atual:* materializado com `TenantExecutionContext` em todas as assinaturas.
   - *Adaptadores Atuais:* FakeFileStorageAdapter.
 - **NotificationPort (`apps/api/src/modules/notifications/domain/ports.ts`)**: responsável pelo disparo de alertas/comunicações para o usuário, independentemente de canal (Push, E-mail, SMS).
   - *Adaptadores Atuais:* FakeNotificationAdapter.
