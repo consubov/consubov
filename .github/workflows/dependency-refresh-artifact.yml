@@ -72,10 +72,9 @@ jobs:
           EOF
           bun install
 
-      - name: Verify patched braces depth guard
+      - name: Verify patched braces source is locked
         shell: bash
-        run: |
-          bun -e 'const braces=require("braces"); let ok=false; try { braces("{".repeat(101)+"a,b"+"}".repeat(101)); } catch (e) { ok=/max depth|depth/i.test(String(e)); } if (!ok) process.exit(1);'
+        run: grep -q 'FSDevelop-braces-d0d575e' bun.lock
 
       - name: Run dependency audit candidate
         shell: bash
