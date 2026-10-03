@@ -183,3 +183,8 @@ bun run check → ver relatório final (typecheck/build/test)
 
 Provider push, fila/broker, migrations remotas, deploy, VAPID/service role, `_shared/auth.ts`,
 `create-user`/`manage-admin`, workflows CI, `relatto-demo-signup`.
+
+
+## Defaults numéricos de rate limit
+
+Os limites default atualmente presentes no handler são provisórios e permanecem `[PENDENTE]` de decisão de produto. O gate exige apenas que o mecanismo seja aplicado por identidade, configurável e testado; alterar números sem aprovação é proibido.

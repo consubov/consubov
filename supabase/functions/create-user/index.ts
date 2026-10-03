@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
         console.log("[create-user] Usuário existente no Auth reaproveitado:", userId);
       } else if (/password|senha/i.test(authError.message)) {
         audit({ actor: callerAdmin.id, result: "weak_password" });
-        return jsonResponse({ error: authError.message }, 400);
+        return jsonResponse({ error: "Senha inválida" }, 400);
       } else {
         audit({ actor: callerAdmin.id, result: "error" });
         return jsonResponse({ error: "Falha ao criar usuário" }, 500);
@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
         },
         201
       );
-    } catch (dbErr: any) {
+    } catch (_dbErr: unknown) {
       console.error("[create-user] Erro no insert, fazendo rollback");
       if (createdAuthUser) {
         const { error: rollbackError } = await adminClient.auth.admin.deleteUser(userId);
@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
       audit({ actor: callerAdmin.id, result: "error" });
       return jsonResponse({ error: "Falha ao salvar dados do administrador" }, 500);
     }
-  } catch (err: any) {
+  } catch (_err: unknown) {
     console.error("[create-user] Erro inesperado");
     return jsonResponse({ error: "Erro interno do servidor" }, 500);
   }

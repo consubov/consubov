@@ -78,6 +78,22 @@ interface Tenant {
 }
 ```
 
+### 3.3 Evidência do legado para relatórios e datas civis
+
+O Web atual não usa uma política única de timezone. O levantamento pré-FASE 3 encontrou comportamentos distintos que devem ser preservados até existir decisão explícita:
+
+- `apps/web/src/lib/gmdConfigurado.ts` calcula a data de referência com `Intl.DateTimeFormat(..., { timeZone: "America/Sao_Paulo" })`; este é um comportamento específico do GMD e **não prova** timezone canônico do tenant.
+- `apps/web/src/hooks/usePainelPeriodo.tsx` inicializa `mes`/`ano` com `new Date().getMonth()/getFullYear()`, portanto usa o timezone local do browser/dispositivo.
+- `apps/web/src/pages/RelatorioSalgaPage.tsx` cria início/fim de dia, semana e mês com `Date` local e converte os limites para UTC via `toISOString()` antes de consultar `created_at`.
+- `apps/web/src/pages/ConsultorDespesasPage.tsx` usa `date-fns` sobre `new Date()` para janelas semanal/quinzenal/mensal e trata datas civis `yyyy-MM-dd` separadamente.
+- `useAbatesData` e `useMortalidadesData` consultam colunas explícitas `mes`/`ano`, sem derivar o período de um timestamp no cliente.
+
+Conclusão de evidência: existe mistura entre timezone fixo de domínio, timezone do dispositivo e períodos civis já materializados. Unificar isso agora mudaria comportamento de relatório e não deve ser feito antes da FASE 4 sem decisão e testes de regressão.
+
+### 3.4 Gate antes da FASE 3
+
+O contrato técnico está fechado sem escolher timezone de negócio: instantes são UTC e datas civis são separadas. A escolha do timezone padrão para relatórios por tenant continua uma decisão explícita do produto; não é seguro inferi-la do dispositivo, fazenda ou usuário.
+
 ## 4. Convenções de API
 
 ### 4.1 Timestamps

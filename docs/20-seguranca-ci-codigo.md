@@ -165,3 +165,12 @@ O PR será bloqueado se:
 - [x] Permissões mínimas verificadas
 - [x] git diff --check aprovado
 - [x] bun run check aprovado (nenhuma configuração quebrou o projeto)
+
+
+## Gate SAST do Web enquanto FRONT LOCK estiver ativo
+
+O SAST do Web executa somente regras `eslint-plugin-security` via configuração CLI isolada. O lint geral legado permanece dívida separada; não é mascarado com `continue-on-error` e não deve bloquear a execução real do scan de segurança.
+
+A workflow usa `oven-sh/setup-bun` fixado por SHA válido e mantém o dependency audit em `bun audit --audit-level=high`.
+
+A suíte de Edge Functions é executada no CI com Vitest compatível com o stack atual, sem acesso remoto.

@@ -67,6 +67,16 @@ export type SyncTombstone = {
 - **Retenção do Tombstone**: Um Tombstone deve permanecer disponível na base do servidor até que **todos** os dispositivos/clientes offline do tenant tenham avançado seu cursor/checkpoint de sincronização para além da data `deletedAtServer`.
 - **Janela Tempal Concreta**: Marcar como `[PENDENTE]`. A janela em dias/meses será estabelecida somente após a definição do SLA oficial de operação offline contínua do cliente (ex.: 30, 60 ou 90 dias).
 
+### 4.3 Retenção mínima antes de existir checkpoint canônico
+
+A retenção mínima é **condicional, não numérica**:
+
+- sem checkpoint/cursor server-side canônico e confiável, **expurgo automático é proibido**;
+- com checkpoint confiável, o tombstone só pode ser expurgado quando todos os clientes/dispositivos offline conhecidos tiverem avançado além dele;
+- portanto, enquanto essa evidência não existir, a retenção é efetivamente sem limite temporal automático.
+
+Nenhuma janela de 30/60/90 dias é inferida. Se o produto futuramente exigir expurgo por tempo, isso depende de SLA offline explícito e nova decisão.
+
 ---
 
 ## 5. Resolução de Conflitos e Processamento Idempotente
