@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 // O CI usa histórico completo para comparar qualquer alteração posterior com ele.
 const PHASE_3_SUPABASE_BASELINE = "c5196bf732af7420c2022e12016aa89c1ab67f06";
 const REPO_ROOT = resolve(process.cwd(), "../..");
+const GUARDRAIL_FILE =
+  "apps/web/src/test/architecture/supabaseGuardrail.test.ts";
 
 const directClientImport =
   /(?:from\s+["'][^"']*integrations\/supabase\/client["']|import\s*["'][^"']*integrations\/supabase\/client["']|import\s*\(\s*["'][^"']*integrations\/supabase\/client["']\s*\))/;
@@ -30,6 +32,7 @@ export function findDirectSupabaseImportAdditions(
     }
 
     if (!line.startsWith("+") || line.startsWith("+++")) continue;
+    if (currentFile === GUARDRAIL_FILE) continue;
 
     const sourceLine = line.slice(1);
     const importsLegacyClient = directClientImport.test(sourceLine);
@@ -105,6 +108,15 @@ describe("Supabase direct import guardrail", () => {
         line: 'import "@supabase/supabase-js";',
       },
     ]);
+  });
+
+  it("ignores its own synthetic fixture strings in the repository diff", () => {
+    const selfDiff = [
+      `+++ b/${GUARDRAIL_FILE}`,
+      '+import { supabase } from "@/integrations/supabase/client";',
+    ].join("\n");
+
+    expect(findDirectSupabaseImportAdditions(selfDiff)).toEqual([]);
   });
 
   it("rejects new direct Supabase imports after the frozen Phase 3 baseline", () => {
