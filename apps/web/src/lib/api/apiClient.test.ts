@@ -158,12 +158,13 @@ describe("createApiClient", () => {
     );
 
     const promise = client.request("/slow", { timeoutMs: 10 });
-    await vi.advanceTimersByTimeAsync(11);
-
-    await expect(promise).rejects.toMatchObject({
+    const assertion = expect(promise).rejects.toMatchObject({
       name: "AbortError",
       message: "Request timeout",
     });
+
+    await vi.advanceTimersByTimeAsync(11);
+    await assertion;
   });
 
   it("propagates an external abort signal", async () => {
@@ -181,13 +182,15 @@ describe("createApiClient", () => {
     const promise = client.request("/cancelled", {
       signal: externalController.signal,
     });
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: "AbortError",
+      message: "Cancelled by caller",
+    });
+
     externalController.abort(
       new DOMException("Cancelled by caller", "AbortError"),
     );
 
-    await expect(promise).rejects.toMatchObject({
-      name: "AbortError",
-      message: "Cancelled by caller",
-    });
+    await assertion;
   });
 });

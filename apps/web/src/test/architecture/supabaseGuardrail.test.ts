@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Commit da main que congelou o baseline funcional antes das mudanças da FASE 3.
 // O CI usa histórico completo para comparar qualquer alteração posterior com ele.
 const PHASE_3_SUPABASE_BASELINE = "c5196bf732af7420c2022e12016aa89c1ab67f06";
-const REPO_ROOT = fileURLToPath(new URL("../../../../../", import.meta.url));
+const REPO_ROOT = resolve(process.cwd(), "../..");
 
 const directClientImport =
   /(?:from\s+["'][^"']*integrations\/supabase\/client["']|import\s*["'][^"']*integrations\/supabase\/client["']|import\s*\(\s*["'][^"']*integrations\/supabase\/client["']\s*\))/;
