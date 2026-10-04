@@ -167,3 +167,21 @@ Todas as respostas de erro da API seguem um formato estável e desacoplado da in
 - Stack traces e detalhes de erros internos jamais são enviados para o cliente.
 - Nenhuma PII, segredo ou detalhe do provedor é exposto nas mensagens de erro.
 
+## Cliente HTTP único do Web (FASE 3.4)
+
+O Web possui uma fronteira única para consumo futuro da API em `apps/web/src/lib/api/`. A criação dessa camada **não** migra automaticamente o legado Supabase para a nova API.
+
+Contrato atual:
+
+- `apiClient`: instância única para novos consumidores;
+- `VITE_API_BASE_URL`: base configurável, com default local `http://127.0.0.1:3000`;
+- timeout explícito por request, com default técnico local de 10 s;
+- `x-correlation-id` propagado quando fornecido;
+- `idempotency-key` enviado somente quando o chamador fornece chave;
+- erros HTTP usam `ApiClientError` e preservam `code`, `requestId` e `correlationId` quando o envelope da API os contém;
+- headers existentes são preservados via `Headers`;
+- opções internas (`timeoutMs`, `correlationId`, `idempotencyKey`) não vazam para `fetch`;
+- nenhum segredo é embutido no cliente.
+- geração automática de tipos/client SDK fica `[PENDENTE]` até existirem endpoints de domínio estáveis consumidos pelo Web; nesta fase o client permanece genérico e tipado por chamada, evitando gerar contrato artificial sobre uma API ainda fundacional.
+
+O guardrail da FASE 3 impede novos imports diretos do client Supabase no Web após o baseline congelado. Fluxos legados existentes são migrados incrementalmente, sempre preservando comportamento, cache, realtime e offline.
