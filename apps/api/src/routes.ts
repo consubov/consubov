@@ -53,26 +53,6 @@ export const routes: RouteDefinition[] = [
         },
       }),
   },
-  {
-    path: "/api/v1/sync/lancamento",
-    method: "POST",
-    surface: "sync",
-    handler: (_req, requestId) => jsonResponse(
-      { message: "Lancamento endpoint not yet implemented." },
-      501,
-      requestId
-    ),
-  },
-  {
-    path: "/api/v1/sync/close-month",
-    method: "POST",
-    surface: "sync",
-    handler: (_req, requestId) => jsonResponse(
-      { message: "Close‑month endpoint not yet implemented." },
-      501,
-      requestId
-    ),
-  },
 ];
 
 

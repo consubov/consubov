@@ -61,11 +61,32 @@ export default function PastoDetailPage() {
       produtosQuery,
       supabase.from("pastos").select("*").eq("retiro_id", retiroId).eq("ativo", true).order("nome"),
     ]);
-    if (pastoRes.error) {
+    if (pastoRes.error || !pastoRes.data) {
       toast.error("Pasto não encontrado.");
-      navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}`);
+      setLoading(false);
+      navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}`, { replace: true });
       return;
     }
+
+    if (retiroRes.error || fazendaRes.error || !retiroRes.data || !fazendaRes.data) {
+      toast.error("Estrutura pecuária não encontrada.");
+      setLoading(false);
+      navigate("/admin/fazendas", { replace: true });
+      return;
+    }
+
+    const rotaInconsistente =
+      retiroRes.data.fazenda_id !== fazendaId ||
+      pastoRes.data.retiro_id !== retiroId ||
+      (pastoRes.data.fazenda_id != null && pastoRes.data.fazenda_id !== fazendaId);
+
+    if (rotaInconsistente) {
+      toast.error("A hierarquia fazenda, retiro e pasto não corresponde à rota informada.");
+      setLoading(false);
+      navigate(`/admin/fazendas/${fazendaId}`, { replace: true });
+      return;
+    }
+
     setPasto(pastoRes.data);
     setRetiro(retiroRes.data);
     setFazenda(fazendaRes.data);
@@ -74,7 +95,7 @@ export default function PastoDetailPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, [pastoId]);
+  useEffect(() => { loadData(); }, [pastoId, retiroId, fazendaId]);
 
   // Derived
   const produtoRetiro = retiro?.produto_id ? produtos.find(p => p.id === retiro.produto_id) : null;

@@ -15,10 +15,6 @@ export default defineConfig({
       VITE_SUPABASE_URL: "http://127.0.0.1:54321",
       VITE_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
     },
-    define: {
-      "import.meta.env.VITE_SUPABASE_URL": "\"http://127.0.0.1:54321\"",
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": "\"test-publishable-key\"",
-    },
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

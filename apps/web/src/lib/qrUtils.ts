@@ -1,11 +1,11 @@
 /**
  * QR utilities used across the web app.
- * Provides helpers for extracting QR UUIDs from raw scanner input.
+ * Provides helpers for extracting resource identifiers from raw scanner input.
  */
 
 /**
- * Extract a UUID (v4) from a raw string that may be a plain UUID or a URL containing it.
- * Returns the UUID string if found, otherwise null.
+ * Extracts a UUID-shaped identifier from a raw string that may be a plain value
+ * or a URL containing it. Authorization is not derived from QR contents.
  */
 export function extractQrUuid(raw: string): string | null {
   const trimmed = raw.trim();
