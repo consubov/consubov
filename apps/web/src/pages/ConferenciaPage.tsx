@@ -70,7 +70,7 @@ function diasEntre(iso: string | null): number | null {
   return Math.max(0, dias);
 }
 
-import { extractQrUuid } from "@/lib/qrUtils";
+import { extractQrUuid, isQrResourceAvailable } from "@/lib/qrUtils";
 
 const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
   if (!iso) return null;
@@ -534,7 +534,7 @@ export default function ConferenciaPage() {
         .eq("qr_uuid", qrUuid)
         .maybeSingle();
 
-      if (pErr || !pasto || !pasto.ativo) {
+      if (!isQrResourceAvailable(pasto, pErr)) {
         toast.error("QR Code não encontrado ou inativo.");
         setEtapa("inicio");
         return;
