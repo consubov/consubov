@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
@@ -71,7 +72,7 @@ export default function MapaAbateModal({ open, onClose, pasto, fazendaId, retiro
       // Update pasto
       const newTotal = pasto.num_animais - qtd;
       const novoPeso = calcNovoPeso();
-      const updateData: Record<string, any> = { num_animais: newTotal };
+      const updateData: TablesUpdate<"pastos"> = { num_animais: newTotal };
       if (novoPeso !== null) updateData.peso_medio_kg = novoPeso;
 
       const { error: updateErr } = await supabase.from("pastos")
