@@ -1,4 +1,6 @@
-import { vi } from 'vitest';
+import '@testing-library/jest-dom';
+global.IDBTransaction = class {};
+
 
 // Stub env vars globally
 process.env.VITE_SUPABASE_URL = 'http://localhost:54321';
