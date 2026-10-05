@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty false",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep \"@smoke|@a11y-smoke\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

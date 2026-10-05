@@ -41,3 +41,14 @@ export interface SyncTransport {
   push(commands: unknown[]): Promise<void>;
   pull(): Promise<unknown[]>;
 }
+export interface RealtimeSubscription {
+  unsubscribe(): void;
+}
+
+/**
+ * Read/invalidation channel only. Realtime events never authorize or finalize a
+ * critical write; the authoritative state must be re-read through its repository/API.
+ */
+export interface RealtimeProvider {
+  subscribe(topic: string, onEvent: (event: unknown) => void): Promise<RealtimeSubscription>;
+}

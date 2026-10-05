@@ -44,6 +44,8 @@ const NEON_DIM = "rgba(34,255,136,0.55)";
 const BG = "#05070A";
 const CARD_BG = "rgba(12,18,16,0.65)";
 const BORDER = "rgba(34,255,136,0.18)";
+const LEAD_SUBMIT_COOLDOWN_MS = 30_000;
+const LEAD_SUBMIT_KEY = "consubov:lead-last-submit";
 
 // Resolve a lucide icon name (string) to a component, with fallback
 function LucideIcon({ name, className, style }: { name?: string; className?: string; style?: React.CSSProperties }) {
@@ -260,6 +262,7 @@ export default function LandingPage() {
   const { t, arr } = useLandingContent();
 
   const [form, setForm] = useState<Record<string, string>>({});
+  const [website, setWebsite] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -278,6 +281,24 @@ export default function LandingPage() {
   const formCampos = arr<{ placeholder: string; tipo: string }>("form_campos", DEFAULT_FORM_CAMPOS);
 
   const handleSubmit = useCallback(async () => {
+    // Honeypot: bots that fill hidden fields receive the same visual success path
+    // without creating a record. This is only a Web-side abuse reduction layer.
+    if (website.trim()) {
+      setSubmitted(true);
+      setForm({});
+      return;
+    }
+
+    try {
+      const lastSubmit = Number(sessionStorage.getItem(LEAD_SUBMIT_KEY) || 0);
+      if (Date.now() - lastSubmit < LEAD_SUBMIT_COOLDOWN_MS) {
+        toast.error("Aguarde alguns segundos antes de enviar novamente.");
+        return;
+      }
+    } catch {
+      // Storage indisponível: validação e bloqueio de submit continuam ativos.
+    }
+
     // Build a payload with the canonical fields used by the leads table.
     // We map by tipo when possible, otherwise by placeholder keywords.
     const payload: Record<string, string> = {
@@ -312,6 +333,7 @@ export default function LandingPage() {
       toast.error("Erro ao enviar. Tente novamente.");
       return;
     }
+    try { sessionStorage.setItem(LEAD_SUBMIT_KEY, String(Date.now())); } catch { /* best-effort */ }
     setSubmitted(true);
     void sendPush(
       "🆕 Novo interesse no Consubov",
@@ -321,7 +343,7 @@ export default function LandingPage() {
     );
     setForm({});
     setTimeout(() => setSubmitted(false), 6000);
-  }, [form]);
+  }, [form, website]);
 
   const scrollToForm = () =>
     document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" });
@@ -903,6 +925,18 @@ export default function LandingPage() {
               </div>
             ) : (
               <div className="space-y-3 relative">
+                <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+                  <label htmlFor="website">Website</label>
+                  <input
+                    id="website"
+                    name="website"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={website}
+                    onChange={(event) => setWebsite(event.target.value)}
+                  />
+                </div>
                 {formCampos.map((field, idx) => {
                   const key = mapFieldKey(field.placeholder, field.tipo, idx);
                   const isTextarea = field.tipo === "textarea";
