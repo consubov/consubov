@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
 import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
@@ -84,7 +85,7 @@ export default function TransferenciaModal({
       if (movErr) throw movErr;
 
       // 3. Update origin pasto
-      const origemUpdate: Record<string, any> = { num_animais: pasto.num_animais - qtd };
+      const origemUpdate: TablesUpdate<"pastos"> = { num_animais: pasto.num_animais - qtd };
       if (isFullTransfer) {
         // Clear lote data from origin when all animals leave
         origemUpdate.peso_medio_kg = null;
@@ -101,7 +102,7 @@ export default function TransferenciaModal({
       if (errOrigem) throw errOrigem;
 
       // 4. Update destination pasto with lote data + data_movimentacao
-      const destinoUpdate: Record<string, any> = {
+      const destinoUpdate: TablesUpdate<"pastos"> = {
         num_animais: destino.num_animais + qtd,
         data_movimentacao: nowIso,
       };

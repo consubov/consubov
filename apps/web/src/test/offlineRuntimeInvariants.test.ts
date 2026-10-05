@@ -78,7 +78,7 @@ describe("invariantes de cache Gerente/Admin", () => {
   it("arquivos do Capataz não importam screenCache", () => {
     const srcRoot = path.resolve(testDir, "..");
     const candidates = collectSourceFiles(srcRoot).filter((file) => {
-      const relative = path.relative(srcRoot, file).replaceAll("\\", "/");
+      const relative = path.relative(srcRoot, file).split("\\").join("/");
       return /(^|\/)capataz(\/|$)/i.test(relative) || /Capataz/.test(path.basename(file));
     });
 
@@ -86,7 +86,7 @@ describe("invariantes de cache Gerente/Admin", () => {
 
     const offenders = candidates
       .filter((file) => /screenCache/.test(fs.readFileSync(file, "utf8")))
-      .map((file) => path.relative(srcRoot, file).replaceAll("\\", "/"));
+      .map((file) => path.relative(srcRoot, file).split("\\").join("/"));
 
     expect(offenders).toEqual([]);
   });

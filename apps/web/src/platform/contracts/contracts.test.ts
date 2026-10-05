@@ -151,9 +151,10 @@ describe("Platform Contracts", () => {
 
   describe("ConnectivityProvider", () => {
     it("represents offline status", () => {
-      const provider: ConnectivityProvider = new MockConnectivityProvider();
+      const provider = new MockConnectivityProvider();
+      const contract: ConnectivityProvider = provider;
       provider.setOnline(false);
-      expect(provider.isOnline()).toBe(false);
+      expect(contract.isOnline()).toBe(false);
     });
 
     it("represents online status", () => {
