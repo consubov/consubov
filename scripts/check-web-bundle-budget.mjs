@@ -11,12 +11,17 @@ const [report, budget] = await Promise.all([
   readFile(budgetPath, "utf8").then(JSON.parse),
 ]);
 
+const gzipToleranceBytes = budget.gzipToleranceBytes ?? 0;
+const maxGzipWithTolerance = budget.maxTotalGzipBytes + gzipToleranceBytes;
 const failures = [];
+
 if (report.totals.bytes > budget.maxTotalBytes) {
   failures.push(`raw total ${report.totals.bytes} > budget ${budget.maxTotalBytes}`);
 }
-if (report.totals.gzipBytes > budget.maxTotalGzipBytes) {
-  failures.push(`gzip total ${report.totals.gzipBytes} > budget ${budget.maxTotalGzipBytes}`);
+if (report.totals.gzipBytes > maxGzipWithTolerance) {
+  failures.push(
+    `gzip total ${report.totals.gzipBytes} > budget ${budget.maxTotalGzipBytes} + tolerância ${gzipToleranceBytes}`,
+  );
 }
 
 console.log(
@@ -26,6 +31,7 @@ console.log(
     budget: {
       maxTotalBytes: budget.maxTotalBytes,
       maxTotalGzipBytes: budget.maxTotalGzipBytes,
+      gzipToleranceBytes,
     },
   }),
 );
