@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2, LockKeyhole } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { clearRecoverySession, updateRecoveredPassword } from "@/features/auth/repositories/authRecoveryRepository";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -25,12 +25,12 @@ export default function RedefinirSenhaPage() {
 
     setLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const { error: updateError } = await updateRecoveredPassword(password);
       if (updateError) {
         setError("Não foi possível redefinir a senha. Solicite um novo link e tente novamente.");
         return;
       }
-      await supabase.auth.signOut();
+      await clearRecoverySession();
       navigate("/login", { replace: true, state: { passwordReset: true } });
     } catch {
       setError("Não foi possível redefinir a senha. Solicite um novo link e tente novamente.");
