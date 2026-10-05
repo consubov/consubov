@@ -7,50 +7,60 @@
 - `main@bd9ad453424fa9ad220dca4f55626762a26b87f2`
 - branch: `quality/fase5-web-ready-20261005`
 - PR: `#37` (draft)
-- HEAD validado mais recente: `fed5b3ece276e34c91038789d50d394d07b10dd8`
 - PRD: `instructions/active/PRD-QUAL-05-web-ready.md`
 
 ## Implementado
-- E2E autenticado local para os nove papéis conhecidos;
-- acesso negado, logout e superfícies críticas de estrutura/QR/nutrição/transferência/visita/fábrica/pesagem/relatórios;
-- Playwright desktop/tablet/mobile Chromium;
+- E2E local para nove papéis, redirect, deny e logout;
+- superfícies críticas por domínio;
+- Playwright desktop/tablet/mobile;
+- responsividade ampliada para dashboards/tabelas/formulários;
+- integração local identity → tenant → authorization → repository fake;
 - lint baseline + gate incremental;
-- coverage baseline em recalibração para instrumentar todo o Web;
-- route-level lazy loading com React.lazy/Suspense;
+- coverage `--all` + validador de completude do relatório;
+- route-level lazy loading;
 - bundle report + budget regressivo + dist secret guard;
-- baseline axe/Lighthouse configurado no CI;
+- axe/Lighthouse antes do E2E no CI;
+- Lighthouse registra LCP/CLS/TBT além das categorias;
 - headers de segurança da API + testes;
-- telemetria estruturada com sanitização de campos/strings sensíveis;
-- documentação permanente da FASE 5.
+- paridade routes/OpenAPI;
+- telemetria estruturada/vendor-neutral com sanitização de PII/segredos;
+- documentação permanente e Notion atualizados.
 
-## Evidência executável anterior ao bloqueio do runner
-No último ciclo desta branch que iniciou steps:
+## Última evidência executável
+Último job que iniciou steps:
 - `bun run check`: verde;
-- Web: 129 testes / 34 arquivos;
+- Web: 129/129 em 34 arquivos;
 - lint baseline/changed: verde;
-- bundle report: executado;
+- bundle report: verde;
 - dist secret guard: verde;
-- E2E encontrou duas falhas reais (tablet/logout), corrigidas nos commits posteriores.
+- E2E: 30 pass / 18 fail.
 
-Baseline de bundle após route splitting:
+As falhas E2E eram tablet + logout e foram corrigidas depois, mas ainda não reexecutadas por bloqueio do runner.
+
+Baseline de bundle:
 - raw total: 8.730.802 bytes;
 - gzip total: 2.735.799 bytes;
 - maior asset: 2.849.003 bytes.
 
-## Bloqueio atual
-As execuções atuais do GitHub Actions encerram antes de qualquer step (`steps=null`), incluindo build-and-test, SAST, dependency scan e secret scanning. Não existe log de execução útil do HEAD atual. Tratar como bloqueio externo até uma execução realmente iniciar steps.
+O coverage antigo de 100%/6 statements é inválido e foi descartado; o novo gate exige instrumentação representativa.
+
+## Diagnóstico do runner
+Workflow temporário mínimo em `ubuntu-22.04`, contendo somente `echo`, também falhou antes de qualquer step. Foi removido após o diagnóstico.
+
+CI, SAST, dependency scan e secret scanning continuam encerrando sem steps/logs. Logo o bloqueio é anterior ao código/workflow executável. A causa administrativa exata (Actions settings/quota/billing/account state) não é visível nem mutável pelo conector GitHub disponível.
 
 ## Pendências para WEB READY
-1. runner executar o HEAD final;
-2. E2E corrigido ficar verde em desktop/tablet/mobile;
-3. coverage representativo ser medido e receber gate progressivo;
-4. axe/Lighthouse produzirem baseline válido e eventuais bloqueadores serem corrigidos;
-5. CI e security scans ficarem verdes;
-6. Checklist Mestre ser reconciliado com a evidência final;
-7. `AUDITORIA DE QUALIDADE` retornar `QA: APROVADO`.
+1. restaurar execução de GitHub Actions no repositório/conta;
+2. executar HEAD final;
+3. registrar coverage baseline real + gate progressivo;
+4. registrar axe/Lighthouse e corrigir violações bloqueantes;
+5. E2E verde em desktop/tablet/mobile;
+6. Edge/API smoke e scans verdes;
+7. repetir AUDITORIA DE QUALIDADE;
+8. só então marcar `WEB READY` e mergear.
 
 ## Restrições
-Sem nova conexão a banco/Supabase remoto, migrations remotas, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
+Sem banco/Supabase remoto novo, migrations, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
 
 ## Próximo passo
-Não mergear o PR #37. Reexecutar o CI quando o runner voltar a iniciar steps; corrigir qualquer falha objetiva; consolidar coverage/a11y/performance; repetir QA; só então marcar `WEB READY`.
+Resolver o bloqueio administrativo do GitHub Actions; depois rerun dos workflows e correção orientada por evidência. Não mergear PR #37 enquanto QA estiver reprovado.
