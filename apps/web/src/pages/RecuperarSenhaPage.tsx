@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { requestPasswordRecovery } from "@/features/auth/repositories/authRecoveryRepository";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ export default function RecuperarSenhaPage() {
 
     try {
       const redirectTo = `${window.location.origin}/redefinir-senha`;
-      const { error: requestError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      const { error: requestError } = await requestPasswordRecovery(email.trim(), redirectTo);
       if (requestError) {
         setError("Não foi possível solicitar a recuperação agora. Tente novamente.");
         return;
