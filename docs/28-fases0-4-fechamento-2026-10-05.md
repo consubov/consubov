@@ -196,3 +196,15 @@ Para considerar este fechamento válido, o HEAD final do PR #36 deve manter:
 - QA `AUDITORIA DE QUALIDADE` aprovado.
 
 Se qualquer gate falhar após alteração deste documento, o fechamento volta a `REPROVADO` até correção.
+
+
+## Integração final
+
+- PR #36 mergeado por squash na `main` em `cfedc34a9d3dd5446902ceb389fde85baab4461c`;
+- PR #35 fechado como supersedido antes do merge;
+- branches supersedidas removidas; o repositório ficou somente com `main`;
+- `instructions/active/` ficou sem PRD/handoff ativo e, portanto, não existe mais na árvore;
+- o workflow temporário de limpeza de branches foi removido após cumprir sua função;
+- nenhuma ação remota de banco, migration, deploy ou rotação de segredo foi executada.
+
+A FASE 5 deve ser retomada futuramente a partir da `main`, sem reaproveitar branches antigas.
