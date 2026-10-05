@@ -242,7 +242,18 @@ test.describe("@a11y-smoke @web-ready FASE 5 — acessibilidade e responsividade
 
   test("rotas autenticadas prioritárias não criam overflow horizontal em desktop/mobile", async ({ browser }) => {
     const { context, page } = await openAs(browser, "administradores");
-    for (const path of ["/admin", "/admin/fazendas", "/admin/produtos", "/admin/qrcodes"]) {
+    for (const path of [
+      "/admin",
+      "/admin/fazendas",
+      "/admin/produtos",
+      "/admin/qrcodes",
+      "/admin/gerentes",
+      "/admin/consultores",
+      "/admin/pesadores",
+      "/admin/fabricas",
+      "/admin/materias-primas",
+      "/admin/configuracoes",
+    ]) {
       await page.goto(path);
       await expectHealthySurface(page);
     }
