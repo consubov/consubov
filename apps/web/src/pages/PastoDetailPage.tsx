@@ -77,8 +77,7 @@ export default function PastoDetailPage() {
 
     const rotaInconsistente =
       retiroRes.data.fazenda_id !== fazendaId ||
-      pastoRes.data.retiro_id !== retiroId ||
-      (pastoRes.data.fazenda_id != null && pastoRes.data.fazenda_id !== fazendaId);
+      pastoRes.data.retiro_id !== retiroId;
 
     if (rotaInconsistente) {
       toast.error("A hierarquia fazenda, retiro e pasto não corresponde à rota informada.");
