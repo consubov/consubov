@@ -8,6 +8,16 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   return handleRequest(new Request(`${baseUrl}${path}`, init));
 }
 
+function expectSecurityHeaders(response: Response): void {
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(response.headers.get("x-frame-options")).toBe("DENY");
+  expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+  expect(response.headers.get("permissions-policy")).toBe(
+    "camera=(), microphone=(), geolocation=()",
+  );
+}
+
 describe("Consubov API foundation", () => {
   test("errors contain requestId and correlationId in the response body matching headers", async () => {
     const response = await request("/missing", {
@@ -31,6 +41,7 @@ describe("Consubov API foundation", () => {
     expect(body.error.requestId).toBe("req-1");
     expect(body.error.correlationId).toBe("corr-1");
     expect(response.headers.get(REQUEST_ID_HEADER)).toBe("req-1");
+    expectSecurityHeaders(response);
   });
 
   test("correlationId falls back to requestId when x-correlation-id is absent", async () => {
@@ -154,6 +165,7 @@ describe("Consubov API foundation", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
     expect(response.headers.get(REQUEST_ID_HEADER)).toBeTruthy();
+    expectSecurityHeaders(response);
   });
 
   test("readiness returns the expected contract", async () => {
@@ -207,7 +219,6 @@ describe("Consubov API foundation", () => {
 
     expect(pathsFromInventory).toEqual(pathsFromOpenApi);
 
-    // Verify each route's HTTP method is present in OpenAPI paths
     for (const route of routes) {
       const openApiPath = openApiDocument.paths[route.path as keyof typeof openApiDocument.paths];
       expect(openApiPath).toBeDefined();
@@ -219,7 +230,6 @@ describe("Consubov API foundation", () => {
   test("admin routes are denied by default without proper policy/auth", async () => {
     const routes = (await import("./routes")).routes;
 
-    // Temporarily add a test admin route
     routes.push({
       path: "/api/admin/test",
       method: "GET",
@@ -230,9 +240,9 @@ describe("Consubov API foundation", () => {
     const response = await request("/api/admin/test");
     expect(response.status).toBe(401);
 
-    // Clean up
     routes.pop();
   });
+
   test("OpenAPI is valid JSON and reflects all implemented routes", async () => {
     const response = await request("/api/v1/openapi.json");
     const body = (await response.json()) as {
@@ -263,7 +273,7 @@ describe("Consubov API foundation", () => {
     expect(policy.deprecation.rule).toContain("deprecated=true");
   });
 
-  test("API docs are navigable and load the OpenAPI contract", async () => {
+  test("API docs are navigable and inherit the standard security headers", async () => {
     const response = await request("/api/docs");
     const html = await response.text();
 
@@ -271,7 +281,6 @@ describe("Consubov API foundation", () => {
     expect(response.headers.get("content-type")).toContain("text/html");
     expect(html).toContain("Consubov Developers");
     expect(html).toContain("/api/v1/openapi.json");
+    expectSecurityHeaders(response);
   });
 });
-
-

@@ -28,6 +28,13 @@ export function resolveCorrelationId(request: Request, requestId: string): strin
   return requestId;
 }
 
+function applySecurityHeaders(headers: Headers): void {
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "no-referrer");
+  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+}
+
 function responseHeaders(
   requestId: string,
   contentType: string,
@@ -37,6 +44,7 @@ function responseHeaders(
   headers.set("content-type", contentType);
   headers.set("cache-control", "no-store");
   headers.set(REQUEST_ID_HEADER, requestId);
+  applySecurityHeaders(headers);
   return headers;
 }
 

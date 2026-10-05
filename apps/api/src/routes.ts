@@ -1,5 +1,5 @@
 import { docsHtml } from "./docs";
-import { jsonResponse } from "./http";
+import { htmlResponse, jsonResponse } from "./http";
 import { openApiDocument } from "./openapi";
 
 /**
@@ -8,8 +8,8 @@ import { openApiDocument } from "./openapi";
 export type ApiSurface = "product" | "sync" | "public" | "admin";
 
 /**
-  * Route metadata for inventory and policy enforcement
-  */
+ * Route metadata for inventory and policy enforcement
+ */
 export interface RouteDefinition {
   path: string;
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -19,8 +19,8 @@ export interface RouteDefinition {
 }
 
 /**
-  * Central Inventory of API Routes
-  */
+ * Central Inventory of API Routes
+ */
 export const routes: RouteDefinition[] = [
   {
     path: "/api/v1/health",
@@ -44,17 +44,9 @@ export const routes: RouteDefinition[] = [
     path: "/api/docs",
     method: "GET",
     surface: "product",
-    handler: (_req, requestId) =>
-      new Response(docsHtml, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "x-request-id": requestId,
-        },
-      }),
+    handler: (_req, requestId) => htmlResponse(docsHtml, 200, requestId),
   },
 ];
-
 
 /**
  * Routing Policy:

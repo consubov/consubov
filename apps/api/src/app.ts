@@ -3,6 +3,7 @@ import {
   resolveCorrelationId,
   resolveRequestId,
 } from "./http";
+import { runtimeTelemetry } from "./modules/observability/adapters/ConsoleTelemetryAdapter";
 import { getRoute } from "./routes";
 
 export async function handleRequest(request: Request): Promise<Response> {
@@ -14,10 +15,9 @@ export async function handleRequest(request: Request): Promise<Response> {
     const route = getRoute(url.pathname, request.method);
 
     if (route) {
-      // Policy enforcement for internal/admin routes
+      // Policy enforcement for internal/admin routes.
       if (route.surface === "admin" || route.internal) {
-        // For now, as per PRD: "endpoint administrativo nunca público por conveniência"
-        // and "deny-by-default". Since auth is not implemented, we deny.
+        // Until auth is implemented in the new API, administrative routes stay deny-by-default.
         return apiErrorResponse(
           "UNAUTHORIZED",
           "Administrative access required",
@@ -38,8 +38,10 @@ export async function handleRequest(request: Request): Promise<Response> {
       correlationId,
     );
   } catch (error) {
-    // Stack traces stay in process logs and are never serialized to HTTP clients.
-    console.error("Unhandled API request error", { requestId, correlationId, error });
+    runtimeTelemetry.recordError(
+      error instanceof Error ? error : new Error("Unknown API request failure"),
+      { requestId, correlationId },
+    );
 
     return apiErrorResponse(
       "INTERNAL_ERROR",
@@ -50,4 +52,3 @@ export async function handleRequest(request: Request): Promise<Response> {
     );
   }
 }
-
