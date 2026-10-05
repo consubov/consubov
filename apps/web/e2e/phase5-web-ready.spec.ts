@@ -166,7 +166,7 @@ test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies crít
     await login(page);
     await expect(page).toHaveURL(/\/admin(?:\/|$)/);
 
-    await page.locator("header button").last().click();
+    await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
   });
