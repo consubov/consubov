@@ -32,8 +32,12 @@ No último ciclo com `bun run check` concluído:
 
 - API/Bun: **532 testes aprovados**, **0 falhas**, em **74 arquivos**;
 - Web/Vitest: **111 testes aprovados**, em **29 arquivos**;
+- Playwright smoke: **8/8 aprovados** em Chromium desktop/mobile;
+- Edge Functions/Vitest: **122 testes aprovados**, em **9 arquivos**;
+- smoke HTTP da API: aprovado;
 - typecheck Web/API: aprovado;
-- build Web/API: aprovado.
+- build Web/API: aprovado;
+- Security Code Scan: SAST, dependency vulnerability scan e secret scanning aprovados.
 
 O conjunto existente inclui contratos de erro HTTP/OpenAPI, deny-by-default administrativo, regras de tenancy/RBAC, domínio e regressões Web. Isso é baseline; não significa que todos os fluxos funcionais da FASE 5.3 estejam cobertos por E2E.
 
@@ -117,7 +121,7 @@ O smoke cobre desktop e viewport mobile apenas nas superfícies públicas/prote�
 A FASE 5 só pode ser marcada como concluída quando:
 
 1. checks obrigatórios estiverem verdes;
-2. auditoria de qualidade estiver aprovada;
+2. auditoria de qualidade estiver aprovada — **estado atual: QA REPROVADO para fechamento do gate**;
 3. evidências de 5.1–5.10 forem atualizadas no Checklist Mestre;
 4. critérios de 5.11 estiverem comprovados;
 5. pendências materiais da FASE 4 tiverem sido reconciliadas.

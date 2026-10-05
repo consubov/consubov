@@ -40,16 +40,16 @@ A FASE 3 foi integrada à `main` via PR #33. A FASE 5 foi iniciada por autoriza�
 - logs sem token/senha/PII desnecessária.
 
 ## Critérios de aceite
-- [ ] `bun run check` verde;
-- [ ] lint incremental verde;
-- [ ] Edge tests verdes;
-- [ ] API smoke verde;
-- [ ] Playwright smoke verde em desktop/mobile Chromium;
-- [ ] baseline de bundle executável;
-- [ ] documentação permanente atualizada;
-- [ ] Checklist Mestre atualizado com evidência;
+- [x] `bun run check` verde;
+- [x] lint incremental verde;
+- [x] Edge tests verdes;
+- [x] API smoke verde;
+- [x] Playwright smoke verde em desktop/mobile Chromium;
+- [x] baseline de bundle executável;
+- [x] documentação permanente atualizada;
+- [x] Checklist Mestre atualizado com evidência;
 - [ ] auditoria `qualidade-visionario` sem bloqueador P0;
-- [ ] `WEB READY` permanece aberto se 5.11/FASE 4 não estiverem comprovados.
+- [x] `WEB READY` permanece aberto se 5.11/FASE 4 não estiverem comprovados.
 
 ## Testes obrigatórios
 - unit/contract existentes;
