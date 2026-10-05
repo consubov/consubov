@@ -34,6 +34,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 28. [Auditoria corretiva da FASE 3](./25-fase3-auditoria-correcao-2026-10-04.md)
 29. [Inventário de componentes de terceiros](./THIRD_PARTY_COMPONENTS.md)
 30. [Auditoria da FASE 4 — paridade funcional Web](./27-fase4-auditoria-2026-10-05.md)
+31. [Fechamento consolidado das FASES 0–4](./28-fases0-4-fechamento-2026-10-05.md)
 
 > Os números da lista são apenas a ordem de leitura. Alguns nomes de arquivo preservam numeração histórica duplicada (`17`, `19`, `20`) e não devem ser renomeados dentro desta correção sem um trabalho específico de referências.
 
