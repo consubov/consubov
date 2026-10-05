@@ -10,3 +10,7 @@ global.indexedDB = {
   deleteDatabase: vi.fn(),
   databases: vi.fn().mockResolvedValue([]),
 } as any;
+
+// Mock IDBRequest and IDBOpenDBRequest for idb library
+global.IDBRequest = class {};
+global.IDBOpenDBRequest = class extends global.IDBRequest {};
