@@ -15,7 +15,7 @@ export type CriticalWritePolicy = {
   readonly requiresIdempotencyKey: true;
   readonly requiresKnownVersion: true;
   readonly requiresAtomicAuthority: true;
-  readonly conflictStrategy: "detect-and-reject";
+  readonly requiresExplicitConflictStrategy: true;
   readonly realtimeIsAuthoritative: false;
   readonly genericLastWriteWins: false;
 };
@@ -25,7 +25,7 @@ export const CRITICAL_WRITE_POLICIES: Readonly<Record<CriticalWriteAggregate, Cr
     requiresIdempotencyKey: true,
     requiresKnownVersion: true,
     requiresAtomicAuthority: true,
-    conflictStrategy: "detect-and-reject",
+    requiresExplicitConflictStrategy: true,
     realtimeIsAuthoritative: false,
     genericLastWriteWins: false,
   },
@@ -33,7 +33,7 @@ export const CRITICAL_WRITE_POLICIES: Readonly<Record<CriticalWriteAggregate, Cr
     requiresIdempotencyKey: true,
     requiresKnownVersion: true,
     requiresAtomicAuthority: true,
-    conflictStrategy: "detect-and-reject",
+    requiresExplicitConflictStrategy: true,
     realtimeIsAuthoritative: false,
     genericLastWriteWins: false,
   },
@@ -41,7 +41,7 @@ export const CRITICAL_WRITE_POLICIES: Readonly<Record<CriticalWriteAggregate, Cr
     requiresIdempotencyKey: true,
     requiresKnownVersion: true,
     requiresAtomicAuthority: true,
-    conflictStrategy: "detect-and-reject",
+    requiresExplicitConflictStrategy: true,
     realtimeIsAuthoritative: false,
     genericLastWriteWins: false,
   },
@@ -49,7 +49,7 @@ export const CRITICAL_WRITE_POLICIES: Readonly<Record<CriticalWriteAggregate, Cr
     requiresIdempotencyKey: true,
     requiresKnownVersion: true,
     requiresAtomicAuthority: true,
-    conflictStrategy: "detect-and-reject",
+    requiresExplicitConflictStrategy: true,
     realtimeIsAuthoritative: false,
     genericLastWriteWins: false,
   },
