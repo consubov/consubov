@@ -1,0 +1,98 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '@/hooks/useAuth';
+import PastoDetailPage from '@/pages/PastoDetailPage';
+
+// Mocks defined inside vi.mock factory to avoid hoisting.
+vi.mock('@/integrations/supabase/client', () => {
+  const fazenda = { id: 'faz-1', nome: 'Fazenda Teste', ativo: true };
+  const retiro = { id: 'ret-1', nome: 'Retiro Teste', fazenda_id: 'faz-1', ativo: true };
+  const pasto = { id: 'pas-1', nome: 'Pasto Teste', retiro_id: 'ret-1', fazenda_id: 'faz-1', num_animais: 10, categoria: 'A', sexo: 'M', peso_medio_kg: 300, ativo: true };
+  const produtos = [{ id: 'prod-1', nome: 'Produto Teste', ativo: true, marca: 'Marca' }];
+
+  const builder = (table: string) => ({
+    select: (_cols?: any) => {
+      return {
+        eq: (col: string, val: any) => {
+          if (table === 'pastos' && col === 'id') {
+            return {
+              single: () => Promise.resolve({ data: pasto, error: null }),
+              order: () => Promise.resolve({ data: [pasto], error: null }),
+            };
+          }
+          if (table === 'retiros' && col === 'id') {
+            return {
+              single: () => Promise.resolve({ data: retiro, error: null }),
+            };
+          }
+          if (table === 'fazendas' && col === 'id') {
+            return {
+              single: () => Promise.resolve({ data: fazenda, error: null }),
+            };
+          }
+          if (table === 'produtos') {
+            return {
+              order: () => Promise.resolve({ data: produtos, error: null }),
+              then: (onfilled: any) => Promise.resolve({ data: produtos, error: null }).then(onfilled),
+            };
+          }
+          if (table === 'pastos' && col === 'retiro_id') {
+            return {
+              order: () => Promise.resolve({ data: [pasto], error: null }),
+            };
+          }
+          return { single: () => Promise.resolve({ data: null, error: null }) };
+        },
+        order: () => {
+          if (table === 'produtos') return Promise.resolve({ data: produtos, error: null });
+          return Promise.resolve({ data: [], error: null });
+        },
+        single: () => {
+          if (table === 'pastos') return Promise.resolve({ data: pasto, error: null });
+          if (table === 'retiros') return Promise.resolve({ data: retiro, error: null });
+          if (table === 'fazendas') return Promise.resolve({ data: fazenda, error: null });
+          return Promise.resolve({ data: null, error: null });
+        },
+      };
+    },
+  });
+
+  return {
+    supabase: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      },
+      from: (table: string) => builder(table),
+      channel: vi.fn().mockReturnValue({ on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockResolvedValue({}) }),
+      removeChannel: vi.fn(),
+    },
+  };
+});
+
+describe('PastoDetailPage hierarchy test', () => {
+  it('displays fazenda and retiro names when loading pasto details', async () => {
+    const fazendaId = 'faz-1';
+    const retiroId = 'ret-1';
+    const pastoId = 'pas-1';
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={[`/admin/fazendas/${fazendaId}/retiros/${retiroId}/pastos/${pastoId}`]}>
+          <PastoDetailPage />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Fazenda Teste/i)).toBeInTheDocument();
+      expect(screen.getByText(/Retiro Teste/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pasto Teste/i)).toBeInTheDocument();
+    });
+
+    const fazendaLink = screen.getByText(/Fazenda Teste/i);
+    const retiroLink = screen.getByText(/Retiro Teste/i);
+    expect(fazendaLink).toBeInTheDocument();
+    expect(retiroLink).toBeInTheDocument();
+  });
+});

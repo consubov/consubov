@@ -70,13 +70,7 @@ function diasEntre(iso: string | null): number | null {
   return Math.max(0, dias);
 }
 
-function extractQrUuid(raw: string): string | null {
-  const trimmed = raw.trim();
-  // pode vir como UUID puro ou como URL contendo o UUID
-  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  const match = trimmed.match(uuidRegex);
-  return match ? match[0] : null;
-}
+import { extractQrUuid } from "@/lib/qrUtils";
 
 const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
   if (!iso) return null;

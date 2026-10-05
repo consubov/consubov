@@ -1,16 +1,12 @@
-import "@testing-library/jest-dom";
-import "fake-indexeddb/auto";
+import { vi } from 'vitest';
 
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => {},
-  }),
-});
+// Stub env vars globally
+process.env.VITE_SUPABASE_URL = 'http://localhost:54321';
+process.env.VITE_SUPABASE_PUBLISHABLE_KEY = 'anon-key';
+
+// Mock indexedDB for offline session
+global.indexedDB = {
+  open: vi.fn(),
+  deleteDatabase: vi.fn(),
+  databases: vi.fn().mockResolvedValue([]),
+} as any;
