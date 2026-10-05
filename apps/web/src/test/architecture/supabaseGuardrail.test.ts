@@ -35,10 +35,14 @@ export function findDirectSupabaseImportAdditions(
     if (currentFile === GUARDRAIL_FILE) continue;
 
     const sourceLine = line.slice(1);
-    const importsLegacyClient = directClientImport.test(sourceLine);
+    const repositoryBoundary =
+      /^apps\/web\/src\/features\/[^/]+\/repositories\/[^/]+\.(ts|tsx)$/.test(currentFile);
+    const importsLegacyClient =
+      directClientImport.test(sourceLine) && !repositoryBoundary;
     const importsSdkOutsideAdapter =
       directSdkImport.test(sourceLine) &&
-      currentFile !== "apps/web/src/integrations/supabase/client.ts";
+      currentFile !== "apps/web/src/integrations/supabase/client.ts" &&
+      !repositoryBoundary;
 
     if (importsLegacyClient || importsSdkOutsideAdapter) {
       additions.push({ file: currentFile || "[unknown]", line: sourceLine.trim() });
@@ -108,6 +112,15 @@ describe("Supabase direct import guardrail", () => {
         line: 'import "@supabase/supabase-js";',
       },
     ]);
+  });
+
+  it("allows direct provider access only behind a feature repository boundary", () => {
+    const repositoryDiff = [
+      "+++ b/apps/web/src/features/auth/repositories/authRecoveryRepository.ts",
+      '+import { supabase } from "@/integrations/supabase/client";',
+    ].join("\n");
+
+    expect(findDirectSupabaseImportAdditions(repositoryDiff)).toEqual([]);
   });
 
   it("ignores its own synthetic fixture strings in the repository diff", () => {
