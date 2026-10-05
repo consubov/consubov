@@ -1,5 +1,5 @@
 import { GerenteFabricaGuard } from "@/hooks/useGerenteTemFabrica";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import PesagemEmAndamentoPrompt from "@/components/maisArrobas/PesagemEmAndamentoPrompt";
@@ -9,106 +9,106 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { PainelPeriodoProvider } from "@/hooks/usePainelPeriodo";
 import { AuthProvider, useAuth, type UserRole } from "@/hooks/useAuth";
-import Login from "./pages/Login";
-import RecuperarSenhaPage from "./pages/RecuperarSenhaPage";
-import RedefinirSenhaPage from "./pages/RedefinirSenhaPage";
-import AdminLayout from "./pages/AdminLayout";
-import AdminDashboard from "./pages/AdminDashboard";
-import FazendasPage from "./pages/FazendasPage";
-import FazendaDetailPage from "./pages/FazendaDetailPage";
-import RetiroDetailPage from "./pages/RetiroDetailPage";
-import PastoDetailPage from "./pages/PastoDetailPage";
-import GerenteDashboard from "./pages/GerenteDashboard";
-import CapatazRoute from "./pages/CapatazRoute";
-import GerentesPage from "./pages/GerentesPage";
-import CapatazesPage from "./pages/CapatazesPage";
-import QrCodesPage from "./pages/QrCodesPage";
-import ProdutosPage from "./pages/ProdutosPage";
-import LancamentoManualPage from "./pages/LancamentoManualPage";
-import ConfiguracoesGeraisPage from "./pages/ConfiguracoesGeraisPage";
-import NotificacoesPage from "./pages/NotificacoesPage";
-import LandingPageConfigPage from "./pages/LandingPageConfigPage";
-import PainelInteligenciaPage from "./pages/PainelInteligenciaPage";
-import CiclosPage from "./pages/CiclosPage";
-import AdminFazendaPainelPage from "./pages/AdminFazendaPainelPage";
-import MapaFazendaPage from "./pages/MapaFazendaPage";
-import AdminRetiroPainelPage from "./pages/AdminRetiroPainelPage";
-import EscritoriosPage from "./pages/EscritoriosPage";
-import AuditoriaConfigPage from "./pages/AuditoriaConfigPage";
-import LandingPage from "./pages/LandingPage";
-import RelattoLandingPage from "./pages/RelattoLandingPage";
+const Login = lazy(() => import("./pages/Login"));
+const RecuperarSenhaPage = lazy(() => import("./pages/RecuperarSenhaPage"));
+const RedefinirSenhaPage = lazy(() => import("./pages/RedefinirSenhaPage"));
+const AdminLayout = lazy(() => import("./pages/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const FazendasPage = lazy(() => import("./pages/FazendasPage"));
+const FazendaDetailPage = lazy(() => import("./pages/FazendaDetailPage"));
+const RetiroDetailPage = lazy(() => import("./pages/RetiroDetailPage"));
+const PastoDetailPage = lazy(() => import("./pages/PastoDetailPage"));
+const GerenteDashboard = lazy(() => import("./pages/GerenteDashboard"));
+const CapatazRoute = lazy(() => import("./pages/CapatazRoute"));
+const GerentesPage = lazy(() => import("./pages/GerentesPage"));
+const CapatazesPage = lazy(() => import("./pages/CapatazesPage"));
+const QrCodesPage = lazy(() => import("./pages/QrCodesPage"));
+const ProdutosPage = lazy(() => import("./pages/ProdutosPage"));
+const LancamentoManualPage = lazy(() => import("./pages/LancamentoManualPage"));
+const ConfiguracoesGeraisPage = lazy(() => import("./pages/ConfiguracoesGeraisPage"));
+const NotificacoesPage = lazy(() => import("./pages/NotificacoesPage"));
+const LandingPageConfigPage = lazy(() => import("./pages/LandingPageConfigPage"));
+const PainelInteligenciaPage = lazy(() => import("./pages/PainelInteligenciaPage"));
+const CiclosPage = lazy(() => import("./pages/CiclosPage"));
+const AdminFazendaPainelPage = lazy(() => import("./pages/AdminFazendaPainelPage"));
+const MapaFazendaPage = lazy(() => import("./pages/MapaFazendaPage"));
+const AdminRetiroPainelPage = lazy(() => import("./pages/AdminRetiroPainelPage"));
+const EscritoriosPage = lazy(() => import("./pages/EscritoriosPage"));
+const AuditoriaConfigPage = lazy(() => import("./pages/AuditoriaConfigPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const RelattoLandingPage = lazy(() => import("./pages/RelattoLandingPage"));
 
-import EscritorioLayout from "./pages/EscritorioLayout";
-import TransferenciaRetiroPage from "./pages/TransferenciaRetiroPage";
-import NotFound from "./pages/NotFound";
-import RecuperarDadosPage from "./pages/RecuperarDadosPage";
-import FabricasPage from "./pages/FabricasPage";
-import FabricaDetailPage from "./pages/FabricaDetailPage";
-import OperadoresFabricaPage from "./pages/OperadoresFabricaPage";
-import MateriasPrimasPage from "./pages/MateriasPrimasPage";
-import EntradaMateriasPrimasPage from "./pages/EntradaMateriasPrimasPage";
-import GerenteProdutosPage from "./pages/GerenteProdutosPage";
-import GerenteAuditoriaFotosPage from "./pages/GerenteAuditoriaFotosPage";
-import GerenteGmdPage from "./pages/GerenteGmdPage";
-import GerentePrevisaoAbatePage from "./pages/GerentePrevisaoAbatePage";
-import FabricaDashboard from "./pages/FabricaDashboard";
-import ConferenciaPage from "./pages/ConferenciaPage";
-import ConsultoresPage from "./pages/ConsultoresPage";
-import PesadoresPage from "./pages/PesadoresPage";
-import ConsultorLayout from "./pages/ConsultorLayout";
-import ConsultorFazendasPage from "./pages/ConsultorFazendasPage";
-import ConsultorFazendaDetalhePage from "./pages/ConsultorFazendaDetalhePage";
-import VisitaTecnicaPage from "./pages/VisitaTecnicaPage";
-import RevisaoVisitaPage from "./pages/RevisaoVisitaPage";
-import ConsultorHistoricoPage from "./pages/ConsultorHistoricoPage";
-import ConsultorPainelPage from "./pages/ConsultorPainelPage";
-import ConsultorDespesasPage from "./pages/ConsultorDespesasPage";
-import ConsultorConfiguracoesPage from "./pages/ConsultorConfiguracoesPage";
+const EscritorioLayout = lazy(() => import("./pages/EscritorioLayout"));
+const TransferenciaRetiroPage = lazy(() => import("./pages/TransferenciaRetiroPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const RecuperarDadosPage = lazy(() => import("./pages/RecuperarDadosPage"));
+const FabricasPage = lazy(() => import("./pages/FabricasPage"));
+const FabricaDetailPage = lazy(() => import("./pages/FabricaDetailPage"));
+const OperadoresFabricaPage = lazy(() => import("./pages/OperadoresFabricaPage"));
+const MateriasPrimasPage = lazy(() => import("./pages/MateriasPrimasPage"));
+const EntradaMateriasPrimasPage = lazy(() => import("./pages/EntradaMateriasPrimasPage"));
+const GerenteProdutosPage = lazy(() => import("./pages/GerenteProdutosPage"));
+const GerenteAuditoriaFotosPage = lazy(() => import("./pages/GerenteAuditoriaFotosPage"));
+const GerenteGmdPage = lazy(() => import("./pages/GerenteGmdPage"));
+const GerentePrevisaoAbatePage = lazy(() => import("./pages/GerentePrevisaoAbatePage"));
+const FabricaDashboard = lazy(() => import("./pages/FabricaDashboard"));
+const ConferenciaPage = lazy(() => import("./pages/ConferenciaPage"));
+const ConsultoresPage = lazy(() => import("./pages/ConsultoresPage"));
+const PesadoresPage = lazy(() => import("./pages/PesadoresPage"));
+const ConsultorLayout = lazy(() => import("./pages/ConsultorLayout"));
+const ConsultorFazendasPage = lazy(() => import("./pages/ConsultorFazendasPage"));
+const ConsultorFazendaDetalhePage = lazy(() => import("./pages/ConsultorFazendaDetalhePage"));
+const VisitaTecnicaPage = lazy(() => import("./pages/VisitaTecnicaPage"));
+const RevisaoVisitaPage = lazy(() => import("./pages/RevisaoVisitaPage"));
+const ConsultorHistoricoPage = lazy(() => import("./pages/ConsultorHistoricoPage"));
+const ConsultorPainelPage = lazy(() => import("./pages/ConsultorPainelPage"));
+const ConsultorDespesasPage = lazy(() => import("./pages/ConsultorDespesasPage"));
+const ConsultorConfiguracoesPage = lazy(() => import("./pages/ConsultorConfiguracoesPage"));
 
-import FormulasSistemaPage from "./pages/FormulasSistemaPage";
-import AdminPremiacaoPage from "./pages/AdminPremiacaoPage";
-import PesadorLayout from "./pages/PesadorLayout";
-import PesadorDashboard from "./pages/PesadorDashboard";
-import PesadorClientesPage from "./pages/PesadorClientesPage";
-import PesadorPesagemPage from "./pages/PesadorPesagemPage";
-import PesadorPesagemNovoPage from "./pages/PesadorPesagemNovoPage";
-import PesadorPesagemExecPage from "./pages/PesadorPesagemExecPage";
-import PesadorPesagemResumoPage from "./pages/PesadorPesagemResumoPage";
-import PecuaristaLayout from "./pages/PecuaristaLayout";
-import PecuaristaDashboard from "./pages/PecuaristaDashboard";
-import PecuaristaFazendasPage from "./pages/PecuaristaFazendasPage";
-import PecuaristaFazendaDetalhePage from "./pages/PecuaristaFazendaDetalhePage";
-import PecuaristaLoteDetalhePage from "./pages/PecuaristaLoteDetalhePage";
-import PecuaristaPesagemExecPage from "./pages/PecuaristaPesagemExecPage";
-import PecuaristaPesagemResumoPage from "./pages/PecuaristaPesagemResumoPage";
-import PecuaristaApartacaoPage from "./pages/PecuaristaApartacaoPage";
-import PecuaristaApartacaoResumoPage from "./pages/PecuaristaApartacaoResumoPage";
-import PecuaristaHistoricoPage from "./pages/PecuaristaHistoricoPage";
-import PecuaristaBuscarAnimalPage from "./pages/PecuaristaBuscarAnimalPage";
-import SyncVetLayout from "./pages/SyncVetLayout";
-import SyncVetEmpresaPage from "./pages/SyncVetEmpresaPage";
-import SyncVetEquipePage from "./pages/SyncVetEquipePage";
-import SyncVetFazendasPage from "./pages/SyncVetFazendasPage";
-import SyncVetFazendaDetalhePage from "./pages/SyncVetFazendaDetalhePage";
-import SyncVetLoteDetalhePage from "./pages/SyncVetLoteDetalhePage";
-import SyncVetMedicamentosPage from "./pages/SyncVetMedicamentosPage";
-import SyncVetSemenPage from "./pages/SyncVetSemenPage";
-import SyncVetProtocolosPage from "./pages/SyncVetProtocolosPage";
-import SyncVetProtocoloDetalhePage from "./pages/SyncVetProtocoloDetalhePage";
-import SyncVetEstacaoDetalhePage from "./pages/SyncVetEstacaoDetalhePage";
-import SyncVetAgendaPage from "./pages/SyncVetAgendaPage";
-import SyncVetPreferenciasPage from "./pages/SyncVetPreferenciasPage";
-import SyncVetTrajetosPage from "./pages/SyncVetTrajetosPage";
-import SyncVetPrecosPage from "./pages/SyncVetPrecosPage";
-import SyncVetServicoNovoPage from "./pages/SyncVetServicoNovoPage";
-import SyncVetContasPage from "./pages/SyncVetContasPage";
-import SyncVetDashboardPage from "./pages/SyncVetDashboardPage";
-import SyncVetPartosPage from "./pages/SyncVetPartosPage";
-import SyncVetAuditoriaPage from "./pages/SyncVetAuditoriaPage";
-import AdminSyncVetOnboardingPage from "./pages/AdminSyncVetOnboardingPage";
-import SyncVetNovoManejoPage from "./pages/SyncVetNovoManejoPage";
-import SyncVetManejoExecucaoPage from "./pages/SyncVetManejoExecucaoPage";
-import SyncVetMeuPainelPage from "./pages/SyncVetMeuPainelPage";
+const FormulasSistemaPage = lazy(() => import("./pages/FormulasSistemaPage"));
+const AdminPremiacaoPage = lazy(() => import("./pages/AdminPremiacaoPage"));
+const PesadorLayout = lazy(() => import("./pages/PesadorLayout"));
+const PesadorDashboard = lazy(() => import("./pages/PesadorDashboard"));
+const PesadorClientesPage = lazy(() => import("./pages/PesadorClientesPage"));
+const PesadorPesagemPage = lazy(() => import("./pages/PesadorPesagemPage"));
+const PesadorPesagemNovoPage = lazy(() => import("./pages/PesadorPesagemNovoPage"));
+const PesadorPesagemExecPage = lazy(() => import("./pages/PesadorPesagemExecPage"));
+const PesadorPesagemResumoPage = lazy(() => import("./pages/PesadorPesagemResumoPage"));
+const PecuaristaLayout = lazy(() => import("./pages/PecuaristaLayout"));
+const PecuaristaDashboard = lazy(() => import("./pages/PecuaristaDashboard"));
+const PecuaristaFazendasPage = lazy(() => import("./pages/PecuaristaFazendasPage"));
+const PecuaristaFazendaDetalhePage = lazy(() => import("./pages/PecuaristaFazendaDetalhePage"));
+const PecuaristaLoteDetalhePage = lazy(() => import("./pages/PecuaristaLoteDetalhePage"));
+const PecuaristaPesagemExecPage = lazy(() => import("./pages/PecuaristaPesagemExecPage"));
+const PecuaristaPesagemResumoPage = lazy(() => import("./pages/PecuaristaPesagemResumoPage"));
+const PecuaristaApartacaoPage = lazy(() => import("./pages/PecuaristaApartacaoPage"));
+const PecuaristaApartacaoResumoPage = lazy(() => import("./pages/PecuaristaApartacaoResumoPage"));
+const PecuaristaHistoricoPage = lazy(() => import("./pages/PecuaristaHistoricoPage"));
+const PecuaristaBuscarAnimalPage = lazy(() => import("./pages/PecuaristaBuscarAnimalPage"));
+const SyncVetLayout = lazy(() => import("./pages/SyncVetLayout"));
+const SyncVetEmpresaPage = lazy(() => import("./pages/SyncVetEmpresaPage"));
+const SyncVetEquipePage = lazy(() => import("./pages/SyncVetEquipePage"));
+const SyncVetFazendasPage = lazy(() => import("./pages/SyncVetFazendasPage"));
+const SyncVetFazendaDetalhePage = lazy(() => import("./pages/SyncVetFazendaDetalhePage"));
+const SyncVetLoteDetalhePage = lazy(() => import("./pages/SyncVetLoteDetalhePage"));
+const SyncVetMedicamentosPage = lazy(() => import("./pages/SyncVetMedicamentosPage"));
+const SyncVetSemenPage = lazy(() => import("./pages/SyncVetSemenPage"));
+const SyncVetProtocolosPage = lazy(() => import("./pages/SyncVetProtocolosPage"));
+const SyncVetProtocoloDetalhePage = lazy(() => import("./pages/SyncVetProtocoloDetalhePage"));
+const SyncVetEstacaoDetalhePage = lazy(() => import("./pages/SyncVetEstacaoDetalhePage"));
+const SyncVetAgendaPage = lazy(() => import("./pages/SyncVetAgendaPage"));
+const SyncVetPreferenciasPage = lazy(() => import("./pages/SyncVetPreferenciasPage"));
+const SyncVetTrajetosPage = lazy(() => import("./pages/SyncVetTrajetosPage"));
+const SyncVetPrecosPage = lazy(() => import("./pages/SyncVetPrecosPage"));
+const SyncVetServicoNovoPage = lazy(() => import("./pages/SyncVetServicoNovoPage"));
+const SyncVetContasPage = lazy(() => import("./pages/SyncVetContasPage"));
+const SyncVetDashboardPage = lazy(() => import("./pages/SyncVetDashboardPage"));
+const SyncVetPartosPage = lazy(() => import("./pages/SyncVetPartosPage"));
+const SyncVetAuditoriaPage = lazy(() => import("./pages/SyncVetAuditoriaPage"));
+const AdminSyncVetOnboardingPage = lazy(() => import("./pages/AdminSyncVetOnboardingPage"));
+const SyncVetNovoManejoPage = lazy(() => import("./pages/SyncVetNovoManejoPage"));
+const SyncVetManejoExecucaoPage = lazy(() => import("./pages/SyncVetManejoExecucaoPage"));
+const SyncVetMeuPainelPage = lazy(() => import("./pages/SyncVetMeuPainelPage"));
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
@@ -249,7 +249,8 @@ const App = () => (
             <PushNotificationsBootstrap />
             <PesagemEmAndamentoPrompt />
 
-            <Routes>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
 
               <Route path="/" element={<LandingPage />} />
               <Route path="/relatto/*" element={<RelattoLandingPage />} />
@@ -372,7 +373,8 @@ const App = () => (
               </Route>
 
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </PainelPeriodoProvider>
       </BrowserRouter>
