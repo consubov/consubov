@@ -48,6 +48,10 @@ jobs:
         working-directory: apps/web
         run: bun run test:coverage
 
+      - name: Validate Web coverage completeness
+        working-directory: apps/web
+        run: bun run check:coverage-baseline
+
       - name: Web bundle baseline
         working-directory: apps/web
         run: bun run report:bundle
@@ -63,13 +67,6 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: apps/web
         run: bunx playwright install --with-deps chromium
-
-      - name: Web FASE 5 E2E smoke
-        working-directory: apps/web
-        run: bun run test:e2e:smoke
-        env:
-          VITE_SUPABASE_URL: http://127.0.0.1:54321
-          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
 
       - name: Web axe baseline
         working-directory: apps/web
@@ -108,14 +105,25 @@ jobs:
           for (const name of ["home", "login"]) {
             const report = JSON.parse(fs.readFileSync(`/tmp/lighthouse-${name}.json`, "utf8"));
             const c = report.categories;
+            const audits = report.audits;
             console.log("[lighthouse]", name, JSON.stringify({
               performance: c.performance.score,
               accessibility: c.accessibility.score,
               bestPractices: c["best-practices"].score,
               seo: c.seo.score,
+              lcpMs: audits["largest-contentful-paint"]?.numericValue ?? null,
+              cls: audits["cumulative-layout-shift"]?.numericValue ?? null,
+              tbtMs: audits["total-blocking-time"]?.numericValue ?? null
             }));
           }
           NODE
+
+      - name: Web FASE 5 E2E smoke
+        working-directory: apps/web
+        run: bun run test:e2e:smoke
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
 
       - name: Test Supabase Edge Functions
         working-directory: supabase/functions
@@ -159,7 +167,7 @@ jobs:
           grep -q '"code":"NOT_FOUND"' /tmp/not-found.json
           grep -q '"requestId":"' /tmp/not-found.json
 
+          curl --fail --silent --dump-header /tmp/headers.txt --output /dev/null http://127.0.0.1:3000/api/v1/health
           for header in x-content-type-options x-frame-options referrer-policy permissions-policy; do
-            curl --fail --silent --dump-header /tmp/headers.txt --output /dev/null http://127.0.0.1:3000/api/v1/health
             grep -qi "^$header:" /tmp/headers.txt
           done
