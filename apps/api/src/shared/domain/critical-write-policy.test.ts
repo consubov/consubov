@@ -10,7 +10,7 @@ describe("critical write policies", () => {
       expect(policy.requiresIdempotencyKey).toBe(true);
       expect(policy.requiresKnownVersion).toBe(true);
       expect(policy.requiresAtomicAuthority).toBe(true);
-      expect(policy.conflictStrategy).toBe("detect-and-reject");
+      expect(policy.requiresExplicitConflictStrategy).toBe(true);
       expect(policy.realtimeIsAuthoritative).toBe(false);
     }
   });
