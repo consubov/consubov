@@ -36,19 +36,23 @@ jobs:
         run: bun run check
 
       - name: Web lint debt baseline
-        run: bun --cwd apps/web run lint:baseline
+        working-directory: apps/web
+        run: bun run lint:baseline
 
       - name: Web lint changed files gate
-        run: bun --cwd apps/web run lint:changed
+        working-directory: apps/web
+        run: bun run lint:changed
 
       - name: Web bundle baseline
-        run: bun --cwd apps/web run report:bundle
+        working-directory: apps/web
+        run: bun run report:bundle
 
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
       - name: Web E2E smoke
-        run: bun --cwd apps/web run test:e2e:smoke
+        working-directory: apps/web
+        run: bun run test:e2e:smoke
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
