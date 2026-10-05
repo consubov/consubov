@@ -108,6 +108,25 @@ Dashboards, indicadores, gráficos/consumo, relatórios de visita/despesa/salga 
 
 Origem/filtros/RPCs comprovados estão registrados no baseline e no mapa de dados. Timezone de relatórios segue o contrato IANA explícito já definido na FASE 2. Fórmula ou arredondamento não comprovado não é alterado nem “ajustado para bater”.
 
+Matriz dos indicadores consolidados do painel:
+
+| Indicador | Origem/fórmula comprovada | Período/filtros | Escopo/tempo/arredondamento |
+|---|---|---|---|
+| total de animais | soma de `pastos.num_animais` ativos | fazenda/retiro, mês/ano do painel | escopo legado da fazenda; inteiro |
+| sacos utilizados | soma de `total_sacos` retornado por `get_consumo_mineral` | fazenda + mês/ano; retiro filtrado no Web quando selecionado | sem arredondamento novo |
+| consumo médio | `total_kg_consumido * 1000 / total_cab_dias` | mesmo período/filtros | unidade g/cab/dia; zero quando cab-dias = 0 |
+| custo diário | `totalCusto / totalCabDias` | mesmo período/filtros | zero quando cab-dias = 0 |
+| custo mensal | soma de `custo_mensal` do RPC | mesmo período/filtros | regra do RPC preservada |
+| eficiência | média dos valores válidos do RPC; quando fórmula configurada, usa `formulas_sistema` já existente | mesmo período/filtros | fórmula não é reinventada |
+| GMD médio | média dos `gmd_medio > 0` retornados | fazenda/retiro e configuração GMD existente | configuração aceita até 3 casas no fluxo existente |
+| pastos na meta / total pastos | campos canônicos do RPC | mesmo período/filtros | classificação do provider preservada |
+| distribuição baixo/ideal/alto | contagens do RPC; percentual = classe / total * 100 | mesmo período/filtros | zero quando total = 0 |
+| total de salgas | soma de `total_salgas` | mesmo período/filtros | inteiro |
+| previsão de abate | RPC `previsao_abate`; usa configuração de peso-alvo/janela e GMD existentes | fazenda selecionada | ordenada por dias para alvo; fórmula interna do RPC não é reinterpretada |
+| indicadores de visita/despesas | dados e PDFs dos fluxos de visita/despesa existentes | contexto da visita/fazenda | sem fórmula nova nesta fase |
+
+Para qualquer relatório autoritativo futuro, tenant e timezone devem vir do contexto canônico definido na FASE 2; ausência de configuração não autoriza fallback silencioso.
+
 ### 4.12 Landing e área pública — CONCLUÍDO NO ESCOPO ATUAL
 
 Landing, CMS/configuração, parceiros e leads permanecem existentes. A entrada de autenticação é pública; rotas protegidas negam sessão ausente.
