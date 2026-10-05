@@ -11,24 +11,31 @@ async function walk(dir) {
   const files = [];
   for (const entry of entries) {
     const absolute = path.join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...(await walk(absolute));
+    if (entry.isDirectory()) files.push(...(await walk(absolute)));
     else files.push(absolute);
   }
   return files;
 }
 
-try { await stat(assetsDir); }
-catch {
+try {
+  await stat(assetsDir);
+} catch {
   console.error("[bundle] dist/assets não existe. Execute o build antes do relatório.");
   process.exit(1);
 }
 
 const files = (await walk(assetsDir)).filter((file) => /\.(?:js|css)$/.test(file));
 const rows = [];
+
 for (const file of files) {
   const content = await readFile(file);
-  rows.push({ file: path.relative(distDir, file), bytes: content.byteLength, gzipBytes: gzipSync(content).byteLength });
+  rows.push({
+    file: path.relative(distDir, file),
+    bytes: content.byteLength,
+    gzipBytes: gzipSync(content).byteLength,
+  });
 }
+
 rows.sort((a, b) => b.bytes - a.bytes);
 
 const report = {
@@ -42,6 +49,7 @@ const report = {
 };
 
 await writeFile(path.join(distDir, "bundle-report.json"), JSON.stringify(report, null, 2) + "\n");
+
 console.log("[bundle:baseline]", JSON.stringify(report.totals));
 for (const row of report.largest.slice(0, 10)) {
   console.log(`[bundle] ${row.file} raw=${row.bytes} gzip=${row.gzipBytes}`);
