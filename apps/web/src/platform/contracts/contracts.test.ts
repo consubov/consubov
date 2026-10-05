@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   LocalDatabase,
   SecureStorage,
@@ -10,6 +10,8 @@ import type {
   FileCapture,
   NativeBridge,
   SyncTransport,
+  RealtimeProvider,
+  RealtimeSubscription,
 } from "@/platform/contracts";
 
 class MemoryLocalDatabase implements LocalDatabase {
@@ -85,6 +87,15 @@ class MockNativeBridge implements NativeBridge {
   }
 }
 
+class MemoryRealtimeProvider implements RealtimeProvider {
+  listeners = new Map<string, (event: unknown) => void>();
+
+  async subscribe(topic: string, onEvent: (event: unknown) => void): Promise<RealtimeSubscription> {
+    this.listeners.set(topic, onEvent);
+    return { unsubscribe: () => this.listeners.delete(topic) };
+  }
+}
+
 class MemorySyncTransport implements SyncTransport {
   async push(commands: unknown[]): Promise<void> {}
   async pull(): Promise<unknown[]> {
@@ -151,9 +162,10 @@ describe("Platform Contracts", () => {
 
   describe("ConnectivityProvider", () => {
     it("represents offline status", () => {
-      const provider: ConnectivityProvider = new MockConnectivityProvider();
+      const provider = new MockConnectivityProvider();
       provider.setOnline(false);
-      expect(provider.isOnline()).toBe(false);
+      const boundary: ConnectivityProvider = provider;
+      expect(boundary.isOnline()).toBe(false);
     });
 
     it("represents online status", () => {
@@ -192,6 +204,20 @@ describe("Platform Contracts", () => {
       await transport.push([{ id: 1, type: "create" }]);
       const result = await transport.pull();
       expect(Array.isArray(result)).toBe(true);
+    });
+  });
+
+  describe("RealtimeProvider", () => {
+    it("provides a replaceable subscription boundary without making realtime authoritative", async () => {
+      const provider = new MemoryRealtimeProvider();
+      const listener = vi.fn();
+      const subscription = await provider.subscribe("tenant:resource", listener);
+
+      provider.listeners.get("tenant:resource")?.({ type: "changed" });
+      expect(listener).toHaveBeenCalledWith({ type: "changed" });
+
+      subscription.unsubscribe();
+      expect(provider.listeners.has("tenant:resource")).toBe(false);
     });
   });
 });

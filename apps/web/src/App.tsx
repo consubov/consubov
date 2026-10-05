@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { PainelPeriodoProvider } from "@/hooks/usePainelPeriodo";
 import { AuthProvider, useAuth, type UserRole } from "@/hooks/useAuth";
 import Login from "./pages/Login";
+import RecuperarSenhaPage from "./pages/RecuperarSenhaPage";
+import RedefinirSenhaPage from "./pages/RedefinirSenhaPage";
 import AdminLayout from "./pages/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import FazendasPage from "./pages/FazendasPage";
@@ -110,6 +112,7 @@ import SyncVetMeuPainelPage from "./pages/SyncVetMeuPainelPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
+import { getRoleHomePath } from "@/lib/authNavigation";
 import { RouteMemory } from "@/components/RouteMemory";
 
 function PushNotificationsBootstrap() {
@@ -206,41 +209,24 @@ function RoleRedirect() {
   const { role, loading, roleResolved, signOut } = useAuth();
   if (loading || !roleResolved) return <LoadingScreen />;
 
-  switch (role) {
-    case "administrador":
-      return <Navigate to="/admin" replace />;
-    case "gerente":
-      return <Navigate to="/gerente" replace />;
-    case "capataz":
-      return <Navigate to="/capataz" replace />;
-    case "escritorio":
-      return <Navigate to="/escritorio" replace />;
-    case "operador_fabrica":
-      return <Navigate to="/fabrica" replace />;
-    case "consultor":
-      return <Navigate to="/consultor" replace />;
-    case "pesador":
-      return <Navigate to="/pesador" replace />;
-    case "pecuarista":
-      return <Navigate to="/pecuarista" replace />;
-    case "syncvet":
-      return <Navigate to="/syncvet" replace />;
-    default:
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        return <LoadingScreen />;
-      }
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-6">
-          <div className="text-center space-y-3">
-            <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
-            <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
-            <Button variant="outline" onClick={() => void signOut()}>
-              Sair
-            </Button>
-          </div>
-        </div>
-      );
+  const target = getRoleHomePath(role);
+  if (target) return <Navigate to={target} replace />;
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return <LoadingScreen />;
   }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="text-center space-y-3">
+        <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
+        <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+        <Button variant="outline" onClick={() => void signOut()}>
+          Sair
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function LoginRoute() {
@@ -271,6 +257,8 @@ const App = () => (
 
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/login" element={<LoginRoute />} />
+              <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
+              <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
               <Route path="/app" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
               <Route path="/conferencia" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><ConferenciaPage /></ProtectedRoute>} />
               <Route path="/dashboard/retiro/:retiroId" element={<ProtectedRoute allowedRoles={["administrador", "gerente"]}><AdminRetiroPainelPage /></ProtectedRoute>} />

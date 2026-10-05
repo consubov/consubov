@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -35,6 +35,17 @@ jobs:
 
       - name: Check
         run: bun run check
+
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+
+      - name: Web FASE 4 smoke
+        working-directory: apps/web
+        run: bun run test:e2e:smoke
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase4-local-test-key
 
       - name: Test Supabase Edge Functions
         working-directory: supabase/functions

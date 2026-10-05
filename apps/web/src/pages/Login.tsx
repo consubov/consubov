@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,8 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
-  const navigate = useNavigate();
+  const location = useLocation();
+  const passwordReset = Boolean((location.state as { passwordReset?: boolean } | null)?.passwordReset);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +57,11 @@ export default function Login() {
           </div>
         </CardHeader>
         <CardContent className="pt-4 pb-8 px-8">
+          {passwordReset && (
+            <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground" role="status">
+              Senha atualizada. Entre novamente com a nova senha.
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5" method="post" action="#" autoComplete="on">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
@@ -95,6 +101,14 @@ export default function Login() {
               <Label htmlFor="lembrar-email" className="text-sm font-normal cursor-pointer">
                 Lembrar meu e-mail
               </Label>
+            </div>
+            <div className="text-right">
+              <Link
+                to="/recuperar-senha"
+                className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+              >
+                Esqueci minha senha
+              </Link>
             </div>
             {error && (
               <p className="text-sm text-destructive font-medium">{error}</p>

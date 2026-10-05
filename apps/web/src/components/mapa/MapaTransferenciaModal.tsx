@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 import CategoriaPastoSelect from "@/components/pastos/CategoriaPastoSelect";
@@ -82,7 +83,7 @@ export default function MapaTransferenciaModal({
 
       // Update origin
       const newOrigemQtd = pasto.num_animais - qtd;
-      const origemUpdate: Record<string, any> = { num_animais: newOrigemQtd };
+      const origemUpdate: TablesUpdate<"pastos"> = { num_animais: newOrigemQtd };
       if (isFullTransfer) {
         origemUpdate.peso_medio_kg = null;
         origemUpdate.categoria = null;
@@ -102,7 +103,7 @@ export default function MapaTransferenciaModal({
       const pesoDestino = selectedDestino.peso_medio_kg ?? 0;
       const novoPesoDestino = calcWeightedAvg(selectedDestino.num_animais, pesoDestino, qtd, pesoTransf);
 
-      const destinoUpdate: Record<string, any> = {
+      const destinoUpdate: TablesUpdate<"pastos"> = {
         num_animais: newDestinoQtd,
         peso_medio_kg: Math.round(novoPesoDestino * 10) / 10,
         data_movimentacao: nowIso,

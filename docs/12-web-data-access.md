@@ -155,6 +155,18 @@ preservados a resolução da equipe por `empresa_id` e `user_id`, o
 decrescente por data, o limite de 200 e o filtro de fazendas por `empresa_id`.
 Sem equipe ou dados, as mesmas listas vazias continuam sendo retornadas.
 
+### Recuperação de senha
+
+As páginas `RecuperarSenhaPage` e `RedefinirSenhaPage` não importam o client Supabase diretamente. O acesso ao provider legado de auth fica isolado em:
+
+```text
+apps/web/src/features/auth/repositories/authRecoveryRepository.ts
+```
+
+O repository encapsula solicitação de link, atualização de senha e limpeza da sessão de recuperação. Mensagens de erro permanecem genéricas nas páginas; nenhum segredo é introduzido no cliente.
+
+O guardrail arquitetural permite import do provider apenas dentro de `features/*/repositories/*`, enquanto páginas/hooks continuam proibidos de criar novos imports diretos.
+
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
