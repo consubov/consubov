@@ -67,6 +67,21 @@ docs/10-auth-tenancy-contracts.md
 docs/11-offline-sync-regression.md
 docs/12-web-data-access.md
 docs/13-politica-mudancas-estruturais.md
+docs/14-politica-codigo-terceiros.md
+docs/15-ports-adapters-fundamentais.md
+docs/16-seguranca-edge-functions-legadas.md
+docs/17-seguranca-admin-edge-functions.md
+docs/17-web-platform-contracts.md
+docs/18-identificadores-tempo.md
+docs/19-exclusao-sync-futuro.md
+docs/19-seguranca-push.md
+docs/20-extensibilidade-api-integracoes.md
+docs/20-seguranca-ci-codigo.md
+docs/21-tenancy-rbac-auth-auditoria.md
+docs/22-baseline-funcional-web.md
+docs/23-fase3-mapa-bounded-contexts-web.md
+docs/24-fase3-persistencia-config-local.md
+docs/25-fase3-auditoria-correcao-2026-10-04.md
 docs/adr/
 ```
 
@@ -101,9 +116,11 @@ Endpoints básicos atuais:
 
 Toda nova rota deve manter o contrato OpenAPI correspondente atualizado no mesmo trabalho.
 
+O Web expõe uma camada única de consumo futuro em `apps/web/src/lib/api/`, com timeout, correlação, idempotency key opcional e erro padronizado. A existência desse client não migra automaticamente os acessos Supabase legados.
+
 ## GitHub Codespaces
 
-O repositório possui `.devcontainer/devcontainer.json` para criar um ambiente reproduzível com Bun 1.3.12.
+O repositório possui `.devcontainer/devcontainer.json` para criar um ambiente reproduzível com Bun 1.4.0, alinhado ao `packageManager` da raiz e ao CI.
 
 O Codespace instala dependências com:
 
@@ -129,6 +146,7 @@ O legado atual utiliza, entre outras, variáveis como:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_VAPID_PUBLIC_KEY` quando push estiver habilitado
+- `VITE_API_BASE_URL` para o client local da API própria (default local `http://127.0.0.1:3000`)
 
 Essas referências não significam autorização para conectar a nova arquitetura ao Supabase remoto ou configurar Vercel nesta etapa.
 

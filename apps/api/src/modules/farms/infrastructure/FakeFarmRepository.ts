@@ -8,8 +8,9 @@ export class FakeFarmRepository implements FarmReaderPort {
 
   async findById(
     id: FarmId,
-    _context: TenantExecutionContext,
+    context: TenantExecutionContext,
   ): Promise<FarmRecord | null> {
+    void context;
     return this.farms.get(id) ?? null;
   }
 

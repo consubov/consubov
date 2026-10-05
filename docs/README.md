@@ -15,13 +15,26 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 9. [Fundação local da API](./09-api-foundation.md)
 10. [Autenticação, autorização e tenancy](./10-auth-tenancy-contracts.md)
 11. [Regressão offline e sincronização](./11-offline-sync-regression.md)
-12. [Migração progressiva de acesso a dados do web](./12-web-data-access.md)
+12. [Migração progressiva de acesso a dados do Web](./12-web-data-access.md)
 13. [Política de mudanças estruturais](./13-politica-mudancas-estruturais.md)
 14. [Política de código open source e terceiros](./14-politica-codigo-terceiros.md)
-15. [Ports e Adapters Fundamentais (FASE 2.3)](./15-ports-adapters-fundamentais.md)
-16. [Segurança das edge functions legadas (seed-app-secrets + cleanup-demo-accounts)](./16-seguranca-edge-functions-legadas.md)
-19. [Segurança da edge function send-push-notification (PRD-SEC-03)](./19-seguranca-push.md)
-20. [Exclusão e sincronização futura (FASE 2.6)](./19-exclusao-sync-futuro.md)
+15. [Ports e Adapters Fundamentais](./15-ports-adapters-fundamentais.md)
+16. [Segurança das Edge Functions legadas](./16-seguranca-edge-functions-legadas.md)
+17. [Segurança das Edge Functions administrativas](./17-seguranca-admin-edge-functions.md)
+18. [Contratos de plataforma Web](./17-web-platform-contracts.md)
+19. [Identificadores e tempo](./18-identificadores-tempo.md)
+20. [Exclusão e sincronização futura](./19-exclusao-sync-futuro.md)
+21. [Segurança de push](./19-seguranca-push.md)
+22. [Extensibilidade da API e integrações](./20-extensibilidade-api-integracoes.md)
+23. [Segurança de CI e código](./20-seguranca-ci-codigo.md)
+24. [Tenancy, RBAC, auth e auditoria](./21-tenancy-rbac-auth-auditoria.md)
+25. [Baseline funcional da Web — FASE 3.1](./22-baseline-funcional-web.md)
+26. [Mapa de bounded contexts do Web — FASE 3.2](./23-fase3-mapa-bounded-contexts-web.md)
+27. [Persistência/configuração local — FASE 3.5–3.6](./24-fase3-persistencia-config-local.md)
+28. [Auditoria corretiva da FASE 3](./25-fase3-auditoria-correcao-2026-10-04.md)
+29. [Inventário de componentes de terceiros](./THIRD_PARTY_COMPONENTS.md)
+
+> Os números da lista são apenas a ordem de leitura. Alguns nomes de arquivo preservam numeração histórica duplicada (`17`, `19`, `20`) e não devem ser renomeados dentro desta correção sem um trabalho específico de referências.
 
 ## Regra
 

@@ -1,7 +1,19 @@
 import { describe, expect, test } from "bun:test";
+import {
+  createPrincipalId,
+  createTenantExecutionContext,
+  createTenantId,
+} from "../../identity-tenancy";
 import type { FarmRecord } from "../domain/farm";
 import { createFarmId } from "../domain/farm";
 import { FakeFarmRepository } from "./FakeFarmRepository";
+
+const context = createTenantExecutionContext({
+  tenantId: createTenantId("tenant-test"),
+  principalId: createPrincipalId("principal-test"),
+  requestId: "req-farm-test",
+  correlationId: "corr-farm-test",
+});
 
 function makeFarm(overrides: Partial<FarmRecord> = {}): FarmRecord {
   return {
@@ -30,13 +42,15 @@ describe("FakeFarmRepository", () => {
 
     await repository.save(farm);
 
-    expect(await repository.findById(farm.id)).toEqual(farm);
+    expect(await repository.findById(farm.id, context)).toEqual(farm);
   });
 
   test("devolve nulo quando a fazenda não existe", async () => {
     const repository = new FakeFarmRepository();
 
-    expect(await repository.findById(createFarmId("inexistente"))).toBeNull();
+    expect(
+      await repository.findById(createFarmId("inexistente"), context),
+    ).toBeNull();
   });
 
   test("remove a fazenda", async () => {
@@ -46,6 +60,6 @@ describe("FakeFarmRepository", () => {
     await repository.save(farm);
     await repository.delete(farm.id);
 
-    expect(await repository.findById(farm.id)).toBeNull();
+    expect(await repository.findById(farm.id, context)).toBeNull();
   });
 });

@@ -80,11 +80,11 @@ Fronteiras que valem registro:
 - A fazenda não é o tenant. `farms` não carrega `TenantId` porque o mapeamento entre tenant e fazenda não tem prova no legado.
 - Regra duplicada foi removida: `reporting` tinha uma cópia própria de `statusPorIndiceDeConsumo`, igual à de `nutrition`. A classificação por índice ficou só em `nutrition`, com `consumoStatusUnificado` (`apps/api/src/modules/nutrition/domain/consumo.ts:195`), e `reporting` passou a receber o status já classificado.
 
-Fora desta fase, e portanto sem diretório: as camadas `application`, `interfaces/http` e `platform` além de `domain`, motor de sincronização, motor de offline, filas, feature flags, event bus, persistência, qualquer provider de identidade, qualquer armazenamento remoto e qualquer CRUD novo.
+Fora do runtime materializado nesta etapa permanecem: motor de sincronização, motor offline definitivo, filas remotas, provider externo de feature flags, event bus concreto, persistência remota, provider de identidade novo, armazenamento remoto novo e CRUD novo. Ports já existentes podem continuar como contratos; não se cria infraestrutura concreta sem consumidor real.
 
 Com os 15 módulos, existem duas camadas de apoio além de `domain`: `adapters/` e `infrastructure/`, que contêm **apenas dublês em memória para teste** (`Fake*`) e nenhuma implementação real de provider. O guard trata `adapters` e `infrastructure` como camadas que um `domain` não pode importar.
 
-`apps/api/src/modules/observability/` e `apps/api/src/shared/` já existiam na árvore por trabalho anterior a esta fase e **não** são exportados por `apps/api/src/modules/index.ts`. Eles contêm portas de fila, event bus e feature flag que esta fase proíbe, e ficam registrados aqui até que uma fase própria decida o destino deles.
+`apps/api/src/modules/observability/` e `apps/api/src/shared/` já existiam na árvore por trabalho anterior. Seus ports de fila, event bus e feature flag permanecem contratos de extensão sem provider remoto/concreto. Na FASE 3, `FeatureFlagPort` pode ser citado para prever configuração futura por tenant, mas isso **não** autoriza criar plataforma externa de flags, painel administrativo ou comportamento privilegiado sem consumidor real.
 
 ## Arquitetura futura
 
