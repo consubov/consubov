@@ -83,9 +83,9 @@ export default function MapaAbateModal({ open, onClose, pasto, fazendaId, retiro
       toast.success(`${qtd} animais abatidos de ${pasto.pasto_nome}. Restam ${newTotal}.`);
       onDone();
       handleClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro no abate:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`Erro: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     } finally {
       setConfirmando(false);
     }

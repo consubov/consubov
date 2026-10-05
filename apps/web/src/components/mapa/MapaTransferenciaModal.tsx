@@ -36,7 +36,7 @@ export default function MapaTransferenciaModal({
   const destinoSemCategoria = !!selectedDestino && !isCategoriaValida(selectedDestino.categoria);
   useEffect(() => {
     setCategoriaDestino(isCategoriaValida(pasto?.categoria) ? (pasto!.categoria as string) : "");
-  }, [selectedDestino?.pasto_id, pasto?.pasto_id]);
+  }, [selectedDestino?.pasto_id, pasto?.pasto_id, pasto?.categoria]);
   const categoriaOk = !destinoSemCategoria || isCategoriaValida(categoriaDestino);
 
   const qtd = parseInt(quantidade) || 0;
@@ -131,9 +131,9 @@ export default function MapaTransferenciaModal({
       toast.success(`${qtd} animais transferidos de ${pasto.pasto_nome} → ${selectedDestino.pasto_nome}`);
       onDone();
       handleClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro na transferência:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`Erro: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     } finally {
       setConfirmando(false);
     }

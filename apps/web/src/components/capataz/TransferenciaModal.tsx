@@ -70,7 +70,7 @@ export default function TransferenciaModal({
       const isFullTransfer = qtd === pasto.num_animais;
 
       // 2. Record transfer event (with peso_medio + categoria)
-      const { error: movErr } = await supabase.from("movimentacoes_animais" as any).insert({
+      const { error: movErr } = await supabase.from("movimentacoes_animais").insert({
         fazenda_id: fazendaId,
         retiro_id: retiroId,
         pasto_origem_id: pasto.id,
@@ -138,9 +138,9 @@ export default function TransferenciaModal({
       toast.success(`${qtd} animais transferidos de ${pasto.nome} para ${destino.nome}.`);
       onTransferConfirmed(pasto.id, destinoId, qtd);
       handleClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro na transferência:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`Erro: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     } finally {
       setConfirmando(false);
     }
