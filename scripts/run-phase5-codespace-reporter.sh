@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 BRANCH="$(git branch --show-current 2>/dev/null || true)"
@@ -11,7 +11,7 @@ if [[ "$BRANCH" != "quality/fase5-web-ready-20261005" ]]; then
 fi
 
 LOG="/tmp/consubov-phase5-local.log"
-SUMMARY="/tmp/consubov-phase5-summary.md"
+EVIDENCE="docs/30-fase5-local-evidence.md"
 : >"$LOG"
 
 echo "[phase5-codespace] iniciando gate local em $(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a "$LOG"
@@ -22,9 +22,11 @@ RC=$?
 set -e
 
 {
-  echo "## FASE 5 — execução local no Codespace"
+  echo "# FASE 5 — Evidência local automatizada"
   echo
-  echo "- Commit: $(git rev-parse HEAD)"
+  echo "> Gerado automaticamente pelo Codespace da branch de qualidade."
+  echo
+  echo "- Commit testado: $(git rev-parse HEAD)"
   echo "- Branch: $BRANCH"
   if [[ "$RC" -eq 0 ]]; then
     echo "- Resultado: PASS"
@@ -32,24 +34,31 @@ set -e
     echo "- Resultado: FAIL"
   fi
   echo "- Exit code: $RC"
+  echo "- Executado em: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo
-  echo "### Evidências selecionadas"
+  echo "## Evidências selecionadas"
   echo "-----"
-  grep -E "\[phase5\]|\[coverage:baseline\]|\[bundle:baseline\]|\[bundle:budget\]|\[dist-secrets\]|\[lighthouse\]|tests? passed|tests? failed|passed \(|failed \(" "$LOG" | tail -n 120 || true
+  grep -E "\\[phase5\\]|\\[coverage:baseline\\]|\\[bundle:baseline\\]|\\[bundle:budget\\]|\\[dist-secrets\\]|\\[lighthouse\\]|tests? passed|tests? failed|passed \\(|failed \\(" "$LOG" | tail -n 160 || true
   echo "-----"
   if [[ "$RC" -ne 0 ]]; then
     echo
-    echo "### Tail da falha"
+    echo "## Tail da falha"
     echo "-----"
-    tail -n 120 "$LOG"
+    tail -n 160 "$LOG"
     echo "-----"
   fi
-} >"$SUMMARY"
+} >"$EVIDENCE"
+
+git config user.name "$(git config user.name || echo MATEUS)"
+git config user.email "$(git config user.email || echo 138159754+mmatteuus@users.noreply.github.com)"
+git add "$EVIDENCE"
+if ! git diff --cached --quiet; then
+  git commit -m "test: registrar evidencia local da FASE 5"
+  git push origin HEAD
+fi
 
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  gh pr comment 37 --repo mmatteuus/consubov --body-file "$SUMMARY" || true
-else
-  echo "[phase5-codespace] gh indisponível/não autenticado; resumo em $SUMMARY" | tee -a "$LOG"
+  gh pr comment 37 --repo mmatteuus/consubov --body-file "$EVIDENCE" || true
 fi
 
 echo "[phase5-codespace] finalizado rc=$RC em $(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a "$LOG"
