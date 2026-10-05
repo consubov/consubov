@@ -48,6 +48,7 @@ jobs:
         run: bun run report:bundle
 
       - name: Install Playwright Chromium
+        working-directory: apps/web
         run: bunx playwright install --with-deps chromium
 
       - name: Web E2E smoke
