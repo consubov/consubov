@@ -15,6 +15,13 @@ export function extractQrUuid(raw: string): string | null {
   return match ? match[0] : null;
 }
 
+export function isQrResourceAvailable(
+  resource: { ativo?: boolean | null } | null | undefined,
+  error?: unknown,
+): boolean {
+  return !error && resource?.ativo === true;
+}
+
 /**
  * Generate a QR code data URI using the external qrcode library.
  * This function is a thin wrapper around `qrCodePdf.createQrCodeDataUri`.
