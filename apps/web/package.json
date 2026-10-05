@@ -15,8 +15,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:smoke": "playwright test --grep @smoke",
-    "report:bundle": "bun ../../scripts/report-web-bundle.mjs"
+    "test:e2e:smoke": "playwright test --grep \"@smoke|@a11y-smoke\"",
+    "report:bundle": "bun ../../scripts/report-web-bundle.mjs",
+    "check:bundle-budget": "bun ../../scripts/check-web-bundle-budget.mjs",
+    "check:dist-secrets": "bun ../../scripts/check-web-dist-secrets.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
