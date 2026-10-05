@@ -6,19 +6,12 @@ import tseslint from "typescript-eslint";
 import security from "eslint-plugin-security";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "playwright-report"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-    },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-      security,
-    },
+    languageOptions: { ecmaVersion: 2020, globals: globals.browser },
+    plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh, security },
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
@@ -28,5 +21,9 @@ export default tseslint.config(
       "security/detect-object-injection": "off",
       "security/detect-possible-timing-attacks": "warn",
     },
+  },
+  {
+    files: ["*.config.{js,ts}", "playwright.config.ts"],
+    languageOptions: { globals: globals.node },
   },
 );

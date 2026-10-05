@@ -32,12 +32,12 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 26. [Mapa de bounded contexts do Web — FASE 3.2](./23-fase3-mapa-bounded-contexts-web.md)
 27. [Persistência/configuração local — FASE 3.5–3.6](./24-fase3-persistencia-config-local.md)
 28. [Auditoria corretiva da FASE 3](./25-fase3-auditoria-correcao-2026-10-04.md)
-29. [Inventário de componentes de terceiros](./THIRD_PARTY_COMPONENTS.md)
+29. [Gate de qualidade da Web — FASE 5](./26-fase5-web-quality-gate.md)
+30. [Inventário de componentes de terceiros](./THIRD_PARTY_COMPONENTS.md)
 
 > Os números da lista são apenas a ordem de leitura. Alguns nomes de arquivo preservam numeração histórica duplicada (`17`, `19`, `20`) e não devem ser renomeados dentro desta correção sem um trabalho específico de referências.
 
 ## Regra
-
 - `docs/` contém conhecimento permanente.
 - Decisões arquiteturais aprovadas devem ser registradas aqui.
 - PRDs e handoffs temporários ficam em `instructions/active/`.
