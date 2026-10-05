@@ -1,5 +1,7 @@
 # FASE 4 — Auditoria de paridade funcional e organização por domínio
 
+> **Estado:** auditoria inicial supersedida pelo fechamento consolidado em `docs/28-fases0-4-fechamento-2026-10-05.md`. Este arquivo permanece como trilha dos achados que motivaram as correções.
+
 ## Escopo da auditoria
 
 Baseline auditada: `main@ebdd0712c10d55993c3d2625500fc4e294eeee1b` em 2026-10-05, confrontada com o Checklist Mestre, contratos permanentes e código atual.
