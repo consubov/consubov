@@ -44,6 +44,7 @@ test.describe("@a11y-smoke FASE 5 — acessibilidade básica pública", () => {
 
     const email = page.getByLabel("E-mail", { exact: true });
     const password = page.getByLabel("Senha", { exact: true });
+    const rememberEmail = page.getByRole("checkbox", { name: "Lembrar meu e-mail" });
     const submit = page.getByRole("button", { name: "Entrar" });
 
     await expect(email).toHaveAttribute("type", "email");
@@ -53,6 +54,8 @@ test.describe("@a11y-smoke FASE 5 — acessibilidade básica pública", () => {
     await expect(email).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(password).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(rememberEmail).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(submit).toBeFocused();
   });
