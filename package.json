@@ -19,7 +19,8 @@
     "test": "turbo run test",
     "check": "bun run typecheck && bun run build && bun run test",
     "test:web": "turbo run test --filter=@consubov/web",
-    "test:api": "turbo run test --filter=@consubov/api"
+    "test:api": "turbo run test --filter=@consubov/api",
+    "quality:phase5:local": "bash scripts/run-phase5-local.sh"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.117.2",
