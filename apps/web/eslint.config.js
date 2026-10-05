@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 import security from "eslint-plugin-security";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "playwright-report"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -27,6 +27,12 @@ export default tseslint.config(
       "security/detect-non-literal-fs-filename": "warn",
       "security/detect-object-injection": "off",
       "security/detect-possible-timing-attacks": "warn",
+    },
+  },
+  {
+    files: ["*.config.{js,ts}", "playwright.config.ts"],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 );
