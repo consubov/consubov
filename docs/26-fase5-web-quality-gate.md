@@ -1,10 +1,12 @@
 # FASE 5 — Gate de qualidade da Web
 
-> Status em 2026-10-04: **EM ANDAMENTO**.
+> Status em 2026-10-05: **EM ANDAMENTO — QA REPROVADO PARA FECHAMENTO**.
 >
 > Branch: `quality/fase5-web-gate-main-20261004`.
 >
 > PR: **#35**.
+>
+> HEAD validado: `08e8fa27139b2af4d1885d80cb8762a9608ee64e`.
 
 ## Objetivo
 
@@ -16,72 +18,82 @@ Criar evidência reproduzível de qualidade para a Web/API antes do gate `WEB RE
 - Web expõe `typecheck` explicitamente;
 - Playwright separado de Vitest;
 - smoke E2E local cobre login renderizado, rota protegida sem sessão, 404 e landing;
+- smoke básico de acessibilidade cobre nomes/tipos dos campos do login, ordem de foco por teclado e ativação do login por teclado;
+- login/landing validam ausência de overflow horizontal;
 - projetos Chromium desktop/mobile;
 - `lint:baseline` mede a dívida existente;
 - `lint:changed` impede novos erros de lint nos arquivos Web alterados;
 - `report:bundle` gera baseline bruto/gzip do build;
-- CI executa em pull requests, inclusive PRs empilhados;
+- `check:bundle-budget` impede regressão do total raw e usa tolerância mínima de 1.024 bytes no gzip para absorver variação de compressão do build dinâmico;
+- `check:dist-secrets` inspeciona o bundle construído contra padrões administrativos/segredos conhecidos;
+- CI executa em pull requests;
 - Edge Functions tests e smoke HTTP da API permanecem no pipeline;
 - Security Code Scan continua como workflow separado.
 
 ## Evidência medida no CI
 
-### Testes e contratos
-
-No último ciclo com `bun run check` concluído:
+No HEAD `08e8fa27139b2af4d1885d80cb8762a9608ee64e`:
 
 - API/Bun: **532 testes aprovados**, **0 falhas**, em **74 arquivos**;
 - Web/Vitest: **111 testes aprovados**, em **29 arquivos**;
-- Playwright smoke: **8/8 aprovados** em Chromium desktop/mobile;
+- Playwright smoke/a11y público: **12/12 aprovados** em Chromium desktop/mobile;
 - Edge Functions/Vitest: **122 testes aprovados**, em **9 arquivos**;
 - smoke HTTP da API: aprovado;
 - typecheck Web/API: aprovado;
 - build Web/API: aprovado;
-- Security Code Scan: SAST, dependency vulnerability scan e secret scanning aprovados.
+- budget regressivo do bundle: aprovado;
+- guarda de padrões de segredo no `dist/`: aprovado;
+- SAST: aprovado;
+- dependency vulnerability scan: aprovado;
+- secret scanning: aprovado.
 
 O conjunto existente inclui contratos de erro HTTP/OpenAPI, deny-by-default administrativo, regras de tenancy/RBAC, domínio e regressões Web. Isso é baseline; não significa que todos os fluxos funcionais da FASE 5.3 estejam cobertos por E2E.
 
-### Lint
+## Lint
 
-Baseline medido:
+Baseline medido no ciclo atual:
 
 - **438** arquivos analisados;
-- **229** arquivos com findings;
-- **1.419** erros;
+- **227** arquivos com findings;
+- **1.415** erros;
 - **108** warnings.
 
-Essa dívida é pré-existente e grande demais para um mega-refactor dentro deste gate. O CI usa `lint:changed` como barreira incremental para erros em arquivos alterados e mantém a contagem global visível.
+A dívida é pré-existente. O CI usa `lint:changed` como barreira incremental e mantém o baseline global visível.
 
-### Bundle
+## Bundle e performance
 
-Baseline do build:
+Baseline observado no ciclo atual:
 
 - **17** arquivos JS/CSS;
 - **8.611.805 bytes** raw;
-- **2.533.532 bytes** gzip;
+- **2.533.540 bytes** gzip no build validado;
+- budget raw: **8.611.805 bytes**;
+- baseline gzip de referência: **2.533.532 bytes**, com tolerância técnica de **1.024 bytes**;
 - maior chunk: `index-*.js` com aproximadamente **8,18 MB raw / 2,40 MB gzip**.
 
-O Vite emite warning para chunk acima de 500 kB. Esse é um risco material de performance e impede considerar performance encerrada apenas porque o build passa.
+O budget é um **gate anti-regressão**, não aprovação do tamanho atual. O chunk principal continua materialmente grande e deve ser tratado antes do fechamento de performance.
 
-### Imports/chunking
-
-O build reporta módulos usados simultaneamente por import estático e dinâmico, impedindo code-splitting efetivo em pontos como:
-
-- `@zxing/browser`;
-- `consultorOffline/mutationQueue.ts`;
-- `consultorOffline/snapshotStore.ts`;
-- `consultorOffline/photoQueue.ts`;
-- `consultorOffline/signedUrlCache.ts`;
-- `pennStateStore.ts`;
-- `pennStateFotos.ts`.
-
-A busca no código de `apps/web/src` não encontrou uso direto de `eval(` nem `new Function`; o warning de build citado no checklist não foi reproduzido no build atual. Se reaparecer em dependência/transpilação, deve ser rastreado pelo artefato específico.
+O build também reporta módulos usados simultaneamente por import estático e dinâmico, incluindo `@zxing/browser` e módulos locais de offline/Penn State. A busca anterior não reproduziu uso direto de `eval(` ou `new Function` em `apps/web/src`.
 
 ## Segurança
 
 Os testes E2E usam somente URL/chave locais de teste. Não há credencial real de usuário, conexão do novo backend a banco remoto, migration, Vercel ou deploy.
 
-A negação de rota sem sessão no browser é apenas uma evidência de UX/guard. Ela **não substitui** autorização e isolamento server-side.
+A proteção de rota no browser é evidência de UX/guard e **não substitui** autorização e isolamento server-side.
+
+O gate `check:dist-secrets` procura no bundle construído nomes/padrões administrativos conhecidos, incluindo service-role keys, marcadores de chave privada e tokens críticos. Ele complementa — não substitui — secret scanning e revisão de segurança.
+
+## Acessibilidade e responsividade
+
+Existe baseline automatizado **parcial**:
+
+- labels/tipos de e-mail e senha no login;
+- sequência de foco por teclado no login;
+- ativação do link de login por teclado;
+- ausência de overflow horizontal em login e landing;
+- execução em Chromium desktop e mobile.
+
+Continuam pendentes axe, contraste, modais/dialogs, estados de erro, Lighthouse accessibility e homologação dos fluxos autenticados.
 
 ## Pendências que mantêm o gate aberto
 
@@ -95,20 +107,13 @@ A negação de rota sem sessão no browser é apenas uma evidência de UX/guard.
 
 ### Performance
 
-Baseline de bundle existe, porém ainda faltam:
-
-- orçamento aprovado;
-- Lighthouse/Core Web Vitals;
-- medição em dispositivo modesto;
-- correção/decisão sobre o chunk principal de ~8,18 MB e os imports que impedem divisão efetiva.
+Ainda faltam Lighthouse/Core Web Vitals, medição em dispositivo modesto e correção/decisão sobre o chunk principal de ~8,18 MB e imports que impedem divisão efetiva.
 
 ### Acessibilidade
 
-[PENDENTE] axe/Lighthouse accessibility e auditoria completa de teclado, foco, contraste, formulários e dialogs.
+[PENDENTE] axe/Lighthouse accessibility e auditoria completa dos fluxos autenticados.
 
 ### Responsividade
-
-O smoke cobre desktop e viewport mobile apenas nas superfícies públicas/proteção de rota.
 
 [PENDENTE] homologação completa de dashboards, tabelas, formulários, mapas, modais e PDFs.
 

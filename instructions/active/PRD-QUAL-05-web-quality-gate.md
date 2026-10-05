@@ -14,8 +14,11 @@ A FASE 3 foi integrada à `main` via PR #33. A FASE 5 foi iniciada por autoriza�
 - scripts explícitos de typecheck/E2E;
 - Playwright separado do Vitest;
 - smoke E2E local de login público, proteção de rota, 404 e landing;
+- baseline básico de acessibilidade/teclado nas superfícies públicas;
+- verificação de overflow público em desktop/mobile;
 - lint baseline e gate incremental para arquivos alterados;
-- baseline de bundle;
+- baseline de bundle e gate anti-regressão;
+- guarda de padrões de segredo no bundle construído;
 - CI para PRs;
 - preservação de testes Edge e smoke HTTP da API;
 - documentação e Checklist Mestre.
@@ -37,15 +40,18 @@ A FASE 3 foi integrada à `main` via PR #33. A FASE 5 foi iniciada por autoriza�
 - não relaxar auth/RBAC/tenant isolation;
 - E2E local sem credencial de produção;
 - nenhum acesso remoto novo;
-- logs sem token/senha/PII desnecessária.
+- logs sem token/senha/PII desnecessária;
+- bundle construído deve passar pelo guard de padrões administrativos/segredos conhecidos.
 
 ## Critérios de aceite
 - [x] `bun run check` verde;
 - [x] lint incremental verde;
 - [x] Edge tests verdes;
 - [x] API smoke verde;
-- [x] Playwright smoke verde em desktop/mobile Chromium;
+- [x] Playwright smoke/a11y público verde em desktop/mobile Chromium;
 - [x] baseline de bundle executável;
+- [x] budget regressivo de bundle verde;
+- [x] guard de padrões de segredo do bundle verde;
 - [x] documentação permanente atualizada;
 - [x] Checklist Mestre atualizado com evidência;
 - [ ] auditoria `qualidade-visionario` sem bloqueador P0;
@@ -57,15 +63,19 @@ A FASE 3 foi integrada à `main` via PR #33. A FASE 5 foi iniciada por autoriza�
 - Edge Functions;
 - HTTP smoke;
 - Playwright smoke local;
-- revisão de segredo/arquivo acidental;
+- baseline básico de teclado/labels/overflow;
+- budget do bundle;
+- revisão de segredo no bundle/arquivo acidental;
 - repetição após conflito/rebase.
 
 ## Documentação
-Atualizar `docs/README.md`, documento permanente da FASE 5, Checklist Mestre e handoff/status.
+Atualizar `docs/README.md` quando o índice mudar, documento permanente da FASE 5, Checklist Mestre e handoff/status.
 
 ## QA
 Track: `AUDITORIA DE QUALIDADE`.
 Resultado permitido: `QA: APROVADO` ou `QA: REPROVADO`. Se reprovado, corrigir e repetir.
+
+Estado atual: `QA: REPROVADO` para fechamento da FASE 5. O ciclo automatizado do HEAD `08e8fa27139b2af4d1885d80cb8762a9608ee64e` está verde, mas faltam FASE 4 reconciliada, E2E autenticado completo, coverage, axe/Lighthouse/Core Web Vitals e homologação responsiva completa.
 
 ## Regras de Git
 - branch dedicada;
