@@ -19,8 +19,9 @@ export class FakeNotificationAdapter implements NotificationPort {
   async dispatch(
     content: NotificationContent,
     destinatarios: readonly NotificationDestinatario[],
-    _context: TenantExecutionContext,
+    context: TenantExecutionContext,
   ): Promise<NotificationDispatchResult | NotificationSkipped> {
+    void context;
     if (this.proximoPulado) {
       const pulado = this.proximoPulado;
       this.proximoPulado = null;

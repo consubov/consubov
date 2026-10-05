@@ -20,7 +20,7 @@ O repositório usa `.devcontainer/devcontainer.json`.
 Configuração atual:
 
 - imagem TypeScript/Node baseada em Debian;
-- Bun 1.3.12;
+- Bun 1.4.0, alinhado ao `packageManager` da raiz e ao CI;
 - `bun install --frozen-lockfile` após criação;
 - porta `3000` preparada para a API local;
 - porta `8080` preparada para o web;
@@ -35,7 +35,7 @@ Para reduzir consumo:
 
 ## GitHub Actions
 
-O workflow principal roda em Pull Requests para `main` e por disparo manual.
+O workflow principal roda em Pull Requests para `main`, em pushes para `main` e por disparo manual.
 
 Validações:
 

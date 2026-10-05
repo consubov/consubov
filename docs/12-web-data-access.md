@@ -158,3 +158,14 @@ Sem equipe ou dados, as mesmas listas vazias continuam sendo retornadas.
 ## Próximos slices
 
 Priorizar hooks e páginas pequenos e isolados antes de fluxos críticos com cache, realtime ou offline.
+
+## Guardrail da FASE 3
+
+O commit `c5196bf732af7420c2022e12016aa89c1ab67f06` congela o baseline de imports diretos de Supabase do Web. O teste `apps/web/src/test/architecture/supabaseGuardrail.test.ts` compara o diff posterior a esse baseline e reprova novas linhas que importem:
+
+- `@/integrations/supabase/client` (ou caminho equivalente para o mesmo client);
+- `@supabase/supabase-js` fora de `apps/web/src/integrations/supabase/client.ts`.
+
+O guardrail é propositalmente **aditivo**: não exige refactor big-bang do legado, mas impede aumentar o acoplamento. Se um fluxo existente for alterado, deve-se usar o repository/service apropriado e preservar seu behavior contract.
+
+O CI precisa fazer checkout com histórico completo (`fetch-depth: 0`) para que a comparação com o baseline seja verificável.
