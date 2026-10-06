@@ -13,7 +13,7 @@
 >
 > Não marque como concluído o que você não executou, o que está fora do seu escopo ou o que não possui evidência.
 >
-> **Agentes do repositório não dependem de acesso ao Notion.** O acompanhamento deles é feito por este arquivo.
+> **Este arquivo é a fonte operacional única para agentes do repositório.**
 
 ---
 
