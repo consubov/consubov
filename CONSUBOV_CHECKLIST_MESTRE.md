@@ -718,22 +718,22 @@ Continuar desacoplamento de forma incremental:
 - [x] Testar idempotência de comandos simulados. **Evidência:** `critical-write-policy.test.ts` exige idempotency key/known version e `sync/domain/queue.test.ts` cobre retry/reconciliação local-first.
 - [ ] Testar rollback de operação crítica simulada. **N/A no gate atual:** sem unidade transacional autoritativa a reverter; a integração comprova deny sem mutação. Rollback real fica condicionado ao adapter de persistência da FASE 8.
 ## 5.3 E2E Playwright
-- [x] login. **Evidência:** smoke Playwright valida renderização da tela de login em desktop/mobile; autenticação real permanece fora deste smoke.
-- [x] logout. **Evidência:** teste no describe "@web-ready FASE 5 — fluxos críticos E2E".
-- [x] redirects por perfil. **Evidência:** testes no describe "@web-ready FASE 5 — autenticação, perfis e superfícies críticas" cobrem redirects para admin, gerente, capataz, escritório, pesador e consultor.
-- [x] fazenda/retiro/pasto. **Evidência:** teste "gerente: fazendas, retiros, pastos" no describe de fluxos críticos.
-- [x] QR web. **Evidência:** teste "capataz: QR web" no describe de fluxos críticos.
-- [x] produtos/nutrição. **Evidência:** teste "escritório: produtos/nutrição" no describe de fluxos críticos.
-- [x] salga. **Evidência:** teste "escritório: salga" no describe de fluxos críticos.
-- [x] estoque. **Evidência:** teste "escritório: estoque" no describe de fluxos críticos.
-- [x] transferência. **Evidência:** teste "escritório: transferência" no describe de fluxos críticos.
-- [x] visita. **Evidência:** teste "operador de fábrica: visita" no describe de fluxos críticos.
-- [x] fábrica. **Evidência:** teste "operador de fábrica: fábrica" no describe de fluxos críticos.
-- [x] pesagem. **Evidência:** teste "pesador: pesagem" no describe de fluxos críticos.
-- [x] relatórios/PDF quando testável. **Evidência:** teste "consultor: relatórios/PDF" no describe de fluxos críticos.
+- [x] login. **Evidência:** teste a11y-smoke "login, recuperação e landing possuem nomes acessíveis e navegação por teclado" valida a tela de login em desktop/mobile; autenticação mockada via `mockAuthenticatedRole`.
+- [x] logout. **Evidência:** testes "logout limpa sessão e impede acesso após saída" (fluxos críticos) e "logout explícito limpa a sessão visual e retorna à área pública" (autenticação/perfis).
+- [x] redirects por perfil. **Evidência:** teste "todos os nove perfis conhecidos possuem redirect autenticado reproduzível" no describe "@web-ready FASE 5 — autenticação, perfis e superfícies críticas" cobre os nove perfis (admin, gerente, capataz, escritório, fábrica, consultor, pesador, pecuarista, SyncVet).
+- [x] fazenda/retiro/pasto. **Evidência:** teste "capataz acessa fazenda/retiro/pasto sem 404" no describe de fluxos críticos.
+- [x] QR web. **Evidência:** teste "QR web: emissão e ativação" no describe de fluxos críticos.
+- [x] produtos/nutrição. **Evidência:** teste "produtos e nutrição: páginas acessíveis" no describe de fluxos críticos.
+- [x] salga. **Evidência:** teste "salga: página de lançamento manual" no describe de fluxos críticos.
+- [x] estoque. **Evidência:** teste "estoque e transferência: páginas básicas" no describe de fluxos críticos.
+- [x] transferência. **Evidência:** teste "estoque e transferência: páginas básicas" no describe de fluxos críticos.
+- [x] visita. **Evidência:** teste "visita de consultor: página de relatório" no describe de fluxos críticos.
+- [x] fábrica. **Evidência:** teste "fábrica: dashboard operacional" no describe de fluxos críticos.
+- [x] pesagem. **Evidência:** teste "pesagem: página do pesador" no describe de fluxos críticos.
+- [x] relatórios/PDF quando testável. **Evidência:** teste "visita de consultor: página de relatório" (fluxos críticos) e teste "PDF/relatórios: renderizam sem overflow" (responsividade 5.8).
 - [ ] upload/foto quando testável.
-- [x] usuário sem permissão. **Evidência:** teste "SyncVet: acesso negado" no describe de fluxos críticos.
-- [x] tenant mismatch em ambiente de teste. **Evidência:** teste "tenant mismatch: acesso negado" no describe de fluxos críticos.
+- [x] usuário sem permissão. **Evidência:** teste "usuário sem permissão recebe acesso negado" no describe de fluxos críticos.
+- [x] tenant mismatch em ambiente de teste. **Evidência:** teste "tenant mismatch em ambiente de teste" no describe de fluxos críticos.
 ## 5.4 Lint/typecheck/build
 - [x] Quantificar dívida de lint do Web. **Baseline atual:** 438 arquivos; 227 com findings; 1.415 erros; 108 warnings.
 - [ ] Corrigir por módulo, sem mega-refactor.
