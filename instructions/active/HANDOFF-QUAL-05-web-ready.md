@@ -24,7 +24,7 @@
 - headers de segurança da API + testes;
 - paridade routes/OpenAPI;
 - telemetria estruturada/vendor-neutral com sanitização de PII/segredos;
-- documentação permanente e Notion atualizados.
+- documentação permanente e `CONSUBOV_CHECKLIST_MESTRE.md` atualizados.
 
 ## Última evidência executável
 Último job que iniciou steps:
