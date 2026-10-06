@@ -24,7 +24,7 @@ Executar integralmente a FASE 5 do Checklist Mestre sobre a `main` consolidada, 
 - 5.9 checklist de segurança Web/API e testes negativos;
 - 5.10 observabilidade vendor-neutral preparada;
 - 5.11 auditoria final do gate `WEB READY`;
-- documentação permanente, checklist Notion e handoff.
+- documentação permanente, `CONSUBOV_CHECKLIST_MESTRE.md` e handoff.
 
 ## Fora do escopo
 - Supabase/PostgreSQL remoto;
@@ -67,7 +67,7 @@ Executar integralmente a FASE 5 do Checklist Mestre sobre a `main` consolidada, 
 - [ ] responsividade crítica validada;
 - [ ] observabilidade preparada sem backend pago/remoto;
 - [ ] documentação permanente atualizada;
-- [ ] Checklist Mestre atualizado;
+- [ ] `CONSUBOV_CHECKLIST_MESTRE.md` atualizado pelos agentes conforme os itens realmente executados;
 - [ ] AUDITORIA DE QUALIDADE final: `QA: APROVADO`;
 - [ ] `WEB READY` marcado somente com evidência.
 
@@ -90,7 +90,7 @@ Executar integralmente a FASE 5 do Checklist Mestre sobre a `main` consolidada, 
 Atualizar:
 - documento permanente da FASE 5;
 - `docs/README.md`;
-- Checklist Mestre no Notion;
+- `CONSUBOV_CHECKLIST_MESTRE.md` no repositório;
 - handoff/status;
 - contratos/API se comportamento público mudar.
 
@@ -125,7 +125,7 @@ Verificar alterações paralelas antes de sobrescrever arquivos compartilhados. 
 - Evidências por 5.1–5.11
 - QA
 - Riscos/pendências
-- Notion
+- Checklist Mestre do repositório
 - Git/PR
 - próximo passo
 - HANDOFF: SIM/NÃO
