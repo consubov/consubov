@@ -84,7 +84,7 @@ export default function AdminLayout() {
           setSelectedGerenteId(persistedId);
         } else if (persistedMode === "capataz" && cRes.data?.find(c => c.id === persistedId)) {
           setSelectedCapatazId(persistedId);
-        } else if (persistedMode === "escritorio" && (eRes.data ?? []).find((e: any) => e.id === persistedId)) {
+        } else if (persistedMode === "escritorio" && (eRes.data ?? []).find((e: EscritorioOption) => e.id === persistedId)) {
           setSelectedEscritorioId(persistedId);
         } else {
           // Persisted selection no longer valid
