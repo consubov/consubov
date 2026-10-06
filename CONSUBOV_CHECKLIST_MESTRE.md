@@ -1,20 +1,22 @@
-# CONSUBOV — Checklist Mestre de Execução — Espelho do Notion
+# CONSUBOV — Checklist Mestre de Execução
 
-> **Espelho operacional do Checklist Mestre do CONSUBOV no Notion.**
+> **Fonte operacional para agentes que trabalham pelo repositório.**
 >
-> **Fonte primária:** Checklist Mestre no Notion.
+> **Última atualização deste arquivo:** 2026-10-06.
 >
-> **Última sincronização deste espelho:** 2026-10-06.
+> **Regra obrigatória:** antes de iniciar trabalho, leia este checklist e o PRD/handoff ativo aplicável.
 >
-> **Regra obrigatória para agentes:** antes de propor, iniciar ou concluir trabalho, ler este arquivo e consultar o Checklist Mestre no Notion. Toda mudança de status, evidência, bloqueio, PRD ou conclusão deve atualizar **Notion + este arquivo na mesma tarefa**.
+> Se você executar um item que esteja explicitamente programado/atribuído neste checklist ou no PRD ativo, ao concluir com evidência objetiva:
+> 1. marque o item correspondente como `[x]`;
+> 2. registre uma evidência curta no próprio checklist quando aplicável;
+> 3. faça essa atualização no mesmo commit/PR do trabalho.
 >
-> Se houver divergência, prevalece o estado mais recente comprovado no Notion/código/repositório conforme a hierarquia definida em `CONSUBOV_HANDOFF_CONTINUIDADE.md` e `CONSUBOV_INSTRUCOES_MESTRE_PROJETO.md`.
+> Não marque como concluído o que você não executou, o que está fora do seu escopo ou o que não possui evidência.
 >
-> Não marcar `[x]` ou `✅ CONCLUÍDO` sem evidência objetiva.
-
-**Notion:** https://app.notion.com/p/3ec8e0bd0f4d816d9bb5d807e8e2cdc9?pvs=204
+> **Agentes do repositório não dependem de acesso ao Notion.** O acompanhamento deles é feito por este arquivo.
 
 ---
+
 
 > **Versão:** 1.0
 > **Data:** 2026-10-01
