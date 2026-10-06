@@ -2,8 +2,9 @@
 
 ## Mandatory project workflow
 
-- Before changing code, read `CONSUBOV_CHECKLIST_MESTRE.md`, consult the Checklist Mestre in Notion, then read `docs/README.md`, `instructions/README.md`, and the active PRD/handoff in `instructions/active/`.
-- Keep `CONSUBOV_CHECKLIST_MESTRE.md` synchronized with the Notion Checklist Mestre whenever status, evidence, blockers, PRDs, or phase completion change; do not mark items complete without objective evidence.
+- Before changing code, read `CONSUBOV_CHECKLIST_MESTRE.md`, then read `docs/README.md`, `instructions/README.md`, and the active PRD/handoff in `instructions/active/`.
+- `CONSUBOV_CHECKLIST_MESTRE.md` is the operational checklist for repository agents; do not depend on Notion access.
+- When you complete an item that is explicitly programmed/assigned in the checklist or active PRD, update `CONSUBOV_CHECKLIST_MESTRE.md` in the same work: mark it `[x]` only with objective evidence and record that evidence briefly. Do not mark items you did not execute or items outside your assigned scope.
 - Preserve existing visual behavior and every feature that already works unless an active PRD explicitly changes it.
 - Existing flows that are not functional yet may remain frontend-only; do not invent missing business rules.
 - Keep code small, explicit, testable, and organized by responsibility. Comments should explain domain decisions, constraints, and non-obvious reasons.
