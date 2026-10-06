@@ -1,6 +1,6 @@
 {
-  "source": "FASE 5 baseline re-medido em 2026-10-05 no HEAD final da branch quality/fase5-web-ready-20261005. Delta de +95 bytes raw vs baseline original (8730802) justificado pelo commit dfa3833f (nome acessivel do botao Sair, gate E2E/a11y) posterior a medicao original. Gzip inclui folga de +500B sobre o maximo observado (2736124) para absorver jitter nao deterministico de timestamp de build (sw.js/version.json) observado em ~±300B entre builds identicos; raw e deterministico.",
-  "maxTotalBytes": 8730897,
+  "source": "FASE 5 baseline re-medido em 2026-10-05 no HEAD final da branch quality/fase5-web-ready-20261005. Delta de +95 bytes raw vs baseline original (8730802) justificado pelo commit dfa3833f (nome acessivel do botao Sair, gate E2E/a11y) posterior a medicao original. Builds da mesma fonte em 2026-10-06 totaram 8730897, 8730897 e 8730923: raw NAO e deterministico (chunk index variou 13B; sw.js/version.json e __APP_BUILD_VERSION__ embutem timestamp de build), entao raw le folga de +500B sobre o maximo observado (8730923), mesma politica do gzip (folga de +500B sobre o maximo historico 2736124; observado em 2026-10-06: 2735995-2736190). maxLargestAssetBytes permanece no tamanho estavel do LandingPage (2849003, identico em todos os builds).",
+  "maxTotalBytes": 8731423,
   "maxTotalGzipBytes": 2736624,
   "maxLargestAssetBytes": 2849003
 }

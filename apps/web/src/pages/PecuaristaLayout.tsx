@@ -24,7 +24,7 @@ export default function PecuaristaLayout() {
         .select("nome")
         .eq("user_id", user.id)
         .maybeSingle();
-      setNome((data as any)?.nome ?? "");
+      setNome((data as { nome?: string | null } | null)?.nome ?? "");
     })();
   }, [user]);
 
