@@ -699,7 +699,9 @@ Continuar desacoplamento de forma incremental:
 
 # FASE 5 — P0/P1 — Gate de qualidade da Web
 
-**Status 2026-10-05: EM ANDAMENTO — retomada autorizada.** A FASE 4 foi consolidada na `main`. A execução atual parte de `main@bd9ad453424fa9ad220dca4f55626762a26b87f2`, branch `quality/fase5-web-ready-20261005`, PR #37 (draft), HEAD `97e6c0a1e8aff1ef6616cc9a222383b83bee5a8f`, com PRD `instructions/active/PRD-QUAL-05-web-ready.md`. Foi corrigido um bug real nos scripts de Codespace/runner local: o resolvedor de caminho continha `${BASH_SOURCE[0]}` escapado como literal e não calculava `ROOT_DIR` corretamente. Já foram implementados E2E autenticado local por papéis/domínios, desktop/tablet/mobile, lint incremental, coverage baseline em recalibração, route-level lazy loading, bundle budget/secret guard, baseline axe/Lighthouse no CI, headers de segurança e telemetria sanitizada da API. **WEB READY continua aberto. QA: REPROVADO temporariamente para fechamento** enquanto o GitHub Actions estiver encerrando jobs antes de qualquer step e faltarem evidências finais de coverage, E2E corrigido, axe/Lighthouse e scans do HEAD atual. Nenhuma conexão remota, migration, Vercel/deploy ou ação de produção foi executada.
+**Status 2026-10-06: EM ANDAMENTO — PR #37 segue draft.** Branch ativa: `quality/fase5-web-ready-20261005`, sincronizada com a `main`, HEAD `7484bcd65e15dd5c5c9230aab68ac46e7203c222`. O coverage representativo foi medido e versionado (`scripts/web-coverage-baseline.json`: 404 arquivos-fonte instrumentados, 34 arquivos de teste, 129 testes; 4,45% statements / 2,66% branches / 3,17% functions / 5,01% lines) e o gate progressivo/ratchet foi configurado. E2E, axe/Lighthouse e scans finais ainda precisam de execução válida do HEAD atual. Os quatro checks do PR continuam falhando em ~2–3 segundos antes de qualquer step/log executável, mantendo o diagnóstico de bloqueio anterior ao código. **WEB READY continua aberto. QA: REPROVADO para fechamento.** Nenhuma conexão remota, migration, Vercel/deploy ou ação de produção foi executada.
+
+> **Higiene do repositório:** somente `quality/fase5-web-ready-20261005` é branch de trabalho ativa. `fix/pre-phase3-gates-20261003` e `refactor/monorepo` são referências antigas/supersedidas e não devem receber trabalho novo; estão pendentes apenas de exclusão física.
 ## 5.1 Testes unitários e de contrato
 - [x] Consolidar baseline atual de testes. **Evidência:** API 532/532; Web 111/111 no CI da FASE 5.
 - [ ] Todo bug corrigido recebe regressão quando aplicável.
@@ -743,8 +745,8 @@ Continuar desacoplamento de forma incremental:
 - [x] smoke API obrigatório. **Evidência:** etapa dedicada no CI para health/readiness/OpenAPI/docs/404.
 ## 5.5 Coverage
 - [x] Configurar relatório de coverage. **Evidência:** `test:coverage` gera text/json summary e `check:coverage-baseline` rejeita relatório que não instrumente o conjunto esperado de fontes.
-- [ ] Medir baseline antes de definir meta arbitrária. **Bloqueado pelo runner:** o baseline antigo de 100% cobria apenas 6 statements e foi explicitamente rejeitado como não representativo; o novo gate precisa executar.
-- [ ] Definir gate progressivo para código novo/crítico. **Depende do baseline válido; nenhuma meta percentual foi inventada.**
+- [x] Medir baseline antes de definir meta arbitrária. **Evidência:** `scripts/web-coverage-baseline.json` registra 404 arquivos-fonte instrumentados, 34 arquivos de teste, 129 testes e baseline real de 4,45% statements / 2,66% branches / 3,17% functions / 5,01% lines; o baseline antigo de 100%/6 statements foi descartado.
+- [x] Definir gate progressivo para código novo/crítico. **Evidência:** `check:coverage-baseline` usa pisos versionados no baseline real e funciona como ratchet; não aceita regressão abaixo dos valores medidos.
 - [x] Priorizar branches de autorização/tenant/estoque/sync. **Evidência:** testes de tenant mismatch/scope, critical-write policies, estoque/transferência e sync queue estão no conjunto crítico.
 ## 5.6 Performance Web
 - [x] Medir bundle atual. **Baseline executado após route splitting:** 8.730.802 bytes raw / 2.735.799 bytes gzip em 342 assets JS/CSS; maior asset 2.849.003 bytes.
