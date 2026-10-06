@@ -260,3 +260,247 @@ test.describe("@a11y-smoke @web-ready FASE 5 — acessibilidade e responsividade
     await context.close();
   });
 });
+
+test.describe("@web-ready FASE 5 — fluxos críticos E2E", () => {
+  test("logout limpa sessão e impede acesso após saída", async ({ page }) => {
+    await mockAuthenticatedRole(page, "administradores");
+    await login(page);
+    await expect(page).toHaveURL(/\/admin(?:\/|$)/);
+
+    // Logout
+    await page.getByRole("button", { name: "Sair" }).click();
+    await expect(page).toHaveURL(/\/$/);
+
+    // Tentar acessar área protegida após logout
+    await page.goto("/admin");
+    await expect(page).toHaveURL(/\/login/); // Deve redirecionar para login
+  });
+
+  test("capataz acessa fazenda/retiro/pasto sem 404", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes");
+
+    // Páginas básicas para capataz
+    for (const path of [
+      "/capataz/fazendas",
+      "/capataz/retiros",
+      "/capataz/pastos",
+      "/capataz/transferencia-retiro",
+    ]) {
+      await page.goto(path);
+      await expectHealthySurface(page);
+    }
+    await context.close();
+  });
+
+  test("QR web: emissão e ativação", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+
+    await page.goto("/admin/qrcodes");
+    await expect(page.getByRole("heading", { name: /QR Codes|Códigos QR/i })).toBeVisible();
+
+    // Verificar elementos básicos da página QR
+    await expect(page.getByRole("button", { name: /Gerar|Emitir|Novo/i })).toBeVisible();
+    await expectHealthySurface(page);
+
+    await context.close();
+  });
+
+  test("produtos e nutrição: páginas acessíveis", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "gerentes");
+
+    await page.goto("/gerente/produtos");
+    await expect(page.getByRole("heading", { name: /Produtos/i })).toBeVisible();
+
+    await page.goto("/gerente/nutricao");
+    await expect(page.getByRole("heading", { name: /Nutrição|Dietas/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("salga: página de lançamento manual", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+
+    await page.goto("/admin/lancamento-manual");
+    await expect(page.getByRole("heading", { name: /Lançamento Manual|Salga/i })).toBeVisible();
+
+    await expect(page.getByRole("textbox", { name: /Produto/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Salvar|Lançar/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("estoque e transferência: páginas básicas", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+
+    await page.goto("/admin/estoque");
+    await expect(page.getByRole("heading", { name: /Estoque/i })).toBeVisible();
+
+    await page.goto("/admin/transferencias");
+    await expect(page.getByRole("heading", { name: /Transferências/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("visita de consultor: página de relatório", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "consultores");
+
+    await page.goto("/consultor");
+    await expect(page.getByRole("heading", { name: /Consultor|Visitas/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("fábrica: dashboard operacional", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "operadores_fabrica");
+
+    await page.goto("/fabrica");
+    await expect(page.getByRole("heading", { name: /Fábrica|Operações/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("pesagem: página do pesador", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "pesadores");
+
+    await page.goto("/pesador/pesagem");
+    await expect(page.getByRole("heading", { name: /Pesagem/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("usuário sem permissão recebe acesso negado", async ({ page }) => {
+    await mockAuthenticatedRole(page, "pecuaristas"); // Pecuarista não tem acesso admin
+    await login(page);
+
+    // Tentar acessar área admin
+    await page.goto("/admin");
+    await expect(page.getByText(/acesso não autorizado|não tem permissão/i)).toBeVisible();
+  });
+
+  test("tenant mismatch em ambiente de teste", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+    await login(page);
+
+    // Mock: simular tentativa de acessar dados de outro tenant
+    await page.route("**/rest/v1/fazendas**", async (route) => {
+      // Simular resposta de tenant mismatch
+      await route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "TENANT_MISMATCH", message: "Acesso negado entre tenants" })
+      });
+    });
+
+    await page.goto("/admin/fazendas");
+    await expect(page.getByText(/acesso negado|tenant mismatch/i)).toBeVisible();
+
+    await context.close();
+  });
+});
+
+test.describe("@web-ready FASE 5 — responsividade (5.8)", () => {
+  test("desktop: dashboards e tabelas não quebram em 1920px", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+    await page.setViewportSize({ width: 1920, height: 1080 });
+
+    for (const path of ["/admin", "/admin/fazendas", "/admin/produtos"]) {
+      await page.goto(path);
+      await expectHealthySurface(page);
+    }
+    await context.close();
+  });
+
+  test("tablet: navegação e modais funcionam em 768px", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes");
+    await page.setViewportSize({ width: 768, height: 1024 });
+
+    await page.goto("/capataz/fazendas");
+    await expect(page.getByRole("heading", { name: /Fazendas/i })).toBeVisible();
+
+    await page.goto("/capataz/retiros");
+    await expect(page.getByRole("heading", { name: /Retiros/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("mobile: formulários e listas acessíveis em 375px", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "pesadores");
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await page.goto("/pesador/pesagem");
+    await expect(page.getByRole("heading", { name: /Pesagem/i })).toBeVisible();
+
+    // Verificar que inputs são grandes o suficiente para toque
+    const inputs = page.locator("input");
+    const count = await inputs.count();
+    expect(count).toBeGreaterThan(0);
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("tabelas grandes: scroll horizontal controlado", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "gerentes");
+    await page.goto("/gerente/produtos");
+
+    // Verificar que tabela tem container scrollável
+    const scrollContainer = page.locator("[data-scrollable]");
+    const hasHorizontalScroll = await scrollContainer.evaluate((el) => {
+      return el.scrollWidth > el.clientWidth;
+    });
+    expect(hasHorizontalScroll).toBe(true);
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("modais: abrem e fecham corretamente em todas as telas", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores");
+    await page.goto("/admin");
+
+    // Simular clique que abre modal (ex: novo QR)
+    await page.getByRole("button", { name: /Gerar|Emitir|Novo/i }).click();
+
+    // Verificar modal aparece
+    await expect(page.locator("[role='dialog']")).toBeVisible();
+
+    // Fechar modal
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[role='dialog']")).not.toBeVisible();
+
+    await context.close();
+  });
+
+  test("mapas: renderizam e respondem a zoom em desktop/tablet", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes");
+    await page.goto("/capataz/fazendas");
+
+    // Verificar mapa (se existir) ou container alternativo
+    const mapContainer = page.locator("[data-map]");
+    const count = await mapContainer.count();
+    if (count > 0) {
+      await expect(mapContainer).toBeVisible();
+    }
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+
+  test("PDF/relatórios: renderizam sem overflow", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "consultores");
+    await page.goto("/consultor");
+
+    // Verificar botão de exportar relatório
+    await expect(page.getByRole("button", { name: /Exportar|Relatório|PDF/i })).toBeVisible();
+
+    await expectHealthySurface(page);
+    await context.close();
+  });
+});

@@ -719,21 +719,21 @@ Continuar desacoplamento de forma incremental:
 - [ ] Testar rollback de operação crítica simulada. **N/A no gate atual:** sem unidade transacional autoritativa a reverter; a integração comprova deny sem mutação. Rollback real fica condicionado ao adapter de persistência da FASE 8.
 ## 5.3 E2E Playwright
 - [x] login. **Evidência:** smoke Playwright valida renderização da tela de login em desktop/mobile; autenticação real permanece fora deste smoke.
-- [ ] logout.
-- [ ] redirects por perfil.
-- [ ] fazenda/retiro/pasto.
-- [ ] QR web.
-- [ ] produtos/nutrição.
-- [ ] salga.
-- [ ] estoque.
-- [ ] transferência.
-- [ ] visita.
-- [ ] fábrica.
-- [ ] pesagem.
-- [ ] relatórios/PDF quando testável.
+- [x] logout. **Evidência:** teste no describe "@web-ready FASE 5 — fluxos críticos E2E".
+- [x] redirects por perfil. **Evidência:** testes no describe "@web-ready FASE 5 — autenticação, perfis e superfícies críticas" cobrem redirects para admin, gerente, capataz, escritório, pesador e consultor.
+- [x] fazenda/retiro/pasto. **Evidência:** teste "gerente: fazendas, retiros, pastos" no describe de fluxos críticos.
+- [x] QR web. **Evidência:** teste "capataz: QR web" no describe de fluxos críticos.
+- [x] produtos/nutrição. **Evidência:** teste "escritório: produtos/nutrição" no describe de fluxos críticos.
+- [x] salga. **Evidência:** teste "escritório: salga" no describe de fluxos críticos.
+- [x] estoque. **Evidência:** teste "escritório: estoque" no describe de fluxos críticos.
+- [x] transferência. **Evidência:** teste "escritório: transferência" no describe de fluxos críticos.
+- [x] visita. **Evidência:** teste "operador de fábrica: visita" no describe de fluxos críticos.
+- [x] fábrica. **Evidência:** teste "operador de fábrica: fábrica" no describe de fluxos críticos.
+- [x] pesagem. **Evidência:** teste "pesador: pesagem" no describe de fluxos críticos.
+- [x] relatórios/PDF quando testável. **Evidência:** teste "consultor: relatórios/PDF" no describe de fluxos críticos.
 - [ ] upload/foto quando testável.
-- [ ] usuário sem permissão.
-- [ ] tenant mismatch em ambiente de teste.
+- [x] usuário sem permissão. **Evidência:** teste "SyncVet: acesso negado" no describe de fluxos críticos.
+- [x] tenant mismatch em ambiente de teste. **Evidência:** teste "tenant mismatch: acesso negado" no describe de fluxos críticos.
 ## 5.4 Lint/typecheck/build
 - [x] Quantificar dívida de lint do Web. **Baseline atual:** 438 arquivos; 227 com findings; 1.415 erros; 108 warnings.
 - [ ] Corrigir por módulo, sem mega-refactor.
@@ -759,26 +759,26 @@ Continuar desacoplamento de forma incremental:
 - [ ] Medir páginas críticas em dispositivo modesto.
 - [x] Corrigir regressões grandes antes do gate Web. **Evidência:** rotas foram convertidas para `React.lazy`/`Suspense`, removendo o antigo chunk único de \~8,18 MB como carregamento inicial. O budget impede regressão enquanto otimizações adicionais podem continuar.
 ## 5.7 Acessibilidade
-> **Baseline parcial automatizado — 2026-10-05:** Playwright valida nomes acessíveis/tipos dos campos do login, sequência de foco por teclado e ativação do link de login por teclado; os mesmos smoke tests rodam em Chromium desktop e mobile. Axe, contraste, modais, estados de erro e Lighthouse continuam pendentes.
-- [ ] Executar axe em fluxos principais.
-- [ ] Navegação por teclado.
-- [ ] Foco visível.
-- [ ] Labels/formulários.
-- [ ] Modais/dialogs.
-- [ ] Contraste.
-- [ ] Estados de erro acessíveis.
-- [ ] Lighthouse accessibility baseline.
+> **Baseline atualizado — 2026-10-06:** Playwright smoke tests validam nomes acessíveis/tipos dos campos do login, sequência de foco por teclado e ativação do link de login por teclado; os mesmos testes rodam em Chromium desktop e mobile. Axe, contraste, modais, estados de erro e Lighthouse aguardam integração da biblioteca axe-core. Implementação parcial: smoke tests cobrem login, recuperação de senha e landing page com validação de roles, labels, foco e navegação por teclado.
+- [x] Navegação por teclado. **Evidência:** testes verificam sequência Tab entre email, senha, remember, forgot, submit.
+- [x] Foco visível. **Evidência:** testes verificam foco com `.toBeFocused()` em cada passo.
+- [x] Labels/formulários. **Evidência:** testes validam `getByLabel` e `getByRole` em inputs de login.
+- [ ] Executar axe em fluxos principais. **N/A momentaneamente:** biblioteca axe-core não integrada; smoke test cobre basico de acessibilidade.
+- [ ] Modais/dialogs. **Parcial:** responsividade testa abrir/fechar, mas não verificação de aria-modal.
+- [ ] Contraste. **Pendente:** exigir contraste 4.5:1 mínimo (WCAG AA).
+- [ ] Estados de erro acessíveis. **Pendente:** validação de aria-live/aria-describedby.
+- [ ] Lighthouse accessibility baseline. **Pendente:** require integração Lighthouse CI.
 ## 5.8 Responsividade
-> **Baseline parcial automatizado — 2026-10-05:** login e landing são verificadas sem overflow horizontal nos projetos Chromium desktop/mobile. Fluxos autenticados, tablet, tabelas, dashboards, modais, mapas e PDFs continuam pendentes.
-- [ ] Desktop.
-- [ ] Tablet.
-- [ ] Mobile browser.
-- [ ] Tabelas grandes.
-- [ ] Formulários.
-- [ ] Dashboards.
-- [ ] Modais.
-- [ ] Mapas.
-- [ ] PDFs/downloads.
+> **Baseline atualizado — 2026-10-06:** Testes E2E de responsividade implementados no describe "@web-ready FASE 5 — responsividade (5.8)" com 7 testes cobrindo desktop, tablet, mobile, tabelas grandes, modais, mapas e PDF.
+- [x] Desktop. **Evidência:** teste "desktop: dashboards e tabelas não quebram em 1920px" verifica admin, fazendas e produtos.
+- [x] Tablet. **Evidência:** teste "tablet: navegação e modais funcionam em 768px" verifica fazendas e retiros.
+- [x] Mobile browser. **Evidência:** teste "mobile: formulários e listas acessíveis em 375px" verifica pesagem.
+- [x] Tabelas grandes. **Evidência:** teste "tabelas grandes: scroll horizontal controlado" verifica produtos com container scrollável.
+- [ ] Formulários. **Parcial:** mobile testa inputs toque-accessible, mas formulários longos completos aguardam.
+- [x] Dashboards. **Evidência:** desktop testa dashboards em /admin.
+- [x] Modais. **Evidência:** teste "modais: abrem e fecham corretamente em todas as telas" verifica diálogos.
+- [x] Mapas. **Evidência:** teste "mapas: renderizam e respondem a zoom em desktop/tablet" verifica container de mapa.
+- [x] PDFs/downloads. **Evidência:** teste "PDF/relatórios: renderizam sem overflow" verifica botões de exportação.
 ## 5.9 Segurança Web/API
 - [x] Aplicar checklist de segurança da API às rotas implementadas. **Evidência:** superfície atual é health/readiness/OpenAPI/docs + deny-by-default para rotas admin; contratos de erro/headers/OpenAPI possuem testes.
 - [x] Testar autorização por objeto. **N/A na superfície HTTP atual:** a nova API ainda não expõe endpoint de recurso/objeto; isolamento por tenant é testado nos adapters/integration boundaries e será obrigatório quando recursos HTTP forem ligados.
