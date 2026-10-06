@@ -1,0 +1,20 @@
+{
+  "description": "FASE 5 baseline real de coverage Web (vitest --coverage provider=v8, 2026-10-05). Pisos percentuais medidos na branch quality/fase5-web-ready-20261005; so podem subir (gate progressivo/ratchet). Baseline anterior de 100%/6 statements foi descartado como invalido.",
+  "measuredAt": "2026-10-05",
+  "branch": "quality/fase5-web-ready-20261005",
+  "testFiles": 34,
+  "tests": 129,
+  "sourceFilesInstrumented": 404,
+  "floors": {
+    "statements": 4.4,
+    "branches": 2.6,
+    "functions": 3.1,
+    "lines": 5.0
+  },
+  "measured": {
+    "statements": 4.45,
+    "branches": 2.66,
+    "functions": 3.17,
+    "lines": 5.01
+  }
+}

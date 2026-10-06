@@ -1,6 +1,6 @@
 {
-  "source": "FASE 5 baseline measured on PR #37 after route-level lazy loading",
-  "maxTotalBytes": 8730802,
-  "maxTotalGzipBytes": 2735799,
+  "source": "FASE 5 baseline re-medido em 2026-10-05 no HEAD final da branch quality/fase5-web-ready-20261005. Delta de +95 bytes raw vs baseline original (8730802) justificado pelo commit dfa3833f (nome acessivel do botao Sair, gate E2E/a11y) posterior a medicao original. Gzip inclui folga de +500B sobre o maximo observado (2736124) para absorver jitter nao deterministico de timestamp de build (sw.js/version.json) observado em ~±300B entre builds identicos; raw e deterministico.",
+  "maxTotalBytes": 8730897,
+  "maxTotalGzipBytes": 2736624,
   "maxLargestAssetBytes": 2849003
 }

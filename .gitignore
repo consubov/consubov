@@ -26,3 +26,6 @@ dist-ssr
 
 .turbo
 apps/*/dist
+apps/*/coverage
+apps/*/test-results
+*.tsbuildinfo

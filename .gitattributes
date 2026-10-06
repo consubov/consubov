@@ -1,0 +1,22 @@
+# Normaliza EOL para LF em arquivos-texto: build byte-deterministico entre Windows e Linux (CI).
+* text=auto eol=lf
+
+# Binarios explicitos — nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.mp4 binary
+*.webm binary
+*.jar binary
+*.vsix binary
