@@ -2,8 +2,8 @@
 
 > **Uso:** este arquivo deve ser usado como instrução principal do Projeto CONSUBOV no ChatGPT e como referência operacional para conversas técnicas, de produto, arquitetura, implementação, migração, qualidade e evolução da plataforma.
 >
-> **Versão:** 1.1  
-> **Atualização:** 2026-10-01  
+> **Versão:** 1.2  
+> **Atualização:** 2026-10-07  
 > **Status:** arquitetura revisada conforme decisões explícitas do projeto em 2026-10-01; pontos não confirmados permanecem marcados como `[PENDENTE]`.
 
 ---
@@ -301,10 +301,10 @@ A API pública não deve ser publicada antes de existir necessidade real, polít
 A ordem vigente do projeto é:
 
 ```text
-Web → App empacotado → Offline → infraestrutura remota/staging → produção
+Web → PWA → Offline PWA → infraestrutura remota/staging → produção
 ```
 
-Offline influencia contratos e modelo de dados desde agora, mas o motor completo será consolidado depois da Web e do App.
+Offline influencia contratos e modelo de dados desde agora; o motor completo será consolidado sobre a PWA.
 
 A nova arquitetura **não deve ser conectada agora ao Supabase/PostgreSQL remoto nem ao Vercel**.
 
@@ -438,54 +438,21 @@ Durante a migração:
 - evitar big-bang rewrite;
 - não criar novos acessos diretos ao Supabase em funcionalidades migradas.
 
-## 4.5 Aplicativo de campo
+## 4.5 PWA de campo
 
 `[DECIDIDO]`
 
-O caminho atual é **reaproveitar/empacotar a Web React** em uma solução nativa/híbrida apropriada, em vez de iniciar uma aplicação React Native separada por padrão.
+O caminho mobile ativo é **PWA mobile-first** sobre a aplicação React/Vite existente. Capacitor/WebNative/wrapper permanece congelado até pós-produção e só será reavaliado por necessidade comprovada.
 
-A arquitetura Web deve expor interfaces para capacidades de plataforma:
+A PWA deve instalar quando suportado, abrir standalone, operar offline, usar IndexedDB atrás de `LocalDatabase`, preservar filas/fotos/QR/GPS e usar capability detection/fallback.
 
-- `LocalDatabase`;
-- `SecureStorage`;
-- `LocationProvider`;
-- `QrScanner`;
-- `CameraProvider`;
-- `ConnectivityProvider`;
-- `FileCapture/FilePicker`;
-- `NativeBridge`;
-- `SyncTransport`.
+A identidade/origin/scope publicada deve permanecer compatível com a instalação atual para permitir **update in-place**, sem reinstalação.
 
-`[DECIDIDO]`
+O mecanismo de atualização deve preservar precache atômico, geração anterior de cache como fallback, trava de operação crítica, botão explícito `Atualizar agora`, zero perda de IndexedDB/localStorage operacional e migração idempotente/retomável do offline legado.
 
-Para persistência local do App, o alvo atual é **SQLite**, sujeito à compatibilidade da tecnologia de empacotamento escolhida.
+Persistência local vigente: **IndexedDB**. SQLite fica reservado a eventual wrapper pós-produção.
 
-O App deve suportar:
-
-- câmera;
-- QR Code local;
-- GPS local;
-- arquivos/fotos;
-- armazenamento local;
-- operação offline;
-- sincronização.
-
-`[PENDENTE]`
-
-Definir a tecnologia final de empacotamento/WebNative/wrapper após o gate da Web, validando:
-
-- Android;
-- iOS;
-- bridge nativa;
-- SQLite;
-- câmera;
-- QR;
-- GPS;
-- secure storage;
-- background/resume;
-- manutenção;
-- licença;
-- sustentabilidade do projeto.
+Os gates de desenvolvimento/QA das FASES 5–7 devem ser reproduzíveis localmente e não depender de GitHub Actions. Homologação física em dispositivos reais é gate pré-produção.
 
 ## 4.6 Realtime
 
