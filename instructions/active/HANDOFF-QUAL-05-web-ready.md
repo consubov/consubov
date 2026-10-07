@@ -16,13 +16,9 @@
 - responsividade ampliada para dashboards/tabelas/formulários;
 - integração local identity → tenant → authorization → repository fake;
 - lint baseline + gate incremental;
-- coverage `--all` + validador de completude do relatório;
+- coverage baseline + validador de completude do relatório;
 - route-level lazy loading;
 - bundle report + budget regressivo + dist secret guard;
-- axe/Lighthouse antes do E2E no CI;
-- Lighthouse registra LCP/CLS/TBT além das categorias;
-- headers de segurança da API + testes;
-- paridade routes/OpenAPI;
 - telemetria estruturada/vendor-neutral com sanitização de PII/segredos;
 - documentação permanente e `CONSUBOV_CHECKLIST_MESTRE.md` atualizados.
 
@@ -35,7 +31,19 @@
 - dist secret guard: verde;
 - E2E: 30 pass / 18 fail.
 
-As falhas E2E eram tablet + logout e foram corrigidas depois, mas ainda não reexecutadas por bloqueio do runner.
+As falhas E2E eram tablet + logout e foram corrigidas nos commits subsequentes, pendendo re-execução no runner disponível para confirmação final.
+
+## Pendências para WEB READY
+1. reexecutar E2E final no HEAD corrigido (tablet+logout já corrigido em commits locais)
+2. registrar axe/Lighthouse com thresholds/budget definitivos
+3. repetir AUDITORIA DE QUALIDADE com evidências finais
+4. só então marcar `WEB READY` e progressar para FASE 6
+
+## Restrições
+Sem banco/Supabase remoto novo, migrations, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
+
+## Próximo passo
+Resolver bloqueio administrativo do GitHub Actions; depois rerun dos workflows e correção orientada por evidência. Não mergear PR #37 enquanto QA estiver reprovado.
 
 Baseline de bundle:
 - raw total: 8.730.802 bytes;
