@@ -2,9 +2,9 @@
 
 > **Uso:** este arquivo deve ser usado como instrução principal do Projeto CONSUBOV no ChatGPT e como referência operacional para conversas técnicas, de produto, arquitetura, implementação, migração, qualidade e evolução da plataforma.
 >
-> **Versão:** 1.1  
-> **Atualização:** 2026-10-01  
-> **Status:** arquitetura revisada conforme decisões explícitas do projeto em 2026-10-01; pontos não confirmados permanecem marcados como `[PENDENTE]`.
+> **Versão:** 1.2  
+> **Atualização:** 2026-10-07  
+> **Status:** arquitetura revisada para direção **PWA mobile-first**; empacotamento WebNative/wrapper foi adiado para pós-produção. Pontos não confirmados permanecem marcados como `[PENDENTE]`.
 
 ---
 
@@ -301,10 +301,10 @@ A API pública não deve ser publicada antes de existir necessidade real, polít
 A ordem vigente do projeto é:
 
 ```text
-Web → App empacotado → Offline → infraestrutura remota/staging → produção
+Web → PWA iOS/Android → Offline PWA → infraestrutura remota/staging → produção → empacotamento nativo opcional pós-produção
 ```
 
-Offline influencia contratos e modelo de dados desde agora, mas o motor completo será consolidado depois da Web e do App.
+Offline influencia contratos e modelo de dados desde agora; o motor completo será consolidado sobre a PWA antes de qualquer empacotamento nativo.
 
 A nova arquitetura **não deve ser conectada agora ao Supabase/PostgreSQL remoto nem ao Vercel**.
 
@@ -438,54 +438,64 @@ Durante a migração:
 - evitar big-bang rewrite;
 - não criar novos acessos diretos ao Supabase em funcionalidades migradas.
 
-## 4.5 Aplicativo de campo
+## 4.5 Aplicativo de campo — PWA mobile-first
 
 `[DECIDIDO]`
 
-O caminho atual é **reaproveitar/empacotar a Web React** em uma solução nativa/híbrida apropriada, em vez de iniciar uma aplicação React Native separada por padrão.
+O caminho mobile vigente é **PWA instalável sobre a Web React/Vite atual**, com foco em iOS e Android, experiência standalone e uso do máximo de capacidades do dispositivo permitido pelas Web APIs.
 
-A arquitetura Web deve expor interfaces para capacidades de plataforma:
+A meta de UX é que, nos fluxos suportados pela plataforma, o usuário comum não perceba diferença operacional relevante para um app nativo.
+
+A arquitetura Web deve expor interfaces/capabilities para:
 
 - `LocalDatabase`;
-- `SecureStorage`;
+- `SecureStorage`/sessão local compatível com Web;
 - `LocationProvider`;
-- `QrScanner`;
-- `CameraProvider`;
+- `QrScanner`/barcode scanner;
+- `CameraProvider` para foto/vídeo;
+- `Microphone/MediaCapture` para áudio e futuras conversas;
 - `ConnectivityProvider`;
 - `FileCapture/FilePicker`;
-- `NativeBridge`;
-- `SyncTransport`.
+- `ShareProvider`/Share Target quando suportado;
+- `NotificationProvider`/push quando suportado;
+- `DeviceCapabilityProvider` para capability detection;
+- `SyncTransport`;
+- WebRTC/Media Session quando houver caso de uso aprovado.
 
 `[DECIDIDO]`
 
-Para persistência local do App, o alvo atual é **SQLite**, sujeito à compatibilidade da tecnologia de empacotamento escolhida.
+Para persistência local da PWA, o baseline é **IndexedDB** atrás de `LocalDatabase`. OPFS/File System Access pode ser usado apenas como otimização quando suportado. **SQLite fica adiado para eventual empacotamento nativo pós-produção.**
 
-O App deve suportar:
+A PWA deve ser preparada para usar, quando suportado e autorizado:
 
-- câmera;
-- QR Code local;
-- GPS local;
-- arquivos/fotos;
-- armazenamento local;
-- operação offline;
-- sincronização.
+- GPS/geolocalização;
+- câmera, foto e vídeo;
+- microfone e gravação de áudio;
+- QR Code e barcode local;
+- arquivos e fotos;
+- compartilhamento/recebimento de conteúdo;
+- notificações push e badges;
+- clipboard;
+- vibração/haptics quando disponível;
+- wake lock;
+- orientação/fullscreen;
+- conectividade;
+- sensores de movimento/orientação quando disponíveis;
+- WebRTC para voz/vídeo e futuras conversas;
+- Media Session;
+- contatos, Bluetooth, NFC e USB somente quando a plataforma suportar e existir caso real aprovado.
+
+`[DECIDIDO]`
+
+Toda capacidade deve usar **capability detection**, permissão contextual e degradação segura. Nenhum fluxo crítico pode depender de uma API sem suporte comprovado nos dispositivos-alvo.
+
+`[DECIDIDO]`
+
+Empacotamento WebNative/Capacitor/wrapper está **adiado**. Só reavaliar depois que a Web/PWA estiver em produção, 100% funcional nos fluxos críticos e com offline/sync estabilizado. O código experimental existente em `apps/mobile/` não define a arquitetura vigente e não deve receber expansão funcional agora.
 
 `[PENDENTE]`
 
-Definir a tecnologia final de empacotamento/WebNative/wrapper após o gate da Web, validando:
-
-- Android;
-- iOS;
-- bridge nativa;
-- SQLite;
-- câmera;
-- QR;
-- GPS;
-- secure storage;
-- background/resume;
-- manutenção;
-- licença;
-- sustentabilidade do projeto.
+Formalizar a matriz de compatibilidade por versões oficiais de iOS/Safari e Android/Chrome para cada capability antes do gate PWA Mobile Ready.
 
 ## 4.6 Realtime
 
@@ -997,7 +1007,6 @@ Um comando somente sai da fila local quando houver confirmação inequívoca do 
 Timeout não significa falha definitiva.
 
 Após timeout, o cliente deve poder reenviar usando a mesma identidade/idempotency key.
-
 ## 8.8 Anexos
 
 Fluxo preferencial:
@@ -1273,9 +1282,9 @@ Cobrir quando aplicável:
 - pesagens;
 - migrações.
 
-## 14.2 App e capacidades nativas
+## 14.2 PWA e capacidades do dispositivo
 
-Homologar nos sistemas suportados pela tecnologia de empacotamento adotada.
+Homologar como PWA instalada nos sistemas/browser versions oficialmente suportados.
 
 Cobrir:
 
@@ -1296,7 +1305,7 @@ Cobrir:
 
 `[PENDENTE]`
 
-Definir versões/plataformas oficiais suportadas após escolha do wrapper nativo.
+Definir versões oficiais suportadas de iOS/Safari e Android/Chrome e manter matriz de capabilities por plataforma.
 
 
 ## 14.3 Critério de evidência
@@ -1769,17 +1778,19 @@ Somente o que ainda precisa de decisão.
 - acessibilidade;
 - gate Web Ready.
 
-## Fase 3 — App empacotado
+## Fase 3 — PWA mobile-first
 
-- escolher tecnologia de wrapper;
-- reaproveitar Web React;
-- native bridge;
-- SQLite;
-- câmera;
-- QR;
+- Web App Manifest e instalação standalone;
+- service worker/app shell;
+- IndexedDB atrás de `LocalDatabase`;
+- câmera/foto/vídeo;
 - GPS;
-- secure storage;
-- gate App Shell Ready.
+- microfone/áudio;
+- QR/barcode;
+- arquivos/share;
+- notificações quando suportadas;
+- capability detection e fallbacks iOS/Android;
+- gate PWA Mobile Ready.
 
 ## Fase 4 — Offline-first definitivo
 
@@ -1845,8 +1856,9 @@ Não considerar resolvido sem evidência posterior:
 - `[PENDENTE]` políticas de conflito por agregado;
 - `[PENDENTE]` fórmulas de consumo e limites;
 - `[PENDENTE]` modelos/protocolos de balança;
-- `[PENDENTE]` tecnologia final de empacotamento/WebNative/wrapper;
-- `[PENDENTE]` plataformas/versões oficiais do App;
+- `[PENDENTE]` matriz de compatibilidade PWA por versões oficiais de iOS/Safari e Android/Chrome;
+- `[PENDENTE]` capabilities específicas com suporte parcial entre plataformas;
+- `[PENDENTE]` eventual empacotamento WebNative/wrapper pós-produção, somente se houver necessidade comprovada;
 - `[PENDENTE]` duração e política de sessão offline;
 - `[PENDENTE]` papel final do Supabase na infraestrutura remota;
 - `[PENDENTE]` provider final de storage/realtime/observabilidade;
@@ -1997,8 +2009,7 @@ Prever:
 - credencial independente da sessão Web;
 - scopes;
 - tenant;
-- revogação;
-- expiração/rotação;
+- revogação;- expiração/rotação;
 - quota/rate limit;
 - auditoria;
 - versionamento;
@@ -2159,17 +2170,17 @@ não conectar a nova arquitetura ao Supabase/PostgreSQL remoto nem ao Vercel ant
 API:
 versionada em /api/v1, OpenAPI/Swagger obrigatório, preparada para Web, App, Sync e API pública futura.
 
-APP:
-reaproveitar/empacotar a Web React; tecnologia final do wrapper ainda pendente.
+APP/PWA:
+PWA instalável sobre React/Vite é o caminho mobile vigente para iOS e Android; empacotamento nativo fica adiado até pós-produção.
 
-PERSISTÊNCIA LOCAL APP:
-SQLite como alvo atual.
+PERSISTÊNCIA LOCAL PWA:
+IndexedDB atrás de `LocalDatabase`; OPFS opcional quando suportado. SQLite somente em eventual wrapper futuro.
 
-CAPACIDADES NATIVAS:
-GPS, QR, câmera, arquivos e secure storage atrás de interfaces.
+CAPACIDADES DO DISPOSITIVO:
+GPS, câmera/foto/vídeo, microfone/áudio, QR/barcode, arquivos/share, push, badges, clipboard, wake lock, orientação, conectividade, sensores e WebRTC via capability detection e fallbacks.
 
 ORDEM:
-Web → App → Offline → infraestrutura remota/staging → produção.
+Web → PWA → Offline PWA → infraestrutura remota/staging → produção → wrapper opcional pós-produção.
 
 EXTENSIBILIDADE:
 integrações futuras via adapters; prever eventos/webhooks/API pública sem implementar infraestrutura hipotética.

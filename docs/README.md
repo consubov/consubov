@@ -44,4 +44,4 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 - `docs/` contém conhecimento permanente.
 - Decisões arquiteturais aprovadas devem ser registradas aqui.
 - PRDs e handoffs temporários ficam em `instructions/active/`.
-- Antes de apagar um PRD concluído, qualquer aprendizado permanente deve ser transferido para `docs/`.
+- Antes de apagar um PRD concluído, qualquer aprendizado permanente deve ser transferido para `docs/`.\n30. [PWA mobile-first iOS/Android](./30-pwa-mobile-first.md)\n

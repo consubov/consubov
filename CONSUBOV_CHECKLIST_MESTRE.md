@@ -2,7 +2,7 @@
 
 > **Fonte operacional para agentes que trabalham pelo repositório.**
 >
-> **Última atualização deste arquivo:** 2026-10-06.
+> **Última atualização deste arquivo:** 2026-10-07.
 >
 > **Regra obrigatória:** antes de iniciar trabalho, leia este checklist e o PRD/handoff ativo aplicável.
 >
@@ -45,9 +45,9 @@ Estas decisões substituem baselines antigos conflitantes:
 - [x] OpenAPI/Swagger faz parte da arquitetura desde agora.
 - [x] API deve prever uso interno e futuro uso por terceiros.
 - [x] Arquitetura deve prever integrações futuras sem implementá-las antecipadamente.
-- [x] Offline será consolidado **depois da Web e do empacotamento do App**, mas precisa influenciar contratos e modelo de dados desde agora.
-- [x] O App será baseado no Web atual empacotado por uma solução WebNative/wrapper nativo a confirmar na fase própria.
-- [x] SQLite é o alvo preferencial para persistência local do App, sujeito à validação da tecnologia de empacotamento escolhida.
+- [x] Offline será consolidado sobre a **PWA**, depois do Web Gate, e deve influenciar contratos e modelo de dados desde agora.
+- [x] O caminho mobile ativo é **PWA instalável em iOS e Android**, usando a Web React/Vite atual; WebNative/wrapper fica adiado até pós-produção.
+- [x] **IndexedDB** é o baseline de persistência local da PWA atrás de `LocalDatabase`; SQLite fica adiado para eventual wrapper pós-produção.
 - [x] GPS e QR devem funcionar localmente/offline quando tecnicamente aplicável.
 - [x] Supabase/PostgreSQL remoto: **não conectar a nova arquitetura agora**.
 - [x] Vercel/deploy: **não configurar agora**.
@@ -62,8 +62,8 @@ FASE 2  Arquitetura extensível e contratos
 FASE 3  Fundação da Web/API sem banco remoto
 FASE 4  Web — paridade funcional e organização por domínio
 FASE 5  Web — qualidade, segurança e aceite
-FASE 6  App — empacotamento e bridge nativa
-FASE 7  Offline — SQLite + Sync Engine
+FASE 6  PWA — experiência mobile-first iOS/Android
+FASE 7  Offline — IndexedDB + Sync Engine
 FASE 8  Integração remota — banco/storage/staging
 FASE 9  Deploy, produção e operação
 FASE 10 Pós-produção — módulos congelados e expansões
@@ -91,7 +91,7 @@ Uma tarefa só pode ser marcada como concluída quando, conforme aplicável:
 - [x] Remover Filament/Livewire como backoffice vigente e registrar React atual como decisão.
 - [x] Manter PostgreSQL como direção de persistência, sem conectar ambiente remoto ainda.
 - [x] Registrar monólito modular como arquitetura alvo atual.
-- [x] Registrar Web → App empacotado → Offline como sequência de entrega.
+- [x] Registrar Web → PWA → Offline PWA como sequência de entrega; wrapper nativo somente pós-produção se necessário.
 - [x] Registrar que offline influencia contratos desde agora, mas seu motor final será implementado depois do App.
 - [x] Registrar que Supabase remoto e Vercel permanecem bloqueados até o gate definido neste checklist.
 - [x] Registrar API interna + API pública futura como superfícies previstas.
@@ -111,7 +111,7 @@ Uma tarefa só pode ser marcada como concluída quando, conforme aplicável:
 - [x] ADR — Offline compatível desde o desenho inicial.
 - [x] ADR — Persistência remota bloqueada nesta etapa.
 - [x] ADR — Deploy/Vercel bloqueado nesta etapa.
-- [x] ADR — Estratégia de empacotamento mobile registrada como `[PENDENTE]` até validação da tecnologia final.
+- [x] ADR/decisão — PWA é a direção mobile vigente; empacotamento nativo foi adiado até pós-produção.
 ## 0.3 Política de mudanças estruturais — ✅ CONCLUÍDO
 **Evidência:** `docs/13-politica-mudancas-estruturais.md` adicionado ao repositório e README raiz atualizado em 2026-10-01.
 - [x] Definir quais mudanças exigem ADR/revisão explícita.
@@ -256,7 +256,7 @@ Definir contratos mínimos, sem implementar infraestrutura desnecessária:
 - [x] `ClockPort` quando necessário para testes/tempo confiável.
 - [x] `IdGeneratorPort` quando necessário.
 ## 2.4 Contratos Web → plataforma — ✅ CONCLUÍDO
-> Validado no código/testes em 2026-10-02, HEAD `7a7ab753`: interfaces de plataforma existem em `apps/web/src/platform/contracts` com testes locais; nenhum wrapper nativo foi escolhido nesta fase.
+> Validado no código/testes em 2026-10-02: interfaces de plataforma existem em `apps/web/src/platform/contracts`. Em 2026-10-07 a direção foi atualizada para PWA-first; adapters devem ser implementáveis por Web APIs e capability detection.
 Criar interfaces para evitar acoplamento futuro ao navegador/nativo:
 - [x] `LocalDatabase`.
 - [x] `SecureStorage`.
@@ -267,7 +267,7 @@ Criar interfaces para evitar acoplamento futuro ao navegador/nativo:
 - [x] `FilePicker/FileCapture`.
 - [x] `NativeBridge`.
 - [x] `SyncTransport`.
-**Aceite:** módulos de negócio não devem precisar saber se estão rodando em browser ou wrapper nativo.
+**Aceite:** módulos de negócio não devem depender diretamente de browser/API específica; capabilities PWA e eventual wrapper futuro ficam atrás de interfaces.
 ## 2.5 Identificadores e tempo — ✅ CONCLUÍDO
 > Fechado em 2026-10-03: `Tenant.reportTimeZone` usa contrato IANA explícito e pode permanecer `null` até configuração; ausência não aplica fallback silencioso. O legado mantém seus comportamentos atuais sem alteração. Evidência: `report-timezone.ts`, testes e `docs/18-identificadores-tempo.md`.
 - [x] Padronizar IDs estáveis independentes do provider/banco.
@@ -820,92 +820,113 @@ Continuar desacoplamento de forma incremental:
 
 ---
 
-# FASE 6 — App empacotado a partir da Web
+# FASE 6 — PWA mobile-first para iOS e Android
 
-## 6.1 Decisão da tecnologia de empacotamento
-- [x] `[PENDENTE]` identificar exatamente a solução WebNative/wrapper pretendida.
-- [x] Validar suporte Android.
-- [x] Validar suporte iOS.
-- [x] Validar WebView/runtime usado.
-- [x] Validar bridge nativa.
-- [x] Validar SQLite.
-- [x] Validar câmera.
-- [x] Validar GPS.
-- [x] Validar QR scanner.
-- [x] Validar arquivos.
-- [x] Validar secure storage.
-- [x] Validar background/resume.
-- [x] Validar política de atualização.
-- [x] Validar licença e sustentabilidade do projeto.
-## 6.2 Estrutura do App
-- [x] Criar workspace/app sem duplicar domínio Web.
-- [x] Reutilizar build/componentes da Web quando aplicável.
-- [x] Implementar `NativeBridge`.
-- [x] Separar adapters Web e Native.
-- [x] Configurar identidade do aplicativo.
-- [x] Configurar deep links quando necessário.
-- [x] Configurar scheme/redirects de auth quando necessário.
-## 6.3 Permissões nativas
-- [x] Câmera.
-- [x] GPS/localização.
-- [x] Arquivos/fotos quando necessário.
-- [x] Notificações quando necessário.
-- [x] Mensagens de permissão claras.
-- [x] App continua operando de forma degradada quando permissão opcional for negada.
-## 6.4 GPS
-- [x] Implementar `LocationProvider` nativo.
-- [x] Capturar latitude.
-- [x] Capturar longitude.
-- [x] Capturar accuracy quando disponível.
-- [x] Capturar timestamp local.
-- [x] Funcionar sem internet quando GPS do dispositivo permitir.
-- [x] Não exigir API remota para obter posição.
-- [x] Associar GPS a comando/evento quando regra aprovada exigir.
-- [x] Respeitar permissão/finalidade.
-## 6.5 QR
-- [x] Implementar scanner local pelo dispositivo.
-- [x] Decoder funciona sem internet.
-- [x] QR retorna identificador estável do recurso.
-- [x] Não colocar segredo/autorização dentro do QR.
-- [x] Validar QR inválido.
-- [x] Validar recurso desconhecido.
-- [x] Preparar lookup local no SQLite.
-## 6.6 Segurança do App
-- [x] Segredos não entram no bundle.
-- [x] Tokens usam storage seguro quando disponível.
-- [x] Dados locais mínimos.
-- [x] Screens/logs não exibem token.
-- [x] Definir comportamento em logout.
-- [x] Definir comportamento em troca de usuário.
-- [x] Definir comportamento em troca de tenant.
-## 6.7 Gate APP SHELL READY
-- [x] App instala.
-- [x] App abre Web empacotado.
-- [x] Navegação principal funciona.
-- [x] Login/redirects funcionam em ambiente de teste apropriado.
-- [x] Camera bridge funciona.
-- [x] GPS bridge funciona.
-- [x] QR bridge funciona.
-- [x] SQLite adapter pode ser inicializado.
-- [x] Reinício do app preserva estado permitido.
-- [x] Nenhuma regra de domínio foi duplicada no wrapper.
+> **DECISÃO 2026-10-07:** PWA é o caminho mobile ativo. Empacotamento WebNative/Capacitor fica adiado até a aplicação estar em produção, com fluxos críticos 100% funcionais e offline/sync estabilizado. Código experimental em `apps/mobile/` fica congelado e não define a arquitetura vigente.
+
+## 6.1 Direção e baseline PWA
+- [x] Definir PWA como estratégia mobile principal para iOS e Android.
+- [x] Adiar WebNative/Capacitor/wrapper para pós-produção e somente se houver necessidade comprovada.
+- [x] Definir IndexedDB como baseline de persistência local PWA atrás de `LocalDatabase`.
+- [ ] Formalizar matriz de compatibilidade por versões oficiais de iOS/Safari e Android/Chrome.
+- [ ] Inventariar capabilities suportadas, parciais e indisponíveis por plataforma.
+
+## 6.2 Experiência instalada com aparência de app nativo
+- [ ] Web App Manifest completo.
+- [ ] `display: standalone` validado em iOS e Android.
+- [ ] Ícones 192/512 e maskable.
+- [ ] Splash/launch experience coerente com a identidade visual.
+- [ ] `theme_color`, `background_color`, safe areas e viewport mobile.
+- [ ] Instalação orientada na home screen em iOS e Android.
+- [ ] Atalhos/deep links quando suportados.
+- [ ] Navegação e gestos sem sensação de browser nos fluxos principais.
+- [ ] Política de atualização que nunca interrompe operação em andamento.
+
+## 6.3 Service Worker e shell PWA
+- [ ] Criar service worker versionado.
+- [ ] Definir app shell/precache mínimo.
+- [ ] Estratégias explícitas de cache por tipo de recurso.
+- [ ] Nunca cachear respostas transacionais críticas de forma insegura.
+- [ ] Fallback offline amigável.
+- [ ] Detectar versão nova sem auto-reload em trabalho ativo.
+- [ ] Limitar tamanho/idade dos caches e limpar versões antigas com segurança.
+
+## 6.4 Capacidades do dispositivo via Web APIs
+- [ ] GPS/geolocalização com accuracy/timestamp quando disponíveis.
+- [ ] Câmera: foto e vídeo.
+- [ ] Microfone e gravação de áudio.
+- [ ] WebRTC preparado para futuras conversas de voz/vídeo.
+- [ ] QR Code e barcode pela câmera.
+- [ ] Seleção/captura/upload/download de arquivos.
+- [ ] Web Share e Share Target quando suportados.
+- [ ] Push notifications quando suportadas.
+- [ ] App badges quando suportados.
+- [ ] Clipboard.
+- [ ] Vibração/haptics quando suportado.
+- [ ] Screen Wake Lock quando suportado.
+- [ ] Orientação/fullscreen quando suportado.
+- [ ] Status de conectividade.
+- [ ] Sensores de movimento/orientação quando disponíveis.
+- [ ] Media Session para fluxos de áudio quando aplicável.
+- [ ] Contatos quando suportado e com consentimento explícito.
+- [ ] Bluetooth/NFC/USB apenas como capabilities opcionais e nunca como dependência universal sem suporte comprovado.
+- [ ] Toda capability usa detecção em runtime e fallback/degradação segura.
+
+## 6.5 Permissões, privacidade e segurança
+- [ ] Pedir permissões somente no contexto de uso.
+- [ ] Explicar finalidade antes de câmera/GPS/microfone/notificações.
+- [ ] Negação de permissão não quebra o restante do app.
+- [ ] Segredos administrativos não entram no bundle/local storage.
+- [ ] Tokens/PII/mídia sensível não aparecem em logs.
+- [ ] Logout/troca de usuário/tenant limpa ou isola dados locais conforme política.
+- [ ] Capability detection nunca substitui autorização backend.
+
+## 6.6 Validação iOS e Android
+- [ ] Testar PWA instalada em iPhone/iOS suportado.
+- [ ] Testar PWA instalada em Android/Chrome suportado.
+- [ ] Abertura standalone sem chrome do browser.
+- [ ] Login/logout/redirects.
+- [ ] Background/resume.
+- [ ] GPS.
+- [ ] Câmera foto/vídeo.
+- [ ] Microfone/gravação.
+- [ ] QR/barcode.
+- [ ] Arquivos/share.
+- [ ] Push quando suportado.
+- [ ] IndexedDB e upgrade de schema local.
+- [ ] Permissões negadas/revogadas.
+- [ ] Safe areas/notch, teclado, rotação e tamanhos de tela.
+
+## 6.7 Gate PWA MOBILE READY
+- [ ] PWA instalável em iOS e Android.
+- [ ] Abre em modo standalone.
+- [ ] UX principal não expõe comportamento de site/browser.
+- [ ] Manifest, icons e service worker válidos.
+- [ ] Navegação/login funcionam instalados.
+- [ ] Offline shell funciona.
+- [ ] GPS, câmera, microfone e QR funcionam nos dispositivos suportados ou possuem fallback explícito.
+- [ ] Arquivos/share funcionam quando suportados.
+- [ ] Atualização de versão não interrompe trabalho em andamento.
+- [ ] Nenhum segredo administrativo está no cliente.
+- [ ] Matriz de capabilities por plataforma está documentada.
 
 ---
 
-# FASE 7 — Offline-first definitivo
+# FASE 7 — Offline-first definitivo sobre PWA
 
-> Esta fase começa somente depois do Web Gate e do App Shell Gate.
-## 7.1 SQLite local
-- [ ] Definir schema local versionado.
+> Esta fase começa somente depois do Web Gate e do gate PWA MOBILE READY.
+## 7.1 IndexedDB/local database
+- [ ] Definir schema local versionado atrás de `LocalDatabase`.
 - [ ] Criar migrations locais.
 - [ ] Namespace obrigatório por `tenant_id`.
 - [ ] Namespace obrigatório por `user_id` quando aplicável.
-- [ ] Registrar `device_id`.
+- [ ] Registrar `device_id`/installation id estável conforme política.
 - [ ] Armazenar somente dados necessários à operação.
 - [ ] Criar índices por uso real.
 - [ ] Definir política de limpeza.
 - [ ] Testar upgrade de schema local.
 - [ ] Testar corrupção/falha recuperável quando possível.
+- [ ] OPFS/File System Access somente como otimização opcional quando suportado.
 ## 7.2 Identidade do dispositivo
 - [ ] Criar `device_id` estável.
 - [ ] Definir quando regenerar.
@@ -937,7 +958,7 @@ Continuar desacoplamento de forma incremental:
 - [ ] permanent_error.
 - [ ] conflict.
 - [ ] requires_user_action.
-## 7.5 Push
+## 7.5 Push de comandos
 - [ ] Cliente envia comandos pendentes.
 - [ ] API autentica.
 - [ ] API resolve tenant.
@@ -993,7 +1014,7 @@ Continuar desacoplamento de forma incremental:
 - [ ] rollback/reconciliação.
 - [ ] se resolução automática é permitida.
 ## 7.10 Anexos offline
-- [ ] Registrar arquivo local.
+- [ ] Registrar arquivo/blob local quando permitido.
 - [ ] Criar fila independente.
 - [ ] Compressão quando aplicável.
 - [ ] Retry.
@@ -1003,15 +1024,15 @@ Continuar desacoplamento de forma incremental:
 - [ ] Falha de anexo não corrompe operação principal.
 - [ ] Limpeza de arquivo temporário segura.
 ## 7.11 GPS offline
-- [ ] Captura sem internet.
+- [ ] Captura sem internet quando o SO/browser permitir.
 - [ ] Salvar precisão disponível.
 - [ ] Salvar timestamp local.
 - [ ] Salvar associação ao comando.
 - [ ] Sincronizar posteriormente.
 - [ ] Distinguir ausência de permissão de ausência de sinal.
 ## 7.12 QR offline
-- [ ] Scanner local.
-- [ ] Lookup no cache SQLite.
+- [ ] Scanner local pela câmera.
+- [ ] Lookup no cache IndexedDB/local.
 - [ ] Recurso precisa estar previamente autorizado/sincronizado.
 - [ ] Leitura gera evento/comando local quando aplicável.
 - [ ] Leitura registra ordem quando regra exigir.
@@ -1044,8 +1065,8 @@ Continuar desacoplamento de forma incremental:
 - [ ] Rede oscila.
 - [ ] Timeout com servidor já tendo processado comando.
 - [ ] Retry duplicado.
-- [ ] App fechado durante sync.
-- [ ] App reiniciado com fila pendente.
+- [ ] PWA fechada durante sync.
+- [ ] PWA reiniciada com fila pendente.
 - [ ] Duas operações concorrentes.
 - [ ] Dois dispositivos no mesmo agregado.
 - [ ] Conflito de estoque.
@@ -1055,7 +1076,7 @@ Continuar desacoplamento de forma incremental:
 - [ ] Troca de usuário.
 - [ ] Troca de tenant.
 ## 7.16 Gate OFFLINE READY
-- [ ] SQLite namespaced.
+- [ ] IndexedDB/local database namespaced.
 - [ ] fila persistente.
 - [ ] push/pull.
 - [ ] cursor/checkpoint.
@@ -1445,7 +1466,7 @@ Continuar desacoplamento de forma incremental:
 - [ ] vários usuários e papéis.
 - [ ] isolamento horizontal.
 - [ ] Web funcional nos módulos em escopo.
-- [ ] App empacotado funcional.
+- [ ] PWA instalada funcional em iOS e Android; empacotamento nativo somente pós-produção se necessário.
 - [ ] operação sem internet.
 - [ ] reconexão.
 - [ ] retry.
