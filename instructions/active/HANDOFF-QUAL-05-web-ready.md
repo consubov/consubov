@@ -1,7 +1,7 @@
 # HANDOFF-QUAL-05 — FASE 5 Web Quality / WEB READY
 
 ## Estado
-`EM ANDAMENTO — QA REPROVADO TEMPORARIAMENTE PARA FECHAMENTO`
+`EM ANDAMENTO — QA PENDENTE RE-EXECUÇÃO CI (blocker admin, não código)`
 
 ## Base
 - `main@bd9ad453424fa9ad220dca4f55626762a26b87f2`
@@ -43,7 +43,7 @@ As falhas E2E eram tablet + logout e foram corrigidas nos commits subsequentes, 
 Sem banco/Supabase remoto novo, migrations, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
 
 ## Próximo passo
-Resolver bloqueio administrativo do GitHub Actions; depois rerun dos workflows e correção orientada por evidência. Não mergear PR #37 enquanto QA estiver reprovado.
+Reexecutar workflows CI no HEAD final após liberação do runner administrativo. As correções de E2E (tablet+logout) estão nos commits locais (efdd9865, d813a251). Axe e Lighthouse thresholds requerem integração de bibliotecas. Somente depois autorizar merge do PR #37 e progressão para FASE 6.
 
 Baseline de bundle:
 - raw total: 8.730.802 bytes;
