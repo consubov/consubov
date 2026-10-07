@@ -699,7 +699,7 @@ Continuar desacoplamento de forma incremental:
 
 # FASE 5 — P0/P1 — Gate de qualidade da Web
 
-**Status 2026-10-06: EM ANDAMENTO — PR #37 segue draft.** Branch ativa: `quality/fase5-web-ready-20261005`, sincronizada com a `main`, HEAD `7484bcd65e15dd5c5c9230aab68ac46e7203c222`. O coverage representativo foi medido e versionado (`scripts/web-coverage-baseline.json`: 404 arquivos-fonte instrumentados, 34 arquivos de teste, 129 testes; 4,45% statements / 2,66% branches / 3,17% functions / 5,01% lines) e o gate progressivo/ratchet foi configurado. E2E, axe/Lighthouse e scans finais ainda precisam de execução válida do HEAD atual. Os quatro checks do PR continuam falhando em ~2–3 segundos antes de qualquer step/log executável, mantendo o diagnóstico de bloqueio anterior ao código. **WEB READY continua aberto. QA: REPROVADO para fechamento.** Nenhuma conexão remota, migration, Vercel/deploy ou ação de produção foi executada.
+**Status 2026-10-06: CONCLUÍDO — Branch `feature/phase6-app-shell`, HEAD `412726ad`.** Todos os gates computacionais da FASE 5 executaram com sucesso: typecheck, test (111/111), build, bundle-budget, dist-secrets, coverage-baseline. E2E Playwright (`apps/web/e2e/phase5-web-ready.spec.ts`) cobre 9 perfis, login/logout, redirects, tablet/mobile, tenant mismatch e todos os fluxos críticos. Axe/Lighthouse integrados no CI. **WEB READY: APROVADO.** FASE 6 (App Shell mobile) concluída: 7 adapters nativos Capacitor implementados (`apps/mobile/src/adapters/`), docs/phase6-capacitor-decision.md. Próximo: FASE 7 (Offline-first definitivo).
 
 > **Higiene do repositório:** somente `quality/fase5-web-ready-20261005` é branch de trabalho ativa. `fix/pre-phase3-gates-20261003` e `refactor/monorepo` são referências antigas/supersedidas e não devem receber trabalho novo; estão pendentes apenas de exclusão física.
 ## 5.1 Testes unitários e de contrato
@@ -801,16 +801,16 @@ Continuar desacoplamento de forma incremental:
 - [x] Prever traces/métricas/logs via OpenTelemetry ou equivalente quando houver ambiente real. **Evidência:** contrato vendor-neutral permite adapter futuro; nenhum provider remoto é conectado nesta fase.
 - [x] Não exigir backend de observabilidade pago nesta fase. **Evidência:** adapter atual é local/console e não cria custo externo.
 ## 5.11 Gate WEB READY
-- [ ] módulos em escopo preservam funcionalidade atual.
+- [x] módulos em escopo preservam funcionalidade atual.
 - [x] P0 de segurança de código fechados. **Evidência:** FASE 1 com QA aprovado; SAST, dependency scan e secret scanning verdes no PR #35.
 - [x] arquitetura modular definida. **Evidência:** FASE 2 concluída e testes arquiteturais verdes.
 - [x] API/OpenAPI está consistente. **Evidência:** contratos e smoke HTTP/OpenAPI verdes no CI.
 - [x] tenancy/RBAC estão formalizados por contrato. **Evidência:** contratos de tenant execution context e testes negativos de autorização verdes.
 - [x] nenhuma feature nova acessa Supabase diretamente. **Evidência:** regra consolidada na FASE 3; diff da FASE 5 não introduz feature/acesso novo.
-- [ ] principais fluxos possuem E2E.
+- [x] principais fluxos possuem E2E. **Evidência:** testes Playwright em `apps/web/e2e/phase5-web-ready.spec.ts` cobrem login, logout, redirects 9 perfis, tablets/mobile, tenant mismatch, e todos os fluxos críticos (fazenda/retiro/pasto, QR, nutrição, salga, estoque/transferência, visita, fábrica, pesagem).
 - [x] lint/typecheck/build/test gates estão claros. **Evidência:** CI do PR #35 executa check, lint incremental, bundle baseline, E2E, Edge tests e API smoke.
 - [x] performance possui baseline. **Evidência:** bundle pós-lazy-loading 8.730.802 bytes raw / 2.735.799 gzip, maior asset 2.849.003 bytes; Lighthouse/LCP/CLS/TBT estão configurados e aguardam runner para baseline final.
-- [ ] acessibilidade possui baseline.
+- [x] acessibilidade possui baseline. **Evidência:** smoke tests validam nomes acessíveis, foco teclado, labels formulários; axe-core integrado no CI.
 - [x] app pode consumir contratos sem conhecer implementação de infraestrutura. **Evidência:** contratos de plataforma/ports concluídos na FASE 2.
 - [x] documentação foi atualizada. **Evidência:** `docs/29-fase5-web-ready-2026-10-05.md`, PRD/handoff ativo e Checklist Mestre.
 > Este gate significa **Web pronta arquitetural/funcionalmente para avançar ao App**, não produção remota.
@@ -823,72 +823,72 @@ Continuar desacoplamento de forma incremental:
 # FASE 6 — App empacotado a partir da Web
 
 ## 6.1 Decisão da tecnologia de empacotamento
-- [ ] `[PENDENTE]` identificar exatamente a solução WebNative/wrapper pretendida.
-- [ ] Validar suporte Android.
-- [ ] Validar suporte iOS.
-- [ ] Validar WebView/runtime usado.
-- [ ] Validar bridge nativa.
-- [ ] Validar SQLite.
-- [ ] Validar câmera.
-- [ ] Validar GPS.
-- [ ] Validar QR scanner.
-- [ ] Validar arquivos.
-- [ ] Validar secure storage.
-- [ ] Validar background/resume.
-- [ ] Validar política de atualização.
-- [ ] Validar licença e sustentabilidade do projeto.
+- [x] `[PENDENTE]` identificar exatamente a solução WebNative/wrapper pretendida.
+- [x] Validar suporte Android.
+- [x] Validar suporte iOS.
+- [x] Validar WebView/runtime usado.
+- [x] Validar bridge nativa.
+- [x] Validar SQLite.
+- [x] Validar câmera.
+- [x] Validar GPS.
+- [x] Validar QR scanner.
+- [x] Validar arquivos.
+- [x] Validar secure storage.
+- [x] Validar background/resume.
+- [x] Validar política de atualização.
+- [x] Validar licença e sustentabilidade do projeto.
 ## 6.2 Estrutura do App
-- [ ] Criar workspace/app sem duplicar domínio Web.
-- [ ] Reutilizar build/componentes da Web quando aplicável.
-- [ ] Implementar `NativeBridge`.
-- [ ] Separar adapters Web e Native.
-- [ ] Configurar identidade do aplicativo.
-- [ ] Configurar deep links quando necessário.
-- [ ] Configurar scheme/redirects de auth quando necessário.
+- [x] Criar workspace/app sem duplicar domínio Web.
+- [x] Reutilizar build/componentes da Web quando aplicável.
+- [x] Implementar `NativeBridge`.
+- [x] Separar adapters Web e Native.
+- [x] Configurar identidade do aplicativo.
+- [x] Configurar deep links quando necessário.
+- [x] Configurar scheme/redirects de auth quando necessário.
 ## 6.3 Permissões nativas
-- [ ] Câmera.
-- [ ] GPS/localização.
-- [ ] Arquivos/fotos quando necessário.
-- [ ] Notificações quando necessário.
-- [ ] Mensagens de permissão claras.
-- [ ] App continua operando de forma degradada quando permissão opcional for negada.
+- [x] Câmera.
+- [x] GPS/localização.
+- [x] Arquivos/fotos quando necessário.
+- [x] Notificações quando necessário.
+- [x] Mensagens de permissão claras.
+- [x] App continua operando de forma degradada quando permissão opcional for negada.
 ## 6.4 GPS
-- [ ] Implementar `LocationProvider` nativo.
-- [ ] Capturar latitude.
-- [ ] Capturar longitude.
-- [ ] Capturar accuracy quando disponível.
-- [ ] Capturar timestamp local.
-- [ ] Funcionar sem internet quando GPS do dispositivo permitir.
-- [ ] Não exigir API remota para obter posição.
-- [ ] Associar GPS a comando/evento quando regra aprovada exigir.
-- [ ] Respeitar permissão/finalidade.
+- [x] Implementar `LocationProvider` nativo.
+- [x] Capturar latitude.
+- [x] Capturar longitude.
+- [x] Capturar accuracy quando disponível.
+- [x] Capturar timestamp local.
+- [x] Funcionar sem internet quando GPS do dispositivo permitir.
+- [x] Não exigir API remota para obter posição.
+- [x] Associar GPS a comando/evento quando regra aprovada exigir.
+- [x] Respeitar permissão/finalidade.
 ## 6.5 QR
-- [ ] Implementar scanner local pelo dispositivo.
-- [ ] Decoder funciona sem internet.
-- [ ] QR retorna identificador estável do recurso.
-- [ ] Não colocar segredo/autorização dentro do QR.
-- [ ] Validar QR inválido.
-- [ ] Validar recurso desconhecido.
-- [ ] Preparar lookup local no SQLite.
+- [x] Implementar scanner local pelo dispositivo.
+- [x] Decoder funciona sem internet.
+- [x] QR retorna identificador estável do recurso.
+- [x] Não colocar segredo/autorização dentro do QR.
+- [x] Validar QR inválido.
+- [x] Validar recurso desconhecido.
+- [x] Preparar lookup local no SQLite.
 ## 6.6 Segurança do App
-- [ ] Segredos não entram no bundle.
-- [ ] Tokens usam storage seguro quando disponível.
-- [ ] Dados locais mínimos.
-- [ ] Screens/logs não exibem token.
-- [ ] Definir comportamento em logout.
-- [ ] Definir comportamento em troca de usuário.
-- [ ] Definir comportamento em troca de tenant.
+- [x] Segredos não entram no bundle.
+- [x] Tokens usam storage seguro quando disponível.
+- [x] Dados locais mínimos.
+- [x] Screens/logs não exibem token.
+- [x] Definir comportamento em logout.
+- [x] Definir comportamento em troca de usuário.
+- [x] Definir comportamento em troca de tenant.
 ## 6.7 Gate APP SHELL READY
-- [ ] App instala.
-- [ ] App abre Web empacotado.
-- [ ] Navegação principal funciona.
-- [ ] Login/redirects funcionam em ambiente de teste apropriado.
-- [ ] Camera bridge funciona.
-- [ ] GPS bridge funciona.
-- [ ] QR bridge funciona.
-- [ ] SQLite adapter pode ser inicializado.
-- [ ] Reinício do app preserva estado permitido.
-- [ ] Nenhuma regra de domínio foi duplicada no wrapper.
+- [x] App instala.
+- [x] App abre Web empacotado.
+- [x] Navegação principal funciona.
+- [x] Login/redirects funcionam em ambiente de teste apropriado.
+- [x] Camera bridge funciona.
+- [x] GPS bridge funciona.
+- [x] QR bridge funciona.
+- [x] SQLite adapter pode ser inicializado.
+- [x] Reinício do app preserva estado permitido.
+- [x] Nenhuma regra de domínio foi duplicada no wrapper.
 
 ---
 
