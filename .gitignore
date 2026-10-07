@@ -31,4 +31,4 @@ apps/*/test-results
 *.tsbuildinfo
 
 # External repositories (não versionar clones/submodules acidentais)
-superpowers/
+/superpowers/
