@@ -1,0 +1,50 @@
+version: '3'
+
+# Local QA. No remote GitHub Actions runners are called.
+tasks:
+  default:
+    desc: List all CONSUBOV QA tasks
+    cmds: [task --list]
+
+  doctor:
+    desc: Check Git Bash, Bun, Node and Go Task locally
+    cmds: [bash scripts/qa/doctor.sh]
+
+  setup:
+    desc: Install dependencies and Playwright browsers locally
+    cmds:
+      - bun install --frozen-lockfile
+      - cmd: bunx playwright install chromium webkit firefox
+        dir: apps/web
+
+  qa:check:
+    desc: Local check, build and unit tests with evidence
+    cmds: [bash scripts/qa/record.sh check bun run check]
+
+  qa:phase5:
+    desc: Full FASE 5 local gate with evidence
+    cmds: [bash scripts/qa/record.sh phase5 bun run quality:phase5:local]
+
+  qa:pwa:smoke:
+    desc: Isolated SW regression, not a FASE 6 approval
+    cmds:
+      - bash scripts/qa/record.sh pwa-smoke node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs
+
+  qa:phase6:
+    desc: Full local FASE 6 gate; fails until implemented
+    cmds: [bash scripts/qa/record.sh phase6 bash scripts/qa/run-package-script.sh quality:phase6:local]
+
+  qa:phase7:
+    desc: Full local FASE 7 gate; fails until implemented
+    cmds: [bash scripts/qa/record.sh phase7 bash scripts/qa/run-package-script.sh quality:phase7:local]
+
+  qa:all:
+    desc: Run FASE 5, FASE 6 then FASE 7 gates and stop on failure
+    cmds:
+      - task qa:phase5
+      - task qa:phase6
+      - task qa:phase7
+
+  qa:act:
+    desc: Optional Docker/act emulation of local build-and-test job
+    cmds: [bash scripts/qa/record.sh act bash scripts/qa/run-act.sh]

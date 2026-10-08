@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "task.vscode-task",
+    "ms-playwright.playwright",
+    "dbaeumer.vscode-eslint"
+  ]
+}

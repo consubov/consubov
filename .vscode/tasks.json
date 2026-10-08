@@ -1,0 +1,92 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CONSUBOV: Verificar ambiente",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "doctor"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: Instalar dependencias",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "setup"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA Check",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:check"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA FASE 5",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:phase5"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: Teste PWA Service Worker",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:pwa:smoke"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA FASE 6",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:phase6"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA FASE 7",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:phase7"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA Completo",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:all"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: act (opcional)",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:act"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
