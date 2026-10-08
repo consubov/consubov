@@ -20,6 +20,9 @@ trap cleanup EXIT
 echo "[phase5] install"
 bun install --frozen-lockfile
 
+echo "[phase5] security dependency audit (high/critical block)"
+bun audit --audit-level=high
+
 echo "[phase5] check"
 bun run check
 
