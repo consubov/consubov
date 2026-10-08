@@ -17,13 +17,13 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0 # required by the Phase 3 Supabase import baseline guardrail
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -36,16 +36,94 @@ jobs:
       - name: Check
         run: bun run check
 
+      - name: Web lint debt baseline
+        working-directory: apps/web
+        run: bun run lint:baseline
+
+      - name: Web lint changed-files gate
+        working-directory: apps/web
+        run: bun run lint:changed
+
+      - name: Web coverage baseline
+        working-directory: apps/web
+        run: bun run test:coverage
+
+      - name: Validate Web coverage completeness
+        working-directory: apps/web
+        run: bun run check:coverage-baseline
+
+      - name: Web bundle baseline
+        working-directory: apps/web
+        run: bun run report:bundle
+
+      - name: Web bundle regression budget
+        working-directory: apps/web
+        run: bun run check:bundle-budget
+
+      - name: Web built-bundle secret guard
+        working-directory: apps/web
+        run: bun run check:dist-secrets
+
       - name: Install Playwright Chromium
         working-directory: apps/web
         run: bunx playwright install --with-deps chromium
 
-      - name: Web FASE 4 smoke
+      - name: Web axe baseline
+        working-directory: apps/web
+        continue-on-error: true
+        shell: bash
+        run: |
+          bun run preview -- --host 127.0.0.1 --port 8080 >/tmp/consubov-web-preview.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for _ in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:8080/login >/dev/null; then READY=1; break; fi
+            sleep 0.25
+          done
+          if [ "$READY" -ne 1 ]; then cat /tmp/consubov-web-preview.log; exit 1; fi
+          bunx @axe-core/cli http://127.0.0.1:8080/ http://127.0.0.1:8080/login http://127.0.0.1:8080/recuperar-senha
+
+      - name: Web Lighthouse baseline
+        working-directory: apps/web
+        continue-on-error: true
+        shell: bash
+        run: |
+          bun run preview -- --host 127.0.0.1 --port 8080 >/tmp/consubov-web-preview.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for _ in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:8080/login >/dev/null; then READY=1; break; fi
+            sleep 0.25
+          done
+          if [ "$READY" -ne 1 ]; then cat /tmp/consubov-web-preview.log; exit 1; fi
+          bunx lighthouse http://127.0.0.1:8080/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse-home.json --quiet
+          bunx lighthouse http://127.0.0.1:8080/login --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse-login.json --quiet
+          node - <<'NODE'
+          const fs = require("fs");
+          for (const name of ["home", "login"]) {
+            const report = JSON.parse(fs.readFileSync(`/tmp/lighthouse-${name}.json`, "utf8"));
+            const c = report.categories;
+            const audits = report.audits;
+            console.log("[lighthouse]", name, JSON.stringify({
+              performance: c.performance.score,
+              accessibility: c.accessibility.score,
+              bestPractices: c["best-practices"].score,
+              seo: c.seo.score,
+              lcpMs: audits["largest-contentful-paint"]?.numericValue ?? null,
+              cls: audits["cumulative-layout-shift"]?.numericValue ?? null,
+              tbtMs: audits["total-blocking-time"]?.numericValue ?? null
+            }));
+          }
+          NODE
+
+      - name: Web FASE 5 E2E smoke
         working-directory: apps/web
         run: bun run test:e2e:smoke
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
-          VITE_SUPABASE_PUBLISHABLE_KEY: phase4-local-test-key
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
 
       - name: Test Supabase Edge Functions
         working-directory: supabase/functions
@@ -88,3 +166,8 @@ jobs:
           test "$STATUS" = "404"
           grep -q '"code":"NOT_FOUND"' /tmp/not-found.json
           grep -q '"requestId":"' /tmp/not-found.json
+
+          curl --fail --silent --dump-header /tmp/headers.txt --output /dev/null http://127.0.0.1:3000/api/v1/health
+          for header in x-content-type-options x-frame-options referrer-policy permissions-policy; do
+            grep -qi "^$header:" /tmp/headers.txt
+          done

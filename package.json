@@ -19,7 +19,8 @@
     "test": "turbo run test",
     "check": "bun run typecheck && bun run build && bun run test",
     "test:web": "turbo run test --filter=@consubov/web",
-    "test:api": "turbo run test --filter=@consubov/api"
+    "test:api": "turbo run test --filter=@consubov/api",
+    "quality:phase5:local": "bash scripts/run-phase5-local.sh"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.117.2",
@@ -44,6 +45,7 @@
     "brace-expansion@<1.1.20": "1.1.20",
     "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
     "picomatch@<2.3.2": "2.3.2",
+    "source-map-js@<1.2.2": "1.2.2",
     "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
   }
 }

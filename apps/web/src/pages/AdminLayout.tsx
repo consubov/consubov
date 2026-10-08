@@ -84,7 +84,7 @@ export default function AdminLayout() {
           setSelectedGerenteId(persistedId);
         } else if (persistedMode === "capataz" && cRes.data?.find(c => c.id === persistedId)) {
           setSelectedCapatazId(persistedId);
-        } else if (persistedMode === "escritorio" && (eRes.data ?? []).find((e: any) => e.id === persistedId)) {
+        } else if (persistedMode === "escritorio" && (eRes.data ?? []).find((e: EscritorioOption) => e.id === persistedId)) {
           setSelectedEscritorioId(persistedId);
         } else {
           // Persisted selection no longer valid
@@ -167,7 +167,7 @@ export default function AdminLayout() {
               <div className="flex items-center gap-2">
                 {!isSimulating && <SidebarTrigger className="text-primary-foreground hover:bg-primary/80" />}
                 {isSimulating && (
-                  <Button variant="ghost" size="icon" onClick={backToAdmin} className="text-primary-foreground hover:bg-primary/80">
+                  <Button aria-label="Voltar ao Admin" variant="ghost" size="icon" onClick={backToAdmin} className="text-primary-foreground hover:bg-primary/80">
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                 )}
@@ -188,7 +188,7 @@ export default function AdminLayout() {
                 <RefreshButton />
                 <UserNotificationToggle />
                 <AppVersionBadge />
-                <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+                <Button aria-label="Sair" variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
                   <LogOut className="w-5 h-5" />
                 </Button>
               </div>

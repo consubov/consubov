@@ -15,6 +15,22 @@ export default defineConfig({
       VITE_SUPABASE_URL: "http://127.0.0.1:54321",
       VITE_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
     },
+    coverage: {
+      provider: "v8",
+      all: true,
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      exclude: [
+        "src/**/*.d.ts",
+        "src/test/**",
+        "e2e/**",
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/*.spec.ts",
+        "src/**/*.spec.tsx",
+      ],
+      reporter: ["text-summary", "json-summary"],
+      reportsDirectory: "coverage",
+    },
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

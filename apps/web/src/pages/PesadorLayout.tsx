@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { AtualizarAppButton } from "@/components/maisArrobas/AtualizarAppButton";
+import { AtualizarAppButton } from "@/components/maisarrobas/AtualizarAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Users, History, Settings } from "lucide-react";
@@ -27,8 +27,8 @@ export default function PesadorLayout() {
         .select("logo_url, nome_empresa")
         .eq("user_id", user.id)
         .maybeSingle();
-      setLogoUrl((data as any)?.logo_url ?? null);
-      setNomeEmpresa((data as any)?.nome_empresa ?? null);
+      setLogoUrl((data as { logo_url?: string | null } | null)?.logo_url ?? null);
+      setNomeEmpresa((data as { nome_empresa?: string | null } | null)?.nome_empresa ?? null);
     })();
   }, [user, configOpen]);
 
