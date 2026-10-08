@@ -1,74 +1,60 @@
-# HANDOFF-QUAL-05 — FASE 5 Web Quality / WEB READY
+# HANDOFF-QUAL-05 — FASE 5 Web Quality e continuidade PWA/Offline
 
-## Estado
-`EM ANDAMENTO — QA PENDENTE RE-EXECUÇÃO CI (blocker admin, não código)`
+> **Última revisão:** 2026-10-08. Este texto substitui as referências históricas à branch FASE 5 e ao PR #37, que estão congelados/encerrados.
 
-## Base
-- `main@bd9ad453424fa9ad220dca4f55626762a26b87f2`
-- branch: `quality/fase5-web-ready-20261005`
-- PR: `#37` (draft)
-- PRD: `instructions/active/PRD-QUAL-05-web-ready.md`
+## Estado atual
 
-## Implementado
-- E2E local para nove papéis, redirect, deny e logout;
-- superfícies críticas por domínio;
-- Playwright desktop/tablet/mobile;
-- responsividade ampliada para dashboards/tabelas/formulários;
-- integração local identity → tenant → authorization → repository fake;
-- lint baseline + gate incremental;
-- coverage baseline + validador de completude do relatório;
-- route-level lazy loading;
-- bundle report + budget regressivo + dist secret guard;
-- telemetria estruturada/vendor-neutral com sanitização de PII/segredos;
-- documentação permanente e `CONSUBOV_CHECKLIST_MESTRE.md` atualizados.
+- **Branch de trabalho:** `work/fase5-6-7-pwa-local`.
+- **PR:** #43 (**draft, sem merge**).
+- **Checklist:** `CONSUBOV_CHECKLIST_MESTRE.md` e Checklist Mestre Notion.
+- **PRD:** `instructions/active/PRD-QUAL-05-web-ready.md` e `ROADMAP-PRD-HANDOFF-FASES-5-6-7-LOCAL-PWA-OFFLINE.md`.
+- **FASE 5:** QA LOCAL ainda não aprovado; é necessário rodar suite completa/axe/Lighthouse/security.
+- **FASE 6:** PWA-base presente, alguns testes isolados SW existentes. QA LOCAL de migração/upgrade legacy→next ainda não comprovado.
+- **FASE 7:** migration engine e fila canônica ainda sem QA local comprovado.
+- **FASE 8:** planejamento/preparação local permitidos; conexões e migrations remotas bloqueadas.
+- **Homologação física:** adiada para piloto pré-produção, sem bloquear desenvolvimento posterior.
 
-## Última evidência executável
-Último job que iniciou steps:
-- `bun run check`: verde;
-- Web: 129/129 em 34 arquivos;
-- lint baseline/changed: verde;
-- bundle report: verde;
-- dist secret guard: verde;
-- E2E: 30 pass / 18 fail.
+## Runner disponível
 
-As falhas E2E eram tablet + logout e foram corrigidas nos commits subsequentes, pendendo re-execução no runner disponível para confirmação final.
+O responsável instalou Go Task **3.54.0** (winget) e extensão **Task** do VS Code. Foram versionados:
+- `Taskfile.yml`;
+- `.vscode/tasks.json` e `extensions.json`;
+- `scripts/qa/doctor.sh`, `record.sh`, `run-package-script.sh`, `run-act.sh`;
+- `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`.
 
-## Pendências para WEB READY
-1. reexecutar E2E final no HEAD corrigido (tablet+logout já corrigido em commits locais)
-2. registrar axe/Lighthouse com thresholds/budget definitivos
-3. repetir AUDITORIA DE QUALIDADE com evidências finais
-4. só então marcar `WEB READY` e progressar para FASE 6
+Comandos após abrir a raiz do repo no VS Code (reabrir terminal):
+```powershell
+task doctor
+task setup
+task qa:check
+task qa:pwa:smoke
+task qa:phase5
+task qa:phase6
+task qa:phase7
+task qa:all
+task qa:act
+```
 
-## Restrições
-Sem banco/Supabase remoto novo, migrations, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
+`qa:act` é **opcional** e usa Docker local; não consome minutos GitHub Actions. Scripts de gate `quality:phase6:local` e `quality:phase7:local` **ainda não existem** e os comandos correspondentes foram configurados para **falhar** em vez de aprovar falsamente.
 
-## Próximo passo
-Reexecutar workflows CI no HEAD final após liberação do runner administrativo. As correções de E2E (tablet+logout) estão nos commits locais (efdd9865, d813a251). Axe e Lighthouse thresholds requerem integração de bibliotecas. Somente depois autorizar merge do PR #37 e progressão para FASE 6.
+## Última evidência confiável / bloqueios
 
-Baseline de bundle:
-- raw total: 8.730.802 bytes;
-- gzip total: 2.735.799 bytes;
-- maior asset: 2.849.003 bytes.
+- Evidência histórica incompleta da FASE 5: E2E registrou **30/48** em execução anterior; fixes posteriores não substituem reexecução local verde. Axe/Lighthouse ainda precisam de gates bloqueantes/thresholds adequados.
+- Auditoria independente de 2026-10-08: `docs/qa/auditoria-estatica-2026-10-08.md`.
+- Teste isolado SW: **7/7 Node** passou em ambiente isolado conforme relatório da auditoria; não comprova PWA real, WebKit, migração ou zero-loss.
+- Para FASE 6: falta harness de navegador real/local que sirva SW legado, semeie IndexedDB/filas/blobs, aplique nova versão no mesmo origin e valide zero perda/rollback.
+- Para FASE 7: faltam migrations retomáveis/idempotentes, fila canônica, testes de caos e isolamento tenant/user.
 
-O coverage antigo de 100%/6 statements é inválido e foi descartado; o novo gate exige instrumentação representativa.
+## Próximos trabalhos executáveis
 
-## Diagnóstico do runner
-Workflow temporário mínimo em `ubuntu-22.04`, contendo somente `echo`, também falhou antes de qualquer step. Foi removido após o diagnóstico.
+1. Checar `git status` e evitar conflito com alterações locais de outros agentes.
+2. Rodar `task doctor`/`task setup`; agente pode instalar **ferramentas locais** faltantes.
+3. Executar `task qa:phase5`, corrigir todas as falhas automatizáveis, gerar `.qa/runs/*` e relatório sanitizado por SHA em `docs/qa/`.
+4. Implementar e testar os scripts `quality:phase6:local` / `quality:phase7:local` de verdade; nunca devolver PASS falso.
+5. Avançar trabalho independente de fases seguintes sem depender de aparelho físico; marcar `HOMOLOGAÇÃO REAL PENDENTE` em vez de declarar teste não executado.
+6. Na pré-produção, executar piloto iOS/Android/conectividade rural, upgrade sem perda offline, backup/rollback; sem `PRODUCTION READY` antes disso.
+7. Atualizar checklist repositório/Notion e este handoff quando houver evidência real do HEAD.
 
-CI, SAST, dependency scan e secret scanning continuam encerrando sem steps/logs. Logo o bloqueio é anterior ao código/workflow executável. A causa administrativa exata (Actions settings/quota/billing/account state) não é visível nem mutável pelo conector GitHub disponível.
+**Restrições:** nenhuma nova conexão Supabase/PostgreSQL remoto, migration remota, Vercel/deploy, rotação de secrets, merge, publicação ou limpeza de dados reais sem autorização explícita. Não mexer em `apps/mobile/`/Capacitor.
 
-## Pendências para WEB READY
-1. restaurar execução de GitHub Actions no repositório/conta;
-2. executar HEAD final;
-3. registrar coverage baseline real + gate progressivo;
-4. registrar axe/Lighthouse e corrigir violações bloqueantes;
-5. E2E verde em desktop/tablet/mobile;
-6. Edge/API smoke e scans verdes;
-7. repetir AUDITORIA DE QUALIDADE;
-8. só então marcar `WEB READY` e mergear.
-
-## Restrições
-Sem banco/Supabase remoto novo, migrations, Vercel/deploy/release, rotação de secrets ou regra de negócio inventada.
-
-## Próximo passo
-Resolver o bloqueio administrativo do GitHub Actions; depois rerun dos workflows e correção orientada por evidência. Não mergear PR #37 enquanto QA estiver reprovado.
+**Relatório final:** SHA + dirty, ferramentas/versões, todos os comandos e exit codes, falhas P0/P1/P2 e correções, QA local por fase, pendências reais, próximos passos e ações externas (esperado: nenhuma).

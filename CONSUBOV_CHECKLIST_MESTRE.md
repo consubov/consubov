@@ -2,7 +2,7 @@
 
 > **Fonte operacional para agentes que trabalham pelo repositório.**
 >
-> **Última atualização deste arquivo:** 2026-10-08.
+> **Última atualização deste arquivo:** 2026-10-08. QA local via Go Task/VS Code versionado; homologação física adiada para pré-produção.
 >
 > **Regra obrigatória:** antes de iniciar trabalho, leia este checklist e o PRD/handoff ativo aplicável.
 >
@@ -79,6 +79,20 @@ FASE 10 Pós-produção — módulos congelados e expansões
 - [x] `quality/fase5-web-ready-20261005` congelada após squash.
 - [x] Artefatos gerados de Playwright/coverage/lint/tsbuildinfo não devem ser versionados.
 - [ ] Excluir fisicamente refs congeladas quando houver ferramenta/permissão disponível; até lá, não usá-las.
+
+## 0.3.2 QA local pelo VS Code / Go Task e homologação posterior — decisão 2026-10-08
+- [x] Adotar Go Task + VS Code como orquestrador de QA de desenvolvimento local, sem GitHub Actions hospedado. **Evidência:** `Taskfile.yml`, `.vscode/tasks.json`, `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`.
+- [x] Registrar evidências por execução e SHA, sem subir logs potencialmente sensíveis. **Evidência:** `scripts/qa/record.sh`, `.qa/` ignorado no Git.
+- [x] Disponibilizar comandos e VS Code Tasks para `doctor`, `setup`, `qa:check`, `qa:phase5`, `qa:pwa:smoke`, `qa:phase6`, `qa:phase7`, `qa:all` e `qa:act` opcional. **Evidência:** `Taskfile.yml` e `.vscode/tasks.json`.
+- [x] Decidir que homologações **físicas** (iOS/Android, GPS/câmera/QR real, conectividade rural, pilotagem operacional) **não bloqueiam o desenvolvimento de fases seguintes**. Permanecem `HOMOLOGAÇÃO REAL PENDENTE` até validação pré-produção.
+- [x] Decidir que testes locais automatizáveis de zero-loss offline, autorização, tenancy, segurança, idempotência, filas e upgrade PWA antiga→nova **não podem ser dispensados** para `DEV LOCAL READY`.
+- [x] Trabalho independente de fases subsequentes pode avançar paralelamente com QA pendente, sem marcar fases anteriores como concluídas.
+- [ ] `task doctor` executado com êxito no computador do executor e dependências essenciais verificadas.
+- [ ] `task setup` executado e browsers Playwright instalados localmente.
+- [ ] `task qa:phase5` executado e aprovado no HEAD atual, com relatório sanitizado.
+- [ ] `task qa:phase6` implementado e aprovado, incluindo upgrade legada→nova e preservação de IndexedDB/filas/blobs.
+- [ ] `task qa:phase7` implementado e aprovado, com migrations idempotentes e caos offline.
+- [ ] Plano de homologação física pré-produção executado e aprovado **antes da liberação a usuários reais**.
 
 ## 0.4 Definição de concluído para qualquer tarefa
 Uma tarefa só pode ser marcada como concluída quando, conforme aplicável:
@@ -903,7 +917,7 @@ Continuar desacoplamento de forma incremental:
 - [ ] Chromium + WebKit locais verdes.
 - [ ] QA LOCAL: APROVADO e relatório `docs/qa/phase6-pwa-local-report.md`.
 
-> Homologação física iOS/Android não é simulada: fica pendente para o gate pré-produção da FASE 9.
+> Homologação física iOS/Android não é simulada: fica pendente para o gate pré-produção da FASE 9. **HOMOLOGAÇÃO REAL PENDENTE não deve ser confundida com QA local aprovado ou impeditivo para começar desenvolvimento das fases seguintes.**
 
 ---
 
@@ -992,7 +1006,8 @@ Continuar desacoplamento de forma incremental:
 
 # FASE 8 — Banco remoto, staging e migração
 
-> **BLOQUEADA até Fases 0–7 estarem aprovadas.**
+> **BLOQUEADA para conexão/alteração remota até gates locais anteriores aprovados e autorização explícita.**
+> **Preparação local paralela permitida:** FASE 8 pode preparar schemas/migrations/adapters/dry-run com fixtures sem depender de aparelhos físicos; isso não libera ambiente remoto.
 > Qualquer conexão/alteração remota exige autorização explícita antes da execução.
 ## 8.1 Descoberta real do legado remoto
 - [ ] Inventariar schema remoto.
