@@ -32,34 +32,6 @@ async function notifyClientsAboutActivatedVersion() {
   }
 }
 
-async function moveClientsToActivatedBuild() {
-  // Esta navegação nasce no próprio worker NOVO, depois de clients.claim().
-  // Assim ela não depende do bundle/SW antigo entender mensagens novas.
-  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  await Promise.allSettled(
-    clientList.map(async (client) => {
-      try {
-        const url = new URL(client.url || '/', self.location.origin);
-        if (url.searchParams.get('__sw_build') === BUILD_VERSION) {
-          console.log('[SW update] cliente já está no build ativado', BUILD_VERSION);
-          return;
-        }
-        url.searchParams.delete('_update');
-        url.searchParams.delete('__sw_update');
-        url.searchParams.set('__sw_build', BUILD_VERSION);
-        url.searchParams.set('__v', Date.now().toString());
-        console.log('[SW update] SW novo forçando navegação do cliente', {
-          build: BUILD_VERSION,
-          url: url.toString(),
-        });
-        await client.navigate(url.toString());
-      } catch (error) {
-        console.warn('[SW update] SW novo não conseguiu navegar cliente', error);
-      }
-    }),
-  );
-}
-
 const HASHED_ASSET_PATTERN = /\/assets\/.+\.[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i;
 
 self.addEventListener('message', (event) => {
@@ -68,52 +40,62 @@ self.addEventListener('message', (event) => {
   }
 });
 
-async function precacheZxingAssets(cache) {
+// The install promise fails on missing critical assets. The existing worker then
+// stays active and no partial app shell can replace a working offline version.
+async function precacheAppShell() {
+  const shell = await caches.open(SHELL_CACHE);
+  const assets = await caches.open(CACHE_NAME);
   try {
-    const res = await fetch('/', { cache: 'no-store' });
-    if (!res.ok) return;
-    const html = await res.text();
-    const matches = html.match(/\/assets\/[^"'\s]+\.(?:js|wasm)/g) || [];
-    const zxing = matches.filter((p) => /zxing|qr|barcode/i.test(p));
-    await Promise.all(
-      zxing.map((path) =>
-        fetch(path)
-          .then((r) => (r && r.ok ? cache.put(path, r.clone()) : null))
-          .catch(() => null),
-      ),
-    );
-  } catch {
-    /* ignore — best-effort warmup */
+    const response = await fetch('/index.html', { cache: 'no-store' });
+    if (!response.ok) throw new Error('app-shell-unavailable');
+    const html = await response.clone().text();
+    const entries = [...html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+\.(?:js|css))["']/g)]
+      .map((match) => match[1]);
+    const critical = [...new Set(entries)];
+    if (!critical.some((asset) => asset.endsWith('.js'))) {
+      throw new Error('missing-entrypoint-js');
+    }
+    await Promise.all(critical.map(async (asset) => {
+      const result = await fetch(asset, { cache: 'no-store' });
+      if (!result.ok) throw new Error('critical-asset-unavailable: ' + asset);
+      await assets.put(asset, result.clone());
+    }));
+    await shell.put('/index.html', response.clone());
+    await shell.put('/', response.clone());
+  } catch (error) {
+    // Never leave a partial generation that future cleanup might trust.
+    await Promise.all([caches.delete(CACHE_NAME), caches.delete(SHELL_CACHE)]);
+    throw error;
   }
 }
 
+function knownGeneration(name) {
+  if (name.startsWith('consubov-shell-v-')) return name.slice('consubov-shell-'.length);
+  if (name.startsWith('consubov-v-')) return name.slice('consubov-'.length);
+  return null;
+}
+
 self.addEventListener('install', (event) => {
-  console.log('[SW] install', CACHE_VERSION);
-  self.skipWaiting();
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => precacheZxingAssets(cache))
-      .catch(() => undefined),
-  );
+  event.waitUntil(precacheAppShell());
+  // Do not call skipWaiting here. Updates require explicit user action.
+  // First install activates naturally when there is no previous controller.
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] activate', CACHE_VERSION);
-  const validCaches = new Set([CACHE_NAME, SHELL_CACHE]);
-  event.waitUntil(
-    (async () => {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => !validCaches.has(key)).map((key) => caches.delete(key)));
-      await self.clients.claim();
-      console.log('[SW update] novo worker assumiu os clientes', BUILD_VERSION);
-      await notifyClientsAboutActivatedVersion();
-      // Dá ao cliente antigo uma janela curta para reagir ao postMessage, mas
-      // garante a navegação mesmo se esse bundle estiver travado ou incompatível.
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      await moveClientsToActivatedBuild();
-    })(),
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const generations = [...new Set(keys.map(knownGeneration).filter(Boolean))];
+    const previous = generations.filter((value) => value !== CACHE_VERSION).at(-1);
+    const retained = new Set([CACHE_VERSION, previous].filter(Boolean));
+    await Promise.all(keys.filter((name) => {
+      const generation = knownGeneration(name);
+      return generation !== null && !retained.has(generation);
+    }).map((name) => caches.delete(name)));
+    // Do not touch unrelated caches or any IndexedDB/localStorage data.
+    await self.clients.claim();
+    await notifyClientsAboutActivatedVersion();
+    // A client decides whether it is safe to reload; never navigate it here.
+  })());
 });
 
 async function safeCacheMatch(request, cacheName) {
@@ -154,7 +136,7 @@ async function staleWhileRevalidate(request) {
 
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
+  const cached = await cache.match(request) || await safeCacheMatch(request);
   if (cached) return cached;
 
   try {
@@ -202,7 +184,9 @@ async function networkFirstWithFallback(request, fallbackUrl, timeoutMs = 2500) 
       setTimeout(() => reject(new Error('network-timeout')), timeoutMs),
     );
     const response = await Promise.race([networkPromise, timeoutPromise]);
-    if (response && response.status === 200) {
+    // The installed HTML is an atomic snapshot of its JS/CSS. Do not overwrite
+    // it with a newer HTML that may reference uncached assets from another build.
+    if (response && response.status === 200 && fallbackUrl !== '/index.html') {
       cache.put(fallbackUrl || request, response.clone()).catch(() => undefined);
     }
     return response;
@@ -306,7 +290,14 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const data = event.notification.data || {};
   const isUpdate = data.type === 'update' || event.notification.tag === 'consubov-update';
-  const targetUrl = data.url || '/';
+  // Push payloads are untrusted: never use them to navigate outside this PWA.
+  let targetUrl = `${self.location.origin}/`;
+  try {
+    const candidate = new URL(data.url || '/', self.location.origin);
+    if (candidate.origin === self.location.origin) targetUrl = candidate.toString();
+  } catch {
+    // Keep the safe same-origin fallback.
+  }
 
   event.waitUntil(
     (async () => {
@@ -323,36 +314,16 @@ self.addEventListener('notificationclick', (event) => {
         }
       };
 
-      if (isUpdate) {
-        const waitingWorker = self.registration.waiting;
-        if (waitingWorker) {
-          console.log('[SW update] worker waiting encontrado; enviando SKIP_WAITING');
-          waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-        } else {
-          // Isto é esperado quando o auto-update já ativou o worker antes de o
-          // usuário tocar na notificação. A navegação direta ainda atualiza o app.
-          console.log('[SW update] nenhum worker waiting; seguindo com navegação direta');
-        }
-      }
+      // The client checks critical operations before issuing SKIP_WAITING.
+      // Never activate a waiting worker directly from notificationclick.
 
       const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const client = clientList[0];
       if (client) {
         if (isUpdate) {
-          try {
-            console.log('[SW update] avisando cliente para preparar fallback');
-            client.postMessage({ type: 'CONSUBOV_APPLY_UPDATE', updateToken });
-          } catch (error) {
-            console.warn('[SW update] falha ao avisar cliente', error);
-          }
-
-          const directUrl = withUpdateToken(client.url || targetUrl);
-          console.log('[SW update] navegando cliente com cache-busting', directUrl);
-          try {
-            await client.navigate(directUrl);
-          } catch (error) {
-            console.warn('[SW update] client.navigate falhou; cliente fará fallback', error);
-          }
+          client.postMessage({ type: 'CONSUBOV_APPLY_UPDATE', updateToken });
+          // The client decides when it may reload. Navigating it here could
+          // interrupt a field operation before the critical-work guard runs.
         } else {
           await client.navigate(targetUrl).catch(() => undefined);
         }

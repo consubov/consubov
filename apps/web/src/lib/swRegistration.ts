@@ -186,6 +186,10 @@ function bindControllerChangeReload() {
  * ainda não estiver instalado, aguardamos a instalação antes do skipWaiting.
  */
 export async function applyPendingUpdateNow(updateToken?: string) {
+  if (hasCriticalOperations()) {
+    schedulePostDrainAction(() => void applyPendingUpdateNow(updateToken));
+    return;
+  }
   logSw("Iniciando aplicação explícita da atualização", updateToken ?? "sem token");
   userRequestedUpdate = true;
   if (!("serviceWorker" in navigator)) {
