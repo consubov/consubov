@@ -2,7 +2,7 @@
 
 **Data:** 2026-10-07  
 **Execução:** 100% local para desenvolvimento/QA; GitHub Actions não é dependência.  
-**Branch atual:** `quality/fase5-web-ready-20261005`  
+**Branch atual:** `work/fase5-6-7-pwa-local` (PR #43 draft)  
 **Direção:** PWA mobile-first; Capacitor/WebNative congelado.
 
 ## Missão
@@ -172,3 +172,25 @@ AÇÕES REMOTAS EXECUTADAS: NENHUMA
 
 ## HANDOFF
 Começar pela FASE 5. Fechar os gates locais das FASES 5 e 6 antes da implementação pesada da FASE 7. Fixtures/inventário/testes da migração podem ser preparados em paralelo. O risco P0 é substituir a PWA instalada sem perder trabalho offline de campo.
+
+## Adendo de execução 2026-10-08 — QA no VS Code, Go Task e avanço de fases
+
+**Objetivo:** concluir o desenvolvimento das FASES 5–9 com automação local, sem consumir GitHub Actions hospedado, sem bloquear fases posteriores por testes que exigem aparelhos físicos e sem ocultar falhas críticas. Referência técnica: `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`.
+
+**Escopo:** configurar/usar Taskfile, Git Bash/WSL quando necessário, Bun, Node, Playwright, Axe/Lighthouse, checks de segurança, act/Docker opcional e relatório JSON/log por commit. Corrigir os testes automatizáveis e compatibilidade da PWA antiga→nova; avançar trabalhos independentes em paralelo sem declarar QA falso. Planejar homologação física em piloto pré-produção.
+
+**Fora do escopo:** teste real no hardware sem dispositivo disponível; banco remoto, migrations reais, deploy, secrets, Vercel, lojas, rotação e limpeza de dados legados.
+
+**Critérios de aceite:** `[ ]` extensões VS Code verificadas; `[ ] task doctor`; `[ ] task setup`; `[ ] task qa:phase5`; `[ ] task qa:phase6` com suite implementada; `[ ] task qa:phase7` com suite implementada; `[ ]` preservação de dados em upgrade legacy→next por navegador real/local; `[ ]` arquivos `result.json`/logs por SHA; `[ ]` relatório independente; `[ ]` backlog homologação física registrado; `[ ]` Notion/checklist/handoff sincronizados. Registrar resultados apenas após execução.
+
+**Testes:** unit/contract, lint/typecheck/build, E2E Chromium/WebKit, Axe, Lighthouse com thresholds, API/Edge, scans, SW update, IndexedDB/filas/blobs/rollback/retry/tenant/auth, e `act` opcional. Nenhum teste inexistente pode retornar PASS.
+
+**Documentação/QA:** registrar outputs em `.qa/`, sumários sanitizados em `docs/qa/`, auditoria `qualidade-visionario` e estado DEV LOCAL READY versus HOMOLOGAÇÃO REAL PENDENTE; atualizar Checklist Mestre Notion/repo e handoff. Não declarar QA APROVADO com P0 automatizável aberto.
+
+**Git:** usar `work/fase5-6-7-pwa-local`, preservar status e trabalho de terceiros, commits pequenos, não fazer merge, force push, reset destrutivo, deploy ou operações externas sem autorização. Puxar atualização do branch antes de escrever em arquivos compartilhados.
+
+**Proibições:** falsificar QA, marcar `[x]` sem evidência, pular teste de integridade offline, remover dados, rodar ambientes remotos, usar secrets reais em act, instalar dependência de produção por conveniência.
+
+**Relatório final:** SHA/dirty, ferramentas e versões, tarefas executadas/exit codes, bugs/causas/fixes, evidências dos gates por fase, pendências físicas com roteiro, docs/checklist/notion atualizados, riscos P0 e ações externas executadas (esperado: nenhuma).
+
+**Regra de sequência:** somente o gate físico pode ficar pendente sem bloquear implementação posterior. Trabalhos independentes avançam; fases não são rotuladas `DEV LOCAL READY` com QA local reprovado. Conexões/deploy permanecem sob autorização própria.

@@ -10,6 +10,16 @@
 - Keep code small, explicit, testable, and organized by responsibility. Comments should explain domain decisions, constraints, and non-obvious reasons.
 - PRDs and handoffs are temporary. After acceptance, move durable knowledge to `docs/` and delete the completed files from `instructions/active/`.
 
+## QA local obrigatório (Go Task + VS Code)
+
+- Usar o `Taskfile.yml` no VS Code (extensão Task instalada) e `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md` como guia operacional; seguir os scripts efetivamente existentes, não inventar comandos.
+- O executor pode instalar ferramentas **locais** necessárias (Git Bash/Node/Bun, browsers Playwright, extensões VS Code; act/Docker são opcionais), verificando versões e sem tocar em produção.
+- Executar `task doctor`, `task setup` e os gates por fase; registrar `.qa/runs/**/result.json` + `output.log` e produzir relatório sanitizado por SHA em `docs/qa/`.
+- `qa:pwa:smoke` é parcial; scripts FASE 6/7 inexistentes devem falhar até sua implementação, sem sinal verde fictício.
+- Progredir na **implementação** com `DEV LOCAL READY` comprovado; pendência exclusiva de teste em aparelho real não bloqueia desenvolvimento posterior. Trabalho independente pode prosseguir mesmo com QA pendente, sem marcar fase como aprovada.
+- **HOMOLOGAÇÃO REAL PENDENTE** é requisito antes de liberar a nova PWA a usuários em produção; não substitui testes automatizados locais de dados, segurança, tenant e migração.
+- GitHub Actions hospedado não é dependência do QA local; `act` opcional roda somente em Docker local. Banco remoto, deploy, migrations e secrets permanecem condicionados à autorização explícita.
+
 ## Existing runtime rules
 
 - Keep the circular month picker isolated in `CircularMonthSelect`; only the Gerente GMD seasons block uses its infinite-scroll behavior.

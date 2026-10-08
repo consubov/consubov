@@ -16,6 +16,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/tasks.json
 .idea
 .DS_Store
 *.suo
@@ -32,3 +33,6 @@ apps/*/test-results
 
 # External repositories (não versionar clones/submodules acidentais)
 superpowers/
+
+# QA local: logs/artefatos potencialmente sensiveis nao devem ser commitados
+.qa/

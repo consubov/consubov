@@ -6,7 +6,7 @@
 ## Base
 - branch base: `main`
 - commit base: `bd9ad453424fa9ad220dca4f55626762a26b87f2`
-- branch de trabalho: `quality/fase5-web-ready-20261005`
+- branch de trabalho vigente: `work/fase5-6-7-pwa-local` (PR #43 draft; antiga `quality/fase5-web-ready-20261005` congelada)
 - autorização: pedido explícito do responsável em 2026-10-05 para executar toda a FASE 5.
 
 ## Objetivo
@@ -104,7 +104,7 @@ Resultado final permitido:
 Se reprovado: corrigir, repetir testes e repetir QA. Não declarar a FASE 5 concluída enquanto houver bloqueador material.
 
 ## Regras de Git
-- trabalhar em `quality/fase5-web-ready-20261005`;
+- trabalhar em `work/fase5-6-7-pwa-local` (PR #43; branch anterior congelada);
 - base `main@bd9ad453424fa9ad220dca4f55626762a26b87f2`;
 - sem `reset --hard`, force push ou reescrita destrutiva;
 - commits coerentes e pequenos;
@@ -129,3 +129,11 @@ Verificar alterações paralelas antes de sobrescrever arquivos compartilhados. 
 - Git/PR
 - próximo passo
 - HANDOFF: SIM/NÃO
+
+## Adendo 2026-10-08 — QA via VS Code / Go Task
+
+- Executar ferramentas localmente conforme `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`: `task doctor`, `task setup`, `task qa:phase5` e eventualmente `task qa:act` (opcional, sem CI remoto).
+- Registrar logs/JSON em `.qa/runs/` e relatório sanitizado em `docs/qa/` por commit/SHA. Correção de falha local exige nova execução.
+- Testes físicos iOS/Android e cenários de conectividade rural **não bloqueiam o trabalho de desenvolvimento seguinte**; registrar `HOMOLOGAÇÃO REAL PENDENTE` e validar antes da publicação a clientes. Não confundir teste emulado com homologação física.
+- E2E/axe/Lighthouse, cobertura, scans, tenant isolation e não perda de IndexedDB são gates automatizáveis **não dispensados**.
+- Sem merge, deploy, migrations remotas, secrets ou Vercel sem autorização explícita.

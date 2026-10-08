@@ -2,8 +2,8 @@
 
 > **Uso:** este arquivo deve ser usado como instrução principal do Projeto CONSUBOV no ChatGPT e como referência operacional para conversas técnicas, de produto, arquitetura, implementação, migração, qualidade e evolução da plataforma.
 >
-> **Versão:** 1.2  
-> **Atualização:** 2026-10-07  
+> **Versão:** 1.3  
+> **Atualização:** 2026-10-08  
 > **Status:** arquitetura revisada conforme decisões explícitas do projeto em 2026-10-01; pontos não confirmados permanecem marcados como `[PENDENTE]`.
 
 ---
@@ -1280,6 +1280,14 @@ Nunca afirmar que algo:
 sem evidência real.
 
 ---
+
+## 14.4 QA de desenvolvimento local e homologação física posterior
+
+`[DECIDIDO]` — A execução de testes de desenvolvimento é **local e reproduzível**, usando Go Task no VS Code como orquestrador. `act`/Docker são opcionais e não dependem de GitHub Actions hospedado. Cada gate registra commit SHA, logs, código de saída e relatório sanitizado. Consulte `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`.
+
+Os testes que exigem **aparelho físico, cenário rural ou piloto operacional real** não bloqueiam a **implementação** de fases seguintes. Registrar `HOMOLOGAÇÃO REAL PENDENTE` sem marcar como concluído. Os testes automatizáveis de segurança, tenant, integridade offline, migração zero-loss, idempotência e atualização da PWA antiga permanecem obrigatórios antes de `DEV LOCAL READY`. Não usar emulador como prova de teste físico. Antes da liberação a usuários reais na produção, homologar aparelhos/fluxos críticos em piloto controlado, backup/rollback e smoke pós-implantação.
+
+Avançar na implementação não autoriza **conexão de banco remoto, migration remota, Vercel, deploy, secrets ou release**; cada ação externa exige autorização explícita.
 
 # 15. Observabilidade e operação
 
