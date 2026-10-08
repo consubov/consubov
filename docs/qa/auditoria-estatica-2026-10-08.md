@@ -35,3 +35,7 @@
 Não usar GitHub Actions, não fundir PR, não aprovar QA, não alterar produção, Supabase/PostgreSQL remoto, migrations remotas, secrets, Vercel nem limpeza de dados offline.
 
 **Status final desta auditoria: QA PENDENTE/REPROVADO PARA FECHAMENTO.** O trabalho de implementação pode continuar na branch ativa, com validação local antes de qualquer merge.
+
+## Evidência adicional — execução Node isolada
+
+Em ambiente temporário isolado, copiados `apps/web/public/sw.js` e `apps/web/tests/sw-integrity.test.cjs` da revisão inspecionada; executado `node --test apps/web/tests/sw-integrity.test.cjs` com Node 22. Resultado: **7 testes passaram, 0 falharam** (instalação atômica de JS/CSS, rollback ao falhar asset, duas gerações, navegação offline, SKIP_WAITING explícito, notificação sem navegação forçada, rejeição de URL externa). Esta execução não contempla bundle React, browser real, migração IndexedDB, E2E nem os gates completos e não aprova a FASE 6.
