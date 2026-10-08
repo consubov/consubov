@@ -1,0 +1,3 @@
+$ eslint .
+bun: command not found: eslint
+error: script "lint:baseline" exited with code 1
