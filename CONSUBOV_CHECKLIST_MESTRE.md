@@ -2,7 +2,7 @@
 
 > **Fonte operacional para agentes que trabalham pelo repositório.**
 >
-> **Última atualização deste arquivo:** 2026-10-06.
+> **Última atualização deste arquivo:** 2026-10-08.
 >
 > **Regra obrigatória:** antes de iniciar trabalho, leia este checklist e o PRD/handoff ativo aplicável.
 >
@@ -20,7 +20,7 @@
 
 > **Versão:** 1.0
 > **Data:** 2026-10-01
-> **Objetivo:** transformar o estado atual do CONSUBOV em uma plataforma própria, modular, segura, governável, extensível e preparada para Web → App → Offline → Integração remota → Produção.
+> **Objetivo:** transformar o estado atual do CONSUBOV em uma plataforma própria, modular, segura, governável, extensível e preparada para Web → PWA → Offline PWA → Integração remota → Produção.
 > **Uso:** executar em ordem. Marcar `- [x]` somente quando houver evidência objetiva de conclusão.
 ---
 # 0. Regras deste checklist
@@ -45,9 +45,9 @@ Estas decisões substituem baselines antigos conflitantes:
 - [x] OpenAPI/Swagger faz parte da arquitetura desde agora.
 - [x] API deve prever uso interno e futuro uso por terceiros.
 - [x] Arquitetura deve prever integrações futuras sem implementá-las antecipadamente.
-- [x] Offline será consolidado **depois da Web e do empacotamento do App**, mas precisa influenciar contratos e modelo de dados desde agora.
-- [x] O App será baseado no Web atual empacotado por uma solução WebNative/wrapper nativo a confirmar na fase própria.
-- [x] SQLite é o alvo preferencial para persistência local do App, sujeito à validação da tecnologia de empacotamento escolhida.
+- [x] Offline será consolidado sobre a **PWA** depois do gate Web/PWA, influenciando contratos e modelo de dados desde agora.
+- [x] O caminho mobile ativo é **PWA mobile-first** sobre a Web React/Vite; Capacitor/WebNative fica congelado até pós-produção.
+- [x] **IndexedDB** é a persistência local vigente da PWA atrás de `LocalDatabase`; SQLite fica reservado a eventual wrapper futuro.
 - [x] GPS e QR devem funcionar localmente/offline quando tecnicamente aplicável.
 - [x] Supabase/PostgreSQL remoto: **não conectar a nova arquitetura agora**.
 - [x] Vercel/deploy: **não configurar agora**.
@@ -62,13 +62,24 @@ FASE 2  Arquitetura extensível e contratos
 FASE 3  Fundação da Web/API sem banco remoto
 FASE 4  Web — paridade funcional e organização por domínio
 FASE 5  Web — qualidade, segurança e aceite
-FASE 6  App — empacotamento e bridge nativa
-FASE 7  Offline — SQLite + Sync Engine
+FASE 6  PWA — mobile-first, update in-place e capabilities Web
+FASE 7  Offline — IndexedDB + Sync Engine
 FASE 8  Integração remota — banco/storage/staging
 FASE 9  Deploy, produção e operação
 FASE 10 Pós-produção — módulos congelados e expansões
 ```
 > **Regra:** não iniciar uma fase seguinte enquanto houver P0 aberto da fase anterior, salvo decisão explícita documentada.
+## 0.3.1 Governança Git vigente — 2026-10-08
+- [x] Branch de trabalho única: `work/fase5-6-7-pwa-local`.
+- [x] PR ativo único: #43, draft, contra `main`.
+- [x] PR #37 encerrado e substituído por #43.
+- [x] PRs Dependabot #38–#42 encerrados sem merge.
+- [x] Trabalho FASE 5/PWA consolidado em commit único `799d4ff1` sobre a `main` limpa.
+- [x] `feature/phase6-app-shell` congelada por conflito com a decisão PWA-first.
+- [x] `quality/fase5-web-ready-20261005` congelada após squash.
+- [x] Artefatos gerados de Playwright/coverage/lint/tsbuildinfo não devem ser versionados.
+- [ ] Excluir fisicamente refs congeladas quando houver ferramenta/permissão disponível; até lá, não usá-las.
+
 ## 0.4 Definição de concluído para qualquer tarefa
 Uma tarefa só pode ser marcada como concluída quando, conforme aplicável:
 - [ ] comportamento esperado está definido;
@@ -91,8 +102,8 @@ Uma tarefa só pode ser marcada como concluída quando, conforme aplicável:
 - [x] Remover Filament/Livewire como backoffice vigente e registrar React atual como decisão.
 - [x] Manter PostgreSQL como direção de persistência, sem conectar ambiente remoto ainda.
 - [x] Registrar monólito modular como arquitetura alvo atual.
-- [x] Registrar Web → App empacotado → Offline como sequência de entrega.
-- [x] Registrar que offline influencia contratos desde agora, mas seu motor final será implementado depois do App.
+- [x] Registrar Web → PWA → Offline PWA como sequência de entrega vigente.
+- [x] Registrar que offline influencia contratos desde agora e seu motor final será consolidado sobre a PWA.
 - [x] Registrar que Supabase remoto e Vercel permanecem bloqueados até o gate definido neste checklist.
 - [x] Registrar API interna + API pública futura como superfícies previstas.
 - [x] Registrar OpenAPI/Swagger como contrato obrigatório da API.
@@ -699,9 +710,9 @@ Continuar desacoplamento de forma incremental:
 
 # FASE 5 — P0/P1 — Gate de qualidade da Web
 
-**Status 2026-10-06: EM ANDAMENTO — PR #37 segue draft.** Branch ativa: `quality/fase5-web-ready-20261005`, sincronizada com a `main`, HEAD `7484bcd65e15dd5c5c9230aab68ac46e7203c222`. O coverage representativo foi medido e versionado (`scripts/web-coverage-baseline.json`: 404 arquivos-fonte instrumentados, 34 arquivos de teste, 129 testes; 4,45% statements / 2,66% branches / 3,17% functions / 5,01% lines) e o gate progressivo/ratchet foi configurado. E2E, axe/Lighthouse e scans finais ainda precisam de execução válida do HEAD atual. Os quatro checks do PR continuam falhando em ~2–3 segundos antes de qualquer step/log executável, mantendo o diagnóstico de bloqueio anterior ao código. **WEB READY LOCAL continua aberto até execução final do gate local. QA remoto do GitHub não é dependência do fechamento de desenvolvimento.** Nenhuma conexão remota, migration, Vercel/deploy ou ação de produção foi executada.
+**Status 2026-10-08: EM ANDAMENTO — PR #43 segue draft.** Branch ativa única de trabalho: `work/fase5-6-7-pwa-local`, HEAD consolidado `799d4ff10a257e202ec16cbddbf3d6a86b041758`. O coverage representativo foi medido e versionado (`scripts/web-coverage-baseline.json`: 404 arquivos-fonte instrumentados, 34 arquivos de teste, 129 testes; 4,45% statements / 2,66% branches / 3,17% functions / 5,01% lines) e o gate progressivo/ratchet foi configurado. E2E, axe/Lighthouse e scans finais ainda precisam de execução válida do HEAD atual. Os quatro checks do PR continuam falhando em ~2–3 segundos antes de qualquer step/log executável, mantendo o diagnóstico de bloqueio anterior ao código. **WEB READY LOCAL continua aberto até execução final do gate local. QA remoto do GitHub não é dependência do fechamento de desenvolvimento.** Nenhuma conexão remota, migration, Vercel/deploy ou ação de produção foi executada.
 
-> **Higiene do repositório:** somente `quality/fase5-web-ready-20261005` é branch de trabalho ativa. `fix/pre-phase3-gates-20261003` e `refactor/monorepo` são referências antigas/supersedidas e não devem receber trabalho novo; estão pendentes apenas de exclusão física.
+> **Higiene do repositório — 2026-10-08:** somente `work/fase5-6-7-pwa-local` recebe trabalho novo. `quality/fase5-web-ready-20261005` e `feature/phase6-app-shell` são referências congeladas/supersedidas; não mergear nem desenvolver nelas. PRs Dependabot #38–#42 foram fechados e ficam adiados até estabilizar o gate atual. PR #37 foi fechado e substituído pelo PR #43.
 ## 5.1 Testes unitários e de contrato
 - [x] Consolidar baseline atual de testes. **Evidência:** API 532/532; Web 111/111 no CI da FASE 5.
 - [ ] Todo bug corrigido recebe regressão quando aplicável.

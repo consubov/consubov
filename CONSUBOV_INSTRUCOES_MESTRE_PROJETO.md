@@ -1242,7 +1242,7 @@ Cobrir quando aplicável:
 
 ## 14.2 App e capacidades nativas
 
-Homologar nos sistemas suportados pela tecnologia de empacotamento adotada.
+Homologar a PWA nos navegadores/plataformas suportados; validação física iOS/Android permanece obrigatória antes da produção.
 
 Cobrir:
 
@@ -1252,8 +1252,8 @@ Cobrir:
 - câmera;
 - QR;
 - GPS;
-- SQLite;
-- secure storage;
+- IndexedDB;
+- armazenamento seguro quando suportado pela Web Platform;
 - interrupção do app;
 - retorno de background/resume;
 - perda de rede;
@@ -1263,7 +1263,7 @@ Cobrir:
 
 `[PENDENTE]`
 
-Definir versões/plataformas oficiais suportadas após escolha do wrapper nativo.
+Definir versões oficiais suportadas de iOS/Safari e Android/Chrome após homologação física pré-produção.
 
 
 ## 14.3 Critério de evidência
@@ -1736,17 +1736,14 @@ Somente o que ainda precisa de decisão.
 - acessibilidade;
 - gate Web Ready.
 
-## Fase 3 — App empacotado
+## Fase 3 — PWA mobile-first
 
-- escolher tecnologia de wrapper;
-- reaproveitar Web React;
-- native bridge;
-- SQLite;
-- câmera;
-- QR;
-- GPS;
-- secure storage;
-- gate App Shell Ready.
+- reaproveitar Web React/Vite;
+- manifest/service worker/update in-place;
+- IndexedDB atrás de `LocalDatabase`;
+- câmera, QR e GPS via Web APIs com capability detection/fallback;
+- offline shell e preservação de dados locais;
+- gate PWA LOCAL READY.
 
 ## Fase 4 — Offline-first definitivo
 
@@ -1812,8 +1809,8 @@ Não considerar resolvido sem evidência posterior:
 - `[PENDENTE]` políticas de conflito por agregado;
 - `[PENDENTE]` fórmulas de consumo e limites;
 - `[PENDENTE]` modelos/protocolos de balança;
-- `[PENDENTE]` tecnologia final de empacotamento/WebNative/wrapper;
-- `[PENDENTE]` plataformas/versões oficiais do App;
+- `[PENDENTE]` versões oficiais de iOS/Safari e Android/Chrome suportadas em produção;
+- `[PENDENTE]` necessidade futura de wrapper/Capacitor pós-produção, somente se houver caso comprovado;
 - `[PENDENTE]` duração e política de sessão offline;
 - `[PENDENTE]` papel final do Supabase na infraestrutura remota;
 - `[PENDENTE]` provider final de storage/realtime/observabilidade;
@@ -2126,17 +2123,17 @@ não conectar a nova arquitetura ao Supabase/PostgreSQL remoto nem ao Vercel ant
 API:
 versionada em /api/v1, OpenAPI/Swagger obrigatório, preparada para Web, App, Sync e API pública futura.
 
-APP:
-reaproveitar/empacotar a Web React; tecnologia final do wrapper ainda pendente.
+PWA DE CAMPO:
+React/Vite mobile-first, instalada quando suportado, com update in-place e operação offline.
 
-PERSISTÊNCIA LOCAL APP:
-SQLite como alvo atual.
+PERSISTÊNCIA LOCAL PWA:
+IndexedDB atrás de `LocalDatabase`.
 
-CAPACIDADES NATIVAS:
-GPS, QR, câmera, arquivos e secure storage atrás de interfaces.
+CAPACIDADES DO DISPOSITIVO:
+GPS, QR, câmera, arquivos e demais Web APIs atrás de interfaces/capability detection.
 
 ORDEM:
-Web → App → Offline → infraestrutura remota/staging → produção.
+Web → PWA → Offline PWA → infraestrutura remota/staging → produção.
 
 EXTENSIBILIDADE:
 integrações futuras via adapters; prever eventos/webhooks/API pública sem implementar infraestrutura hipotética.
