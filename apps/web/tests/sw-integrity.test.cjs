@@ -7,13 +7,14 @@ const vm = require('node:vm');
 const workerPath = path.resolve(__dirname, '../public/sw.js');
 const html = '<!doctype html><html><head><link rel="stylesheet" href="/assets/app.12345678.css"></head><body><script type="module" src="/assets/app.12345678.js"></script></body></html>';
 
-function fixture({ assetsAvailable = true } = {}) {
+function fixture({ assetsAvailable = true, deniedAsset = null, precacheAssets = [] } = {}) {
   const stores = new Map();
   const listeners = new Map();
   const navigations = [];
   const messages = [];
   const state = { skipped: 0, claimed: 0, storageTouched: 0 };
   let offline = false;
+  let networkHtml = html;
 
   const keyOf = (input) => {
     const raw = typeof input === 'string' ? input : input.url;
@@ -42,9 +43,9 @@ function fixture({ assetsAvailable = true } = {}) {
   const responseFor = async (request) => {
     if (offline) throw new Error('offline');
     const url = keyOf(request);
-    if (url === '/' || url === '/index.html') return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
-    if (url.endsWith('.js') || url.endsWith('.css')) {
-      if (!assetsAvailable) return new Response('not found', { status: 404 });
+    if (url === '/' || url === '/index.html') return new Response(networkHtml, { status: 200, headers: { 'Content-Type': 'text/html' } });
+    if (/\.(?:js|css|woff2)$/.test(url)) {
+      if (!assetsAvailable || url === deniedAsset) return new Response('not found', { status: 404 });
       return new Response('asset:' + url, { status: 200 });
     }
     return new Response('not found', { status: 404 });
@@ -69,7 +70,8 @@ function fixture({ assetsAvailable = true } = {}) {
     indexedDB: { deleteDatabase() { state.storageTouched++; } },
     localStorage: { clear() { state.storageTouched++; } },
   };
-  vm.runInNewContext(fs.readFileSync(workerPath, 'utf8'), context, { filename: workerPath });
+  const source = fs.readFileSync(workerPath, 'utf8').replace("'__PRECACHE_ASSETS__'", JSON.stringify(precacheAssets));
+  vm.runInNewContext(source, context, { filename: workerPath });
   async function dispatch(type, extra = {}) {
     const promises = [];
     let fetchResponse;
@@ -84,7 +86,7 @@ function fixture({ assetsAvailable = true } = {}) {
     await Promise.all(promises);
     return fetchResponse ? await fetchResponse : undefined;
   }
-  return { state, stores, caches, dispatch, navigations, messages, setOffline(value) { offline = value; } };
+  return { state, stores, caches, dispatch, navigations, messages, setOffline(value) { offline = value; }, setNetworkHtml(value) { networkHtml = value; } };
 }
 
 test('install caches critical HTML and JS/CSS before the new worker is usable', async () => {
@@ -161,4 +163,34 @@ test('push notification cannot navigate a client to another origin', async () =>
   });
   assert.equal(h.navigations.length, 1);
   assert.equal(h.navigations[0], 'https://consubov.test/');
+});
+
+test('online navigation stays pinned to installed shell until explicit update', async () => {
+  const h = fixture();
+  await h.dispatch('install');
+  const newHtml = html.replaceAll('12345678', 'abcdef123');
+  h.setNetworkHtml(newHtml);
+  const response = await h.dispatch('fetch', {
+    request: { url: 'https://consubov.test/pesagem', method: 'GET', mode: 'navigate' },
+  });
+  assert.equal(await response.text(), html, 'old SW exposed new HTML before user consent');
+});
+
+test('installation includes lazily loaded route bundles declared by build', async () => {
+  const h = fixture({ precacheAssets: ['/assets/lazy.abcdef123.js', '/assets/fonts.abcdef123.woff2'] });
+  await h.dispatch('install');
+  const names = await h.caches.keys();
+  const assets = await h.caches.open(names.find((name) => name.startsWith('consubov-v-')));
+  assert.ok(await assets.match('/assets/lazy.abcdef123.js'));
+  assert.ok(await assets.match('/assets/fonts.abcdef123.woff2'));
+});
+
+test('missing lazy bundle fails update atomically, preserving old cached data', async () => {
+  const h = fixture({ precacheAssets: ['/assets/lazy.abcdef123.js'], deniedAsset: '/assets/lazy.abcdef123.js' });
+  await h.caches.open('consubov-shell-v-previous');
+  await assert.rejects(h.dispatch('install'));
+  const keys = await h.caches.keys();
+  assert.ok(keys.includes('consubov-shell-v-previous'));
+  assert.ok(!keys.some((name) => name.includes('__BUILD_TIMESTAMP__')));
+  assert.equal(h.state.storageTouched, 0);
 });

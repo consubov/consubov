@@ -4,6 +4,8 @@ const BUILD_VERSION = '__BUILD_TIMESTAMP__';
 const CACHE_VERSION = `v-${BUILD_VERSION}`;
 const CACHE_NAME = `consubov-${CACHE_VERSION}`;
 const SHELL_CACHE = `consubov-shell-${CACHE_VERSION}`;
+// Vite injects all build assets; the source placeholder keeps dev/tests valid.
+const PRECACHE_ASSETS = '__PRECACHE_ASSETS__';
 const SW_VERSION_RESPONSE = new Response(CACHE_VERSION, {
   headers: {
     'Content-Type': 'text/plain; charset=utf-8',
@@ -51,8 +53,9 @@ async function precacheAppShell() {
     const html = await response.clone().text();
     const entries = [...html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+\.(?:js|css))["']/g)]
       .map((match) => match[1]);
-    const critical = [...new Set(entries)];
-    if (!critical.some((asset) => asset.endsWith('.js'))) {
+    const bundledAssets = Array.isArray(PRECACHE_ASSETS) ? PRECACHE_ASSETS : [];
+    const critical = [...new Set([...entries, ...bundledAssets])];
+    if (!entries.some((asset) => asset.endsWith('.js'))) {
       throw new Error('missing-entrypoint-js');
     }
     await Promise.all(critical.map(async (asset) => {
@@ -164,6 +167,14 @@ async function networkFirst(request, fallbackUrl) {
   }
 }
 
+// Keep the installed HTML bound to its fully precached JS/CSS generation.
+// Serving network HTML under the old controller would mix builds before consent.
+async function pinnedShellNavigation(request) {
+  const installed = await safeCacheMatch('/index.html', SHELL_CACHE);
+  if (installed) return installed;
+  return networkFirstWithFallback(request, '/index.html');
+}
+
 async function networkOnlyNoStore(request) {
   try {
     return await fetch(request, { cache: 'no-store' });
@@ -232,7 +243,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
-    event.respondWith(networkFirstWithFallback(request, '/index.html'));
+    event.respondWith(pinnedShellNavigation(request));
     return;
   }
 

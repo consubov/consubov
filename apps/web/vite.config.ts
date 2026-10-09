@@ -23,8 +23,34 @@ function injectSwBuildTimestamp(): Plugin {
     closeBundle() {
       const swPath = path.resolve(__dirname, "dist/sw.js");
       if (!fs.existsSync(swPath)) return;
+      // Route-level lazy chunks must also be present before offline update.
+      // All built assets are included instead of guessing import graphs.
+      const assetRoot = path.resolve(__dirname, "dist/assets");
+      const builtAssets: string[] = [];
+      const visitAssets = (directory: string, relative = "") => {
+        if (!fs.existsSync(directory)) return;
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+          const rel = relative ? relative + "/" + entry.name : entry.name;
+          if (entry.isDirectory()) visitAssets(path.join(directory, entry.name), rel);
+          else if (entry.isFile() && /\.(?:js|css|woff2?|ttf|otf|png|jpe?g|webp|svg|gif|wasm)$/i.test(rel)) {
+            builtAssets.push("/assets/" + rel);
+          }
+        }
+      };
+      visitAssets(assetRoot);
+      builtAssets.sort();
+      if (!builtAssets.some((name) => name.endsWith(".js"))) {
+        throw new Error("PWA offline build without JavaScript assets");
+      }
       const content = fs.readFileSync(swPath, "utf-8");
-      fs.writeFileSync(swPath, content.replace(/__BUILD_TIMESTAMP__/g, buildTimestamp));
+      if (!content.includes("'__PRECACHE_ASSETS__'")) {
+        throw new Error("PWA precache placeholder missing from service worker");
+      }
+      fs.writeFileSync(
+        swPath,
+        content.replace(/'__PRECACHE_ASSETS__'/g, JSON.stringify(builtAssets))
+          .replace(/__BUILD_TIMESTAMP__/g, buildTimestamp),
+      );
 
       fs.writeFileSync(
         path.resolve(__dirname, "dist/version.json"),
