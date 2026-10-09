@@ -34,6 +34,10 @@ tasks:
     desc: Full local FASE 6 gate; fails until implemented
     cmds: [bash scripts/qa/record.sh phase6 bash scripts/qa/run-package-script.sh quality:phase6:local]
 
+  qa:offline:inventory:
+    desc: Read-only Phase 7 legacy IndexedDB inventory tests (not OFFLINE READY)
+    cmds: [bash scripts/qa/record.sh offline-inventory node --test apps/web/tests/legacy-offline-inventory.test.cjs]
+
   qa:phase7:
     desc: Full local FASE 7 gate; fails until implemented
     cmds: [bash scripts/qa/record.sh phase7 bash scripts/qa/run-package-script.sh quality:phase7:local]
