@@ -47,3 +47,8 @@ test('invalid owner, identifiers or missing payload are rejected',()=>{
   assert.throws(()=>makePendingCommand({...input(),payload:undefined}));
   assert.throws(()=>assertCommandOwner(makePendingCommand(input()),{tenantId:owner.tenantId,userId:'someone-else'}));
 });
+
+test('an inflight command cannot be dispatched concurrently as another attempt',()=>{
+  const sent=beginCommandAttempt(makePendingCommand(input()),owner);
+  assert.throws(()=>beginCommandAttempt(sent,owner));
+});

@@ -40,7 +40,7 @@ export function assertCommandOwner(command: LocalCommand, owner: CommandOwner): 
 
 export function beginCommandAttempt<T>(command: LocalCommand<T>, owner: CommandOwner): LocalCommand<T> {
   assertCommandOwner(command, owner);
-  if (command.status !== "pending" && command.status !== "inflight") {
+  if (command.status !== "pending") {
     throw new Error("command is not retryable without explicit resolution");
   }
   return { ...command, status: "inflight", attemptCount: command.attemptCount + 1 };
