@@ -6,8 +6,25 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const dir = process.env.PWA_BUILD_DIR || path.join(root, 'apps/web/dist');
 function fail(message) { console.error('[pwa:build] FAIL', message); process.exitCode = 1; }
-function read(name) { try { return fs.readFileSync(path.join(dir, name), 'utf8'); } catch { fail('Missing file: ' + name); return null; } }
-function json(name) { const s=read(name); if(!s)return null; try{return JSON.parse(s)}catch {fail('Invalid JSON: '+name);return null;} }
+function read(name) {
+  try {
+    const value = fs.readFileSync(path.join(dir, name), 'utf8');
+    if (!value.trim()) { fail('Empty file: ' + name); return null; }
+    return value;
+  } catch { fail('Missing file: ' + name); return null; }
+}
+function json(name) {
+  const source = read(name);
+  if (source === null) return null;
+  try {
+    const value = JSON.parse(source);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      fail('Expected JSON object: ' + name);
+      return null;
+    }
+    return value;
+  } catch { fail('Invalid JSON: ' + name); return null; }
+}
 const sw = read('sw.js');
 const index = read('index.html');
 const manifest = json('manifest.json');
@@ -18,8 +35,10 @@ if (manifest && !(manifest.id === '/' && manifest.scope === '/' && manifest.star
 if (version && (typeof version.version !== 'string' || !version.version.trim())) fail('Missing build version');
 if (sw) {
   if (sw.includes('__BUILD_TIMESTAMP__') || sw.includes('__PRECACHE_ASSETS__')) fail('SW build placeholders not injected');
-  if (version && !sw.includes('v-' + version.version)) {
-    if (!sw.includes("'" + version.version + "'")) fail('SW version differs from version.json');
+  // Match the emitted declaration, not a coincidental string in a comment.
+  const declarations = [...sw.matchAll(/^const BUILD_VERSION\s*=\s*(['"])([^'"\r\n]+)\1;/gm)];
+  if (declarations.length !== 1 || (version && declarations[0][2] !== version.version)) {
+    fail('SW build declaration missing, ambiguous or different from version.json');
   }
   const match = sw.match(/const PRECACHE_ASSETS\s*=\s*(\[[^;]+\]);/);
   if (!match) fail('Missing injected precache manifest');

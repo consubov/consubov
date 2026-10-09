@@ -263,7 +263,15 @@ function notifyWaiting(registration: ServiceWorkerRegistration) {
 
 async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
   const worker = registration.waiting;
-  if (!worker || activationRequested.has(worker)) return false;
+  if (!worker || !userRequestedUpdate || activationRequested.has(worker)) return false;
+  // A field operation can start while update()/getRegistration() is awaiting.
+  // Recheck at the side-effect boundary, not just when the button was clicked.
+  if (hasCriticalOperations()) {
+    schedulePostDrainAction(() => {
+      if (userRequestedUpdate) void activateWaitingServiceWorker(registration);
+    });
+    return false;
+  }
   activationRequested.add(worker);
   logSw("Aplicando atualização (SKIP_WAITING)");
   worker.postMessage({ type: "SKIP_WAITING" });
@@ -524,7 +532,13 @@ export function useSWUpdate() {
       }
     }
     // Normal navigation is safely pinned by the existing worker while offline.
-    reloadWhenAuthIdle(() => window.location.reload());
+    reloadWhenAuthIdle(() => {
+      if (hasCriticalOperations()) {
+        schedulePostDrainAction(() => void forceRefresh());
+        return;
+      }
+      window.location.reload();
+    });
   }, []);
 
   return { updateAvailable, applyUpdate, forceRefresh };

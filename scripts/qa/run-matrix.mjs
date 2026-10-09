@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -22,12 +23,33 @@ if (selected.length === 0 || selected.some(name => !available.includes(name)) ||
   process.exit(2);
 }
 
-let sha = 'no-git';
-let dirty = true;
-try {
-  sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().length > 0;
-} catch { /* no local Git checkout; report as dirty and keep executing tests */ }
+function sourceState() {
+  const git = (args) => execFileSync('git', args, {
+    cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 16 * 1024 * 1024,
+  });
+  try {
+    const commit = git(['rev-parse', 'HEAD']).trim();
+    const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+    const status = git(['status', '--porcelain', '-z']);
+    const hash = createHash('sha256');
+    hash.update(commit).update(status).update(git(['diff', '--binary', 'HEAD', '--']));
+    // Hash untracked sources too, but never inspect ignored logs or .env files.
+    for (const name of git(['ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean).sort()) {
+      const file = path.join(repoRoot, name);
+      hash.update(name).update('\0');
+      hash.update(fs.lstatSync(file).isSymbolicLink() ? fs.readlinkSync(file) : fs.readFileSync(file));
+      hash.update('\0');
+    }
+    return { commit, branch, workingTreeDirty: status.length > 0, fingerprint: hash.digest('hex') };
+  } catch {
+    return { commit: 'no-git', branch: null, workingTreeDirty: true, fingerprint: null };
+  }
+}
+const initialSource = sourceState();
+const sha = initialSource.commit;
+let dirty = initialSource.workingTreeDirty;
+let sourceUnchanged = initialSource.fingerprint !== null;
+let finalSource = initialSource;
 const now = new Date();
 const runId = now.toISOString().replace(/[-:.]/g, '').replace('T', 'T').slice(0, 15) + '-' + process.pid;
 const runDir = path.join(repoRoot, '.qa', 'matrix', runId);
@@ -39,16 +61,21 @@ for (const name of selected) {
   const startedAt = new Date().toISOString();
   console.log('[qa:matrix] START', name);
   const result = spawnSync(executable, simulated ? [process.env.QA_MATRIX_TEST_EXECUTABLE, name] : [name], { cwd: repoRoot, stdio: 'inherit', env: process.env });
+  finalSource = sourceState();
+  dirty ||= finalSource.workingTreeDirty;
+  const unchanged = finalSource.fingerprint !== null && finalSource.fingerprint === initialSource.fingerprint;
+  sourceUnchanged &&= unchanged;
   const exitCode = result.status ?? 2;
   const status = exitCode === 0 && !result.error && !result.signal ? 'PASS' : 'FAIL';
-  records.push({ task: name, status, exitCode, startedAt, finishedAt: new Date().toISOString(), error: result.error?.code ?? result.signal ?? null });
+  records.push({ task: name, status, exitCode, startedAt, finishedAt: new Date().toISOString(), error: result.error?.code ?? result.signal ?? null, sourceCommitAfter: finalSource.commit, sourceUnchanged: unchanged });
   console.log('[qa:matrix]', status, name, 'exit=' + exitCode);
 }
 const summary = {
   kind: 'local-qa-matrix', startedAt: now.toISOString(), finishedAt: new Date().toISOString(),
-  branch: process.env.GIT_BRANCH ?? null, commit: sha, workingTreeDirty: dirty,
+  branch: initialSource.branch, commit: sha, workingTreeDirty: dirty,
+  sourceUnchanged, sourceFingerprint: initialSource.fingerprint, finalCommit: finalSource.commit,
   operatingSystem: os.platform(), node: process.version, simulated,
-  status: records.every(item => item.status === 'PASS') ? 'PASS' : 'FAIL',
+  status: sourceUnchanged && records.every(item => item.status === 'PASS') ? 'PASS' : 'FAIL',
   results: records,
 };
 const reportPath = path.join(runDir, 'result.json');
@@ -57,6 +84,7 @@ const markdown = [
   '# Local QA Matrix', '',
   '- Commit: ' + sha,
   '- Dirty: ' + dirty,
+  '- Source unchanged during run: ' + sourceUnchanged,
   '- Status: **' + summary.status + '**', '',
   '| Task | Status | Exit |', '| --- | --- | --- |',
   ...records.map(item => '| ' + item.task + ' | ' + item.status + ' | ' + item.exitCode + ' |'), '',

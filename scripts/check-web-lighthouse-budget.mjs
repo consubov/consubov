@@ -13,7 +13,9 @@ if (!outputDir || !fs.existsSync(outputDir)) {
   let budget;
   try { budget = JSON.parse(fs.readFileSync(budgetPath, 'utf8')); }
   catch { fail('Missing or invalid budget JSON: ' + budgetPath); }
-  if (budget) {
+  if (budget === null || typeof budget !== 'object' || Array.isArray(budget)) {
+    fail('Budget must be a non-null JSON object with an approved measured baseline.');
+  } else {
     if (budget.status !== 'APPROVED_BASELINE' || !/^[a-f0-9]{40}$/i.test(budget.baselineCommit ?? '')) {
       fail('Measured and approved local baseline required; do not invent thresholds.');
     } else {

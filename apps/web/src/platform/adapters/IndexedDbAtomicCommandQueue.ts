@@ -87,8 +87,17 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
           const db = req.result;
           try {
             const tx = db.transaction(STORE, "readonly");
-            if (!tx.objectStore(STORE).indexNames.contains(BY_OWNER_STATUS) ||
-                !tx.objectStore(STORE).indexNames.contains(BY_IDEMPOTENCY)) {
+            const records = tx.objectStore(STORE);
+            if (records.keyPath !== "key" || records.autoIncrement ||
+                !records.indexNames.contains(BY_OWNER_STATUS) ||
+                !records.indexNames.contains(BY_IDEMPOTENCY)) {
+              throw new Error("incompatible local command queue schema");
+            }
+            const byStatus = records.index(BY_OWNER_STATUS);
+            const byIdempotency = records.index(BY_IDEMPOTENCY);
+            if (byStatus.keyPath !== "ownerStatus" || byStatus.unique || byStatus.multiEntry ||
+                byIdempotency.keyPath !== "idempotencyScope" ||
+                !byIdempotency.unique || byIdempotency.multiEntry) {
               throw new Error("incompatible local command queue schema");
             }
           } catch (error) {
@@ -182,8 +191,11 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
     if (command.status !== "pending" || command.attemptCount !== 0) {
       throw new Error("enqueue only accepts a new pending command");
     }
+    // Capture the accepted operation before opening IndexedDB asynchronously.
+    // UI drafts may change while the open/transaction waits on another tab.
+    const entry = persisted(structuredClone(command));
     await this.transaction<void>("readwrite", (store) => {
-      store.add(persisted(command));
+      store.add(entry);
     });
   }
 

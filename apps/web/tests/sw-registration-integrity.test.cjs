@@ -158,3 +158,35 @@ test('update banner only requests safe SW activation (never bypasses waiting wor
   assert.match(banner, /const handleClick = \(\) => \{[\s\S]*?applyUpdate\(\);/);
   assert.doesNotMatch(banner, /window\.location\.replace/);
 });
+
+test('manual refresh defers if critical work starts during the asynchronous version check', async () => {
+  const app = loadRegistration({ busy: false });
+  app.registration.waiting = null;
+  app.registration.update = async () => { app.setBusy(true); };
+  await app.mod.useSWUpdate().forceRefresh();
+  assert.equal(app.calls.reloads.length, 0, 'late-starting critical work was interrupted');
+  assert.equal(typeof app.calls.pendingDrain, 'function');
+});
+
+test('worker activation defers if critical work starts while registration is being resolved', async () => {
+  const app = loadRegistration({ busy: false });
+  app.navSw.getRegistration = async () => { app.setBusy(true); return app.registration; };
+  await app.mod.applyPendingUpdateNow('deferred-consent');
+  assert.equal(app.calls.waitingMessages.length, 0, 'SKIP_WAITING interrupted new critical work');
+  app.setBusy(false);
+  app.calls.pendingDrain();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.calls.waitingMessages.length, 1);
+});
+
+test('expired update consent cannot activate a worker after critical work drains', async () => {
+  const app = loadRegistration({ busy: false });
+  app.navSw.getRegistration = async () => { app.setBusy(true); return app.registration; };
+  await app.mod.applyPendingUpdateNow('expired-consent');
+  assert.equal(app.calls.waitingMessages.length, 0);
+  app.expireTimeout();
+  app.setBusy(false);
+  app.calls.pendingDrain();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.calls.waitingMessages.length, 0, 'activation continued after consent expired');
+});

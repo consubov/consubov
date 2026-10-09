@@ -12,7 +12,7 @@ function load(file, imports = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const exported = {};
-  vm.runInNewContext("(function(exports,require){" + js + "\n})", { Blob, console, Promise })(exported, (specifier) => {
+  vm.runInNewContext("(function(exports,require){" + js + "\n})", { Blob, console, Promise, structuredClone })(exported, (specifier) => {
     assert.ok(specifier in imports, "unexpected runtime import " + specifier);
     return imports[specifier];
   });
@@ -193,4 +193,38 @@ test("enqueue rejects unconfirmed inflight payloads and commands without identit
 test("IndexedDB unavailable refuses to accept a command as persisted", async () => {
   const queue = new IndexedDbAtomicCommandQueue(undefined);
   await assert.rejects(queue.enqueue(owner, initial()));
+});
+
+for (const [description, indexPath, unique] of [
+  ['idempotency index is not unique', 'idempotencyScope', false],
+  ['idempotency index points at wrong data', 'command.commandId', true],
+]) {
+  test('rejects incompatible existing queue schema: ' + description, async () => {
+    const factory = fakeFactory();
+    const open = factory.open(NEXT_COMMAND_QUEUE_DB_NAME, 1);
+    open.onupgradeneeded = () => {
+      const store = open.result.createObjectStore('commands', { keyPath: 'key' });
+      store.createIndex('byOwnerStatus', 'ownerStatus', { unique: false });
+      store.createIndex('byIdempotency', indexPath, { unique });
+    };
+    const old = await new Promise((resolve, reject) => {
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    old.close();
+    const queue = new IndexedDbAtomicCommandQueue(factory);
+    try {
+      await assert.rejects(queue.enqueue(owner, initial()), /incompatible local command queue schema/);
+    } finally { await queue.close().catch(() => {}); }
+  });
+}
+
+test('enqueue snapshots payload before asynchronous open instead of saving later edits', async () => {
+  const queue = new IndexedDbAtomicCommandQueue(fakeFactory());
+  const draft = initial();
+  const saved = queue.enqueue(owner, draft);
+  draft.payload.count = 999;
+  await saved;
+  assert.equal((await queue.get(owner, 'cmd-1')).payload.count, 1);
+  await queue.close();
 });

@@ -22,3 +22,9 @@ test('missing offline asset fails',()=>assert.notEqual(check(dir=>fs.rmSync(path
 test('manifest identity change fails',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify({id:'/new',scope:'/',start_url:'/',display:'standalone'}))).status,0));
 test('unexpanded placeholder fails',()=>assert.notEqual(check(dir=>fs.appendFileSync(path.join(dir,'sw.js'),'__PRECACHE_ASSETS__')).status,0));
 test('wrong version manifest fails',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'version.json'),JSON.stringify({version:'wrong'}))).status,0));
+
+test('JSON null manifest must not approve an unidentifiable PWA',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'manifest.json'),'null')).status,0));
+test('JSON null version must not approve an unversioned shell',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'version.json'),'null')).status,0));
+test('empty HTML must fail instead of skipping the entrypoint check',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'index.html'),'')).status,0));
+test('empty service worker must fail instead of skipping validation',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'sw.js'),'')).status,0));
+test('version appearing only in a comment is not the installed worker version',()=>assert.notEqual(check(dir=>fs.writeFileSync(path.join(dir,'sw.js'),"const BUILD_VERSION = 'different';\n// build1 appears as 'build1' only here\nconst PRECACHE_ASSETS = [\"/assets/app.12345678.js\",\"/assets/lazy.12345678.js\"];" )).status,0));

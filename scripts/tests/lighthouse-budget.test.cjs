@@ -51,3 +51,10 @@ test('baseline must identify the exact measured commit', () => withReports(run =
   const r = run({ ...approved, baselineCommit: 'unknown' });
   assert.notEqual(r.status, 0);
 }));
+
+test('literal null budget fails closed rather than silently accepting a run', () => withReports(run => {
+  const r = run(null); assert.notEqual(r.status, 0);
+}));
+test('literal false budget fails closed rather than silently accepting a run', () => withReports(run => {
+  const r = run(false); assert.notEqual(r.status, 0);
+}));
