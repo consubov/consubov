@@ -36,3 +36,9 @@ test-results/
 apps/web/test-results/
 *.tsbuildinfo
 output.txt
+
+# External repositories, kits and archives
+superpowers/
+.work-go-task/
+*.zip
+
