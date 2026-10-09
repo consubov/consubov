@@ -2,6 +2,12 @@
 
 Esta pasta é a fonte permanente de contexto técnico do projeto.
 
+## Estado atual e auditoria
+
+Começar pelo [Handoff de continuidade](../CONSUBOV_HANDOFF_CONTINUIDADE.md), pelas Instruções-Mestre e pelo [Checklist Mestre atual](../CONSUBOV_CHECKLIST_MESTRE.md). A [auditoria consolidada de 2026-10-09](./qa/auditoria-consolidada-2026-10-09.md) distingue resultados executados, correções e gates ainda pendentes.
+
+Os critérios detalhados do checklist anterior foram [preservados integralmente](./archive/CONSUBOV_CHECKLIST_MESTRE_antes_auditoria_2026-10-09.md). Consultar o capítulo da fase antes de implementá-la. A consolidação muda a apresentação do estado, não dispensa requisitos. Não usar os kits de `archive/` como instaladores da versão atual.
+
 ## Ordem de leitura
 
 1. [Princípios de evolução](./01-principios.md)
@@ -40,7 +46,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 > Os números da lista são apenas a ordem de leitura. Alguns nomes de arquivo preservam numeração histórica duplicada (`17`, `19`, `20`) e não devem ser renomeados dentro desta correção sem um trabalho específico de referências.
 
 33. [QA local com Go Task e VS Code](./qa/QA-LOCAL-VSCODE-GO-TASK.md)
-34. [Auditoria local 2026-10-09](./qa/auditoria-local-2026-10-09.md)
+34. [Auditoria local 2026-10-09 — registros dos blocos anteriores](./qa/auditoria-local-2026-10-09.md)
 35. [Inventário verificado do offline legado](./62-offline-legacy-migration.md)
 
 ## Regra
@@ -49,13 +55,11 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 - Decisões arquiteturais aprovadas devem ser registradas aqui.
 - PRDs e handoffs temporários ficam em `instructions/active/`.
 - Antes de apagar um PRD concluído, qualquer aprendizado permanente deve ser transferido para `docs/`.
+
 ### Avanços incrementais de QA e offline (2026-10-09)
 
 - [Fundações do banco local e comando idempotente](./63-offline-vnext-foundations.md)
 - [QA local: Go Task, matriz e PWA upgrade fixture](./qa/QA-LOCAL-VSCODE-GO-TASK.md)
-
-- [FASES 8–9: gate local de evidências e preparacao de piloto](./64-fase8-9-local-readiness.md)
-
-- [PWA: atualizacao manual sem perda do cache offline](./65-pwa-update-safety.md)
-
+- [FASES 8–9: gate local de evidências e preparação de piloto](./64-fase8-9-local-readiness.md)
+- [PWA: atualização manual sem perda do cache offline](./65-pwa-update-safety.md)
 - [FASE 7: fila IndexedDB transacional multiaba, testes e limites](./66-offline-atomic-queue.md)

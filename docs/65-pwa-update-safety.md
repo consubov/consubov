@@ -1,20 +1,13 @@
-# PWA — Atualização sem interrupção nem perda offline
+# PWA — atualização segura e operações em andamento
 
-**Auditoria:** 2026-10-09. **Status:** código reforçado + Node regressões; Chromium/WebKit, versão legada real e piloto pendentes.
+**Atualização:** 2026-10-09, auditoria consolidada. **QA integral PWA:** pendente.
 
-## Regra crítica de atualização
+O botão manual de atualização não apaga CacheStorage nem desregistra o worker instalado. O banner usa a mesma rotina de ativação segura mesmo quando apenas `version.json` diverge. Encontrar uma versão publicada não prova que seus arquivos já foram baixados e validados.
 
-O botão `Atualizar app` **não pode** apagar CacheStorage nem desregistrar o SW quando o usuário depende de navegação offline. A implementação foi corrigida em `apps/web/src/lib/swRegistration.ts`: `forceRefresh` tenta localizar atualização por SW; se houver worker waiting, usa `applyPendingUpdateNow` e espera que a nova versão assuma o controle. Sem worker novo, recarrega normalmente o shell instalado, sem purge. Se existe operação crítica ativa, aguarda seu término.
+A auditoria adicionou a proteção no momento do efeito: uma operação crítica pode começar durante `getRegistration()` ou `update()`. Por isso, antes de `SKIP_WAITING` e do refresh manual, o código consulta novamente `hasCriticalOperations()`. A ação aguarda o encerramento da operação. Se o consentimento de atualização expirar antes disso, o callback tardio não ativa o worker.
 
-O banner `UpdateBanner` também usa o fluxo `applyUpdate` mesmo que a divergência seja apenas em `version.json`; encontrar versão publicada nova **não** significa que o bundle foi baixado e validado, portanto não faz mais `location.replace` direto sem trabalhador ativo.
+Foram executados **13/13 testes Node do registro de SW**, incluindo três regressões novas inicialmente falhando: operação iniciada durante verificação assíncrona, operação iniciada durante busca do registro e consentimento expirado antes do término do trabalho. Esses testes usam mocks controlados; não são homologação de browser.
 
-## QA existente
+As fixtures Playwright existentes abrangem nomes das seis bases legadas, comandos pendentes, fotos Blob/ArrayBuffer, PDF e backup local, mas são sintéticas. Ainda é necessário rodar Chromium/WebKit e testar o build legado realmente utilizado, na mesma origem, com dados fictícios representativos. Esta auditoria não executou esse teste porque Chromium local foi bloqueado por política.
 
-- `sw-registration-integrity.test.cjs` cobre fluxos de refresh offline, ausência de purge, atualização waiting e bloqueio de operação crítica. **10 testes locais Node PASS**.
-- `apps/web/pwa-fixtures/upgrade.spec.ts` agora simula **seis bases IndexedDB legadas por nome** e compara chaves de fila, pesagem, mutações, sessões, fotos Blob, ArrayBuffer, PDF e três chaves localStorage antes/depois da atualização SW offline no mesmo origin.
-- **Sem execução Playwright neste ambiente:** a fixture precisa rodar em `task qa:pwa:upgrade-fixture` no VS Code. É **sintética**, não a versão real antiga da PWA: não serve de aprovação da FASE 6.
-- Medir quota CacheStorage/IndexedDB no browser WebKit, interrupção de instalação, SW waiting no background, perda de energia e recuperação. Acesso real a clientes/produção e deploy proibidos sem autorização.
-
-## Aceite pendente
-
-A nova PWA deve ocupar o **mesmo app instalado**, mesma origem/identidade, manter todos os registros/arquivos offline e permitir atualização por clique sem perder trabalho em andamento. Testes físicos Android/iPhone e campo rural são gate da pré-produção, não bloqueio para desenvolver novos módulos locais.
+Critérios de release permanecem: mesma instalação/identidade PWA, nenhuma perda ou duplicação offline, download e ativação seguros, quota, reabertura, recuperação/rollback e piloto físico Android/iPhone antes de expor a nova versão a clientes. Não apagar bases, caches ou pendências para fazer o teste passar.

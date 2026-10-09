@@ -2,19 +2,21 @@
 
 ## Mandatory project workflow
 
-- Before changing code, read `CONSUBOV_CHECKLIST_MESTRE.md`, then read `docs/README.md`, `instructions/README.md`, and the active PRD/handoff in `instructions/active/`.
-- `CONSUBOV_CHECKLIST_MESTRE.md` is the operational source for repository agents.
+- Before changing code, read `CONSUBOV_HANDOFF_CONTINUIDADE.md` and `CONSUBOV_INSTRUCOES_MESTRE_PROJETO.md`, then `CONSUBOV_CHECKLIST_MESTRE.md`, `docs/README.md`, `instructions/README.md`, and the active PRD/handoff in `instructions/active/`.
+- `CONSUBOV_CHECKLIST_MESTRE.md` is the current operational status. Its linked archive preserves every detailed phase requirement; read the relevant phase chapter before implementation. Historical progress labels do not approve the current revision.
 - When you complete an item that is explicitly programmed/assigned in the checklist or active PRD, update `CONSUBOV_CHECKLIST_MESTRE.md` in the same work: mark it `[x]` only with objective evidence and record that evidence briefly. Do not mark items you did not execute or items outside your assigned scope.
 - Preserve existing visual behavior and every feature that already works unless an active PRD explicitly changes it.
 - Existing flows that are not functional yet may remain frontend-only; do not invent missing business rules.
 - Keep code small, explicit, testable, and organized by responsibility. Comments should explain domain decisions, constraints, and non-obvious reasons.
 - PRDs and handoffs are temporary. After acceptance, move durable knowledge to `docs/` and delete the completed files from `instructions/active/`.
+- Use `work/fase5-6-7-pwa-local` and preserve other contributors' local changes. Inspect divergence before synchronizing: `main` contains conflicting native/SQLite work. Do not merge, reset, force-push or delete branches to hide that conflict. Do not execute archived kits over current code.
 
 ## QA local obrigatório (Go Task + VS Code)
 
-- Usar o `Taskfile.yml` no VS Code (extensão Task instalada) e `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md` como guia operacional; seguir os scripts efetivamente existentes, não inventar comandos.
+- Usar somente o `Taskfile.yml` da raiz no VS Code e `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md` como guia operacional; seguir os scripts efetivamente existentes, não inventar comandos.
 - O executor pode instalar ferramentas **locais** necessárias (Git Bash/Node/Bun, browsers Playwright, extensões VS Code; act/Docker são opcionais), verificando versões e sem tocar em produção.
 - Executar `task doctor`, `task setup` e os gates por fase; registrar `.qa/runs/**/result.json` + `output.log` e produzir relatório sanitizado por SHA em `docs/qa/`.
+- A matriz deve comprovar estabilidade do código durante a execução. `sourceUnchanged`, `finalCommit`, SHA inicial e estado dirty precisam ser coerentes; não aprovar a revisão atual usando evidência antiga, nula, simulada ou de outro checkout.
 - `qa:pwa:smoke` é parcial; scripts FASE 6/7 inexistentes devem falhar até sua implementação, sem sinal verde fictício.
 - Progredir na **implementação** com `DEV LOCAL READY` comprovado; pendência exclusiva de teste em aparelho real não bloqueia desenvolvimento posterior. Trabalho independente pode prosseguir mesmo com QA pendente, sem marcar fase como aprovada.
 - **HOMOLOGAÇÃO REAL PENDENTE** é requisito antes de liberar a nova PWA a usuários em produção; não substitui testes automatizados locais de dados, segurança, tenant e migração.
@@ -24,7 +26,7 @@
 
 - Keep the circular month picker isolated in `CircularMonthSelect`; only the Gerente GMD seasons block uses its infinite-scroll behavior.
 - Gerente/Admin screen data is cached in memory via `apps/web/src/lib/screenCache.ts` (keys include every filter; any successful DB write invalidates; resume refresh only after 5 min); why: back/minimize must not reload screens. Capataz hooks must not use it.
-- New app versions never auto-reload except on a cold start (first 15s, never backgrounded) or user click; why: never interrupt work (e.g. a salga) when returning to the app.
+- New PWA updates require explicit user consent and verified worker activation. Recheck critical work at the side-effect boundary after asynchronous waits; never purge the installed offline shell on manual refresh. A cold start alone is not consent to interrupt work.
 
 <!-- BEGIN:turborepo-agent-rules -->
 

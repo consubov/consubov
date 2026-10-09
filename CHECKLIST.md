@@ -1,15 +1,7 @@
-# Checklist Mestre do CONSUBOV
+# Checklist operacional do CONSUBOV
 
-O acompanhamento operacional dos agentes está em:
+O painel atual é [CONSUBOV_CHECKLIST_MESTRE.md](./CONSUBOV_CHECKLIST_MESTRE.md).
 
-**[CONSUBOV_CHECKLIST_MESTRE.md](./CONSUBOV_CHECKLIST_MESTRE.md)**
+Antes de executar, ler [CONSUBOV_HANDOFF_CONTINUIDADE.md](./CONSUBOV_HANDOFF_CONTINUIDADE.md). O checklist consolidado aponta para todos os critérios detalhados originais, preservados integralmente em `docs/archive/`.
 
-Regras:
-
-- antes de iniciar trabalho, ler o checklist mestre e o PRD/handoff ativo aplicável;
-- ao concluir um item programado/atribuído, marcar `[x]` somente com evidência objetiva;
-- registrar a evidência no checklist quando aplicável;
-- atualizar o checklist no mesmo commit/PR da implementação;
-- não marcar tarefas fora do escopo executado.
-
-> Este arquivo existe como ponto de entrada curto e fácil de localizar. O checklist canônico é `CONSUBOV_CHECKLIST_MESTRE.md`.
+Não usar logs antigos, cópias importadas de roadmap ou kits arquivados como aprovação de QA. Branch ativa: `work/fase5-6-7-pwa-local`, PR #43 draft. GitHub Actions hospedado e operações de produção não fazem parte do QA local autorizado.

@@ -1,17 +1,26 @@
-# FASE 7 — Fila de comandos transacional e recuperação offline
+# FASE 7 — fila IndexedDB transacional: estado atual
 
-**Atualizado:** 2026-10-09. **Track:** AUDITORIA DE QUALIDADE. **Status:** fundação implementada; QA geral pendente.
+**Atualização:** auditoria consolidada de 2026-10-09. **Status:** componente testado; FASE 7 integral ainda não aprovada.
 
-## Implementado no PR #43
+## Garantias implementadas
 
-- `apps/web/src/platform/adapters/IndexedDbAtomicCommandQueue.ts` implementa a porta `AtomicCommandQueue` de `localSyncRound.ts`. Nenhum backend remoto é criado.
-- Banco **novo e separado** `consubov-vnext-command-queue` com store `commands`; não toca nas seis bases legadas.
-- Chave de registro `[tenantId,userId,commandId]`; índice `byIdempotency` exclusivo por `[tenantId,userId,idempotencyKey]` rejeita dois comandos com a mesma chave; índice `byOwnerStatus` recupera filas pendentes só do proprietário informado.
-- `enqueue` usa `add` e não substitui dados já gravados. `claimPending` faz leitura e escrita em **uma única transação IndexedDB readwrite**, serializável pelo mecanismo do navegador entre abas. `acknowledge`, `releaseForRetry` e `markConflict` rejeitam tentativas antigas pelo `attemptCount`/identidades do comando.
-- Transações só retornam sucesso após `transaction.oncomplete`; em abort/error não confirmam operação. ACK é armazenado mas **não apaga o registro**.
-- `recoverUnconfirmed` exige `confirmedNoActiveSender: true` e o número exato de tentativa. Não existe liberação automática por TTL/lease: a API deve deduplicar pelo mesmo `idempotencyKey`.
+`IndexedDbAtomicCommandQueue` implementa `AtomicCommandQueue` para `localSyncRound`, no banco novo `consubov-vnext-command-queue`. Não lê, migra ou exclui as seis bases legadas.
 
-## Executar no VS Code
+A chave é `[tenantId,userId,commandId]`. `byIdempotency` exige unicidade de `[tenantId,userId,idempotencyKey]`; `byOwnerStatus` separa consultas por proprietário/estado. A abertura valida keyPath, autoIncrement, unicidade e multiEntry dos índices existentes. Encontrar apenas seus nomes não basta: schema incompatível é rejeitado sem tentativa de reparação destrutiva.
+
+`enqueue` usa `add`, não sobrescreve registros, e captura o comando com `structuredClone` antes de abrir o banco assincronamente. Isso preserva o conteúdo aceito, mesmo se o formulário mudar enquanto o banco estiver abrindo. Blobs/ArrayBuffer fazem parte dessa captura.
+
+Claim, ACK, conflito e retry são comparações/escritas na mesma transação `readwrite`. Sucesso só é devolvido em `transaction.oncomplete`. A transição valida proprietário, ID, chave de idempotência, device e tentativa; ACK antigo não substitui tentativa nova. ACK não apaga o registro.
+
+`recoverUnconfirmed` continua exigindo confirmação explícita de emissor parado e tentativa persistida exata. Não há lease/TTL automático nem resolução LWW de operações críticas. Identidade local não substitui autorização do backend.
+
+## Evidência nova, substituindo a limitação histórica do simulador
+
+A suíte `apps/web/tests/atomic-command-queue.test.cjs` passou **17/17 com fake-indexeddb 6.2.5 verdadeiro**, extraído do arquivo de dependências fornecido. Houve 14 casos existentes e 3 regressões novas: índice sem unicidade, índice apontando a chave errada e alteração de payload após enqueue. Esses três casos falharam antes das correções.
+
+TypeScript estrito do adapter, política de comandos e coordenador: PASS. Não foi utilizado simulador artesanal de IndexedDB neste bloco. A suíte completa selecionada da auditoria passou 111/111, mas não é o teste integral do aplicativo.
+
+## Executar no checkout completo
 
 ```powershell
 task setup
@@ -21,15 +30,8 @@ task qa:pwa:upgrade-fixture
 task qa:matrix
 ```
 
-O pacote `apps/web/package.json` **já inclui** a dependência local `fake-indexeddb`. A tarefa `qa:offline:core` usa 14 novos testes da fila; `qa:offline:browser` seleciona 5 testes locais Chromium/WebKit, incluindo disputa entre abas, Blob/ArrayBuffer offline, reabertura, idempotência e ACK após reconexão. `qa:pwa:upgrade-fixture` também os executa.
+Os cenários Playwright existentes precisam executar em Chromium e WebKit permitidos. Esta auditoria não executou navegador: localhost retornou bloqueio administrativo.
 
-## Evidência, limites e riscos
+## Pendências P0
 
-- Ambiente isolado de auditoria: **14/14 testes Node PASS contra simulador transitório local da API IndexedDB**; **TypeScript estrito PASS**; Taskfile parse com 18 tarefas; parsing TypeScript dos cenários browser PASS.
-- **Ainda não foram executados aqui:** os mesmos 14 testes com o pacote real `fake-indexeddb`, Chromium/WebKit Playwright, build Bun/Vite, aplicação integral, migração real legada e homologação física. O navegador disponível retorna `ERR_BLOCKED_BY_ADMINISTRATOR`, até em localhost.
-- Índices garantem separação **no armazenamento local**, não autorização de API. `AtomicCommandQueue` deve receber identidade de uma sessão verificada antes de uso real. O backend permanece autoridade.
-- **P0 aberto:** ordenação causal e dependências entre operações pecuárias; deduplicação no backend, migração de seis bancos e arquivos, ACK autoritativo e tratamento de conflitos por domínio; sync push/pull com fake local, multiabas real e rollback. Não ativar com dados de cliente antes de atender estes critérios.
-
-## Segurança e reversão
-
-Nunca excluir bases legadas, limpar CacheStorage, forçar upgrade de schema antigo, conectar Supabase/PostgreSQL remoto, fazer migrations/deploy, trocar secrets ou aprovar produção por teste fake. O adapter não apaga registros e pode ser retirado do código novo sem modificar o armazenamento legado. Homologação física permanece gate da pré-produção, sem bloquear desenvolvimento independente.
+Integração sob sessão autenticada, tenant válido, migração versionada/retomável das seis bases, ordem causal, idempotência no backend, anexos, sync push/pull, caos e rollback ainda precisam de evidência. Não usar o resultado do adapter para afirmar `OFFLINE LOCAL READY`. Não apagar armazenamento legado nem ativar transporte remoto sem autorização.
