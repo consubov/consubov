@@ -1,0 +1,16 @@
+$ turbo run typecheck
+
+   • turbo 2.11.5
+   • Packages in scope: @consubov/api, @consubov/web
+   • Running typecheck in 2 packages
+   • Remote caching disabled
+
+@consubov/web:typecheck: cache miss, executing a11a5348679d9e71
+@consubov/api:typecheck: cache hit, replaying logs 838ab2c83b59e545
+@consubov/api:typecheck: $ tsc --noEmit --project tsconfig.json
+@consubov/web:typecheck: $ tsc -b --pretty false
+
+ Tasks:    2 successful, 2 total
+Cached:    1 cached, 2 total
+  Time:    59.376s 
+

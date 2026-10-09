@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CONSUBOV: Preparar ambiente",
+      "type": "shell",
+      "command": "task",
+      "args": ["setup"],
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA FASE 5",
+      "type": "shell",
+      "command": "task",
+      "args": ["qa:phase5"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA PWA smoke",
+      "type": "shell",
+      "command": "task",
+      "args": ["qa:pwa:smoke"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA completo",
+      "type": "shell",
+      "command": "task",
+      "args": ["qa:all"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: act (opcional)",
+      "type": "shell",
+      "command": "task",
+      "args": ["qa:act"],
+      "problemMatcher": []
+    }
+  ]
+}
