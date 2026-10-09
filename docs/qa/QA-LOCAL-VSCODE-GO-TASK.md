@@ -40,6 +40,8 @@ task doctor
 task setup
 task qa:check
 task qa:pwa:smoke
+task qa:regressions
+task qa:offline:inventory
 task qa:phase5
 task qa:phase6
 task qa:phase7
@@ -85,3 +87,10 @@ Abrir Docker Desktop antes de executar. `act` usa CPU/disco/rede locais (pode ba
 Ler `AGENTS.md`, `CONSUBOV_CHECKLIST_MESTRE.md`, `docs/README.md`, `instructions/README.md` e o PRD/handoff ativo. Conferir `git status` e branch `work/fase5-6-7-pwa-local`; preservar o trabalho alheio, não criar branches duplicadas. Instalar somente ferramentas locais de teste necessárias. Corrigir falhas reais, evitar `skip`/threshold falso e registrar evidências por commit. Atualizar checklist repositório/Notion e handoff quando a implementação mudar.
 
 **Relatório final exigido:** versões, SHA e workingTreeDirty, comandos e exit codes, falhas/testes por fase, classificação DEV LOCAL READY ou REPROVADO, pendências físicas, arquivos alterados, pendências P0 e confirmação de nenhuma ação externa não autorizada.
+
+## Atualização de auditoria 2026-10-09
+
+- `task qa:regressions` cobre 23 testes isolados atualmente versionados: Service Worker, trava de atualização, injeção do build, orçamento Lighthouse e inventário offline. Esse PASS não aprova FASES 5–7.
+- `task qa:offline:inventory` inspeciona apenas metadados das seis bases legadas. Não executa migrações, não lê dados de clientes e não limpa bases.
+- `task qa:phase5` armazena Lighthouse e logs em `.qa/phase5-<timestamp>/`. O orçamento Lighthouse está propositalmente `PENDING_LOCAL_BASELINE`: medir e aprovar thresholds por SHA antes de marcar a fase verde.
+- Este ambiente de auditoria não tem Bun e bloqueia `localhost` no Chromium (`ERR_BLOCKED_BY_ADMINISTRATOR`), então a suite completa Web e upgrade em browser devem ser realizados pelo executor no VS Code.

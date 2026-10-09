@@ -39,6 +39,10 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 > Os números da lista são apenas a ordem de leitura. Alguns nomes de arquivo preservam numeração histórica duplicada (`17`, `19`, `20`) e não devem ser renomeados dentro desta correção sem um trabalho específico de referências.
 
+33. [QA local com Go Task e VS Code](./qa/QA-LOCAL-VSCODE-GO-TASK.md)
+34. [Auditoria local 2026-10-09](./qa/auditoria-local-2026-10-09.md)
+35. [Inventário verificado do offline legado](./62-offline-legacy-migration.md)
+
 ## Regra
 
 - `docs/` contém conhecimento permanente.

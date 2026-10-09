@@ -40,6 +40,26 @@
       "problemMatcher": []
     },
     {
+      "label": "CONSUBOV: Regressões locais isoladas (23 casos)",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:regressions"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: Inventário offline somente leitura",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:offline:inventory"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
       "label": "CONSUBOV: Teste PWA Service Worker",
       "type": "shell",
       "command": "task",

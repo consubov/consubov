@@ -1,5 +1,8 @@
 # CONSUBOV — Checklist Mestre de Execução
 
+> **AUDITORIA 2026-10-09 — HEAD a3280f16 antes da sincronização documental:** FASE 5/6/7 permanecem EM ANDAMENTO, não homologadas. PWA: novo Service Worker mantém HTML no shell instalado até consentimento e Vite inclui chunks lazy no precache; 12 testes isolados passaram. FASE 5: gate Lighthouse passou a exigir thresholds medidos e ratificados por SHA, e o script preserva evidências com limpeza do processo Web. FASE 7: inventário readonly das seis bases legadas e stores versionados (sem ler/apagar registros), 5 testes isolados passaram. Execução consolidada: **23/23 casos Node** + TS helper e sintaxe Bash/JS. **Não foram executados Bun, Vitest completo, E2E real, Axe, Lighthouse real, nem GitHub Actions**; tentativa Chromium local bloqueada por política de navegação localhost. Continuar desenvolvendo fases posteriores é permitido, mas não declarar QA aprovado nem produção pronta.
+
+
 > **Fonte operacional para agentes que trabalham pelo repositório.**
 >
 > **Última atualização deste arquivo:** 2026-10-08. QA local via Go Task/VS Code versionado; homologação física adiada para pré-produção.

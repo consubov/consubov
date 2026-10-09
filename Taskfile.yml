@@ -28,7 +28,12 @@ tasks:
   qa:pwa:smoke:
     desc: Isolated SW regression, not a FASE 6 approval
     cmds:
-      - bash scripts/qa/record.sh pwa-smoke node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs
+      - bash scripts/qa/record.sh pwa-smoke node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs
+
+  qa:regressions:
+    desc: Local standalone QA regressions (not phase approval)
+    cmds:
+      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs scripts/tests/lighthouse-budget.test.cjs
 
   qa:phase6:
     desc: Full local FASE 6 gate; fails until implemented
