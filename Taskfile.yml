@@ -33,7 +33,7 @@ tasks:
   qa:regressions:
     desc: Local standalone QA regressions (not phase approval)
     cmds:
-      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs
+      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs
 
   qa:pwa:upgrade-fixture:
     desc: Synthetic local Chromium/WebKit same-origin update (not production legacy certification)
@@ -47,7 +47,7 @@ tasks:
   qa:offline:core:
     desc: Test isolated tenant-scoped IndexedDB and stable offline command policies
     cmds:
-      - bash scripts/qa/record.sh offline-core node --test apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs
+      - bash scripts/qa/record.sh offline-core node --test apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs
 
   qa:preprod:local-gates:
     desc: Fail-closed local QA evidence check; never authorizes deploy or real-world release
