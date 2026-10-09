@@ -27,78 +27,19 @@ const APP_CACHE_PREFIX = "consubov-";
 const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 const VERSION_URL = "/version.json";
 const UPDATE_NOTIFICATION_STORAGE_KEY = "consubov:update-notified-version";
-const FORCE_RELOAD_STORAGE_KEY = "consubov:forced-reload-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
 const notifiedUpdateVersions = new Set<string>();
 let explicitUpdateFallbackTimer: number | null = null;
 let userRequestedUpdate = false;
+let pendingUpdateToken: string | undefined;
+let controllerBeforeUpdate: ServiceWorker | null = null;
+const activationRequested = new WeakSet<ServiceWorker>();
 
-/**
- * Abertura "do zero": só nos primeiros segundos após carregar a página e antes
- * de o app ir para segundo plano. Fora disso, nunca recarregamos sozinhos —
- * apenas mostramos o aviso "Nova versão disponível".
- */
-const COLD_START_WINDOW_MS = 15000;
-const pageLoadedAt = Date.now();
-let wentToBackground = false;
-if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") wentToBackground = true;
-  });
-}
-function isColdStart() {
-  return !wentToBackground && Date.now() - pageLoadedAt < COLD_START_WINDOW_MS;
-}
-
-function buildReloadUrl(version = lastKnownRemoteVersion) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("__app_version", version);
-  url.searchParams.set("__v", Date.now().toString());
-  return url.toString();
-}
-
-function getForcedReloadCount(version: string) {
-  try {
-    const raw = window.sessionStorage.getItem(FORCE_RELOAD_STORAGE_KEY);
-    if (!raw) return 0;
-    const data = JSON.parse(raw) as { version?: string; count?: number };
-    return data.version === version ? data.count ?? 0 : 0;
-  } catch {
-    return 0;
+function cancelExplicitUpdateTimer() {
+  if (explicitUpdateFallbackTimer !== null) {
+    window.clearTimeout(explicitUpdateFallbackTimer);
+    explicitUpdateFallbackTimer = null;
   }
-}
-
-function setForcedReloadCount(version: string, count: number) {
-  try {
-    window.sessionStorage.setItem(FORCE_RELOAD_STORAGE_KEY, JSON.stringify({ version, count }));
-  } catch {
-    /* ignore */
-  }
-}
-
-function hardReloadToLatest(version = lastKnownRemoteVersion) {
-  if (!userRequestedUpdate && !isColdStart()) {
-    logSw("Nova versão ativa — só mostrando o aviso (sem recarregar sozinho)", version);
-    notifyListeners(true);
-    return;
-  }
-  if (hasCriticalOperations()) {
-    logSw("Reload adiado — operação crítica em andamento");
-    schedulePostDrainAction(() => hardReloadToLatest(version));
-    return;
-  }
-
-  const reloadCount = getForcedReloadCount(version);
-  if (reloadCount >= 1 || reloadingForUpdate) {
-    logSw("Reload automático interrompido para evitar loop", version);
-    notifyListeners(true);
-    return;
-  }
-
-  reloadingForUpdate = true;
-  setForcedReloadCount(version, reloadCount + 1);
-  logSw("Reload após update", version);
-  reloadWhenAuthIdle(() => window.location.replace(buildReloadUrl(version)));
 }
 
 function explicitUpdateReload(updateToken = Date.now().toString()) {
@@ -107,28 +48,37 @@ function explicitUpdateReload(updateToken = Date.now().toString()) {
     schedulePostDrainAction(() => explicitUpdateReload(updateToken));
     return;
   }
-
-  // O clique do usuário é uma ordem explícita: não pode ser bloqueado pelo
-  // limitador usado nas atualizações automáticas. Removemos os gatilhos da URL
-  // para que a página nova não reinicie o mesmo ciclo.
   const url = new URL(window.location.href);
   url.searchParams.delete("__sw_update");
   url.searchParams.delete("_update");
   url.searchParams.set("__v", updateToken);
-  logSw("Executando reload obrigatório do clique", url.toString());
+  logSw("Reload após ativação comprovada do Service Worker", url.toString());
   reloadWhenAuthIdle(() => window.location.replace(url.toString()));
 }
 
-function scheduleExplicitUpdateFallback(updateToken?: string) {
-  if (explicitUpdateFallbackTimer !== null) {
-    window.clearTimeout(explicitUpdateFallbackTimer);
-  }
-  logSw("Fallback obrigatório agendado para 1500ms");
+/** Never claim an update succeeded before an activated worker controls the page. */
+function finishVerifiedUpdate() {
+  if (!userRequestedUpdate || reloadingForUpdate) return;
+  const controller = navigator.serviceWorker?.controller;
+  if (!controller || controller === controllerBeforeUpdate) return;
+  cancelExplicitUpdateTimer();
+  reloadingForUpdate = true;
+  userRequestedUpdate = false;
+  explicitUpdateReload(pendingUpdateToken);
+}
+
+function scheduleExplicitUpdateTimeout() {
+  cancelExplicitUpdateTimer();
+  // A slow/offline download may not finish. Stay on the intact installed shell
+  // rather than reloading into an old worker or a mixed-version page.
   explicitUpdateFallbackTimer = window.setTimeout(() => {
     explicitUpdateFallbackTimer = null;
-    logSw("Fallback de 1500ms disparado independentemente de controllerchange");
-    explicitUpdateReload(updateToken);
-  }, 1500);
+    finishVerifiedUpdate();
+    if (reloadingForUpdate) return;
+    userRequestedUpdate = false;
+    notifyListeners(true);
+    logSw("Atualização não confirmada; versão instalada preservada");
+  }, 15_000);
 }
 
 function logSw(message: string, ...args: unknown[]) {
@@ -158,9 +108,9 @@ function bindControllerChangeReload() {
     }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
     if (data.version) lastKnownRemoteVersion = data.version;
-    // A ativação da versão que já está executando não exige nova navegação.
     if (data.version === __APP_BUILD_VERSION__) return;
-    hardReloadToLatest(data.version || lastKnownRemoteVersion);
+    if (userRequestedUpdate) finishVerifiedUpdate();
+    else notifyListeners(true);
   });
 
 
@@ -176,7 +126,8 @@ function bindControllerChangeReload() {
       return;
     }
     if (reloadingForUpdate) return;
-    hardReloadToLatest();
+    if (userRequestedUpdate) finishVerifiedUpdate();
+    else notifyListeners(true);
   });
 }
 
@@ -191,28 +142,32 @@ export async function applyPendingUpdateNow(updateToken?: string) {
     return;
   }
   logSw("Iniciando aplicação explícita da atualização", updateToken ?? "sem token");
-  userRequestedUpdate = true;
   if (!("serviceWorker" in navigator)) {
     explicitUpdateReload(updateToken);
     return;
   }
-  scheduleExplicitUpdateFallback(updateToken);
+  userRequestedUpdate = true;
+  pendingUpdateToken = updateToken;
+  controllerBeforeUpdate = navigator.serviceWorker.controller;
+  scheduleExplicitUpdateTimeout();
   try {
     const registration =
       (await navigator.serviceWorker.getRegistration()) ?? swRegistration ?? undefined;
     if (!registration) {
-      logSw("Registro SW ausente; fallback continuará ativo");
+      logSw("Registro SW ausente; versão atual preservada");
       return;
     }
     swRegistration = registration;
     bindControllerChangeReload();
+    attachRegistrationListeners(registration);
+    // updatefound/statechange may install the worker after this click.
     void registration.update().then(
-      () => logSw("registration.update concluído", {
-        installing: registration.installing?.state ?? null,
-        waiting: registration.waiting?.state ?? null,
-        active: registration.active?.state ?? null,
-      }),
-      (error) => console.warn("[SW] registration.update falhou; fallback continuará", error),
+      () => {
+        if (userRequestedUpdate && registration.waiting) {
+          void activateWaitingServiceWorker(registration);
+        }
+      },
+      (error) => console.warn("[SW] registration.update falhou; versão atual preservada", error),
     );
 
     if (registration.waiting) {
@@ -221,9 +176,9 @@ export async function applyPendingUpdateNow(updateToken?: string) {
       return;
     }
 
-    logSw("Nenhum worker waiting no cliente; fallback obrigatório fará a navegação");
+    logSw("Aguardando instalação completa do novo Service Worker");
   } catch (error) {
-    console.warn("[SW] aplicação explícita falhou; fallback continuará", error);
+    console.warn("[SW] aplicação explícita falhou; versão atual preservada", error);
   }
 }
 
@@ -307,9 +262,11 @@ function notifyWaiting(registration: ServiceWorkerRegistration) {
 }
 
 async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
-  if (!registration.waiting) return false;
+  const worker = registration.waiting;
+  if (!worker || activationRequested.has(worker)) return false;
+  activationRequested.add(worker);
   logSw("Aplicando atualização (SKIP_WAITING)");
-  registration.waiting.postMessage({ type: "SKIP_WAITING" });
+  worker.postMessage({ type: "SKIP_WAITING" });
   return true;
 }
 
@@ -327,7 +284,8 @@ function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
 
     newWorker.addEventListener("statechange", () => {
       if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-        notifyWaiting(registration);
+        if (userRequestedUpdate) void activateWaitingServiceWorker(registration);
+        else notifyWaiting(registration);
       }
     });
   });
@@ -372,12 +330,10 @@ async function ensureLatestPublishedVersion() {
       return true;
     }
 
-    // Mesmo sem um worker em waiting, se o build publicado é diferente do JS
-    // em execução, força a navegação para o HTML mais recente. É o caso comum
-    // de apps instalados no Android/iOS que reabrem uma sessão antiga.
+    // A published version can be newer without having an installed worker.
+    // Report availability, but never reload the cached shell automatically.
     if (remoteVersion !== __APP_BUILD_VERSION__) {
       notifyListeners(true);
-      hardReloadToLatest(remoteVersion);
       return true;
     }
   } catch (error) {
