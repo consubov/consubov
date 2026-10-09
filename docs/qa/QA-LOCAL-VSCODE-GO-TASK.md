@@ -94,3 +94,29 @@ Ler `AGENTS.md`, `CONSUBOV_CHECKLIST_MESTRE.md`, `docs/README.md`, `instructions
 - `task qa:offline:inventory` inspeciona apenas metadados das seis bases legadas. Não executa migrações, não lê dados de clientes e não limpa bases.
 - `task qa:phase5` armazena Lighthouse e logs em `.qa/phase5-<timestamp>/`. O orçamento Lighthouse está propositalmente `PENDING_LOCAL_BASELINE`: medir e aprovar thresholds por SHA antes de marcar a fase verde.
 - Este ambiente de auditoria não tem Bun e bloqueia `localhost` no Chromium (`ERR_BLOCKED_BY_ADMINISTRATOR`), então a suite completa Web e upgrade em browser devem ser realizados pelo executor no VS Code.
+
+## Novo fluxo incremental (2026-10-09)
+
+Com a branch `work/fase5-6-7-pwa-local` atualizada, executar os blocos independentes:
+
+```powershell
+task qa:regressions
+task qa:offline:core
+task qa:pwa:build-preflight
+task qa:pwa:upgrade-fixture
+task qa:matrix
+```
+
+- `qa:regressions`: regressões Node puras do SW, orçamento Lighthouse, inventário, IndexedDB simulado, comandos offline, matriz QA e integridade de build. Este resultado **não aprova** toda a fase.
+- `qa:offline:core`: testa o novo banco `consubov-vnext-local` isolado por tenant/usuário e as transições do comando. Não migra o legado nem envia dados.
+- `qa:pwa:build-preflight`: compila o Web localmente e recusa mudança do identificador PWA, asset não precacheado, arquivo ausente, SW não injetado ou versão incoerente. Não substitui Playwright/E2E.
+- `qa:pwa:upgrade-fixture`: sobe um HTTP server **somente localhost** em Playwright Chromium/WebKit, simula duas builds do SW no mesmo origin, armazenamento Blob/backup e falha de chunk lazy. É um teste sintético de mecânica SW; **não** substitui harness da PWA legada real com migração de todas as bases.
+- `qa:matrix`: executa **todos** os gates separadamente, mesmo se uma fase falhar, grava JSON/Markdown em `.qa/matrix/` e sai com erro se qualquer um falhar. Útil para reduzir espera administrativa sem inventar resultados verdes.
+
+**Estado de revisão:** scripts e testes Node isolados passaram no ambiente técnico de auditoria. **Playwright navegador real, Bun build completo, Axe/Lighthouse reais e FASES 5–7 integrais não foram executados aqui**; faça-os no checkout local do VS Code, com logs sanitizados.
+
+**Segurança:** não alterar/limpar bancos legados, não confiar no adapter como autorização server-side, não acessar Supabase remoto, Vercel, CI hospedado, migrations nem deploy.
+
+## Gate local para preparação das FASES 8–9 (2026-10-09)
+
+O relatório consolidado criado pelo `task qa:matrix` pode ser inspecionado por `task qa:preprod:local-gates`, apontando `QA_MATRIX_REPORT` para o JSON gerado. O verificador **rejeita** SHA divergente, working tree suja, registros simulados ou FASE 5/6/7 pendente. Mesmo quando passar, libera **apenas revisão local**, não produção. Consulte `docs/64-fase8-9-local-readiness.md`. Não iniciar deploy/banco remoto.

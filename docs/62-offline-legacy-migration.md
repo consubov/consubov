@@ -39,3 +39,7 @@ Chaves de localStorage a preservar: pending_backup, pending_backup_at, ma-offlin
 Sem escrita em bancos, sem IndexedDB.deleteDatabase, sem limpeza de localStorage, sem conexao Supabase/PostgreSQL remota, sem deploy ou migracao real. Homologacao fisica iOS/Android e conectividade rural ficam para pre-producao, mas testes automatizaveis de integridade nao podem ser dispensados.
 
 **QA:** apenas inventario readonly implementado/testado isoladamente. FASE 7: EM ANDAMENTO; OFFLINE READY: NAO VALIDADO.
+
+## Evolucao local da nova arquitetura
+
+As fundacoes do banco local scoped e das transicoes dos comandos encontram-se em [63-offline-vnext-foundations.md](./63-offline-vnext-foundations.md). O inventario e os stores legados permanecem intocados, e essa fundacao ainda nao realiza migracao de dados.
