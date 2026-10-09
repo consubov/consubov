@@ -33,11 +33,12 @@ const runId = now.toISOString().replace(/[-:.]/g, '').replace('T', 'T').slice(0,
 const runDir = path.join(repoRoot, '.qa', 'matrix', runId);
 fs.mkdirSync(runDir, { recursive: true });
 const records = [];
-const executable = process.platform === 'win32' ? 'task.exe' : 'task';
+const simulated = process.env.NODE_ENV === 'test' && Boolean(process.env.QA_MATRIX_TEST_EXECUTABLE);
+const executable = simulated ? process.execPath : (process.platform === 'win32' ? 'task.exe' : 'task');
 for (const name of selected) {
   const startedAt = new Date().toISOString();
   console.log('[qa:matrix] START', name);
-  const result = spawnSync(executable, [name], { cwd: repoRoot, stdio: 'inherit', env: process.env });
+  const result = spawnSync(executable, simulated ? [process.env.QA_MATRIX_TEST_EXECUTABLE, name] : [name], { cwd: repoRoot, stdio: 'inherit', env: process.env });
   const exitCode = result.status ?? 2;
   const status = exitCode === 0 && !result.error && !result.signal ? 'PASS' : 'FAIL';
   records.push({ task: name, status, exitCode, startedAt, finishedAt: new Date().toISOString(), error: result.error?.code ?? result.signal ?? null });
@@ -46,7 +47,7 @@ for (const name of selected) {
 const summary = {
   kind: 'local-qa-matrix', startedAt: now.toISOString(), finishedAt: new Date().toISOString(),
   branch: process.env.GIT_BRANCH ?? null, commit: sha, workingTreeDirty: dirty,
-  operatingSystem: os.platform(), node: process.version,
+  operatingSystem: os.platform(), node: process.version, simulated,
   status: records.every(item => item.status === 'PASS') ? 'PASS' : 'FAIL',
   results: records,
 };
