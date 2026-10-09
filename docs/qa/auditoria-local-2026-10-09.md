@@ -69,3 +69,15 @@ Todos os resultados devem incluir SHA, logs e JSON em `.qa/runs/`, relatórios s
 **Riscos P0 ainda abertos:** substituir a PWA antiga com zero perda comprovado em navegador real, eventual quota em precache integral, isolamento de tenant na API, durabilidade multiaba/ACK no Sync Engine, migração idempotente com fila/Blob e casos E2E restantes. Nenhum gate total das fases 5–7 foi marcado PASS.
 
 **Próxima execução:** `task setup` → `task qa:regressions` → `task qa:pwa:build-preflight` → `task qa:pwa:upgrade-fixture` → `task qa:matrix`. Corrigir falhas reais e continuar desenvolvimento independente. Evidências `.qa/runs` e `.qa/matrix` locais/sanitizadas.
+
+## Bloco incremental 3 — 2026-10-09, reforço P0 e coordenador offline
+
+**Mudança P0:** corrigido `useSWUpdate.forceRefresh` para **não apagar caches nem desregistrar o Service Worker** durante a atualização manual, preservando shell offline instalado. `UpdateBanner.handleClick` agora usa a mesma rotina de atualização com ativação confirmada, mesmo quando apenas `version.json` diverge.
+
+**Nova fixture sintética:** `apps/web/pwa-fixtures/upgrade.spec.ts` já inclui verificação offline após atualização de seis bases IndexedDB legadas com dados fictícios (filas, pesagem, session, Blob/ArrayBuffer, fotos/PDF, localStorage). **TS parse sem erros**, porém Chromium/WebKit **NÃO EXECUTADOS** nesta auditoria; não confundir com aplicativo legado real.
+
+**FASE 7:** `localSyncRound.ts` coordena claim/ACK/conflito/retry sob portas injetadas, sem criar rede real; 8/8 Node PASS e `tsc --strict` PASS. A fila `AtomicCommandQueue` deve ser persistida e transacional; fake usado nos testes não comprova persistência multiaba.
+
+**Regressões Node:** reconstituição seletiva de 11 suites, com arquivos versionados da branch: **72 testes executados, 72 PASS, 0 FAIL** em Node 22.16 com TypeScript global; sem Bun/Vitest/Playwright navegadores, sem bundle completo, sem escaneamento real. Um teste falhou inicialmente por mock React desatualizado na cópia seletiva; após usar a versão do teste já corrigida e commitada, a suíte reexecutada ficou verde. Relatórios falsamente rotulados `READY` foram corrigidos em `docs/qa/phase6-pwa-local-report.md`, `phase7-offline-local-report.md` e `RELATORIO_HANDOFF_FASES_5_9_LOCAL.md`. Nenhuma fase é considerada aprovada.
+
+**Riscos remanescentes:** a PWA de produção legada não foi exercitada; Playwright E2E e QA FASES 5–7 pendentes; precache/quota e migração/transporte real precisam ser comprovados. Não usar Github Actions hospedado, remoto Supabase/PostgreSQL, Vercel, migrations ou deploy.

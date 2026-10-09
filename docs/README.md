@@ -55,3 +55,5 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 - [QA local: Go Task, matriz e PWA upgrade fixture](./qa/QA-LOCAL-VSCODE-GO-TASK.md)
 
 - [FASES 8–9: gate local de evidências e preparacao de piloto](./64-fase8-9-local-readiness.md)
+
+- [PWA: atualizacao manual sem perda do cache offline](./65-pwa-update-safety.md)

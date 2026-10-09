@@ -93,3 +93,13 @@ task qa:matrix
 **Pendências principais:** medir/aprovar Lighthouse real; executar E2E completas; migrar IndexedDB sem perda comprovada; integrar Command Queue e adapter com o backend local e teste de caos; preparar dry-runs locais FASE 8 e piloto FASE 9; revisar Playwright WebKit/Chrome com logs.
 
 **Bloqueios externos:** GitHub Actions não usar; deploy/merge/release/remote DB/migrations/secrets proibidos sem autorização explícita. Homologação física fica pendente para o piloto, sem impedir implementar etapas independentes. Atualizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` das Fontes do Projeto após os testes completos.
+
+## Continuidade após reforço offline (2026-10-09, bloco 3)
+
+**Situação:** branch `work/fase5-6-7-pwa-local` / PR #43 draft. Módulo de atualização manual **não purga caches**; aviso de versão publicada desvia para ativação segura. Fixture browser sintética cobre as 6 bases legadas por nomes/filas/Blobs, mas **não foi executada** em Playwright. O coordenador local `localSyncRound.ts` trata ACK/retry/conflito por portas fake sem nenhuma rede.
+
+**Evidência:** 72/72 Node isolados PASS, tipos estritos de coordenação e política de comandos PASS, fixture TS parser PASS. **Não houve** QA total FASES 5–7 nem teste físico.
+
+**Próximo executor:** `task qa:regressions` → `task qa:pwa:build-preflight` → `task qa:pwa:upgrade-fixture` → `task qa:matrix`; depois implementar/testar fila durável transacional multiaba e migration engine idempotente das 6 bases; finalizar QA locais por fase. Não confundir `PWA LOCAL READY`/ `OFFLINE LOCAL READY` com scaffolds sem testes E2E.
+
+**Ações proibidas:** CI remoto, git merge/force push, publicação, banco real, migrations remotas, deploy, secrets e exclusão de storage offline legado. Atualizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` nas Fontes ao trocar de conversa.

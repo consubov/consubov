@@ -239,3 +239,19 @@ Este adendo **não cria outra branch nem outro PRD paralelo**: atualiza a execu�
 **Testes obrigatórios:** Node regressões, TypeScript/Bun/Vitest, Playwright Chromium/WebKit, Axe/Lighthouse, coverage/bundle/secrets, multiabas/offline/retry/ACK/Blob, fake server e rollback. Sem encerrar fase apenas com testes sintéticos.
 
 **Regras Git:** branch ativa existente, commits pequenos reversíveis, preservar trabalho local e conflitos com outros agentes, sem merge/release/force push sem autorização. **Relatório final:** SHA/dirty; comandos/exits/logs; por fase implementação + QA + risco; evidência offline zero-loss; atividades independentes concluídas; alterações na documentação/checklist/Notion; ações externas (esperado: nenhuma); próxima tarefa livre. **Handoff:** sincronizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` ao final de cada bloco.
+
+## 15. Adendo 2026-10-09 (bloco 3) — tarefas já realizadas, não duplicar
+
+Este é o mesmo PRD/handoff do PR #43, sem criação de novo agente/branch. Antes de editar em paralelo, comparar `git status`, SHA e arquivos atribuídos.
+
+**Executado e versionado:** correção de `forceRefresh` para nunca eliminar caches/SW offline, banner de atualização via ativação segura, regressões Node adicionais, fixture Playwright para preservação de **todas as seis bases legadas por nome com dados sintéticos** (não executada em Chromium/WebKit), coordenador local `localSyncRound.ts` com ACK idempotente, conflitos sem LWW e retry com mesma chave, relatorios READY indevidos corrigidos, tarefas Go Task sincronizadas. **72/72 testes Node isolados PASS**, typecheck estrito do módulo de sync PASS e parse TS da fixture PASS. Isso não equivale aos gates completos.
+
+**Ordem de execução livre e segura (local, VS Code):**
+1. `task qa:regressions` em checkout limpo, registrar SHA e relatórios. `task qa:offline:core` agora inclui coordenador local.
+2. `task qa:pwa:build-preflight` e `task qa:pwa:upgrade-fixture`; corrigir problemas reais (incluindo WebKit) até passarem. Depois, ampliar o teste para **build legada real** sem acessar produção; não declarar zero-loss somente por fixtures.
+3. Implementar **adapter persistente** de `AtomicCommandQueue` com transações IDB readwrite de claim/ACK/release sem race multiaba, testes fake IndexedDB + browser + worker/restart. Integrar `localSyncRound` somente após o adapter ser validado.
+4. Criar migration engine idempotente/retomável de todas as bases, espelho local de filas e arquivos com reconciliação e ACK; nada de `deleteDatabase`/limpeza do legado. Checar isolamento tenant/user, rollback e erros de quota. Somente então tentar `task qa:phase7`.
+5. Completar `task qa:phase5`, Axe/Lighthouse reais e o budget medido, segurança/bundle e E2E. A matriz `task qa:matrix` deve registrar faltas independentemente, jamais falsificar PASS.
+6. FASES 8 e 9 podem ter testes **locais** independentes; sem conexão/infraestrutura externa. Registrar status no Checklist Mestre Git/Notion, atualizar documentação/QA/PRD/handoff no mesmo bloco.
+
+**Aceite inalterado:** zero perda offline comprovada na substituição legada→nova, QA locais íntegros FASES 5–7, documentação e checklist sincronizados, autorização de produção e homologação física antes do release. **Exclusões:** Capacitor, produção, banco remoto, Vercel, migrations/deploy, IAM/secrets, rebase/force push. **Relatório final:** status/sha/dirty, testes e logs sanitizados, falhas, pendências e próximas ações. Para nova conversa sincronizar handoff das Fontes.

@@ -1,5 +1,24 @@
 # CONSUBOV — Checklist Mestre de Execução
 
+## Incremento 2026-10-09 — proteção adicional offline + sincronia local
+
+**Repo:** PR #43 draft, branch \`work/fase5-6-7-pwa-local\`. **Track QA:** AUDITORIA DE QUALIDADE; não substituir gates integrais por testes sintéticos.
+
+- [x] PWA: botão manual "Atualizar app" não apaga CacheStorage nem desregistra SW, sobretudo offline; só recarrega shell instalado ou aguarda atualização verificada. Banner com versão publicada divergente não força navegação direta.
+- [x] PWA: testes Node novos cobrem refresh manual offline, waiting worker e guarda de operação crítica. **10/10 testes desse módulo PASS**.
+- [x] PWA: fixture Playwright agora representa **seis bases legadas** pelo nome, registros de filas/pesagem/sessão, Blob/ArrayBuffer/fotos/PDF e localStorage; sintaxe TypeScript válida. **Execução Chromium/WebKit da fixture PENDENTE**.
+- [x] FASE 7: módulo \`localSyncRound.ts\` implementado com transporte e fila injetados; reserva atômica é **contrato obrigatório do adapter**, ACK confere identidade do comando/tenant/user, timeout reenvia com a mesma idempotencyKey, conflito não vira sucesso automático. **8/8 testes Node isolados PASS**.
+- [x] Go Task: \`qa:regressions\` e \`qa:offline:core\` incluem os testes do coordenador.
+- [x] Auditoria local combinada: **72/72 testes Node PASS** em cópia seletiva da branch, com TypeScript estrito dos módulos de comando e coordenador PASS. Nenhum CI hospedado.
+- [x] Corrigidos relatórios históricos \`phase6-pwa-local-report.md\`, \`phase7-offline-local-report.md\` e \`RELATORIO_HANDOFF_FASES_5_9_LOCAL.md\` que indicavam READY sem gate; \`.gitignore\` passa a ignorar futuros logs/test-results locais.
+- [ ] **FASE 5:** \`task qa:phase5\` + Lighthouse baseline real, Playwright integral, Axe/security e QA revisor aprovados.
+- [ ] **FASE 6:** build preflight + fixture Chromium/WebKit e upgrade **de versão legada real → nova** no mesmo endereço com zero perda de filas/Blobs, sem reinstalação.
+- [ ] **FASE 7:** implementação do adapter de fila **transacional/multiaba** de \`AtomicCommandQueue\`, migração versionada das seis bases, sync fake/caos e \`task qa:phase7\` PASS.
+- [ ] **FASES 8/9:** somente preparo local e ensaios com fixtures; produção/staging remoto/migrations/deploy requerem autorização; homologação física obrigatória antes da publicação.
+
+**Evidências:** \`docs/qa/auditoria-local-2026-10-09.md\`, \`docs/65-pwa-update-safety.md\`, \`docs/63-offline-vnext-foundations.md\`. Testes isolados não aprovam FASE 5/6/7.
+
+
 ## Atualização incremental — 2026-10-09 (bloco de aceleração e QA local)
 
 **Branch:** `work/fase5-6-7-pwa-local` / PR #43 draft, sem merge nem deploy. Esta auditoria não fecha nenhuma fase.
