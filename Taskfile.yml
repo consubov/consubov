@@ -45,9 +45,14 @@ tasks:
       - bash scripts/qa/record.sh pwa-build bash -c 'bun run build:web && node scripts/qa/check-pwa-build.mjs'
 
   qa:offline:core:
-    desc: Test isolated tenant-scoped IndexedDB and stable offline command policies
+    desc: Test scoped IndexedDB, durable atomic queue and offline sync coordinator with installed local fake-indexeddb
     cmds:
       - bash scripts/qa/record.sh offline-core node --test apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs
+
+  qa:offline:browser:
+    desc: Real browser IndexedDB multi-tab/offline command queue tests (Chromium/WebKit)
+    cmds:
+      - bash scripts/qa/record.sh offline-browser bash -c 'cd apps/web && bunx playwright test --config=playwright.pwa.config.ts queue-atomic.spec.ts'
 
   qa:preprod:local-gates:
     desc: Fail-closed local QA evidence check; never authorizes deploy or real-world release

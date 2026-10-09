@@ -157,6 +157,16 @@
       ],
       "group": "test",
       "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: FASE 7 fila multiaba Playwright",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:offline:browser"
+      ],
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }

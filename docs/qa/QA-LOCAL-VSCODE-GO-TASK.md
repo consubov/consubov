@@ -120,3 +120,19 @@ task qa:matrix
 ## Gate local para preparação das FASES 8–9 (2026-10-09)
 
 O relatório consolidado criado pelo `task qa:matrix` pode ser inspecionado por `task qa:preprod:local-gates`, apontando `QA_MATRIX_REPORT` para o JSON gerado. O verificador **rejeita** SHA divergente, working tree suja, registros simulados ou FASE 5/6/7 pendente. Mesmo quando passar, libera **apenas revisão local**, não produção. Consulte `docs/64-fase8-9-local-readiness.md`. Não iniciar deploy/banco remoto.
+
+## FASE 7 — fila transacional e teste real (2026-10-09)
+
+O pacote local `apps/web` **já declara** `fake-indexeddb` como dependência de desenvolvimento. `task setup` instala a dependência pelo lockfile. Não usar scripts remotos, banco externo, nem CI hospedado.
+
+```powershell
+task qa:offline:core
+task qa:offline:browser
+task qa:pwa:upgrade-fixture
+task qa:matrix
+```
+
+- `qa:offline:core` executa testes de IndexedDB fake local e políticas de comando, incluindo **14 cenários** da fila transacional persistida.
+- `qa:offline:browser` testa em Chromium e WebKit **verdadeiros** a disputa de comandos em duas abas, reconstrução/reabertura do banco, offline Blob/ArrayBuffer, isolamento por usuário e rejeição de ACK antigo; sem API real.
+- `qa:pwa:upgrade-fixture` inclui o navegador da fila além dos cenários PWA sintéticos. Falha em qualquer teste deve ser registrada, não substituída por fake ou skip.
+- FASE 7 **ainda não concluída**: falta migração versionada das seis bases legadas, integração ao fluxo de sessão/tenancy e sync autoritativo simulado com caos. Homologação física fica para pré-produção.
