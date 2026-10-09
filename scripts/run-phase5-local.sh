@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-export QA_OUTPUT_DIR="${QA_OUTPUT_DIR:-$ROOT_DIR/.qa/phase5-$(date -u +%Y%m%dT%H%M%SZ)-$}"
+export QA_OUTPUT_DIR="${QA_OUTPUT_DIR:-$ROOT_DIR/.qa/phase5-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 mkdir -p "$QA_OUTPUT_DIR"
 echo "[phase5] evidence: $QA_OUTPUT_DIR"
 
