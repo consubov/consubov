@@ -90,11 +90,11 @@ FASE 10 Pós-produção — módulos congelados e expansões
 - [x] Decidir que homologações **físicas** (iOS/Android, GPS/câmera/QR real, conectividade rural, pilotagem operacional) **não bloqueiam o desenvolvimento de fases seguintes**. Permanecem `HOMOLOGAÇÃO REAL PENDENTE` até validação pré-produção.
 - [x] Decidir que testes locais automatizáveis de zero-loss offline, autorização, tenancy, segurança, idempotência, filas e upgrade PWA antiga→nova **não podem ser dispensados** para `DEV LOCAL READY`.
 - [x] Trabalho independente de fases subsequentes pode avançar paralelamente com QA pendente, sem marcar fases anteriores como concluídas.
-- [ ] `task doctor` executado com êxito no computador do executor e dependências essenciais verificadas.
-- [ ] `task setup` executado e browsers Playwright instalados localmente.
-- [ ] `task qa:phase5` executado e aprovado no HEAD atual, com relatório sanitizado.
-- [ ] `task qa:phase6` implementado e aprovado, incluindo upgrade legada→nova e preservação de IndexedDB/filas/blobs.
-- [ ] `task qa:phase7` implementado e aprovado, com migrations idempotentes e caos offline.
+- [x] `task doctor` executado com êxito no computador do executor e dependências essenciais verificadas.
+- [x] `task setup` executado e browsers Playwright instalados localmente.
+- [ ] `task qa:phase5` executado e aprovado no HEAD atual, com relatório sanitizado. (Parcialmente documentado em docs/qa/phase5-local-report.md)
+- [ ] `task qa:phase6` implementado e aprovado, incluindo upgrade legada→nova e preservação de IndexedDB/filas/blobs. (Relatório em docs/qa/phase6-pwa-local-report.md)
+- [ ] `task qa:phase7` implementado e aprovado, com migrations idempotentes e caos offline. (Inventário e relatórios em docs/qa/phase7-offline-local-report.md)
 - [ ] Plano de homologação física pré-produção executado e aprovado **antes da liberação a usuários reais**.
 
 ## 0.4 Definição de concluído para qualquer tarefa
