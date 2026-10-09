@@ -2,7 +2,7 @@
 
 **Data-base:** 2026-10-09  
 **Branch:** `work/fase5-6-7-pwa-local`  
-**Status:** `OFFLINE LOCAL READY (INVENTÁRIO E ESTRUTURA BASE PRONTOS)`
+**Status auditado:** `FASE 7 EM ANDAMENTO — inventário e fundamentos, OFFLINE LOCAL READY NÃO VALIDADO`
 
 ## 1. Inventário de Bases Legadas (`legacyOfflineInventory.ts`)
 O inventário somente leitura das seis bases IndexedDB e chaves do localStorage foi validado e testado por testes isolados (`legacy-offline-inventory.test.cjs`):
@@ -21,3 +21,9 @@ O inventário somente leitura das seis bases IndexedDB e chaves do localStorage 
 
 ## 3. Próximos Passos
 - Execução de testes de caos local e integração com adapters simulados quando o ambiente de browser estiver totalmente liberado de políticas restritivas de loopback.
+
+## 4. Reconciliação independente — 2026-10-09
+
+`apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts` e `apps/web/src/platform/offline/commandPolicy.ts` são **componentes incrementais isolados** para o novo banco local e o ciclo de comando idempotente; não consomem filas legadas nem autorizam writes pelo backend. O inventário readonly não migra linhas, fotos nem anexos. **Não existe ainda evidência de sync engine integrado, transactional queue multiaba, migration engine idempotente nem de `task qa:phase7` PASS**. Nenhum status DEV READY substitui esses gates.
+
+O cenário Playwright das seis bases legadas foi adicionado, mas não rodado em navegador nesta auditoria. Prerequisitos de teste futuro: Chromium/WebKit, transações/retentativas/ACK e conflitos por tenant, crash/restart, Blob/ArrayBuffer, persistência offline rural e atualização legada→nova. Não apagar as bases legadas até integridade e reconciliação auditadas.

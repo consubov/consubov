@@ -36,3 +36,9 @@ superpowers/
 
 # QA local: logs/artefatos potencialmente sensiveis nao devem ser commitados
 .qa/
+
+# Local QA artifacts (may contain fixtures/session data)
+/test-results/
+/output.txt
+/playwright-report/
+/.work-go-task/
