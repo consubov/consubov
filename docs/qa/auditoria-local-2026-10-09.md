@@ -47,3 +47,25 @@ task qa:all
 Todos os resultados devem incluir SHA, logs e JSON em `.qa/runs/`, relatórios sanitizados em `docs/qa/` e atualização do checklist repositório/Notion. Dados de clientes, tokens, arquivos .env e logs sensíveis jamais devem ser publicados.
 
 **Auditoria de qualidade: QA NÃO APROVADO para fechamento das FASES 5–7.** Os 25 testes isolados não substituem os gates completos.
+
+## Bloco incremental 2026-10-09 — avanço após auditoria inicial
+
+**Track qualidade-visionario:** AUDITORIA DE QUALIDADE. **Resultado de aceite:** QA LOCAL FASES 5–7 PENDENTE/REPROVADO para encerramento. Evidência restrita a testes isolados.
+
+**Alterações confirmadas na branch ativa (PR #43 draft):**
+- Service Worker aplica update somente após ativação comprovada; timeout mantém versão instalada e operações críticas continuam protegidas; testes adicionais.
+- `apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts`: banco **novo** separado e scoped, sem tocar em legacy.
+- `apps/web/src/platform/offline/commandPolicy.ts`: retry idempotente, ACK estrito, conflito explícito e guarda contra envio simultâneo.
+- `scripts/qa/check-pwa-build.mjs`: preflight de manifest/identidade/cache/chunks.
+- `apps/web/pwa-fixtures/upgrade.spec.ts`: testes sintéticos Playwright Chromium/WebKit no mesmo origin, sem produção/remoto.
+- `scripts/qa/run-matrix.mjs`: QA independente com agregação FAIL segura, modo simulado identificado e compatibilidade com Windows.
+- `scripts/qa/check-preprod-local-gates.mjs`: preflight local fail-closed para fases 8/9, **não autoriza release**.
+- VS Code Tasks, Go Task e documentação vinculados a esses comandos.
+
+**Testes executados neste ambiente (cópia seletiva de arquivos versionados):** 60/60 PASS em Node 22.16; `tsc --strict --noEmit` de adapter e commandPolicy PASS; `node --check` de ferramentas PASS; `bash -n` scripts PASS; `Taskfile.yml` YAML validado. Escopo dos testes: mocks de IndexedDB e SW, fake transporte QA, verificação de evidências; não contém aplicativo completo nem o banco legado real.
+
+**Testes NÃO executados e não alegados:** `bun run check`, instalação/bundle completo do Web, E2E do aplicativo, Chromium/WebKit da nova fixture, Axe/Lighthouse reais, scans totais, `task qa:phase5`, `task qa:phase6`, `task qa:phase7`, migração real, usuários/dispositivos físicos. O ambiente atual não tem checkout Bun com rede e bloqueia navegação localhost; tarefas devem ser rodadas pelo executor no VS Code. Nenhum GitHub Actions hospedado foi usado.
+
+**Riscos P0 ainda abertos:** substituir a PWA antiga com zero perda comprovado em navegador real, eventual quota em precache integral, isolamento de tenant na API, durabilidade multiaba/ACK no Sync Engine, migração idempotente com fila/Blob e casos E2E restantes. Nenhum gate total das fases 5–7 foi marcado PASS.
+
+**Próxima execução:** `task setup` → `task qa:regressions` → `task qa:pwa:build-preflight` → `task qa:pwa:upgrade-fixture` → `task qa:matrix`. Corrigir falhas reais e continuar desenvolvimento independente. Evidências `.qa/runs` e `.qa/matrix` locais/sanitizadas.

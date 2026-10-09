@@ -17,3 +17,9 @@
 ## Segurança
 
 Não ler nem gravar bases legadas por este adapter; não executar `deleteDatabase`, `localStorage.clear`, migrations remotas, alteração de produção ou sincronização com API remota. Não copiar tokens ou payloads para logs de QA. FASE 7 permanece **EM ANDAMENTO**.
+
+## Riscos residuais após a implementação (2026-10-09)
+
+- Adapter ainda precisa ser integrado com identidade de sessão validada e testado com IndexedDB real em WebKit/Chromium; chave scoped não implementa autenticação backend.
+- O comando em estado `inflight` não pode receber segundo dispatch simultâneo; em timeout, voltar a `pending` preservando IDs antes do retry. Só ACK explícito da API autorizada muda para `acked`.
+- A implementação atual não drena fila antiga nem faz migração. Não inferir que trocar a PWA muda os valores do IndexedDB. Homologação física posterior não substitui testes de integridade local.

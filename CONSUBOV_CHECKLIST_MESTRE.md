@@ -1,5 +1,25 @@
 # CONSUBOV — Checklist Mestre de Execução
 
+## Atualização incremental — 2026-10-09 (bloco de aceleração e QA local)
+
+**Branch:** `work/fase5-6-7-pwa-local` / PR #43 draft, sem merge nem deploy. Esta auditoria não fecha nenhuma fase.
+
+- [x] **FASE 6 PWA:** atualização pelo usuário deixa de recarregar após 1,5 s sem prova de ativação do novo Service Worker; agora aguarda `controllerchange`/worker verificado e preserva shell antigo quando há timeout. Também evita `SKIP_WAITING` duplicado. Testes Node da transição adicionados.
+- [x] **FASE 6 PWA:** preflight local valida identidade `manifest.id/scope/start_url`, versão SW, placeholders, todos os chunks pré-cacheados e arquivo físico existente (`scripts/qa/check-pwa-build.mjs`).
+- [x] **FASE 6 PWA:** fixture Playwright Chromium/WebKit com duas versões sintéticas na **mesma origem** para testar fila em IndexedDB, Blob, localStorage e chunk de atualização ausente. **Testes de navegador ainda não executados** neste ambiente; fixture não comprova migração da PWA antiga real.
+- [x] **FASE 7:** adapter `IndexedDbLocalDatabase` implementado em base `consubov-vnext-local` separada das seis bases legadas, com chave scoped tenant/user, sem migrar ou apagar dados antigos.
+- [x] **FASE 7:** `commandPolicy` com identidade/idempotência estável, retry após timeout, ACK estrito de tenant/user/id e rejeição de segundo envio simultâneo/conflicts.
+- [x] **QA:** matriz `task qa:matrix` executa gates independentes, retorna FAIL geral se qualquer item falhar e grava JSON/Markdown por SHA. Testes da matriz são portáveis no Windows e etiquetam evidência simulada.
+- [x] **FASES 8/9 — preparação LOCAL:** preflight `task qa:preprod:local-gates` exige evidência real dos gates 5/6/7 na mesma SHA e árvore limpa; nunca autoriza deploy.
+- [x] **QA isolado:** 60/60 testes Node PASS em cópia seletiva da branch; TypeScript estrito dos módulos novos e sintaxe Node/Bash PASS; Taskfile parse válido. **Não equivale à suíte integral nem à homologação física.**
+- [ ] `task qa:phase5` completo (Bun/Vitest, E2E, Axe, Lighthouse, segurança) PASS e baseline Lighthouse medido/aprovado.
+- [ ] `task qa:pwa:build-preflight` e `task qa:pwa:upgrade-fixture` no VS Code com build/navegadores reais; executar E2E verdadeiro legada→nova e preservar bases/filas/Blobs.
+- [ ] Integrar adapter e política nova aos casos reais após aprovação de autenticação/tenancy, engine de migração idempotente e sync fake, com `task qa:phase7` PASS.
+- [ ] Homologação real em aparelhos/campo antes de expor nova PWA a clientes; produção, staging remoto e migrations seguem dependentes de autorização explícita.
+
+**Docs e gates:** `docs/63-offline-vnext-foundations.md`, `docs/64-fase8-9-local-readiness.md`, `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`, `docs/qa/auditoria-local-2026-10-09.md`, `Taskfile.yml`. Homologação física pendente não bloqueia implementar trabalho independente das fases seguintes.
+
+
 > **AUDITORIA 2026-10-09 — branch work/fase5-6-7-pwa-local / PR #43 draft:** FASE 5/6/7 permanecem EM ANDAMENTO, não homologadas. PWA: novo Service Worker mantém HTML no shell instalado até consentimento e Vite inclui chunks lazy no precache; 12 testes isolados passaram. FASE 5: gate Lighthouse passou a exigir thresholds medidos e ratificados por SHA, e o script preserva evidências com limpeza do processo Web. FASE 7: inventário readonly das seis bases legadas e stores versionados (sem ler/apagar registros), 5 testes isolados passaram. Execução consolidada: **25/25 casos Node** + TS helper e sintaxe Bash/JS. **Não foram executados Bun, Vitest completo, E2E real, Axe, Lighthouse real, nem GitHub Actions**; tentativa Chromium local bloqueada por política de navegação localhost. Continuar desenvolvendo fases posteriores é permitido, mas não declarar QA aprovado nem produção pronta.
 
 

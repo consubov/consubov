@@ -218,3 +218,24 @@ Anexar relatórios de .qa/runs sem dados sensíveis e resumo em docs/qa/. Em cas
 7. Consolidar evidências, relatórios, checklist do repo, Notion e handoff; parar antes de deploy/migração remota/merge.
 
 Fim do handoff.
+## 14. Adendo de execução acelerada — 2026-10-09, bloco 2
+
+Este adendo **não cria outra branch nem outro PRD paralelo**: atualiza a execução existente no PR #43. Conferir estado real no Notion e `git status` antes de tocar nos arquivos compartilhados.
+
+**Novos componentes existentes (não duplicar):** `IndexedDbLocalDatabase` scoped numa nova DB, `commandPolicy` com retry/ACK/tenant, guarda de ativação SW e timeout, fixture PWA sintética de upgrade, preflight de build, matriz de testes independente e preflight local de pré-produção. Consultar `docs/63-offline-vnext-foundations.md`, `docs/64-fase8-9-local-readiness.md` e `docs/qa/auditoria-local-2026-10-09.md`.
+
+**Fazer nesta ordem, mas avançar tarefas independentes em paralelo:**
+1. Executar no VS Code `task doctor`, `task setup`, `task qa:regressions` (Node), `task qa:pwa:build-preflight`, `task qa:pwa:upgrade-fixture` e `task qa:matrix`; instalar browsers/extensões locais necessários.
+2. Resolver os gates automatizáveis da FASE 5 e medir/aprovar orçamento Lighthouse por SHA real. E2E logout/tablet e escaneamento devem ser repetidos, sem alegar resultados históricos.
+3. Expandir fixture sintética para upgrade **da versão legada real**, preservando **todas** as seis bases/filas, anexos binários e localStorage; testar mesma origem em Chromium/WebKit com dados fictícios e rollback.
+4. FASE 7: integrar o novo adapter com identidade de tenant/user validada e completar transações multiabas, migration engine idempotente, fila durável com ACK confirmado e fake sync; não apagar legado, não inventar conflito LWW.
+5. FASE 8: elaborar/testar schema/migration local e dry-runs com fixtures; FASE 9: ensaiar runbook, rollback e pré-produção **local** sem deploy. `task qa:preprod:local-gates` exige os três gates aprovados e não substitui homologação real.
+6. Registrar relatórios sanitizados `.qa` por SHA, atualizar checklist Git/Notion + este handoff e informar explicitamente problemas abertos.
+
+**Escopo excluído:** Capacitor/nativo, remote Postgres/Supabase, Vercel, migrations remotas, dados reais, deploy, merge, secrets e reescrita de histórico. **Ações proibidas:** force push/reset, falso PASS, testes pulados, limpeza de dados legados ou operação de produção.
+
+**Critérios de aceite:** [ ] FASE 5 QA local integral; [ ] FASE 6 browser upgrade legacy→nova zero-loss; [ ] FASE 7 fila/migrations/tenant/idempotência/caos local; [ ] FASE 8 dry-run local; [ ] FASE 9 runbook/piloto documentado; [ ] documentação, Notion e relatórios por SHA; [ ] QA revisado; [ ] nenhuma operação externa irreversível. Homologação física antes da publicação segue pendente deliberadamente.
+
+**Testes obrigatórios:** Node regressões, TypeScript/Bun/Vitest, Playwright Chromium/WebKit, Axe/Lighthouse, coverage/bundle/secrets, multiabas/offline/retry/ACK/Blob, fake server e rollback. Sem encerrar fase apenas com testes sintéticos.
+
+**Regras Git:** branch ativa existente, commits pequenos reversíveis, preservar trabalho local e conflitos com outros agentes, sem merge/release/force push sem autorização. **Relatório final:** SHA/dirty; comandos/exits/logs; por fase implementação + QA + risco; evidência offline zero-loss; atividades independentes concluídas; alterações na documentação/checklist/Notion; ações externas (esperado: nenhuma); próxima tarefa livre. **Handoff:** sincronizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` ao final de cada bloco.

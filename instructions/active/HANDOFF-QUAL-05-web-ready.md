@@ -69,3 +69,27 @@ task qa:act
 - A tentativa de E2E Chromium neste ambiente foi impedida por `ERR_BLOCKED_BY_ADMINISTRATOR` em localhost; deve ser repetida no VS Code do executor.
 - Continuação detalhada: `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`.
 - Homologação física não impede desenvolvimento, mas **produção e migração remota exigem autorização separada**.
+
+## Handoff operacional — aceleração 2026-10-09
+
+**Fonte de verdade:** PR #43 na branch `work/fase5-6-7-pwa-local`; consultar SHA no VS Code antes de iniciar, pois outros agentes podem ter alterações locais.
+
+**Agora no repositório:** PWA com ativação verificada e timeout conservador; teste estático de cache/build; suite sintética de upgrade Chromium/WebKit local; `IndexedDbLocalDatabase` por tenant/user em banco novo; `commandPolicy` idempotente/ACK explícito; matriz QA que não perde relatórios após falhas; preflight local FASES 8/9 sem deploy. Todos são componentes incrementais, **não foram integrados a todos os fluxos legados**.
+
+**Evidência da auditoria:** 60/60 testes isolados Node PASS e TypeScript estrito dos módulos novos; ainda sem Bun/E2E da aplicação/Playwright browser físico ou virtual rodando nesta conversa. Mais detalhes: `docs/qa/auditoria-local-2026-10-09.md`.
+
+**Executar no VS Code:**
+```powershell
+task doctor
+task setup
+task qa:regressions
+task qa:offline:core
+task qa:pwa:build-preflight
+task qa:pwa:upgrade-fixture
+task qa:matrix
+```
+`task qa:matrix` não deve retornar PASS enquanto `qa:phase5/6/7` estiverem pendentes. `task qa:preprod:local-gates` só serve para revisar evidências de QA local e nunca autoriza implantação.
+
+**Pendências principais:** medir/aprovar Lighthouse real; executar E2E completas; migrar IndexedDB sem perda comprovada; integrar Command Queue e adapter com o backend local e teste de caos; preparar dry-runs locais FASE 8 e piloto FASE 9; revisar Playwright WebKit/Chrome com logs.
+
+**Bloqueios externos:** GitHub Actions não usar; deploy/merge/release/remote DB/migrations/secrets proibidos sem autorização explícita. Homologação física fica pendente para o piloto, sem impedir implementar etapas independentes. Atualizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` das Fontes do Projeto após os testes completos.
