@@ -1,0 +1,29 @@
+{
+  "status": "PENDING_LOCAL_BASELINE",
+  "baselineCommit": null,
+  "reason": "Thresholds must be set using measured local reports before the FASE 5 gate can pass.",
+  "pages": {
+    "home": {
+      "minimum": {
+        "performance": null,
+        "accessibility": null
+      },
+      "maximum": {
+        "lcpMs": null,
+        "cls": null,
+        "tbtMs": null
+      }
+    },
+    "login": {
+      "minimum": {
+        "performance": null,
+        "accessibility": null
+      },
+      "maximum": {
+        "lcpMs": null,
+        "cls": null,
+        "tbtMs": null
+      }
+    }
+  }
+}

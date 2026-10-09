@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+export QA_OUTPUT_DIR="${QA_OUTPUT_DIR:-$ROOT_DIR/.qa/phase5-$(date -u +%Y%m%dT%H%M%SZ)-$}"
+mkdir -p "$QA_OUTPUT_DIR"
+echo "[phase5] evidence: $QA_OUTPUT_DIR"
+
 export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-http://127.0.0.1:54321}"
 export VITE_SUPABASE_PUBLISHABLE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-phase5-local-test-key}"
 
@@ -66,8 +70,9 @@ echo "[phase5] e2e"
 echo "[phase5] axe + lighthouse"
 (
   cd apps/web
-  bun run preview -- --host 127.0.0.1 --port 8080 >/tmp/consubov-web-preview.log 2>&1 &
+  bun run preview -- --host 127.0.0.1 --port 8080 >"$QA_OUTPUT_DIR/web-preview.log" 2>&1 &
   WEB_PID=$!
+  trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
   READY=0
   for _ in {1..40}; do
     if curl --fail --silent http://127.0.0.1:8080/login >/dev/null; then
@@ -77,20 +82,20 @@ echo "[phase5] axe + lighthouse"
     sleep 0.25
   done
   if [[ "$READY" -ne 1 ]]; then
-    cat /tmp/consubov-web-preview.log
+    cat "$QA_OUTPUT_DIR/web-preview.log"
     exit 1
   fi
 
   bunx @axe-core/cli     http://127.0.0.1:8080/     http://127.0.0.1:8080/login     http://127.0.0.1:8080/recuperar-senha
 
-  bunx lighthouse http://127.0.0.1:8080/     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path=/tmp/lighthouse-home.json     --quiet
+  bunx lighthouse http://127.0.0.1:8080/     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path="$QA_OUTPUT_DIR/lighthouse-home.json"     --quiet
 
-  bunx lighthouse http://127.0.0.1:8080/login     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path=/tmp/lighthouse-login.json     --quiet
+  bunx lighthouse http://127.0.0.1:8080/login     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path="$QA_OUTPUT_DIR/lighthouse-login.json"     --quiet
 
   node - <<'NODE'
 const fs = require("fs");
 for (const name of ["home", "login"]) {
-  const report = JSON.parse(fs.readFileSync(`/tmp/lighthouse-${name}.json`, "utf8"));
+  const report = JSON.parse(fs.readFileSync(`${process.env.QA_OUTPUT_DIR}/lighthouse-${name}.json`, "utf8"));
   const categories = report.categories;
   const audits = report.audits;
   console.log("[lighthouse]", name, JSON.stringify({
@@ -105,7 +110,10 @@ for (const name of ["home", "login"]) {
 }
 NODE
 
+  node ../../scripts/check-web-lighthouse-budget.mjs
+
   kill "$WEB_PID" 2>/dev/null || true
+  trap - EXIT
   unset WEB_PID
 )
 
@@ -116,27 +124,27 @@ echo "[phase5] edge functions"
 )
 
 echo "[phase5] api smoke"
-PORT=3000 bun apps/api/dist/index.js >/tmp/consubov-api.log 2>&1 &
+PORT=3000 bun apps/api/dist/index.js >"$QA_OUTPUT_DIR/consubov-api.log" 2>&1 &
 API_PID=$!
 READY=0
 for _ in {1..20}; do
-  if curl --fail --silent http://127.0.0.1:3000/api/v1/health >/tmp/health.json; then
+  if curl --fail --silent http://127.0.0.1:3000/api/v1/health >"$QA_OUTPUT_DIR/health.json"; then
     READY=1
     break
   fi
   sleep 0.25
 done
 if [[ "$READY" -ne 1 ]]; then
-  cat /tmp/consubov-api.log
+  cat "$QA_OUTPUT_DIR/consubov-api.log"
   exit 1
 fi
 
-test "$(cat /tmp/health.json)" = '{"status":"ok"}'
+test "$(cat "$QA_OUTPUT_DIR/health.json")" = '{"status":"ok"}'
 test "$(curl --fail --silent http://127.0.0.1:3000/api/v1/readiness)" = '{"status":"ready"}'
-curl --fail --silent http://127.0.0.1:3000/api/v1/openapi.json >/tmp/openapi.json
-grep -q '"openapi":"3.1.0"' /tmp/openapi.json
-curl --fail --silent http://127.0.0.1:3000/api/docs >/tmp/docs.html
-grep -q 'Consubov Developers' /tmp/docs.html
+curl --fail --silent http://127.0.0.1:3000/api/v1/openapi.json >"$QA_OUTPUT_DIR/openapi.json"
+grep -q '"openapi":"3.1.0"' "$QA_OUTPUT_DIR/openapi.json"
+curl --fail --silent http://127.0.0.1:3000/api/docs >"$QA_OUTPUT_DIR/docs.html"
+grep -q 'Consubov Developers' "$QA_OUTPUT_DIR/docs.html"
 
 kill "$API_PID" 2>/dev/null || true
 unset API_PID
