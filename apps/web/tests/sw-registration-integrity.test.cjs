@@ -33,7 +33,7 @@ function loadRegistration({ busy }) {
   const navigatorMock = { serviceWorker: navSw };
   const documentMock = { addEventListener() {}, visibilityState: 'visible' };
   const modules = {
-    react: { useEffect() {}, useState() {}, useCallback(fn) { return fn; } },
+    react: { useEffect() {}, useState(v) { return [v, () => {}]; }, useCallback(fn) { return fn; } },
     '@/lib/authIdle': { reloadWhenAuthIdle(fn) { fn(); } },
     './criticalOperations': {
       hasCriticalOperations() { return isBusy; },
