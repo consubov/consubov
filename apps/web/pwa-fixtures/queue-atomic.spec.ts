@@ -20,7 +20,10 @@ const runtime = [
   "const adapter = {};",
   "(function(exports, require) {", compile("adapters/IndexedDbAtomicCommandQueue.ts"),
   "})(adapter, (name) => { if (name === '../offline/commandPolicy') return policy; throw new Error(name); });",
-  "window.__consubovQueueTest = { policy, Queue: adapter.IndexedDbAtomicCommandQueue };",
+  "const sync = {};",
+  "(function(exports, require) {", compile("offline/localSyncRound.ts"),
+  "})(sync, (name) => { if (name === './commandPolicy') return policy; throw new Error(name); });",
+  "window.__consubovQueueTest = { policy, sync, Queue: adapter.IndexedDbAtomicCommandQueue };",
   "})();",
 ].join("\n");
 
@@ -135,4 +138,51 @@ test("stale ACK is rejected without silently losing newer inflight work", async 
     return { rejected, status: (await q.get(o, "cmd-1")).status, attempt: two.attemptCount };
   });
   expect(states).toEqual({ rejected: true, status: "inflight", attempt: 2 });
+});
+
+
+test("offline fake transport retries with one durable idempotency key and explicit ACK", async ({ page, context }) => {
+  await openPage(page);
+  await add(page);
+  await context.setOffline(true);
+  try {
+    const offline = await page.evaluate(async () => {
+      const { sync } = (window as any).__consubovQueueTest;
+      const q = (window as any).__q, owner = (window as any).__owner;
+      const outcome = await sync.syncOneLocalCommand(owner, "cmd-1", q, {
+        async push() { throw new Error("offline fixture"); },
+      });
+      return { outcome: outcome.status, saved: await q.get(owner, "cmd-1") };
+    });
+    expect(offline.outcome).toBe("retry");
+    expect(offline.saved.status).toBe("pending");
+    expect(offline.saved.attemptCount).toBe(1);
+  } finally { await context.setOffline(false); }
+
+  const delivered = await page.evaluate(async () => {
+    const { sync } = (window as any).__consubovQueueTest;
+    const q = (window as any).__q, owner = (window as any).__owner;
+    return sync.syncOneLocalCommand(owner, "cmd-1", q, {
+      async push(command: any) {
+        if (command.idempotencyKey !== "idempotent-cmd-1" || command.attemptCount !== 2) {
+          throw new Error("changed idempotency after offline retry");
+        }
+        return { kind: "acked", ack: {
+          commandId: command.commandId, idempotencyKey: command.idempotencyKey,
+          tenantId: owner.tenantId, userId: owner.userId,
+        }};
+      },
+    });
+  });
+  expect(delivered.status).toBe("acked");
+
+  await page.reload();
+  await page.addScriptTag({ content: runtime });
+  const persisted = await page.evaluate(async () => {
+    const { Queue } = (window as any).__consubovQueueTest;
+    return new Queue().get({ tenantId: "tenant-fixture", userId: "user-fixture" }, "cmd-1");
+  });
+  expect(persisted.status).toBe("acked");
+  expect(persisted.idempotencyKey).toBe("idempotent-cmd-1");
+  expect(persisted.attemptCount).toBe(2);
 });
