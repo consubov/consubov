@@ -81,3 +81,15 @@ Todos os resultados devem incluir SHA, logs e JSON em `.qa/runs/`, relatórios s
 **Regressões Node:** reconstituição seletiva de 11 suites, com arquivos versionados da branch: **72 testes executados, 72 PASS, 0 FAIL** em Node 22.16 com TypeScript global; sem Bun/Vitest/Playwright navegadores, sem bundle completo, sem escaneamento real. Um teste falhou inicialmente por mock React desatualizado na cópia seletiva; após usar a versão do teste já corrigida e commitada, a suíte reexecutada ficou verde. Relatórios falsamente rotulados `READY` foram corrigidos em `docs/qa/phase6-pwa-local-report.md`, `phase7-offline-local-report.md` e `RELATORIO_HANDOFF_FASES_5_9_LOCAL.md`. Nenhuma fase é considerada aprovada.
 
 **Riscos remanescentes:** a PWA de produção legada não foi exercitada; Playwright E2E e QA FASES 5–7 pendentes; precache/quota e migração/transporte real precisam ser comprovados. Não usar Github Actions hospedado, remoto Supabase/PostgreSQL, Vercel, migrations ou deploy.
+
+## Bloco 4 — 2026-10-09: IndexedDB transacional em FASE 7
+
+**Código no PR #43:** `apps/web/src/platform/adapters/IndexedDbAtomicCommandQueue.ts` (database novo e separado; `add` sem sobrescrita; índice idempotency único por owner; claim/ACK/conflito/retry com transação readwrite e CAS por attempt; crash recovery explícito). **Nenhum** banco antigo foi alterado.
+
+**Teste executado no ambiente desta conversa:** `tsc --strict --noEmit` sobre adapter+policy+coordinator PASS; `node --check` dos novos testes e scripts PASS; YAML Taskfile carregado (18 tarefas), ambos os novos arquivos Playwright passaram na análise sintática TypeScript. Os 14 testes da nova fila foram executados contra um **simulador transitório local da API IndexedDB**, construído somente na bancada: **14/14 PASS**. Esse simulador **NÃO é o pacote verdadeiro `fake-indexeddb`**, mesmo que esse já esteja declarado como devDependency do app. Execução do pacote real requer `task setup` no checkout.
+
+**Navegador:** tentativa de Playwright Chromium no ambiente de auditoria retornou `ERR_BLOCKED_BY_ADMINISTRATOR` inclusive para 127.0.0.1, URL pública roteada e file/data; **nenhum** caso Playwright foi aprovado aqui. Foram versionados **5 cenários por projeto** em `apps/web/pwa-fixtures/queue-atomic.spec.ts` para Chromium/WebKit locais.
+
+**Estado QA:** revisor NÃO APROVOU FASE 5/6/7. `task qa:offline:core` e `task qa:offline:browser` devem ser executados no VS Code, sem GitHub Actions, anexando logs sanitizados e SHA. `task qa:phase7` segue PENDENTE; migration engine das seis bases, app auth/tenancy e backend idempotência estão fora da validação deste bloco.
+
+**Segurança:** não apagar DB antiga/CacheStorage, não rodar migrations remotas, não conectar Supabase/PostgreSQL remoto, não alterar deploy, não alegar FULL QA por simulador.

@@ -27,3 +27,11 @@ O inventário somente leitura das seis bases IndexedDB e chaves do localStorage 
 `apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts` e `apps/web/src/platform/offline/commandPolicy.ts` são **componentes incrementais isolados** para o novo banco local e o ciclo de comando idempotente; não consomem filas legadas nem autorizam writes pelo backend. O inventário readonly não migra linhas, fotos nem anexos. **Não existe ainda evidência de sync engine integrado, transactional queue multiaba, migration engine idempotente nem de `task qa:phase7` PASS**. Nenhum status DEV READY substitui esses gates.
 
 O cenário Playwright das seis bases legadas foi adicionado, mas não rodado em navegador nesta auditoria. Prerequisitos de teste futuro: Chromium/WebKit, transações/retentativas/ACK e conflitos por tenant, crash/restart, Blob/ArrayBuffer, persistência offline rural e atualização legada→nova. Não apagar as bases legadas até integridade e reconciliação auditadas.
+
+## 5. Fila transacional em desenvolvimento — 2026-10-09 (bloco 4)
+
+Implementado `apps/web/src/platform/adapters/IndexedDbAtomicCommandQueue.ts`: persistência nova com índice único de idempotência por tenant/user, reserva readwrite atômica, ACK/retry/conflito protegidos contra eventos antigos e recuperação pós-crash explicitamente autorizada, sem timeout de lease arbitrário. Os dados não são deletados automaticamente.
+
+`apps/web/tests/atomic-command-queue.test.cjs`: **14 testes** adicionados com a devDependency já presente `fake-indexeddb`. `apps/web/pwa-fixtures/queue-atomic.spec.ts`: **5 cenários** de browser para duas abas, persistência offline binária, isolation e ACK após reconexão. O harness Node foi executado em **simulador local separado** (14/14 PASS), porém os testes com fake-indexeddb real e Chromium/WebKit seguem **NÃO EXECUTADOS** neste ambiente.
+
+`task qa:offline:core`, `task qa:offline:browser`, `task qa:matrix` e VS Code Task registrados. **A FASE 7 NÃO ESTÁ OFFLINE READY:** faltam auth verificada, integração real, migração de seis DBs e sync/chaos/testes completos. Para detalhes: `docs/66-offline-atomic-queue.md`.

@@ -103,3 +103,7 @@ task qa:matrix
 **Próximo executor:** `task qa:regressions` → `task qa:pwa:build-preflight` → `task qa:pwa:upgrade-fixture` → `task qa:matrix`; depois implementar/testar fila durável transacional multiaba e migration engine idempotente das 6 bases; finalizar QA locais por fase. Não confundir `PWA LOCAL READY`/ `OFFLINE LOCAL READY` com scaffolds sem testes E2E.
 
 **Ações proibidas:** CI remoto, git merge/force push, publicação, banco real, migrations remotas, deploy, secrets e exclusão de storage offline legado. Atualizar `CONSUBOV_HANDOFF_CONTINUIDADE.md` nas Fontes ao trocar de conversa.
+
+## Interdependência FASE 7 — fila local (2026-10-09)
+
+No PR #43, `IndexedDbAtomicCommandQueue.ts` e testes multiaba/offline binário foram adicionados; evidência local **14/14 em simulador temporário**, TS strict PASS, browser e fake-indexeddb real ainda não executados. `task qa:offline:core`, `task qa:offline:browser` e `task qa:matrix` passam a registrar etapas separadas. **Não** fechar QA FASE 5 por sucesso parcial de FASE 7. Ver PRD/handoff único seção 16 e `docs/66-offline-atomic-queue.md`.

@@ -1,5 +1,24 @@
 # CONSUBOV — Checklist Mestre de Execução
 
+## FASE 7 — fila IndexedDB transacional (bloco 4, 2026-10-09)
+
+**Status:** implementação e testes de fundação concluídos; FASE 7 geral e QA local **NÃO APROVADOS**. PR #43 draft / branch \`work/fase5-6-7-pwa-local\`. Track: AUDITORIA DE QUALIDADE.
+
+- [x] \`IndexedDbAtomicCommandQueue\` implementada em **novo banco** \`consubov-vnext-command-queue\`, sem upgrades/deleção/leitura das seis bases legadas.
+- [x] Escopo tenant/user em chaves e índices; \`idempotencyScope\` tem índice único por owner; \`enqueue\` não sobrescreve operações.
+- [x] \`claimPending\`, ACK, conflito e retorno a pendente são transições CAS em transação IndexedDB \`readwrite\`; só resolvem após \`transaction.oncomplete\`; rejeitam ACK/attempt stale.
+- [x] \`recoverUnconfirmed\` requer confirmação explícita de emissor parado + attempt exato; **sem expiração automática** que possa duplicar operações.
+- [x] \`localSyncRound\` pode receber adapter durável pelo contrato \`AtomicCommandQueue\`, mas nenhuma integração com fila legada/API real foi ativada.
+- [x] **14/14 testes Node PASS em simulador de transações local temporário**; tipagem TypeScript estrita do adapter+commandPolicy+coordenador PASS; Go Task YAML com 18 tarefas válido. Testes \`fake-indexeddb\` reais ainda não executados neste ambiente.
+- [x] 14 testes de integração fake-indexeddb adicionados em \`apps/web/tests/atomic-command-queue.test.cjs\` (dependência já declarada no Web); \`task qa:offline:core\` e \`qa:regressions\` atualizados.
+- [x] 5 cenários Playwright de IndexedDB real na mesma origem, concorrência entre abas, Blob/ArrayBuffer, offline, ACK idempotente e reabertura adicionados e registrados em \`task qa:offline:browser\`. **Não executados aqui** por bloqueio \`ERR_BLOCKED_BY_ADMINISTRATOR\` ao navegar até localhost e outros URLs; Chromium/WebKit pendentes no VS Code.
+- [ ] Testes \`fake-indexeddb\` com dependências completas e Playwright Chromium/WebKit no checkout do VS Code; \`task qa:phase7\` integral.
+- [ ] Integração sessão autenticada/tenant válido, ordem causal, sync API com idempotência, migração versionada e retomável das seis bases, reconciliação e rollback com dados fictícios.
+- [ ] QA FASE 5/6 completos, upgrade PWA antiga→nova real no mesmo origin preservando fotos/filas e homologação física no piloto.
+
+**Detalhes:** \`docs/66-offline-atomic-queue.md\`. Nenhum CI hospedado, Supabase/PostgreSQL remoto, migrations, deploy, merge ou produção.
+
+
 ## Incremento 2026-10-09 — proteção adicional offline + sincronia local
 
 **Repo:** PR #43 draft, branch \`work/fase5-6-7-pwa-local\`. **Track QA:** AUDITORIA DE QUALIDADE; não substituir gates integrais por testes sintéticos.

@@ -255,3 +255,17 @@ Este é o mesmo PRD/handoff do PR #43, sem criação de novo agente/branch. Ante
 6. FASES 8 e 9 podem ter testes **locais** independentes; sem conexão/infraestrutura externa. Registrar status no Checklist Mestre Git/Notion, atualizar documentação/QA/PRD/handoff no mesmo bloco.
 
 **Aceite inalterado:** zero perda offline comprovada na substituição legada→nova, QA locais íntegros FASES 5–7, documentação e checklist sincronizados, autorização de produção e homologação física antes do release. **Exclusões:** Capacitor, produção, banco remoto, Vercel, migrations/deploy, IAM/secrets, rebase/force push. **Relatório final:** status/sha/dirty, testes e logs sanitizados, falhas, pendências e próximas ações. Para nova conversa sincronizar handoff das Fontes.
+
+## 16. Adendo de handoff — 2026-10-09 (bloco 4)
+
+**Não duplicar:** `IndexedDbAtomicCommandQueue.ts` já implementa o contrato `AtomicCommandQueue` do `localSyncRound.ts` em banco novo. `atomic-command-queue.test.cjs` contém 14 cenários fake-indexeddb; `queue-atomic.spec.ts` contém 5 cenários Playwright (Chromium/WebKit), já incluídos em `qa:pwa:upgrade-fixture` e em `qa:offline:browser`. Go Task e VS Code atualizados.
+
+**Evidências locais aqui:** 14/14 testes PASS em **simulador temporário de IndexedDB**, compilação TypeScript estrita PASS, YAML 18 tarefas válido, parsing de testes/browser PASS. **NÃO houve teste com o pacote verdadeiro fake-indexeddb nem execução de navegador** por ambiente restrito. FASES 5–7 permanecem QA NÃO APROVADO. Nenhuma migração ou integração legada executada.
+
+**Ordem de trabalho do próximo executor (local no VS Code):**
+1. Ler Checklist Mestre Notion/repo e conferir SHA + alterações locais. `task setup` instala `fake-indexeddb`, já declarado, e Playwright browsers. Executar `task qa:offline:core`, `task qa:offline:browser` e `task qa:pwa:upgrade-fixture`, corrigindo regressões reais. Testes de navegador físico não são condição para desenvolver fases independentes, mas obrigatórios antes de publicar.
+2. Ligar **somente no novo fluxo autorizado** o adapter `IndexedDbAtomicCommandQueue` ao `localSyncRound`, com sessão autenticada e tenant validado; criar testes de dupla aba com WebKit real e API fake, ACK e ordenação. `recoverUnconfirmed` só após confirmação explícita de não haver transmissor ativo; nunca inventar lease de conflito pecuário.
+3. Implementar migration engine segura, versionada e retomável das seis bases legadas **com schema real verificado**, preservando filas/Blobs sem apagar origem, dados falsos, dedupe, reconciliação, repetição, rollback e erros de quota.
+4. Continuar os gates independentes FASE 5/6 no Go Task e iniciar preparo local dos FASES 8/9 apenas sem remoto. Registrar QA por SHA e manter Notion/checklist/PRD/handoff/documentação sincronizados.
+
+**Aceite:** [ ] real fake-indexeddb PASS; [ ] Playwright Chromium+WebKit PASS; [ ] fila autenticada+sync fake integrada; [ ] migration engine de todas seis DBs verde; [ ] FASE5/6 completos e PWA legada→nova zero-loss; [ ] QA revisor; [ ] autorização expressa para qualquer remoto/release. **Exclusões/ações proibidas:** merge/reset/force push, CI hospedado, apagar dados offline, remote Supabase/PostgreSQL, Vercel, migrations remotas, deploy, secrets. **Relatório final:** branch SHA/dirty, testes reais e falhas, riscos, docs/Notion, ações executadas e próximas etapas. Fonte de detalhes: `docs/66-offline-atomic-queue.md`. Substituir Handoff das Fontes ao final.

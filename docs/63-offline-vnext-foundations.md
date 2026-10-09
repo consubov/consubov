@@ -31,3 +31,7 @@ Arquivo: `apps/web/src/platform/offline/localSyncRound.ts`. Porta `AtomicCommand
 Cenários codificados/testados em `apps/web/tests/local-sync-round.test.cjs` (8/8 Node PASS): ACK correto e manutenção do registro; timeout incerto com a **mesma chave de idempotência**; retry e ACK posterior; conflito persistindo como conflito; rejeição de ACK de outro tenant; rejeição de ACK com idempotencyKey distinta; fila vazia sem envio; resposta não reconhecida falha fechada. Sem tentativa de aplicar resolução de domínio via LWW.
 
 **Importante:** o teste usa **fake queue local**, não demonstra transação IndexedDB multiaba nem backend idempotente real. Não integrar a dados de usuário antes do adapter durável + autorização e migração terem evidências de QA.
+
+## Avanço de persistência transacional (bloco 4 — 2026-10-09)
+
+Foi adicionado `IndexedDbAtomicCommandQueue` em banco local novo, `consubov-vnext-command-queue`, com transações IndexedDB atômicas. O coordenador `localSyncRound` aceita esse adapter pelo contrato existente `AtomicCommandQueue`. Este avanço **não conecta filas legadas nem API remota**. Consulte [66-offline-atomic-queue.md](./66-offline-atomic-queue.md) para garantias, limitações, testes e passos restantes.
