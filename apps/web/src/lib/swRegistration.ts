@@ -509,9 +509,21 @@ export function useSWUpdate() {
   }, []);
 
   const forceRefresh = useCallback(async () => {
-    await clearAppCaches();
-    const regs = await navigator.serviceWorker?.getRegistrations();
-    if (regs) await Promise.all(regs.map((r) => r.unregister()));
+    // "Atualizar app" is NOT an authorization to delete the installed offline
+    // shell. A cache purge could strand a field worker without connectivity.
+    if (hasCriticalOperations()) {
+      schedulePostDrainAction(() => void forceRefresh());
+      return;
+    }
+    if ("serviceWorker" in navigator) {
+      await maybeUpdateActiveServiceWorker();
+      const reg = await navigator.serviceWorker.getRegistration().catch(() => undefined);
+      if (reg?.waiting && navigator.serviceWorker.controller) {
+        await applyPendingUpdateNow();
+        return;
+      }
+    }
+    // Normal navigation is safely pinned by the existing worker while offline.
     reloadWhenAuthIdle(() => window.location.reload());
   }, []);
 

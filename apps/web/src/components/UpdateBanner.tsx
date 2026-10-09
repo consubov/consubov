@@ -1,4 +1,3 @@
-import { reloadWhenAuthIdle } from "@/lib/authIdle";
 import { useEffect, useState } from "react";
 import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
@@ -55,14 +54,9 @@ export function UpdateBanner() {
   if (!show) return null;
 
   const handleClick = () => {
-    if (updateAvailable) {
-      applyUpdate();
-    } else {
-      // SW já se atualizou — basta recarregar buscando bypass do cache
-      const url = new URL(window.location.href);
-      url.searchParams.set("__v", String(Date.now()));
-      reloadWhenAuthIdle(() => window.location.replace(url.toString()));
-    }
+    // A version.json mismatch alone does not prove the new worker is ready.
+    // Use the same activation-safe path as an already waiting worker.
+    applyUpdate();
   };
 
   return (

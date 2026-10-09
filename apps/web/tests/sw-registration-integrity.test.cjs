@@ -23,7 +23,7 @@ function loadRegistration({ busy }) {
     addEventListener(type, cb) { calls.handlers.set('sw:' + type, cb); },
   };
   const windowMock = {
-    location: { href: 'https://consubov.test/', search: '', hostname: 'consubov.test', replace(url) { calls.reloads.push(url); } },
+    location: { href: 'https://consubov.test/', search: '', hostname: 'consubov.test', replace(url) { calls.reloads.push(url); }, reload() { calls.reloads.push('reload'); } },
     sessionStorage: { getItem() { return null; }, setItem() {} },
     clearTimeout(id) { calls.timeouts.delete(id); },
     setTimeout(cb) { const id = ++timerId; calls.timeouts.set(id, cb); return id; },
@@ -119,4 +119,42 @@ test('waiting update applied after installation only while user requested it', a
   assert.equal(app.calls.waitingMessages.length, 1);
   assert.equal(app.calls.waitingMessages[0].type, 'SKIP_WAITING');
   assert.equal(app.calls.reloads.length, 0, 'worker must take control first');
+});
+
+test('manual refresh keeps offline caches and existing worker registered', async () => {
+  const app = loadRegistration({ busy: false });
+  app.registration.waiting = null;
+  let purges = 0;
+  app.navSw.getRegistrations = async () => { purges++; return []; };
+  app.navSw.register = async () => app.registration;
+  await app.mod.useSWUpdate().forceRefresh();
+  assert.equal(purges, 0, 'never unregister an installed worker');
+  assert.deepEqual(app.calls.reloads, ['reload']);
+});
+
+test('manual refresh with a waiting worker delegates to verified activation', async () => {
+  const app = loadRegistration({ busy: false });
+  app.navSw.register = async () => app.registration;
+  await app.mod.useSWUpdate().forceRefresh();
+  assert.equal(app.calls.waitingMessages.length, 1);
+  assert.equal(app.calls.reloads.length, 0, 'must not navigate before controllerchange');
+});
+
+test('manual refresh does not interrupt a critical offline operation', async () => {
+  const app = loadRegistration({ busy: true });
+  app.registration.waiting = null;
+  app.navSw.register = async () => app.registration;
+  await app.mod.useSWUpdate().forceRefresh();
+  assert.equal(app.calls.reloads.length, 0);
+  assert.equal(typeof app.calls.pendingDrain, 'function');
+  app.setBusy(false);
+  app.calls.pendingDrain();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(app.calls.reloads, ['reload']);
+});
+
+test('update banner only requests safe SW activation (never bypasses waiting worker)', () => {
+  const banner = fs.readFileSync(path.resolve(__dirname, '../src/components/UpdateBanner.tsx'), 'utf8');
+  assert.match(banner, /const handleClick = \(\) => \{[\s\S]*?applyUpdate\(\);/);
+  assert.doesNotMatch(banner, /window\.location\.replace/);
 });
