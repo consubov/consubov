@@ -187,7 +187,7 @@ test("crash recovery requires explicit confirmation and exact attempt CAS", asyn
 test("enqueue rejects unconfirmed inflight payloads and commands without identity", async () => {
   const queue = new IndexedDbAtomicCommandQueue(fakeFactory());
   await assert.rejects(queue.enqueue(owner, { ...initial(), status: "inflight" }));
-  await assert.rejects(queue.enqueue(owner, initial("cmd-1", { idempotencyKey: " " })));
+  assert.throws(() => initial("cmd-1", { idempotencyKey: " " }));
 });
 
 test("IndexedDB unavailable refuses to accept a command as persisted", async () => {
