@@ -147,6 +147,16 @@
       ],
       "group": "test",
       "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: Revisar prontidao local da pre-producao",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:preprod:local-gates"
+      ],
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }

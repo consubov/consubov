@@ -33,7 +33,7 @@ tasks:
   qa:regressions:
     desc: Local standalone QA regressions (not phase approval)
     cmds:
-      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs
+      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs
 
   qa:pwa:upgrade-fixture:
     desc: Synthetic local Chromium/WebKit same-origin update (not production legacy certification)
@@ -48,6 +48,10 @@ tasks:
     desc: Test isolated tenant-scoped IndexedDB and stable offline command policies
     cmds:
       - bash scripts/qa/record.sh offline-core node --test apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs
+
+  qa:preprod:local-gates:
+    desc: Fail-closed local QA evidence check; never authorizes deploy or real-world release
+    cmds: [node scripts/qa/check-preprod-local-gates.mjs]
 
   qa:matrix:
     desc: Run all QA gates independently and report every failure without hiding aggregate FAIL

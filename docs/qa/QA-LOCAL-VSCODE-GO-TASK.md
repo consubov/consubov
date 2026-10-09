@@ -116,3 +116,7 @@ task qa:matrix
 **Estado de revisão:** scripts e testes Node isolados passaram no ambiente técnico de auditoria. **Playwright navegador real, Bun build completo, Axe/Lighthouse reais e FASES 5–7 integrais não foram executados aqui**; faça-os no checkout local do VS Code, com logs sanitizados.
 
 **Segurança:** não alterar/limpar bancos legados, não confiar no adapter como autorização server-side, não acessar Supabase remoto, Vercel, CI hospedado, migrations nem deploy.
+
+## Gate local para preparação das FASES 8–9 (2026-10-09)
+
+O relatório consolidado criado pelo `task qa:matrix` pode ser inspecionado por `task qa:preprod:local-gates`, apontando `QA_MATRIX_REPORT` para o JSON gerado. O verificador **rejeita** SHA divergente, working tree suja, registros simulados ou FASE 5/6/7 pendente. Mesmo quando passar, libera **apenas revisão local**, não produção. Consulte `docs/64-fase8-9-local-readiness.md`. Não iniciar deploy/banco remoto.

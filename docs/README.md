@@ -53,3 +53,5 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 - [Fundações do banco local e comando idempotente](./63-offline-vnext-foundations.md)
 - [QA local: Go Task, matriz e PWA upgrade fixture](./qa/QA-LOCAL-VSCODE-GO-TASK.md)
+
+- [FASES 8–9: gate local de evidências e preparacao de piloto](./64-fase8-9-local-readiness.md)
