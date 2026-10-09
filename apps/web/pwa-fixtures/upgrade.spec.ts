@@ -111,3 +111,148 @@ test("unavailable lazy asset prevents offline shell replacement", async ({ page 
   await page.goto(origin + "/pesagem");
   await expect(page.locator("#build")).toHaveText("a");
 });
+
+
+test("the six actual legacy database names retain pending rows and binary attachments after upgrade", async ({ page }) => {
+  await installOld(page);
+  // Fixture-only fake records; no real client data, credentials or remote API.
+  await page.evaluate(async () => {
+    const schema: { name: string; version: number; stores: [string, string | null][] }[] = [
+      { name: "consubov-capataz", version: 7, stores: [
+        ["lancamentos", "id"], ["pastos", "id"], ["retiro", "id"], ["ciclos", "id"],
+        ["config", "key"], ["observacoesOffline", "id"], ["produtoAtivo", "id"],
+        ["fazendaCache", "id"], ["pesagensPendentes", "id"], ["syncQueue", "id"],
+        ["syncErrors", "id"], ["lastPdfs", "id"],
+      ] },
+      { name: "consubov-session", version: 1, stores: [["auth_session", null], ["offline_data", null]] },
+      { name: "consubov-consultor-offline", version: 2, stores: [
+        ["foto_queue", "localId"], ["snapshots", "visitaId"], ["text_mutations", "id"],
+      ] },
+      { name: "mais-arrobas-offline", version: 1, stores: [["tables", null]] },
+      { name: "mais-arrobas-sync", version: 2, stores: [["queue", "id"], ["acknowledged-inserts", null]] },
+      { name: "consubov-fotos-salga", version: 1, stores: [["fotos", "lancamento_id"], ["feitos", null]] },
+    ];
+    for (const definition of schema) {
+      const req = indexedDB.open(definition.name, definition.version);
+      const db = await new Promise<IDBDatabase>((resolveDb, reject) => {
+        req.onupgradeneeded = () => {
+          for (const [name, keyPath] of definition.stores) {
+            req.result.createObjectStore(name, keyPath === null ? undefined : { keyPath });
+          }
+        };
+        req.onsuccess = () => resolveDb(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      const tx = db.transaction(definition.stores.map(([name]) => name), "readwrite");
+      const put = (store: string, value: unknown, key?: IDBValidKey) =>
+        tx.objectStore(store).put(value, key);
+      if (definition.name === "consubov-capataz") {
+        put("syncQueue", { id: "cmd-a", tenant_id: "tenant-fixture", status: "pending" });
+        put("pesagensPendentes", { id: "pesagem-a", sincronizado: false });
+        put("lastPdfs", { id: "pdf-a", blob: new Blob(["pdf-bytes-fixture"], { type: "application/pdf" }) });
+      } else if (definition.name === "consubov-session") {
+        put("auth_session", { fixture: true }, "current");
+        put("offline_data", { id: "session-a", offline: true }, "current");
+      } else if (definition.name === "consubov-consultor-offline") {
+        put("foto_queue", { localId: "photo-a", status: "pending",
+          blob: new Blob(["photo-bytes-fixture"], { type: "image/jpeg" }),
+          blobBuffer: new Uint8Array([14, 24, 34]).buffer });
+        put("text_mutations", { id: "mutation-a", status: "pending", tries: 2 });
+        put("snapshots", { visitaId: "visit-a", data: { fixture: true } });
+      } else if (definition.name === "mais-arrobas-offline") {
+        put("tables", { id: "table-a", pending: true }, "table-a");
+      } else if (definition.name === "mais-arrobas-sync") {
+        put("queue", { id: "mais-a", status: "pending" });
+        put("acknowledged-inserts", "acknowledged", "ack-a");
+      } else if (definition.name === "consubov-fotos-salga") {
+        put("fotos", { lancamento_id: "salga-a",
+          blob: new Blob(["salga-bytes-fixture"], { type: "image/jpeg" }) });
+        put("feitos", "ok", "feito-a");
+      }
+      await new Promise<void>((resolveTx, reject) => {
+        tx.oncomplete = () => resolveTx();
+        tx.onabort = () => reject(tx.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    }
+    localStorage.setItem("pending_backup", JSON.stringify({ ids: ["cmd-a", "pesagem-a"] }));
+    localStorage.setItem("pending_backup_at", "2026-10-09T00:00:00Z");
+    localStorage.setItem("ma-offline-mode", "true");
+  });
+
+  version = "b";
+  await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
+  await expect.poll(() => page.evaluate(async () =>
+    (await navigator.serviceWorker.getRegistration())?.waiting?.state ?? null), { timeout: 20000 }).toBe("installed");
+
+  await page.goto(origin + "/pesagem");
+  await expect(page.locator("#build")).toHaveText("a");
+
+  await page.evaluate(async () => {
+    const waiting = (await navigator.serviceWorker.getRegistration())?.waiting;
+    if (!waiting) throw new Error("new worker not waiting");
+    await new Promise<void>(resolveChanged => {
+      navigator.serviceWorker.addEventListener("controllerchange", () => resolveChanged(), { once: true });
+      waiting.postMessage({ type: "SKIP_WAITING" });
+    });
+  });
+
+  await page.context().setOffline(true);
+  await page.goto(origin + "/pesagem");
+  await expect(page.locator("#build")).toHaveText("b");
+
+  const recovered = await page.evaluate(async () => {
+    const read = async (name: string, version: number, store: string, key: IDBValidKey): Promise<any> => {
+      const req = indexedDB.open(name, version);
+      const db = await new Promise<IDBDatabase>((resolveDb, reject) => {
+        // A version upgrade would be dangerous in this verification.
+        req.onupgradeneeded = () => { req.transaction?.abort(); reject(new Error("unexpected database creation")); };
+        req.onsuccess = () => resolveDb(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      try {
+        return await new Promise<any>((resolveRow, reject) => {
+          const row = db.transaction(store, "readonly").objectStore(store).get(key);
+          row.onsuccess = () => resolveRow(row.result);
+          row.onerror = () => reject(row.error);
+        });
+      } finally { db.close(); }
+    };
+    const capataz = await read("consubov-capataz", 7, "syncQueue", "cmd-a");
+    const pesagem = await read("consubov-capataz", 7, "pesagensPendentes", "pesagem-a");
+    const pdf = await read("consubov-capataz", 7, "lastPdfs", "pdf-a");
+    const session = await read("consubov-session", 1, "offline_data", "current");
+    const mutation = await read("consubov-consultor-offline", 2, "text_mutations", "mutation-a");
+    const photo = await read("consubov-consultor-offline", 2, "foto_queue", "photo-a");
+    const table = await read("mais-arrobas-offline", 1, "tables", "table-a");
+    const queue = await read("mais-arrobas-sync", 2, "queue", "mais-a");
+    const ack = await read("mais-arrobas-sync", 2, "acknowledged-inserts", "ack-a");
+    const salga = await read("consubov-fotos-salga", 1, "fotos", "salga-a");
+    return {
+      capataz: [capataz?.id, capataz?.status],
+      pesagem: [pesagem?.id, pesagem?.sincronizado],
+      pdf: await pdf?.blob.text(),
+      session: session?.offline,
+      mutation: [mutation?.id, mutation?.tries],
+      photo: await photo?.blob.text(),
+      buffer: [...new Uint8Array(photo?.blobBuffer ?? [])],
+      table: table?.id,
+      queue: [queue?.id, queue?.status],
+      ack,
+      salga: await salga?.blob.text(),
+      backup: localStorage.getItem("pending_backup"),
+      backupAt: localStorage.getItem("pending_backup_at"),
+      offlineFlag: localStorage.getItem("ma-offline-mode"),
+    };
+  });
+  expect(recovered).toEqual({
+    capataz: ["cmd-a", "pending"], pesagem: ["pesagem-a", false],
+    pdf: "pdf-bytes-fixture", session: true,
+    mutation: ["mutation-a", 2], photo: "photo-bytes-fixture", buffer: [14, 24, 34],
+    table: "table-a", queue: ["mais-a", "pending"], ack: "acknowledged",
+    salga: "salga-bytes-fixture",
+    backup: '{"ids":["cmd-a","pesagem-a"]}',
+    backupAt: "2026-10-09T00:00:00Z", offlineFlag: "true",
+  });
+});
