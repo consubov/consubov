@@ -1,0 +1,6 @@
+{
+  "appId": "com.consubov.app",
+  "appName": "Consubov",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

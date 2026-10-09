@@ -2,7 +2,7 @@ import { GerenteFabricaGuard } from "@/hooks/useGerenteTemFabrica";
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
-import PesagemEmAndamentoPrompt from "@/components/maisArrobas/PesagemEmAndamentoPrompt";
+import PesagemEmAndamentoPrompt from "@/components/maisarrobas/PesagemEmAndamentoPrompt";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";

@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
+.qa/
 node_modules
 dist
 dist-ssr
@@ -16,6 +16,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/tasks.json
 .idea
 .DS_Store
 *.suo
@@ -24,5 +25,14 @@ dist-ssr
 *.sln
 *.sw?
 
-.turbo
-apps/*/dist
+# Act Runner — secrets locais
+.secrets
+.env.local
+.env.production
+
+# Build, cache and test artifacts
+.turbo/
+test-results/
+apps/web/test-results/
+*.tsbuildinfo
+output.txt
