@@ -49,3 +49,7 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 - Decisões arquiteturais aprovadas devem ser registradas aqui.
 - PRDs e handoffs temporários ficam em `instructions/active/`.
 - Antes de apagar um PRD concluído, qualquer aprendizado permanente deve ser transferido para `docs/`.
+### Avanços incrementais de QA e offline (2026-10-09)
+
+- [Fundações do banco local e comando idempotente](./63-offline-vnext-foundations.md)
+- [QA local: Go Task, matriz e PWA upgrade fixture](./qa/QA-LOCAL-VSCODE-GO-TASK.md)

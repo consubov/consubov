@@ -107,6 +107,46 @@
         "qa:act"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: PWA build e precache local",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:pwa:build-preflight"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: PWA upgrade Chromium/WebKit local",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:pwa:upgrade-fixture"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: FASE 7 core offline",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:offline:core"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: QA matriz sem interrupcao",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "qa:matrix"
+      ],
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }

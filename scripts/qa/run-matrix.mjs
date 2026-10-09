@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const available = [
   'qa:regressions', 'qa:check', 'qa:phase5',
-  'qa:offline:inventory', 'qa:phase6', 'qa:phase7',
+  'qa:pwa:build-preflight', 'qa:pwa:upgrade-fixture',
+  'qa:offline:core', 'qa:offline:inventory', 'qa:phase6', 'qa:phase7',
 ];
 const opts = process.argv.slice(2);
 if (opts.length > 1 || (opts.length === 1 && !opts[0].startsWith('--only='))) {
