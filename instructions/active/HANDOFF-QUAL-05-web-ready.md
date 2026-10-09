@@ -58,3 +58,14 @@ task qa:act
 **Restrições:** nenhuma nova conexão Supabase/PostgreSQL remoto, migration remota, Vercel/deploy, rotação de secrets, merge, publicação ou limpeza de dados reais sem autorização explícita. Não mexer em `apps/mobile/`/Capacitor.
 
 **Relatório final:** SHA + dirty, ferramentas/versões, todos os comandos e exit codes, falhas P0/P1/P2 e correções, QA local por fase, pendências reais, próximos passos e ações externas (esperado: nenhuma).
+
+## Auditoria incremental — 2026-10-09
+
+- Branch ativa permanece `work/fase5-6-7-pwa-local`; **não trabalhar nas refs congeladas**.
+- Corrigido Service Worker para servir HTML do shell instalado até atualização explícita e incluir JS/CSS/fonts lazy no precache Vite (commit `0b107013`).
+- FASE 5 tem relatório de Lighthouse com thresholds obrigatórios e pendentes de **baseline real aprovado**; logs ficam em `.qa/phase5-*` (commit `2758ac1f`).
+- FASE 7 tem inventário readonly das bases IndexedDB legadas e suas keys, sem migração/destruição (commit `a3280f16`).
+- **25/25 testes isolados Node PASS** (SW, guard de registro, Vite, orçamento Lighthouse e inventory); sem Bun, Vitest completo, E2E no navegador, Axe, Lighthouse real ou act; QA integral ainda pendente.
+- A tentativa de E2E Chromium neste ambiente foi impedida por `ERR_BLOCKED_BY_ADMINISTRATOR` em localhost; deve ser repetida no VS Code do executor.
+- Continuação detalhada: `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`.
+- Homologação física não impede desenvolvimento, mas **produção e migração remota exigem autorização separada**.

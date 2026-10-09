@@ -4,7 +4,7 @@
 
 ## Evidência verificada
 
-- **23/23 testes isolados Node** na cópia fiel de arquivos do HEAD remoto: 10 Service Worker, 2 Vite build/precache, 2 registro SW/guarda crítica, 5 inventário offline e 6 orçamento Lighthouse. Todos PASS.
+- **25/25 testes isolados Node** na cópia fiel de arquivos do HEAD remoto: 10 Service Worker, 2 Vite build/precache, 2 registro SW/guarda crítica, 5 inventário offline e 6 orçamento Lighthouse. Todos PASS.
 - **Verificações adicionais:** TypeScript `tsc --noEmit` do inventário, `bash -n` do script da FASE 5, `node --check` do Service Worker passaram.
 - **Não executados:** `bun run check`, `task qa:phase5`, `task qa:phase6`, `task qa:phase7`, Vitest total, E2E Playwright da aplicação, Axe real, Lighthouse real, scans e build Vite completo. **Motivo:** runtime Bun/checkout completo indisponíveis neste ambiente.
 - **Tentativa de teste navegador:** Python Playwright + Chromium local com HTTP localhost foi bloqueada pelo ambiente `net::ERR_BLOCKED_BY_ADMINISTRATOR` em 127.0.0.1 e localhost; **não houve PASS nem FAIL funcional de upgrade browser**.
@@ -17,6 +17,8 @@
 4. **FASE 5:** orçamento Lighthouse deixa de ser só diagnóstico. Novo checker exige baseline real aprovado por commit, páginas home/login, métricas e limites finitos; por enquanto orçamento `PENDING_LOCAL_BASELINE`, portanto **gate total deve permanecer vermelho até medição real**.
 5. **FASE 7:** inventário seguro e somente de metadados de seis bases IndexedDB e três chaves localStorage, sem inferência de tenant/user, sem leitura de payload, migração ou exclusão. Documento `docs/62-offline-legacy-migration.md` usa apenas nomes/keys comprovados e deixa políticas de retenção pendentes.
 6. **VS Code/Go Task:** comandos separados para regressões isoladas e inventário offline, com coleta de evidência local.
+
+**Verificação ampliada em 2026-10-09:** a execução integrada incluiu também os 2 casos de `sw-registration-integrity.test.cjs` (proteção de operação crítica), totalizando **25/25 PASS** no Node 22.16.0, sem CI remoto. O resultado segue restrito a testes isolados; não aprova FASE 5/6/7.
 
 ## Estado de aceite
 
@@ -44,4 +46,4 @@ task qa:all
 
 Todos os resultados devem incluir SHA, logs e JSON em `.qa/runs/`, relatórios sanitizados em `docs/qa/` e atualização do checklist repositório/Notion. Dados de clientes, tokens, arquivos .env e logs sensíveis jamais devem ser publicados.
 
-**Auditoria de qualidade: QA NÃO APROVADO para fechamento das FASES 5–7.** Os 23 testes isolados não substituem os gates completos.
+**Auditoria de qualidade: QA NÃO APROVADO para fechamento das FASES 5–7.** Os 25 testes isolados não substituem os gates completos.
