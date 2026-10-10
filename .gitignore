@@ -42,3 +42,8 @@ superpowers/
 /output.txt
 /playwright-report/
 /.work-go-task/
+
+# Act Runner — secrets locais
+.secrets
+.env.local
+.env.production

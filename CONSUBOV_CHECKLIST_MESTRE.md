@@ -94,3 +94,27 @@ A base examinada foi `8d23d8b513580720f57cb53c646c801c850f02eb`. As correções 
 ## 7. Próximo trabalho livre
 
 Concluir os gates de runtime das FASES 5/6 e a integração/migração da FASE 7. A recomendação histórica de reiniciar a FASE 0.1 não é mais o próximo passo. Preparação local independente das FASES 8/9 pode continuar sem esperar aparelhos físicos; não pode dispensar os testes de dados e segurança.
+
+
+## Estabilidade local - 2026-10-10
+- [x] Tmux 3.3a instalado; sessao consubov-control preserva execucao independente da aba. remote.autoForwardPorts=false configurado localmente; sem alterar timeout ou expor portas.
+- [x] task qa:offline:browser: 10/10 Chromium/WebKit PASS, exit=0, 39.5s; recuperado apos sair e voltar ao VS Code. Evidencia .qa/runs/20261010T031211Z-offline-browser-e0c19265c5fb-27778/result.json (dirty=true, HEAD e0c19265).
+- [ ] Diagnosticar extensao/latencia responsavel pela instabilidade; tmux nao garante rede nem sobrevive a parada da VM.
+- [ ] Corrigir as 42 falhas da ultima E2E (60 pass), integrar/migrar o legado e executar gates integrais. Nenhuma fase aprovada por estes 10 testes.
+
+Handoff e guia QA local atualizados; Notion sincronizado. Sem push, merge, CI hospedado, banco remoto ou deploy.
+
+## Retomada 2026-10-10 - validacao parcial
+HEAD fb4f80d0 (dirty): regressions 112/112 PASS; qa:check exit 0 com 134 testes Web (API em cache); fixture PWA 16/16 Chromium/WebKit PASS; lint selecionado 0 erros, 2 avisos. Logs em .qa/review/.
+Push de fb4f80d0 confirmado. Novo commit de fazendas bloqueado pelo assinador Codespaces: 403 Author is invalid. GPG mantido; dois arquivos de fazendas preparados, demais alteracoes preservadas. Fases 5-7 NAO aprovadas; E2E geral, migracao integrada, acessibilidade e performance pendentes. Nenhum CI hospedado, merge ou deploy.
+
+
+## Publicacao incremental revisada - 2026-10-10
+- Correcao de fazendas publicada: 17ed1b45 (falha de carregamento, 403 sem dados rejeitados e retry).
+- Testes PWA publicados: dde8aec3 (perfil persistente isolado, ESM e consentimento explicito).
+- Evidencia nova: 10/10 testes Vitest selecionados PASS e typecheck Web exit=0; .qa/review-current/targeted.log.
+- Fixture PWA: 16/16 Chromium/WebKit PASS, 1.2m, exit=0; .qa/runs/20261010T212419Z-pwa-upgrade-fixture-17ed1b45bbd3-6644/result.json. Fonte permaneceu inalterada durante a rodada, checkout tinha alteracoes pendentes.
+- Assinador do Codespace retornou 403 Author is invalid. Publicacao pela API GitHub autenticada, commits sem assinatura; GPG e protecoes do repositorio nao foram desativados. Fast-forward local validou igualdade do indice/tree; nenhum reset ou force push.
+- Decisao do responsavel: priorizar entrega incremental para testes, levando pendencias nao criticas ao backlog. Isto nao dispensa seguranca, isolamento ou preservacao offline e nao equivale a aprovar fases inteiras.
+- FASE 5: corrigir E2E incompatibilidades reais e concluir gates essenciais. FASE 6: fixture aprovada, falta ensaio do build legado real. FASE 7: fila testada, migracao/integracao ainda pendentes.
+- Sem GitHub Actions hospedado, merge na main, deploy, banco remoto ou dados reais.

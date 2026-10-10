@@ -136,3 +136,29 @@ task qa:matrix
 - `qa:offline:browser` testa em Chromium e WebKit **verdadeiros** a disputa de comandos em duas abas, reconstrução/reabertura do banco, offline Blob/ArrayBuffer, isolamento por usuário e rejeição de ACK antigo; sem API real.
 - `qa:pwa:upgrade-fixture` inclui o navegador da fila além dos cenários PWA sintéticos. Falha em qualquer teste deve ser registrada, não substituída por fake ou skip.
 - FASE 7 **ainda não concluída**: falta migração versionada das seis bases legadas, integração ao fluxo de sessão/tenancy e sync autoritativo simulado com caos. Homologação física fica para pré-produção.
+
+
+## Estabilidade do Codespace - 2026-10-10
+
+Tmux 3.3a instalado no Codespace; sessao consubov-control criada e testada sem cliente anexado. Configuracao local .vscode/settings.json: remote.autoForwardPorts=false; portas existentes nao foram tornadas publicas.
+
+Executado task qa:offline:browser em janela tmux destacada; ao sair da tela do VS Code, abrir /login local e voltar, a execucao foi recuperada sem reiniciar: 10/10 PASS em Chromium/WebKit, exit=0, 39.5s. Evidencia: .qa/runs/20261010T031211Z-offline-browser-e0c19265c5fb-27778/result.json e .qa/offline-browser-detached.log. HEAD e0c19265; checkout com alteracoes locais preexistentes, nao equivale a QA de commit limpo.
+
+Ultima E2E completa existente: 60 PASS / 42 FAIL, exit=1; nao reexecutada nesta etapa. Nenhuma fase aprovada. Logs do navegador mostraram extension host remoto sem resposta e latencia alta; causa exata por extensao ainda nao isolada. Opera sem conexao autorizada e Desktop Commander offline.
+
+Retomada: tmux ls e tmux attach -t consubov-control. Antes de reenviar comando apos timeout, conferir processos, logs e exit code. Nao duplicar suites nem sobrescrever relatorios. Tmux nao sobrevive a parada/recriacao da VM; nao mudar timeout/billing ou desligar seguranca. Sem CI hospedado, banco remoto, push, merge ou deploy.
+
+## Retomada 2026-10-10 - validacao parcial
+HEAD fb4f80d0 (dirty): regressions 112/112 PASS; qa:check exit 0 com 134 testes Web (API em cache); fixture PWA 16/16 Chromium/WebKit PASS; lint selecionado 0 erros, 2 avisos. Logs em .qa/review/.
+Push de fb4f80d0 confirmado. Novo commit de fazendas bloqueado pelo assinador Codespaces: 403 Author is invalid. GPG mantido; dois arquivos de fazendas preparados, demais alteracoes preservadas. Fases 5-7 NAO aprovadas; E2E geral, migracao integrada, acessibilidade e performance pendentes. Nenhum CI hospedado, merge ou deploy.
+
+
+## Publicacao incremental revisada - 2026-10-10
+- Correcao de fazendas publicada: 17ed1b45 (falha de carregamento, 403 sem dados rejeitados e retry).
+- Testes PWA publicados: dde8aec3 (perfil persistente isolado, ESM e consentimento explicito).
+- Evidencia nova: 10/10 testes Vitest selecionados PASS e typecheck Web exit=0; .qa/review-current/targeted.log.
+- Fixture PWA: 16/16 Chromium/WebKit PASS, 1.2m, exit=0; .qa/runs/20261010T212419Z-pwa-upgrade-fixture-17ed1b45bbd3-6644/result.json. Fonte permaneceu inalterada durante a rodada, checkout tinha alteracoes pendentes.
+- Assinador do Codespace retornou 403 Author is invalid. Publicacao pela API GitHub autenticada, commits sem assinatura; GPG e protecoes do repositorio nao foram desativados. Fast-forward local validou igualdade do indice/tree; nenhum reset ou force push.
+- Decisao do responsavel: priorizar entrega incremental para testes, levando pendencias nao criticas ao backlog. Isto nao dispensa seguranca, isolamento ou preservacao offline e nao equivale a aprovar fases inteiras.
+- FASE 5: corrigir E2E incompatibilidades reais e concluir gates essenciais. FASE 6: fixture aprovada, falta ensaio do build legado real. FASE 7: fila testada, migracao/integracao ainda pendentes.
+- Sem GitHub Actions hospedado, merge na main, deploy, banco remoto ou dados reais.
