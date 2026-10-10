@@ -17,6 +17,10 @@ tasks:
       - cmd: bunx playwright install chromium webkit firefox
         dir: apps/web
 
+  setup:codespace:
+    desc: Provision tools and extensions only; no automatic tests, push or deploy
+    cmds: [bash scripts/qa/setup-codespace.sh]
+
   qa:check:
     desc: Local check, build and unit tests with evidence
     cmds: [bash scripts/qa/record.sh check bun run check]
@@ -33,7 +37,7 @@ tasks:
   qa:regressions:
     desc: Local standalone QA regressions (not phase approval)
     cmds:
-      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs scripts/tests/coverage-integrity.test.cjs scripts/tests/lint-changed-integrity.test.cjs
+      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs scripts/tests/coverage-integrity.test.cjs scripts/tests/lint-changed-integrity.test.cjs scripts/tests/setup-guardrails.test.cjs
 
   qa:pwa:upgrade-fixture:
     desc: Synthetic local Chromium/WebKit same-origin update (not production legacy certification)

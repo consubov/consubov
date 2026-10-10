@@ -7,7 +7,10 @@
     }
   },
   "postCreateCommand": "bash scripts/codespace-post-create.sh",
-  "forwardPorts": [3000, 8080],
+  "forwardPorts": [
+    3000,
+    8080
+  ],
   "portsAttributes": {
     "3000": {
       "label": "Consubov API",
@@ -23,8 +26,17 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "bradlc.vscode-tailwindcss",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "task.vscode-task",
+        "ms-playwright.playwright",
+        "vitest.explorer",
+        "redhat.vscode-yaml",
+        "humao.rest-client",
+        "ms-ossdata.vscode-pgsql"
       ]
     }
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/node/.local/bin"
   }
 }

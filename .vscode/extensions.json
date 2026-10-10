@@ -2,6 +2,10 @@
   "recommendations": [
     "task.vscode-task",
     "ms-playwright.playwright",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "vitest.explorer",
+    "redhat.vscode-yaml",
+    "humao.rest-client",
+    "ms-ossdata.vscode-pgsql"
   ]
 }
