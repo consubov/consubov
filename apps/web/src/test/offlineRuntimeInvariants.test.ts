@@ -93,22 +93,13 @@ describe("invariantes de cache Gerente/Admin", () => {
 });
 
 describe("invariantes de atualização e sincronização", () => {
-  it("service worker preserva a regra de não auto-reload após background/cold start", () => {
-    const source = fs.readFileSync(
-      path.resolve(testDir, "../lib/swRegistration.ts"),
-      "utf8",
-    );
-
-    expect(source).toMatch(/const COLD_START_WINDOW_MS\s*=\s*15000/);
-    expect(source).toMatch(
-      /document\.visibilityState\s*===\s*"hidden"\)\s*wentToBackground\s*=\s*true/,
-    );
-    expect(source).toMatch(
-      /return\s+!wentToBackground\s*&&\s*Date\.now\(\)\s*-\s*pageLoadedAt\s*<\s*COLD_START_WINDOW_MS/,
-    );
-    expect(source).toMatch(
-      /if\s*\(!userRequestedUpdate\s*&&\s*!isColdStart\(\)\)\s*\{[\s\S]{0,260}?notifyListeners\(true\);[\s\S]{0,80}?return;/,
-    );
+  it("SW nao reintroduz o atalho antigo de auto-reload por cold start", () => {
+    const source = fs.readFileSync(path.resolve(testDir, "../lib/swRegistration.ts"), "utf8");
+    // Consent behavior is exercised by swUpdateConsent.test.ts and Node regressions.
+    expect(source).not.toContain("hardReloadToLatest");
+    expect(source).not.toContain("COLD_START_WINDOW_MS");
+    expect(source).toContain("function finishVerifiedUpdate()");
+    expect(source).toContain("if (!userRequestedUpdate || reloadingForUpdate) return;");
   });
 
   it("Mais Arrobas mantém reenvio idempotente e recuperação de código de lote", () => {

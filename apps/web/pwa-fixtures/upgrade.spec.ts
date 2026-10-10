@@ -1,10 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+import { test, expect } from "./persistentTest";
 import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /** Local, synthetic old/new SW test; does NOT certify migration of real legacy data. */
-const sw = readFileSync(resolve(__dirname, "../public/sw.js"), "utf8");
+const sw = readFileSync(resolve(fileURLToPath(new URL(".", import.meta.url)), "../public/sw.js"), "utf8");
 let server: Server;
 let origin = "";
 let version = "a";
@@ -102,7 +103,7 @@ test("unavailable lazy asset prevents offline shell replacement", async ({ page 
   await installOld(page);
   version = "b";
   failLazy = true;
-  await page.evaluate(async () => { try { await (await navigator.serviceWorker.getRegistration())?.update(); } catch {} });
+  await page.evaluate(async () => { try { await (await navigator.serviceWorker.getRegistration())?.update(); } catch { /* The failed install is asserted below. */ } });
   await expect.poll(() => page.evaluate(async () => {
     const r = await navigator.serviceWorker.getRegistration();
     return { waiting: !!r?.waiting, installing: !!r?.installing };
@@ -203,7 +204,7 @@ test("the six actual legacy database names retain pending rows and binary attach
   await expect(page.locator("#build")).toHaveText("b");
 
   const recovered = await page.evaluate(async () => {
-    const read = async (name: string, version: number, store: string, key: IDBValidKey): Promise<any> => {
+    const read = async (name: string, version: number, store: string, key: IDBValidKey): Promise<Record<string, unknown>> => {
       const req = indexedDB.open(name, version);
       const db = await new Promise<IDBDatabase>((resolveDb, reject) => {
         // A version upgrade would be dangerous in this verification.
@@ -212,7 +213,7 @@ test("the six actual legacy database names retain pending rows and binary attach
         req.onerror = () => reject(req.error);
       });
       try {
-        return await new Promise<any>((resolveRow, reject) => {
+        return await new Promise<Record<string, unknown>>((resolveRow, reject) => {
           const row = db.transaction(store, "readonly").objectStore(store).get(key);
           row.onsuccess = () => resolveRow(row.result);
           row.onerror = () => reject(row.error);
