@@ -43,23 +43,39 @@ export default function FazendasPage() {
   const navigate = useNavigate();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FazendaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
   async function loadFazendas() {
-    const { data, error } = await supabase
-      .from("fazendas")
-      .select("*")
-      .order("nome");
-
-    if (error) {
-      toast.error("Erro ao carregar fazendas.");
-      return;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data, error, status } = await supabase
+        .from("fazendas")
+        .select("*")
+        .order("nome");
+      if (error) {
+        const denied = status === 401 || status === 403 || error.code === "42501";
+        const message = denied
+          ? "Acesso não autorizado para carregar fazendas."
+          : "Erro ao carregar fazendas. Tente novamente.";
+        setFazendas([]);
+        setLoadError(message);
+        toast.error(message);
+        return;
+      }
+      setFazendas(data ?? []);
+    } catch {
+      const message = "Erro ao carregar fazendas. Tente novamente.";
+      setFazendas([]);
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-    setFazendas(data ?? []);
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -144,7 +160,16 @@ export default function FazendasPage() {
         </Button>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <Card role="alert">
+          <CardContent className="p-8 space-y-3">
+            <p className="text-destructive">{loadError}</p>
+            <Button type="button" variant="outline" onClick={() => void loadFazendas()}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <Card>
           <CardContent className="p-8 flex justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
