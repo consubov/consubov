@@ -1,0 +1,75 @@
+{
+  "evidenceKind": "selected-local-validation-not-phase-acceptance",
+  "createdAt": "2026-10-11T10:49:47.640480+00:00",
+  "repository": "mmatteuus/consubov",
+  "sourceCommit": "68147e76b35a3846f37adc1a7a0b98b8bf70a6ef",
+  "branch": "work/fase5-6-7-pwa-local",
+  "fullRepositoryCheckout": false,
+  "environment": { "node": "22.16.0", "typescript": "5.8.3", "fake-indexeddb": "6.2.5", "playwright": "1.58.2" },
+  "provenance": "Selected repository files; dependencies extracted selectively from the supplied source archive. No secrets, customer data or private Git configuration extracted.",
+  "selectedSourceUnchanged": true,
+  "sourceGitBlobs": {
+    "apps/web/e2e/phase5-web-ready.spec.ts": "a9515cdbefa82372a24d0641f9fefb1a8ba32205",
+    "apps/web/e2e/fixtures/phase5-data.ts": "19df68507545c9fe14e30ce77de8fc99a3b7663d",
+    "apps/web/tests/phase5-e2e-contract.test.cjs": "5da28df22cf5516f720f4f11b95542713749cf11",
+    "apps/web/tests/phase5-fixture-data.test.cjs": "2ab3b1eb3a419c684380f9df6215cf36ec66c6d5",
+    "apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts": "ab5625ed5eb7f1626056844550301761fcc4f4df",
+    "apps/web/tests/indexeddb-local-adapter.test.cjs": "5f3d7a1841d1fdca272836d9b244a6ffde7d8919",
+    "apps/web/tests/indexeddb-local-safety.test.cjs": "92b537f145e3a97da6f794a948954641e4ecf3a5",
+    "Taskfile.yml": "d3183d4daa91af8da9963917caac54006009bc7a"
+  },
+  "checks": [
+    {
+      "check": "selected-node-regressions",
+      "command": ["node", "--test", "apps/web/tests/indexeddb-local-adapter.test.cjs", "apps/web/tests/indexeddb-local-safety.test.cjs", "apps/web/tests/phase5-e2e-contract.test.cjs", "apps/web/tests/phase5-fixture-data.test.cjs"],
+      "startedAt": "2026-10-11T10:49:45.213286+00:00",
+      "seconds": 0.618,
+      "exitCode": 0,
+      "log": "selected-regressions.log",
+      "logSha256": "e433596e051851a777fea3f3b8cfd9bc7d84da709f2248e8cfeadd4a15e6c9bd"
+    },
+    {
+      "check": "selected-strict-typecheck",
+      "command": ["node", "node_modules/typescript/bin/tsc", "--noEmit", "--strict", "--target", "es2022", "--module", "esnext", "--moduleResolution", "bundler", "--lib", "es2022,dom", "--types", "node", "--skipLibCheck", "apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts", "apps/web/e2e/phase5-web-ready.spec.ts"],
+      "startedAt": "2026-10-11T10:49:45.831926+00:00",
+      "seconds": 0.873,
+      "exitCode": 0,
+      "log": "changed-typecheck.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "check": "playwright-discovery-only",
+      "command": ["node", "node_modules/playwright/cli.js", "test", "--config=apps/web/playwright.config.ts", "--list"],
+      "startedAt": "2026-10-11T10:49:46.705428+00:00",
+      "seconds": 0.917,
+      "exitCode": 0,
+      "log": "playwright-discovery.log",
+      "logSha256": "7e4d0b7732bc8c2e28b40aec6b5cffeb0beed7515eee52968891645b1d0185f5"
+    },
+    {
+      "check": "diff-whitespace",
+      "command": ["git", "diff", "--check"],
+      "startedAt": "2026-10-11T10:49:47.622340+00:00",
+      "seconds": 0.004,
+      "exitCode": 0,
+      "log": "diff-check.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "nodeCounts": { "tests": 25, "pass": 25, "fail": 0, "cancelled": 0, "skipped": 0 },
+  "playwrightDiscovered": 75,
+  "playwrightExecuted": 0,
+  "taskfileParsedTasks": 20,
+  "fullAppTypecheck": false,
+  "phase5Approved": false,
+  "phase6Approved": false,
+  "phase7Approved": false,
+  "limitations": [
+    "Bun and Go Task unavailable in the isolated audit workspace.",
+    "Codespace command calls timed out; current local HEAD and pending files could not be verified.",
+    "Sandbox Chromium denied loopback navigation with ERR_BLOCKED_BY_ADMINISTRATOR; no browser scenario was run.",
+    "No fresh full Web/API/Edge, accessibility, Lighthouse, coverage or security gate.",
+    "No migration or production access.",
+    "Self-review, not an independent reviewer approval."
+  ]
+}
