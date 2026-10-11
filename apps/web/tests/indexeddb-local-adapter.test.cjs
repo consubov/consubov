@@ -7,7 +7,7 @@ const ts = require('typescript');
 const source = fs.readFileSync(path.join(__dirname, '../src/platform/adapters/IndexedDbLocalDatabase.ts'), 'utf8');
 const code = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const modExports = {};
-vm.runInNewContext('(function(exports){'+code+'\n})')(modExports);
+vm.runInNewContext('(function(exports){'+code+'\n})', { structuredClone, Blob })(modExports);
 const {IndexedDbLocalDatabase,NEXT_LOCAL_DB_NAME} = modExports;
 
 function fakeFactory() {
@@ -24,6 +24,7 @@ function fakeFactory() {
         transaction(store,mode){
           const entries=state.stores.get(store);
           const tx={oncomplete:null,onabort:null,onerror:null,error:null, objectStore(){return {
+            keyPath: 'id', autoIncrement: false,
             get(key){return request(()=>entries.get(key))},
             put(value){return request(()=>{entries.set(value.id,structuredClone(value));return value.id})},
             delete(key){return request(()=>entries.delete(key))},

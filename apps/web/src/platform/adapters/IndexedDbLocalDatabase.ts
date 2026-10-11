@@ -44,13 +44,16 @@ export class IndexedDbLocalDatabase implements LocalDatabase {
     if (!this.connection) {
       this.connection = new Promise<IDBDatabase>((resolve, reject) => {
         let request: IDBOpenDBRequest;
+        let failed = false;
+        const fail = (error: unknown) => { failed = true; reject(error); };
         try {
           request = this.factory!.open(NEXT_LOCAL_DB_NAME, NEXT_LOCAL_DB_VERSION);
         } catch (error) {
-          reject(error);
+          fail(error);
           return;
         }
         request.onupgradeneeded = () => {
+          if (failed) { request.transaction?.abort(); return; }
           const db = request.result;
           if (!db.objectStoreNames.contains(STORE_NAME)) {
             db.createObjectStore(STORE_NAME, { keyPath: "id" });
@@ -58,14 +61,30 @@ export class IndexedDbLocalDatabase implements LocalDatabase {
         };
         request.onsuccess = () => {
           const db = request.result;
+          // An open request can still succeed after onblocked rejected it.
+          // Close that abandoned connection instead of leaking an upgrade blocker.
+          if (failed) { db.close(); return; }
+          try {
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              throw new Error("IndexedDB schema incompatible: missing kv store");
+            }
+            const store = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME);
+            if (store.keyPath !== "id" || store.autoIncrement) {
+              throw new Error("IndexedDB schema incompatible: kv must use the scoped id key");
+            }
+          } catch (error) {
+            db.close();
+            fail(error);
+            return;
+          }
           db.onversionchange = () => {
             db.close();
             this.connection = null;
           };
           resolve(db);
         };
-        request.onerror = () => reject(request.error ?? new Error("IndexedDB open failed"));
-        request.onblocked = () => reject(new Error("IndexedDB blocked by another tab"));
+        request.onerror = () => fail(request.error ?? new Error("IndexedDB open failed"));
+        request.onblocked = () => fail(new Error("IndexedDB blocked by another tab"));
       }).catch((error) => {
         this.connection = null;
         throw error;
@@ -107,7 +126,10 @@ export class IndexedDbLocalDatabase implements LocalDatabase {
   async set<T>(key: string, value: T): Promise<void> {
     if (value === undefined) throw new TypeError("undefined cannot be persisted reliably");
     const id = this.scopedKey(key);
-    await this.operation("readwrite", (store) => store.put({ id, value } satisfies StoredValue), () => undefined);
+    // Capture exactly what the caller accepted, before opening storage yields.
+    // Uncloneable input fails before a database or transaction is created.
+    const snapshot = structuredClone(value);
+    await this.operation("readwrite", (store) => store.put({ id, value: snapshot } satisfies StoredValue), () => undefined);
   }
 
   async delete(key: string): Promise<void> {

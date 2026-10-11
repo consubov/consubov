@@ -35,3 +35,13 @@ Cenários codificados/testados em `apps/web/tests/local-sync-round.test.cjs` (8/
 ## Avanço de persistência transacional (bloco 4 — 2026-10-09)
 
 Foi adicionado `IndexedDbAtomicCommandQueue` em banco local novo, `consubov-vnext-command-queue`, com transações IndexedDB atômicas. O coordenador `localSyncRound` aceita esse adapter pelo contrato existente `AtomicCommandQueue`. Este avanço **não conecta filas legadas nem API remota**. Consulte [66-offline-atomic-queue.md](./66-offline-atomic-queue.md) para garantias, limitações, testes e passos restantes.
+
+## Correcao da fronteira key/value - 2026-10-11
+
+`IndexedDbLocalDatabase.set` agora captura o valor com `structuredClone` antes de abrir a conexao assincronamente. Alterar o objeto recebido depois da chamada nao muda mais o registro aceito, inclusive em conexao ja aberta. Valores nao clonaveis falham antes de abrir o banco.
+
+A abertura valida o store `kv`, `keyPath: id` e ausencia de `autoIncrement`. Schema inesperado gera erro sem tentar reparar ou apagar dados. Uma conexao que chega depois da rejeicao por `onblocked` e fechada, evitando bloquear futuras aberturas/atualizacoes.
+
+Teste novo: `apps/web/tests/indexeddb-local-safety.test.cjs`, usando o pacote verdadeiro `fake-indexeddb` 6.2.5. Seis falhas foram reproduzidas antes da correcao; depois, 8/8 novos casos e 7/7 anteriores passaram. Cobertura inclui snapshot, entrada nao clonavel, schema incompativel, abertura tardia, Blob/ArrayBuffer e separacao tenant/user. Isso continua sendo teste Node de adapter, nao IndexedDB fisico no navegador nem homologacao de fase.
+
+`task qa:offline:core` e `task qa:regressions` incluem a nova suite. Sem mudanca no contrato publico, no nome/versao da base ou nas seis bases legadas. A integracao autenticada, o migration engine e o sync definitivo continuam pendentes.
