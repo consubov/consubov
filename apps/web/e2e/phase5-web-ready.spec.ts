@@ -1,4 +1,29 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { fieldFixtures, selectFixtureRows, localPdfFixture, type FixtureRows } from "./fixtures/phase5-data";
+
+// UI contract tests use intercepted HTTP. Real SW/offline tests live in pwa-fixtures.
+test.use({ serviceWorkers: "block" });
+
+function isLoopback(hostname: string): boolean {
+  return ["127.0.0.1", "localhost", "[::1]"].includes(hostname);
+}
+
+async function isolateLocalNetwork(context: BrowserContext) {
+  const baseURL = test.info().project.use.baseURL;
+  if (!baseURL || !isLoopback(new URL(baseURL).hostname)) {
+    throw new Error("Phase 5 UI tests require a loopback baseURL, never a customer environment");
+  }
+  // Specific page mocks take precedence over this final network boundary.
+  await context.route("**/*", route => isLoopback(new URL(route.request().url()).hostname)
+    ? route.continue() : route.abort("blockedbyclient"));
+  await context.routeWebSocket(/.*/, socket => {
+    if (isLoopback(new URL(socket.url()).hostname)) socket.connectToServer();
+    else socket.close();
+  });
+}
+
+test.beforeEach(async ({ context }) => { await isolateLocalNetwork(context); });
 
 const ROLE_TABLES = [
   "syncvet_equipe",
@@ -45,9 +70,16 @@ function roleRow(table: RoleTable) {
   return { id: "role-1", ativo: true };
 }
 
-async function mockAuthenticatedRole(page: Page, roleTable: RoleTable) {
+async function mockAuthenticatedRole(page: Page, roleTable: RoleTable, fixtures: FixtureRows = {}) {
   const userId = "11111111-1111-4111-8111-111111111111";
   const now = new Date().toISOString();
+
+  await page.route("**/auth/v1/user", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      id: userId, aud: "authenticated", role: "authenticated", email: "fase5@example.com",
+      app_metadata: { provider: "email", providers: ["email"] }, user_metadata: {}, created_at: now,
+    }) });
+  });
 
   await page.route("**/auth/v1/token?grant_type=password", async (route) => {
     await route.fulfill({
@@ -102,11 +134,18 @@ async function mockAuthenticatedRole(page: Page, roleTable: RoleTable) {
       return;
     }
 
+    // These scenarios do not certify writes; unexpected mutations fail explicitly.
+    if (!["GET", "HEAD"].includes(route.request().method())) {
+      await route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: "UNMOCKED_MUTATION" }) });
+      return;
+    }
+    const rows = selectFixtureRows(fixtures[table] ?? [], url.searchParams);
+    const singleton = (route.request().headers()["accept"] ?? "").includes("vnd.pgrst.object+json");
     await route.fulfill({
-      status: 200,
+      status: singleton && rows.length !== 1 ? 406 : 200,
       contentType: "application/json",
-      body: "[]",
-      headers: { "content-range": "0-0/0" },
+      body: JSON.stringify(singleton ? rows.length === 1 ? rows[0] : { code: "PGRST116", message: "No unique fixture row" } : rows),
+      headers: { "content-range": rows.length ? `0-${rows.length - 1}/${rows.length}` : "*/0" },
     });
   });
 
@@ -124,20 +163,32 @@ async function login(page: Page) {
   await page.getByLabel("E-mail", { exact: true }).fill("fase5@example.com");
   await page.getByLabel("Senha", { exact: true }).fill("senha-local");
   await page.getByRole("button", { name: "Entrar" }).click();
+  await page.waitForURL(url => ROLE_CASES.some(({ home }) => url.pathname === home || url.pathname.startsWith(`${home}/`)));
 }
 
-async function openAs(browser: Browser, table: RoleTable, path?: string) {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await mockAuthenticatedRole(page, table);
-  await login(page);
-  if (path) await page.goto(path);
-  return { context, page };
+async function openAs(browser: Browser, table: RoleTable, path?: string, fixtures: FixtureRows = {}) {
+  const { baseURL, viewport, hasTouch, isMobile, deviceScaleFactor, userAgent } = test.info().project.use;
+  const context = await browser.newContext({
+    baseURL, viewport, hasTouch, isMobile, deviceScaleFactor, userAgent, serviceWorkers: "block",
+  });
+  try {
+    await isolateLocalNetwork(context);
+    const page = await context.newPage();
+    await mockAuthenticatedRole(page, table, fixtures);
+    await login(page);
+    if (path) await page.goto(path);
+    return { context, page };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 async function expectHealthySurface(page: Page) {
-  await expect(page.locator("body")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "404" })).toHaveCount(0);
+  await expect(page.locator("#root")).toContainText(/\S/);
+  await expect.poll(() => page.locator("#root").innerText()).not.toMatch(/^\s*(?:C|Carregando[^\n]*)\s*$/);
+  await expect(page.getByRole("heading", { name: "404", exact: true })).toHaveCount(0);
+  await expect(page.locator("vite-error-overlay")).toHaveCount(0);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
@@ -147,7 +198,7 @@ async function expectHealthySurface(page: Page) {
 test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies críticas", () => {
   test("todos os nove perfis conhecidos possuem redirect autenticado reproduzível", async ({ browser }) => {
     for (const roleCase of ROLE_CASES) {
-      const { context, page } = await openAs(browser, roleCase.table);
+      const { context, page } = await openAs(browser, roleCase.table, undefined, fieldFixtures());
       await expect(page).toHaveURL(new RegExp(`${roleCase.home.replace("/", "\\/")}(?:\\/|$)`));
       await expectHealthySurface(page);
       await context.close();
@@ -197,7 +248,7 @@ test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies crít
     ];
 
     for (const item of cases) {
-      const { context, page } = await openAs(browser, item.table, item.path);
+      const { context, page } = await openAs(browser, item.table, item.path, fieldFixtures());
       await expectHealthySurface(page);
       await context.close();
     }
@@ -276,102 +327,114 @@ test.describe("@web-ready FASE 5 — fluxos críticos E2E", () => {
     await expect(page).toHaveURL(/\/login/); // Deve redirecionar para login
   });
 
-  test("capataz acessa fazenda/retiro/pasto sem 404", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "capatazes");
-
-    // Páginas básicas para capataz
-    for (const path of [
-      "/capataz/fazendas",
-      "/capataz/retiros",
-      "/capataz/pastos",
-      "/capataz/transferencia-retiro",
-    ]) {
-      await page.goto(path);
+  test("capataz consulta o retiro e os pastos pelo painel existente", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes", undefined, fieldFixtures());
+    try {
+      await expect(page).toHaveURL(/\/capataz$/);
+      await expect(page.getByRole("button", { name: /Iniciar Salga/ })).toBeVisible();
+      await expect(page.getByText("Pasto de teste", { exact: true })).toBeVisible();
       await expectHealthySurface(page);
-    }
-    await context.close();
+      await page.goto("/capataz/transferencia-retiro");
+      await expect(page.getByRole("heading", { name: "Transferência entre Retiros" })).toBeVisible();
+    } finally { await context.close(); }
   });
 
-  test("QR web: emissão e ativação", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "administradores");
-
-    await page.goto("/admin/qrcodes");
-    await expect(page.getByRole("heading", { name: /QR Codes|Códigos QR/i })).toBeVisible();
-
-    // Verificar elementos básicos da página QR
-    await expect(page.getByRole("button", { name: /Gerar|Emitir|Novo/i })).toBeVisible();
-    await expectHealthySurface(page);
-
-    await context.close();
+  test("QR web: gera pre-visualizacao local a partir de uma fazenda selecionada", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/qrcodes", fieldFixtures());
+    try {
+      await expect(page.getByRole("heading", { name: "Gerar QR Codes", exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Por Fazenda", exact: true }).click();
+      const pane = page.getByRole("tabpanel");
+      const generate = pane.getByRole("button", { name: "Gerar QR Codes da Fazenda", exact: true });
+      await expect(generate).toBeDisabled();
+      await pane.getByRole("combobox").click();
+      await page.getByRole("option", { name: "Fazenda de teste", exact: true }).click();
+      await generate.click();
+      await expect(page.getByRole("heading", { name: "1 QR Code gerado", exact: true })).toBeVisible();
+      await expect(page.locator('[data-qr-preview-page="true"]')).toHaveCount(1);
+      await expect(page.getByRole("button", { name: "Baixar PDF (1)", exact: true })).toBeEnabled();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("produtos e nutrição: páginas acessíveis", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "gerentes");
-
-    await page.goto("/gerente/produtos");
-    await expect(page.getByRole("heading", { name: /Produtos/i })).toBeVisible();
-
-    await page.goto("/gerente/nutricao");
-    await expect(page.getByRole("heading", { name: /Nutrição|Dietas/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("produtos do gerente: alterna Produtos e Onde usar na rota existente", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "gerentes", "/gerente/produtos", fieldFixtures());
+    try {
+      await expect(page.getByRole("tab", { name: "Produtos", exact: true })).toHaveAttribute("aria-selected", "true");
+      await page.getByRole("tab", { name: "Onde usar", exact: true }).click();
+      await expect(page).toHaveURL(/aba=onde-usar/);
+      await expect(page.getByRole("tab", { name: "Onde usar", exact: true })).toHaveAttribute("aria-selected", "true");
+      await page.getByRole("tab", { name: "Produtos", exact: true }).click();
+      await expect(page).toHaveURL(/\/gerente\/produtos$/);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("salga: página de lançamento manual", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "administradores");
-
-    await page.goto("/admin/lancamento-manual");
-    await expect(page.getByRole("heading", { name: /Lançamento Manual|Salga/i })).toBeVisible();
-
-    await expect(page.getByRole("textbox", { name: /Produto/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Salvar|Lançar/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("salga: seleciona fazenda e retiro e edita uma linha sem enviar", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/lancamento-manual", fieldFixtures());
+    try {
+      await expect(page.getByRole("heading", { name: "Lançamento Manual", exact: true })).toBeVisible();
+      const selectors = page.getByRole("combobox");
+      await expect(selectors).toHaveCount(4);
+      await expect(selectors.nth(1)).toBeDisabled();
+      await selectors.nth(0).click();
+      await page.getByRole("option", { name: "Fazenda de teste", exact: true }).click();
+      await selectors.nth(1).click();
+      await page.getByRole("option", { name: "Retiro de teste", exact: true }).click();
+      const row = page.getByRole("row").filter({ hasText: "Pasto de teste" });
+      await expect(row).toBeVisible();
+      const sacks = row.getByRole("spinbutton").nth(2);
+      await sacks.fill("1");
+      await expect(sacks).toHaveValue("1");
+      await expect(page.getByRole("button", { name: "Salvar e Enviar", exact: true })).toBeEnabled();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("estoque e transferência: páginas básicas", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "administradores");
-
-    await page.goto("/admin/estoque");
-    await expect(page.getByRole("heading", { name: /Estoque/i })).toBeVisible();
-
-    await page.goto("/admin/transferencias");
-    await expect(page.getByRole("heading", { name: /Transferências/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("transferencia entre retiros: formulario e abas reais sem movimentar animais", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes", "/capataz/transferencia-retiro", fieldFixtures());
+    try {
+      await expect(page.getByRole("heading", { name: "Transferência entre Retiros" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Solicitar Transferência", exact: true })).toBeDisabled();
+      await page.getByRole("tab", { name: "Pendentes", exact: true }).click();
+      await expect(page.getByText("Nenhuma transferência pendente", { exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Histórico", exact: true }).click();
+      await expect(page.getByText("Nenhuma transferência no histórico", { exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Nova", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Solicitar Transferência", exact: true })).toBeDisabled();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("visita de consultor: página de relatório", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "consultores");
-
-    await page.goto("/consultor");
-    await expect(page.getByRole("heading", { name: /Consultor|Visitas/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("consultor: historico apresenta estado vazio sem fabricar visitas", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "consultores", "/consultor/historico");
+    try {
+      await expect(page.getByRole("heading", { name: "Histórico de Visitas", exact: true })).toBeVisible();
+      await expect(page.getByText("Nenhuma visita registrada ainda.", { exact: true })).toBeVisible();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("fábrica: dashboard operacional", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "operadores_fabrica");
-
-    await page.goto("/fabrica");
-    await expect(page.getByRole("heading", { name: /Fábrica|Operações/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("fábrica: mostra dashboard quando a fabrica do perfil existe", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "operadores_fabrica", "/fabrica", fieldFixtures());
+    try {
+      await expect(page.getByRole("heading", { name: "Operador de Fábrica", exact: true })).toBeVisible();
+      await expect(page.getByText("Estoque Atual", { exact: true })).toBeVisible();
+      await expect(page.getByText("Nenhuma fábrica vinculada ao seu perfil. Contate o administrador.")).toHaveCount(0);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("pesagem: página do pesador", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "pesadores");
-
-    await page.goto("/pesador/pesagem");
-    await expect(page.getByRole("heading", { name: /Pesagem/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("pesador: filtra o historico de pesagens e informa ausencia de resultado", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "pesadores", "/pesador/pesagem");
+    try {
+      await expect(page.getByRole("heading", { name: "Histórico", exact: true })).toBeVisible();
+      await expect(page.getByText("Pesagens finalizadas.", { exact: true })).toBeVisible();
+      await expect(page.getByText("Nenhuma pesagem finalizada ainda.", { exact: true })).toBeVisible();
+      await page.getByPlaceholder("Buscar por produtor...", { exact: true }).fill("inexistente");
+      await expect(page.getByText("Nenhum resultado.", { exact: true })).toBeVisible();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
   test("usuário sem permissão recebe acesso negado", async ({ page }) => {
@@ -383,24 +446,20 @@ test.describe("@web-ready FASE 5 — fluxos críticos E2E", () => {
     await expect(page.getByText(/acesso não autorizado|não tem permissão/i)).toBeVisible();
   });
 
-  test("tenant mismatch em ambiente de teste", async ({ browser }) => {
+  test("tenant mismatch em ambiente de teste: recusa dados e permite nova tentativa", async ({ browser }) => {
     const { context, page } = await openAs(browser, "administradores");
-    await login(page);
-
-    // Mock: simular tentativa de acessar dados de outro tenant
-    await page.route("**/rest/v1/fazendas**", async (route) => {
-      // Simular resposta de tenant mismatch
-      await route.fulfill({
-        status: 403,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "TENANT_MISMATCH", message: "Acesso negado entre tenants" })
+    try {
+      await page.route("**/rest/v1/fazendas**", async (route) => {
+        await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({
+          code: "42501", message: "TENANT_MISMATCH", data: [{ id: "other", nome: "PRIVATE-TENANT" }],
+        }) });
       });
-    });
-
-    await page.goto("/admin/fazendas");
-    await expect(page.getByText(/acesso negado|tenant mismatch/i)).toBeVisible();
-
-    await context.close();
+      await page.goto("/admin/fazendas");
+      await expect(page.getByRole("alert")).toContainText("Acesso não autorizado para carregar fazendas.");
+      await expect(page.getByText("PRIVATE-TENANT")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Tentar novamente", exact: true })).toBeEnabled();
+      await expect(page.getByText("Nenhuma fazenda cadastrada.", { exact: true })).toHaveCount(0);
+    } finally { await context.close(); }
   });
 });
 
@@ -416,91 +475,106 @@ test.describe("@web-ready FASE 5 — responsividade (5.8)", () => {
     await context.close();
   });
 
-  test("tablet: navegação e modais funcionam em 768px", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "capatazes");
-    await page.setViewportSize({ width: 768, height: 1024 });
-
-    await page.goto("/capataz/fazendas");
-    await expect(page.getByRole("heading", { name: /Fazendas/i })).toBeVisible();
-
-    await page.goto("/capataz/retiros");
-    await expect(page.getByRole("heading", { name: /Retiros/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("tablet: formulario real de produto abre e fecha em 768px", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/produtos");
+    try {
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await page.getByRole("button", { name: "Cadastrar Produto", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "Cadastrar Produto", exact: true });
+      await expect(dialog).toBeVisible();
+      await dialog.getByPlaceholder("Ex: Vaccinar, Tortuga, Minerax").fill("Marca de teste");
+      await expect(dialog.getByPlaceholder("Ex: Vaccinar, Tortuga, Minerax")).toHaveValue("Marca de teste");
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("mobile: formulários e listas acessíveis em 375px", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "pesadores");
-    await page.setViewportSize({ width: 375, height: 667 });
-
-    await page.goto("/pesador/pesagem");
-    await expect(page.getByRole("heading", { name: /Pesagem/i })).toBeVisible();
-
-    // Verificar que inputs são grandes o suficiente para toque
-    const inputs = page.locator("input");
-    const count = await inputs.count();
-    expect(count).toBeGreaterThan(0);
-
-    await expectHealthySurface(page);
-    await context.close();
+  test("mobile: busca de pesagem permanece utilizavel em 375px", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "pesadores", "/pesador/pesagem");
+    try {
+      await page.setViewportSize({ width: 375, height: 667 });
+      await expect(page.getByRole("heading", { name: "Histórico", exact: true })).toBeVisible();
+      const search = page.getByPlaceholder("Buscar por produtor...", { exact: true });
+      await search.fill("teste mobile");
+      await expect(search).toHaveValue("teste mobile");
+      await expect(page.getByText("Nenhum resultado.", { exact: true })).toBeVisible();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("tabelas grandes: scroll horizontal controlado", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "gerentes");
-    await page.goto("/gerente/produtos");
+  test("tabela de produtos: rolagem contida sem exigir overflow artificial", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/produtos", fieldFixtures());
+    try {
+      await expect(page.getByRole("cell", { name: "Produto de teste", exact: true })).toBeVisible();
+      const table = page.getByRole("table");
+      const contained = await table.evaluate(el => {
+        let parent = el.parentElement;
+        while (parent && parent !== document.body) {
+          if (["auto", "scroll"].includes(getComputedStyle(parent).overflowX)) return true;
+          parent = parent.parentElement;
+        }
+        return false;
+      });
+      expect(contained).toBe(true);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
+  });
 
-    // Verificar que tabela tem container scrollável
-    const scrollContainer = page.locator("[data-scrollable]");
-    const hasHorizontalScroll = await scrollContainer.evaluate((el) => {
-      return el.scrollWidth > el.clientWidth;
+  test("modais: cancelar cadastro de produto nao envia escrita", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/produtos");
+    const writes: string[] = [];
+    page.on("request", request => {
+      if (/\/rest\/v1\/produtos$/.test(new URL(request.url()).pathname) && !["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.method());
     });
-    expect(hasHorizontalScroll).toBe(true);
-
-    await expectHealthySurface(page);
-    await context.close();
+    try {
+      await page.getByRole("button", { name: "Cadastrar Produto", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "Cadastrar Produto", exact: true });
+      await dialog.getByPlaceholder("Ex: Vaccinar, Tortuga, Minerax").fill("Nao salvar");
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      expect(writes).toEqual([]);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 
-  test("modais: abrem e fecham corretamente em todas as telas", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "administradores");
-    await page.goto("/admin");
-
-    // Simular clique que abre modal (ex: novo QR)
-    await page.getByRole("button", { name: /Gerar|Emitir|Novo/i }).click();
-
-    // Verificar modal aparece
-    await expect(page.locator("[role='dialog']")).toBeVisible();
-
-    // Fechar modal
-    await page.keyboard.press("Escape");
-    await expect(page.locator("[role='dialog']")).not.toBeVisible();
-
-    await context.close();
+  test("mapas: rota de retiro informa mapa ausente sem renderizacao ficticia", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "capatazes", undefined, fieldFixtures());
+    try {
+      await page.goto("/mapa/retiro/retiro-1");
+      await expect(page.getByRole("heading", { name: "Mapa — Retiro de teste", exact: true })).toBeVisible();
+      await expect(page.getByText("Este retiro ainda não possui mapa cadastrado.", { exact: true })).toBeVisible();
+      await expectHealthySurface(page);
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+      await expect(page).toHaveURL(/\/capataz$/);
+    } finally { await context.close(); }
   });
 
-  test("mapas: renderizam e respondem a zoom em desktop/tablet", async ({ browser }) => {
-    const { context, page } = await openAs(browser, "capatazes");
-    await page.goto("/capataz/fazendas");
-
-    // Verificar mapa (se existir) ou container alternativo
-    const mapContainer = page.locator("[data-map]");
-    const count = await mapContainer.count();
-    if (count > 0) {
-      await expect(mapContainer).toBeVisible();
-    }
-
-    await expectHealthySurface(page);
-    await context.close();
-  });
-
-  test("PDF/relatórios: renderizam sem overflow", async ({ browser }) => {
+  test("PDF: abre e baixa os bytes de um relatorio sintetico no historico", async ({ browser }) => {
     const { context, page } = await openAs(browser, "consultores");
-    await page.goto("/consultor");
-
-    // Verificar botão de exportar relatório
-    await expect(page.getByRole("button", { name: /Exportar|Relatório|PDF/i })).toBeVisible();
-
-    await expectHealthySurface(page);
-    await context.close();
+    const pdf = localPdfFixture();
+    try {
+      const pdfUrl = new URL("test-report.pdf", page.url()).href;
+      await page.route(pdfUrl, route => route.fulfill({ status: 200, contentType: "application/pdf", body: pdf }));
+      await page.route("**/rest/v1/visitas_tecnicas**", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{
+        id: "visita-1", tipo: "rotina", status: "finalizada", hora_inicio: "2026-01-01T12:00:00Z", consultor_id: "role-1",
+        fazenda_consultor_id: "fazenda-1", pdf_url: pdfUrl, deleted_at: null, fazendas_consultor: { nome_fazenda: "Fazenda de teste" },
+      }]) }));
+      await page.goto("/consultor/historico");
+      await page.getByRole("button", { name: "Ver / Baixar PDF", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "Relatório — Fazenda de teste", exact: true });
+      await expect(dialog.locator("iframe")).toHaveAttribute("src", /^blob:/);
+      const downloaded = page.waitForEvent("download");
+      await dialog.getByRole("button", { name: "Baixar", exact: true }).click();
+      const download = await downloaded;
+      expect(download.suggestedFilename()).toBe("visita-Fazenda de teste.pdf");
+      expect(await download.failure()).toBeNull();
+      const file = await download.path();
+      expect(file).not.toBeNull();
+      expect(await readFile(file!)).toEqual(pdf);
+      await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
   });
 });
