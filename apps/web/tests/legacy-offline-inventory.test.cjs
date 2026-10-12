@@ -36,7 +36,7 @@ test('read-only inventory opens only known existing databases, closes connection
     objectStoreNames: ['syncQueue', 'lastPdfs'],
     transaction(name, mode) {
       transactions.push([name, mode]);
-      return { objectStore() { return { keyPath: 'id', indexNames: ['by-status'] }; } };
+      return { objectStore() { return { keyPath: 'id', autoIncrement: false, indexNames: ['by-status'], index() { return { keyPath: 'status', unique: false, multiEntry: false }; } }; } };
     },
     close() { closed.push(true); },
   };
