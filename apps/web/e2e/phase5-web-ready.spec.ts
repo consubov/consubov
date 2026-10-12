@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import { fieldFixtures, selectFixtureRows, localPdfFixture, type FixtureRows } from "./fixtures/phase5-data";
 
 // UI contract tests use intercepted HTTP. Real SW/offline tests live in pwa-fixtures.
-test.use({ serviceWorkers: "block" });
+// Full Chromium uses the native PDF viewer; headless-shell downloads iframe PDFs.
+test.use({ serviceWorkers: "block", channel: "chromium" });
 
 function isLoopback(hostname: string): boolean {
   return ["127.0.0.1", "localhost", "[::1]"].includes(hostname);
@@ -374,7 +375,8 @@ test.describe("@web-ready FASE 5 — fluxos críticos E2E", () => {
     const { context, page } = await openAs(browser, "administradores", "/admin/lancamento-manual", fieldFixtures());
     try {
       await expect(page.getByRole("heading", { name: "Lançamento Manual", exact: true })).toBeVisible();
-      const selectors = page.getByRole("combobox");
+      // Exclude the admin header view-mode selector.
+      const selectors = page.getByRole("main").getByRole("combobox");
       await expect(selectors).toHaveCount(4);
       await expect(selectors.nth(1)).toBeDisabled();
       await selectors.nth(0).click();
@@ -564,7 +566,9 @@ test.describe("@web-ready FASE 5 — responsividade (5.8)", () => {
       await page.getByRole("button", { name: "Ver / Baixar PDF", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "Relatório — Fazenda de teste", exact: true });
       await expect(dialog.locator("iframe")).toHaveAttribute("src", /^blob:/);
-      const downloaded = page.waitForEvent("download");
+      // The iframe preview can itself emit a headless-browser download.
+      const previewUrl = await dialog.locator("iframe").getAttribute("src");
+      const downloaded = page.waitForEvent("download", { predicate: file => file.url() !== previewUrl });
       await dialog.getByRole("button", { name: "Baixar", exact: true }).click();
       const download = await downloaded;
       expect(download.suggestedFilename()).toBe("visita-Fazenda de teste.pdf");

@@ -96,3 +96,7 @@ Antes de executar uma fase, ler também seu capítulo completo no checklist arqu
 - Próxima tarefa: validar os contratos E2E corrigidos e concluir os gates executáveis da FASE 5; avançar tarefas independentes sem dispensar riscos materiais. Usar `CONSUBOV_HANDOFF_CONTINUIDADE.md` para retomar.
 
 As publicações desta rodada foram feitas na branch autorizada com `[skip ci]`. Nenhum GitHub Actions hospedado, merge na `main`, deploy, banco remoto ou dado real foi utilizado.
+
+## Rodada local: PDF e salga
+Base f47d9b92. E2E inicial: 96/102 PASS. Corrigido seletor de formulario de salga; Chromium completo valida bytes PDF; corrigida sobreposicao real entre dois botoes de fechar o PDF. Regressao Dialog: RED 1/2, GREEN 2/2. Reexecucao dos seis cenarios: 6/6 PASS.
+Build/typecheck frescos: PASS; API 539/539 e Web 134/134, cache Turbo desativado. Dependency audit: 0 high/critical; 24 avisos inferiores continuam registrados. Logs .qa/round-20261011/. Fases integrais permanecem pendentes. Sem CI hospedado ou deploy.

@@ -94,3 +94,7 @@ Proibido: Capacitor/nativo, Supabase/PostgreSQL remoto, Vercel, migrations remot
 No mesmo bloco de implementação, atualizar checklist do repositório e Notion, relatório QA relevante e este handoff. Não criar outro roadmap independente. Relatório final deve distinguir IMPLEMENTADO, TESTADO LOCAL, QA APROVADO e HOMOLOGAÇÃO REAL PENDENTE, com SHA/dirty, comandos/exits, limites e riscos.
 
 **Fontes do Projeto:** substituir o handoff antigo por esta versão após sincronização. **A nova aplicação ainda não está aprovada para substituir a PWA usada em campo.** Nenhum CI hospedado, merge na `main`, deploy, banco remoto ou dado real foi usado nesta rodada.
+
+## Rodada local: PDF e salga
+Base f47d9b92. E2E inicial: 96/102 PASS. Corrigido seletor de formulario de salga; Chromium completo valida bytes PDF; corrigida sobreposicao real entre dois botoes de fechar o PDF. Regressao Dialog: RED 1/2, GREEN 2/2. Reexecucao dos seis cenarios: 6/6 PASS.
+Build/typecheck frescos: PASS; API 539/539 e Web 134/134, cache Turbo desativado. Dependency audit: 0 high/critical; 24 avisos inferiores continuam registrados. Logs .qa/round-20261011/. Fases integrais permanecem pendentes. Sem CI hospedado ou deploy.

@@ -24,3 +24,7 @@
 - Executar os testes em ambiente de máquina com permissão de loopback para Playwright (ou máquina virtual/WSL sem restrição de administrador).
 - Registrar os valores reais de LCP, CLS, TBT e Scores no `web-lighthouse-budget.json` e remover o estado `PENDING_LOCAL_BASELINE`.
 - Atualizar o status para `WEB READY LOCAL` após o gate rodar 100% verde.
+
+## Rodada local: PDF e salga
+Base f47d9b92. E2E inicial: 96/102 PASS. Corrigido seletor de formulario de salga; Chromium completo valida bytes PDF; corrigida sobreposicao real entre dois botoes de fechar o PDF. Regressao Dialog: RED 1/2, GREEN 2/2. Reexecucao dos seis cenarios: 6/6 PASS.
+Build/typecheck frescos: PASS; API 539/539 e Web 134/134, cache Turbo desativado. Dependency audit: 0 high/critical; 24 avisos inferiores continuam registrados. Logs .qa/round-20261011/. Fases integrais permanecem pendentes. Sem CI hospedado ou deploy.

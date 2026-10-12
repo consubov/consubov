@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -46,8 +46,8 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
         currentUrlRef.current = u;
         setBlob(b);
         setBlobUrl(u);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Falha ao carregar PDF");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error && e.message ? e.message : "Falha ao carregar PDF");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -73,10 +73,10 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
 
   async function enviar() {
     try {
-      if (blob && (navigator as any).canShare) {
+      if (blob && navigator.canShare) {
         const file = new File([blob], name, { type: "application/pdf" });
-        if ((navigator as any).canShare({ files: [file] })) {
-          await (navigator as any).share({ files: [file], title: title || "Relatório Consubov" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: title || "Relatório Consubov" });
           return;
         }
       }
@@ -90,7 +90,8 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[92vh] p-0 gap-0 flex flex-col">
+      <DialogContent showCloseButton={false} className="max-w-5xl w-[95vw] h-[92vh] p-0 gap-0 flex flex-col">
+        <DialogDescription className="sr-only">Visualizar, baixar ou compartilhar o relatorio PDF.</DialogDescription>
         <DialogHeader className="p-3 border-b flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-sm truncate pr-2">{title || "Relatório PDF"}</DialogTitle>
           <div className="flex items-center gap-2">
