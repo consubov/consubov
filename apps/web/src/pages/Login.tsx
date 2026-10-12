@@ -45,7 +45,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+    <main className="min-h-screen flex items-center justify-center bg-primary px-4">
       <Card className="w-full max-w-md shadow-2xl border-0">
         <CardHeader className="text-center pb-2 pt-8">
           <div className="flex flex-col items-center gap-2">
@@ -119,6 +119,6 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

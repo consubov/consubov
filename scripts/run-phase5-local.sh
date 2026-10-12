@@ -11,6 +11,18 @@ echo "[phase5] evidence: $QA_OUTPUT_DIR"
 export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-http://127.0.0.1:54321}"
 export VITE_SUPABASE_PUBLISHABLE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-phase5-local-test-key}"
 
+# Refuse inherited production URLs before installing tools or building the client.
+node --input-type=module - <<'LOCAL_TARGET'
+try {
+  const url = new URL(process.env.VITE_SUPABASE_URL);
+  if (url.protocol !== 'http:' || !['127.0.0.1', '[::1]'].includes(url.hostname) ||
+      url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error();
+} catch {
+  console.error('[phase5] VITE_SUPABASE_URL must be a local HTTP origin without credentials or a path');
+  process.exit(1);
+}
+LOCAL_TARGET
+
 cleanup() {
   if [[ -n "${WEB_PID:-}" ]]; then
     kill "$WEB_PID" 2>/dev/null || true
@@ -70,12 +82,13 @@ echo "[phase5] e2e"
 echo "[phase5] axe + lighthouse"
 (
   cd apps/web
-  bun run preview -- --host 127.0.0.1 --port 8080 >"$QA_OUTPUT_DIR/web-preview.log" 2>&1 &
+  bun run preview -- --host 127.0.0.1 --port 8080 --strictPort >"$QA_OUTPUT_DIR/web-preview.log" 2>&1 &
   WEB_PID=$!
   trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
   READY=0
   for _ in {1..40}; do
-    if curl --fail --silent http://127.0.0.1:8080/login >/dev/null; then
+    if ! kill -0 "$WEB_PID" 2>/dev/null; then cat "$QA_OUTPUT_DIR/web-preview.log"; exit 1; fi
+    if grep -q "http://127.0.0.1:8080/" "$QA_OUTPUT_DIR/web-preview.log" && curl --fail --silent http://127.0.0.1:8080/login >/dev/null; then
       READY=1
       break
     fi
@@ -86,7 +99,8 @@ echo "[phase5] axe + lighthouse"
     exit 1
   fi
 
-  bunx @axe-core/cli     http://127.0.0.1:8080/     http://127.0.0.1:8080/login     http://127.0.0.1:8080/recuperar-senha
+  export CHROME_PATH="$(node -p 'require("@playwright/test").chromium.executablePath()')"
+  QA_BASE_URL=http://127.0.0.1:8080 node ../../scripts/qa/run-a11y-local.mjs
 
   bunx lighthouse http://127.0.0.1:8080/     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path="$QA_OUTPUT_DIR/lighthouse-home.json"     --quiet
 
@@ -110,12 +124,13 @@ for (const name of ["home", "login"]) {
 }
 NODE
 
-  node ../../scripts/check-web-lighthouse-budget.mjs
 
   kill "$WEB_PID" 2>/dev/null || true
   trap - EXIT
   unset WEB_PID
 )
+
+node --test scripts/tests/a11y-runner.browser.mjs
 
 echo "[phase5] edge functions"
 (
@@ -149,4 +164,6 @@ grep -q 'Consubov Developers' "$QA_OUTPUT_DIR/docs.html"
 kill "$API_PID" 2>/dev/null || true
 unset API_PID
 
+# Keep pending performance approval visible without suppressing independent evidence.
+node scripts/check-web-lighthouse-budget.mjs
 echo "[phase5] PASS"

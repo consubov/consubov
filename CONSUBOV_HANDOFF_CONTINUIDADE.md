@@ -10,6 +10,16 @@ O PRD continua em `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-L
 
 O responsável autorizou commit/push e execução incremental, priorizando uma versão utilizável para testes. Pendências não críticas devem ser registradas sem bloquear trabalho independente. Isso não autoriza falso PASS, perda offline, vazamento entre usuários/tenants ou liberação de produção sem seus controles.
 
+## Estado mais recente - execucao UTC 2026-10-12
+
+Base sincronizada: `a9288e0394db21b06343d6b53d255c5a4327cbaa`; nao refazer as 11 alteracoes nem as correcoes de PDF/salga. E2E integral 102/102, PWA sintetica 16/16, regressao 130/130 e offline core 47/47 passaram com arvore limpa. O gate FASE 5 parou depois no Chrome de sistema ausente do Axe CLI.
+
+A correcao atual remove esse requisito: Axe e Lighthouse usam Chromium do Playwright instalado. Landmarks e titulo acessivel das paginas publicas corrigidos; 9/9 cenarios reais PASS no candidato. Check sem cache (539 API + 136 Web), Edge 122/122 e SAST API PASS. Lint/typecheck PASS; warnings historicos registrados. TDD do runner 5/5 + 2/2 testes de navegador. Evidencias pre-commit estao explicitamente dirty=true.
+
+Lighthouse executou e revelou desempenho insatisfatorio; primeira medicao home 28/login 72 nao e baseline aprovada. O gate conserva FAIL ate revisao, mas Edge/API agora executam antes da verificacao de budget. FASES 6/7 seguem desenvolvimento independente, sem inferir zero-loss real pelas fixtures.
+
+Consultar `docs/qa/phase5-local-report.md` para logs e a verificacao final por SHA. Concluir baseline/seguranca e gates integrais; completar upgrade legado real e migracao/sync autenticado preservando seis bases. Relatos de ambiente indisponivel abaixo sao historicos: Codespace e browsers agora estao operacionais. Nao reinstalar o que funciona. Notion atualizado com evidencias desta rodada. Reconciliar resultado pos-commit antes de anunciar QA aprovado.
+
 ## 2. Publicações concluídas — não refazer
 
 - `473a8752` / `e0c19265`: auditoria anterior, correções de validadores/PWA/fila e organização da documentação. Evidência histórica de 111 testes Node selecionados e 17 da fila está no relatório consolidado; não é aprovação da revisão atual.
@@ -98,3 +108,12 @@ No mesmo bloco de implementação, atualizar checklist do repositório e Notion,
 ## Rodada local: PDF e salga
 Base f47d9b92. E2E inicial: 96/102 PASS. Corrigido seletor de formulario de salga; Chromium completo valida bytes PDF; corrigida sobreposicao real entre dois botoes de fechar o PDF. Regressao Dialog: RED 1/2, GREEN 2/2. Reexecucao dos seis cenarios: 6/6 PASS.
 Build/typecheck frescos: PASS; API 539/539 e Web 134/134, cache Turbo desativado. Dependency audit: 0 high/critical; 24 avisos inferiores continuam registrados. Logs .qa/round-20261011/. Fases integrais permanecem pendentes. Sem CI hospedado ou deploy.
+
+
+## Retomada verificada - 2026-10-12 13h UTC
+
+Lote de acessibilidade anterior revisado e reexecutado antes da publicacao. Nova correcao: o gate recusa backend remoto, credenciais na URL e caminhos/query antes de instalar ou executar ferramentas. Regressao observada RED (6 falhas/7), depois GREEN 7/7, sem contato com os destinos de teste.
+
+Verificacao do candidato em a9288e03, dirty=true e fonte estavel durante a rodada: Node 142/142; runner Chromium 2/2; acessibilidade publica Playwright 9/9 sem retries; check completo, build/tipagem e Web 136/136 PASS, sem cache Turbo. Exit agregado 0: .qa/retomada-20261012/verification.exit. Registros .qa/runs/20261012T131820Z-regressions-a9288e0394db-6554/result.json, .qa/runs/20261012T131853Z-public-a11y-revalidated-a9288e0394db-8132/result.json e .qa/runs/20261012T131941Z-check-a9288e0394db-9097/result.json.
+
+Revisao estatica feita pelo mesmo executor, sem revisor independente. O oramento Lighthouse permanece PENDING_LOCAL_BASELINE; nao ha aceite integral das fases. Trabalho local independente de PWA/offline continua; nenhum banco remoto, dado real, CI hospedado, merge ou deploy. Atualizar evidencias apos sincronizar o commit.

@@ -49,7 +49,7 @@ const LEAD_SUBMIT_KEY = "consubov:lead-last-submit";
 
 // Resolve a lucide icon name (string) to a component, with fallback
 function LucideIcon({ name, className, style }: { name?: string; className?: string; style?: React.CSSProperties }) {
-  const Comp = (name && (Lucide as any)[name]) || Lucide.Sparkles;
+  const Comp = (name && Lucide.icons[name as keyof typeof Lucide.icons]) || Lucide.Sparkles;
   return <Comp className={className} style={style} />;
 }
 
@@ -456,6 +456,8 @@ export default function LandingPage() {
 
         </div>
       </header>
+
+      <main>
 
       {/* ========== HERO ========== */}
       <section className="relative w-full overflow-hidden" style={{ minHeight: "100vh" }}>
@@ -985,6 +987,8 @@ export default function LandingPage() {
       </section>
 
       {/* RODAPÉ */}
+      </main>
+
       <footer className="relative py-12 px-5" style={{ borderTop: `1px solid ${BORDER}`, background: "#02030580" }}>
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">

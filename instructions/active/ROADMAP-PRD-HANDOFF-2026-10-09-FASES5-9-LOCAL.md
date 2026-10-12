@@ -269,3 +269,18 @@ Este é o mesmo PRD/handoff do PR #43, sem criação de novo agente/branch. Ante
 4. Continuar os gates independentes FASE 5/6 no Go Task e iniciar preparo local dos FASES 8/9 apenas sem remoto. Registrar QA por SHA e manter Notion/checklist/PRD/handoff/documentação sincronizados.
 
 **Aceite:** [ ] real fake-indexeddb PASS; [ ] Playwright Chromium+WebKit PASS; [ ] fila autenticada+sync fake integrada; [ ] migration engine de todas seis DBs verde; [ ] FASE5/6 completos e PWA legada→nova zero-loss; [ ] QA revisor; [ ] autorização expressa para qualquer remoto/release. **Exclusões/ações proibidas:** merge/reset/force push, CI hospedado, apagar dados offline, remote Supabase/PostgreSQL, Vercel, migrations remotas, deploy, secrets. **Relatório final:** branch SHA/dirty, testes reais e falhas, riscos, docs/Notion, ações executadas e próximas etapas. Fonte de detalhes: `docs/66-offline-atomic-queue.md`. Substituir Handoff das Fontes ao final.
+
+## Continuidade UTC 2026-10-12 - acessibilidade e gates independentes
+
+Nao criar outro PRD/branch. Reutilizar o runner `scripts/qa/run-a11y-local.mjs` e `e2e/public-a11y.spec.ts`; Chrome de sistema/Selenium nao sao dependencias. Falhas observadas antes das correcoes; sem desativar regras. O budget Lighthouse permanece pendente e e verificado depois de Edge/HTTP, mantendo FAIL agregado. Evidencias e limites em `docs/qa/phase5-local-report.md`, checklist e handoff atualizados.
+
+Prioridade: validar revisao publicada, otimizar/medir baseline sem reducao artificial de criterios, concluir scanners locais; continuar upgrade legado real, capacidades e migracao/sync autenticado em tarefas independentes. Escopo, aceite, QA, exclusoes e regras Git anteriores permanecem integrais. Sem CI hospedado, dados reais, banco remoto, deploy, merge ou alteracao de historico. Relatorio final por SHA/dirty/exits e atualizacao Notion obrigatorios.
+
+
+## Retomada verificada - 2026-10-12 13h UTC
+
+Lote de acessibilidade anterior revisado e reexecutado antes da publicacao. Nova correcao: o gate recusa backend remoto, credenciais na URL e caminhos/query antes de instalar ou executar ferramentas. Regressao observada RED (6 falhas/7), depois GREEN 7/7, sem contato com os destinos de teste.
+
+Verificacao do candidato em a9288e03, dirty=true e fonte estavel durante a rodada: Node 142/142; runner Chromium 2/2; acessibilidade publica Playwright 9/9 sem retries; check completo, build/tipagem e Web 136/136 PASS, sem cache Turbo. Exit agregado 0: .qa/retomada-20261012/verification.exit. Registros .qa/runs/20261012T131820Z-regressions-a9288e0394db-6554/result.json, .qa/runs/20261012T131853Z-public-a11y-revalidated-a9288e0394db-8132/result.json e .qa/runs/20261012T131941Z-check-a9288e0394db-9097/result.json.
+
+Revisao estatica feita pelo mesmo executor, sem revisor independente. O oramento Lighthouse permanece PENDING_LOCAL_BASELINE; nao ha aceite integral das fases. Trabalho local independente de PWA/offline continua; nenhum banco remoto, dado real, CI hospedado, merge ou deploy. Atualizar evidencias apos sincronizar o commit.

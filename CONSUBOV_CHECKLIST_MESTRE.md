@@ -1,6 +1,6 @@
 # CONSUBOV — Checklist Mestre de Execução
 
-> **Revisão consolidada:** 2026-10-11. **Branch ativa:** `work/fase5-6-7-pwa-local`. **PR:** #43, draft. **QA integral das FASES 5–7: PENDENTE.**
+> **Revisão consolidada:** 2026-10-12. **Branch ativa:** `work/fase5-6-7-pwa-local`. **PR:** #43, draft. **QA integral das FASES 5–7: PENDENTE.**
 
 ## 1. Fonte de verdade e preservação do planejamento
 
@@ -45,6 +45,18 @@ Antes de executar uma fase, ler também seu capítulo completo no checklist arqu
 
 **Evidência browser histórica de 2026-10-10:** 16/16 testes de fixture PWA em Chromium/WebKit, exit 0, `.qa/runs/20261010T212419Z-pwa-upgrade-fixture-17ed1b45bbd3-6644/result.json`, checkout dirty. Não representa execução da revisão nova nem o build legado real. Os 10 testes Vitest selecionados e typecheck Web daquela rodada também são históricos.
 
+## Evidencia mais recente - 2026-10-12 (UTC)
+
+- [x] E2E integral **102/102 PASS** no SHA limpo `a9288e0394db`; a evidencia de 60/102 e historica.
+- [x] PWA fixture **16/16**, regressao Node **130/130**, offline core **47/47** PASS no SHA base limpo, conforme registros locais/Notion; fixture sintetica nao homologa o legado real.
+- [x] Resolver dependencia indevida de Chrome de sistema no Axe; reutilizar Playwright instalado e registrar erros/violacoes sem falso PASS.
+- [x] Corrigir acessibilidade publica; **9/9** cenarios desktop/tablet/mobile PASS no candidato pre-commit. Runner: **5/5** contratos e **2/2** testes Chromium real PASS.
+- [x] Check fresco API **539/539**, Web **136/136**, Edge **122/122** e SAST API PASS no candidato. Lint/typecheck PASS, 13 warnings visiveis.
+- [x] Medir Lighthouse local; execucao desbloqueada, desempenho exige melhoria/revisao. Nao transformar a medicao diagnostica em aprovacao.
+- [ ] Revalidacao final por SHA e QA integral. `PENDING_LOCAL_BASELINE` continua bloqueando aceite, mas nao impede Edge/HTTP nem desenvolvimento independente.
+
+Detalhes, limites e logs: `docs/qa/phase5-local-report.md`. FASES 5-7 permanecem com aceite integral pendente.
+
 ## 4. Estado por fase
 
 | Fase | Estado atual | Aceite ainda necessário |
@@ -60,7 +72,7 @@ Antes de executar uma fase, ler também seu capítulo completo no checklist arqu
 ## 5. Pendências prioritárias por fase
 
 ### FASE 5 — itens 5.1 a 5.11 do planejamento original
-- [ ] Sincronizar o checkout com segurança e executar `task qa:phase5:contracts` e a suite Playwright completa. A rodada histórica de 60 PASS / 42 FAIL não foi substituída por uma nova execução E2E integral.
+- [x] Checkout base sincronizado e E2E integral 102/102 PASS em a9288e0394db; substituir contagens historicas pela evidencia atual. Revalidar o candidato final.
 - [ ] Corrigir falhas reais de produto ou teste conforme causa comprovada; cobrir logout/tablet, uploads/fotos, permissões e tenant mismatch. Título visível não comprova escrita/transação.
 - [ ] Medir Lighthouse e justificar limites por evidência; manter `PENDING_LOCAL_BASELINE` até medição/aprovação real.
 - [ ] Revalidar Web/API/Edge, acessibilidade, coverage/ratchet, lint, typecheck/build, bundle, segredos e dependências.
@@ -86,6 +98,8 @@ Antes de executar uma fase, ler também seu capítulo completo no checklist arqu
 
 ## 6. Ramos, ambiente e continuidade
 
+**Estado atual:** Codespace voltou a executar; base local/remota a9288e0394db confirmada. Relatos de timeout/ausencia de Bun abaixo pertencem a auditorias anteriores, nao ao bloqueio atual. Playwright/Axe/Lighthouse executam localmente. Ler o relatorio atual antes de reinstalar ferramentas.
+
 - Branch única de trabalho: `work/fase5-6-7-pwa-local`; PR #43 draft. Não criar outra sequência paralela de PRDs ou branches.
 - `quality/fase5-web-ready-20261005` e `feature/phase6-app-shell` permanecem históricas/congeladas.
 - Na auditoria anterior, `main` em `161cf184` tinha cinco commits exclusivos, incluindo `6944de9` (Capacitor/SQLite). Não importar automaticamente; conferir novamente antes de integração seletiva autorizada.
@@ -100,3 +114,12 @@ As publicações desta rodada foram feitas na branch autorizada com `[skip ci]`.
 ## Rodada local: PDF e salga
 Base f47d9b92. E2E inicial: 96/102 PASS. Corrigido seletor de formulario de salga; Chromium completo valida bytes PDF; corrigida sobreposicao real entre dois botoes de fechar o PDF. Regressao Dialog: RED 1/2, GREEN 2/2. Reexecucao dos seis cenarios: 6/6 PASS.
 Build/typecheck frescos: PASS; API 539/539 e Web 134/134, cache Turbo desativado. Dependency audit: 0 high/critical; 24 avisos inferiores continuam registrados. Logs .qa/round-20261011/. Fases integrais permanecem pendentes. Sem CI hospedado ou deploy.
+
+
+## Retomada verificada - 2026-10-12 13h UTC
+
+Lote de acessibilidade anterior revisado e reexecutado antes da publicacao. Nova correcao: o gate recusa backend remoto, credenciais na URL e caminhos/query antes de instalar ou executar ferramentas. Regressao observada RED (6 falhas/7), depois GREEN 7/7, sem contato com os destinos de teste.
+
+Verificacao do candidato em a9288e03, dirty=true e fonte estavel durante a rodada: Node 142/142; runner Chromium 2/2; acessibilidade publica Playwright 9/9 sem retries; check completo, build/tipagem e Web 136/136 PASS, sem cache Turbo. Exit agregado 0: .qa/retomada-20261012/verification.exit. Registros .qa/runs/20261012T131820Z-regressions-a9288e0394db-6554/result.json, .qa/runs/20261012T131853Z-public-a11y-revalidated-a9288e0394db-8132/result.json e .qa/runs/20261012T131941Z-check-a9288e0394db-9097/result.json.
+
+Revisao estatica feita pelo mesmo executor, sem revisor independente. O oramento Lighthouse permanece PENDING_LOCAL_BASELINE; nao ha aceite integral das fases. Trabalho local independente de PWA/offline continua; nenhum banco remoto, dado real, CI hospedado, merge ou deploy. Atualizar evidencias apos sincronizar o commit.

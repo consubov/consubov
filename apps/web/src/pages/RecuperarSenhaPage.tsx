@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { requestPasswordRecovery } from "@/features/auth/repositories/authRecoveryRepository";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -34,12 +34,12 @@ export default function RecuperarSenhaPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary px-4">
+    <main className="min-h-screen flex items-center justify-center bg-primary px-4">
       <Card className="w-full max-w-md shadow-2xl border-0">
         <CardHeader className="space-y-2">
-          <CardTitle className="flex items-center gap-2 text-xl">
+          <h1 className="flex items-center gap-2 text-xl font-semibold leading-none tracking-tight">
             <Mail className="h-5 w-5" /> Recuperar senha
-          </CardTitle>
+          </h1>
           <p className="text-sm text-muted-foreground">
             Informe seu e-mail. Se existir uma conta válida, você receberá as instruções de redefinição.
           </p>
@@ -83,6 +83,6 @@ export default function RecuperarSenhaPage() {
           </Link>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
