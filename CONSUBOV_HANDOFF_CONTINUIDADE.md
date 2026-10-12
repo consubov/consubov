@@ -20,6 +20,16 @@ Lighthouse executou e revelou desempenho insatisfatorio; primeira medicao home 2
 
 Consultar `docs/qa/phase5-local-report.md` para logs e a verificacao final por SHA. Concluir baseline/seguranca e gates integrais; completar upgrade legado real e migracao/sync autenticado preservando seis bases. Relatos de ambiente indisponivel abaixo sao historicos: Codespace e browsers agora estao operacionais. Nao reinstalar o que funciona. Notion atualizado com evidencias desta rodada. Reconciliar resultado pos-commit antes de anunciar QA aprovado.
 
+## 1A. PLANEJAMENTO DA FASE 11 — PERFiS E HIERARQUIA (2026-10-12)
+
+- A última fase existente foi confirmada como FASE 10 no Checklist Mestre do Notion. **FASE 11 — Perfis, Hierarquia e Evolução Profissional** foi especificada no documento docs/67-fase11-perfis-auditoria-prd.md e no CONSUBOV_CHECKLIST_MESTRE.md; registrar a página correspondente no Notion.
+- Escopo futuro: proprietário separado de administrador, hierarquia proprietário -> gerente -> capataz, perfis editáveis/fotos/CPF, fazendas/retiros, histórico/currículo por identidade e período, ranking já existente evoluído, Google opcional e PDF.
+- **Auditoria documental concluída; implementação, migrações, QA da FASE 11 e mudanças no código não iniciados.** Segurança/RLS da plataforma permanece fora da FASE 11, sem modificar a fase de segurança já existente.
+- FASE 11 aparece após FASE 10 por organização, **sem gate automático exigindo conclusão de todas as fases anteriores**. Planejamento pode ocorrer em paralelo; futuro código depende de contratos vigentes, ausência de conflito e testes específicos.
+- Componentes de base comprovados: useAuth.tsx; GerentesPage.tsx; CapatazesPage.tsx; FazendasPage.tsx; RetirosPage.tsx; lib/scoreCapatazData.ts (score por retiro, não currículo individual), PremiacaoSemestral.tsx, PainelOperacoes.tsx e funções PDF legadas. Preservar principal de gerentes_fazendas/capatazes_retiros, IDs e offline.
+- Antes de começar desenvolvimento: consultar Notion atual, git status, PR #43 e este PRD; não duplicar agentes, não tocar em migrations/deploy/remoto sem autorização própria; abrir PRD ativo somente quando execução realmente for atribuída.
+- [PENDENTE] aprovar detalhes de escopo/visibilidade do ranking por pessoa, modelo de vínculo profissional e privacidade CPF/foto; nenhuma permissão nova foi aplicada no runtime.
+
 ## 2. Publicações concluídas — não refazer
 
 - `473a8752` / `e0c19265`: auditoria anterior, correções de validadores/PWA/fila e organização da documentação. Evidência histórica de 111 testes Node selecionados e 17 da fila está no relatório consolidado; não é aprovação da revisão atual.

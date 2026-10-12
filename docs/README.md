@@ -63,3 +63,4 @@ Os critérios detalhados do checklist anterior foram [preservados integralmente]
 - [FASES 8–9: gate local de evidências e preparação de piloto](./64-fase8-9-local-readiness.md)
 - [PWA: atualização manual sem perda do cache offline](./65-pwa-update-safety.md)
 - [FASE 7: fila IndexedDB transacional multiaba, testes e limites](./66-offline-atomic-queue.md)
+- [FASE 11 — Auditoria, PRD e handoff dos perfis, hierarquia, currículo e ranking (planejada)](./67-fase11-perfis-auditoria-prd.md)

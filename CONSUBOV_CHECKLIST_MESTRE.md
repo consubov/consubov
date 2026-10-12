@@ -11,6 +11,7 @@ Este arquivo é o painel atual. Nenhum requisito detalhado foi excluído ou disp
 - Continuidade: `CONSUBOV_HANDOFF_CONTINUIDADE.md` e `CONSUBOV_INSTRUCOES_MESTRE_PROJETO.md`.
 - Histórico e rodada atual de QA: `docs/qa/auditoria-consolidada-2026-10-09.md`.
 - Evidência sanitizada desta rodada: `docs/qa/evidence/2026-10-11-selected-local.json`.
+- FASE 11 futura: docs/67-fase11-perfis-auditoria-prd.md (auditoria/PRD/handoff; nenhuma mudança de código).
 - Checklist externo: página mestre do Notion `3ec8e0bd-0f4d-816d-9bb5-d807e8e2cdc9` e páginas de cada fase.
 
 Antes de executar uma fase, ler também seu capítulo completo no checklist arquivado e o PRD ativo. Relatórios antigos, instalação de ferramentas, código escrito, testes isolados e homologação física são estados diferentes; um não aprova automaticamente o outro.
@@ -68,6 +69,7 @@ Detalhes, limites e logs: `docs/qa/phase5-local-report.md`. FASES 5-7 permanecem
 | 8 — banco/staging/migração | Somente preparação local autorizada | Dry-run local; autorização específica antes de qualquer remoto |
 | 9 — produção/operação | Somente preparação local; **PRODUCTION READY NÃO** | QA aplicável, piloto físico, backup/restore, rollback e autorização de release |
 | 10 — pós-produção | Fora do trabalho ativo | Reavaliar após produção estabilizada |
+| 11 — perfis, hierarquia e currículo | **PLANEJADA; NÃO IMPLEMENTADA** | Auditoria documental registrada; implementação futura independente por compatibilidade e aceite específicos |
 
 ## 5. Pendências prioritárias por fase
 
@@ -138,3 +140,58 @@ Evidencias do candidato, base 10230f04 e dirty=true: .qa/runs/20261012T133442Z-o
 **Limites:** no inventario, status=ok significa enumeracao concluida; nao certifica migracao. Antes de migrar, exigir contexto autorizado e avaliar error por banco, versoes, stores faltantes e localStorageStatus. localStorageStatus=unavailable nunca autoriza tratar backups como inexistentes. Fixture sintetica nao homologa o build legado de producao nem conclui as FASES 6/7.
 
 Trabalho local independente segue permitido: integrar identidade validada e migracao retomavel preservando origens; concluir ensaio do build legado e desempenho sem afrouxar gates. Nenhuma base de cliente foi alterada. Sem CI hospedado, merge, deploy, banco remoto ou novo roadmap. Revisao pelo proprio executor, sem alegar revisor independente.
+
+## 7. FASE 11 — Perfis, Hierarquia e Evolução Profissional (PLANEJADA)
+
+**Posição:** fase seguinte à FASE 10 no roadmap; **não está bloqueada automaticamente** até a conclusão de todas as fases anteriores. Pode ser descoberta/planejada independentemente; implementação futura exige resolver apenas dependências e conflitos reais, sem interferir nas FASES 5–9. **Status:** planejamento/auditoria documental realizada, nenhuma implementação, migration ou teste desta fase executado.
+
+**Documento técnico/PRD/handoff detalhado:** docs/67-fase11-perfis-auditoria-prd.md (fonte de escopo, arquivos exatos, critérios, testes e rollback).
+
+### 11.0 Auditoria e fonte de verdade
+- [x] Auditar no código papéis, perfis, cadastros, vínculos, login, ranking existente, PDFs e pontos de exclusão; registrar fatos vs pendências.
+- [ ] Revalidar revisão viva de Git/Notion/Codespace e arquivos compartilhados antes de qualquer futuro PRD de execução.
+- [ ] Confirmar fluxos realmente usados por perfil e mapeamento do legado em ambiente autorizado, sem inferir regras a partir da UI.
+
+### 11.1 Proprietário
+- [ ] Especificar perfil de proprietário da organização/tenant separado de administrador global.
+- [ ] Permitir proprietário cadastrar/editar gerentes e fazendas autorizadas, gerenciando status e vínculos.
+- [ ] Projetar múltiplas fazendas/gerentes, transferência de responsabilidade e continuidade de histórico.
+
+### 11.2 Gerente e hierarquia
+- [ ] Reutilizar GerentesPage, gerentes_fazendas e contexto do GerenteDashboard sem quebrar rotas.
+- [ ] Projetar gerente cadastrar fazenda e capataz/equipe somente no próprio escopo; proibir subir a hierarquia.
+- [ ] Definir matriz funcional ação/recurso/escopo e preservação de vínculo principal do legado.
+
+### 11.3 Capataz e demais usuários
+- [ ] Criar especificação de 'Meu Perfil' editável pelo capataz: nome, CPF, e-mail, telefone, foto e status; separar campos próprios dos validados por gerente.
+- [ ] Preservar capatazes, capatazes_retiros, user_id, retiro_id e a PWA offline ao evoluir perfis.
+- [ ] Expandir de forma coerente os perfis existentes: escritório, consultor, pesador, operadores e equipe, sem criar permissões não aprovadas.
+
+### 11.4 Fazenda/retiro/fotos
+- [ ] Evoluir perfis editáveis de fazenda e retiro, com fotos, contatos/responsáveis conforme requisito validado.
+- [ ] Preservar fazenda -> retiro -> pasto, rotas, mapas, QR, ciclos e relatórios.
+- [ ] Definir uploads opcionais, ausência de foto e política de substituição/retomada.
+
+### 11.5 Histórico/currículo
+- [ ] Especificar vínculos temporais de pessoa, fazenda, retiro, papel, datas de entrada/saída e histórico verificável.
+- [ ] Separar histórico comprovado de dados autodeclarados e eventos operacionais; preservar mudanças de fazenda.
+- [ ] Definir visibilidade de histórico por papel/organização; nenhuma exibição de CPF no currículo público.
+
+### 11.6 Ranking profissional
+- [ ] Reutilizar scoreCapataz, scoreCapatazData, PremiacaoSemestral e ranking do gerente como baseline.
+- [ ] Planejar atribuição de notas por pessoa + retiro + período usando identidade estável; não equiparar ranking de retiro a carreira do capataz.
+- [ ] Aprovar fórmula/origem, comparabilidade, contexto, visualização e exportação; sem inventar métricas.
+
+### 11.7 Google e PDF
+- [ ] Planejar Google Login opcional, vinculado à identidade existente, preservando e-mail/senha, papéis e offline.
+- [ ] Projetar exportação PDF de perfis, currículo/histórico e ranking sem expor dados além do permitido.
+
+### 11.8 Compatibilidade e QA
+- [ ] Projetar alterações incrementais/optativas e mapeamento do legado, sem migrations até autorização futura.
+- [ ] Planejar inativar/remover vínculo sem exclusão física de cadastros/histórico nos novos fluxos.
+- [ ] Definir regressões por perfil, multi-fazenda/tenant, mudança de usuário, Google, foto, PDF, PWA/offline e rollback.
+- [ ] Realizar QA integral da fase na implementação futura e atualizar docs, OpenAPI, Notion e handoff com evidências.
+
+**Fora desta fase:** remediação de segurança/RLS da plataforma, migrations ou acesso remoto, deploy, alteração de segredos, refatoração ampla. Permissões funcionais e testes de escopo integram aceite do recurso, **não constituem uma nova fase de segurança**.
+
+**[PENDENTE]** regra detalhada de RBAC por hierarquia, dados legados sem autoria provada, política de visibilidade de ranking e currículo, métrica de eficiência individual e divulgação de CPF/fotos. Documentar decisões antes do código.
