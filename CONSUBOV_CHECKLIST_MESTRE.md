@@ -1,5 +1,15 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Gates locais: verificacao isolada e impedimento do Codespace — 2026-10-13
+
+- [x] Revalidacao independente do blob publicado da fila legada: `f77442eb94dee91b1e7f897942f024b807cbcf44`, Node 10/10 PASS e TS strict/noEmit isolado exit 0.
+- [x] Documentado o impedimento de automacao: extension host remoto intermitente, timeout WebSocket, clipboard bloqueado. GUI de Git sem pull pendente, porem SHA local sem confirmacao de terminal.
+- [ ] `task doctor` no Codespace: execucao/exit NAO verificados.
+- [ ] `task qa:regressions`, `task qa:check`, Vitest Web, QA navegador offline e regressao API: NAO executados neste lote.
+- [ ] Verificar SHA/dirty no unico Codespace, conservar stashes e registrar evidencia QA completa do HEAD; nenhuma fase integral aprovada.
+- [ ] Revisar futuramente o backup `codespace-probable-acorn-v6vvq9rrvjjgcw6w` antes de eventual remocao. Nao tocar em main/ambientes remotos.
+
+
 ## Codespace CONSUBOV — alertas Act/Run resolvidos no workspace (2026-10-13)
 
 - [x] Confirmados alertas de `act` ausente e nenhum runtime Docker: foram emitidos pela extensao Act/Run opcional, nao pelo aplicativo.

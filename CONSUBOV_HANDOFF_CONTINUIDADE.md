@@ -1,5 +1,14 @@
 # CONSUBOV - Continuidade operacional
 
+## Retomada dos gates locais e diagnostico Codespace — 2026-10-13
+
+- A GUI do Git no Codespace deixou de indicar os 6 commits atras apos comando `Git: Pull`, mas NAO existe verificacao fresca do SHA do shell. Arvore SCM sem arquivos alterados; tres stashes preexistentes protegidos.
+- Browser-MTS/VS Code com `Extension host (Remote) is unresponsive` repetido, timeout WebSocket 30000ms, latencia remota 25584.50ms e clipboard recusado. Tarefa `CONSUBOV: Verificar ambiente` selecionada sem output/exit verificavel; NAO aprovar `task doctor`.
+- Container isolado com blob identico ao GitHub `conferenciaOffline.ts` (`f77442eb94dee91b1e7f897942f024b807cbcf44`): Node 10/10 PASS; TS 5.8.3 `noEmit` isolado exit 0. Isto NAO e QA do monorepo.
+- Evidencias, bloqueios e ordem de retomada em `docs/qa/codespace-gates-2026-10-13.md`. Corrigir operacao local/rodar gates antes de aceita-la como DEV LOCAL READY.
+- O ramo `codespace-probable-acorn-v6vvq9rrvjjgcw6w` permanece exclusivamente como backup exportado do Codespace antigo, nao e nova branch para desenvolvimento; nao apagar enquanto nao for revisado.
+
+
 ## Codespace CONSUBOV — extensao Act/Run desativada neste workspace (2026-10-13)
 
 - Ambiente confirmado no navegador: `/workspaces/consubov`, `origin=https://github.com/mmatteuus/consubov`, branch `work/fase5-6-7-pwa-local`.
