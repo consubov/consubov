@@ -4,6 +4,8 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 ## Estado atual e auditoria
 
+FASE 6: [capabilities do navegador e GPS da Conferencia](./60-browser-capabilities.md) e [QA parcial](./qa/gps-conferencia-local-2026-10-13.md). Ver gates pendentes antes de declarar aceite.
+
 Para configurar um clone local ou retomar trabalho de outro agente, consulte [Sincronizacao local e continuidade segura](./68-sincronizacao-local-e-agentes.md).
 
 Começar pelo [Handoff de continuidade](../CONSUBOV_HANDOFF_CONTINUIDADE.md), pelas Instruções-Mestre e pelo [Checklist Mestre atual](../CONSUBOV_CHECKLIST_MESTRE.md). A [auditoria consolidada de 2026-10-09](./qa/auditoria-consolidada-2026-10-09.md) distingue resultados executados, correções e gates ainda pendentes.

@@ -1,5 +1,12 @@
 # CONSUBOV - Continuidade operacional
 
+## Lote funcional atual - GPS FASE 6, 2026-10-13
+
+O commit `8a8538c5` publicou provider GPS/browser capability detection, helper de auditoria e testes Vitest, integrando o novo provider somente ao QR da Conferencia. Sem alteracoes de schema, autenticacao, filas, tenant, origem/scope PWA ou conexoes novas com backend remoto. Teste isolado Node RED (7 falhas esperadas), GREEN 12/12; TypeScript estrito isolado PASS. **QA no Codespace / Vitest / Chromium / WebKit / check integral nao executado neste lote**. Nao considerar a FASE 6 pronta. Evidencias e pendencias: `docs/qa/gps-conferencia-local-2026-10-13.md` e `docs/60-browser-capabilities.md`.
+
+O Codespace havia sido atualizado ate `9d9ca5fe` com arvore limpa antes do novo commit funcional; esta publicacao exige novo fast-forward local. Browser-MTS apresentou reconexoes/intermitencia durante a tentativa de revalidacao. PR #43 unico e draft; preservar stashes existentes. Resolucao da falha GPG local continua pendente, sem desativar assinatura.
+
+
 ## Codespace - retomada documental 2026-10-13
 
 Codespace atualizado por fast-forward ate f9611b48. Reaplicado o PRD local: 5 linhas de escopo/aceite GPS da FASE 6. Nenhum codigo funcional implementado neste lote, nem QA integral reexecutado. Os dois stashes existentes foram preservados.
