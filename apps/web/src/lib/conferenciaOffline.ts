@@ -114,7 +114,7 @@ export async function saveChecklist(payload: ChecklistPayload): Promise<{ saved:
   }
 }
 
-let inFlightSync: { userId: string; promise: Promise<number> } | null = null;
+let inFlightSync: { userId: string; signal?: AbortSignal; promise: Promise<number> } | null = null;
 
 async function syncPendingChecklistsOnce(userId: string, signal?: AbortSignal): Promise<number> {
   const queue = readQueue();
@@ -170,14 +170,14 @@ export function syncPendingChecklists(userId: string, signal?: AbortSignal): Pro
   if (!userId || signal?.aborted) return Promise.resolve(0);
   if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve(0);
   if (inFlightSync) {
-    if (inFlightSync.userId === userId) return inFlightSync.promise;
+    if (inFlightSync.userId === userId && !inFlightSync.signal?.aborted) return inFlightSync.promise;
     // Different accounts cannot share the same flush/ACK result.
     return inFlightSync.promise.catch(() => 0).then(() => syncPendingChecklists(userId, signal));
   }
   const promise = syncPendingChecklistsOnce(userId, signal).finally(() => {
     if (inFlightSync?.promise === promise) inFlightSync = null;
   });
-  inFlightSync = { userId, promise };
+  inFlightSync = { userId, signal, promise };
   return promise;
 }
 

@@ -166,3 +166,26 @@ describe("Conferencia offline owner isolation", () => {
     expect(getPendingCount()).toBe(0);
   });
 });
+
+describe("Conferencia reconnect after aborted session", () => {
+  it("resumes unsent records after a rapid unmount/remount of the same user", async () => {
+    online = false;
+    await saveChecklist(fakeChecklist());
+    await saveChecklist(fakeChecklist());
+    online = true;
+    let finish: (() => void) | undefined;
+    insert.mockImplementationOnce(() => new Promise(resolve => {
+      finish = () => resolve({ error: null });
+    }));
+    const oldScreen = new AbortController();
+    const newScreen = new AbortController();
+    const first = syncPendingChecklists("fixture-user", oldScreen.signal);
+    oldScreen.abort();
+    const resumed = syncPendingChecklists("fixture-user", newScreen.signal);
+    finish?.();
+    expect(await first).toBe(1);
+    expect(await resumed).toBe(1);
+    expect(insert).toHaveBeenCalledTimes(2);
+    expect(pending()).toHaveLength(0);
+  });
+});

@@ -1,5 +1,13 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Ajuste na retomada da mesma conta apos aborto — 2026-10-13
+
+- [x] RED reproduzido em teste Node: ao desmontar/reabrir tela rapidamente, a nova instancia podia compartilhar a promise abortada, deixando item seguinte sem sync.
+- [x] Agora a trava registra tambem o AbortSignal da tentativa; requisição da mesma conta com sinal antigo abortado aguarda a finalizacao e abre uma nova rodada. O mesmo usuario com sinal vigente ainda compartilha a mesma promise sem duplicar.
+- [x] Testes Node isolados **10/10 PASS**, TypeScript strict/noEmit exit 0, fonte candidata validada por hash Git `f77442eb94dee91b1e7f897942f024b807cbcf44`. Vitest no repositorio ainda nao executado por indisponibilidade do Codespace.
+- [ ] Testes integrados e multiabas, RBAC server-side e homologacao; nenhuma fase integral aprovada.
+
+
 ## FASE 7 — isolamento por conta na Conferência (2026-10-13)
 
 - [x] Reproduzido cruzamento de registros de usuários diferentes (RED 2/3); código corrigido para apenas o userId ativo, sem flush anônimo; abort de novos envios no cleanup.

@@ -1,5 +1,13 @@
 # CONSUBOV - Continuidade operacional
 
+## Ajuste na retomada da mesma conta apos aborto — 2026-10-13
+
+- [x] RED reproduzido em teste Node: ao desmontar/reabrir tela rapidamente, a nova instancia podia compartilhar a promise abortada, deixando item seguinte sem sync.
+- [x] Agora a trava registra tambem o AbortSignal da tentativa; requisição da mesma conta com sinal antigo abortado aguarda a finalizacao e abre uma nova rodada. O mesmo usuario com sinal vigente ainda compartilha a mesma promise sem duplicar.
+- [x] Testes Node isolados **10/10 PASS**, TypeScript strict/noEmit exit 0, fonte candidata validada por hash Git `f77442eb94dee91b1e7f897942f024b807cbcf44`. Vitest no repositorio ainda nao executado por indisponibilidade do Codespace.
+- [ ] Testes integrados e multiabas, RBAC server-side e homologacao; nenhuma fase integral aprovada.
+
+
 ## FASE 7 — isolamento da fila da Conferência por usuário (2026-10-13)
 
 Falha reproduzida: sync podia enviar pendências de outra conta após troca de login. Corrigido com `syncPendingChecklists(userId, signal?)`, filtro por owner, bloqueio sem identidade, serialização por usuário e cleanup com AbortController em `ConferenciaPage`. UI existente preservada. TDD Node: RED 2/3, GREEN 9/9; TypeScript strict isolado PASS. Vitest/check/E2E do monorepo PENDENTES. Segurança por tenant/autorização é do backend, não garantida por este filtro. Ver `docs/qa/conferencia-owner-isolation-2026-10-13.md`.
