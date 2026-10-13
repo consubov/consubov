@@ -150,12 +150,23 @@ test("conflict remains persisted and cannot be retried or deleted implicitly", a
 });
 
 test("unknown tenant ACK rejects and never writes an acknowledged state", async () => {
-  const queue = new IndexedDbAtomicCommandQueue(fakeFactory());
+  const factory = fakeFactory();
+  const queue = new IndexedDbAtomicCommandQueue(factory);
   await queue.enqueue(owner, initial());
   await assert.rejects(sync.syncOneLocalCommand(owner, "cmd-1", queue, {
     async push(command) { return { kind: "acked", ack: { ...ack(command), tenantId: "other" } }; },
   }));
-  assert.equal((await queue.get(owner, "cmd-1")).status, "inflight");
+  await queue.close();
+  const reopened = new IndexedDbAtomicCommandQueue(factory);
+  const saved = await reopened.get(owner, "cmd-1");
+  assert.equal(saved.status, "pending");
+  assert.equal(saved.idempotencyKey, initial().idempotencyKey);
+  assert.deepEqual(saved.payload, initial().payload);
+  const retry = await sync.syncOneLocalCommand(owner, "cmd-1", reopened, {
+    async push(command) { return { kind: "acked", ack: ack(command) }; },
+  });
+  assert.equal(retry.status, "acked");
+  assert.equal((await reopened.get(owner, "cmd-1")).attemptCount, 2);
 });
 
 test("failed transition aborts atomically; subsequent correct retry remains possible", async () => {

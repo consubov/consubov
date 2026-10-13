@@ -59,18 +59,26 @@ export async function syncOneLocalCommand<T>(
     return { status: "retry", commandId };
   }
 
-  if (reply.kind === "acked") {
+  if (reply?.kind === "acked") {
     // Verify ACK identity before any permanent state transition.
-    const checked = acknowledgeCommand(reserved, owner, reply.ack);
+    let checked: LocalCommand<T>;
+    try {
+      checked = acknowledgeCommand(reserved, owner, reply.ack);
+    } catch (error) {
+      // A malformed or foreign ACK is not success, but must not strand the
+      // command inflight forever. Keep its identity for an explicit retry.
+      await queue.releaseForRetry(owner, reserved);
+      throw error;
+    }
     await queue.acknowledge(owner, checked);
     return { status: "acked", commandId };
   }
-  if (reply.kind === "conflict") {
+  if (reply?.kind === "conflict") {
     // Never resolve stock/weighing/transfer conflicts with last-write-wins.
     await queue.markConflict(owner, reserved);
     return { status: "conflict", commandId };
   }
-  if (reply.kind === "retry-later") {
+  if (reply?.kind === "retry-later") {
     await queue.releaseForRetry(owner, reserved);
     return { status: "retry", commandId };
   }

@@ -120,3 +120,27 @@ test("invalid or unexpected response cannot count as successful sync", async () 
   }), /unrecognized sync response/);
   assert.equal(store.state().status, "pending");
 });
+
+for (const [name, reply] of [
+  ['null reply', null],
+  ['missing reply', undefined],
+  ['missing acknowledgement', { kind: 'acked' }],
+  ['null acknowledgement', { kind: 'acked', ack: null }],
+  ['cross-tenant acknowledgement', { kind: 'acked', ack: { ...ack, tenantId: 'other' } }],
+  ['wrong idempotency key', { kind: 'acked', ack: { ...ack, idempotencyKey: 'other' } }],
+]) {
+  test(name + ' releases the durable reservation without deleting or changing the command', async () => {
+    const store = makeQueue();
+    await assert.rejects(syncOneLocalCommand(owner, 'cmd-a', store.queue, {
+      async push() { return reply; },
+    }));
+    assert.equal(store.state().status, 'pending');
+    assert.equal(store.state().commandId, 'cmd-a');
+    assert.equal(store.state().idempotencyKey, 'idem-a');
+    assert.deepEqual(store.state().payload, { weight: 500 });
+    assert.deepEqual(store.calls, ['claim', 'retry']);
+    assert.equal((await syncOneLocalCommand(owner, 'cmd-a', store.queue, {
+      async push() { return { kind: 'acked', ack }; },
+    })).status, 'acked');
+  });
+}

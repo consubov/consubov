@@ -45,3 +45,7 @@ A abertura valida o store `kv`, `keyPath: id` e ausencia de `autoIncrement`. Sch
 Teste novo: `apps/web/tests/indexeddb-local-safety.test.cjs`, usando o pacote verdadeiro `fake-indexeddb` 6.2.5. Seis falhas foram reproduzidas antes da correcao; depois, 8/8 novos casos e 7/7 anteriores passaram. Cobertura inclui snapshot, entrada nao clonavel, schema incompativel, abertura tardia, Blob/ArrayBuffer e separacao tenant/user. Isso continua sendo teste Node de adapter, nao IndexedDB fisico no navegador nem homologacao de fase.
 
 `task qa:offline:core` e `task qa:regressions` incluem a nova suite. Sem mudanca no contrato publico, no nome/versao da base ou nas seis bases legadas. A integracao autenticada, o migration engine e o sync definitivo continuam pendentes.
+
+## Recuperacao apos ACK invalido - 2026-10-12
+
+`localSyncRound` recusa ACK nulo, ausente, de outro tenant ou com chave incorreta e devolve a reserva atual para `pending`, conservando commandId, idempotencyKey e payload; o erro continua visivel. Isso impede uma resposta invalida de deixar a fila permanentemente inflight. `releaseForRetry` continua transacional e condicionada ao attemptCount exato; nao libera uma tentativa mais nova nem confirma um ACK rejeitado. O teste integrado fecha/reabre a fila persistida e confirma retry com a mesma identidade. Nenhuma fila legada foi drenada ou migrada.

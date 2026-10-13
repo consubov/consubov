@@ -1,5 +1,32 @@
 # CONSUBOV — Checklist Mestre de Execução
 
+## Reconciliacao e QA para publicacao - 2026-10-13
+
+Browser-MTS recuperado por terminal novo. Fast-forward para d988ff32 preservou a FASE 11 e todas as 26 alteracoes locais; conflito apenas no indice de docs resolvido mantendo os dois lados. Backup e stash c13744f0a87f87efbf45dc169f4ede063985e3fa preservados localmente.
+
+Revalidacao fresca sequencial: 191/191 Node, API 539/539, Web 146/146, PWA 34/34, build/tipagem PASS, lint 0 erros/14 avisos. Fonte original preservada por SHA-256. Auto-revisao do lote local PASS; nao e aceite integral das fases. E2E geral e Lighthouse anteriores nao repetidos. Publicacao deste lote autorizada; confirmar SHA remoto antes de afirmar push. Sem CI hospedado, banco remoto ou deploy.
+- regressions: `.qa/runs/20261013T112139Z-regressions-d988ff32d7d2-9883/result.json`.
+- check: `.qa/runs/20261013T112150Z-check-d988ff32d7d2-11057/result.json`.
+- pwa: `.qa/runs/20261013T112414Z-pwa-upgrade-fixture-d988ff32d7d2-12477/result.json`.
+- lint: `.qa/runs/20261013T112552Z-publish-lint-d988ff32d7d2-16064/result.json`.
+
+
+## Retomada verificada da fila - 2026-10-13 UTC
+Base `651534fb6a7e854658f1f6db1737e5ee322df8a3`, branch `work/fase5-6-7-pwa-local`, PR #43 draft; checkout dirty. Este bloco prevalece sobre status historicos, nao sobre criterios de aceite.
+
+- [x] Corrigidas transicoes de ACK/conflito/retry que liam o envelope depois da espera: mutacao posterior nao valida tentativa antiga nem invalida uma tentativa aceita. Payload persistido, IDs, tenant/user, Blob e ArrayBuffer preservados.
+- [x] Abertura IndexedDB abandonada: sucesso tardio fecha a conexao; upgrade tardio aborta antes de criar stores. Recuperacao explicita, versao/schema e seis bases legadas nao foram alterados.
+- [x] RED: 6 falhas de snapshot em Node, 12 casos de navegador reprovados, 2 falhas de lifecycle. GREEN: 8/8 Node; regressao completa 191/191; PWA 34/34 Chromium/WebKit sem retries; check sem cache API 539/539 e Web 146/146, build/tipagem PASS; lint 0 erros/14 avisos. Fonte estavel por SHA-256.
+- [ ] Aceite integral das FASES 5/6/7 e producao. Lighthouse anterior 44/home e 68/login nao foi reexecutado nem aprovado; migracao legada, sync autenticado, ordem causal e piloto fisico continuam pendentes. E2E geral 111/111 pertence a rodada anterior, nao a nova execucao.
+
+As 17 alteracoes do lote anterior foram preservadas. A consolidacao documental enviada anteriormente nao existia no Codespace; este registro e o manifesto novo a substituem, sem alegar existencia do manifesto antigo. Preparacao local das FASES 8/9 e tarefas independentes continuam permitidas. Nao esperar testes fisicos para desenvolver; nao afrouxar integridade/seguranca.
+
+Git: nenhum commit/push/sync realizado nesta retomada; origin conhecido um commit documental a frente (`d988ff32`, FASE 11). Nao contornar a recusa anterior de sincronizacao. Preservar o planejamento FASE 11 e reconciliar os documentos compartilhados antes da publicacao. Sem banco remoto, migrations remotas, deploy ou CI hospedado. Auto-revisao do executor; nenhum revisor independente foi simulado.
+
+Relatorio: `docs/qa/queue-transition-snapshot-2026-10-13.md`. Manifesto sanitizado: `docs/qa/evidence/2026-10-13-queue-continuation-local.json`. Checklist Mestre no Notion atualizado e relido com sucesso em 2026-10-13T00:43:22.964Z; confirmar o estado mais recente em cada retomada. Fontes do Projeto precisam receber o handoff atualizado.
+
+## Registros anteriores (historicos)
+
 > **Revisão consolidada:** 2026-10-12. **Branch ativa:** `work/fase5-6-7-pwa-local`. **PR:** #43, draft. **QA integral das FASES 5–7: PENDENTE.**
 
 ## 1. Fonte de verdade e preservação do planejamento

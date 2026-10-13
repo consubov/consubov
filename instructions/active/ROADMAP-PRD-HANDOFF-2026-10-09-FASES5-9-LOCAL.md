@@ -299,3 +299,27 @@ Evidencias do candidato, base 10230f04 e dirty=true: .qa/runs/20261012T133442Z-o
 **Limites:** no inventario, status=ok significa enumeracao concluida; nao certifica migracao. Antes de migrar, exigir contexto autorizado e avaliar error por banco, versoes, stores faltantes e localStorageStatus. localStorageStatus=unavailable nunca autoriza tratar backups como inexistentes. Fixture sintetica nao homologa o build legado de producao nem conclui as FASES 6/7.
 
 Trabalho local independente segue permitido: integrar identidade validada e migracao retomavel preservando origens; concluir ensaio do build legado e desempenho sem afrouxar gates. Nenhuma base de cliente foi alterada. Sem CI hospedado, merge, deploy, banco remoto ou novo roadmap. Revisao pelo proprio executor, sem alegar revisor independente.
+
+## Continuidade 2026-10-12 - ACK, landing e ensaio independente
+
+Escopo deste lote: concluir componentes de landing ja pendentes, corrigir referencia RefreshCw que impedia compilacao, recuperar reserva apos ACK invalido e entregar comparador/restaurador de fixtures locais (docs/67). Nao criar outra branch ou PRD. Fora do escopo: schema canonico, banco remoto, migracao legada real, release, regras pecuarias e expansao dos modulos da FASE 10.
+
+Aceite do lote: tipagem/build Web/API, unitarios, regressao Node, PWA Chromium/WebKit, E2E e diff revisados; preservar IDs, payloads, tenant e destino existente. Testes fisicos nao bloqueiam este desenvolvimento; gates de dados/seguranca permanecem obrigatorios. Documentacao: docs/63, docs/67, relatorio QA, checklist Git/Notion e handoff. Git: somente branch ativa, commit/push autorizados com [skip ci], sem merge, force push, reset ou desligar assinatura. Relatorio final: SHA/dirty, comandos/exits, limites por fase e estado real da publicacao. Revisor independente nao foi acionado; registrar auto-revisao sem simular os agentes citados.
+
+## Retomada - snapshot de transicoes da fila (execucao UTC 2026-10-13)
+Escopo: reproduzir e corrigir a leitura tardia de argumentos mutaveis em ACK/conflito/retry; verificar conexoes IndexedDB tardias somente se houver regressao comprovada. Preservar as 17 alteracoes anteriores. Sem novo agente, branch ou PRD. Fora do escopo: lease/TTL, recuperacao automatica, regras de dominio, migracao legada e remoto.
+Aceite: teste RED antes da correcao, GREEN em Node/fake-indexeddb e Chromium/WebKit, tentativa antiga nunca altera tentativa nova; IDs/payload/Blob/ArrayBuffer e tenant preservados apos reabertura. Rodar check completo, regressao e PWA sequencialmente. Documentar docs/66, relatorio QA, checklist repo/Notion e handoff. Git: branch ativa, sem sincronizacao que contorne recusa anterior, reset/force/merge/deploy/alteracao de assinatura proibidos. Relatorio final com SHA/dirty, comandos/exits, limites e publicacao real. Auto-revisao, sem alegar revisor independente.
+
+## Retomada verificada da fila - 2026-10-13 UTC
+Base `651534fb6a7e854658f1f6db1737e5ee322df8a3`, branch `work/fase5-6-7-pwa-local`, PR #43 draft; checkout dirty. Este bloco prevalece sobre status historicos, nao sobre criterios de aceite.
+
+- [x] Corrigidas transicoes de ACK/conflito/retry que liam o envelope depois da espera: mutacao posterior nao valida tentativa antiga nem invalida uma tentativa aceita. Payload persistido, IDs, tenant/user, Blob e ArrayBuffer preservados.
+- [x] Abertura IndexedDB abandonada: sucesso tardio fecha a conexao; upgrade tardio aborta antes de criar stores. Recuperacao explicita, versao/schema e seis bases legadas nao foram alterados.
+- [x] RED: 6 falhas de snapshot em Node, 12 casos de navegador reprovados, 2 falhas de lifecycle. GREEN: 8/8 Node; regressao completa 191/191; PWA 34/34 Chromium/WebKit sem retries; check sem cache API 539/539 e Web 146/146, build/tipagem PASS; lint 0 erros/14 avisos. Fonte estavel por SHA-256.
+- [ ] Aceite integral das FASES 5/6/7 e producao. Lighthouse anterior 44/home e 68/login nao foi reexecutado nem aprovado; migracao legada, sync autenticado, ordem causal e piloto fisico continuam pendentes. E2E geral 111/111 pertence a rodada anterior, nao a nova execucao.
+
+As 17 alteracoes do lote anterior foram preservadas. A consolidacao documental enviada anteriormente nao existia no Codespace; este registro e o manifesto novo a substituem, sem alegar existencia do manifesto antigo. Preparacao local das FASES 8/9 e tarefas independentes continuam permitidas. Nao esperar testes fisicos para desenvolver; nao afrouxar integridade/seguranca.
+
+Git: nenhum commit/push/sync realizado nesta retomada; origin conhecido um commit documental a frente (`d988ff32`, FASE 11). Nao contornar a recusa anterior de sincronizacao. Preservar o planejamento FASE 11 e reconciliar os documentos compartilhados antes da publicacao. Sem banco remoto, migrations remotas, deploy ou CI hospedado. Auto-revisao do executor; nenhum revisor independente foi simulado.
+
+Relatorio: `docs/qa/queue-transition-snapshot-2026-10-13.md`. Manifesto sanitizado: `docs/qa/evidence/2026-10-13-queue-continuation-local.json`. Checklist Mestre no Notion atualizado e relido com sucesso em 2026-10-13T00:43:22.964Z; confirmar o estado mais recente em cada retomada. Fontes do Projeto precisam receber o handoff atualizado.

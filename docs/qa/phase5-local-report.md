@@ -1,5 +1,10 @@
 # Relatório Técnico Local: FASE 5 (Qualidade Web)
 
+## Retomada verificada da fila - 2026-10-13 UTC
+Check atual: API 539, Web 146, build/tipagem PASS; lint 0 erros/14 avisos. PWA 34/34 e regressao 191/191. E2E 111 e Lighthouse 44/68 sao historicos, nao repetidos. FASE 5 integral permanece pendente. Relatorio: `docs/qa/queue-transition-snapshot-2026-10-13.md`.
+
+## Registros anteriores (historicos)
+
 ## Rodada atual - QA executavel no Codespace (logs UTC 2026-10-12)
 
 Base: `a9288e0394db21b06343d6b53d255c5a4327cbaa`; branch `work/fase5-6-7-pwa-local`, PR #43 draft. Bun 1.4.0, Node 22.16.0, Go Task 3.54.0, Playwright 1.64.0, Axe Playwright 4.13.0 e Lighthouse 13.5.0. Nenhuma dependencia nova.

@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendPush } from "@/lib/pushService";
 import { z } from "zod";
-import * as Lucide from "lucide-react";
+import { LandingIcon as LucideIcon } from "@/components/landing/LandingIcon";
 import {
+  RefreshCw,
   ArrowRight,
   CheckCircle2,
   QrCode,
@@ -25,7 +26,7 @@ import heroImg from "@/assets/landing-hero-cinematic.jpg";
 import pecuaristaImg from "@/assets/landing-pecuarista.jpg";
 import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
-import BrasilMap from "@/components/landing/BrasilMap";
+import { DeferredBrasilMap as BrasilMap } from "@/components/landing/DeferredBrasilMap";
 import { useLandingContent } from "@/hooks/useLandingContent";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { APP_VERSION } from "@/lib/appVersion";
@@ -46,12 +47,6 @@ const CARD_BG = "rgba(12,18,16,0.65)";
 const BORDER = "rgba(34,255,136,0.18)";
 const LEAD_SUBMIT_COOLDOWN_MS = 30_000;
 const LEAD_SUBMIT_KEY = "consubov:lead-last-submit";
-
-// Resolve a lucide icon name (string) to a component, with fallback
-function LucideIcon({ name, className, style }: { name?: string; className?: string; style?: React.CSSProperties }) {
-  const Comp = (name && Lucide.icons[name as keyof typeof Lucide.icons]) || Lucide.Sparkles;
-  return <Comp className={className} style={style} />;
-}
 
 /* ---------------- Particle Canvas ---------------- */
 function ParticleField({ density = 60, opacity = 0.6 }: { density?: number; opacity?: number }) {
@@ -433,7 +428,7 @@ export default function LandingPage() {
               aria-label="Atualizar aplicativo"
               title={`Atualizar app (v${APP_VERSION})`}
             >
-              <Lucide.RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             <Link

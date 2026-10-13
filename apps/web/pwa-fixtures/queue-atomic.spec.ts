@@ -198,3 +198,64 @@ test("offline fake transport retries with one durable idempotency key and explic
   expect(persisted.idempotencyKey).toBe("idempotent-cmd-1");
   expect(persisted.attemptCount).toBe(2);
 });
+
+for (const method of ["acknowledge", "markConflict", "releaseForRetry"] as const) {
+  test("snapshot boundary: " + method + " rejects an old attempt mutated after invocation", async ({ page }) => {
+    await openPage(page);
+    await add(page);
+    const state = await page.evaluate(async method => {
+      const { __q: q, __owner: owner } = window as unknown as QueueFixtureWindow;
+      const first = await q.claimPending(owner, "cmd-1");
+      if (!first) throw new Error("missing first reservation");
+      await q.releaseForRetry(owner, first);
+      const second = await q.claimPending(owner, "cmd-1");
+      if (!second) throw new Error("missing second reservation");
+      const incoming = { ...first, status: method === "acknowledge" ? "acked" as const : "inflight" as const };
+      const pending = q[method](owner, incoming);
+      incoming.attemptCount = second.attemptCount;
+      let rejected = false;
+      try { await pending; } catch { rejected = true; }
+      await q.close();
+      const { Queue } = (window as unknown as QueueFixtureWindow).__consubovQueueTest;
+      const reopened = new Queue();
+      try {
+        const saved = await reopened.get(owner, "cmd-1");
+        if (!saved) throw new Error("lost command");
+        return { rejected, status: saved.status, attempt: saved.attemptCount,
+          key: saved.idempotencyKey, photo: await saved.payload.photo.text(),
+          bytes: [...new Uint8Array(saved.payload.bytes)] };
+      } finally { await reopened.close(); }
+    }, method);
+    expect(state).toEqual({ rejected: true, status: "inflight", attempt: 2,
+      key: "idempotent-cmd-1", photo: "offline-bytes", bytes: [9, 8, 7] });
+  });
+
+  test("snapshot boundary: " + method + " preserves a valid accepted transition after caller mutation", async ({ page }) => {
+    await openPage(page);
+    await add(page);
+    const state = await page.evaluate(async method => {
+      const { __q: q, __owner: owner } = window as unknown as QueueFixtureWindow;
+      const first = await q.claimPending(owner, "cmd-1");
+      if (!first) throw new Error("missing reservation");
+      const incoming = { ...first, status: method === "acknowledge" ? "acked" as const : "inflight" as const };
+      const pending = q[method](owner, incoming);
+      incoming.attemptCount = 99;
+      incoming.deviceId = "changed-after-invocation";
+      incoming.payload = { bytes: new ArrayBuffer(0), photo: new Blob(["changed"]) };
+      await pending;
+      await q.close();
+      const { Queue } = (window as unknown as QueueFixtureWindow).__consubovQueueTest;
+      const reopened = new Queue();
+      try {
+        const saved = await reopened.get(owner, "cmd-1");
+        if (!saved) throw new Error("lost command");
+        return { status: saved.status, attempt: saved.attemptCount,
+          key: saved.idempotencyKey, photo: await saved.payload.photo.text(),
+          bytes: [...new Uint8Array(saved.payload.bytes)] };
+      } finally { await reopened.close(); }
+    }, method);
+    const status = method === "acknowledge" ? "acked" : method === "markConflict" ? "conflict" : "pending";
+    expect(state).toEqual({ status, attempt: 1,
+      key: "idempotent-cmd-1", photo: "offline-bytes", bytes: [9, 8, 7] });
+  });
+}

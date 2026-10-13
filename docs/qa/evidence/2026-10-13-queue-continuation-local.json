@@ -1,0 +1,114 @@
+{
+  "kind": "local-scoped-queue-verification",
+  "branch": "work/fase5-6-7-pwa-local",
+  "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+  "workingTreeDirty": true,
+  "sourceUnchanged": true,
+  "phaseApproval": false,
+  "productionReady": false,
+  "independentReview": false,
+  "runs": [
+    {
+      "label": "red",
+      "result": ".qa/runs/20261013T003022Z-queue-snapshot-red-651534fb6a7e-5818/result.json",
+      "task": "queue-snapshot-red",
+      "startedAt": "2026-10-13T00:30:22Z",
+      "finishedAt": "2026-10-13T00:30:23Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 1,
+      "status": "FAIL",
+      "log": "output.log"
+    },
+    {
+      "label": "lifecycle-red",
+      "result": ".qa/runs/20261013T003244Z-queue-lifecycle-red-651534fb6a7e-7670/result.json",
+      "task": "queue-lifecycle-red",
+      "startedAt": "2026-10-13T00:32:44Z",
+      "finishedAt": "2026-10-13T00:32:45Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 1,
+      "status": "FAIL",
+      "log": "output.log"
+    },
+    {
+      "label": "browser-red",
+      "result": ".qa/runs/20261013T003148Z-queue-snapshot-browser-red-651534fb6a7e-6511/result.json",
+      "task": "queue-snapshot-browser-red",
+      "startedAt": "2026-10-13T00:31:48Z",
+      "finishedAt": "2026-10-13T00:33:06Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 1,
+      "status": "FAIL",
+      "log": "output.log"
+    },
+    {
+      "label": "green",
+      "result": ".qa/runs/20261013T003437Z-queue-snapshot-green-651534fb6a7e-9185/result.json",
+      "task": "queue-snapshot-green",
+      "startedAt": "2026-10-13T00:34:37Z",
+      "finishedAt": "2026-10-13T00:34:38Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "output.log"
+    },
+    {
+      "label": "check",
+      "result": ".qa/runs/20261013T003505Z-check-651534fb6a7e-9807/result.json",
+      "task": "check",
+      "startedAt": "2026-10-13T00:35:05Z",
+      "finishedAt": "2026-10-13T00:37:21Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "output.log"
+    },
+    {
+      "label": "regressions",
+      "result": ".qa/runs/20261013T003721Z-regressions-651534fb6a7e-11549/result.json",
+      "task": "regressions",
+      "startedAt": "2026-10-13T00:37:21Z",
+      "finishedAt": "2026-10-13T00:37:31Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "output.log"
+    },
+    {
+      "label": "pwa",
+      "result": ".qa/runs/20261013T003731Z-pwa-upgrade-fixture-651534fb6a7e-12715/result.json",
+      "task": "pwa-upgrade-fixture",
+      "startedAt": "2026-10-13T00:37:31Z",
+      "finishedAt": "2026-10-13T00:38:40Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "output.log"
+    },
+    {
+      "label": "lint",
+      "result": ".qa/runs/20261013T003840Z-queue-lint-final-651534fb6a7e-16577/result.json",
+      "task": "queue-lint-final",
+      "startedAt": "2026-10-13T00:38:40Z",
+      "finishedAt": "2026-10-13T00:38:44Z",
+      "commit": "651534fb6a7e854658f1f6db1737e5ee322df8a3",
+      "workingTreeDirty": true,
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "output.log"
+    }
+  ],
+  "sourceSha256": {
+    "Taskfile.yml": "a057cccce0c3e9cd5add80ce17c292e0dff68bf6359c6fb9f40c3daf6237b015",
+    "apps/web/src/platform/adapters/IndexedDbAtomicCommandQueue.ts": "c9dcc1bad0a6aeaa701f4fd27967157d56a06ef95508857c853e481bb00b4eed",
+    "apps/web/tests/atomic-queue-transition-snapshot.test.cjs": "a741210956fbc1bf6a8807a077583aa0da756165761216af8bc2410f358fa4d2",
+    "apps/web/pwa-fixtures/queue-atomic.spec.ts": "0fae77097bd90580c2e8e5c34376fef71331fc871bb130e81c3f1700c163f7d3"
+  }
+}

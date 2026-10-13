@@ -67,14 +67,21 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
     if (!this.factory) throw new Error("IndexedDB unavailable: offline command not persisted");
     if (!this.opened) {
       this.opened = new Promise<IDBDatabase>((resolve, reject) => {
+        let abandoned = false;
+        const failOpen = (error: unknown) => {
+          abandoned = true;
+          reject(error);
+        };
         let req: IDBOpenDBRequest;
         try {
           req = this.factory!.open(NEXT_COMMAND_QUEUE_DB_NAME, DB_VERSION);
         } catch (error) {
-          reject(error);
+          failOpen(error);
           return;
         }
         req.onupgradeneeded = () => {
+          // A rejected open can still resume after another tab releases it.
+          if (abandoned) { req.transaction?.abort(); return; }
           if (!req.result.objectStoreNames.contains(STORE)) {
             const records = req.result.createObjectStore(STORE, { keyPath: "key" });
             records.createIndex(BY_OWNER_STATUS, "ownerStatus", { unique: false });
@@ -85,6 +92,7 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
         };
         req.onsuccess = () => {
           const db = req.result;
+          if (abandoned) { db.close(); return; }
           try {
             const tx = db.transaction(STORE, "readonly");
             const records = tx.objectStore(STORE);
@@ -102,7 +110,7 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
             }
           } catch (error) {
             db.close();
-            reject(error);
+            failOpen(error);
             return;
           }
           db.onversionchange = () => {
@@ -111,8 +119,8 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
           };
           resolve(db);
         };
-        req.onerror = () => reject(req.error ?? new Error("command queue open failed"));
-        req.onblocked = () => reject(new Error("command queue database blocked by another tab"));
+        req.onerror = () => failOpen(req.error ?? new Error("command queue open failed"));
+        req.onblocked = () => failOpen(new Error("command queue database blocked by another tab"));
       }).catch((error) => {
         this.opened = null;
         throw error;
@@ -253,22 +261,28 @@ export class IndexedDbAtomicCommandQueue<T = unknown> implements AtomicCommandQu
   }
 
   async acknowledge(owner: CommandOwner, confirmed: LocalCommand<T>): Promise<void> {
-    await this.modify(owner, confirmed.commandId, (existing) => {
-      const current = this.assertSameAttempt(owner, existing, confirmed, "acked");
+    // Capture scalar identity/status before IndexedDB waits; use the stored payload.
+    const accepted = { ...confirmed };
+    await this.modify(owner, accepted.commandId, (existing) => {
+      const current = this.assertSameAttempt(owner, existing, accepted, "acked");
       return { ...current, status: "acked" };
     });
   }
 
   async markConflict(owner: CommandOwner, attempted: LocalCommand<T>): Promise<void> {
-    await this.modify(owner, attempted.commandId, (existing) => {
-      const current = this.assertSameAttempt(owner, existing, attempted, "inflight");
+    // Capture scalar identity/status before IndexedDB waits; use the stored payload.
+    const accepted = { ...attempted };
+    await this.modify(owner, accepted.commandId, (existing) => {
+      const current = this.assertSameAttempt(owner, existing, accepted, "inflight");
       return markCommandConflict(current, owner);
     });
   }
 
   async releaseForRetry(owner: CommandOwner, attempted: LocalCommand<T>): Promise<void> {
-    await this.modify(owner, attempted.commandId, (existing) => {
-      const current = this.assertSameAttempt(owner, existing, attempted, "inflight");
+    // Capture scalar identity/status before IndexedDB waits; use the stored payload.
+    const accepted = { ...attempted };
+    await this.modify(owner, accepted.commandId, (existing) => {
+      const current = this.assertSameAttempt(owner, existing, accepted, "inflight");
       return retryAfterUncertainDelivery(current, owner);
     });
   }
