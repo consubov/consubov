@@ -1,5 +1,9 @@
 # CONSUBOV - Continuidade operacional
 
+## Codespace - retomada documental 2026-10-13
+
+Codespace atualizado por fast-forward ate f9611b48. Reaplicado o PRD local: 5 linhas de escopo/aceite GPS da FASE 6. Nenhum codigo funcional implementado neste lote, nem QA integral reexecutado. Os dois stashes existentes foram preservados.
+
 ## Ultima verificacao - 2026-10-13
 
 GitHub reconfirmado: restam somente `main` e `work/fase5-6-7-pwa-local`; PR #43 e o unico aberto (draft), ainda sem merge. As branches `quality/fase5-web-ready-20261005` e `feature/phase6-app-shell` foram removidas apos preservar historicos no merge `41a1f9f1` e na revisao publicada `3a529837`. Os textos anteriores sobre exclusao pendente sao historicos.

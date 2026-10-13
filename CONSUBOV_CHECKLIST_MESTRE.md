@@ -1,5 +1,10 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Codespace apos FF - 2026-10-13
+
+- [x] FF local de b9ecba3d ate f9611b48, sem alterar main. PRD GPS reaplicado (5 linhas de planejamento), stashes mantidos.
+- [ ] Codigo GPS/Conferencia, browser QA e homologacao fisica ainda pendentes; este lote e so documental.
+
 ## Sincronizacao e handoff - 2026-10-13
 
 - [x] Branches historicas removidas; somente `main` e `work/fase5-6-7-pwa-local` existem no GitHub. Um PR aberto: #43 (draft), sem merge.
