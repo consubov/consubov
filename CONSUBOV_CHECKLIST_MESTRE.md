@@ -1,5 +1,15 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Handoff Codex local / QA de retomada — 2026-10-13
+
+- [x] Handoff especifico para Codex local criado em `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md`, ligado ao PRD unico das FASES 5–9, sem nova branch ou PR. Sao 3 branches remotas (main, trabalho e backup), com **PR #43 draft** como unico PR aberto.
+- [x] Codespace `special garbanzo` realizou fast-forward para `f15fa4bc3725e8de9c089b01e4edf9ed1dff7a75` com arvore limpa, mantendo quatro stashes. **Isto nao sincroniza automaticamente o computador local.**
+- [x] `task qa:regressions`: 191/191 PASS, exit 0, SHA limpo `f15fa4bc`; `.qa/runs/20261013T192749Z-regressions-f15fa4bc3725-22980/result.json`.
+- [x] `task qa:pwa:upgrade-fixture`: 34/34 PASS, exit 0, Chromium/WebKit no SHA limpo `f15fa4bc`; `.qa/runs/20261013T192834Z-pwa-upgrade-fixture-f15fa4bc3725-24443/result.json`. Teste sintetico, nao migracao real.
+- [ ] **Codex no VS Code do responsavel:** validar origin/estado Git, fazer pull `--ff-only` da branch de trabalho e comprovar HEAD igual ao remoto; execucao local do Codex ainda sem evidencia.
+- [ ] `task qa:phase5` integral **nao executado** na ultima tentativa via navegador (ferramenta bloqueou chamada), FASES 6/7 integrais e matrix ainda pendentes. Nao marcar WEB/PWA/OFFLINE READY nem liberar o PR.
+- [ ] Revisar preservacao da branch de backup antes de propor sua exclusao; nada foi apagado.
+
 ## Verificacao real de monorepo e PWA no SHA 396bf2ff — 2026-10-13
 
 - [x] `task qa:check` no checkout limpo `396bf2ff8411a47343e517683c168891c1b99f7b`: exit 0, API 539/539, Web 171/171, typecheck/build PASS, artefato `.qa/runs/20261013T190510Z-check-396bf2ff8411-6289/result.json` com `workingTreeDirty=false`.

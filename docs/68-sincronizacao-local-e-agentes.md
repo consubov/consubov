@@ -1,12 +1,14 @@
 # Sincronizacao local e continuidade segura de agentes
 
+**NOVO HANDOFF PARA CODEX NO VS CODE LOCAL:** `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md`. O computador local **ainda precisa executar o pull**. Consultar status/diffs/stashes antes de `git pull --ff-only origin work/fase5-6-7-pwa-local`; nao puxar `main` por engano.
+
 **Repositorio:** `mmatteuus/consubov` | **Branch de desenvolvimento:** `work/fase5-6-7-pwa-local` | **PR:** #43 (draft).
 
 ## Estado verificavel
 
 - No GitHub existem `main`, a branch ativa `work/fase5-6-7-pwa-local` e o ramo **somente backup** `codespace-probable-acorn-v6vvq9rrvjjgcw6w`, exportado antes de remover o Codespace antigo. Nao desenvolva no backup, nem o exclua sem revisar. Os dois ramos experimentais mais antigos foram removidos com os commits preservados na ancestralidade (`41a1f9f1` / `3a529837`).
 - `main` ainda NAO contem a entrega do PR #43. Fazer `git pull origin main` nao atualiza o codigo de desenvolvimento.
-- O unico Codespace foi comprovadamente sincronizado por fast-forward ao SHA de codigo `${base}` e estava limpo nos gates. Nenhum commit/pull permanece pendente nesse checkpoint, mas agentes sempre devem reconferir o SHA mais recente. Os quatro stashes historicos foram preservados; o mais novo contem copia de alteracao de fixture ja publicada. Nao reaplicar stashes automaticamente.
+- O unico Codespace foi comprovadamente sincronizado por fast-forward ao SHA de codigo `396bf2ff8411a47343e517683c168891c1b99f7b` e estava limpo nos gates. Nenhum commit/pull permanece pendente nesse checkpoint, mas agentes sempre devem reconferir o SHA mais recente. Os quatro stashes historicos foram preservados; o mais novo contem copia de alteracao de fixture ja publicada. Nao reaplicar stashes automaticamente.
 - Resultados historicos de testes pertencem aos SHAs documentados; nao equivalem a QA aprovado no HEAD atual. FASES 5-7 nao tem aceite integral; FASES 8/9 sao preparo local, FASE 11 e planejamento.
 
 ## Pull no computador / VS Code
@@ -48,7 +50,7 @@ Se `--ff-only` recusar, ha divergencia: **pare, nao rebase, nao force**. Investi
 
 ## Codespace: estado e testes locais comprovados
 
-O Codespace `special garbanzo` recebeu os commits funcionais ate `${base}`, limpo e com os quatro stashes preservados. Os gates executados por SHA (check/API/Web, IndexedDB, SW, Chromium/WebKit e snapshot local) estao em `docs/qa/qa-real-monorepo-2026-10-13.md`. FASES 5–7 integrais e release ainda nao aprovados. Se houver nova mudanca remota, fazer `git fetch origin --prune` e merge `--ff-only` apenas sobre arvore limpa; preservar PRD e trabalho dos outros agentes.
+O Codespace `special garbanzo` recebeu os commits funcionais ate `396bf2ff8411a47343e517683c168891c1b99f7b`, limpo e com os quatro stashes preservados. Os gates executados por SHA (check/API/Web, IndexedDB, SW, Chromium/WebKit e snapshot local) estao em `docs/qa/qa-real-monorepo-2026-10-13.md`. FASES 5–7 integrais e release ainda nao aprovados. Se houver nova mudanca remota, fazer `git fetch origin --prune` e merge `--ff-only` apenas sobre arvore limpa; preservar PRD e trabalho dos outros agentes.
 
 ## Protocolo para outros agentes IA
 

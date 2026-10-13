@@ -1,5 +1,17 @@
 # CONSUBOV - Continuidade operacional
 
+## Transferencia para Codex no VS Code local — 2026-10-13 (estado mais recente)
+
+**Documento de execucao publicado junto deste registro:** `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md`. O PRD ja existente `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md` continua sendo a especificacao canonica; o novo arquivo e um handoff operacional, nao um segundo PRD.
+
+**Base remota ANTES deste commit documental:** `f15fa4bc3725e8de9c089b01e4edf9ed1dff7a75`, branch `work/fase5-6-7-pwa-local`, PR **#43 draft** contra `main`; nenhum merge/deploy autorizado. Existem apenas tres branches remotas: `main`, branch ativa e backup `codespace-probable-acorn-v6vvq9rrvjjgcw6w`. Nao criar mais ramos/PRs nem apagar o backup sem auditoria e autorizacao. Codigo frontend visual intacto.
+
+**QA novo realmente executado no Codespace no SHA `f15fa4bc`, checkout limpo:** `task qa:regressions` **191/191 PASS, exit 0** (artefato `.qa/runs/20261013T192749Z-regressions-f15fa4bc3725-22980/result.json`); `task qa:pwa:upgrade-fixture` **34/34 PASS Chromium/WebKit, exit 0** (artefato `.qa/runs/20261013T192834Z-pwa-upgrade-fixture-f15fa4bc3725-24443/result.json`). Teste de upgrade e sintetico, nao prova migracao de dados reais. O `task qa:check` completo (API 539/539, Web 171/171) pertence ao SHA `396bf2ff` conforme `docs/qa/qa-real-monorepo-2026-10-13.md`. **`task qa:phase5` nao foi executado:** comando bloqueado pela ferramenta Browser-MTS; FASES 5–7 ainda sem aceite integral. `qa:phase6` e `qa:phase7` ainda dependem de scripts integrais reais.
+
+**Proxima acao a cargo do Codex LOCAL (ainda nao executada):** abrir exclusivamente o clone `mmatteuus/consubov` no VS Code, checar `git remote -v`, `git status`, branches/stashes/worktrees e trabalho paralelo; com arvore limpa, fazer `git fetch origin`, mudar para `work/fase5-6-7-pwa-local` e executar `git pull --ff-only origin work/fase5-6-7-pwa-local`. Conferir SHAs local/remoto iguais, ler o handoff e iniciar a FASE 5 com `task doctor`, `task qa:regressions`, `task qa:check`, `task qa:phase5`, corrigindo apenas falhas verificadas. Nao usar `git pull origin main`.
+
+**Limitacoes:** sem banco remoto, migrations remotas, Vercel, CI hospedado, deploy, secrets, producao, merge, alteracoes em outros repositorios ou exclusao de stashes. FASES 8/9 somente local; homologacao fisica ainda pendente. A documentacao deste commit nao altera codigo ou resultados de testes.
+
 ## Gates locais comprovados no Codespace — 2026-10-13
 
 **Codigo funcional no SHA `396bf2ff8411a47343e517683c168891c1b99f7b` validado no unico Codespace CONSUBOV, checkout limpo:** `task doctor` PASS; `task qa:check` PASS (API 539/539, Web 171/171, typecheck e build, `.qa/.../check-396bf2ff8411-6289/result.json` com `workingTreeDirty:false`); `task qa:offline:core` 61/61; `task qa:pwa:smoke` 25/25; `task qa:phase5:contracts` 10/10; `task qa:preprod:rehearsal` 26/26; `task qa:offline:browser` 22/22 em Chromium/WebKit; `task qa:pwa:build-preflight` PASS 349/349 assets precache. Resultados com exit 0 registrados individualmente em `docs/qa/qa-real-monorepo-2026-10-13.md`. `task qa:regressions` 191/191 pertence ao SHA anterior `e0f66b0c` (nao reclassificar).

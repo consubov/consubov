@@ -2,6 +2,8 @@
 
 ## Git baseline for human and AI continuity
 
+- **Codex no VS Code local:** executar o handoff `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md` e o PRD ativo FASES 5–9. O Codex deve fazer `pull --ff-only` da branch de trabalho depois de confirmar clone correto e arvore limpa; nao criar branches nem PRs adicionais.
+
 - Work on `work/fase5-6-7-pwa-local` (PR #43, draft). The remote has `main`, this active branch, and the **backup-only** `codespace-probable-acorn-v6vvq9rrvjjgcw6w` (not a development branch; preserve pending review). `main` still lacks the active delivery; do not silently switch agents to it.
 - Before a local pull or agent edit, read `docs/68-sincronizacao-local-e-agentes.md`, inspect `git status --short --branch` and `git diff`, fetch origin, and require fast-forward only on a clean target branch. Preserve uncommitted files, stashes and other agents' work; never use hard reset, forced push or blind merges.
 - One Codespace `special garbanzo` was verified clean on `396bf2ff`; real local gates passed including `qa:check`, offline core, PWA smoke/build, and Chromium/WebKit offline queue. Evidence and nonapproved gates: `docs/qa/qa-real-monorepo-2026-10-13.md`. Four stashes remain and must not be dropped. Always recheck HEAD before QA; these are not full phase or production acceptance.

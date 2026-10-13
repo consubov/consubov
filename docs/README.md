@@ -4,6 +4,8 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 ## Estado atual e auditoria
 
+- [Handoff de execucao do Codex no VS Code local (FASES 5–9)](../instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md) — inclui pull seguro, gates locais, escopo, seguranca e relatorio final.
+
 [Verificacao real do monorepo, PWA e fila offline (2026-10-13)](./qa/qa-real-monorepo-2026-10-13.md): gates locais PASS por SHA; **FASES 5–7 e producao nao aprovadas**.
 
 FASE 6: [capabilities do navegador e GPS da Conferencia](./60-browser-capabilities.md) e [QA parcial](./qa/gps-conferencia-local-2026-10-13.md). Ver gates pendentes antes de declarar aceite.

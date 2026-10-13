@@ -29,3 +29,11 @@
 Os comandos acima utilizaram a mesma arvore limpa do code SHA `396bf2ff8411a47343e517683c168891c1b99f7b`, sem mudancas em UI ou comportamento de runtime. Os tres stashes anteriores permaneceram guardados, e foi acrescentado um quarto stash identificado como `consubov-gps-test-typecheck-before-ff-20261013`, contendo copia do diff de teste ja publicado. Nao eliminar backups automaticamente. Reavaliar `git status` / HEAD e criterios no PRD antes do proximo lote.
 
 O relatorio anterior de correção TS2322 esta em [gps-provider-typecheck-2026-10-13.md](./gps-provider-typecheck-2026-10-13.md). QA de fases nao e sinonimo de readiness de producao.
+
+## Evidencias posteriores em SHA documental `f15fa4bc` (2026-10-13)
+
+- O Codespace `special garbanzo` estava com checkout limpo no SHA `f15fa4bc3725e8de9c089b01e4edf9ed1dff7a75`; quatro stashes permanecem preservados.
+- `task qa:regressions`: **191/191 PASS, exit 0**; `.qa/runs/20261013T192749Z-regressions-f15fa4bc3725-22980/result.json`.
+- `task qa:pwa:upgrade-fixture`: **34/34 PASS, exit 0**, Chromium/WebKit; `.qa/runs/20261013T192834Z-pwa-upgrade-fixture-f15fa4bc3725-24443/result.json`. Os testes examinam upgrade em fixture, nao migracao real com dados de clientes.
+- `task qa:phase5` nao iniciou por bloqueio da ferramenta Browser-MTS; gates de FASES 5–7, matrix/Lighthouse/Axe e homologacao fisica seguem pendentes.
+- Proximo executor local: seguir `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md`; testes atuais continuam associados a seus SHAs, nunca ao novo commit documental sem reexecutar.
