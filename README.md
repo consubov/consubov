@@ -3,6 +3,8 @@
 Monorepositório do **CONSUBOV**, plataforma SaaS multitenant de gestão pecuária.
 
 > **Acompanhamento do projeto:** [`CHECKLIST.md`](./CHECKLIST.md) → [`CONSUBOV_CHECKLIST_MESTRE.md`](./CONSUBOV_CHECKLIST_MESTRE.md)
+>
+> **Pull local / continuidade por agentes:** [procedimento seguro](./docs/68-sincronizacao-local-e-agentes.md). A entrega em andamento esta em `work/fase5-6-7-pwa-local` (PR #43 draft), nao na `main`.
 
 A aplicação Web/Admin existente continua em **React/Vite**. O backend alvo está definido em **Bun + TypeScript**, com arquitetura de **monólito modular**, API-first e contratos documentados em OpenAPI/Swagger.
 
@@ -20,7 +22,7 @@ Nesta fase, a nova API permanece sem persistência remota conectada. O legado at
 - Persistência principal planejada: **PostgreSQL** atrás de repositories/adapters.
 - Integrações e infraestrutura: **ports/adapters**.
 - App: reaproveitar/empacotar a Web React; wrapper final ainda pendente.
-- Persistência local futura do App: **SQLite**, sujeita à tecnologia de empacotamento escolhida.
+- App de campo na linha ativa: **PWA React/Vite com IndexedDB**. Capacitor/SQLite permanecem somente como historico experimental; nao reativar sem nova decisao aprovada.
 - Ordem de entrega: **Web → App → Offline → infraestrutura remota/staging → produção**.
 - Supabase/PostgreSQL remoto e Vercel: **bloqueados nesta etapa para a nova arquitetura**.
 

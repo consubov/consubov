@@ -1,5 +1,12 @@
 # Architecture rules
 
+## Git baseline for human and AI continuity
+
+- Work on `work/fase5-6-7-pwa-local` (PR #43, draft). GitHub remote branches are only `main` and this work branch after safe cleanup. `main` still lacks the active delivery; do not silently switch agents to it.
+- Before a local pull or agent edit, read `docs/68-sincronizacao-local-e-agentes.md`, inspect `git status --short --branch` and `git diff`, fetch origin, and require fast-forward only on a clean target branch. Preserve uncommitted files, stashes and other agents' work; never use hard reset, forced push or blind merges.
+- The Codespace had a local PRD change and was behind origin in the last observed snapshot; its synchronization remains UNCONFIRMED. Do not assume that checkout is current, and do not overwrite the active PRD.
+- This project follows PWA React/Vite plus IndexedDB; Capacitor/SQLite are historical experiments, not active. Follow existing acceptance gates; a Git cleanup is not a production release.
+
 ## Mandatory project workflow
 
 - Before changing code, read `CONSUBOV_HANDOFF_CONTINUIDADE.md` and `CONSUBOV_INSTRUCOES_MESTRE_PROJETO.md`, then `CONSUBOV_CHECKLIST_MESTRE.md`, `docs/README.md`, `instructions/README.md`, and the active PRD/handoff in `instructions/active/`.

@@ -4,6 +4,8 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 ## Estado atual e auditoria
 
+Para configurar um clone local ou retomar trabalho de outro agente, consulte [Sincronizacao local e continuidade segura](./68-sincronizacao-local-e-agentes.md).
+
 Começar pelo [Handoff de continuidade](../CONSUBOV_HANDOFF_CONTINUIDADE.md), pelas Instruções-Mestre e pelo [Checklist Mestre atual](../CONSUBOV_CHECKLIST_MESTRE.md). A [auditoria consolidada de 2026-10-09](./qa/auditoria-consolidada-2026-10-09.md) distingue resultados executados, correções e gates ainda pendentes.
 
 Os critérios detalhados do checklist anterior foram [preservados integralmente](./archive/CONSUBOV_CHECKLIST_MESTRE_antes_auditoria_2026-10-09.md). Consultar o capítulo da fase antes de implementá-la. A consolidação muda a apresentação do estado, não dispensa requisitos. Não usar os kits de `archive/` como instaladores da versão atual.

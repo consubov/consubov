@@ -1,5 +1,15 @@
 # CONSUBOV - Continuidade operacional
 
+## Ultima verificacao - 2026-10-13
+
+GitHub reconfirmado: restam somente `main` e `work/fase5-6-7-pwa-local`; PR #43 e o unico aberto (draft), ainda sem merge. As branches `quality/fase5-web-ready-20261005` e `feature/phase6-app-shell` foram removidas apos preservar historicos no merge `41a1f9f1` e na revisao publicada `3a529837`. Os textos anteriores sobre exclusao pendente sao historicos.
+
+**Para pull local e agentes:** `docs/68-sincronizacao-local-e-agentes.md`, alem de `AGENTS.md`, Checklist Mestre (Git e Notion) e PRD ativo. `main` nao e a branch de desenvolvimento; nao puxar apenas `main` esperando a evolucao da PWA.
+
+**Codespace (PENDENTE):** ultimo snapshot mostrou 1 modificacao nao commitada no PRD de capacidades/GPS e checkout 52 commits atras do remoto; tentativas de comandar o terminal nao forneceram prova de execucao. Nao houve confirmacao de stash, sincronizacao ou commit desse arquivo. Proteger o diff local antes de atualizar.
+
+**QA:** alteracoes desta organizacao sao documentais; nao indicam novo PASS de API/Web/PWA/E2E. FASES 5-7 ainda sem aceite integral, 8/9 preparacao local, 11 planejada; sem deploy, migrations, remote DB, CI hospedado ou merge.
+
 ## Reconciliacao dos ramos - 2026-10-13
 
 Este estado substitui os avisos de divergencia anteriores, sem aprovar fases nem mudar a arquitetura. Repositorio: `mmatteuus/consubov`. Branch unica de desenvolvimento: `work/fase5-6-7-pwa-local`. PR canonico: #43, ainda draft. A `main` nao foi alterada.
@@ -26,8 +36,8 @@ Lighthouse e homologacao fisica nao aprovados. Pendencias fisicas nao bloqueiam 
 
 ## Limpeza e ambiente
 
-Remocao das duas refs historicas: PENDENTE, nao executada. Antes de remover, conferir que os SHAs nao avancaram e que todos sao ancestrais da branch de trabalho publicada. Nao excluir `main` nem a branch ativa; nao apagar stashes, worktrees, alteracoes locais ou dados offline.
+As duas branches historicas foram EXCLUIDAS no GitHub nesta data, apos preservar seus snapshots na ancestralidade da branch ativa. `main` e a branch de trabalho permaneceram; o PR #43 continua draft. Nao apagar refs, stashes ou worktrees adicionais automaticamente.
 
-Browser-MTS retornou `Session terminated`; Desktop Commander sem dispositivos conectados. GitHub acessivel. Nao foi possivel sincronizar nem confirmar o checkout atual do Codespace. Ao reconectar: `git status --short --branch`, conferir SHA/diff/processos, preservar o acrescimo local no PRD e so entao fazer fetch/fast-forward. Nunca resetar para esconder trabalho local.
+O Codespace respondeu a snapshots, mas os comandos de terminal via Browser-MTS nao tiveram resultado executado verificavel. O ultimo estado comprovado pelo painel continua: PRD com mudancas locais e checkout atras do remoto. Prioridade operacional: revisar/preservar esse diff, aplicar fast-forward sem reset, validar SHA e so entao retomar novas tarefas.
 
-Sem CI hospedado, deploy, banco remoto, migrations, secrets ou aprovacao de producao. Atualizar as Fontes do Projeto com este handoff quando possivel; este commit atualiza o repositorio, nao o anexo do ChatGPT.
+Relatorio de operacao: `docs/qa/git-branch-reconciliation-2026-10-13.md`; runbook: `docs/68-sincronizacao-local-e-agentes.md`. Atualizar tambem Fontes do Projeto com este handoff quando possivel. Sem alteracoes de aplicacao, CI hospedado, banco remoto, deploy ou aprovacao de producao.

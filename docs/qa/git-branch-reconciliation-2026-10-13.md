@@ -1,5 +1,7 @@
 # Reconciliacao Git - 2026-10-13
 
+> Atualizacao posterior: as duas branches historicas foram removidas do remoto apos preservacao de seus commits. Estado verificado: apenas `main` e `work/fase5-6-7-pwa-local`, PR #43 unico e draft. As secoes abaixo registram o estado anterior ao arquivamento e nao devem ser usadas como pendencia atual. Codespace local ainda nao teve fast-forward/PRD pendente confirmados. Ver `docs/68-sincronizacao-local-e-agentes.md`.
+
 ## Escopo e autorizacao
 
 Pedido: migrar os commits dos outros ramos, corrigir conflitos segundo o planejamento e limpar branches. Destino: `work/fase5-6-7-pwa-local`, no repositorio privado `mmatteuus/consubov`. Nao inclui atualizar `main`, deploy, banco, dados de clientes ou mudanca de arquitetura.
