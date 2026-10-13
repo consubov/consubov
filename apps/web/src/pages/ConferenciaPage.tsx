@@ -21,6 +21,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { syncPendingChecklists } from "@/lib/conferenciaOffline";
+import { browserLocationProvider } from "@/platform/adapters/BrowserLocationProvider";
+import { auditConferenciaLocation } from "@/lib/conferenciaGeoAudit";
 import {
   getOrCreateConferenciaVisita,
   getConferenciaById,
@@ -561,15 +563,7 @@ export default function ConferenciaPage() {
         } catch { /* silencioso */ }
       };
 
-      if (typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => void recordAudit(pos.coords.latitude, pos.coords.longitude),
-          () => void recordAudit(null, null),
-          { timeout: 4000, maximumAge: 60000 }
-        );
-      } else {
-        void recordAudit(null, null);
-      }
+      void auditConferenciaLocation(browserLocationProvider, recordAudit);
 
       // 3) último lançamento (salga) do pasto
       const { data: ultLanc } = await supabase

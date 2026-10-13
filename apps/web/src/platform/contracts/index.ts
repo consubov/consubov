@@ -9,8 +9,15 @@ export interface SecureStorage {
   setSecret(key: string, value: string): Promise<void>;
 }
 
+export interface LocationPosition {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  timestamp?: number;
+}
+
 export interface LocationProvider {
-  getCurrentPosition(): Promise<{ latitude: number; longitude: number } | null>;
+  getCurrentPosition(): Promise<LocationPosition | null>;
 }
 
 export interface QrScanner {
