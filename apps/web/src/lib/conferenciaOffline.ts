@@ -36,6 +36,15 @@ function readQueue(): QueuedItem[] {
 }
 
 function writeQueue(items: QueuedItem[]) {
+  // Never replace an unreadable legacy queue with an empty/new one.
+  const existing = localStorage.getItem(STORAGE_KEY);
+  if (existing !== null) {
+    try {
+      if (!Array.isArray(JSON.parse(existing))) throw new Error("queue is not an array");
+    } catch {
+      throw new Error("Fila offline ilegivel; dados anteriores preservados.");
+    }
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
@@ -61,15 +70,16 @@ async function uploadFotos(userId: string, checklistId: string, dataUrls: string
 }
 
 export async function saveChecklist(payload: ChecklistPayload): Promise<{ saved: boolean; queued: boolean }> {
+  const clientId = crypto.randomUUID();
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     const queue = readQueue();
-    queue.push({ ...payload, queuedAt: new Date().toISOString(), clientId: crypto.randomUUID() });
+    queue.push({ ...payload, queuedAt: new Date().toISOString(), clientId });
     writeQueue(queue);
     return { saved: true, queued: true };
   }
 
   try {
-    const checklistId = crypto.randomUUID();
+    const checklistId = clientId;
     const fotos = payload.fotosDataUrls.length > 0
       ? await uploadFotos(payload.user_id, checklistId, payload.fotosDataUrls)
       : [];
@@ -98,22 +108,24 @@ export async function saveChecklist(payload: ChecklistPayload): Promise<{ saved:
   } catch (err) {
     // Falha de rede → enfileirar
     const queue = readQueue();
-    queue.push({ ...payload, queuedAt: new Date().toISOString(), clientId: crypto.randomUUID() });
+    queue.push({ ...payload, queuedAt: new Date().toISOString(), clientId });
     writeQueue(queue);
     return { saved: true, queued: true };
   }
 }
 
-export async function syncPendingChecklists(): Promise<number> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return 0;
+let inFlightSync: Promise<number> | null = null;
+
+async function syncPendingChecklistsOnce(): Promise<number> {
   const queue = readQueue();
   if (queue.length === 0) return 0;
 
-  const remaining: QueuedItem[] = [];
+  const confirmedIds = new Set<string>();
   let synced = 0;
   for (const item of queue) {
     try {
-      const checklistId = crypto.randomUUID();
+      const checklistId = item.clientId;
+      if (!checklistId) continue;
       const fotos = item.fotosDataUrls.length > 0
         ? await uploadFotos(item.user_id, checklistId, item.fotosDataUrls)
         : [];
@@ -137,13 +149,24 @@ export async function syncPendingChecklists(): Promise<number> {
         fotos,
       });
       if (error) throw error;
+      confirmedIds.add(checklistId);
       synced++;
     } catch {
-      remaining.push(item);
+      // Leave failed items in localStorage for an explicit retry.
     }
   }
-  writeQueue(remaining);
+  if (confirmedIds.size > 0) {
+    // Re-read after the awaits: another save may have added a pending item.
+    writeQueue(readQueue().filter((item) => !confirmedIds.has(item.clientId)));
+  }
   return synced;
+}
+
+export function syncPendingChecklists(): Promise<number> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve(0);
+  if (inFlightSync) return inFlightSync;
+  inFlightSync = syncPendingChecklistsOnce().finally(() => { inFlightSync = null; });
+  return inFlightSync;
 }
 
 export function getPendingCount(): number {

@@ -1,5 +1,12 @@
 # CONSUBOV - Continuidade operacional
 
+## Lote independente - fila legada da Conferencia (2026-10-13)
+
+Aprimorado `apps/web/src/lib/conferenciaOffline.ts`: preserva identidade de checklist entre envio/retry, impede a perda de novos itens enquanto ha sync pendente, impede dois flushes sobrepostos no mesmo contexto e nao sobrescreve JSON corrompido. Teste Node isolado RED 3/4, GREEN 5/5, typecheck TS strict isolado exit 0; suite Vitest criada mas nao executada no Codespace. NAO aprovar FASE 7 ou marcar migracao. Ver `docs/qa/conferencia-legacy-sync-2026-10-13.md`.
+
+Browser-MTS apresenta falhas de controle de guia/click apesar de snapshot; console do VS Code registra reads remotos cancelados. Nao ha prova de causa unica ou de conserto do plugin. A extensao Act/Run opcional alerta por falta de Docker/act; o QA usa Go Task. Sem nova conexao remota, deploy, CI hospedado, alteracao no frontend ou banco.
+
+
 ## Lote funcional atual - GPS FASE 6, 2026-10-13
 
 O commit `8a8538c5` publicou provider GPS/browser capability detection, helper de auditoria e testes Vitest, integrando o novo provider somente ao QR da Conferencia. Sem alteracoes de schema, autenticacao, filas, tenant, origem/scope PWA ou conexoes novas com backend remoto. Teste isolado Node RED (7 falhas esperadas), GREEN 12/12; TypeScript estrito isolado PASS. **QA no Codespace / Vitest / Chromium / WebKit / check integral nao executado neste lote**. Nao considerar a FASE 6 pronta. Evidencias e pendencias: `docs/qa/gps-conferencia-local-2026-10-13.md` e `docs/60-browser-capabilities.md`.
