@@ -47,3 +47,6 @@ superpowers/
 .secrets
 .env.local
 .env.production
+
+# Preserve the reviewed archive; ignore new ad-hoc ZIP bundles.
+*.zip
