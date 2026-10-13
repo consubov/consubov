@@ -1,5 +1,15 @@
 # CONSUBOV - Continuidade operacional
 
+## Codespace CONSUBOV — extensao Act/Run desativada neste workspace (2026-10-13)
+
+- Ambiente confirmado no navegador: `/workspaces/consubov`, `origin=https://github.com/mmatteuus/consubov`, branch `work/fase5-6-7-pwa-local`.
+- Causa reproduzida dos avisos: extensao instalada `Act/Run - GitHub Actions Visual locally` v2.11.0 tentava encontrar `act` e um runtime de conteiner, embora os gates do projeto sejam Go Task locais e nao dependam dessa extensao.
+- Acao REAL no VS Code: pagina da extensao > Mais Acoes de Desabilitar > `Desabilitar (Workspace)` > `Recarregar a Janela`. Nao desinstalada, nao configurado Docker/act e nenhuma alteracao do frontend.
+- Verificacao apos reload e ativacao da sessao: status `Nenhum Problema` (0 erros, 0 avisos); `Centro de Notificacoes` mostra `Nao ha novas notificacoes`; terminal nao exibe mais o indicador de ambiente obsoleto. Esta verificacao e apenas do ambiente VS Code, NAO equivale a build/testes funcionais.
+- Escopo: somente o Codespace `special garbanzo` do CONSUBOV. Uma recriacao do ambiente pode precisar repetir a desativacao; nao foi alterada configuracao de outras areas, repositorios, contas ou infraestrutura externa.
+- Proximo executor: preservar 3 stashes locais, conferir `git status`, fazer fast-forward seguro do HEAD remoto (ultimo HEAD verificado antes deste lote `987902be`) e rodar gates locais planejados sem CI hospedado. Nenhum merge, migracao, banco remoto ou deploy autorizado.
+
+
 ## Ajuste na retomada da mesma conta apos aborto — 2026-10-13
 
 - [x] RED reproduzido em teste Node: ao desmontar/reabrir tela rapidamente, a nova instancia podia compartilhar a promise abortada, deixando item seguinte sem sync.

@@ -1,5 +1,13 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Codespace CONSUBOV — alertas Act/Run resolvidos no workspace (2026-10-13)
+
+- [x] Confirmados alertas de `act` ausente e nenhum runtime Docker: foram emitidos pela extensao Act/Run opcional, nao pelo aplicativo.
+- [x] `Act/Run - GitHub Actions Visual locally` v2.11.0 desativada via `Desabilitar (Workspace)` exclusivamente no Codespace ativo, com reload.
+- [x] Verificacao pos-reload: VS Code `Nenhum Problema` (0 erros e 0 avisos), Centro de Notificacoes vazio; indicador de ambiente obsoleto no terminal nao aparece. Sem testes de aplicacao neste lote.
+- [ ] Tests de app / monorepo ainda pendentes no checkout mais recente; preservacao de stashes e fast-forward antes de rodar `task qa:check` e demais gates. Evitar CI hospedado e banco remoto.
+
+
 ## Ajuste na retomada da mesma conta apos aborto — 2026-10-13
 
 - [x] RED reproduzido em teste Node: ao desmontar/reabrir tela rapidamente, a nova instancia podia compartilhar a promise abortada, deixando item seguinte sem sync.
