@@ -4,9 +4,9 @@
 
 ## Estado verificavel
 
-- No GitHub, apenas `main` e `work/fase5-6-7-pwa-local` permanecem como branches remotas. Os dois ramos historicos foram excluidos depois da preservacao de seus commits na ancestralidade da branch de trabalho (`41a1f9f1` / `3a529837`).
+- No GitHub existem `main`, a branch ativa `work/fase5-6-7-pwa-local` e o ramo **somente backup** `codespace-probable-acorn-v6vvq9rrvjjgcw6w`, exportado antes de remover o Codespace antigo. Nao desenvolva no backup, nem o exclua sem revisar. Os dois ramos experimentais mais antigos foram removidos com os commits preservados na ancestralidade (`41a1f9f1` / `3a529837`).
 - `main` ainda NAO contem a entrega do PR #43. Fazer `git pull origin main` nao atualiza o codigo de desenvolvimento.
-- Ultima observacao do Codespace: um acrescimo local no PRD ativo e checkout 52 commits atras do remoto. A sincronizacao desse checkout NAO foi confirmada. Antes de puxar, proteger qualquer mudanca local; nao presumir que a arvore esta limpa.
+- O unico Codespace foi comprovadamente sincronizado por fast-forward ao SHA de codigo `${base}` e estava limpo nos gates. Nenhum commit/pull permanece pendente nesse checkpoint, mas agentes sempre devem reconferir o SHA mais recente. Os quatro stashes historicos foram preservados; o mais novo contem copia de alteracao de fixture ja publicada. Nao reaplicar stashes automaticamente.
 - Resultados historicos de testes pertencem aos SHAs documentados; nao equivalem a QA aprovado no HEAD atual. FASES 5-7 nao tem aceite integral; FASES 8/9 sao preparo local, FASE 11 e planejamento.
 
 ## Pull no computador / VS Code
@@ -46,9 +46,9 @@ git diff --check
 
 Se `--ff-only` recusar, ha divergencia: **pare, nao rebase, nao force**. Investigue `git log --oneline --left-right HEAD...origin/work/fase5-6-7-pwa-local` antes de qualquer integracao. Nao substituir o clone local por checkout de `main`.
 
-## Codespace: pendencia local conhecida
+## Codespace: estado e testes locais comprovados
 
-Antes do fast-forward no Codespace, revisar `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md` e preservar seu diff de capacidades PWA/GPS. Se for necessario usar stash, restrinja ao arquivo revisado e prefira `git stash apply` (mantem o backup) ate validar a reconciliacao. A operacao ainda nao esta comprovada.
+O Codespace `special garbanzo` recebeu os commits funcionais ate `${base}`, limpo e com os quatro stashes preservados. Os gates executados por SHA (check/API/Web, IndexedDB, SW, Chromium/WebKit e snapshot local) estao em `docs/qa/qa-real-monorepo-2026-10-13.md`. FASES 5–7 integrais e release ainda nao aprovados. Se houver nova mudanca remota, fazer `git fetch origin --prune` e merge `--ff-only` apenas sobre arvore limpa; preservar PRD e trabalho dos outros agentes.
 
 ## Protocolo para outros agentes IA
 

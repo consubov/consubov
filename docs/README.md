@@ -4,6 +4,8 @@ Esta pasta é a fonte permanente de contexto técnico do projeto.
 
 ## Estado atual e auditoria
 
+[Verificacao real do monorepo, PWA e fila offline (2026-10-13)](./qa/qa-real-monorepo-2026-10-13.md): gates locais PASS por SHA; **FASES 5–7 e producao nao aprovadas**.
+
 FASE 6: [capabilities do navegador e GPS da Conferencia](./60-browser-capabilities.md) e [QA parcial](./qa/gps-conferencia-local-2026-10-13.md). Ver gates pendentes antes de declarar aceite.
 
 Para configurar um clone local ou retomar trabalho de outro agente, consulte [Sincronizacao local e continuidade segura](./68-sincronizacao-local-e-agentes.md).

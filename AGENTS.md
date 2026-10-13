@@ -2,10 +2,12 @@
 
 ## Git baseline for human and AI continuity
 
-- Work on `work/fase5-6-7-pwa-local` (PR #43, draft). GitHub remote branches are only `main` and this work branch after safe cleanup. `main` still lacks the active delivery; do not silently switch agents to it.
+- Work on `work/fase5-6-7-pwa-local` (PR #43, draft). The remote has `main`, this active branch, and the **backup-only** `codespace-probable-acorn-v6vvq9rrvjjgcw6w` (not a development branch; preserve pending review). `main` still lacks the active delivery; do not silently switch agents to it.
 - Before a local pull or agent edit, read `docs/68-sincronizacao-local-e-agentes.md`, inspect `git status --short --branch` and `git diff`, fetch origin, and require fast-forward only on a clean target branch. Preserve uncommitted files, stashes and other agents' work; never use hard reset, forced push or blind merges.
-- The Codespace was fast-forwarded and clean at `9d9ca5fe`; new FASE 6 GPS implementation `8a8538c5` was published after that point and requires a further verified fast-forward. Existing stashes must not be dropped. Do not mistake isolated QA for full monorepo acceptance.
+- One Codespace `special garbanzo` was verified clean on `396bf2ff`; real local gates passed including `qa:check`, offline core, PWA smoke/build, and Chromium/WebKit offline queue. Evidence and nonapproved gates: `docs/qa/qa-real-monorepo-2026-10-13.md`. Four stashes remain and must not be dropped. Always recheck HEAD before QA; these are not full phase or production acceptance.
 - This project follows PWA React/Vite plus IndexedDB; Capacitor/SQLite are historical experiments, not active. Follow existing acceptance gates; a Git cleanup is not a production release.
+
+- Writing to any other repository (including MarkMap) is forbidden unless the user explicitly authorizes it. Reference-only consultation may be read-only and must not navigate or mutate another product when operating the CONSUBOV Codespace.
 
 ## Mandatory project workflow
 

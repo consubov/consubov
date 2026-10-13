@@ -1,5 +1,17 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## Verificacao real de monorepo e PWA no SHA 396bf2ff — 2026-10-13
+
+- [x] `task qa:check` no checkout limpo `396bf2ff8411a47343e517683c168891c1b99f7b`: exit 0, API 539/539, Web 171/171, typecheck/build PASS, artefato `.qa/runs/20261013T190510Z-check-396bf2ff8411-6289/result.json` com `workingTreeDirty=false`.
+- [x] `task qa:offline:core` 61/61; `task qa:pwa:smoke` 25/25; `task qa:phase5:contracts` 10/10; `task qa:preprod:rehearsal` 26/26, todos exit 0.
+- [x] `task qa:offline:browser`: Chromium 11/11 + WebKit 11/11, total 22/22, exit 0; confirmados dois tabs, blobs, escopo de tenant, ACK e idempotencia em fixtures locais.
+- [x] `task qa:pwa:build-preflight` exit 0: **349 assets construidos = 349 precache**.
+- [ ] `task qa:regressions` no SHA `396bf2ff8411a47343e517683c168891c1b99f7b`: anterior 191/191 PASS em `e0f66b0c`, nao repetido no SHA atual.
+- [ ] `task qa:preprod:local-gates` **NAO APROVADO**: processo saiu 201, output detalhado nao recuperado; gate exige QA_MATRIX_REPORT completo + FASES 5/6/7 PASS no mesmo SHA.
+- [ ] QA integral de FASE 5, FASE 6, FASE 7, atualização de PWA entre versões, Lighthouse/a11y e homologacao real. Nao chamar a aplicacao de pronta para producao.
+- [x] Relatorio com evidencias e limites em `docs/qa/qa-real-monorepo-2026-10-13.md`; cuatro stashes preservados. Nenhum outro repositorio alterado.
+
+
 ## FASE 6 — desbloqueio real da tipagem do teste GPS — 2026-10-13
 
 - [x] `task doctor` no Codespace real: PASS, exit 0. Bun 1.4.0, Go Task 3.54.0, Bash/Git/Node disponiveis, sem exigir Docker/act.

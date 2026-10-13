@@ -1,5 +1,14 @@
 # CONSUBOV - Continuidade operacional
 
+## Gates locais comprovados no Codespace — 2026-10-13
+
+**Codigo funcional no SHA `396bf2ff8411a47343e517683c168891c1b99f7b` validado no unico Codespace CONSUBOV, checkout limpo:** `task doctor` PASS; `task qa:check` PASS (API 539/539, Web 171/171, typecheck e build, `.qa/.../check-396bf2ff8411-6289/result.json` com `workingTreeDirty:false`); `task qa:offline:core` 61/61; `task qa:pwa:smoke` 25/25; `task qa:phase5:contracts` 10/10; `task qa:preprod:rehearsal` 26/26; `task qa:offline:browser` 22/22 em Chromium/WebKit; `task qa:pwa:build-preflight` PASS 349/349 assets precache. Resultados com exit 0 registrados individualmente em `docs/qa/qa-real-monorepo-2026-10-13.md`. `task qa:regressions` 191/191 pertence ao SHA anterior `e0f66b0c` (nao reclassificar).
+
+**PENDENTE:** FASES 5–7 completas, local QA matrix, `qa:pwa:upgrade-fixture`, Lighthouse/a11y, seguranca auth/tenant end-to-end, piloto fisico, seis bancos, rollback real, autorizacao de release. `task qa:preprod:local-gates` foi chamado sem evidencia de matriz completa, terminou em erro 201 no terminal; stdout detalhado nao foi recuperado. O script exige `QA_MATRIX_REPORT` explicito e tres fases PASS no mesmo SHA. **Nenhum gate de producao ou aceite integral esta aprovado.**
+
+**Ambiente:** `work/fase5-6-7-pwa-local` (PR #43 draft), `main` intacta, Codespace `special garbanzo` confirmado sincronizado no SHA do codigo. Quatro stashes preservados, incluindo copia da fixture GPS ja publicada. Backup de branch `codespace-probable-acorn-v6vvq9rrvjjgcw6w` deve ser somente revisado, sem exclusao automatica. Nao tocar em MarkMap ou qualquer outro repositorio.
+
+
 ## FASE 6 — desbloqueio real da tipagem do teste GPS — 2026-10-13
 
 Revisao em Codespace real na branch `work/fase5-6-7-pwa-local`: `task doctor` PASS (exit 0), `task qa:regressions` PASS 191/191 (exit 0) no commit `e0f66b0c`. O primeiro `task qa:check` no checkout atualizado `681c9144` FALHOU em `BrowserLocationProvider.test.ts:49`, TS2322: o getter de fixture que lanca excecao inferiu `void` em vez de `Pick<Geolocation, "getCurrentPosition">`. Foi acrescentada somente a anotacao de tipo, sem mudar runtime da PWA.
