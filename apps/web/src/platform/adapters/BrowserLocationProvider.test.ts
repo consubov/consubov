@@ -46,7 +46,7 @@ describe("BrowserLocationProvider (Conferencia QR)", () => {
     await expect(createBrowserLocationProvider(() => { throw Error("blocked"); }).getCurrentPosition()).resolves.toBeNull();
     await expect(createBrowserLocationProvider(() => ({
       secureContext: true,
-      navigator: { get geolocation() { throw Error("blocked"); } },
+      navigator: { get geolocation(): Pick<Geolocation, "getCurrentPosition"> { throw Error("blocked"); } },
     })).getCurrentPosition()).resolves.toBeNull();
     await expect(createBrowserLocationProvider(() => environment(() => { throw Error("sync"); })).getCurrentPosition()).resolves.toBeNull();
   });

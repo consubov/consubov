@@ -1,5 +1,14 @@
 # CONSUBOV - Continuidade operacional
 
+## FASE 6 — desbloqueio real da tipagem do teste GPS — 2026-10-13
+
+Revisao em Codespace real na branch `work/fase5-6-7-pwa-local`: `task doctor` PASS (exit 0), `task qa:regressions` PASS 191/191 (exit 0) no commit `e0f66b0c`. O primeiro `task qa:check` no checkout atualizado `681c9144` FALHOU em `BrowserLocationProvider.test.ts:49`, TS2322: o getter de fixture que lanca excecao inferiu `void` em vez de `Pick<Geolocation, "getCurrentPosition">`. Foi acrescentada somente a anotacao de tipo, sem mudar runtime da PWA.
+
+Verificacoes PRE-PUSH no Codespace, com arvore dirty apenas neste teste: TypeScript da Web `tsc -b --pretty false` PASS; Vitest GPS 12/12 PASS; `task qa:check` PASS com TypeScript (API/Web), build (API/Web) e testes (Web 171/171 em 42 arquivos), exit 0; ESLint especifico do arquivo PASS, exit 0; `git diff --check` sem erros. Blob Git exato da fonte testada: `477952d3743b5048ad07c5afdbca0d8ab0134513`. Todos estes checks foram executados com `dirty=true`; faltam revalidacao no SHA limpo apos publicacao e gates Chromium/WebKit, FASES 5–7 completas. Relatorio: `docs/qa/gps-provider-typecheck-2026-10-13.md`.
+
+O Codespace foi fast-forward por ancestralidade a `681c9144` antes da edicao; tres stashes de trabalhos antigos preservados. Sem merge da main, deploy, backend remoto, secrets ou reconfiguracao de assinatura.
+
+
 ## Retomada dos gates locais e diagnostico Codespace — 2026-10-13
 
 - A GUI do Git no Codespace deixou de indicar os 6 commits atras apos comando `Git: Pull`, mas NAO existe verificacao fresca do SHA do shell. Arvore SCM sem arquivos alterados; tres stashes preexistentes protegidos.

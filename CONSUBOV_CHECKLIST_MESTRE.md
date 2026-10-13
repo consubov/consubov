@@ -1,5 +1,15 @@
 # CONSUBOV - Checklist Mestre de Execucao
 
+## FASE 6 — desbloqueio real da tipagem do teste GPS — 2026-10-13
+
+- [x] `task doctor` no Codespace real: PASS, exit 0. Bun 1.4.0, Go Task 3.54.0, Bash/Git/Node disponiveis, sem exigir Docker/act.
+- [x] `task qa:regressions` 191/191, exit 0, em `e0f66b0c` limpo; arquivo `.qa/runs/20261013T185600Z-regressions-e0f66b0c5ac3-2243/result.json`.
+- [x] Falha RED reproduzida no check: `BrowserLocationProvider.test.ts:49`, TS2322. Corrigida exclusivamente a tipagem de getter da fixture, preservando o fluxo de GPS.
+- [x] GREEN em checkout dirty de `681c9144`: `bun run typecheck` Web, Vitest GPS 12/12, `task qa:check` (tipagem, build API/Web e Web 171/171), `bunx eslint` do teste, todos com exit 0 e blob testado `477952d3743b5048ad07c5afdbca0d8ab0134513`.
+- [ ] Revalidar `task qa:check` e regressions no novo SHA com arvore limpa apos commit, sem contar `dirty=true` como QA de release.
+- [ ] Gates FASE 5–7 integrados, navegador Chromium/WebKit, tenancy e homologacao fisica permanecem pendentes. Ver `docs/qa/gps-provider-typecheck-2026-10-13.md`.
+
+
 ## Gates locais: verificacao isolada e impedimento do Codespace — 2026-10-13
 
 - [x] Revalidacao independente do blob publicado da fila legada: `f77442eb94dee91b1e7f897942f024b807cbcf44`, Node 10/10 PASS e TS strict/noEmit isolado exit 0.
