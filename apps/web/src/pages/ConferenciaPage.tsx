@@ -133,12 +133,22 @@ export default function ConferenciaPage() {
 
 
   useEffect(() => {
-    // sincroniza checklists pendentes ao montar e ao reconectar
-    void syncPendingChecklists();
-    const onOnline = () => { void syncPendingChecklists(); };
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, []);
+    // Never flush an earlier user's offline queue under a new session.
+    const userId = user?.id;
+    if (!userId) return;
+    const controller = new AbortController();
+    const sync = () => {
+      void syncPendingChecklists(userId, controller.signal).catch(() => {
+        // Keep pending records untouched when local storage is unavailable.
+      });
+    };
+    sync();
+    window.addEventListener("online", sync);
+    return () => {
+      controller.abort();
+      window.removeEventListener("online", sync);
+    };
+  }, [user?.id]);
 
   // Retoma (apenas leitura) a conferência formal já iniciada pelo Admin.
   // Nada é criado aqui: o modo padrão é verificação livre.

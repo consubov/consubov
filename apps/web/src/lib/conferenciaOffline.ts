@@ -114,21 +114,25 @@ export async function saveChecklist(payload: ChecklistPayload): Promise<{ saved:
   }
 }
 
-let inFlightSync: Promise<number> | null = null;
+let inFlightSync: { userId: string; promise: Promise<number> } | null = null;
 
-async function syncPendingChecklistsOnce(): Promise<number> {
+async function syncPendingChecklistsOnce(userId: string, signal?: AbortSignal): Promise<number> {
   const queue = readQueue();
   if (queue.length === 0) return 0;
 
   const confirmedIds = new Set<string>();
   let synced = 0;
   for (const item of queue) {
+    if (signal?.aborted) break;
+    // Legacy queue may include another user's records after account switching.
+    if (item.user_id !== userId) continue;
     try {
       const checklistId = item.clientId;
       if (!checklistId) continue;
       const fotos = item.fotosDataUrls.length > 0
         ? await uploadFotos(item.user_id, checklistId, item.fotosDataUrls)
         : [];
+      if (signal?.aborted) break;
       const { error } = await supabase.from("conferencias_checklist").insert({
         id: checklistId,
         fazenda_id: item.fazenda_id,
@@ -162,11 +166,19 @@ async function syncPendingChecklistsOnce(): Promise<number> {
   return synced;
 }
 
-export function syncPendingChecklists(): Promise<number> {
+export function syncPendingChecklists(userId: string, signal?: AbortSignal): Promise<number> {
+  if (!userId || signal?.aborted) return Promise.resolve(0);
   if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve(0);
-  if (inFlightSync) return inFlightSync;
-  inFlightSync = syncPendingChecklistsOnce().finally(() => { inFlightSync = null; });
-  return inFlightSync;
+  if (inFlightSync) {
+    if (inFlightSync.userId === userId) return inFlightSync.promise;
+    // Different accounts cannot share the same flush/ACK result.
+    return inFlightSync.promise.catch(() => 0).then(() => syncPendingChecklists(userId, signal));
+  }
+  const promise = syncPendingChecklistsOnce(userId, signal).finally(() => {
+    if (inFlightSync?.promise === promise) inFlightSync = null;
+  });
+  inFlightSync = { userId, promise };
+  return promise;
 }
 
 export function getPendingCount(): number {

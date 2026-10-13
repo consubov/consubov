@@ -1,5 +1,10 @@
 # CONSUBOV - Continuidade operacional
 
+## FASE 7 — isolamento da fila da Conferência por usuário (2026-10-13)
+
+Falha reproduzida: sync podia enviar pendências de outra conta após troca de login. Corrigido com `syncPendingChecklists(userId, signal?)`, filtro por owner, bloqueio sem identidade, serialização por usuário e cleanup com AbortController em `ConferenciaPage`. UI existente preservada. TDD Node: RED 2/3, GREEN 9/9; TypeScript strict isolado PASS. Vitest/check/E2E do monorepo PENDENTES. Segurança por tenant/autorização é do backend, não garantida por este filtro. Ver `docs/qa/conferencia-owner-isolation-2026-10-13.md`.
+
+
 ## Lote independente - fila legada da Conferencia (2026-10-13)
 
 Aprimorado `apps/web/src/lib/conferenciaOffline.ts`: preserva identidade de checklist entre envio/retry, impede a perda de novos itens enquanto ha sync pendente, impede dois flushes sobrepostos no mesmo contexto e nao sobrescreve JSON corrompido. Teste Node isolado RED 3/4, GREEN 5/5, typecheck TS strict isolado exit 0; suite Vitest criada mas nao executada no Codespace. NAO aprovar FASE 7 ou marcar migracao. Ver `docs/qa/conferencia-legacy-sync-2026-10-13.md`.
