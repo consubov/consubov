@@ -166,3 +166,21 @@ Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-
 - [ ] **12.8 QA**: testes anon/auth/perfil/cross-tenant/arquivos/Edge/SQL, regressao Web/PWA/offline, CI e relatorio com SHA/evidencias; QA reprovado bloqueia aceite.
 - [ ] Publicar atualizacoes de docs/ADRs/OpenAPI/handoff e evidencias quando houver implementacao efetiva; nao marcar fase concluida por existir planejamento.
 - [ ] **Gate**: nenhuma DDL, policy, migration, REVOKE, ALTER, deploy, alteracao Auth, bucket, segredo ou banco remoto nesta tarefa. Qualquer acao futura exige autorizacao expressa e criterios dos gates anteriores.
+
+## GATE EXPLICITO - FASE 12 NAO PODE INICIAR SEM NOVO PEDIDO (2026-10-13)
+
+- [x] Decisao do responsavel: FASE 12 permanece apenas PLANEJADA/BLOQUEADA. Nem achados P0 nem conclusao de fases previas autorizam iniciar, atribuir agente, criar PR de implementacao, executar migrations, RLS/grants/policies, mexer em storage/Auth/Edge Functions ou mudar status.
+- [ ] **Liberacao obrigatoria:** receber nova solicitacao explicita do responsavel para INICIAR A FASE 12. Mesmo depois disso, alteracoes remotas/irreversiveis requerem autorizacao propria, PRD, testes, QA e revisao de conflitos.
+- [x] Investigar metadados e codigo em read-only fora da execucao da FASE 12 e permitido; levantamento nao equivale a iniciar a fase nem a aprovar achados.
+
+### Auditoria preparatoria complementar da aplicacao e banco (somente leitura)
+
+- [x] Policies de `storage.objects` para `visitas-consultor-fotos` autorizam SELECT/INSERT/UPDATE/DELETE por `bucket_id` para qualquer authenticated; `logos-consultor` e `syncvet-medicamentos` tambem tem policies amplas sem vinculo de proprietario no predicado. Exige revisao por identidade/tenant.
+- [x] Das 9 views public, 8 nao declaram `security_invoker=true`; todas possuem grant SELECT para anon. Alcance via API/tenant nao foi testado.
+- [x] `GerentesPage.tsx` e `CapatazesPage.tsx` trocam todos os vinculos com DELETE seguido de INSERT em chamadas separadas: planejar atomicidade e rollback; ha exclusao fisica de cadastros.
+- [x] Onboarding/reset de gerente/capataz usa senha predefinida no codigo; planejar convite/recuperacao com credencial unica e troca obrigatoria, sem revelar a senha no checklist.
+- [x] API Bun atual documenta so health/readiness/OpenAPI/docs e nega rotas administrativas ate auth ser implementada; nenhuma integracao remota da nova arquitetura foi executada.
+- [x] Consultoria faz leituras de dados por ID sem predicado de consultor no frontend; IndexedDB legado usa chave por visita e nao evidencia isolamento por tenant/conta no schema; testar backend, JWT, rotas, troca de sessao, cache offline e revogacao.
+- [x] Consultas agregadas read-only: 0 referencias orfas entre retiro/fazenda, pasto/retiro, fazenda_consultor/consultor e gerente_fazenda/fazenda; 0 divergencias de vinculo principal nos grupos consultados. Nao generalizar para toda a base.
+- [ ] Backlog futuro adicional: transacoes atomicas, soft-delete com historico, restauracao, governanca de senha, limites/rate limiting de fluxos publicos, policies de storage, isolamento de offline, observabilidade, backup/restore e regressao por papel/tenant.
+- [ ] Todos os achados permanecem para futuro estudo/implementacao **somente quando a fase pertinente for explicitamente autorizada**. Nao marcar QA/FASE 12 como iniciado.
