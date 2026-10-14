@@ -24,16 +24,18 @@ const fakeChecklist = (): ChecklistPayload => ({
 
 let online = true;
 const storage = new Map<string, string>();
+const setItem = vi.fn((key: string, value: string) => { storage.set(key, value); });
 const pending = () => JSON.parse(storage.get("pendingConferencias") ?? "[]") as Array<ChecklistPayload & { clientId: string }>;
 
 beforeEach(() => {
   online = true;
   storage.clear();
+  setItem.mockClear();
   insert.mockReset().mockResolvedValue({ error: null });
   vi.stubGlobal("navigator", { get onLine() { return online; } });
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => { storage.set(key, value); },
+    setItem,
   });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -99,8 +101,14 @@ describe("Conferencia legacy offline queue integrity", () => {
   it("refuses to overwrite an unreadable legacy queue", async () => {
     storage.set("pendingConferencias", "{truncated:");
     online = false;
-    await expect(saveChecklist(fakeChecklist())).rejects.toThrow("dados anteriores preservados");
+    // Check the rejection directly, avoiding Chai's nested throw wrappers.
+    await expect(saveChecklist(fakeChecklist())).rejects.toMatchObject({
+      name: "Error",
+      message: "Fila offline ilegivel; dados anteriores preservados.",
+    });
     expect(storage.get("pendingConferencias")).toBe("{truncated:");
+    expect(insert).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
   });
 });
 

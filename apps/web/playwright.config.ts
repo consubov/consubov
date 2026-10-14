@@ -4,20 +4,23 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   fullyParallel: true,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: true,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Bound local browser load; each UI scenario keeps its original deadline.
+  workers: process.env.CI ? 1 : 2,
   reporter: process.env.CI ? "line" : "list",
   use: {
     baseURL: "http://127.0.0.1:8080",
+    // Align the full Chromium suite with the installed Chromium channel.
+    channel: "chromium",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1 --port 8080",
+    command: "bun run dev -- --host 127.0.0.1 --port 8080 --strictPort",
     url: "http://127.0.0.1:8080/login",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

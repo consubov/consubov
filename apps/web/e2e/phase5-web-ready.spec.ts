@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { fieldFixtures, selectFixtureRows, localPdfFixture, type FixtureRows } from "./fixtures/phase5-data";
 
@@ -197,14 +198,15 @@ async function expectHealthySurface(page: Page) {
 }
 
 test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies críticas", () => {
-  test("todos os nove perfis conhecidos possuem redirect autenticado reproduzível", async ({ browser }) => {
-    for (const roleCase of ROLE_CASES) {
+  for (const roleCase of ROLE_CASES) {
+    test(`perfil ${roleCase.table}: redirect autenticado reproduzível`, async ({ browser }) => {
       const { context, page } = await openAs(browser, roleCase.table, undefined, fieldFixtures());
-      await expect(page).toHaveURL(new RegExp(`${roleCase.home.replace("/", "\\/")}(?:\\/|$)`));
-      await expectHealthySurface(page);
-      await context.close();
-    }
-  });
+      try {
+        await expect(page).toHaveURL(new RegExp(`${roleCase.home.replace("/", "\\/")}(?:\\/|$)`));
+        await expectHealthySurface(page);
+      } finally { await context.close(); }
+    });
+  }
 
   test("gerente não acessa a área administrativa", async ({ page }) => {
     await mockAuthenticatedRole(page, "gerentes");
@@ -254,6 +256,275 @@ test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies crít
       await context.close();
     }
   });
+});
+
+async function captureAccessibility(page: Page, state: string) {
+  await expect.poll(() => page.evaluate(() => document.getAnimations()
+    .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+    .every(animation => animation.playState !== "running"))).toBe(true);
+  const results = await new AxeBuilder({ page }).analyze();
+  const sanitize = (findings: typeof results.violations) => findings.map(({ id, impact, description, help, helpUrl, nodes }) => ({
+    id, impact, description, help, helpUrl,
+    nodes: nodes.map(({ target, failureSummary }) => ({ target, failureSummary })),
+  }));
+  const contrastPasses = (results.passes.find(finding => finding.id === "color-contrast")?.nodes ?? []).map(node => ({
+    target: node.target,
+    checks: node.any.filter(check => check.id === "color-contrast").map(check => ({
+      foreground: check.data?.fgColor,
+      background: check.data?.bgColor,
+      ratio: check.data?.contrastRatio,
+      required: check.data?.expectedContrastRatio,
+    })),
+  }));
+  await test.info().attach(`${state}-accessibility`, {
+    body: Buffer.from(JSON.stringify({ violations: sanitize(results.violations), incomplete: sanitize(results.incomplete), contrastPasses })),
+    contentType: "application/json",
+  });
+  await page.screenshot({ path: test.info().outputPath(`${state}.png`) });
+  // Continue the keyboard/retry checks while retaining every Axe failure.
+  expect.soft(results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map(node => node.target) }))).toEqual([]);
+  return contrastPasses;
+}
+
+async function captureErrorThemes(page: Page, state: string, errors: Locator[], themes = [false, true]) {
+  const originallyDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));
+  try {
+    for (const dark of themes) {
+      await page.evaluate(enabled => document.documentElement.classList.toggle("dark", enabled), dark);
+      for (const error of errors) await expect(error).toBeVisible();
+      const measured = await captureAccessibility(page, `${state}-${dark ? "dark" : "light"}`);
+      const selectors = measured.map(node => typeof node.target[0] === "string" ? node.target[0] : "");
+      for (const error of errors) {
+        await expect(error).toBeVisible();
+        const index = await error.evaluate((element, targets) => targets.findIndex(target => target !== "" && element.matches(target)), selectors);
+        expect(index, "Axe must measure the intended visible error text").toBeGreaterThanOrEqual(0);
+        expect(measured[index].checks.length).toBeGreaterThan(0);
+        for (const check of measured[index].checks) {
+          expect(Number.isFinite(check.ratio)).toBe(true);
+          expect(check.ratio).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  } finally {
+    await page.evaluate(enabled => document.documentElement.classList.toggle("dark", enabled), originallyDark);
+  }
+}
+
+async function expectDialogKeyboard(page: Page, dialog: Locator, opener: Locator, description: string) {
+  await expect(dialog).toBeVisible();
+  await expect.soft(dialog).toHaveAttribute("aria-modal", "true");
+  await expect.soft(dialog).toHaveAccessibleDescription(description);
+  await expect.poll(() => dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  const focusable = dialog.locator('button:not([disabled]), input:not([disabled]):not([type="hidden"]), [tabindex="0"]');
+  const visible: Locator[] = [];
+  for (const element of await focusable.all()) if (await element.isVisible()) visible.push(element);
+  expect(visible.length).toBeGreaterThan(1);
+  await visible[visible.length - 1].focus();
+  await page.keyboard.press("Tab");
+  await expect(visible[0]).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(visible[visible.length - 1]).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect.soft(opener).toBeFocused();
+}
+
+// A valid, synthetic one-pixel PNG; never read a customer file or external asset.
+const fixtureLogo = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNg+A8AAQIBAEK+vGgAAAAASUVORK5CYII=", "base64");
+const localSupabaseOrigin = "http://127.0.0.1:54321";
+const pesadoresApiPath = new URL("rest/v1/pesadores", localSupabaseOrigin).pathname;
+const fazendasApiPath = new URL("rest/v1/fazendas", localSupabaseOrigin).pathname;
+const logoUploadPrefix = new URL("storage/v1/object/relatorios/", localSupabaseOrigin).pathname;
+const fixtureUserId = "11111111-1111-4111-8111-111111111111";
+
+async function openLogoFixture(browser: Browser, failure?: "storage" | "patch") {
+  const { context, page } = await openAs(browser, "pesadores");
+  const oldLogo = `${localSupabaseOrigin}/storage/v1/object/public/relatorios/pesador-logos/role-1-old.png`;
+  const uploads: Array<{ path: string; bytes: Buffer; mime: string; filename: string; upsert: string | undefined }> = [];
+  const patches: Array<{ id: string | null; body: unknown }> = [];
+  const unexpectedMutations: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) && /\/(?:rest|storage)\/v1\//.test(url.pathname)) {
+      const upload = request.method() === "POST" && /^\/storage\/v1\/object\/relatorios\/pesador-logos\/role-1-\d+\.png$/.test(url.pathname);
+      const patch = request.method() === "PATCH" && url.pathname === pesadoresApiPath && url.searchParams.get("id") === "eq.role-1";
+      if (!(url.origin === localSupabaseOrigin && (upload || patch))) unexpectedMutations.push(`${request.method()} ${url.pathname}`);
+    }
+  });
+  await page.route(`${localSupabaseOrigin}/rest/v1/pesadores?**`, async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "GET" && url.searchParams.get("user_id") === `eq.${fixtureUserId}` &&
+        ["id,logo_url", "logo_url,nome_empresa"].includes(url.searchParams.get("select") ?? "")) {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "role-1", user_id: fixtureUserId, ativo: true, logo_url: oldLogo, nome_empresa: "Empresa de teste" }) });
+    } else if (request.method() === "PATCH" && url.searchParams.get("id") === "eq.role-1") {
+      patches.push({ id: url.searchParams.get("id"), body: request.postDataJSON() });
+      await route.fulfill(failure === "patch"
+        ? { status: 403, contentType: "application/json", body: JSON.stringify({ code: "42501", message: "Atualização da logo não autorizada." }) }
+        : { status: 204, body: "" });
+    } else await route.fallback();
+  });
+  await page.route(`${localSupabaseOrigin}/storage/v1/object/relatorios/pesador-logos/**`, async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() !== "POST" || !/^\/storage\/v1\/object\/relatorios\/pesador-logos\/role-1-\d+\.png$/.test(url.pathname)) {
+      await route.fallback();
+      return;
+    }
+    const body = request.postDataBuffer();
+    if (!body) throw new Error("Expected actual multipart upload bytes");
+    const form = await new Response(body, { headers: { "content-type": request.headers()["content-type"] } }).formData();
+    const file = form.get("");
+    if (!file || typeof file === "string") throw new Error("Expected actual uploaded File part");
+    const path = url.pathname.slice(logoUploadPrefix.length);
+    uploads.push({ path, bytes: Buffer.from(await file.arrayBuffer()), mime: file.type, filename: file.name, upsert: request.headers()["x-upsert"] });
+    await route.fulfill(failure === "storage"
+      ? { status: 403, contentType: "application/json", body: JSON.stringify({ statusCode: "403", message: "Envio da logo não autorizado." }) }
+      : { status: 200, contentType: "application/json", body: JSON.stringify({ Id: "synthetic-upload-1", Key: `relatorios/${path}` }) });
+  });
+  await page.route(`${localSupabaseOrigin}/storage/v1/object/public/relatorios/pesador-logos/**`, async route => {
+    const url = route.request().url();
+    const uploaded = uploads[0] && `${localSupabaseOrigin}/storage/v1/object/public/relatorios/${uploads[0].path}`;
+    if (route.request().method() === "GET" && (url === oldLogo || url === uploaded)) {
+      await route.fulfill({ status: 200, contentType: "image/png", body: fixtureLogo });
+    } else await route.fallback();
+  });
+  await page.goto("/pesador/pesagem");
+  const opener = page.getByRole("button", { name: "Configurações", exact: true });
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Configurações", exact: true });
+  await expect(dialog.getByRole("img", { name: "Logo", exact: true })).toHaveAttribute("src", oldLogo);
+  await expect(dialog.getByRole("button", { name: "Substituir", exact: true })).toBeEnabled();
+  return { context, page, dialog, opener, oldLogo, uploads, patches, unexpectedMutations };
+}
+
+test.describe("@phase5-ui-contract @web-ready FASE 5 — upload, acessibilidade e recuperação", () => {
+  test("fazendas autenticadas: Axe com linha carregada", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/fazendas", fieldFixtures());
+    try {
+      await expect(page.getByRole("row").filter({ hasText: "Fazenda de teste" })).toBeVisible();
+      await captureAccessibility(page, "fazendas-loaded");
+    } finally { await context.close(); }
+  });
+
+  test("produto: Axe no diálogo real e navegação de foco", async ({ browser }) => {
+    const { context, page } = await openAs(browser, "administradores", "/admin/produtos");
+    try {
+      const opener = page.getByRole("button", { name: "Cadastrar Produto", exact: true });
+      await opener.focus();
+      await page.keyboard.press("Enter");
+      const dialog = page.getByRole("dialog", { name: "Cadastrar Produto", exact: true });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("combobox").click();
+      await page.getByRole("option", { name: "Outro", exact: true }).click();
+      await captureAccessibility(page, "produto-dialog");
+      await expectDialogKeyboard(page, dialog, opener, "Preencha os dados do produto.");
+    } finally { await context.close(); }
+  });
+
+  test("pesador: Axe na página e no diálogo, teclado e cancelamento sem escrita", async ({ browser }) => {
+    const fixture = await openLogoFixture(browser);
+    try {
+      await fixture.dialog.getByRole("button", { name: "Fechar", exact: true }).click();
+      await expect(fixture.dialog).toHaveCount(0);
+      await captureAccessibility(fixture.page, "pesador-page-before-dialog");
+      await fixture.opener.focus();
+      await fixture.page.keyboard.press("Enter");
+      await expect(fixture.dialog.getByRole("button", { name: "Substituir", exact: true })).toBeEnabled();
+      await captureAccessibility(fixture.page, "pesador-dialog");
+      await expectDialogKeyboard(fixture.page, fixture.dialog, fixture.opener, "A logo aparecerá no canto direito dos relatórios em PDF.");
+      await captureAccessibility(fixture.page, "pesador-page");
+      expect(fixture.uploads).toEqual([]);
+      expect(fixture.patches).toEqual([]);
+      expect(fixture.unexpectedMutations).toEqual([]);
+    } finally { await fixture.context.close(); }
+  });
+
+  test("logo: bytes PNG reais, MIME, upsert e PATCH correspondente", async ({ browser }) => {
+    const fixture = await openLogoFixture(browser);
+    try {
+      await fixture.dialog.locator('input[type="file"]').setInputFiles({ name: "fixture-logo.png", mimeType: "image/png", buffer: fixtureLogo });
+      await expect(fixture.page.getByText("Logo atualizada", { exact: true })).toBeVisible();
+      expect(fixture.uploads).toHaveLength(1);
+      expect(fixture.uploads[0]).toMatchObject({ bytes: fixtureLogo, mime: "image/png", filename: "fixture-logo.png", upsert: "true" });
+      const uploadedUrl = `${localSupabaseOrigin}/storage/v1/object/public/relatorios/${fixture.uploads[0].path}`;
+      expect(fixture.patches).toEqual([{ id: "eq.role-1", body: { logo_url: uploadedUrl } }]);
+      const image = fixture.dialog.getByRole("img", { name: "Logo", exact: true });
+      await expect(image).toHaveAttribute("src", uploadedUrl);
+      await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      expect(fixture.unexpectedMutations).toEqual([]);
+      await captureAccessibility(fixture.page, "logo-success");
+    } finally { await fixture.context.close(); }
+  });
+
+  for (const failure of ["storage", "patch"] as const) {
+    test(`logo: ${failure}403 exibe erro e conserva imagem anterior`, async ({ browser }) => {
+      const fixture = await openLogoFixture(browser, failure);
+      try {
+        await fixture.dialog.locator('input[type="file"]').setInputFiles({ name: "fixture-logo.png", mimeType: "image/png", buffer: fixtureLogo });
+        await expect(fixture.page.getByText("Erro ao enviar logo", { exact: true })).toBeVisible();
+        // Radix pauses the real closing timer while the pointer stays over the toast.
+        await fixture.page.getByText("Erro ao enviar logo", { exact: true }).hover();
+        await expect(fixture.page.getByText(failure === "storage" ? "Envio da logo não autorizado." : "Atualização da logo não autorizada.", { exact: true })).toBeVisible();
+        await expect(fixture.page.getByText("Logo atualizada", { exact: true })).toHaveCount(0);
+        await expect(fixture.dialog.getByRole("img", { name: "Logo", exact: true })).toHaveAttribute("src", fixture.oldLogo);
+        await expect(fixture.dialog.getByRole("button", { name: "Substituir", exact: true })).toBeEnabled();
+        expect(fixture.uploads).toHaveLength(1);
+        expect(fixture.patches).toHaveLength(failure === "storage" ? 0 : 1);
+        if (failure === "patch") {
+          expect(fixture.patches[0]).toEqual({ id: "eq.role-1", body: { logo_url: `${localSupabaseOrigin}/storage/v1/object/public/relatorios/${fixture.uploads[0].path}` } });
+        }
+        expect(fixture.unexpectedMutations).toEqual([]);
+        await captureErrorThemes(fixture.page, `logo-${failure}403`, [
+          fixture.page.getByText("Erro ao enviar logo", { exact: true }),
+          fixture.page.getByText(failure === "storage" ? "Envio da logo não autorizado." : "Atualização da logo não autorizada.", { exact: true }),
+        ]);
+      } finally { await fixture.context.close(); }
+    });
+  }
+
+  for (const status of [401, 403, 503]) {
+    for (const dark of [false, true]) {
+      test(`fazendas: ${status} tema ${dark ? "dark" : "light"} sem dados rejeitados e retry pelo teclado`, async ({ browser }) => {
+        const { context, page } = await openAs(browser, "administradores");
+        let reads = 0;
+        let retrying = false;
+        const writes: string[] = [];
+        page.on("request", request => {
+          if (new URL(request.url()).pathname === fazendasApiPath && !["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.method());
+        });
+      try {
+        await page.route(`${localSupabaseOrigin}/rest/v1/fazendas?**`, async route => {
+          if (route.request().method() !== "GET") { await route.fallback(); return; }
+          reads++;
+          await route.fulfill({ status: retrying ? 200 : status, contentType: "application/json", body: JSON.stringify(!retrying
+            ? { code: status === 503 ? "TEMPORARY" : "42501", message: "Synthetic rejected row", data: [{ id: "other", nome: "PRIVATE-TENANT" }] }
+            : fieldFixtures().fazendas) });
+        });
+        await page.goto("/admin/fazendas");
+        const alert = page.getByRole("alert");
+        // The installed SDK retries503 after1s+2s+4s before returning its error.
+        await expect(alert).toContainText(status === 503 ? "Erro ao carregar fazendas. Tente novamente." : "Acesso não autorizado para carregar fazendas.", { timeout: status === 503 ? 10_000 : 5_000 });
+        await expect(page.getByText("PRIVATE-TENANT")).toHaveCount(0);
+        await expect(page.getByText("Nenhuma fazenda cadastrada.", { exact: true })).toHaveCount(0);
+        await page.evaluate(enabled => document.documentElement.classList.toggle("dark", enabled), dark);
+        await captureErrorThemes(page, `fazendas-${status}`, [alert.locator("p")], [dark]);
+        const retry = alert.getByRole("button", { name: "Tentar novamente", exact: true });
+        await retry.focus();
+        const failedReads = reads;
+        retrying = true;
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("row").filter({ hasText: "Fazenda de teste" })).toBeVisible();
+        await expect(alert).toHaveCount(0);
+        expect(reads).toBe(failedReads + 1);
+        expect(writes).toEqual([]);
+        await expect(page.getByText("PRIVATE-TENANT")).toHaveCount(0);
+        await captureAccessibility(page, `fazendas-${status}-${dark ? "dark" : "light"}-recovered`);
+      } finally { await context.close(); }
+    });
+    }
+  }
 });
 
 test.describe("@a11y-smoke @web-ready FASE 5 — acessibilidade e responsividade", () => {

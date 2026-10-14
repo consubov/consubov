@@ -163,7 +163,7 @@ export default function FazendasPage() {
       {loadError ? (
         <Card role="alert">
           <CardContent className="p-8 space-y-3">
-            <p className="text-destructive">{loadError}</p>
+            <p className="text-red-700 dark:text-red-400">{loadError}</p>
             <Button type="button" variant="outline" onClick={() => void loadFazendas()}>
               Tentar novamente
             </Button>
@@ -198,7 +198,7 @@ export default function FazendasPage() {
                 {fazendas.map((f) => (
                   <TableRow key={f.id}>
                     <TableCell>
-                      <Link to={`/admin/fazendas/${f.id}`} className="font-medium text-primary hover:underline">
+                      <Link to={`/admin/fazendas/${f.id}`} className="font-medium text-primary dark:text-emerald-400 hover:underline">
                         {f.nome}
                       </Link>
                     </TableCell>
@@ -210,10 +210,10 @@ export default function FazendasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(f)}>
+                        <Button aria-label={`Editar fazenda ${f.nome}`} variant="ghost" size="icon" onClick={() => openEdit(f)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id)} className="text-destructive hover:text-destructive">
+                        <Button aria-label={`Excluir fazenda ${f.nome}`} variant="ghost" size="icon" onClick={() => handleDelete(f.id)} className="text-destructive hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

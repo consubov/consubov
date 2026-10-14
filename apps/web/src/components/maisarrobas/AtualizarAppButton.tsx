@@ -21,6 +21,7 @@ export function AtualizarAppButton({ className }: { className?: string }) {
   return (
     <>
       <Button
+        aria-label="Atualizar aplicativo"
         variant="ghost"
         size="icon"
         onClick={() => (hasCriticalOperations() ? setAviso(true) : recarregar())}

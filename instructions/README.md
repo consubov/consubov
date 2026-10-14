@@ -28,6 +28,8 @@ instructions/
 9. Após aceite, apagar PRD e handoff concluídos de `active/`.
 10. O histórico do Git é suficiente para consultar trabalhos concluídos.
 
+Após o aceite local da FASE 5, a evidência durável permanece em `docs/qa/phase5-local-report.md` e no handoff principal das FASES 5–9; os documentos específicos concluídos da FASE 5 são removidos de `active/`.
+
 ## Ordem obrigatória de leitura
 
 1. `AGENTS.md`

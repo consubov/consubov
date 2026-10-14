@@ -14,8 +14,7 @@ tasks:
     desc: Install dependencies and Playwright browsers locally
     cmds:
       - bun install --frozen-lockfile
-      - cmd: bunx playwright install chromium webkit firefox
-        dir: apps/web
+      - PLAYWRIGHT_BROWSERS_PATH='{{.ROOT_DIR}}/.qa/tools/playwright-browsers' node apps/web/node_modules/@playwright/test/cli.js install chromium webkit firefox
 
   setup:codespace:
     desc: Provision tools and extensions only; no automatic tests, push or deploy
@@ -24,6 +23,32 @@ tasks:
   qa:check:
     desc: Local check, build and unit tests with evidence
     cmds: [bash scripts/qa/record.sh check bun run check]
+
+  qa:web:unit:
+    desc: All Web unit tests with local source evidence
+    cmds: [bash scripts/qa/record.sh web-unit bun run --cwd apps/web test]
+
+  qa:web:static:
+    desc: Web typecheck and changed-file lint with local source evidence
+    cmds:
+      - bash scripts/qa/record.sh web-static bash -c 'cd apps/web && bun run typecheck && bun run lint:changed'
+
+  qa:web:auth-session:
+    desc: Focused offline auth session read regressions; not full phase acceptance
+    cmds: [bash scripts/qa/record.sh auth-session bun run --cwd apps/web test src/lib/offlineSession.test.ts]
+
+  qa:web:initial-navigation:
+    desc: Two initial real browser login cases with isolated evidence; not full phase acceptance
+    cmds:
+      - bash scripts/qa/record.sh initial-navigation bash -c 'cd apps/web && bun run test:e2e phase4-smoke.spec.ts --project chromium-desktop --grep "login expõe campos|login de administrador" --output "../../.qa/initial-navigation-$(date -u +%Y%m%dT%H%M%SZ)-$$"'
+
+  qa:security:
+    desc: Offline locked API/Web SAST and selected candidate/history secret scan with metadata-only evidence
+    cmds: [bash scripts/qa/record.sh security-local node scripts/qa/run-security-local.mjs]
+
+  qa:lighthouse:integrity:
+    desc: Real isolated browser and Lighthouse producer regressions; synthetic fixtures, not app baseline approval
+    cmds: [bash scripts/qa/record.sh lighthouse-fixtures node --test --test-concurrency=1 scripts/tests/lighthouse-local.browser.mjs]
 
   qa:phase5:contracts:
     desc: Static E2E route/fixture contracts, not browser or phase acceptance
@@ -35,15 +60,18 @@ tasks:
       - task: qa:phase5:contracts
       - bash scripts/qa/record.sh phase5 bun run quality:phase5:local
 
+  qa:phase5:built-audits:
+    desc: Partial real Axe/Lighthouse measurements of the existing local build; not full FASE 5 acceptance
+    cmds: [bash scripts/qa/record.sh phase5-built-audits bash scripts/qa/run-built-web-audits.sh]
   qa:pwa:smoke:
     desc: Isolated SW regression, not a FASE 6 approval
     cmds:
-      - bash scripts/qa/record.sh pwa-smoke node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs
+      - bash scripts/qa/record.sh pwa-smoke node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs scripts/tests/sw-precache-integrity.test.mjs
 
   qa:regressions:
     desc: Local standalone QA regressions (not phase approval)
     cmds:
-      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/legacy-offline-safety.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/indexeddb-local-safety.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs apps/web/tests/atomic-queue-transition-snapshot.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs scripts/tests/coverage-integrity.test.cjs scripts/tests/lint-changed-integrity.test.cjs scripts/tests/setup-guardrails.test.cjs scripts/tests/a11y-runner-integrity.test.cjs scripts/tests/phase5-local-targets.test.cjs scripts/tests/landing-icon-boundary.test.cjs scripts/tests/local-snapshot-rehearsal.test.mjs apps/web/tests/phase5-e2e-contract.test.cjs apps/web/tests/phase5-fixture-data.test.cjs
+      - bash scripts/qa/record.sh regressions node --test apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs scripts/tests/sw-precache-integrity.test.mjs apps/web/tests/legacy-offline-inventory.test.cjs apps/web/tests/legacy-offline-safety.test.cjs apps/web/tests/indexeddb-local-adapter.test.cjs apps/web/tests/indexeddb-local-safety.test.cjs apps/web/tests/local-command-policy.test.cjs apps/web/tests/local-sync-round.test.cjs apps/web/tests/atomic-command-queue.test.cjs apps/web/tests/atomic-queue-transition-snapshot.test.cjs scripts/tests/lighthouse-budget.test.cjs scripts/tests/qa-matrix.test.cjs scripts/tests/qa-record-integrity.test.cjs scripts/tests/security-local-integrity.test.mjs scripts/tests/pwa-build-integrity.test.cjs scripts/tests/preprod-local-gates.test.cjs scripts/tests/coverage-integrity.test.cjs scripts/tests/lint-changed-integrity.test.cjs scripts/tests/setup-guardrails.test.cjs scripts/tests/a11y-runner-integrity.test.cjs scripts/tests/phase5-local-targets.test.cjs scripts/tests/landing-icon-boundary.test.cjs scripts/tests/local-snapshot-rehearsal.test.mjs scripts/tests/api-smoke-integrity.test.mjs scripts/tests/playwright-listener-integrity.test.mjs apps/web/tests/phase5-e2e-contract.test.cjs apps/web/tests/phase5-fixture-data.test.cjs scripts/tests/bundle-budget-integrity.test.cjs scripts/tests/security-signal-classification.test.mjs
 
   qa:pwa:upgrade-fixture:
     desc: Synthetic local Chromium/WebKit same-origin update (not production legacy certification)
@@ -88,12 +116,29 @@ tasks:
     desc: Full local FASE 7 gate; fails until implemented
     cmds: [bash scripts/qa/record.sh phase7 bash scripts/qa/run-package-script.sh quality:phase7:local]
 
+  qa:phase8:
+    desc: Full local FASE 8 gate; fails until implemented
+    cmds: [bash scripts/qa/record.sh phase8 bash scripts/qa/run-package-script.sh quality:phase8:local]
+
+  qa:phase9:
+    desc: Preproduction load reconciliation, operational runbooks and local release gates
+    cmds:
+      - bash scripts/qa/record.sh phase9 bash scripts/qa/run-package-script.sh quality:phase9:local
+
+  qa:phase10:
+    desc: Post-production modules, ports & adapters (SyncVet, Relatto, AI, scales, enterprise exports)
+    cmds:
+      - bash scripts/qa/record.sh phase10 bash scripts/qa/run-package-script.sh quality:phase10:local
+
   qa:all:
-    desc: Run FASE 5, FASE 6 then FASE 7 gates and stop on failure
+    desc: Run FASE 5, FASE 6, FASE 7, FASE 8, FASE 9 then FASE 10 gates and stop on failure
     cmds:
       - task qa:phase5
       - task qa:phase6
       - task qa:phase7
+      - task qa:phase8
+      - task qa:phase9
+      - task qa:phase10
 
   qa:act:
     desc: Optional Docker/act emulation of local build-and-test job

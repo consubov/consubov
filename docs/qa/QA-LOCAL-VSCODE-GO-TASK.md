@@ -2,6 +2,40 @@
 
 **Decisão de 2026-10-08.** O Go Task é o orquestrador principal; `act` reproduz localmente, se necessário, o job `build-and-test` via Docker. Nenhum comando deste guia aciona runners remotos do GitHub. O ambiente e o QA só podem ser marcados como aprovados com logs/evidências.
 
+## Execução verificada neste Windows — 2026-10-13
+
+Na retomada local, Git, Node 24.19.0, Bun 1.4.2 e Task 3.54.0 foram verificados. O lockfile permaneceu congelado; o manifesto declara Bun 1.4.0, portanto registre essa diferença de patch nos relatórios. Task 1.0.1, Playwright 1.1.19 e ESLint 3.0.34 já estavam instalados no VS Code; não foi necessário reinstalá-los.
+
+O Playwright resolvido no Web é 1.64.0; o `bunx` da raiz resolveu outra versão. `task setup` agora chama o CLI instalado em `apps/web` e usa exclusivamente `.qa/tools/playwright-browsers`. Chromium 1248, WebKit 2370 e Firefox 1555 foram instalados e executaram uma fixture HTTP local: três engines, três respostas 200. Isso comprova o ambiente, não o aceite de uma fase.
+
+Use Git Bash no VS Code. Para executar pelo PowerShell deste Windows, configure apenas o processo do terminal antes dos comandos:
+
+```powershell
+$env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\Git\usr\bin;' + $env:PATH
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location).Path '.qa/tools/playwright-browsers'
+$env:TURBO_FORCE = 'true'
+$env:TURBO_CONCURRENCY = '1'
+$env:TURBO_UI = '0'
+$env:VITE_SUPABASE_URL = 'http://127.0.0.1:54321'
+$env:VITE_SUPABASE_PUBLISHABLE_KEY = 'phase5-local-test-key'
+task doctor
+task setup
+task qa:regressions
+task qa:lighthouse:integrity
+task qa:security
+task qa:phase5
+```
+
+O recorder força o cache de browsers deste repositório nos filhos de QA, inclusive quando outro workspace forneceu uma variável herdada. A instalação também define explicitamente esse cache: pela [precedência do Task 3.54](https://taskfile.dev/docs/guide/environment), uma variável do processo normalmente prevalece sobre `env` do Taskfile. Nenhuma variável de máquina nem cache de outro repositório foi alterado. A configuração acima também serve ao debug manual iniciado pelo terminal; o painel da extensão pode herdar outro ambiente.
+
+`qa:security` executa SAST com ferramentas instaladas e scanner offline de código selecionado e histórico local alcançável. Arquivos privados, dados, logs e caches têm exclusões explícitas, documentadas no relatório; o resultado não certifica esses conteúdos nem verifica provedores externos. Somente categoria/caminho/contagens aparecem nos artefatos sanitizados.
+
+O executor valida `QA_OUTPUT_DIR` e seus ancestrais antes de criar diretórios ou logs. Caminhos fora de `.qa`, junctions, links pendentes e destinos que sejam arquivos são recusados antes das escritas; erros de validação preservam exit não zero e não imprimem conteúdo arbitrário.
+
+`qa:lighthouse:integrity` executa fixtures reais de navegador para conferir isolamento de origem, processo próprio, encerramento e relatórios do produtor; não fornece o orçamento da aplicação. O gate integral mede três pares frios de home/login e verifica os seis originais. O orçamento permanece pendente até medições reais e revisão; SHA de uma árvore limpa não pode ser inventado para um candidato com alterações locais.
+
+As tarefas `qa:*` que usam o recorder geram `.qa/runs/**/result.json` e `output.log`. `doctor` e `setup` são preparação; seus logs e as verificações de versões/browser são registrados separadamente. Os capítulos abaixo preservam procedimentos e resultados históricos, não aprovam o checkout atual.
+
 ## Preparação no Windows (agente executor)
 
 O responsável instalou o **Go Task 3.54.0** com `winget install Task.Task` e a extensão **Task** do VS Code. **Não reinstale.** Feche/reabra o terminal integrado e abra a raiz do repositório `consubov` no VS Code.
@@ -162,3 +196,11 @@ Push de fb4f80d0 confirmado. Novo commit de fazendas bloqueado pelo assinador Co
 - Decisao do responsavel: priorizar entrega incremental para testes, levando pendencias nao criticas ao backlog. Isto nao dispensa seguranca, isolamento ou preservacao offline e nao equivale a aprovar fases inteiras.
 - FASE 5: corrigir E2E incompatibilidades reais e concluir gates essenciais. FASE 6: fixture aprovada, falta ensaio do build legado real. FASE 7: fila testada, migracao/integracao ainda pendentes.
 - Sem GitHub Actions hospedado, merge na main, deploy, banco remoto ou dados reais.
+
+### Medição parcial independente da FASE5
+
+`task qa:phase5:built-audits` coleta Axe público e três pares frios Lighthouse no build local existente, em preview próprio `127.0.0.1:8081`, depois do preflight de `apps/web/dist`. É diagnóstico parcial: não aprova orçamento nem FASE5. Após mudanças em código Web, execute primeiro `task qa:pwa:build-preflight`; depois congele fontes e encerre outras execuções pesadas/browser antes da medição. Logs/result.json ficam em `.qa/runs`; seis originais em `.qa/phase5-built-audits-*`. O gate integral `task qa:phase5` continua obrigatório, sem skips ou thresholds reduzidos. Browser local usa2workers e cenários limitados ao deadline original; nenhum job pesado paralelo às medições.
+
+O teste `scripts/tests/sw-precache-integrity.test.mjs` integra `qa:pwa:smoke`, `qa:regressions` e o gate integral FASE5. Ele executa o SW real em VM com fronteiras Fetch/Cache controladas:349 assets completos/deduplicados, máximo4 operações fetch/put, shell por último, falhas drenadas antes da limpeza e rejeição falsy. Não substitui instalação/upgrade/offline em navegador real. Registrar falhas de instalação, shell ausente e todos os relatórios frios; não desativar o SW nem aumentar limites para obter PASS.
+
+Diagnostico unitario completo: execute task qa:web:unit pela raiz. O Web usa2workers isolados e pool threads no Windows/forks nos demais sistemas, evitando o caminho de startup que falhou no Windows local; timeouts e todos os testes permanecem ativos. O resultado focado nao substitui task qa:phase5.

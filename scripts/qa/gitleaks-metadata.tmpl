@@ -1,0 +1,1 @@
+[{{range $i,$finding := .}}{{if $i}},{{end}}{"category":{{toJson .RuleID}},"path":{{toJson .File}},"startLine":{{.StartLine}},"endLine":{{.EndLine}},"startColumn":{{.StartColumn}},"endColumn":{{.EndColumn}},"commit":{{toJson .Commit}}}{{end}}]

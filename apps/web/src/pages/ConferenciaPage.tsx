@@ -80,6 +80,14 @@ const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
   return `Última salga: ${d}${sacos != null ? ` — ${sacos} sacos` : ""}`;
 };
 
+function conferenciaErrorMessage(error: unknown, fallback: string): string {
+  // Supabase may reject with a plain object instead of an Error instance.
+  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
+    return error.message || fallback;
+  }
+  return fallback;
+}
+
 export default function ConferenciaPage() {
   const navigate = useNavigate();
   const { user, role, roleData } = useAuth();
@@ -198,8 +206,8 @@ export default function ConferenciaPage() {
       await garantirVisita();
       setRegistroFormalConfirmado(true);
       toast.success("Conferência registrada. Os pastos escaneados entram no relatório.");
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível registrar a conferência.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível registrar a conferência."));
     } finally {
       setCriandoVisita(false);
     }
@@ -223,8 +231,8 @@ export default function ConferenciaPage() {
       topicosCarregados.current = null;
       assinantesCarregados.current = null;
       setEtapa("inicio");
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível abrir a conferência para edição.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível abrir a conferência para edição."));
     } finally {
       setLoadingHistorico(false);
     }
@@ -236,8 +244,8 @@ export default function ConferenciaPage() {
     setLoadingHistorico(true);
     try {
       setHistorico(await listConferenciasHistorico(roleData.roleId));
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível carregar o histórico.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível carregar o histórico."));
     } finally {
       setLoadingHistorico(false);
     }
@@ -253,8 +261,8 @@ export default function ConferenciaPage() {
       }
       toast.success("Conferência excluída.");
       setConfirmarExclusaoConf(null);
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível excluir a conferência.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível excluir a conferência."));
     }
   };
 
@@ -288,8 +296,8 @@ export default function ConferenciaPage() {
       setDados(null);
       setEtapa("inicio");
 
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível salvar o registro.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar o registro."));
     } finally {
       setSavingPasto(false);
     }
@@ -330,8 +338,8 @@ export default function ConferenciaPage() {
       setEditando(null);
       setFotosEdicao([]);
       setEtapa("inicio");
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível salvar as alterações.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar as alterações."));
     } finally {
       setSavingPasto(false);
     }
@@ -346,8 +354,8 @@ export default function ConferenciaPage() {
       setRegistros(await listConferenciaPastos(visita.id));
       toast.success("Pasto removido da conferência.");
       setConfirmarExclusao(null);
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível excluir o pasto.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível excluir o pasto."));
     } finally {
       setExcluindo(false);
     }
@@ -379,9 +387,9 @@ export default function ConferenciaPage() {
           supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
         ]);
         if (!base.gerente) base.gerente = ger?.nome ?? "";
-        if (!base.proprietario && (faz as any)?.administrador_id) {
+        if (!base.proprietario && faz?.administrador_id) {
           const { data: adm } = await supabase
-            .from("administradores").select("nome").eq("id", (faz as any).administrador_id).maybeSingle();
+            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
           base.proprietario = adm?.nome ?? "";
         }
       }
@@ -432,8 +440,8 @@ export default function ConferenciaPage() {
         consultor_nome_override: cab.consultor.trim() || null,
         data_override: cab.data || null,
       } : prev);
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível salvar o cabeçalho do relatório.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar o cabeçalho do relatório."));
     }
   };
 
@@ -513,8 +521,8 @@ export default function ConferenciaPage() {
       await encerrarConferenciaVisita(visita.id, pdfUrl);
       setVisita({ ...visita, status: "finalizada", pdf_url: pdfUrl });
       toast.success(`Conferência finalizada. PDF gerado: ${fileName}`);
-    } catch (e: any) {
-      toast.error(e?.message || "Não foi possível gerar o PDF.");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, "Não foi possível gerar o PDF."));
     } finally {
       setGerandoPdf(false);
     }
@@ -552,9 +560,9 @@ export default function ConferenciaPage() {
         return;
       }
 
-      const retiro = (pasto as any).retiro;
+      const retiro = pasto.retiro;
       const fazenda = retiro?.fazenda;
-      const produtoNome = (pasto as any).produto?.nome ?? retiro?.produto?.nome ?? null;
+      const produtoNome = pasto.produto?.nome ?? retiro?.produto?.nome ?? null;
 
       // 2) auditoria automática (não bloqueia)
       const recordAudit = async (lat: number | null, lng: number | null) => {
@@ -649,17 +657,17 @@ export default function ConferenciaPage() {
       ]);
 
       const historico: HistoricoEvento[] = [];
-      lancHist.data?.forEach((l: any) => historico.push({
+      lancHist.data?.forEach((l) => historico.push({
         tipo: "salga",
         data: l.data_salga_informada ?? l.created_at,
         descricao: l.cocho_cheio ? "C (cheio)" : `${l.num_sacos ?? 0} saco(s)`,
       }));
-      mortHist.data?.forEach((m: any) => historico.push({
+      mortHist.data?.forEach((m) => historico.push({
         tipo: "morte",
         data: m.data ?? m.created_at,
         descricao: `${m.quantidade} animal(is)`,
       }));
-      movHist.data?.forEach((mv: any) => historico.push({
+      movHist.data?.forEach((mv) => historico.push({
         tipo: mv.pasto_origem_id === pasto.id ? "movimentacao" : "transferencia",
         data: mv.data ?? mv.created_at,
         descricao: `${mv.quantidade} animal(is)`,

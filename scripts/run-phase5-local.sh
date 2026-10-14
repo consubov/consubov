@@ -4,7 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-export QA_OUTPUT_DIR="${QA_OUTPUT_DIR:-$ROOT_DIR/.qa/phase5-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+QA_OUTPUT_DIR="$(QA_OUTPUT_CANDIDATE="${QA_OUTPUT_DIR:-.qa/phase5-$(date -u +%Y%m%dT%H%M%SZ)-$$}" node --input-type=module - <<'LOCAL_OUTPUT'
+import { checkedOutputDir } from './scripts/qa/run-lighthouse-local.mjs';
+try {
+  const output = await checkedOutputDir(process.env.QA_OUTPUT_CANDIDATE);
+  process.stdout.write(output.replaceAll('\\', '/'));
+} catch {
+  console.error('[phase5] output must be a plain directory inside repository .qa');
+  process.exit(1);
+}
+LOCAL_OUTPUT
+)"
+export QA_OUTPUT_DIR
 mkdir -p "$QA_OUTPUT_DIR"
 echo "[phase5] evidence: $QA_OUTPUT_DIR"
 
@@ -27,14 +38,14 @@ cleanup() {
   if [[ -n "${WEB_PID:-}" ]]; then
     kill "$WEB_PID" 2>/dev/null || true
   fi
-  if [[ -n "${API_PID:-}" ]]; then
-    kill "$API_PID" 2>/dev/null || true
-  fi
 }
 trap cleanup EXIT
 
 echo "[phase5] install"
 bun install --frozen-lockfile
+
+echo "[phase5] local SAST + selected source/history secret scan"
+node scripts/qa/run-security-local.mjs
 
 echo "[phase5] security dependency audit (high/critical block)"
 bun audit --audit-level=high
@@ -76,7 +87,7 @@ fi
 echo "[phase5] e2e"
 (
   cd apps/web
-  bun run test:e2e:smoke
+  bun run test:e2e:smoke -- --output "$QA_OUTPUT_DIR/playwright-results"
 )
 
 echo "[phase5] axe + lighthouse"
@@ -102,35 +113,25 @@ echo "[phase5] axe + lighthouse"
   export CHROME_PATH="$(node -p 'require("@playwright/test").chromium.executablePath()')"
   QA_BASE_URL=http://127.0.0.1:8080 node ../../scripts/qa/run-a11y-local.mjs
 
-  bunx lighthouse http://127.0.0.1:8080/     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path="$QA_OUTPUT_DIR/lighthouse-home.json"     --quiet
-
-  bunx lighthouse http://127.0.0.1:8080/login     --chrome-flags="--headless --no-sandbox"     --output=json     --output-path="$QA_OUTPUT_DIR/lighthouse-login.json"     --quiet
-
-  node - <<'NODE'
-const fs = require("fs");
-for (const name of ["home", "login"]) {
-  const report = JSON.parse(fs.readFileSync(`${process.env.QA_OUTPUT_DIR}/lighthouse-${name}.json`, "utf8"));
-  const categories = report.categories;
-  const audits = report.audits;
-  console.log("[lighthouse]", name, JSON.stringify({
-    performance: categories.performance.score,
-    accessibility: categories.accessibility.score,
-    bestPractices: categories["best-practices"].score,
-    seo: categories.seo.score,
-    lcpMs: audits["largest-contentful-paint"]?.numericValue ?? null,
-    cls: audits["cumulative-layout-shift"]?.numericValue ?? null,
-    tbtMs: audits["total-blocking-time"]?.numericValue ?? null,
-  }));
-}
-NODE
-
+  if ! kill -0 "$WEB_PID" 2>/dev/null; then
+    echo '[phase5] own Web preview exited during Axe' >&2
+    exit 1
+  fi
+  QA_BASE_URL=http://127.0.0.1:8080 node ../../scripts/qa/run-lighthouse-local.mjs
+  if ! kill -0 "$WEB_PID" 2>/dev/null; then
+    echo '[phase5] own Web preview exited during Lighthouse' >&2
+    exit 1
+  fi
 
   kill "$WEB_PID" 2>/dev/null || true
   trap - EXIT
   unset WEB_PID
 )
 
-node --test scripts/tests/a11y-runner.browser.mjs
+node --test --test-concurrency=1 scripts/tests/a11y-runner.browser.mjs scripts/tests/lighthouse-local.browser.mjs
+
+echo "[phase5] SW install integrity"
+node --test --test-concurrency=1 apps/web/tests/sw-integrity.test.cjs apps/web/tests/sw-registration-integrity.test.cjs apps/web/tests/sw-build-injection.test.cjs scripts/tests/sw-precache-integrity.test.mjs
 
 echo "[phase5] edge functions"
 (
@@ -139,30 +140,7 @@ echo "[phase5] edge functions"
 )
 
 echo "[phase5] api smoke"
-PORT=3000 bun apps/api/dist/index.js >"$QA_OUTPUT_DIR/consubov-api.log" 2>&1 &
-API_PID=$!
-READY=0
-for _ in {1..20}; do
-  if curl --fail --silent http://127.0.0.1:3000/api/v1/health >"$QA_OUTPUT_DIR/health.json"; then
-    READY=1
-    break
-  fi
-  sleep 0.25
-done
-if [[ "$READY" -ne 1 ]]; then
-  cat "$QA_OUTPUT_DIR/consubov-api.log"
-  exit 1
-fi
-
-test "$(cat "$QA_OUTPUT_DIR/health.json")" = '{"status":"ok"}'
-test "$(curl --fail --silent http://127.0.0.1:3000/api/v1/readiness)" = '{"status":"ready"}'
-curl --fail --silent http://127.0.0.1:3000/api/v1/openapi.json >"$QA_OUTPUT_DIR/openapi.json"
-grep -q '"openapi":"3.1.0"' "$QA_OUTPUT_DIR/openapi.json"
-curl --fail --silent http://127.0.0.1:3000/api/docs >"$QA_OUTPUT_DIR/docs.html"
-grep -q 'Consubov Developers' "$QA_OUTPUT_DIR/docs.html"
-
-kill "$API_PID" 2>/dev/null || true
-unset API_PID
+node scripts/qa/run-api-smoke.mjs
 
 # Keep pending performance approval visible without suppressing independent evidence.
 node scripts/check-web-lighthouse-budget.mjs

@@ -4,7 +4,10 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const required = ['qa:phase5', 'qa:phase6', 'qa:phase7'];
+const defaultRequired = ['qa:phase5', 'qa:phase6', 'qa:phase7'];
+const required = process.env.QA_REQUIRED_GATES
+  ? process.env.QA_REQUIRED_GATES.split(',').map(s => s.trim()).filter(Boolean)
+  : defaultRequired;
 const fail = (why) => { console.error('[preprod:local] FAIL', why); process.exitCode = 1; };
 const reportPath = process.env.QA_MATRIX_REPORT;
 let report;

@@ -50,3 +50,6 @@ superpowers/
 
 # Preserve the reviewed archive; ignore new ad-hoc ZIP bundles.
 *.zip
+
+# Local agent coordination notes; preserve locally, outside product QA source.
+/.agents/teamwork/

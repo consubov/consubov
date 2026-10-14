@@ -54,7 +54,6 @@ export interface RouteEstimationPort {
  * [PENDENTE] tenant and role check for the analysis flow: absent from the
  * repository.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- marcador [PENDENTE], sem contrato definido ainda
-export interface AnalysisPort {}
+export type AnalysisPort = NonNullable<unknown>;
 
 

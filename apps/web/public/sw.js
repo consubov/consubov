@@ -58,11 +58,26 @@ async function precacheAppShell() {
     if (!entries.some((asset) => asset.endsWith('.js'))) {
       throw new Error('missing-entrypoint-js');
     }
-    await Promise.all(critical.map(async (asset) => {
-      const result = await fetch(asset, { cache: 'no-store' });
-      if (!result.ok) throw new Error('critical-asset-unavailable: ' + asset);
-      await assets.put(asset, result.clone());
+    let nextAsset = 0;
+    let failureDetected = false;
+    let firstThrownValue;
+    // Bound the full fetch/put pipeline and drain every worker before cleanup.
+    await Promise.all(Array.from({ length: Math.min(4, critical.length) }, async () => {
+      while (!failureDetected && nextAsset < critical.length) {
+        const asset = critical[nextAsset++];
+        try {
+          const result = await fetch(asset, { cache: 'no-store' });
+          if (!result.ok) throw new Error('critical-asset-unavailable: ' + asset);
+          await assets.put(asset, result.clone());
+        } catch (error) {
+          if (!failureDetected) {
+            failureDetected = true;
+            firstThrownValue = error;
+          }
+        }
+      }
     }));
+    if (failureDetected) throw firstThrownValue;
     await shell.put('/index.html', response.clone());
     await shell.put('/', response.clone());
   } catch (error) {

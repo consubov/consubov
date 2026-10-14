@@ -34,7 +34,7 @@ function run(data = record(), expected = sha, options = {}) {
     if (options.dirty) fs.writeFileSync(path.join(dir, 'source.txt'), 'untested change\n');
     return spawnSync(process.execPath, [checker], {
       cwd: dir, encoding: 'utf8',
-      env: { ...process.env, NODE_ENV: 'test', QA_MATRIX_REPORT: file, QA_EXPECTED_COMMIT: realSha },
+      env: { ...process.env, NODE_ENV: 'test', QA_MATRIX_REPORT: file, QA_EXPECTED_COMMIT: realSha, ...(options.env || {}) },
     });
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
@@ -59,4 +59,20 @@ test('changes to current checkout invalidate an old clean report', () => {
 });
 test('source changes during a successful test sequence invalidate the report', () => {
   assert.notEqual(run({ ...record(), sourceUnchanged: false }).status, 0);
+});
+test('QA_REQUIRED_GATES up to phase9 passes when all gates are green', () => {
+  const fullRecord = {
+    ...record(),
+    results: ['qa:phase5', 'qa:phase6', 'qa:phase7', 'qa:phase8', 'qa:phase9'].map(task => ({ task, status: 'PASS', exitCode: 0 })),
+  };
+  const r = run(fullRecord, sha, {
+    env: { QA_REQUIRED_GATES: 'qa:phase5,qa:phase6,qa:phase7,qa:phase8,qa:phase9' },
+  });
+  assert.equal(r.status, 0, r.stderr);
+});
+test('QA_REQUIRED_GATES fails when phase9 is missing', () => {
+  const r = run(record(), sha, {
+    env: { QA_REQUIRED_GATES: 'qa:phase5,qa:phase6,qa:phase7,qa:phase8,qa:phase9' },
+  });
+  assert.notEqual(r.status, 0);
 });

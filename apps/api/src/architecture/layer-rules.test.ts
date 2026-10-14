@@ -1,4 +1,6 @@
 import { fileURLToPath } from "node:url";
+import { mkdirSync, mkdtempSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
 import { describe, expect, test } from "bun:test";
 import {
   collectSourceFiles,
@@ -8,6 +10,43 @@ import {
 } from "./layer-rules";
 
 const SRC_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+function withSourceTree(action: (owned: string) => void): void {
+  const parent = resolve(SRC_ROOT, "../../../.qa/fixtures/api-source-collection");
+  mkdirSync(parent, { recursive: true });
+  const owned = mkdtempSync(join(parent, "owned-"));
+  try { action(owned); }
+  finally {
+    expect(dirname(owned)).toBe(parent);
+    rmSync(owned, { recursive: true, force: true });
+  }
+}
+
+describe("source collection boundaries", () => {
+  test("collects plain nested source and excludes tests and other extensions", () => withSourceTree(owned => {
+    mkdirSync(join(owned, "nested"));
+    writeFileSync(join(owned, "nested/plain.ts"), "export const safe = 1;");
+    writeFileSync(join(owned, "ignored.test.ts"), "test fixture");
+    writeFileSync(join(owned, "ignored.txt"), "not source");
+    expect(collectSourceFiles(owned)).toEqual([{ path: join(owned, "nested/plain.ts"), content: "export const safe = 1;" }]);
+  }));
+  test("rejects nested junction before reading source outside the root", () => withSourceTree(owned => {
+    const source = join(owned, "source"), outside = join(owned, "outside"); mkdirSync(source); mkdirSync(outside);
+    writeFileSync(join(outside, "outside.ts"), "export const inert = 1;");
+    symlinkSync(outside, join(source, "linked"), process.platform === "win32" ? "junction" : "dir");
+    expect(() => { collectSourceFiles(source); }).toThrow("bounded plain local source tree");
+  }));
+  test("rejects a junction source root", () => withSourceTree(owned => {
+    const source = join(owned, "source"), alias = join(owned, "alias"); mkdirSync(source);
+    writeFileSync(join(source, "plain.ts"), "export const safe = 1;");
+    symlinkSync(source, alias, process.platform === "win32" ? "junction" : "dir");
+    expect(() => { collectSourceFiles(alias); }).toThrow("bounded plain local source tree");
+  }));
+  test("rejects source larger than the bounded read", () => withSourceTree(owned => {
+    writeFileSync(join(owned, "large.ts"), Buffer.alloc(1024 * 1024 + 1, 32));
+    expect(() => { collectSourceFiles(owned); }).toThrow("bounded plain local source tree");
+  }));
+});
 
 describe("layer dependency rules (fixtures)", () => {
   test("accepts a valid domain layer with pure imports", () => {

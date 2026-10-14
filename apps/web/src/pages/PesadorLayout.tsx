@@ -56,11 +56,11 @@ export default function PesadorLayout() {
             </div>
           </button>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
+            <Button aria-label="Configurações" variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
               <Settings className="w-4 h-4" />
             </Button>
             <AtualizarAppButton className="text-primary-foreground hover:bg-white/10" />
-            <Button variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
+            <Button aria-label="Sair" variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -81,7 +81,7 @@ export default function PesadorLayout() {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground",
+                isActive ? "text-primary dark:text-green-400" : "text-muted-foreground",
               )
             }
           >
@@ -92,7 +92,7 @@ export default function PesadorLayout() {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground",
+                isActive ? "text-primary dark:text-green-400" : "text-muted-foreground",
               )
             }
           >
@@ -103,7 +103,7 @@ export default function PesadorLayout() {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-1 py-2.5 text-xs font-medium",
-                isActive ? "text-primary" : "text-muted-foreground",
+                isActive ? "text-primary dark:text-green-400" : "text-muted-foreground",
               )
             }
           >

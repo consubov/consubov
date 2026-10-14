@@ -1,4 +1,24 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type BrowserContext } from "@playwright/test";
+
+function isLoopback(hostname: string): boolean {
+  return ["127.0.0.1", "localhost", "[::1]"].includes(hostname);
+}
+
+async function isolateLocalNetwork(context: BrowserContext) {
+  const baseURL = test.info().project.use.baseURL;
+  if (!baseURL || !isLoopback(new URL(baseURL).hostname)) {
+    throw new Error("Phase 5 smoke tests require a loopback baseURL, never a customer environment");
+  }
+  // Specific page mocks take precedence over this final network boundary.
+  await context.route("**/*", route => isLoopback(new URL(route.request().url()).hostname)
+    ? route.continue() : route.abort("blockedbyclient"));
+  await context.routeWebSocket(/.*/, socket => {
+    if (isLoopback(new URL(socket.url()).hostname)) socket.connectToServer();
+    else socket.close();
+  });
+}
+
+test.beforeEach(async ({ context }) => { await isolateLocalNetwork(context); });
 
 const ROLE_TABLES = [
   "syncvet_equipe",

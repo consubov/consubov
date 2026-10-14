@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -41,6 +42,9 @@ if (files.length === 0) {
 console.log(`[lint:changed] validando ${files.length} arquivo(s):`);
 for (const file of files) console.log(`- ${file}`);
 
-const result = spawnSync("bunx", ["eslint", ...files], { cwd: webRoot, stdio: "inherit", env: process.env });
+// Use the frozen install's CLI directly: no shell shim or package download fallback.
+const eslintPackage = createRequire(path.join(webRoot, "package.json")).resolve("eslint/package.json");
+const eslintBin = path.join(path.dirname(eslintPackage), "bin", "eslint.js");
+const result = spawnSync(process.execPath, [eslintBin, ...files], { cwd: webRoot, stdio: "inherit", env: process.env });
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);

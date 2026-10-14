@@ -9,7 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { PainelPeriodoProvider } from "@/hooks/usePainelPeriodo";
 import { AuthProvider, useAuth, type UserRole } from "@/hooks/useAuth";
-const Login = lazy(() => import("./pages/Login"));
+import Login from "./pages/Login";
 const RecuperarSenhaPage = lazy(() => import("./pages/RecuperarSenhaPage"));
 const RedefinirSenhaPage = lazy(() => import("./pages/RedefinirSenhaPage"));
 const AdminLayout = lazy(() => import("./pages/AdminLayout"));

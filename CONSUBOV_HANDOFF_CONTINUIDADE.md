@@ -1,5 +1,148 @@
 # CONSUBOV - Continuidade operacional
 
+## FASE 10 encerrada — Módulos Congelados, Expansões & Ports (DEV LOCAL READY) — 2026-10-14
+
+- **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase10` PASS.
+- **Artefato oficial do run:** `.qa/runs/20261014T105216Z-phase10-6cf987874a7c-435/result.json`
+- **Commit testado e preservado:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600` (`sourceUnchanged: true`, `commandExitCode: 0`, `status: "PASS"`, `exitCode: 0`).
+- **Fingerprint de Integridade:** `9fd695e399bf13dedb80ab1d7207d19d939e159887f3f8a380cf123495a954db` (estável/inalterado).
+- **Entregas de código e contratos canônicos:**
+  - `docs/75-fase10-pos-producao-modulos-expansoes.md`: especificação canônica completa dos 6 blocos pós-produção.
+  - `apps/web/src/platform/contracts/aiProvider.ts`: `AIProviderPort`, `LocalMockAIProvider` determinístico e função `sanitizeAiContext` com teto de 8.000 chars e mascaramento LGPD de PII (CPFs e emails).
+  - `apps/web/src/platform/contracts/scaleDevice.ts`: `ScaleDevicePort`, `parseScaleRawString` (Tru-Test, Coimma, ASCII genérico) com detecção de estabilidade e simulador `LocalSimulatedScaleDevice`.
+  - `apps/web/src/platform/contracts/enterpriseExport.ts`: `EnterpriseExportPort`, geradores de CSV (ponto-e-vírgula pt-BR) e JSON canônico com hash SHA-256 e webhooks idempotentes.
+  - `apps/web/src/platform/contracts/index.ts`: re-exports aditivos e retrocompatíveis dos novos contratos.
+  - `scripts/run-phase10-local.sh`: script oficial do gate da Fase 10.
+  - `package.json`: script `"quality:phase10:local"`.
+  - `Taskfile.yml`: tarefa `qa:phase10` integrada na suíte `qa:all`.
+  - `scripts/qa/run-matrix.mjs`: inclusão de `'qa:phase10'` no array `available`.
+  - `docs/qa/phase10-pos-producao-report.md`: relatório técnico com tabela de evidências.
+- **Resultados da suíte oficial (29/29 verificações PASS):**
+  - Passo 1 (Toolchain & Preflight): 7/7 PASS
+  - Passo 2 (Contracts & Enterprise Export CSV/JSON SHA-256): 5/5 PASS
+  - Passo 3 (AI Provider Port & Mock): 3/3 PASS
+  - Passo 4 (Scale Device Parser & Simulated Hardware): 5/5 PASS
+  - Passo 5 (SyncVet & Relatto Domain): 3/3 PASS
+  - Passo 6 (Vitest SyncVet Repositories): 5/5 PASS
+  - Passo 7 (Segurança Fail-Closed / Proibição de Hosts Externos): 1/1 PASS
+- **Preservação e Limitações:**
+  - Branch mantida: `work/fase5-6-7-pwa-local` (PR #43 draft). Zero merge ou push na `main`, zero novas branches.
+  - Frontend visual rigorosamente intocado.
+  - Homologação em aparelhos e balanças físicas em curral catalogada como `HOMOLOGAÇÃO REAL PENDENTE`.
+
+
+## FASE 5 encerrada — Codex local, 2026-10-14 06:11 UTC
+
+**QA: APROVADO / WEB READY LOCAL.** `task qa:phase5` integral PASS: `.qa/runs/20261014T055726Z-phase5-6cf987874a7c-349/result.json` e log; comando/logger/resultado 0/0/0. Web196, API543, E2E171, Edge122, HTTP5, SW32 e produtor de auditorias12 passaram; lint incremental/tipos/build/coverage progressivo/bundle/seguranca e seis Lighthouse reais aprovados nos limites intactos. Revisao independente aprovada em `.qa/task3-phase5-closure-approval-review.md`.
+
+SHA inicial/final `6cf987874a7c6bf20c1bb9243cfb4c36a7331600`, branch `work/fase5-6-7-pwa-local`, dirty preservado, `sourceUnchanged=true`; fingerprint inicial/final `6c67de890b6fbd78f848fc2103a8ef50cba74dce7ac7f044c60841fc36aacb32`. Nenhum commit/push/novo PR/branch/deploy/banco remoto. PR #43 permanece o destino documentado; consulta autenticada e espelhamento Notion pendentes por indisponibilidade das ferramentas.
+
+**Janela de congelamento da rodada encerrada.** Fonte confirmada apos os testes, seguida de atualizacoes documentais deste executor. Na conferencia final, tres arquivos novos `LegacyMigrationEngine` de outro executor apareceram depois do gate; sao trabalho posterior de FASE 7, preservado e ainda nao validado. O PASS da FASE 5 pertence ao fingerprint acima, sem aprovar automaticamente o checkout posterior. O estado vigente e [o relatorio final da FASE 5](docs/qa/phase5-local-report.md); as falhas e pendencias anteriores abaixo ficam como historico. Homologacao fisica/assistiva/rural e producao continuam pendentes.
+
+**Proximo item sequencial: FASE 6.** Preservar a implementacao e os resultados do outro executor abaixo, conferindo seu alcance contra o PRD (fixture sintetica nao prova upgrade do legado real) antes de declarar aceite da fase ou iniciar dependencia da FASE 7. Nao confundir o encerramento local FASE5 com aprovacao automatica das fases seguintes.
+
+## FASE 6 — PWA Local Ready Aprovada no QA Local (Remediação Consolidada 2026-10-14)
+
+- **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase6` PASS.
+- **Artefato oficial do run:** `.qa/runs/20261014T053844Z-phase6-6cf987874a7c-688/result.json`
+- **Commit testado e preservado:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600` (`sourceUnchanged: true`, `commandExitCode: 0`, `status: "PASS"`, `exitCode: 0`).
+- **Fingerprint de Integridade:** `68f95d5b68ef6788110eacb83edc93d1c2a4b01679ddaccf5b57fb4b2d2ef1b1` (estável/inalterado).
+- **Entregas de código e remediações (Iteração 2):**
+  - `apps/web/src/platform/adapters/BrowserLocationProvider.ts`: expandida a interface `BrowserCapabilities` e tipagem estrita de função (`typeof ... === "function"`) para `share`, `badging`, `wakeLock` e `webrtc`, eliminando 100% de falsos positivos com `null`, primitivos ou objetos não invocáveis.
+  - `apps/web/src/platform/adapters/BrowserLocationProvider.test.ts`: mock funcional de `wakeLock: { request: vi.fn() }`, verificação passiva sem chamadas prematuras e 4 novas suítes de testes parametrizados (32/32 PASS).
+  - `package.json`: adicionado o script canônico `"quality:phase6:local": "bash scripts/run-phase6-local.sh"`.
+  - `apps/web/pwa-fixtures/persistentTest.ts`: resiliência no Windows NTFS com flags `--disable-logging` e `--log-level=3` no Chromium, drenagem de abas ativas, `context.close()` tolerante e `safeRemoveProfile` com até 5 retries e backoff incremental (150ms) contra locks de EBUSY/chrome_debug.log.
+  - `apps/web/playwright.pwa.config.ts`: `trace: "off"` para eliminar colisões transitórias de trace files (ENOENT).
+  - `scripts/run-phase6-local.sh`: exportação mandatória de `PLAYWRIGHT_BROWSERS_PATH="$ROOT_DIR/.qa/tools/playwright-browsers"` garantindo hermeticidade dos browsers locais em execuções diretas e sob o recorder.
+  - `docs/qa/phase6-pwa-local-report.md`: relatório de auditoria e conformidade técnica publicado.
+  - `CONSUBOV_CHECKLIST_MESTRE.md`: atualizado para refletir o status aprovado da FASE 6.
+- **Resultados da suíte oficial (124/124 PASS em 139s):**
+  - Passo 1 (PWA Playwright E2E): 34/34 PASS (Chromium e WebKit)
+  - Passo 2 (Service Worker precache): 43/43 PASS
+  - Passo 3 (Legado IndexedDB): 11/11 PASS
+  - Passo 4 (Runtime Vitest da PWA: consentimento e capabilities estritas): 35/35 PASS
+  - Passo 5 (Build estático de verificação): 1/1 PASS
+- **Preservação e Limitações:**
+  - Branch mantida: `work/fase5-6-7-pwa-local` (PR #43 draft). Nenhuma branch criada, `main` preservada.
+  - UI visual do frontend intacta; 6 bases legadas do IndexedDB intactas.
+  - Zero chamadas externas: sem Supabase remoto, Vercel ou serviços em nuvem.
+  - Homologação em aparelho físico real permanece pendente (não bloqueia progressão para FASE 7).
+
+## FASE 7 — Offline-First & Sincronização Local Aprovada no QA Local (2026-10-14)
+
+- **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase7` PASS (143/143 testes verdes).
+- **Artefato oficial do run:** `.qa/runs/20261014T063443Z-phase7-6cf987874a7c-2014/result.json`
+- **Commit testado e preservado:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600` (`sourceUnchanged: true`, `commandExitCode: 0`, `status: "PASS"`, `exitCode: 0`).
+- **Fingerprint de Integridade:** `a6b9aac01a13941381d0c6e6abed0671076e75981201c8c631097f7e639c7341` (estável/inalterado).
+- **Entregas de código e validações (FASE 7):**
+  - `apps/web/src/platform/migration/LegacyMigrationEngine.ts`: engine de migração das 6 bases legadas do IndexedDB e chaves do `localStorage` com checkpoints granulares (`migration_state`), retomabilidade pós-crash via cursores paginados (`IDBKeyRange.lowerBound`), idempotência estrita sem duplicação de comandos, mapeamento dual (`IndexedDbAtomicCommandQueue` para pendências e `IndexedDbLocalDatabase` para dados históricos/referência) e preservação bit-a-bit de Blobs e ArrayBuffers (fotos e relatórios PDF).
+  - `apps/web/src/platform/offline/LocalQueueDrainer.ts`: drenador de fila atômica com circuit-breaker imediato na primeira falha de rede/timeout, coordenação multi-abas via Web Locks nativos (`navigator.locks`), mensageria reativa cross-tab via `BroadcastChannel("consubov-vnext-sync")` e fake transport configurável (`FakeOfflineCommandTransport`) para injeção de falhas controladas.
+  - `apps/web/tests/legacy-migration-engine.test.cjs`: suíte com 7 cenários exaustivos cobrindo bases vazias, migração completa, idempotência 2x consecutivas, retomabilidade pós-crash, Blobs intactos, isolamento multi-tenant e não-destruição absoluta das origens (7/7 PASS).
+  - `apps/web/tests/local-queue-chaos.test.cjs`: suíte de caos em Node cobrindo Lost ACK (timeout ambíguo e reenvio idempotente com mesma chave), circuit-breaker em lote, conflitos 409 sem LWW, isolamento multitenant e recuperação pós-crash de comandos `inflight` (5/5 PASS).
+  - `apps/web/pwa-fixtures/queue-chaos.spec.ts`: suíte Playwright de navegador real em Chromium e WebKit cobrindo disputa de 2 abas com Web Locks reais, corte de rede `setOffline(true)` e reconexão, crash de aba em voo e sobrevivência de fotos pesadas de 2MB (10/10 PASS).
+  - `scripts/run-phase7-local.sh`: script hermético de 6 passos registrado no `package.json` sob `"quality:phase7:local"`.
+  - `docs/qa/phase7-offline-local-report.md`: relatório técnico sanitizado publicado.
+- **Resultados da suíte oficial (143/143 PASS em 29s):**
+  - Passo 1 (Toolchain & Doctor Preflight): 1/1 PASS
+  - Passo 2 (Inventário e segurança de bases legadas): 11/11 PASS
+  - Passo 3 (Storage vNext, CAS e fila atômica): 61/61 PASS
+  - Passo 4 (Migração legada e caos Node): 12/12 PASS
+  - Passo 5 (Playwright Chromium e WebKit — queue-atomic + queue-chaos): 32/32 PASS
+  - Passo 6 (Snapshot rehearsal e reconciliação local): 26/26 PASS
+- **Preservação e Limitações:**
+  - Branch mantida: `work/fase5-6-7-pwa-local` (PR #43 draft). Zero chamadas externas a Supabase remoto ou Vercel.
+  - Homologação em aparelho físico de campo permanece como pendência controlada (`HOMOLOGAÇÃO REAL PENDENTE`) para o piloto da FASE 9, sem travar o avanço para a FASE 8 (PostgreSQL Local Dry-Run).
+
+## FASE 8 — PostgreSQL Local Dry-Run & Contratos Aprovada no QA Local (2026-10-14)
+
+- **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase8` PASS (29/29 verificações verdes em ~2.8s).
+- **Artefato oficial do run:** `.qa/runs/20261014T094201Z-phase8-6cf987874a7c-539/result.json`
+- **Commit testado e preservado:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600` (`sourceUnchanged: true`, `commandExitCode: 0`, `status: "PASS"`, `exitCode: 0`).
+- **Fingerprint de Integridade:** `3c840e4537278f4cc99b4f0a6ef3f99cfae8cbf7c8566f71408acf1299c00bb1` (estável/inalterado).
+- **Entregas de código e validações (FASE 8):**
+  - `docs/70-matriz-origem-destino-postgresql.md`: matriz exaustiva mapeando as 6 bases legadas (`consubov-capataz`, `session`, `consultor-offline`, `mais-arrobas-offline`, `mais-arrobas-sync`, `fotos-salga`) e comandos da FASE 7 para PostgreSQL relacional, detalhando tipos, PKs, FKs, constraints de idempotência e isolamento por tenant via RLS.
+  - `supabase/migrations/20261014000000_phase8_unified_relational_contracts.sql`: migration UP idempotente criando `public.atomic_command_log`, índices de performance, índices únicos de idempotência (`uq_atomic_commands_tenant_idempotency`, `uq_atomic_commands_tenant_command`) e políticas RLS de tenant e usuário.
+  - `supabase/migrations/down/20261014000000_phase8_unified_relational_contracts.down.sql`: migration DOWN de rollback completo e reversível.
+  - `scripts/qa/sql-ddl-validator.mjs`: validador estático de DDL PostgreSQL (sintaxe, tipos, PKs, FKs e RLS).
+  - `scripts/qa/migration-idempotency-runner.mjs`: runner de ciclo criptográfico UP -> DOWN -> UP comprovando equivalência de hashes SHA-256 do catálogo de schema (100% idempotente, reversível e determinístico).
+  - `scripts/tests/phase8-ddl-schema-integrity.test.mjs`: 12 testes de integridade SQL (12/12 PASS).
+  - `scripts/tests/phase8-relational-contracts.test.mjs`: 8 testes de alinhamento com TypeScript (`types.ts`, `commandPolicy.ts`) e domínio (`queue.ts`) (8/8 PASS).
+  - `scripts/tests/phase8-relational-rls-dryrun.test.mjs`: 6 testes de simulação relacional in-memory validando integridade referencial (23503), CASCADE, unicidade de idempotência (23505) e isolamento multi-tenant (6/6 PASS).
+  - `scripts/run-phase8-local.sh`: runner local de 5 etapas registrado no `package.json` sob `"quality:phase8:local"`, integrado ao `Taskfile.yml` sob `qa:phase8` e ao `scripts/qa/run-matrix.mjs`.
+  - `docs/qa/phase8-postgresql-local-report.md`: relatório técnico sanitizado publicado.
+- **Preservação e Limitações:**
+  - Branch mantida: `work/fase5-6-7-pwa-local` (PR #43 draft). Zero conexões externas, sem leitura de credenciais e sem execução de DDL remoto.
+  - Homologação em produção/staging remoto requer autorização administrativa expressa e janela de cutover na FASE 9.
+
+## FASE 9 — Pré-Produção, Carga, Runbooks & Homologação Local Aprovada no QA Local (2026-10-14)
+
+- **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase9` PASS (49/49 verificações verdes em ~2.4s).
+- **Artefato oficial do run:** `.qa/runs/20261014T100922Z-phase9-6cf987874a7c-1722/result.json`
+- **Commit testado e preservado:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600` (`sourceUnchanged: true`, `commandExitCode: 0`, `status: "PASS"`, `exitCode: 0`).
+- **Fingerprint de Integridade:** `a68f56eaa20bf23d2fb7b674b677effe4fabecd9c793551c6dbdc6df33c36903` (estável/inalterado).
+- **Entregas de código e validações (FASE 9):**
+  - `docs/71-runbook-operacional-consubov.md`: Runbook operacional para deploy, migração controlada de banco de dados, verificação de integridade pós-deploy e monitoramento de saúde do sistema.
+  - `docs/72-plano-rollback-contingencia.md`: Procedimentos detalhados de contingência, reversão imediata de release e migração (DOWN scripts), retenção de snapshots e chaveamento seguro de tráfego.
+  - `docs/73-relatorio-carga-reconciliacao-local.md`: Especificação e relatório de simulação de carga multi-tenant (1.000+ comandos atômicos), métricas de throughput, latência e reconciliação estrutural de dados.
+  - `docs/74-roteiro-homologacao-fisica-campo.md`: Roteiro de campo para pilotos reais (dispositivos móveis offline, sincronização em lote e leitura de brincos).
+  - `scripts/qa/load-simulation-local.mjs`: gerador determinístico multi-tenant de 1.000+ comandos atômicos (`pesagem_animal`, `lancamento_cocho`, `foto_cocho`), fila atômica com CAS (`SimulatedAtomicQueue`), drenagem concorrente com pool de workers assíncronos, verificação de integridade referencial relacional, idempotência estrita por tenant e reconciliação estrutural de snapshots via SHA-256 (prova de zero perda).
+  - `scripts/tests/phase9-load-reconciliation.test.mjs`: 12 testes automatizados cobrindo carga, concorrência, idempotência, isolamento multi-tenant, estabilidade de memória sem vazamentos, integridade referencial, detecção de divergências e conformidade estrita LGPD (zero PII) (12/12 PASS).
+  - `scripts/tests/local-snapshot-rehearsal.test.mjs`: 26 testes de ensaio de snapshot e reconciliação verificando integridade de dados e restauração segura (26/26 PASS).
+  - `scripts/run-phase9-local.sh`: runner local de 5 etapas registrado no `package.json` sob `"quality:phase9:local"`, integrado ao `Taskfile.yml` sob `qa:phase9` (e `qa:all`) e ao `scripts/qa/run-matrix.mjs`.
+  - `docs/qa/phase9-preprod-local-report.md`: relatório técnico sanitizado publicado.
+- **Resultados e Métricas Consolidadas:**
+  - 1.000 comandos sintéticos em 5 tenants isolados (200 comandos/tenant) drenados com 100% de sucesso.
+  - Throughput local de 80.817 ops/s, latência média 0.002ms, p95 0.003ms, p99 0.011ms.
+  - Resiliência com 42 retries transitórios simulados (5% Lost ACK) recuperados sem duplicações.
+  - 1.000/1.000 duplicatas rejeitadas por colisão de idempotência (100% precisão).
+  - Integridade referencial verificada em 1.000 registros (0 órfãos; validação bidirecional estrita de foto_cocho -> lancamento_cocho no mesmo tenant e lote).
+  - Reconciliação estrutural de snapshots com hashes SHA-256 idênticos (`missing: 0`, `unexpected: 0`, `changed: 0`).
+  - Auditoria estática de segurança: ausência total de hosts e credenciais remotas.
+  - Gate oficial executado via `task qa:phase9`: status **PASS**, exitCode 0, `sourceUnchanged: true` registrado em `.qa/runs/20261014T102133Z-phase9-6cf987874a7c-2002/result.json`.
+- **Preservação e Limitações:**
+  - Branch mantida: `work/fase5-6-7-pwa-local` (PR #43 draft). Zero conexões remotas.
+  - Homologação em pilotos físicos de campo (dispositivos móveis reais) permanece catalogada (`HOMOLOGAÇÃO REAL PENDENTE`), sem impedir a aprovação do `DEV LOCAL READY`.
+
 ## Decisao vigente — FASES 12 e 13, preservacao offline (2026-10-13)
 
 **Status:** SOMENTE DOCUMENTACAO. A FASE 12 segue PLANEJADA/BLOQUEADA e so pode ser iniciada mediante **NOVA autorizacao explicita do responsavel**. A FASE 13 segue PLANEJADA/BLOQUEADA, e somente podera iniciar **depois da FASE 12 concluida com QA aprovado e autorizacao de execucao propria**. Nao atribuir agente nem criar PRD ativo de implementacao apenas por existir este plano.
@@ -15,6 +158,11 @@
 **Trabalho efetivo desta rodada:** somente criacao/atualizacao de paginas Notion e arquivos Markdown do repositório na branch `work/fase5-6-7-pwa-local`/PR #43 draft; nenhum app/API/DB/Auth/Storage/cron/deploy/config remota alterado; QA nao foi executado. Manter `main` intacta e nao invalidar stashes nem trabalho paralelo.
 
 ---
+
+
+## Codex no VS Code local - retomada verificada em 2026-10-13
+
+Clone e branch corretos; fetch/pull --ff-only exit0, HEAD=origin `0fc8ccecb23b7070fb6cadf38727afc3d229865b`, arvore inicialmente limpa e cinco stashes preservados. `task doctor` e `task setup` PASS com Git Bash local (PATH apenas no processo), Node24.19.0/Bun1.4.2/Task3.54.0. `qa:regressions`188/191,3FAIL de portabilidade Windows,0skip,exit1; `qa:check` interrompido por espera no runner Turbo/Bash, sem result.json e sem aceite. Diagnosticos diretos de tipagem API PASS nao substituem o gate. Agentes Codex de implementacao/revisao ativos, sem Maestri; sequencia permanece FASE5->6->7->8->9. Notion ao vivo PENDENTE por ferramenta indisponivel. Relatorio sanitizado: `docs/qa/codex-local-retomada-2026-10-13.md`. Nenhum commit/push/branch/PR novo, deploy, banco remoto ou homologacao de producao.
 
 
 ## Transferencia para Codex no VS Code local — 2026-10-13 (estado mais recente)
@@ -138,3 +286,105 @@ As duas branches historicas foram EXCLUIDAS no GitHub nesta data, apos preservar
 O Codespace respondeu a snapshots, mas os comandos de terminal via Browser-MTS nao tiveram resultado executado verificavel. O ultimo estado comprovado pelo painel continua: PRD com mudancas locais e checkout atras do remoto. Prioridade operacional: revisar/preservar esse diff, aplicar fast-forward sem reset, validar SHA e so entao retomar novas tarefas.
 
 Relatorio de operacao: `docs/qa/git-branch-reconciliation-2026-10-13.md`; runbook: `docs/68-sincronizacao-local-e-agentes.md`. Atualizar tambem Fontes do Projeto com este handoff quando possivel. Sem alteracoes de aplicacao, CI hospedado, banco remoto, deploy ou aprovacao de producao.
+
+## Codex local - correcoes e revisao independente FASE5
+Portabilidade de lint/restauracao:193/193 root regressions PASS,dirty=true,exit0 (21:41:38Z),revisao independente aprovada. Teste de fila corrompida:causa no matcher Vitest/Chai comprovada,producao preservada; assercao exige erro/mensagem exata,zero writes/inserts e bytes intactos. Web completa171/171 PASS,fonte escopada estavel,cinco negativos detectados; revisao independente aprovada. Check raiz serial anterior terminou:tipagem/build/API539/539 PASS,Web170/171 FAIL; repetir integral apos ultimo fix. Extensoes Task/Playwright/ESLint ja instaladas; Gitleaks local instalado com checksum oficial,scans ainda nao executados. Proxima tarefa T2a:recorder/matriz devem provar fonte inicial/final e falha do logger; depois listener,bundle,scans,Axe/Lighthouse. Relatorio docs/qa/codex-local-retomada-2026-10-13.md; ledger .qa/codex-local-fases5-9-2026-10-13.md. Notion PENDENTE,sem commit/push/novoPR/branch,frontend visual preservado,sem deploy/DB remoto.
+
+## Checkpoint de QA raiz com evidencias de fonte - 2026-10-13
+
+- `task qa:regressions`: 215/215 PASS, 0 skips, exit 0; `.qa/runs/20261013T220831Z-regressions-0fc8ccecb23b-59/result.json`.
+- `task qa:check`: PASS, exit 0, sem cache Turbo; typecheck/build API e Web, API 539/539 e Web 171/171; `.qa/runs/20261013T221158Z-check-0fc8ccecb23b-1385/result.json` (22:11:58Z -> 22:15:38Z).
+- Ambos: HEAD/finalCommit `0fc8ccecb23b7070fb6cadf38727afc3d229865b`, dirty inicial/final true, `sourceUnchanged=true`; fingerprint inicial/final `a581ca9cff96e1d9ffb08da0bd38b51e160ac83a74e96d7e91a2f0ad62db4ba8`. Evidencia do candidato anterior a este acrescimo documental; nao e SHA publicado limpo.
+- Recorder/matriz agora detectam drift de fonte/indice/HEAD e falha do logger; 39/39 focados e revisao independente CONSUBOV-T2a-REVIEW APPROVED. Snapshots inicial/final nao provam ausencia de alteracoes transitorias revertidas entre capturas.
+- Processo somente: Git Bash PATH, TURBO_CONCURRENCY=1, TURBO_UI=0, TURBO_FORCE=true, Supabase fake loopback; scripts/Taskfile originais continuam orquestrando QA. Causa especifica da espera concorrente anterior nao foi provada; modo serial passou.
+- Cinco stashes preservados; nenhum commit/push/novo ramo/PR. PR #43 continua destino documentado; consulta ao vivo via gh falhou por falta de autenticacao e pagina publica inacessivel. Nao houve login/token/alteracao de PR. Notion ao vivo tambem inacessivel; sincronizacao PENDENTE.
+- FASE 5 integral continua PENDENTE: identidade de listeners, bundle fail-closed, SAST/secret scan, Axe autenticado e baseline Lighthouse ainda devem ser executados/aprovados. FASES 6-9 seguem na sequencia; frontend visual preservado, sem deploy/banco remoto.
+
+Checkpoint local FASE5: identidade de servidores corrigida e revisada independentemente; task qa:regressions234/234 PASS,0skip,exit0,dirtytrue,sourceUnchanged=true em0fc8cce. Evidencia .qa/runs/20261013T223128Z-regressions-0fc8ccecb23b-1738/result.json e docs/qa/codex-local-retomada-2026-10-13.md. Sem aceite integral da fase; proximo bundle validacao de schema,sem reduzir limites. Cinco stashes preservados; sem commit/push/deploy/banco remoto.
+
+FASE5 primeira execucao integral local REPROVADA: contratos10/10,build/typecheck,API539/539,Web171/171 e auditoria high/critical passaram; lint:changed17errors14warnings bloqueou a sequencia. `.qa/runs/20261013T224026Z-phase5-0fc8ccecb23b-1651/result.json`,fonte estavel dirty0fc8cce; `docs/qa/phase5-local-report.md`. Proximo correcao minima de tipos,sem alterarfrontend/regras/limites. T2c re-revisaoAPPROVED e regressao367/367; nenhum aceite integral.
+
+## Retomada local — integração da FASE 5 após revisão
+
+Revisões independentes aprovaram os escopos de UI (27/138/15 testes), segurança/privacidade (84 fixtures), produtor Lighthouse (9) e checker de seis relatórios (37). Evidências detalhadas em `.qa/task3-*-report.md`; nenhuma aprovação integral de fase decorre desses resultados isolados. A integração atual usa o CLI Web instalado, cache próprio nos filhos do recorder e três pares frios pelo produtor revisado; QA global e medições reais serão executados com todos os escritores congelados. Orçamento permanece pendente, HEAD `0fc8ccecb23b7070fb6cadf38727afc3d229865b`, alterações locais preservadas. Sem commit/push/deploy/banco remoto. PR #43 permanece o alvo documentado; Notion e metadados vivos do PR continuam não verificados por indisponibilidade de acesso. Próxima ação: QA integrado FASE 5, depois FASE 6 pela sequência autorizada.
+
+## Ajuste final do QA e fases restantes
+
+O chamador agora recusa saída externa/links antes de qualquer mkdir/log; RED real corrigido, GREEN 1+13+1 e revisão independente aprovada. Os 441 testes globais e 9 fixtures browser anteriores têm fontes estáveis comprovadas, mas antecedem esse ajuste; nova revisão será revalidada e o scan real ainda não ocorreu. Todas as fontes estão congeladas para os gates seguintes. O responsável reiterou todas as fases restantes: inventário bounded identifica FASES 10/11 além de 5–9; sua sequência e decisões locais serão tratadas após as dependências, sem inventar regras/permissões ou ativar nativo/SQLite. Não houve implementação 6–11 nesta retomada nem ação externa. Registro preparatório: `.qa/remaining-phases-inventory-2026-10-13.md`.
+
+## Sincronizacao segura concluida e gate exato de classificacao — 2026-10-14 UTC
+
+Pull fast-forward da branch existente concluido: HEAD e origin `b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b`. Os dois commits novos alteram somente o checklist: planejamento Consultor11/FASE12 e gate explicito de novo pedido para iniciar FASE12. Nenhuma execucao FASE12 autorizada por este sincronismo. Contagens de auditoria externa/documentacao remota nao foram revalidadas aqui.
+
+48 paths locais preservados com backup e SHA, inclusive bytes/line endings; cinco stashes anteriores mantidos e novo stash de seguranca retido (seis no total). Estado originalmente sem staging restaurado apos conflito de append documental; checklist conserva todo o conteudo local anterior e os acrescimos remotos. Prova: `.qa/safe-sync-1791939896250/result.json`. Nenhum commit, push, ramo ou PR novo.
+
+API: revisao independente aprovada;53 testes, tipagem e ESLint focados PASS; cinco controles de adulteracao/link/arquivo nao auditado retornam falha. Classificador de quatro sinais exatos:18 controles novos+3 existentes PASS, desenho/revisao estrita sem bypass amplo; faltam tres testes de agregacao e autorizacao explicita. Revisao automatica rejeitou a edicao seguinte que permitiria classificar os achados como nao secretos no gate; solicitacao delimitada enviada ao responsavel. Sem contorno do bloqueio, sem scan raiz classificado PASS ou alteracao de evidencias antigas. Gates independentes locais seguem permitidos. Baseline Lighthouse ainda nao medida/aprovada nesta revisao.
+
+## QA completo independente e autorizacao do classificador — HEAD b4eb7f1f
+
+`task qa:check` PASS, exit0, API543/543 e Web171/171, tipagem/build PASS, cache0. `.qa/runs/20261014T010744Z-check-b4eb7f1f29e6-536/result.json`: HEAD/finalCommit b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b, dirtytrue, sourceUnchangedtrue, fingerprint0e8410e48e747bf841d59a09d9d98dd85feeb59ff9eeca0080a6eb5869acd534. Este candidato antecede os tres testes finais do classificador e a presente documentacao; nao afirmar gate integral atual com evidencia anterior.
+
+O responsavel autorizou explicitamente nesta sessao: "Autorizo essas quatro classificações exatas e os testes finais." Prova local `.qa/task3-exact-signal-explicit-approval.md`; escopo restrito aos hashes/caminhos/regras/contextos triados, scanner bruto preservado, qualquer achado desconhecido/divergente continua FAIL. Resolvida a ausencia de autorizacao apontada pelo auto-review; revisao final e scan integral continuam obrigatorios. Sem permissao de commit/push/credenciais/banco/deploy. FASE6 especificacao local revisada em `.qa/task4-phase6-specification-review.md`, aguarda fechamento FASE5 e GO sequencial.
+
+## Fechamento E2E e medições independentes — FASE5 ainda pendente
+
+Rodada integral `.qa/runs/20261014T011602Z-phase5-b4eb7f1f29e6-133/result.json`: FAIL, exit1, fonte estável/dirty,132de138 E2E PASS. Quatro casos excederam o deadline agregado30s e dois perderam a mensagem temporária durante Axe. Reg468/468 PASS,0skip, fonte estável mesmo fingerprint9d2cd4241e11c90cfb57cc18ca4f7b546d3b9ad768c09e5d19189122e90c23f6: `.qa/runs/20261014T011727Z-regressions-b4eb7f1f29e6-160/result.json`. Segurança, API543/Web171, lint0erros14avisos, cobertura progressiva e bundle passaram antes da falha E2E; Axe público/Lighthouse/Edge/HTTP seguintes não executados nesta rodada.
+
+Correção delimitada: cenários individuais dos nove perfis; negativa/recuperação de fazendas por tema; hover real pausa o toast Radix durante a medição, sem mudar timers da aplicação, retirar asserts ou aumentar deadlines. Detectado contraste real2.2<4.5 no nome da fazenda em modo escuro; classe local `dark:text-emerald-400` corrige somente esse link, mantendo visual claro/layout/negócio. Local Playwright passa a2workers para limitar carga; mantém30s,sem retries locais,forbidOnly,porta estrita e sem reutilização de servidor. Execução futura integral espera171casos, não os138 antigos. Testes pesados e browsers/medições serão sequenciais.
+
+Novo comando parcial `task qa:phase5:built-audits`: usa build local existente, preflight do mesmo dist,preview próprio8081,outputguard,readiness limitada,vida do processo e produtores reais Axe/Lighthouse. Separação permite descobrir métricas sem reexecutar todo o gate a cada falha independente; não substitui o aceite integral e não chama sua saída de FASE5PASS. Revisão estática `.qa/task3-built-audits-review.md`. Depois da mudança de cor, fazer build real atualizado antes das métricas; congela fonte e encerra browsers/scanners concorrentes. O orçamento continua pendente até seis originais reais e revisão; depois gate integral do candidato final obrigatório. Nenhum commit/push/banco/deploy.
+
+## Candidato congelado para primeira baseline real
+
+Correções E2E/contraste validadas:17/17 focados PASS,0retry/skip/flaky; lint0erros14avisos e tipagem Web PASS. Artefatos `.qa/task3-e2e-lifecycle-final-verification.json`, `.qa/task3-e2e-lifecycle-report.md`. Fonte especifica0181342...D71D/Fazendas091B7C...7D0E preservada; contraste real do link escuro9.07 e claro11.25,sem violacoes Axe de recuperacao. Browser/servidor do executor encerrados; nenhum job pesado simultaneo às métricas.
+
+Build atualizado `task qa:pwa:build-preflight` PASS,349assets/precache,cache0: `.qa/runs/20261014T015135Z-pwa-build-b4eb7f1f29e6-353/result.json`. Código Web não muda após este build; presente nota altera somente documentação. Próximo `task qa:phase5:built-audits` coletará os seis originais reais sem aprovar a fase. A baseline e a nova rodada integral171casos continuam pendentes.
+
+## Baseline real aprovada; próximo gate integral — HEAD6cf98787
+
+Seis relatórios frios originais medidos em `.qa/phase5-built-audits-20261014T015402Z-1102`: homeperformance55/56/74, LCP4673/6304/6968ms,TBT202/438/509ms; login77/77/89,LCP2563/4416/4434ms,TBT168/218/240ms. Todosaccessibility100/CLS0. Axe público home/login/recuperar-senha:0violacoes;1incomplete manual na home continua pendente. `.qa/runs/20261014T015402Z-phase5-built-audits-b4eb7f1f29e6-1092/result.json` PASS, fonte dirtyestavelFP8ed0131ff0a07fac6b0104d40e1354b1344adea86ee51bdff89fb669b86a4d5d. Medição local controlada, sem acesso externo; nao benchmark físico nem aprovação de bons CoreWebVitals. Home56mediana/LCP6.3s é fraca e permanece dívida explícita.
+
+Orçamento inicial de NÃO REGRESSÃO aprovado independentemente `.qa/task3-lh-measured-baseline-review.md`, propostaSHA569030b5552dfa4507b95ad1a6930fee46f54cbe29c81008e107927bd510548e: homeperformance>=50,a11y100,LCP<=7700ms,CLS0,TBT<=575ms; login>=72/100/4900ms/0/275ms. Base: pior observado menos5pontos e tempospior*1.10 arredondados100ms/25ms; tolerância de engenharia explícita, não intervalo estatístico nem meta ideal. Nenhum limite numérico anterior foi reduzido: baseline antiga era PENDING/null. Bundle/coverage/contraste mantêm seus limites anteriores. `scripts/web-lighthouse-budget.json` agora APPROVED_BASELINE; commitb4eb é referência parental HISTÓRICA, com dirty/fingerprint e seis hashes, nunca código pristine/publicado. Alteração do orçamento exige fonte nova estável e TODOS os seis novos originais do próximo gate; não reclassificar evidência antiga.
+
+Novo pullFF incorporou SOMENTE4documentos/6commits remotos: HEAD/origin6cf987874a7c6bf20c1bb9243cfb4c36a7331600,49paths locais preservados bytea byte e7stashes retidos,sem staging/commit/push. `.qa/safe-sync-1791943903529/result.json`. Novo plano `docs/69-fase13-offline-migracao-preservacao-planejamento.md`: FASE12bloqueadaatépedidoespecífico; FASE13sóapós12QA+autorização própria; sem TTL/expurgo; FASE7autorizada não espera13. Nenhum app/SQL/banco/storage/Auth alterado por esses commits; auditorias externas não revalidadas. Próximo: `task qa:phase5`,171E2E+novos6Lighthouse+Edge/HTTP/fixtures, sem jobs pesados paralelos e sem fontes/docs editadas durante execução. FASE5 ainda NÃO CONCLUÍDA.
+
+## Gate integral 6cf98787: bloqueio isolado e correção do precache
+
+A execução `.qa/runs/20261014T021512Z-phase5-6cf987874a7c-1040/result.json` manteve HEAD/finalCommit iguais, dirty=true e sourceUnchanged=true, FP831af5d9c20b780fcb3b711f6264808620ed7280222650748e296966dfbe1dc9. PASS: segurança SAST e quatro classificações exatas autorizadas (achados/exit bruto preservados), audit de dependências sem high/critical, API543/Web171, tipagem/build/lint incremental, coverage progressivo, bundle,171/171 E2E, Axe público sem violações, fixtures, Edge122/122 e cinco contratos HTTP. Resultado integral FAIL exclusivamente Lighthouse login: TBT311/398/332ms contra275; performance74/71/70 contra mínimo72. Nenhum limite foi alterado para aceitar essa rodada.
+
+RCA e revisão independente `.qa/task3-perf-login-rca.md` e `.qa/task3-perf-login-independent-rca.md`: as seis medições iniciais tiveram exceção SW-update-not-found e29/39 requisições locais, enquanto as novas tiveram379–390, consistentes com349 assets adicionais do precache. Payload público e protocolo/benchmark são comparáveis; isso não prova regressão de fonte nem ruído genérico. A medição histórica não comprovou instalação offline saudável. Probe próprio reteve FAIL parcial: controller ativado e349 assets, porém shell vazio; origem8081 não comparada. Não chamar esse probe de aprovação offline.
+
+Correção pequena no install do SW: máximo4 pipelines fetch+Cache.put, conjunto completo deduplicado, shell publicado só ao final; falha interrompe novos itens e aguarda todos os iniciados antes de limpar SOMENTE a geração falha. Consentimento, ativação, geração anterior e dados de usuário preservados. Teste executa fonte real via VM: RED3/6 (pico349 e348 escritas tardias), depois GREEN7/7, incluindo rejeição falsy; evidências `.qa/task3-perf-sw-pool-red.json` e `.qa/task3-perf-sw-pool-green.json`. Isso comprova os comportamentos locais, ainda não melhora Lighthouse nem conclui a FASE5. Gates Task smoke/regressions e execução integral incluem agora esse teste. Próximo: revisão final, build novo, prova real do shell/instalação e seis medições novas contra os mesmos limites; só então novo gate integral. FASE5 permanece PENDENTE.
+
+## Atualizacao local 2026-10-14 — encerramento da FASE 5 ainda pendente
+
+A prova real apos o pool do SW passou nas duas origens locais (8080/8081): os 349 assets e os dois shells completos estavam no CacheStorage, worker/controlador ativados e reload offline exibiu Entrar sem nova requisicao ao servidor. Evidencia: `.qa/task3-perf-sw-pool-runtime-result.json`; fonte ed512993, build `.qa/runs/20261014T025347Z-pwa-build-6cf987874a7c-1780/result.json`. O antigo probe com shell vazio tinha espera assincrona incorreta no fixture; esse resultado nao era prova de perda no produto. A correcao foi no fixture, preservando os resultados anteriores.
+
+O executor Lighthouse recebeu tratamento limitado para bloqueio transitorio do perfil Windows, apos encerramento do Chrome proprio. RED nativo e GREEN, revisao independente e 10/10 fixtures passaram: `.qa/runs/20261014T032011Z-lighthouse-fixtures-6cf987874a7c-951/result.json`, fonte estavel 30cc1038. Isso nao comprova desempenho da aplicacao.
+
+A coleta seguinte `.qa/phase5-pool-final-audits-20261014T032155Z-root` foi interrompida: quatro originais, manifesto FAIL em cleanup e fingerprint final indisponivel. Chrome proprio permaneceu vivo; a limpeza posterior revalidou PID/pai/perfil exclusivo e encerrou somente esse teste. A causa subjacente dessa interrupcao nao foi demonstrada; nao confundir com o EBUSY anterior ja corrigido. Os dois login tinham a11y98 e a imagem do login2 mostrava LoadingScreen, portanto nao aprovam o formulario nem o desempenho. Original e observacao preservados em `.qa/task3-root-interrupted-audit-observation.json`.
+
+Uma unica reproducao diagnostica posterior mostrou o Login real, a11y100, mas performance55/LCP5991ms/TBT299ms. `.qa/task3-login-loading-diagnostic/lighthouse-login.json`; nenhuma aprovacao de fase. O CDP pos-coleta encontrou about:blank e foi inconclusivo, nao prova de falha do app. O relatorio original mostra entrypoint649183bytes e download do chunk Login somente em4.16s. Correcao minima em verificacao: disponibilizar o mesmo componente Login no entrypoint; guardas de sessao, regras, layout e limites permanecem iguais. Proximo aceite depende do gate integral atualizado, incluindo todos os seis relatórios validos e 171 E2E. Nenhum commit, push, deploy, banco remoto ou credencial alterado.
+## Gate 2026-10-14 04:05 UTC — falha de inicializacao do Vitest
+
+A rodada integral `.qa/runs/20261014T040504Z-phase5-6cf987874a7c-1560/result.json` terminou FAIL (exit1): 151 testes Web passaram e sete arquivos nao iniciaram seus workers forks dentro do prazo. Seguranca, dependencias, tipagem e build passaram; os gates posteriores nao foram alcancados. Alteracoes concorrentes de outro executor em GPS tambem produziram `sourceUnchanged=false`; foram preservadas e essa rodada nao aprova a revisao atual.
+
+Correcao delimitada em verificacao: `test.maxWorkers: 2`, sem mudar timeouts, isolamento, includes ou asserts. `task qa:web:unit` executa todos os testes Web pelo recorder existente para validar o reparo antes de repetir o gate integral. FASE5 permanece pendente ate resultado integral fresco, fonte estavel e seis medicoes Lighthouse dentro dos limites aprovados.
+
+### Vitest Windows validado — 2026-10-14 04:35 UTC
+
+Apenas limitar forks a2workers nao resolveu: rodada042512 reteve FAIL com167 testes PASS/dois timeouts de inicializacao, fonte estavel. Candidato revisado usa `threads` somente no Windows e `forks` nos demais sistemas, maxWorkers2; isolamento, timeouts, includes, cobertura e asserts permanecem iguais. Nao foi provada uma causa geral de saturacao da maquina.
+
+`task qa:web:unit` PASS:42arquivos/174testes,0erros,exit0,sourceUnchangedtrue,HEAD/final6cf987874a7c6bf20c1bb9243cfb4c36a7331600,dirtytrue,FPb318423865ef3a32fc8f9d3ad9cc52cc0bfad0a2158075f3fb8ae260ab270132. Evidencia `.qa/runs/20261014T043318Z-web-unit-6cf987874a7c-1254/result.json`; revisao `.qa/task3-vitest-windows-pool-review.md`. A contagem incorpora testes GPS do outro executor, preservados. Gate integral FASE5 permanece pendente; proxima execucao sem novas edicoes deste executor ate o resultado terminal.
+
+### Checkpoint FASE5 2026-10-14 05:16 UTC
+
+FASE5 permanece pendente; relatorio canonico `docs/qa/phase5-local-report.md` registra os gates atuais. Web174 passou com workers threads Windows; a rodada integral043706 falhou em casts GPS paralelos ja corrigidos. A coleta045224 concluiu mas HOME1/2 falharam e Login1/3 eram LoadingScreen. Correcao de leitura da sessao fria passou5regressoes com fonte estavel (`.qa/runs/20261014T051301Z-auth-session-6cf987874a7c-508/result.json`). Counter agora reutiliza formatter pt-BR, preservando visual; medicao e gate integral ainda obrigatorios, budgets intactos. Preservados todos os trabalhos locais de outras fases; nao interpretar esses parciais como WEB READY ou liberacao de producao.
+
+### Candidato final FASE5 — 2026-10-14 05:27 UTC
+
+Desempenho parcial liberado:6cold reports dentro dos budgets intactos, checker de integridade PASS, `.qa/runs/20261014T052000Z-phase5-built-audits-6cf987874a7c-70/result.json`. Formulario Login comprovado nas capturas completas e nos elementos LCP dos3originais; miniatura stale isolada nao representa formulario ausente. SW nativo atual PASS337assets+2shells/reload offline nas duas origens; `.qa/task3-current-sw-probe-result.json`. FASE5 ainda aguarda gate integral fresco e auditoria final. Detalhes no relatorio canonico `docs/qa/phase5-local-report.md`.
+
+### Janela final FASE5 — 2026-10-14 05:56 UTC
+
+Dois casos iniciais passaram em1.7s/2.0s usando channelchromium (fullChrome), mesmos30s/2workers/0retry, fonte estavel: `.qa/runs/20261014T055603Z-initial-navigation-6cf987874a7c-1475/result.json`. O erro anterior era setup de page no headless-shell, antes da aplicacao. Executar gate integral atual sem edicoes concorrentes; FASE5 continua pendente ate seu PASS e revisao. Artefatos de browser agora isolados por rodada. Evidencias e mudancas do executor FASE6 preservadas.

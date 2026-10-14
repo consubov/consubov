@@ -5,8 +5,15 @@ export interface BrowserCapabilities {
   secureContext: boolean;
   geolocation: boolean;
   camera: boolean;
+  microphone: boolean;
   indexedDB: boolean;
   barcodeDetector: boolean;
+  barcodeFallbackZxing: boolean;
+  share: boolean;
+  badging: boolean;
+  wakeLock: boolean;
+  webrtc: boolean;
+  quota: boolean;
 }
 
 export interface BrowserLocationEnvironment {
@@ -14,9 +21,14 @@ export interface BrowserLocationEnvironment {
   navigator?: {
     geolocation?: Pick<Geolocation, "getCurrentPosition"> | null;
     mediaDevices?: { getUserMedia?: unknown } | null;
+    share?: unknown;
+    setAppBadge?: unknown;
+    wakeLock?: { request?: unknown } | unknown;
+    storage?: { estimate?: unknown } | null;
   } | null;
   indexedDB?: { open?: unknown } | null;
   barcodeDetector?: unknown;
+  rtcPeerConnection?: unknown;
 }
 
 function safeRead<T>(read: () => T): T | undefined {
@@ -34,6 +46,7 @@ function readBrowserEnvironment(): BrowserLocationEnvironment {
     navigator: safeRead(() => globalThis.navigator),
     indexedDB: safeRead(() => globalThis.indexedDB),
     barcodeDetector: safeRead(() => Reflect.get(globalThis, "BarcodeDetector")),
+    rtcPeerConnection: safeRead(() => Reflect.get(globalThis, "RTCPeerConnection")),
   };
 }
 
@@ -41,12 +54,29 @@ function readBrowserEnvironment(): BrowserLocationEnvironment {
 export function detectBrowserCapabilities(
   environment: BrowserLocationEnvironment = readBrowserEnvironment(),
 ): BrowserCapabilities {
+  const nav = safeRead(() => environment.navigator);
+  const barcodeDetector = typeof safeRead(() => environment.barcodeDetector) === "function";
+
+  const microphone = typeof safeRead(() => nav?.mediaDevices?.getUserMedia) === "function";
+  const share = typeof safeRead(() => nav?.share) === "function";
+  const badging = typeof safeRead(() => nav?.setAppBadge) === "function";
+  const wakeLock = typeof safeRead(() => (nav?.wakeLock as { request?: unknown } | null | undefined)?.request) === "function";
+  const webrtc = typeof safeRead(() => environment.rtcPeerConnection) === "function";
+  const quota = typeof safeRead(() => nav?.storage?.estimate) === "function";
+
   return {
     secureContext: safeRead(() => environment.secureContext) === true,
-    geolocation: typeof safeRead(() => environment.navigator?.geolocation?.getCurrentPosition) === "function",
-    camera: typeof safeRead(() => environment.navigator?.mediaDevices?.getUserMedia) === "function",
+    geolocation: typeof safeRead(() => nav?.geolocation?.getCurrentPosition) === "function",
+    camera: typeof safeRead(() => nav?.mediaDevices?.getUserMedia) === "function",
+    microphone,
     indexedDB: typeof safeRead(() => environment.indexedDB?.open) === "function",
-    barcodeDetector: typeof safeRead(() => environment.barcodeDetector) === "function",
+    barcodeDetector,
+    barcodeFallbackZxing: !barcodeDetector,
+    share,
+    badging,
+    wakeLock,
+    webrtc,
+    quota,
   };
 }
 

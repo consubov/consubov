@@ -207,7 +207,7 @@ export default function AdminLayout() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs opacity-80 shrink-0">Visualizar como:</span>
                 <Select value={viewMode} onValueChange={(v) => handleViewModeChange(v as ViewMode)}>
-                  <SelectTrigger className="h-7 w-[140px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
+                  <SelectTrigger aria-label="Visualizar como" className="h-7 w-[140px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

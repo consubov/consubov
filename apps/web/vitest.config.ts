@@ -8,6 +8,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Avoid the failing Windows fork startup path while retaining forks elsewhere.
+    pool: process.platform === "win32" ? "threads" : "forks",
+    maxWorkers: 2,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     // Tests must never depend on production Supabase credentials.

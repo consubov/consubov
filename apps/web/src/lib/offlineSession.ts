@@ -36,6 +36,20 @@ function getDb() {
   return dbPromise;
 }
 
+async function hasExistingSessionDatabase(): Promise<boolean | null> {
+  if (dbPromise) return null;
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
+  try {
+    const databases = await indexedDB.databases();
+    // A save/read may have started while enumeration was pending. Preserve that
+    // in-flight database promise instead of returning a stale absence result.
+    if (dbPromise) return null;
+    return databases.some((database) => database.name === DB_NAME);
+  } catch {
+    return null;
+  }
+}
+
 export interface PersistedAuthSession {
   user_id: string;
   email: string | null;
@@ -60,6 +74,7 @@ export async function saveAuthSession(data: PersistedAuthSession) {
 
 export async function getAuthSession(): Promise<PersistedAuthSession | null> {
   try {
+    if ((await hasExistingSessionDatabase()) === false) return null;
     const db = await getDb();
     return (await db.get(STORE_AUTH, "current")) ?? null;
   } catch (err) {
@@ -98,11 +113,11 @@ export function buildSessionPayload(
 // ============================================================
 
 export interface OfflineReferenceData {
-  pastos?: any[];
-  retiros?: any[];
-  produtos?: any[];
-  metas?: any[];
-  capatazConfig?: any;
+  pastos?: unknown[];
+  retiros?: unknown[];
+  produtos?: unknown[];
+  metas?: unknown[];
+  capatazConfig?: unknown;
   lastUpdated: string;
 }
 

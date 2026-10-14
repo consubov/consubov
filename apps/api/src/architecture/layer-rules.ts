@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, lstatSync, realpathSync, openSync, fstatSync, readSync, closeSync, constants } from "node:fs";
+import { join, resolve, relative, isAbsolute, sep } from "node:path";
 
 export type SourceFile = {
   path: string;
@@ -151,21 +151,48 @@ export function findForbiddenImports(files: SourceFile[]): Violation[] {
 
 export function collectSourceFiles(root: string): SourceFile[] {
   const files: SourceFile[] = [];
-
-  function walk(dir: string): void {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
-      if (statSync(full).isDirectory()) {
-        walk(full);
-      } else if (entry.endsWith(".ts") && !entry.endsWith(".test.ts")) {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- varredura arquitetural itera diretorios do proprio src
-        files.push({ path: full, content: readFileSync(full, "utf8") });
+  const base = resolve(root), maxBytes = 1024 * 1024;
+  const within = (value: string): boolean => {
+    const part = relative(base, value);
+    return !isAbsolute(part) && part !== ".." && !part.startsWith(".." + sep);
+  };
+  try {
+    const rootInfo = lstatSync(base);
+    if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory() || relative(base, realpathSync(base)) !== "") throw new Error();
+    function plain(full: string) {
+      const info = lstatSync(full);
+      if (!within(full) || info.isSymbolicLink() || !within(realpathSync(full)) || (!info.isDirectory() && !info.isFile())) throw new Error();
+      return info;
+    }
+    function walk(dir: string): void {
+      if (!plain(dir).isDirectory()) throw new Error();
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isSymbolicLink()) throw new Error();
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+          const before = plain(full);
+          if (!before.isFile() || before.size > maxBytes) throw new Error();
+          const fd = openSync(full, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+          try {
+            const opened = fstatSync(fd), current = plain(full);
+            if (!opened.isFile() || opened.size > maxBytes || opened.dev !== before.dev || opened.ino !== before.ino || current.dev !== opened.dev || current.ino !== opened.ino) throw new Error();
+            // Read at most limit+1 even if another local process grows the file.
+            const buffer = Buffer.alloc(maxBytes + 1); let used = 0;
+            while (used < buffer.length) {
+              const count = readSync(fd, buffer, used, buffer.length - used, null);
+              if (!count) break;
+              used += count;
+            }
+            if (used > maxBytes) throw new Error();
+            files.push({ path: full, content: buffer.subarray(0, used).toString("utf8") });
+          } finally { closeSync(fd); }
+        }
       }
     }
+    walk(base);
+  } catch {
+    throw new Error("Source collection requires a bounded plain local source tree");
   }
-
-  walk(root);
   return files;
 }

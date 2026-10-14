@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,19 +25,17 @@ import VincularProdutoGerenteModal from "@/components/produtos/VincularProdutoGe
 const PESO_SACO_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55];
 const TIPO_OPTIONS = ["Sal Mineral", "Proteico Energético", "Proteinado 0,1%", "Proteinado 0,3%", "Proteinado 0,5%", "Ração", "Suplemento", "Outro"];
 
-function tipoExibido(p: any): string {
+type Produto = Tables<"produtos">;
+
+function tipoExibido(p: Pick<Produto, "tipo" | "tipo_outro">): string {
   return p?.tipo === "Outro" && p?.tipo_outro ? p.tipo_outro : p?.tipo ?? "";
 }
 
-interface Produto {
-  id: string;
-  nome: string;
-  marca: string | null;
-  tipo: string | null;
-  peso_saco_kg: number;
-  preco_por_kg: number | null;
-  ativo: boolean | null;
-  administrador_id: string | null;
+function productErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
+    return error.message || fallback;
+  }
+  return fallback;
 }
 
 interface ProdutoForm {
@@ -76,6 +75,7 @@ interface ProdutosPageProps {
 
 export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: ProdutosPageProps) {
   const { roleData, user } = useAuth();
+  const dialogOpener = useRef<HTMLElement | null>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
   const [fazendasTodasGerente, setFazendasTodasGerente] = useState<{ id: string; nome: string }[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
   const [fazendasSelecionadas, setFazendasSelecionadas] = useState<string[]>([]);
-  const [vincularProduto, setVincularProduto] = useState<any | null>(null);
+  const [vincularProduto, setVincularProduto] = useState<Produto | null>(null);
 
   // Lista do painel/botão Vincular: restrita à fazenda do topo.
   const fazendasPermitidasIds = fazendasOpcoes.map((f) => f.id);
@@ -103,7 +103,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
         .from("gerentes_fazendas")
         .select("fazenda_id, fazendas(id, nome)")
         .eq("gerente_id", gerenteId);
-      const opcoes = ((data ?? []) as any[]).flatMap((item) => {
+      const opcoes = (data ?? []).flatMap((item) => {
         const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
         return fazenda?.id ? [{ id: fazenda.id as string, nome: fazenda.nome as string }] : [];
       });
@@ -168,7 +168,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
   function openEdit(p: Produto) {
     setEditingId(p.id);
     setFazendasSelecionadas(vinculos[p.id] ?? []);
-    const a = p as any;
+    const a = p;
     setForm({
       marca: a.marca ?? "",
       nome: p.nome,
@@ -219,7 +219,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
       if (consumo == null || mais == null || menos == null) return null;
       return consumo * (((mais + menos) / 2) / 100);
     };
-    const payload: any = {
+    const payload: TablesInsert<"produtos"> = {
       nome: form.nome.trim(),
       marca: form.marca.trim(),
       tipo: form.tipo,
@@ -253,22 +253,22 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
         if (modo === "admin") payload.administrador_id = roleData?.roleId ?? null;
         const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
         if (error) throw error;
-        produtoId = (data as any)?.id ?? null;
+        produtoId = data?.id ?? null;
       }
       if (produtoId) {
         try {
           await salvarVinculosProduto(produtoId, fazendasSelecionadas, escopo);
-        } catch (vErr: any) {
+        } catch (vErr: unknown) {
           // Produto novo sem vínculo ficaria invisível para o gerente: desfaz o cadastro.
           if (!editingId) await supabase.from("produtos").delete().eq("id", produtoId);
-          throw new Error(`não foi possível vincular às fazendas (${vErr?.message || "erro"})`);
+          throw new Error(`não foi possível vincular às fazendas (${productErrorMessage(vErr, "erro")})`);
         }
       }
       if (!editingId) toast.success("Produto cadastrado!");
       setDialogOpen(false);
       loadProdutos(fazendasPermitidasIds);
-    } catch (err: any) {
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+    } catch (err: unknown) {
+      toast.error(`Erro: ${productErrorMessage(err, "Erro desconhecido")}`);
     } finally {
       setSaving(false);
     }
@@ -325,10 +325,10 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
               <TableBody>
                 {produtos.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{(p as any).marca || "—"}</TableCell>
+                    <TableCell className="font-medium">{p.marca || "—"}</TableCell>
                     <TableCell>{p.nome}</TableCell>
                     <TableCell>
-                      {(p as any).tipo ? (
+                      {p.tipo ? (
                         <Badge variant="outline" className="text-xs">{tipoExibido(p)}</Badge>
                       ) : "—"}
                     </TableCell>
@@ -364,7 +364,9 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="produto-dialog-desc">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="produto-dialog-desc" aria-modal="true"
+          onOpenAutoFocus={() => { dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+          onCloseAutoFocus={(event) => { event.preventDefault(); dialogOpener.current?.focus(); }}>
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="gap-1 px-2">
@@ -386,9 +388,9 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
               <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Tecnocorte Águas HD" />
             </div>
             <div className="space-y-2">
-              <Label>Tipo *</Label>
+              <Label htmlFor="produto-tipo">Tipo *</Label>
               <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v, tipo_outro: v === "Outro" ? form.tipo_outro : "" })}>
-                <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                <SelectTrigger id="produto-tipo"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                 <SelectContent>
                   {TIPO_OPTIONS.map((t) => (
                     <SelectItem key={t} value={t}>{t}</SelectItem>

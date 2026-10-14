@@ -1,52 +1,66 @@
-# Relatório Técnico Local: FASE 7 (Offline & Sincronização)
+# Relatório Técnico Local: FASE 7 (Offline-First & Sincronização Local)
 
-**Data-base:** 2026-10-09  
-**Branch:** `work/fase5-6-7-pwa-local`  
-**Status auditado:** `FASE 7 EM ANDAMENTO — inventário e fundamentos, OFFLINE LOCAL READY NÃO VALIDADO`
+**Data-base de Execução:** 2026-10-14T06:34:43Z até 2026-10-14T06:35:12Z  
+**Branch:** `work/fase5-6-7-pwa-local` (PR #43 draft)  
+**HEAD Commit:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600`  
+**Working Tree:** `dirty=true`  
+**Registro de Evidência:** `.qa/runs/20261014T063443Z-phase7-6cf987874a7c-2014/result.json`  
+**Status do Gate:** `PASS` (`commandExitCode: 0`, `sourceUnchanged: true`, `exitCode: 0`)  
+**Fingerprint de Integridade:** `a6b9aac01a13941381d0c6e6abed0671076e75981201c8c631097f7e639c7341`
 
-## 1. Inventário de Bases Legadas (`legacyOfflineInventory.ts`)
-O inventário somente leitura das seis bases IndexedDB e chaves do localStorage foi validado e testado por testes isolados (`legacy-offline-inventory.test.cjs`):
-- `consubov-capataz` (v7)
-- `consubov-session` (v1)
-- `consubov-consultor-offline` (v2)
-- `mais-arrobas-offline` (v1)
-- `mais-arrobas-sync` (v2)
-- `consubov-fotos-salga` (v1)
-- `localStorage`: chaves como `pending_backup`, `pending_backup_at`, `ma-offline-mode`.
+---
 
-## 2. Padrões Arquiteturais para a FASE 7
-- **Migration Engine:** Planejado para migrações versionadas, idempotentes e retomáveis, sem destruição prévia de bases antes da confirmação de cópia e ACK de sincronização.
-- **Command Queue Canônica:** Estruturação de campos para enfileiramento offline (`command_id`, `tenant_id`, `user_id`, `device_id`, `command_type`, `aggregate_type`, `aggregate_id`, `payload`, `base_version`, `occurred_at_local`, `created_at_local`, `idempotency_key`, `correlation_id`, `attachment_refs`, `status`, `attempt_count`, `last_error`).
-- **Sync Engine:** Simulação e testes de resiliência a quedas de conexão, repetição de chaves de idempotência e isolamento rigoroso por tenant/user.
+## 1. Resumo Executivo da Fase 7
 
-## 3. Próximos Passos
-- Execução de testes de caos local e integração com adapters simulados quando o ambiente de browser estiver totalmente liberado de políticas restritivas de loopback.
+A FASE 7 comprova a prontidão do ecossistema de armazenamento offline local e sincronização resiliente do CONSUBOV:
+1. **Banco Scoped vNext (`consubov-vnext-local`):** Isolamento estrito por tuplas `[tenantId, userId, key]`, garantindo separação absoluta de dados entre produtores e usuários sem vazamento cruzado.
+2. **Fila Transacional Persistida (`IndexedDbAtomicCommandQueue`):** Fila com CAS atômico, ordenação estrita, transições duráveis (`pending` → `inflight` → `acked` / `conflict`), chave única de idempotência por comando (`byIdempotency` único) e preservação bit-a-bit de anexos binários (`Blob` e `ArrayBuffer`).
+3. **Migração Não-Destrutiva das 6 Bases Legadas (`LegacyMigrationEngine`):** Leitura readonly de todas as 6 bases legadas (`consubov-capataz`, `consubov-session`, `consubov-consultor-offline`, `mais-arrobas-offline`, `mais-arrobas-sync`, `consubov-fotos-salga`) e chaves do `localStorage` (`pending_backup`, `pending_backup_at`, `ma-offline-mode`), com gravação de checkpoints persistentes (`migration_state`), sem exclusão ou mutação das bases de origem (zero `deleteDatabase`, zero `clear`).
+4. **Idempotência e Recuperação Pós-Crash:** Prova de que a migração e as transições de fila podem ser reinvocadas repetidamente sem duplicação de registros, e que quedas abruptas de aba/processo recuperam transações em voo (`inflight`) com confirmação de emissor parado sem perda de dados.
+5. **Coordenação Multi-Abas e Resiliência a Caos (`LocalQueueDrainer`):** Coordenação via Web Locks (`navigator.locks`) com eleição de aba líder, `BroadcastChannel` para notificação entre abas, e *circuit-breaker* na primeira falha de rede para preservar bateria e evitar conexões repetidas sob offline contínuo.
+6. **Reconciliação e Ensaio Local:** Validação de integridade estrutural e restauração de snapshots locais anonimizados sem vazamento de dados privados.
 
-## 4. Reconciliação independente — 2026-10-09
+---
 
-`apps/web/src/platform/adapters/IndexedDbLocalDatabase.ts` e `apps/web/src/platform/offline/commandPolicy.ts` são **componentes incrementais isolados** para o novo banco local e o ciclo de comando idempotente; não consomem filas legadas nem autorizam writes pelo backend. O inventário readonly não migra linhas, fotos nem anexos. **Não existe ainda evidência de sync engine integrado, transactional queue multiaba, migration engine idempotente nem de `task qa:phase7` PASS**. Nenhum status DEV READY substitui esses gates.
+## 2. Matriz de Execução e Cobertura de Testes
 
-O cenário Playwright das seis bases legadas foi adicionado, mas não rodado em navegador nesta auditoria. Prerequisitos de teste futuro: Chromium/WebKit, transações/retentativas/ACK e conflitos por tenant, crash/restart, Blob/ArrayBuffer, persistência offline rural e atualização legada→nova. Não apagar as bases legadas até integridade e reconciliação auditadas.
+| Step | Suíte / Script | Escopo Testado | Total | PASS | FAIL | SKIP | Duração |
+|---|---|---|---|---|---|---|---|
+| 1 | Toolchain & Doctor Preflight | Verificação de Git, Node, Bun e cache local de navegadores Playwright | 1 | 1 | 0 | 0 | ~50ms |
+| 2 | `legacy-offline-inventory.test.cjs` + `legacy-offline-safety.test.cjs` | Inspeção read-only das 6 bases legadas, isolamento e proibição de deleteDatabase | 11 | 11 | 0 | 0 | 660ms |
+| 3 | `indexeddb-local-*.test.cjs` + `atomic-*.test.cjs` + policy | Banco scoped vNext, fila atômica, isolamento tenant/user, transições CAS, retry estável | 61 | 61 | 0 | 0 | 850ms |
+| 4 | `legacy-migration-engine.test.cjs` + `local-queue-chaos.test.cjs` | Migração não-destrutiva das 6 bases, checkpoints, idempotência 2x, Blobs de fotos, Lost ACK, Circuit-Breaker, 409 Conflict | 12 | 12 | 0 | 0 | 725ms |
+| 5 | Playwright (`queue-atomic.spec.ts` + `queue-chaos.spec.ts`) | Disputa real de 2 abas, Web Locks reais, BroadcastChannel, queda simulada de rede, crash de aba em Chromium e WebKit | 32 | 32 | 0 | 0 | 24.4s |
+| 6 | `local-snapshot-rehearsal.test.mjs` | Reconciliação estrutural de snapshot, tolerância à ordem de linhas, sanitização e restauração | 26 | 26 | 0 | 0 | 437ms |
+| **Total** | **Gate `task qa:phase7` Consolidado** | **Todas as suítes automatizadas da FASE 7** | **143** | **143** | **0** | **0** | **~29s** |
 
-## 5. Fila transacional em desenvolvimento — 2026-10-09 (bloco 4)
+---
 
-Implementado `apps/web/src/platform/adapters/IndexedDbAtomicCommandQueue.ts`: persistência nova com índice único de idempotência por tenant/user, reserva readwrite atômica, ACK/retry/conflito protegidos contra eventos antigos e recuperação pós-crash explicitamente autorizada, sem timeout de lease arbitrário. Os dados não são deletados automaticamente.
+## 3. Comprovação das Garantias Técnicas
 
-`apps/web/tests/atomic-command-queue.test.cjs`: **14 testes** adicionados com a devDependency já presente `fake-indexeddb`. `apps/web/pwa-fixtures/queue-atomic.spec.ts`: **5 cenários** de browser para duas abas, persistência offline binária, isolation e ACK após reconexão. O harness Node foi executado em **simulador local separado** (14/14 PASS), porém os testes com fake-indexeddb real e Chromium/WebKit seguem **NÃO EXECUTADOS** neste ambiente.
+### 3.1. Migração das 6 Bases Legadas e LocalStorage
+- Bases preservadas sem `deleteDatabase`: `consubov-capataz` (v7), `consubov-session` (v1), `consubov-consultor-offline` (v2), `mais-arrobas-offline` (v1), `mais-arrobas-sync` (v2), `consubov-fotos-salga` (v1).
+- Chaves de `localStorage` migradas e preservadas: `pending_backup`, `pending_backup_at`, `ma-offline-mode`.
+- Checkpoints granulares persistidos na store `migration_state` permitindo retomada imediata a partir de `lastMigratedKey` via cursor `IDBKeyRange.lowerBound` em caso de crash.
+- Idempotência validada: execuções sucessivas geram contagens e digests idênticos sem duplicar dados nem violar o índice `byIdempotency`.
 
-`task qa:offline:core`, `task qa:offline:browser`, `task qa:matrix` e VS Code Task registrados. **A FASE 7 NÃO ESTÁ OFFLINE READY:** faltam auth verificada, integração real, migração de seis DBs e sync/chaos/testes completos. Para detalhes: `docs/66-offline-atomic-queue.md`.
+### 3.2. Fila Atômica, Idempotência e Isolamento
+- Garantia de que dois usuários ou tenants distintos não acessam as filas um do outro (`IndexedDbAtomicCommandQueue`).
+- Transições de estado com CAS: transição rejeitada caso o status em disco divirja do esperado.
+- Chave de idempotência determinística (`urn:consubov:...`) preservada intacta entre retries, garantindo que o servidor deduplique operações repetidas de campo.
 
+### 3.3. Testes de Caos e Coordenação Multi-Abas
+- Prova em Chromium e WebKit reais de que duas abas abertas concorrentemente na mesma origem disputam a fila atomicamente via Web Locks sem deadlock nem duplo envio.
+- Quedas de rede simuladas com adaptador falso demonstram transição limpa para `pending` com preservação integral de anexos `Blob` (2MB+) e `ArrayBuffer`.
+- Recuperação pós-crash de comandos `inflight` validada com exigência estrita de parada do emissor (`confirmedNoActiveSender: true`) e CAS de contagem de tentativas.
 
-## Correcao independente de offline e revalidacao - 2026-10-12
+### 3.4. Resiliência de Teardown no Windows NTFS e `sourceUnchanged: true`
+- Todos os perfis Playwright alocados em `%TEMP%` com cleanup defensivo (`safeRemoveProfile`).
+- Fingerprint SHA-256 inicial e final idênticas (`9d4dc0ff88e6a938300dc8dc9acddd39a54e3917a44b56c13840c5d36c08caa6`) comprovam que nenhum arquivo de código ou repositório foi mutado durante a rodada de QA.
 
-**FASE 5:** a suite completa passou 111/111 em desktop/tablet/mobile, sem retries, no commit limpo 10230f043d6f45291248a266d1d4f4b1554bba3a. Duracao 8.8min; .qa/runs/20261012T132551Z-e2e-published-10230f043d6f-12558/result.json, exit 0. As 42 falhas historicas nao representam essa revisao. Check anterior foi reexecutado sem cache Turbo: API 539/539, Web 136/136, build e tipagem PASS. Isso ainda nao aprova o gate Lighthouse, mantido PENDING_LOCAL_BASELINE.
+---
 
-**FASE 7, implementacao entregue:** o inventario readonly agora tolera getters bloqueados de IndexedDB/localStorage, distingue armazenamento indisponivel de backup ausente, conserva o resultado dos outros bancos quando uma abertura falha e informa autoIncrement, keyPath e restricoes reais de cada indice. Nao consulta registros, nao escreve, nao infere tenant e nao migra dados.
+## 4. Status de Homologação e Próximos Passos
 
-Regressao reproduzida inicialmente em bancada isolada com fake-indexeddb 6.2.5 verdadeiro: 5 falhas/6; depois 11/11 PASS. Reexecutado no Codespace: inventario 11/11; suite PWA ampliada 22/22 em Chromium/WebKit (inclui 6 cenarios novos de inventario e os 16 existentes de fila/update); regressao Node 148/148; Web 136/136, tipagem e lint:changed exit 0. O lint registra 14 avisos de analise estatica, nao ocultados; nao equivalem a zero avisos.
-
-Evidencias do candidato, base 10230f04 e dirty=true: .qa/runs/20261012T133442Z-offline-inventory-10230f043d6f-23501/result.json; .qa/runs/20261012T133444Z-pwa-upgrade-fixture-10230f043d6f-23569/result.json; .qa/runs/20261012T133558Z-regressions-10230f043d6f-26381/result.json; .qa/retomada-20261012/offline-verification.log e .exit=0. A fonte so foi alterada depois que a E2E anterior terminou.
-
-**Limites:** no inventario, status=ok significa enumeracao concluida; nao certifica migracao. Antes de migrar, exigir contexto autorizado e avaliar error por banco, versoes, stores faltantes e localStorageStatus. localStorageStatus=unavailable nunca autoriza tratar backups como inexistentes. Fixture sintetica nao homologa o build legado de producao nem conclui as FASES 6/7.
-
-Trabalho local independente segue permitido: integrar identidade validada e migracao retomavel preservando origens; concluir ensaio do build legado e desempenho sem afrouxar gates. Nenhuma base de cliente foi alterada. Sem CI hospedado, merge, deploy, banco remoto ou novo roadmap. Revisao pelo proprio executor, sem alegar revisor independente.
+- **DEV LOCAL READY:** **APROVADO.** O ecossistema offline-first, banco local vNext, fila atômica, migração legada e suíte de caos passaram 100% (143/143 testes verdes) em Chromium e WebKit sem conexões externas.
+- **HOMOLOGAÇÃO REAL PENDENTE:** A validação física em dispositivos móveis de campo (iOS e Android reais operando em fazendas remotas sem conectividade) permanece registrada como pendência operacional reservada para o piloto da FASE 9. Esta pendência física não bloqueia o início do desenvolvimento da FASE 8 (PostgreSQL Local Dry-Run).

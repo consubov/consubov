@@ -2,7 +2,10 @@
 
 **Data-base:** 2026-10-13  
 **Missão:** continuar e concluir, até onde as evidências locais permitirem, as FASES 5–9 do CONSUBOV no **VS Code do computador do responsável**, preservando a aplicação Web já existente.  
-**Status:** ordem operacional **complementar**, vinculada ao PRD aprovado `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`; **não criar novo PRD, branch ou PR para começar**.  
+**Status atual:** FASE 5 concluída no escopo local como **QA APROVADO / WEB READY LOCAL**, com fonte estável no gate integral de 2026-10-14. A evidência canônica é `.qa/runs/20261014T055726Z-phase5-6cf987874a7c-349/result.json`, HEAD/final HEAD `6cf987874a7c6bf20c1bb9243cfb4c36a7331600`, fingerprint `6c67de890b6fbd78f848fc2103a8ef50cba74dce7ac7f044c60841fc36aacb32`, árvore dirty preservada, 196 Web, 543 API, 171 E2E, 122 Edge, 5 HTTP, 32 SW, 12 browser producers e seis Lighthouse strict PASS. A revisão independente está registrada em `.qa/task3-phase5-closure-approval-review.md`.
+**Status operacional:** esta ordem permanece **complementar**, vinculada ao PRD principal `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`; **não criar novo PRD, branch ou PR para começar**.
+
+**Limite do aceite:** após o gate e a conferência da fonte, outro executor acrescentou três arquivos `LegacyMigrationEngine` de implementação/testes da FASE 7. Foram preservados e não integram o aceite da FASE 5; exigem QA próprio. A aprovação pertence ao fingerprint acima, sem aprovação automática do checkout posterior. Evidência: `.qa/task3-final-documentation-verification.json` e `docs/qa/phase5-local-report.md`.
 **Repositório autorizado:** `mmatteuus/consubov` — exclusivamente.  
 **Branch de trabalho:** `work/fase5-6-7-pwa-local`. **PR único:** `#43` (draft → `main`, sem merge autorizado).  
 **Checklist Mestre vivo:** https://www.notion.so/3ec8e0bd0f4d816d9bb5d807e8e2cdc9
@@ -16,7 +19,7 @@ Leia nesta ordem, usando sempre os arquivos **atuais após o pull**:
 1. `CONSUBOV_HANDOFF_CONTINUIDADE.md` e `CONSUBOV_INSTRUCOES_MESTRE_PROJETO.md`;
 2. Checklist Mestre **no Notion**, e `CONSUBOV_CHECKLIST_MESTRE.md`;
 3. `AGENTS.md`, `docs/README.md`, `instructions/README.md`;
-4. **PRD principal**: `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md` e PRD/HANDOFF específico da FASE 5, se pertinente;
+4. **PRD principal**: `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`; os documentos específicos concluídos da FASE 5 foram arquivados em `docs/archive/fase5-2026-10-14/` após o aceite local;
 5. `docs/68-sincronizacao-local-e-agentes.md`, `docs/qa/QA-LOCAL-VSCODE-GO-TASK.md`, `Taskfile.yml` e `package.json`;
 6. `docs/qa/qa-real-monorepo-2026-10-13.md`, `docs/62-offline-legacy-migration.md` e documentação do módulo que for alterado.
 
@@ -65,7 +68,9 @@ git diff --check
 - Na última verificação havia **3 branches remotas**: `main`, a branch ativa e `codespace-probable-acorn-v6vvq9rrvjjgcw6w` (**backup**, não branch de desenvolvimento). Não apagar o backup sem auditar se contém trabalho exclusivo, proteger sua recuperação e obter autorização de exclusão.
 - Preservar os **quatro stashes conhecidos do Codespace** e quaisquer stashes/worktrees do computador local; não reaplicar backups antigos automaticamente.
 
-## 3. Estado comprovado antes desta entrega (não é aceite das fases)
+## 3. Estado histórico anterior ao fechamento da FASE 5
+
+Os registros abaixo são históricos da retomada e não substituem a evidência canônica atual do status acima. Eles permanecem para rastreabilidade e não devem ser relidos como reprovação da FASE 5 atual.
 
 - **Base de código QA:** `396bf2ff8411a47343e517683c168891c1b99f7b`: `task qa:check` PASS (API **539/539**, Web **171/171**, build e typecheck), offline core **61/61**, PWA smoke **25/25**, browser offline Chromium/WebKit **22/22**, build/precache **349/349**, contratos FASE 5 **10/10** e ensaio local **26/26**. Evidências em `docs/qa/qa-real-monorepo-2026-10-13.md`.
 - **Base documental da retomada:** `f15fa4bc3725e8de9c089b01e4edf9ed1dff7a75`: `task qa:regressions` **191/191 PASS** em árvore limpa; `.qa/runs/20261013T192749Z-regressions-f15fa4bc3725-22980/result.json`.
@@ -115,7 +120,9 @@ task qa:preprod:rehearsal
 
 **Escopo:** finalizar `task qa:phase5`; verificar testes API/Web, lint, tipagem, build, fluxos E2E Playwright, acessibilidade Axe, Lighthouse com baseline medido, cobertura, segurança/segredos, integração e comportamento existente em desktop e mobile.
 
-**Critérios de aceite:** suíte integral local PASS em fonte estável e SHA registrado, zero falha material P0, sem regressão visual/funcional, baseline Lighthouse real aprovado; relatório em `docs/qa/phase5-local-report.md`, Checklist Mestre e Notion atualizados. Caso contrário, **FASE 5 PENDENTE/REPROVADA**.
+**Status de aceite:** `QA: APROVADO / WEB READY LOCAL` no escopo local, comprovado pelo registro canônico e revisão independente indicados no status deste handoff. A medição final registrou home performance `67/68/62`, login `84/82/91`, acessibilidade `100` em todos os seis relatórios e preservou os budgets aprovados. O relatório permanente e o Checklist Mestre devem manter a distinção entre este aceite local e a homologação física/produção.
+
+**Limites:** `HOMOLOGAÇÃO REAL PENDENTE` para iOS/Android, GPS/QR, conectividade rural e operação de campo; produção/release, banco/migrations remotos, deploy, secrets, CI hospedado e sincronização administrativa no Notion permanecem fora deste aceite. As FASES 6–9 têm gates e critérios independentes; o encerramento local da FASE 5 não as aprova.
 
 ### FASE 6 — PWA e recursos do dispositivo
 

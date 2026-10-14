@@ -43,6 +43,7 @@ const leadSchema = z.object({
 const NEON = "#22FF88";
 const NEON_DIM = "rgba(34,255,136,0.55)";
 const BG = "#05070A";
+const PT_BR_NUMBER_FORMATTER = new Intl.NumberFormat("pt-BR");
 const CARD_BG = "rgba(12,18,16,0.65)";
 const BORDER = "rgba(34,255,136,0.18)";
 const LEAD_SUBMIT_COOLDOWN_MS = 30_000;
@@ -168,7 +169,7 @@ function Counter({ to, suffix = "", prefix = "", duration = 2000 }: { to: number
   return (
     <span ref={ref} style={{ color: NEON, textShadow: `0 0 24px ${NEON_DIM}` }}>
       {prefix}
-      {n.toLocaleString("pt-BR")}
+      {PT_BR_NUMBER_FORMATTER.format(n)}
       {suffix}
     </span>
   );

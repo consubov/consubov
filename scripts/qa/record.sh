@@ -6,37 +6,39 @@ shift
 if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then echo 'Nome de teste invalido.' >&2; exit 2; fi
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
-git_sha="$(git rev-parse HEAD 2>/dev/null || echo no-git)"
-git_dirty="false"
-if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then git_dirty="true"; fi
+# Recorded QA uses this repository's binaries even when another workspace supplied a cache.
+export PLAYWRIGHT_BROWSERS_PATH="$repo_root/.qa/tools/playwright-browsers"
+initial_source="$(node scripts/qa/source-state.mjs capture)"
+git_sha="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).commit)' "$initial_source")"
+git_dirty="$(node -e 'process.stdout.write(String(JSON.parse(process.argv[1]).workingTreeDirty))' "$initial_source")"
 started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-short_sha="$(printf '%s' "$git_sha" | cut -c1-12)"
+short_sha="${git_sha:0:12}"
 run_id="$(date -u +%Y%m%dT%H%M%SZ)-$name-$short_sha-$$"
-run_dir="$repo_root/.qa/runs/$run_id"
+# Keep the Node evidence path relative to cwd: Git Bash /d/... is not a native Node path.
+run_dir=".qa/runs/$run_id"
 mkdir -p "$run_dir"
 log_file="$run_dir/output.log"
-printf '[qa] %s | %s | git=%s | dirty=%s\n' "$name" "$started" "$git_sha" "$git_dirty" | tee "$log_file"
 set +e
+printf '[qa] %s | %s | git=%s | dirty=%s\n' "$name" "$started" "$git_sha" "$git_dirty" | tee "$log_file"
+header_exits=("${PIPESTATUS[@]}")
 "$@" 2>&1 | tee -a "$log_file"
-exit_code=${PIPESTATUS[0]}
-set -e
+pipeline_exits=("${PIPESTATUS[@]}")
+# Capture the entire array immediately; any later command resets PIPESTATUS.
+command_exit=${pipeline_exits[0]}
+logger_exit=${pipeline_exits[1]}
+if ((logger_exit == 0)); then logger_exit=${header_exits[1]}; fi
+if ((logger_exit == 0)); then logger_exit=${header_exits[0]}; fi
+final_source="$(node scripts/qa/source-state.mjs capture)"
+capture_exit=$?
+if ((capture_exit != 0)); then final_source='{"commit":"no-git","branch":null,"workingTreeDirty":true,"fingerprint":null}'; fi
 finished="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-export QA_NAME="$name" QA_STARTED="$started" QA_FINISHED="$finished" QA_SHA="$git_sha" QA_DIRTY="$git_dirty" QA_EXIT_CODE="$exit_code" QA_RUN_DIR="$run_dir"
-node <<'NODE'
-const fs = require('node:fs');
-const path = require('node:path');
-const env = process.env;
-const result = {
-  task: env.QA_NAME,
-  startedAt: env.QA_STARTED,
-  finishedAt: env.QA_FINISHED,
-  commit: env.QA_SHA,
-  workingTreeDirty: env.QA_DIRTY === 'true',
-  exitCode: Number(env.QA_EXIT_CODE),
-  status: Number(env.QA_EXIT_CODE) === 0 ? 'PASS' : 'FAIL',
-  log: 'output.log',
-};
-fs.writeFileSync(path.join(env.QA_RUN_DIR, 'result.json'), JSON.stringify(result, null, 2) + '\n');
-NODE
-printf '[qa] %s (exit=%s) -> %s\n' "$name" "$exit_code" "$run_dir/result.json"
+export QA_NAME="$name" QA_STARTED="$started" QA_FINISHED="$finished" QA_RUN_DIR="$run_dir"
+export QA_INITIAL_SOURCE="$initial_source" QA_FINAL_SOURCE="$final_source"
+export QA_COMMAND_EXIT="$command_exit" QA_LOGGER_EXIT="$logger_exit"
+node scripts/qa/source-state.mjs record
+exit_code=$?
+# Preserve the child even when the Node evidence writer itself is unavailable.
+if ((command_exit != 0)); then exit_code=$command_exit; fi
+set -e
+printf '[qa] %s (exit=%s) -> %s/%s/result.json\n' "$name" "$exit_code" "$repo_root" "$run_dir"
 exit "$exit_code"

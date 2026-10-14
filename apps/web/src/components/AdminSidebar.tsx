@@ -79,7 +79,7 @@ export function AdminSidebar() {
 
   return (
     <Sidebar collapsible="offcanvas" className="border-r border-border">
-      <SidebarContent className="bg-sidebar pt-2">
+      <SidebarContent role="navigation" aria-label="Navegação administrativa" className="bg-sidebar pt-2">
         <SidebarGroup>
           {!collapsed && (
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider mb-1">

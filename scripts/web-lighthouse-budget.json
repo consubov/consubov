@@ -1,29 +1,475 @@
 {
-  "status": "PENDING_LOCAL_BASELINE",
-  "baselineCommit": null,
-  "reason": "Thresholds must be set using measured local reports before the FASE 5 gate can pass.",
+  "status": "APPROVED_BASELINE",
+  "kind": "local-cold-six-report-nonregression-budget",
+  "baselineCommit": "b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b",
+  "baselineCommitRole": "parent-reference",
+  "workingTreeDirty": true,
+  "measuredSourceFingerprint": "8ed0131ff0a07fac6b0104d40e1354b1344adea86ee51bdff89fb669b86a4d5d",
+  "sourceAtStart": {
+    "commit": "b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b",
+    "branch": "work/fase5-6-7-pwa-local",
+    "workingTreeDirty": true,
+    "fingerprint": "8ed0131ff0a07fac6b0104d40e1354b1344adea86ee51bdff89fb669b86a4d5d",
+    "captureReason": null
+  },
+  "sourceAtFinish": {
+    "commit": "b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b",
+    "branch": "work/fase5-6-7-pwa-local",
+    "workingTreeDirty": true,
+    "fingerprint": "8ed0131ff0a07fac6b0104d40e1354b1344adea86ee51bdff89fb669b86a4d5d",
+    "captureReason": null
+  },
+  "measuredAt": {
+    "startedAt": "2026-10-14T01:54:43.834Z",
+    "finishedAt": "2026-10-14T01:56:48.76Z"
+  },
   "pages": {
     "home": {
       "minimum": {
-        "performance": null,
-        "accessibility": null
+        "performance": 0.5,
+        "accessibility": 1
       },
       "maximum": {
-        "lcpMs": null,
-        "cls": null,
-        "tbtMs": null
+        "lcpMs": 7700,
+        "cls": 0,
+        "tbtMs": 575
       }
     },
     "login": {
       "minimum": {
-        "performance": null,
-        "accessibility": null
+        "performance": 0.72,
+        "accessibility": 1
       },
       "maximum": {
-        "lcpMs": null,
-        "cls": null,
-        "tbtMs": null
+        "lcpMs": 4900,
+        "cls": 0,
+        "tbtMs": 275
       }
     }
+  },
+  "observedSummary": {
+    "home": {
+      "performance": {
+        "min": 0.55,
+        "median": 0.56,
+        "max": 0.74,
+        "values": [
+          0.55,
+          0.56,
+          0.74
+        ]
+      },
+      "accessibility": {
+        "min": 1,
+        "median": 1,
+        "max": 1,
+        "values": [
+          1,
+          1,
+          1
+        ]
+      },
+      "lcpMs": {
+        "min": 4673.130000000001,
+        "median": 6303.53025,
+        "max": 6967.767500000001,
+        "values": [
+          4673.130000000001,
+          6303.53025,
+          6967.767500000001
+        ]
+      },
+      "cls": {
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "values": [
+          0,
+          0,
+          0
+        ]
+      },
+      "tbtMs": {
+        "min": 201.65750000000003,
+        "median": 438,
+        "max": 509,
+        "values": [
+          201.65750000000003,
+          438,
+          509
+        ]
+      }
+    },
+    "login": {
+      "performance": {
+        "min": 0.77,
+        "median": 0.77,
+        "max": 0.89,
+        "values": [
+          0.77,
+          0.77,
+          0.89
+        ]
+      },
+      "accessibility": {
+        "min": 1,
+        "median": 1,
+        "max": 1,
+        "values": [
+          1,
+          1,
+          1
+        ]
+      },
+      "lcpMs": {
+        "min": 2563.228,
+        "median": 4415.755,
+        "max": 4434.341,
+        "values": [
+          2563.228,
+          4415.755,
+          4434.341
+        ]
+      },
+      "cls": {
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "values": [
+          0,
+          0,
+          0
+        ]
+      },
+      "tbtMs": {
+        "min": 168,
+        "median": 218,
+        "max": 240,
+        "values": [
+          168,
+          218,
+          240
+        ]
+      }
+    }
+  },
+  "reports": [
+    {
+      "page": "home",
+      "index": 1,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-1/lighthouse-home.json",
+      "sha256": "94bbc6007f0f84a6de4ef03ba072bf1f7fbca63f5b337234fd42fe379b8a85dc",
+      "metrics": {
+        "performance": 0.56,
+        "accessibility": 1,
+        "lcpMs": 6303.53025,
+        "cls": 0,
+        "tbtMs": 509
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 39,
+        "deniedHttp": 6,
+        "deniedConnect": 15,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    },
+    {
+      "page": "login",
+      "index": 1,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-1/lighthouse-login.json",
+      "sha256": "f3791d19b1f52e6cd915cef2fa72c99157e74506ce10b329f7b5dd0d6617b313",
+      "metrics": {
+        "performance": 0.89,
+        "accessibility": 1,
+        "lcpMs": 2563.228,
+        "cls": 0,
+        "tbtMs": 168
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 29,
+        "deniedHttp": 2,
+        "deniedConnect": 12,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    },
+    {
+      "page": "home",
+      "index": 2,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-2/lighthouse-home.json",
+      "sha256": "caa79c6735d1729192cfec50f762ab1b0efdaa2d099ce8f67fd5c037bfc0e576",
+      "metrics": {
+        "performance": 0.55,
+        "accessibility": 1,
+        "lcpMs": 6967.767500000001,
+        "cls": 0,
+        "tbtMs": 438
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 39,
+        "deniedHttp": 6,
+        "deniedConnect": 12,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    },
+    {
+      "page": "login",
+      "index": 2,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-2/lighthouse-login.json",
+      "sha256": "b3400772275973d8b1df824ef6ffa2fa19e45b5b595c21adb3ed10a5588813b4",
+      "metrics": {
+        "performance": 0.77,
+        "accessibility": 1,
+        "lcpMs": 4434.341,
+        "cls": 0,
+        "tbtMs": 240
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 29,
+        "deniedHttp": 2,
+        "deniedConnect": 15,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    },
+    {
+      "page": "home",
+      "index": 3,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-3/lighthouse-home.json",
+      "sha256": "64faa56078da430c8da5c655f166cdd6e21bf8939a16690a70536f8c8df2637c",
+      "metrics": {
+        "performance": 0.74,
+        "accessibility": 1,
+        "lcpMs": 4673.130000000001,
+        "cls": 0,
+        "tbtMs": 201.65750000000003
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 39,
+        "deniedHttp": 6,
+        "deniedConnect": 12,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    },
+    {
+      "page": "login",
+      "index": 3,
+      "report": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/run-3/lighthouse-login.json",
+      "sha256": "50a818af1bbb293d4af59b52bbcd93c61fc77b9a7208774466f340728fbdecd5",
+      "metrics": {
+        "performance": 0.77,
+        "accessibility": 1,
+        "lcpMs": 4415.755,
+        "cls": 0,
+        "tbtMs": 218
+      },
+      "browserVersion": "Chrome/156.0.8078.4",
+      "profileMarkerVerified": true,
+      "network": {
+        "allowed": 29,
+        "deniedHttp": 2,
+        "deniedConnect": 14,
+        "deniedUpgrade": 0,
+        "peerResets": 0,
+        "errors": 0,
+        "timeouts": 0,
+        "oversized": 0
+      }
+    }
+  ],
+  "manifest": {
+    "path": ".qa/phase5-built-audits-20261014T015402Z-1102/lighthouse-session-pTaqYH/measurements.json",
+    "sha256": "b2532ab2fdcd8775d7dcaddc1bc35e1d9e1a55e0c0e1953ac19a40db2d5e3daa"
+  },
+  "recorder": {
+    "path": ".qa/runs/20261014T015402Z-phase5-built-audits-b4eb7f1f29e6-1092/result.json",
+    "sha256": "c7110e856f14448638d6968a88c19b3447b07b983dc0860e49d9ff19a888c193",
+    "status": "PASS",
+    "sourceUnchanged": true,
+    "scope": "PARTIAL real built Web audits; not whole FASE5"
+  },
+  "buildPreflight": {
+    "recordedPass": true,
+    "precacheAssets": 349,
+    "builtAssets": 349,
+    "buildDirectory": "apps/web/dist",
+    "buildVersion": {
+      "version": "1791942697825",
+      "appVersion": "1.146.0"
+    },
+    "artifactSha256": {
+      "index.html": "fb36b7d02157b01d1f0e36449e95067fa5454db3f34521d7c6b4c8df70218486",
+      "sw.js": "a810c7dcd1f57432ba7a4d72753348a20a9bb723affe51534fbce2c0b963e736",
+      "version.json": "4ea3ba8c14900adc7d6da60fed17b5d34734037683b350135ae952fc1dc9e6e7",
+      "manifest.json": "496649032e432b949cdd2caaad6f722ef4d79b760869b81e9a821fb44c186d69"
+    },
+    "provenance": "Fresh task qa:pwa:build-preflight recorded 2026-10-14T01:51:35Z to01:53:27Z after Farm CSS, source stable at dirty parent-reference b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b /0447299b183dc312a23754487c82c48ee0ea6ccdd0a705c666767a8d95c50dbb. App sources unchanged across the485-file witness; coordinator-attested three subsequent docs-only notes explain measured fingerprint8ed0131ff0a07fac6b0104d40e1354b1344adea86ee51bdff89fb669b86a4d5d. No new build performed during this proposal.",
+    "artifactHashCapture": "Retained dist bytes read during proposal; not a reconstructed historical source/build attestation.",
+    "recordedBuild": {
+      "result": ".qa/runs/20261014T015135Z-pwa-build-b4eb7f1f29e6-353/result.json",
+      "commit": "b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b",
+      "finalSourceFingerprint": "0447299b183dc312a23754487c82c48ee0ea6ccdd0a705c666767a8d95c50dbb",
+      "sourceFingerprint": "0447299b183dc312a23754487c82c48ee0ea6ccdd0a705c666767a8d95c50dbb",
+      "startedAt": "2026-10-14T01:51:35Z",
+      "sourceUnchanged": true,
+      "workingTreeDirty": true,
+      "status": "PASS",
+      "finishedAt": "2026-10-14T01:53:27Z",
+      "exitCode": 0
+    },
+    "appSourceWitness": {
+      "relationship": "Independent reviewer confirms all485 prebuild file hashes match current:479src+4e2e+Vite/Playwright config. This snapshot does not certify package manifests, bun lock or global history; intervening docs-only notes are coordinator-attested.",
+      "afterFileCount": 485,
+      "beforeFileCount": 485,
+      "path": ".qa/task3-e2e-lifecycle-final-green-farm-desktop-result.json"
+    }
+  },
+  "tools": {
+    "lighthouse": "13.5.0",
+    "playwright": "1.64.0",
+    "browser": "Chrome/156.0.8078.4",
+    "node": "v24.19.0"
+  },
+  "protocol": {
+    "output": "json",
+    "maxWaitForFcp": 30000,
+    "maxWaitForLoad": 45000,
+    "pauseAfterFcpMs": 1000,
+    "pauseAfterLoadMs": 1000,
+    "networkQuietThresholdMs": 1000,
+    "cpuQuietThresholdMs": 1000,
+    "formFactor": "mobile",
+    "throttling": {
+      "rttMs": 150,
+      "throughputKbps": 1638.4,
+      "requestLatencyMs": 562.5,
+      "downloadThroughputKbps": 1474.5600000000002,
+      "uploadThroughputKbps": 675,
+      "cpuSlowdownMultiplier": 4
+    },
+    "throttlingMethod": "simulate",
+    "screenEmulation": {
+      "mobile": true,
+      "width": 412,
+      "height": 823,
+      "deviceScaleFactor": 1.75,
+      "disabled": false
+    },
+    "emulatedUserAgent": "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36",
+    "auditMode": false,
+    "gatherMode": false,
+    "clearStorageTypes": [
+      "file_systems",
+      "shader_cache",
+      "service_workers",
+      "cache_storage"
+    ],
+    "disableStorageReset": false,
+    "debugNavigation": false,
+    "channel": "node",
+    "usePassiveGathering": false,
+    "disableFullPageScreenshot": false,
+    "skipAboutBlank": false,
+    "blankPage": "about:blank",
+    "ignoreStatusCode": false,
+    "locale": "en-US",
+    "blockedUrlPatterns": null,
+    "additionalTraceCategories": null,
+    "extraHeaders": null,
+    "precomputedLanternData": null,
+    "onlyAudits": null,
+    "onlyCategories": null,
+    "skipAudits": null
+  },
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26100",
+    "cpuCount": 8,
+    "totalMemoryBytes": 16855769088
+  },
+  "axe": {
+    "status": "PASS",
+    "pages": [
+      {
+        "path": "/",
+        "violations": 0,
+        "incomplete": 1,
+        "pageErrors": 0,
+        "errorPresent": false
+      },
+      {
+        "path": "/login",
+        "violations": 0,
+        "incomplete": 0,
+        "pageErrors": 0,
+        "errorPresent": false
+      },
+      {
+        "path": "/recuperar-senha",
+        "violations": 0,
+        "incomplete": 0,
+        "pageErrors": 0,
+        "errorPresent": false
+      }
+    ]
+  },
+  "rationale": {
+    "scoreFloor": "Observed worst of all3 cold reports minus5 absolute score points; an explicit engineering allowance, not a confidence interval or good-performance target.",
+    "timingCeiling": "Observed worst of all3 multiplied by1.10, then rounded UP to100ms for LCP and25ms for TBT. Worst-case envelope avoids median cherry-picking; applied to EVERY future original.",
+    "strictMetrics": "Accessibility1 and CLS0 retain actual unanimous observations, no allowance.",
+    "noise": "Three cold samples show large spread (home19 score points; login12), especially LCP/TBT. They do not establish statistical stationarity; allowances are proposed reviewable policy, not experimentally estimated error bars.",
+    "performanceDebt": "Home median performance56/LCP6303.53025ms and login median77/LCP4415.755ms require optimization. These limits do not claim good Core Web Vitals, field performance, production SLA or physical-device readiness.",
+    "containment": "Exact-loopback proxy blocked HTTP/CONNECT destinations in every report. This is a contained local lab protocol with external dependencies blocked, not unrestricted production network/field behavior.",
+    "priorPolicy": "Existing production budget is PENDING with null limits; this is a first measured nonregression proposal per archived5.6, not lowering previously approved numeric limits."
+  },
+  "approvalConditions": [
+    "Independent review of all6 originals/hashes/source/build/protocol and explicit margin policy before any tracked budget edit.",
+    "Fresh full FASE5 with all E2E cases and NEW6 genuine cold reports after source/budget freeze; every report must satisfy unchanged approved limits.",
+    "No threshold relaxation, cherry-picking, hidden retries or skipping failures to obtain the fresh gate.",
+    "Keep SLO optimization, Axe manual incomplete check, physical homologation and production claims pending as applicable."
+  ],
+  "productionBudgetEdited": false,
+  "applicationAcceptance": false,
+  "coldProfile": {
+    "profileMarkerVerifiedAllSix": true,
+    "freshOwnedChromeProfilePerReport": true,
+    "machineOrOperatingSystemCacheColdCertified": false,
+    "disableStorageReset": false
+  },
+  "reason": "Measured local non-regression baseline approved after six genuine cold reports and independent review; explicit engineering tolerance, not a good-performance or production SLO claim.",
+  "approval": {
+    "review": ".qa/task3-lh-measured-baseline-review.md",
+    "proposalSha256": "569030b5552dfa4507b95ad1a6930fee46f54cbe29c81008e107927bd510548e",
+    "scope": "Exact approved local limits; historical dirty measurement anchored to parent b4eb7f1f; requires fresh full gate and all six new current reports."
   }
 }

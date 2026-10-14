@@ -41,7 +41,7 @@ export interface FileCapture {
 }
 
 export interface NativeBridge {
-  invoke<T>(method: string, args?: any): Promise<T>;
+  invoke<T>(method: string, args?: unknown): Promise<T>;
 }
 
 export interface SyncTransport {
@@ -59,3 +59,9 @@ export interface RealtimeSubscription {
 export interface RealtimeProvider {
   subscribe(topic: string, onEvent: (event: unknown) => void): Promise<RealtimeSubscription>;
 }
+
+// Fase 10 - Expansões & Módulos Pós-Produção
+export * from "./aiProvider";
+export * from "./scaleDevice";
+export * from "./enterpriseExport";
+

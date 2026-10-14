@@ -2,6 +2,26 @@ import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 import security from "eslint-plugin-security";
+import { lstatSync, realpathSync, openSync, fstatSync, readSync, closeSync, constants } from "node:fs";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { relative } from "node:path";
+
+function auditedArchitectureFile(file, expectedHash) {
+  const source = fileURLToPath(new URL(file, import.meta.url));
+  try {
+    const info = lstatSync(source);
+    if (!info.isFile() || info.isSymbolicLink() || relative(source, realpathSync(source)) !== "" || info.size > 64 * 1024) return false;
+    const fd = openSync(source, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    try {
+      const opened = fstatSync(fd);
+      if (!opened.isFile() || opened.dev !== info.dev || opened.ino !== info.ino || opened.size > 64 * 1024) return false;
+      const bytes = Buffer.alloc(64 * 1024 + 1); let used = 0;
+      while (used < bytes.length) { const count = readSync(fd, bytes, used, bytes.length - used, null); if (!count) break; used += count; }
+      return used <= 64 * 1024 && createHash("sha256").update(bytes.subarray(0, used)).digest("hex") === expectedHash;
+    } finally { closeSync(fd); }
+  } catch { return false; }
+}
 
 export default tseslint.config(
   { ignores: ["dist"] },
@@ -22,4 +42,17 @@ export default tseslint.config(
       "security/detect-possible-timing-attacks": "warn",
     },
   },
+  // This test-only source collector is a reviewed dynamic-FS hotspot. Its plain
+  // root, links, containment and read bounds are audited in the sealed bytes.
+  // Any source change or missing/linked file restores the normal warning.
+  ...(auditedArchitectureFile("./src/architecture/layer-rules.ts", "17a05c2a9f243e96765f6d1d7ff6ddfa39a3ea24583b517ab4cf476f4cbd950a") ? [{
+    files: ["src/architecture/layer-rules.ts"],
+    rules: { "security/detect-non-literal-fs-filename": "off" },
+  }] : []),
+  // Only the exact audited owned-fixture setup/cleanup receives this exception;
+  // changed test bytes restore warnings, and all other tests keep the rule.
+  ...(auditedArchitectureFile("./src/architecture/layer-rules.test.ts", "4d61f38d0f3590bc990d5d68426c4042cc341ee2bd523eb73292a38bd31b799c") ? [{
+    files: ["src/architecture/layer-rules.test.ts"],
+    rules: { "security/detect-non-literal-fs-filename": "off" },
+  }] : []),
 );

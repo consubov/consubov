@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, existsSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, existsSync, symlinkSync, lstatSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { reconcileSnapshots, restoreFixture } from '../qa/local-snapshot-rehearsal.mjs';
@@ -88,11 +88,16 @@ test('invalid source never creates a destination', t => {
 });
 
 test('symbolic source is rejected and symbolic destination cannot overwrite source', t => {
-  const { source, target } = files(t); writeFileSync(source, JSON.stringify(snapshot())); symlinkSync(source, target);
+  const { source, target } = files(t); const bytes = JSON.stringify(snapshot()); writeFileSync(source, bytes);
+  // Junctions exercise a real Windows symbolic endpoint without changing OS privileges.
+  // POSIX retains its file symlink case; both must reject before copying and preserve source bytes.
+  symlinkSync(process.platform === 'win32' ? dirname(source) : source, target,
+    process.platform === 'win32' ? 'junction' : 'file');
+  assert.equal(lstatSync(target).isSymbolicLink(), true);
   assert.throws(() => restoreFixture(target, target + '.new'));
   assert.equal(existsSync(target + '.new'), false);
   assert.throws(() => restoreFixture(source, target), /EEXIST/);
-  assert.deepEqual(JSON.parse(readFileSync(source)), snapshot());
+  assert.equal(readFileSync(source, 'utf8'), bytes);
 });
 
 test('CLI returns nonzero for divergence and emits no payload or identity', t => {

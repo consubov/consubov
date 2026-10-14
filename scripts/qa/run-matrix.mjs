@@ -2,15 +2,15 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync, execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { sourceState } from './source-state.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const available = [
   'qa:regressions', 'qa:check', 'qa:phase5',
   'qa:pwa:build-preflight', 'qa:pwa:upgrade-fixture',
-  'qa:offline:core', 'qa:offline:browser', 'qa:offline:inventory', 'qa:phase6', 'qa:phase7',
+  'qa:offline:core', 'qa:offline:browser', 'qa:offline:inventory', 'qa:phase6', 'qa:phase7', 'qa:phase8', 'qa:phase9', 'qa:phase10',
 ];
 const opts = process.argv.slice(2);
 if (opts.length > 1 || (opts.length === 1 && !opts[0].startsWith('--only='))) {
@@ -23,29 +23,7 @@ if (selected.length === 0 || selected.some(name => !available.includes(name)) ||
   process.exit(2);
 }
 
-function sourceState() {
-  const git = (args) => execFileSync('git', args, {
-    cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 16 * 1024 * 1024,
-  });
-  try {
-    const commit = git(['rev-parse', 'HEAD']).trim();
-    const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).trim();
-    const status = git(['status', '--porcelain', '-z']);
-    const hash = createHash('sha256');
-    hash.update(commit).update(status).update(git(['diff', '--binary', 'HEAD', '--']));
-    // Hash untracked sources too, but never inspect ignored logs or .env files.
-    for (const name of git(['ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean).sort()) {
-      const file = path.join(repoRoot, name);
-      hash.update(name).update('\0');
-      hash.update(fs.lstatSync(file).isSymbolicLink() ? fs.readlinkSync(file) : fs.readFileSync(file));
-      hash.update('\0');
-    }
-    return { commit, branch, workingTreeDirty: status.length > 0, fingerprint: hash.digest('hex') };
-  } catch {
-    return { commit: 'no-git', branch: null, workingTreeDirty: true, fingerprint: null };
-  }
-}
-const initialSource = sourceState();
+const initialSource = sourceState(repoRoot);
 const sha = initialSource.commit;
 let dirty = initialSource.workingTreeDirty;
 let sourceUnchanged = initialSource.fingerprint !== null;
@@ -61,7 +39,7 @@ for (const name of selected) {
   const startedAt = new Date().toISOString();
   console.log('[qa:matrix] START', name);
   const result = spawnSync(executable, simulated ? [process.env.QA_MATRIX_TEST_EXECUTABLE, name] : [name], { cwd: repoRoot, stdio: 'inherit', env: process.env });
-  finalSource = sourceState();
+  finalSource = sourceState(repoRoot);
   dirty ||= finalSource.workingTreeDirty;
   const unchanged = finalSource.fingerprint !== null && finalSource.fingerprint === initialSource.fingerprint;
   sourceUnchanged &&= unchanged;
@@ -73,7 +51,7 @@ for (const name of selected) {
 const summary = {
   kind: 'local-qa-matrix', startedAt: now.toISOString(), finishedAt: new Date().toISOString(),
   branch: initialSource.branch, commit: sha, workingTreeDirty: dirty,
-  sourceUnchanged, sourceFingerprint: initialSource.fingerprint, finalCommit: finalSource.commit,
+  sourceUnchanged, sourceFingerprint: initialSource.fingerprint, finalSourceFingerprint: finalSource.fingerprint, finalCommit: finalSource.commit, finalWorkingTreeDirty: finalSource.workingTreeDirty,
   operatingSystem: os.platform(), node: process.version, simulated,
   status: sourceUnchanged && records.every(item => item.status === 'PASS') ? 'PASS' : 'FAIL',
   results: records,

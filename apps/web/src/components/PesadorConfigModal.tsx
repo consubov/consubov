@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2 } from "lucide-react";
@@ -11,8 +11,16 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
+function uploadErrorDescription(error: unknown): string | undefined {
+  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return undefined;
+}
+
 export default function PesadorConfigModal({ open, onOpenChange }: Props) {
   const { user } = useAuth();
+  const dialogOpener = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pesadorId, setPesadorId] = useState<string | null>(null);
@@ -54,8 +62,8 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
       if (updErr) throw updErr;
       setLogoUrl(url);
       toast({ title: "Logo atualizada" });
-    } catch (e: any) {
-      toast({ title: "Erro ao enviar logo", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro ao enviar logo", description: uploadErrorDescription(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -72,8 +80,8 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
       if (error) throw error;
       setLogoUrl(null);
       toast({ title: "Logo removida" });
-    } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Erro", description: uploadErrorDescription(e), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -81,9 +89,12 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" aria-modal="true"
+        onOpenAutoFocus={() => { dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); dialogOpener.current?.focus(); }}>
         <DialogHeader>
           <DialogTitle>Configurações</DialogTitle>
+          <DialogDescription className="sr-only">A logo aparecerá no canto direito dos relatórios em PDF.</DialogDescription>
         </DialogHeader>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -115,7 +126,7 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
                   {logoUrl ? "Substituir" : "Enviar"}
                 </Button>
                 {logoUrl && (
-                  <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
+                  <Button aria-label="Remover logo" variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
