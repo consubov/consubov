@@ -83,3 +83,13 @@ test('Fase 10 - Enterprise JSON Canonical Export: generates valid payload and ma
   assert.equal(parsed.records[0].valor, 150.0);
 });
 
+test('Fase 10 - enterprise exports fail closed on tenant mismatch or empty tenant', async () => {
+  const record = {
+    id: 'a1', tenantId: 'tenant-other', dataRegistro: '2026-10-14T09:00:00Z',
+    identificadorAnimalOuLote: 'LOTE-001', valorPrincipal: 1, unidade: 'kg',
+  };
+  await assert.rejects(generateCsvExport('tenant-expected', [record]), /tenant mismatch/i);
+  await assert.rejects(generateJsonCanonicalExport('tenant-expected', [record]), /tenant mismatch/i);
+  await assert.rejects(generateCsvExport('', []), /tenant mismatch/i);
+  await assert.rejects(generateJsonCanonicalExport('', []), /tenant mismatch/i);
+});

@@ -58,13 +58,14 @@ async function computeSha256(content: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
-  // Fallback síncrono simples para testes Node puros
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    hash = (hash << 5) - hash + content.charCodeAt(i);
-    hash |= 0;
+  throw new Error("Web Crypto SHA-256 unavailable");
+}
+
+/** Refuse cross-tenant and missing tenant export requests before serializing any bytes. */
+function assertTenantScope(tenantId: string, records: ExportRecord[]): void {
+  if (!tenantId.trim() || !Array.isArray(records) || records.some((record) => record.tenantId !== tenantId)) {
+    throw new Error("Export tenant mismatch");
   }
-  return Math.abs(hash).toString(16).padStart(64, "0");
 }
 
 /**
@@ -72,6 +73,7 @@ async function computeSha256(content: string): Promise<string> {
  * para integração com ERPs contábeis e fiscais (Totvs, Senior, Sankhya).
  */
 export async function generateCsvExport(tenantId: string, records: ExportRecord[]): Promise<ExportResult> {
+  assertTenantScope(tenantId, records);
   const header = "id;tenant_id;data_registro;identificador;valor;unidade;observacoes";
   const rows = records.map((r) => {
     const idSafe = r.id.replace(/;/g, "");
@@ -100,6 +102,7 @@ export async function generateCsvExport(tenantId: string, records: ExportRecord[
  * Gera exportação JSON canônica e ordenada por chave.
  */
 export async function generateJsonCanonicalExport(tenantId: string, records: ExportRecord[]): Promise<ExportResult> {
+  assertTenantScope(tenantId, records);
   const payload = {
     schemaVersion: "1.0.0",
     tenantId,

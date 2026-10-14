@@ -1,5 +1,11 @@
 # CONSUBOV - Continuidade operacional
 
+## Segurança de exportações FASE 10 — correção aditiva publicada, QA pendente
+
+- A implementação `enterpriseExport.ts` agora recusa exportações quando `tenantId` do registro diverge do tenant requisitado ou quando o tenant está vazio, em CSV e JSON. O cálculo SHA-256 deixou de emitir hash falso quando WebCrypto não está disponível: agora falha de forma explícita.
+- Teste negativo adicionado a `scripts/tests/phase10-contracts-integrity.test.mjs` para cross-tenant e tenant vazio. **Não há execução local validada no novo commit**, pois Codespace Browser-MTS terminou a sessão durante o reparo. Reexecutar FASE10 e matriz antes de aceite.
+
+
 ## Auditoria da retomada 2026-10-14 — correcoes de QA Linux publicadas (NAO APROVADAS)
 
 - [x] Confirmado no GitHub que `main` e ancestral da branch `work/fase5-6-7-pwa-local`: 130 commits de desenvolvimento a frente e **PR #43 draft**, sem qualquer check remoto (total=0). Nao criar novo PR/branch.
