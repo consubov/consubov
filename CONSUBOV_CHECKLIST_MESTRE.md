@@ -184,3 +184,19 @@ Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-
 - [x] Consultas agregadas read-only: 0 referencias orfas entre retiro/fazenda, pasto/retiro, fazenda_consultor/consultor e gerente_fazenda/fazenda; 0 divergencias de vinculo principal nos grupos consultados. Nao generalizar para toda a base.
 - [ ] Backlog futuro adicional: transacoes atomicas, soft-delete com historico, restauracao, governanca de senha, limites/rate limiting de fluxos publicos, policies de storage, isolamento de offline, observabilidade, backup/restore e regressao por papel/tenant.
 - [ ] Todos os achados permanecem para futuro estudo/implementacao **somente quando a fase pertinente for explicitamente autorizada**. Nao marcar QA/FASE 12 como iniciado.
+
+## FASE 13 - continuidade offline, migracao sem perda e preservacao (PLANEJADA / BLOQUEADA)
+
+- [x] FASE 13 detalhada no Notion: https://app.notion.com/p/3f98e0bd0f4d81ec9208dd80c7fd85d4
+- [x] Dossie de planejamento no repo: `docs/69-fase13-offline-migracao-preservacao-planejamento.md`. Registro nao constitui execucao nem PRD de implementacao liberado.
+- [ ] **Gate FASE 12:** a FASE 12 continua PLANEJADA e NAO INICIA sem NOVA autorizacao explicita do responsavel; revisao/read-only nao equivale a iniciar.
+- [ ] **Gate FASE 13:** somente pode INICIAR APOS encerramento e QA APROVADO da FASE 12 e nova autorizacao especifica de execucao. Conclusao da FASE 12 nao inicia automaticamente a FASE 13.
+- [ ] **PRESERVACAO ABSOLUTA NESTE PLANEJAMENTO:** NAO apagar fotos, documentos, arquivos Storage, historicos, Auth, registros PostgreSQL, dados locais, IndexedDB/localStorage, backup, filas, ACKs ou tombstones. NAO criar prazo de validade/TTL, campo expires_at/delete_after, limite de retencao, lifecycle, expurgo, job de exclusao ou desativar dados. A antiga sugestao de 90 dias NAO foi aprovada.
+- [ ] Verificar em leitura a rotina preexistente `limpar-fotos-diario` e a funcao `limpar_fotos_antigas()`, atualmente ativas no Supabase e relacionadas a limpeza de referencias; esta auditoria NAO interrompeu nem alterou a rotina. Qualquer mudanca exige autorizacao remota especifica.
+- [ ] **FASE 7 NAO DEVE ESPERAR FASE 13:** finalizar por trabalho ja atribuido a persistencia duravel local (sem sucesso falso), autosync em reconexao, fila por tenant/user/device, idempotencia, ACK/retentativas, fotos, migracao das seis bases existentes e QA integrado. Evitar tarefa duplicada com PR #43 e agentes ativos.
+- [ ] **FASE 8 permanece gate remoto:** inventariar e mapear schema PostgreSQL/relacionamentos, Auth, Storage fisico, arquivos base64, historiais e filas de aparelhos; fazer provas de reconciliacao e restauracao local/staging isolado autorizado, sem novo backend conectado ao Supabase produtivo agora.
+- [ ] **Recomendacao de cutover:** manter app legado operacional e sua base atual; projetar schema/camadas seguras atras da API Bun, testar sem escrita dupla de saldo/estoque/pesagem/transferencias, migrar com IDs e checksums, rollback demonstrado. SOMENTE conectar nova API, mudar trafego ou desligar app atual com gates das FASES 5-9/12, QA e autorizacao externa expressa.
+- [ ] Evidencia de QA futura: cliente iOS/Android rural, sem internet prolongada, reconexao, travamento, multiaba, troca de conta/tenant, falta de armazenamento, service worker, foto Blob, duplicacao, conflito, backup/restore, contagens/saldos e todas as filas migradas.
+- [ ] Nenhuma configuracao de expiracao nem exclusao permitida apenas por este checklist; politica futura de descarte de imagens exige nova decisao separada e justificativa de dados/historico, sem prazos presumidos.
+
+**Convivencia:** nao redesenhar FASE 7/8 ou reatribuir trabalho sem consultar Notion vivo; preservar `main`, PR #43 draft e stashes. Nenhum SQL, migration, RLS/grant, auth/storage/cron, deploy ou programa remoto alterado pela criacao deste plano.
