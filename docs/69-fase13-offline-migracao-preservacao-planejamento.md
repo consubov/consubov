@@ -76,9 +76,9 @@ Criar uma transição sem perda de dados do CONSUBOV legado para o produto SaaS 
 - Atualizar no bloco de implementação efetiva: docs/ADR/schema/OpenAPI, Checklist Mestre no Notion, documentação Git e handoff. Não declarar QA ou migração comprovados sem evidência.
 - Relatório futuro obrigatório: SHA e branches; operações executadas/não executadas; matriz de migração; contagem/hash/diffs; anexos e dispositivos; cobertura offline; decisões de conflitos; falhas/rollback; autorização; QA; pendências e proibição de expurgo.
 ## 8. Fontes de verdade e referências cruzadas
-- Checklist Mestre Notion: <mention-page url="https://app.notion.com/p/3ec8e0bd0f4d816d9bb5d807e8e2cdc9">CONSUBOV — Checklist Mestre de Execução</mention-page>
-- FASE 7: <mention-page url="https://app.notion.com/p/3ec8e0bd0f4d8151a486ed1481fd22db"/>
-- FASE 8: <mention-page url="https://app.notion.com/p/3ec8e0bd0f4d8103a93cc106cc1530ca"/>
-- FASE 9: <mention-page url="https://app.notion.com/p/3ec8e0bd0f4d81dfb392e880325636af"/>
-- FASE 12, PRÉ-REQUISITO: <mention-page url="https://app.notion.com/p/3f98e0bd0f4d81dab582edcf1c304138"/>
+- Checklist Mestre Notion: [CONSUBOV — Checklist Mestre de Execução](https://app.notion.com/p/3ec8e0bd0f4d816d9bb5d807e8e2cdc9)
+- FASE 7: [Abrir no Notion](https://app.notion.com/p/3ec8e0bd0f4d8151a486ed1481fd22db)
+- FASE 8: [Abrir no Notion](https://app.notion.com/p/3ec8e0bd0f4d8103a93cc106cc1530ca)
+- FASE 9: [Abrir no Notion](https://app.notion.com/p/3ec8e0bd0f4d81dfb392e880325636af)
+- FASE 12, PRÉ-REQUISITO: [Abrir no Notion](https://app.notion.com/p/3f98e0bd0f4d81dab582edcf1c304138)
 - GitHub: docs/62-offline-legacy-migration.md; docs/63-offline-vnext-foundations.md; docs/66-offline-atomic-queue.md; docs/19-exclusao-sync-futuro.md; docs/67-local-snapshot-rehearsal.md; docs/68-sincronizacao-local-e-agentes.md; instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md.
