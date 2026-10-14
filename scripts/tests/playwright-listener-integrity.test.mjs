@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -64,9 +64,16 @@ test('installed Vite with real config arguments refuses an occupied port instead
   const server = createServer((_req, res) => res.end('owned occupied fixture'));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
-  const { default: config } = await import(configURL);
+  // Node 22 needs type stripping to load the installed TypeScript Playwright config.
+  // Inspect the real command in a bounded subprocess; do not weaken Playwright gates.
+  const command = execFileSync(process.execPath, [
+    '--experimental-strip-types',
+    '--input-type=module',
+    '--eval',
+    `const { default: config } = await import(${JSON.stringify(configURL.href)}); process.stdout.write(config.webServer.command)`,
+  ], { cwd: web, encoding: 'utf8', timeout: 15_000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   // Execute installed Vite directly so cleanup owns one process, preserving the exact dev flags.
-  const words = config.webServer.command.split(/\s+/);
+  const words = command.split(/\s+/);
   assert.deepEqual(words.slice(0, 4), ['bun', 'run', 'dev', '--']);
   const args = words.slice(4);
   const portIndex = args.indexOf('--port') + 1;

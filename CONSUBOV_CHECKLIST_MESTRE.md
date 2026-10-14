@@ -1,5 +1,13 @@
 # CONSUBOV - Checklist Mestre
 
+## Correções de compatibilidade Node 22 publicadas em 2026-10-14 — QA completo ainda pendente
+
+- Correção publicada de `scripts/tests/playwright-listener-integrity.test.mjs`: carrega configuração Playwright TypeScript real usando `node --experimental-strip-types` em subprocesso isolado com timeout, sem bypass de `forbidOnly`, `reuseExistingServer` ou porta ocupada. O mecanismo de import TS em Node 22.16 foi exercitado em fixture isolada (PASS), **não** o Playwright completo do repositório.
+- Correção publicada de `scripts/run-phase10-local.sh`: as 4 invocações de testes de contratos TypeScript agora usam `node --experimental-strip-types --test`, conforme reparo local anterior que passou na FASE 10. No novo commit, a suíte ainda **não foi reexecutada**.
+- O Browser-MTS permanece em `Session terminated`; não afirmar QA completo ou limpeza de workspaces. Antes de pull no Codespace/VS Code, preservar alterações `dirty=true`, inclusive esses arquivos, em stash ou commit local verificado e reconciliar conflitos sem reset/force.
+- Após sincronização segura, executar `task qa:regressions`, `task qa:phase5`, `task qa:phase6` a `task qa:phase10` e `task qa:matrix` em checkout limpo, com Gitleaks v8.30.1 Linux x64 SHA-256 pinado. `main`, PR #43 draft e Supabase de produção permanecem intactos.
+
+
 ## Revisao da seguranca de exportacoes FASE 10 — 2026-10-14 (QA A EXECUTAR)
 
 - [x] Na branch de trabalho, corrigido `apps/web/src/platform/contracts/enterpriseExport.ts`: CSV e JSON recusam mistura de tenants ou tenant de destino vazio antes de emitir conteudo; SHA-256 deixa de produzir fallback de hash ficticio quando WebCrypto esta indisponivel.

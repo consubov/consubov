@@ -44,16 +44,16 @@ for file in "$SPEC_DOC" "$AI_CONTRACT" "$SCALE_CONTRACT" "$EXPORT_CONTRACT"; do
 done
 
 echo "[phase10] step 2: contracts integrity & enterprise exports (CSV, JSON, SHA-256)"
-node --test scripts/tests/phase10-contracts-integrity.test.mjs
+node --experimental-strip-types --test scripts/tests/phase10-contracts-integrity.test.mjs
 
 echo "[phase10] step 3: ai provider port & offline deterministic mock"
-node --test scripts/tests/phase10-ai-provider.test.mjs
+node --experimental-strip-types --test scripts/tests/phase10-ai-provider.test.mjs
 
 echo "[phase10] step 4: scale device parser & simulated weighing hardware"
-node --test scripts/tests/phase10-scale-device.test.mjs
+node --experimental-strip-types --test scripts/tests/phase10-scale-device.test.mjs
 
 echo "[phase10] step 5: syncvet & relatto domain and manifest verification"
-node --test scripts/tests/phase10-syncvet-domain.test.mjs
+node --experimental-strip-types --test scripts/tests/phase10-syncvet-domain.test.mjs
 
 echo "[phase10] step 6: syncvet repositories vitest validation"
 if command -v bunx >/dev/null 2>&1; then

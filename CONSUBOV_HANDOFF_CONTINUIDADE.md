@@ -1,5 +1,13 @@
 # CONSUBOV - Continuidade operacional
 
+## Correções de compatibilidade Node 22 publicadas em 2026-10-14 — QA completo ainda pendente
+
+- Correção publicada de `scripts/tests/playwright-listener-integrity.test.mjs`: carrega configuração Playwright TypeScript real usando `node --experimental-strip-types` em subprocesso isolado com timeout, sem bypass de `forbidOnly`, `reuseExistingServer` ou porta ocupada. O mecanismo de import TS em Node 22.16 foi exercitado em fixture isolada (PASS), **não** o Playwright completo do repositório.
+- Correção publicada de `scripts/run-phase10-local.sh`: as 4 invocações de testes de contratos TypeScript agora usam `node --experimental-strip-types --test`, conforme reparo local anterior que passou na FASE 10. No novo commit, a suíte ainda **não foi reexecutada**.
+- O Browser-MTS permanece em `Session terminated`; não afirmar QA completo ou limpeza de workspaces. Antes de pull no Codespace/VS Code, preservar alterações `dirty=true`, inclusive esses arquivos, em stash ou commit local verificado e reconciliar conflitos sem reset/force.
+- Após sincronização segura, executar `task qa:regressions`, `task qa:phase5`, `task qa:phase6` a `task qa:phase10` e `task qa:matrix` em checkout limpo, com Gitleaks v8.30.1 Linux x64 SHA-256 pinado. `main`, PR #43 draft e Supabase de produção permanecem intactos.
+
+
 ## Proxima conversa / FASE11 e consolidacao Git — 2026-10-14
 
 - O checklist oficial Notion registra FASE11 `Perfis, Hierarquia e Evolucao Profissional` como **PLANEJADA**, com PRD `docs/67-fase11-perfis-auditoria-prd.md`; permite iniciar trabalho local depois de verificar dependencias e conflitos, sem exigir a homologacao de producao das fases anteriores.
