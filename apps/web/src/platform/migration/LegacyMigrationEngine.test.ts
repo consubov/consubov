@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { indexedDB } from "fake-indexeddb";
+import { IDBFactory } from "fake-indexeddb";
 import { LegacyMigrationEngine } from "./LegacyMigrationEngine";
 import { IndexedDbLocalDatabase } from "../adapters/IndexedDbLocalDatabase";
 import { IndexedDbAtomicCommandQueue } from "../adapters/IndexedDbAtomicCommandQueue";
 
 describe("LegacyMigrationEngine unit tests (Vitest)", () => {
   it("initializes and handles absent databases gracefully", async () => {
-    const factory = new (indexedDB as unknown as { new (): IDBFactory })();
+    const factory = new IDBFactory();
     const owner = { tenantId: "tenant-vitest", userId: "user-vitest" };
     const localDb = new IndexedDbLocalDatabase(owner, factory);
     const queue = new IndexedDbAtomicCommandQueue(factory);

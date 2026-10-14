@@ -1,5 +1,13 @@
 # CONSUBOV - Checklist Mestre
 
+## Reparos de regressao e seguranca auditados no Codespace — 2026-10-14
+
+- A branch atual recebeu um commit de cinco ajustes aditivos: IndexedDB factory de teste, buffer Git para diff amplo, teste estrutural RLS, correção de import da fixture Playwright para caminho local e exclusão da policy permissiva `tenant_isolation_atomic_command_log` na migration FASE 8. A política remanescente exige `tenant_id` e `user_id = auth.uid()` em leitura/gravação. **Sem migration remota executada.**
+- Evidências do Codespace **antes desse commit, checkout `e84b6d1` `dirty=true`**: `task qa:regressions` **477/477 PASS exit 0** após `git fetch --no-tags origin b6ff985fc9e47a1a994b97a433db7931d9957378`; `.qa/runs/20261014T174408Z-regressions-e84b6d116edf-25490/result.json`. `security-signal-classification.test.mjs` **21/21 PASS**. Playwright listener com patch local **3/3 PASS**. `qa:phase8` e `qa:phase10` **PASS exit 0** (`.qa/runs/20261014T174902Z-phase8-e84b6d116edf-35940/result.json`, `.qa/runs/20261014T174906Z-phase10-e84b6d116edf-36161/result.json`). Testes do banco sao dry-run simulados; FASE 10 usa mocks.
+- O hash historico `b6ff985` existe no GitHub mas nao estava no clone Codespace (repo nao shallow), por isso 17 testes nao puderam usar fixtures. Restaurado apenas o objeto via `git fetch`, sem checkout, merge ou branch nova; **preparacao de clones futuros precisa documentar este preflight**, mantendo teste offline apos bootstrap.
+- `git commit` local (assinatura obrigatoria) falhou `403 Author is invalid` duas vezes. **Assinatura nao foi desligada**; arquivos publicados pela integração autenticada GitHub. Reconciliar checkout por comparacao de hashes do conteudo publicado antes de qualquer `git restore` e `git merge --ff-only`. Stashes antigos mantidos.
+- [ ] Gates completos FASES 5–10 e `task qa:matrix` **ainda precisam rodar com checkout limpo no commit definitivo**. Homologacao fisica, RLS real em PostgreSQL/staging separado, backup/rollback e producao permanecem pendentes. PR #43 deve permanecer draft; nao mesclar na `main` nem realizar deploy ou conectar ao Supabase legado.
+
 ## Correções de compatibilidade Node 22 publicadas em 2026-10-14 — QA completo ainda pendente
 
 - Correção publicada de `scripts/tests/playwright-listener-integrity.test.mjs`: carrega configuração Playwright TypeScript real usando `node --experimental-strip-types` em subprocesso isolado com timeout, sem bypass de `forbidOnly`, `reuseExistingServer` ou porta ocupada. O mecanismo de import TS em Node 22.16 foi exercitado em fixture isolada (PASS), **não** o Playwright completo do repositório.

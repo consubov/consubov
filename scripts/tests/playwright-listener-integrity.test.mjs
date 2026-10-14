@@ -32,7 +32,7 @@ async function fixture(focused = false) {
   const dir = await mkdtemp(join(tmpdir(), 'consubov-listener-'));
   // Retain only tiny test fixtures under OS temporary storage; no app source or customer data.
   const marker = join(dir, 'executed');
-  await writeFile(join(dir, 'playwright.config.ts'), `import config from ${JSON.stringify(configURL.href)};\nexport default {...config,testDir:${JSON.stringify(dir)},projects:[{name:'listener-fixture'}],reporter:'line'};\n`);
+  await writeFile(join(dir, 'playwright.config.ts'), `import config from ${JSON.stringify(fileURLToPath(configURL))};\nexport default {...config,testDir:${JSON.stringify(dir)},projects:[{name:'listener-fixture'}],reporter:'line'};\n`);
   await writeFile(join(dir, 'listener.spec.ts'), `import { test } from ${JSON.stringify(requireWeb.resolve('@playwright/test').replace(/index\.js$/, 'index.mjs'))};\nimport { writeFileSync } from 'node:fs';\ntest${focused ? '.only' : ''}('local listener integrity',()=>writeFileSync(${JSON.stringify(marker)},'executed'));\n`);
   return { dir, marker, config: join(dir, 'playwright.config.ts') };
 }

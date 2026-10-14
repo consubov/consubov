@@ -41,13 +41,10 @@ CREATE INDEX IF NOT EXISTS idx_atomic_commands_kind
 -- Row Level Security (RLS) Enablement
 ALTER TABLE public.atomic_command_log ENABLE ROW LEVEL SECURITY;
 
--- Strict Multi-Tenant Isolation Policy
+-- PostgreSQL combines permissive policies with OR. A tenant-only policy
+-- would bypass the user_id check in the user-specific policy.
+-- Drop any stale tenant-only policy and keep one tenant + user policy.
 DROP POLICY IF EXISTS "tenant_isolation_atomic_command_log" ON public.atomic_command_log;
-CREATE POLICY "tenant_isolation_atomic_command_log" ON public.atomic_command_log
-  FOR ALL
-  TO authenticated
-  USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 -- User-scoped access policy for device-level command submission and queries
 DROP POLICY IF EXISTS "user_access_atomic_command_log" ON public.atomic_command_log;

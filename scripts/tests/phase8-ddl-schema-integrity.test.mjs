@@ -165,12 +165,10 @@ test('UP migration enables Row Level Security and defines tenant & user policies
   const policies = result.catalog.policies['public.atomic_command_log'];
   assert.ok(policies, 'Policies must be defined for atomic_command_log');
 
-  const tenantPolicy = policies['tenant_isolation_atomic_command_log'];
-  assert.ok(tenantPolicy, 'tenant_isolation_atomic_command_log must exist');
-  assert.ok(
-    tenantPolicy.using.includes('tenant_id') && tenantPolicy.using.includes('app.current_tenant_id'),
-    'Tenant policy must enforce app.current_tenant_id'
-  );
+  assert.equal(policies['tenant_isolation_atomic_command_log'], undefined,
+    'A permissive tenant-only policy would bypass the user-level RLS check');
+  assert.equal(Object.keys(policies).length, 1,
+    'The table must have only one permissive policy with tenant and user checks');
 
   const userPolicy = policies['user_access_atomic_command_log'];
   assert.ok(userPolicy, 'user_access_atomic_command_log must exist');
@@ -178,6 +176,10 @@ test('UP migration enables Row Level Security and defines tenant & user policies
     userPolicy.using.includes('user_id = auth.uid()'),
     'User policy must check user_id = auth.uid()'
   );
+  assert.ok(userPolicy.using.includes('app.current_tenant_id'));
+  assert.ok(userPolicy.withCheck?.includes('user_id = auth.uid()'),
+    'INSERT/UPDATE checks must require the current user');
+  assert.ok(userPolicy.withCheck?.includes('app.current_tenant_id'));
 });
 
 test('DOWN migration cleans up all created tables, indexes, and policies', () => {
