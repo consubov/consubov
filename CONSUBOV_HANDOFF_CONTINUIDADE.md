@@ -1,5 +1,22 @@
 # CONSUBOV - Continuidade operacional
 
+## Decisao vigente — FASES 12 e 13, preservacao offline (2026-10-13)
+
+**Status:** SOMENTE DOCUMENTACAO. A FASE 12 segue PLANEJADA/BLOQUEADA e so pode ser iniciada mediante **NOVA autorizacao explicita do responsavel**. A FASE 13 segue PLANEJADA/BLOQUEADA, e somente podera iniciar **depois da FASE 12 concluida com QA aprovado e autorizacao de execucao propria**. Nao atribuir agente nem criar PRD ativo de implementacao apenas por existir este plano.
+
+**Prioridade operacional atual:** a FASE 7 (offline-first PWA/IndexedDB) continua em execucao/gates pendentes. Manter entregas e QA nas FASES 5–7 sem duplicar trabalhos, especialmente: salvar local duravel sem falso sucesso; preservar as seis bases IndexedDB, localStorage/Blobs/fotos; sincronizacao automatica ao reconectar com comando+idempotencia+ACK autorizado; migracao local retomavel e conflitos por dominio. A FASE 8 so prepara integracao de banco por ensaio local/staging autorizado, sem conectar a nova API ao remoto agora.
+
+**Banco e migracao:** manter PostgreSQL remoto e app legado operando ate compatibilidade, hardening, reconciliacao, backup/restore, QA, piloto e gate de producao, com autorizacao remota especifica. Nao recriar banco vazio, desligar app anterior, misturar dados entre tenants, iniciar dual-write critico nem executar migration SQL agora. Preservar PostgreSQL/Auth/Storage e filas pendentes nos dispositivos, com IDs, hashes, historicos e saldos verificados.
+
+**Preservacao sem validade:** decisao explicita: NADA deve ser apagado/expirado por estas recomendacoes, nem fotos, PDFs, historicos, arquivos do Storage, base64, backups, dados offline ou tombstones. Nao criar TTL, job novo, politica de 90 dias, coluna de validade ou limpeza automatica. A ideia anterior de 90 dias e hipotese futura NAO AUTORIZADA. **Atencao:** o banco legado ja tem cron ativo `limpar-fotos-diario`, que modifica referencias via `limpar_fotos_antigas()`; essa rotina NAO foi desativada nem alterada. Revisar alcance na FASE 12 autorizada; nao afirmar que o legado ja esta sem limpeza.
+
+**Documentos:** Notion FASE 13: https://app.notion.com/p/3f98e0bd0f4d81ec9208dd80c7fd85d4 | plano GitHub `docs/69-fase13-offline-migracao-preservacao-planejamento.md` | Notion FASE 12: https://app.notion.com/p/3f98e0bd0f4d81dab582edcf1c304138 | Checklist Mestre: https://app.notion.com/p/3ec8e0bd0f4d816d9bb5d807e8e2cdc9 | checklist repo `CONSUBOV_CHECKLIST_MESTRE.md`. Fonte de verdade operacional: Notion mais recente + branch ativa + SHA de testes comprovados. Fontes do Projeto do ChatGPT precisam receber a versao deste handoff quando possivel.
+
+**Trabalho efetivo desta rodada:** somente criacao/atualizacao de paginas Notion e arquivos Markdown do repositório na branch `work/fase5-6-7-pwa-local`/PR #43 draft; nenhum app/API/DB/Auth/Storage/cron/deploy/config remota alterado; QA nao foi executado. Manter `main` intacta e nao invalidar stashes nem trabalho paralelo.
+
+---
+
+
 ## Transferencia para Codex no VS Code local — 2026-10-13 (estado mais recente)
 
 **Documento de execucao publicado junto deste registro:** `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md`. O PRD ja existente `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md` continua sendo a especificacao canonica; o novo arquivo e um handoff operacional, nao um segundo PRD.
