@@ -1,5 +1,12 @@
 # CONSUBOV - Continuidade operacional
 
+## Proxima conversa / FASE11 e consolidacao Git — 2026-10-14
+
+- O checklist oficial Notion registra FASE11 `Perfis, Hierarquia e Evolucao Profissional` como **PLANEJADA**, com PRD `docs/67-fase11-perfis-auditoria-prd.md`; permite iniciar trabalho local depois de verificar dependencias e conflitos, sem exigir a homologacao de producao das fases anteriores.
+- Estado remoto antes deste commit documental: `55f0d144fa383168f49b7e6003c8352218a8de30`. Na branch `work/fase5-6-7-pwa-local` (PR #43 draft), 3 branches remotas, backup com 7 commits exclusivos. **Nao fazer merge, apagar backup, rebase, reset, force-push ou deploy** sem auditoria e aceite de release; PR nao tem checks aprovados.
+- Os commits de suporte Gitleaks Linux e cross-tenant export estao publicados, mas NAO foram revalidados no Codespace. Reativar sessao, preservar seis arquivos locais `dirty=true`, quatro stashes, consultar `git worktree list`, corrigir `playwright-listener-integrity.test.mjs`, revalidar o scanner 8.30.1, executar FASE5, regressions, matrix e FASES6-10 no SHA definitivo limpo.
+- Auditorias fisicas/empresas e PostgreSQL staging/local independente continuam necessarias para liberacao de producao; nao usar a base de dados da aplicacao atual como ambiente de teste.
+
 ## Segurança de exportações FASE 10 — correção aditiva publicada, QA pendente
 
 - A implementação `enterpriseExport.ts` agora recusa exportações quando `tenantId` do registro diverge do tenant requisitado ou quando o tenant está vazio, em CSV e JSON. O cálculo SHA-256 deixou de emitir hash falso quando WebCrypto não está disponível: agora falha de forma explícita.

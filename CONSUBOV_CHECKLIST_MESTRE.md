@@ -1,5 +1,12 @@
 # CONSUBOV - Checklist Mestre
 
+## Revisao da seguranca de exportacoes FASE 10 — 2026-10-14 (QA A EXECUTAR)
+
+- [x] Na branch de trabalho, corrigido `apps/web/src/platform/contracts/enterpriseExport.ts`: CSV e JSON recusam mistura de tenants ou tenant de destino vazio antes de emitir conteudo; SHA-256 deixa de produzir fallback de hash ficticio quando WebCrypto esta indisponivel.
+- [x] Teste negativo adicionado a `scripts/tests/phase10-contracts-integrity.test.mjs` para os dois formatos e ausencia de tenant; **alteracoes nao executadas no Codespace no novo SHA `55f0d144`**.
+- [ ] Reexecutar gates FASE10, `qa:check`, `qa:regressions`, FASE5 e matriz integral em SHA limpo. Scanner Linux foi corrigido no commit anterior `70b6648`, mas ainda nao foi medido em CI/Codespace neste estado.
+- [ ] `main` e producao NAO liberadas. FASE11 pode ter inicio *local* apos conferir conflitos/contratos e usar PRD existente (Notion FASE11), independente de homologacao remota anterior; nao requer merge prematuro na `main`. Nenhum rollout ou migracao remota autorizado.
+
 ## Auditoria da retomada 2026-10-14 — correcoes de QA Linux publicadas (NAO APROVADAS)
 
 - [x] Confirmado no GitHub que `main` e ancestral da branch `work/fase5-6-7-pwa-local`: 130 commits de desenvolvimento a frente e **PR #43 draft**, sem qualquer check remoto (total=0). Nao criar novo PR/branch.
