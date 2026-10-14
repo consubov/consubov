@@ -72,6 +72,7 @@ Os critérios detalhados do checklist anterior foram [preservados integralmente]
 - [PWA: atualização manual sem perda do cache offline](./65-pwa-update-safety.md)
 - [FASE 7: fila IndexedDB transacional multiaba, testes e limites](./66-offline-atomic-queue.md)
 - [FASE 11 — Auditoria, PRD e handoff dos perfis, hierarquia, currículo e ranking (planejada)](./67-fase11-perfis-auditoria-prd.md)
+- [FASE 13 — Plano bloqueado de continuidade offline, migração sem perda e preservação integral de arquivos](./69-fase13-offline-migracao-preservacao-planejamento.md) — começa somente após FASE 12 concluída, QA aprovado e autorização específica; sem TTL, validade, limpeza automática ou exclusão.
 
 - [Ensaio local de reconciliacao e restauracao - FASES 8/9](./67-local-snapshot-rehearsal.md)
 - [QA local: transicoes da fila e aberturas abandonadas](./qa/queue-transition-snapshot-2026-10-13.md)
