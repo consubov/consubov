@@ -56,6 +56,7 @@ Criar uma transição sem perda de dados do CONSUBOV legado para o produto SaaS 
 ### 13.8 Retenção futura — REGISTRADA COMO IDEIA, NÃO COMO REGRA
 - [ ] Futuramente, em decisão independente e expressa do responsável, avaliar se imagens exclusivamente de conferência podem receber uma política de descarte e eventual automação por pg_cron + Edge Function + Storage API oficial. Nenhum critério temporal nem exclusão já foi aprovado.
 - [ ] Antes de qualquer política futura: inventário jurídico/operacional, arquivos referenciados, PDFs, snapshots offline, backups, auditoria, seleção por categoria, modos dry-run/relatório, hold legal, autorização e QA. Tombstones críticos não são equivalentes a fotos descartáveis.
+> **Esclarecimento de segurança:** a proibição de prazo de validade refere-se a **dados, imagens, arquivos e registros operacionais**. Expiração de sessão, token de autenticação e URL assinada são mecanismos de segurança distintos; não desabilitá-los nem modificá-los sem autorização e QA.
 ## 4. Critérios de aceite (futuros, não executados)
 - [ ] Salvações exibidas como concluídas têm prova de persistência local durável; falha/quota nunca gera sucesso falso.
 - [ ] Um comando é aplicado no servidor no máximo uma vez por chave idempotente, incluindo timeout/ACK perdido/reboot/multiaba; nenhum dado desaparece até confirmação e reconciliação.
