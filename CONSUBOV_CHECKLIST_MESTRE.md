@@ -136,3 +136,33 @@ PWA React/Vite e IndexedDB continuam vigentes. Preservar origem/manifest, consen
 Executar testes locais relevantes sem depender do GitHub Actions. Nao apresentar contagens antigas como reexecucao atual. Pendencia fisica nao impede desenvolvimento independente; testes automatizaveis de dados, tenant e seguranca nao sao dispensados. Sem banco remoto, deploy, rotacao de secrets ou alteracao de producao nesta tarefa.
 
 Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-10-13.md). O historico detalhado continua nos snapshots preservados; nenhum item foi marcado como concluido apenas porque seus commits foram integrados.
+
+## FASE 11 - Consultor: permissoes granulares de consulta (planejada 2026-10-13)
+
+- [x] Auditoria read-only de codigo e metadados do legado: papel consultor, painel, visitas, IndexedDB e cadastro `fazendas_consultor` ja existem; este cadastro nao equivale a permissao de acesso a `fazendas` operacionais.
+- [x] Item **11.3A - Consultor** acrescentado ao checklist detalhado da FASE 11 no Notion; preserve o PRD existente `docs/67-fase11-perfis-auditoria-prd.md` ate a proxima revisao autorizada de escopo.
+- [ ] Acrescentar no cadastro atual de Consultores a arvore simples Fazenda > Retiro > Pasto, com selecao em lote, busca, resumo e revogacao. Reaproveitar o papel e as rotas existentes.
+- [ ] Aprovar alçadas de concessao e matriz por acao. Leitura por escopo explicito como proposta conservadora; escrita, exportacao e administracao negadas ate aprovacao.
+- [ ] Projetar grants aditivos por tenant, identidade, fazenda e retiro/pasto opcionais; validar hierarquia e origem de cada permissao no backend, sem confiar em UI, URL ou nomes.
+- [ ] Cobrir APIs, relatorios, PDF, arquivos, QR, cache offline, sync, auditoria e revogacao; preservar os dados/visitas legados e os perfis existentes.
+- [ ] Testar isolamento cross-tenant, URL/ID adulterado, tentativa de escalada de privilegio, fazenda inteira, retiro, pasto, multiplos vinculos, acesso revogado, offline e regressao; OpenAPI/docs/QA aprovados antes do aceite.
+- [ ] Nao implementar nem migrar remoto nesta etapa; conflitos com trabalhos em curso devem ser avaliados antes de codigo.
+
+## Planejamento FASE 12 - auditoria Supabase e correcoes de vulnerabilidades (2026-10-13)
+
+- [x] FASE 12 detalhada criada no Notion: https://app.notion.com/p/3f98e0bd0f4d81dab582edcf1c304138
+- [x] Auditoria **somente leitura**: 132 tabelas public; 107 sem RLS e com privilegios de SELECT/INSERT/UPDATE/DELETE para anon; 25 public com RLS. Exposicao potencial grave; nao afirmar vazamento efetivo sem teste isolado.
+- [x] Inventario: 185 policies public, 20 storage; 35 alertas policies com RLS desligado; 8 views SECURITY DEFINER; 15 avisos search_path mutable; 49 funcoes SQL public (29 SECURITY DEFINER); 32 registros de triggers public; 132 PK, 223 FK; 143 migrations.
+- [x] Inventario: 8 buckets (3 publicos: landing, mapas, relatorios) e 10 Edge Functions com verify_jwt=false; autenticacao interna deve ser auditada antes de classificar uma funcao como sem auth.
+- [x] Lints de performance inventariados: 113 FKs sem indice de cobertura, 62 auth_rls_initplan, 76 multiple_permissive_policies, 25 unused_index e 1 duplicate_index; validar impacto antes de qualquer alteracao.
+- [ ] **12.0 Baseline**: reconciliar schemas, tabelas, views, constraints, indices, grants, policies, SQL/RPC, triggers, Edge Functions, auth, storage, migrations, jobs, consumidores Web/PWA e backend; mapear risco com evidencia.
+- [ ] **12.1 P0 - RLS/grants**: definir politicas por ator/tenant/fazenda/retiro/pasto e matriz allow/deny; planejar remediacao incremental dos privilegios anon e das 107 tabelas; nao ligar RLS em massa sem policy/teste.
+- [ ] **12.2 Isolamento**: revisar policies existentes, SELECT true, com/sem RLS; incluir relatorios, URLs, recursos do Consultor FASE 11, storage, RPC e sync; testes negativos multi-tenant.
+- [ ] **12.3 SQL**: auditar views definer, funcoes privilegiadas acessiveis a anon/authenticated, search_path, triggers, dynamic SQL, ownership e controles de tenant; corrigir apenas em ambiente e janela autorizados.
+- [ ] **12.4 Auth/Edge**: revisar JWT ou autenticacao interna em cada funcao, caller/role/tenant, rate limiting, CORS, logs/PII, secrets e aviso de protecao contra senhas vazadas; preservar hardening ja realizado na FASE 1.
+- [ ] **12.5 Storage/LGPD**: avaliar buckets publicos, PDF/relatorios, permissoes de objetos, URLs assinadas, caches, consentimento, retencao e dados pessoais; nao privatizar automaticamente.
+- [ ] **12.6 Integridade/performance**: analisar 223 FKs, consultas, indices, transacoes, concorrencia, estoque/pesagem, idempotencia, auditoria e inconsistencias da migracao; nao remover indices apenas por lints.
+- [ ] **12.7 Remediacao segura**: classificar P0/P1/P2, plano por dependencia e tabela, dry-run local/staging autorizado, backup/restore, rollback e monitoramento antes de qualquer migration remota.
+- [ ] **12.8 QA**: testes anon/auth/perfil/cross-tenant/arquivos/Edge/SQL, regressao Web/PWA/offline, CI e relatorio com SHA/evidencias; QA reprovado bloqueia aceite.
+- [ ] Publicar atualizacoes de docs/ADRs/OpenAPI/handoff e evidencias quando houver implementacao efetiva; nao marcar fase concluida por existir planejamento.
+- [ ] **Gate**: nenhuma DDL, policy, migration, REVOKE, ALTER, deploy, alteracao Auth, bucket, segredo ou banco remoto nesta tarefa. Qualquer acao futura exige autorizacao expressa e criterios dos gates anteriores.
