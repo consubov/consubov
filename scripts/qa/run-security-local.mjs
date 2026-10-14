@@ -11,7 +11,13 @@ import { privateSourceParts, privateSourceExtensions, privateSourceBasenames, pr
 
 const ownRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = { eslint: '9.32.0', 'typescript-eslint': '8.38.0', 'eslint-plugin-security': '4.2.0' };
-const scannerHash = '17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c';
+// Pinned SHA-256 of the verified Gitleaks 8.30.1 binaries. Linux x64 was
+// extracted from the official archive with SHA-256
+// 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb.
+const scannerHashes = Object.freeze({
+  win32: '17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c',
+  linux: '88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509',
+});
 const rules = ['detect-eval-with-expression', 'detect-non-literal-fs-filename', 'detect-possible-timing-attacks'];
 const roots = new Set(['apps', 'scripts', 'docs', 'instructions', 'supabase', '.github', '.vscode', '.devcontainer', '.superpowers', 'src', 'public', 'packages', 'qa']);
 const text = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.yml', '.yaml', '.toml', '.tmpl', '.sh', '.ps1', '.sql', '.css', '.scss', '.html', '.svg', '.txt', '.xml', '.lock', '.gitkeep']);
@@ -139,13 +145,16 @@ export function invokeScanner(executable, args, cwd, timeoutMs = 330_000) {
   return result.status;
 }
 function verifiedScanner(root) {
-  if (process.platform !== 'win32') fail('scanner-provenance-unavailable-for-os');
-  const executable = path.join(root, '.qa/tools/gitleaks-8.30.1/gitleaks.exe');
+  if (process.arch !== 'x64' || !Object.hasOwn(scannerHashes, process.platform)) fail('scanner-provenance-unavailable-for-os');
+  const name = process.platform === 'win32' ? 'gitleaks.exe' : 'gitleaks';
+  const relative = '.qa/tools/gitleaks-8.30.1/' + name;
+  const executable = path.join(root, relative);
   if (!fs.existsSync(executable)) fail('scanner-missing');
-  if (digest(fs.readFileSync(safeFile(root, '.qa/tools/gitleaks-8.30.1/gitleaks.exe'))) !== scannerHash) fail('scanner-digest-mismatch');
+  const pinnedHash = scannerHashes[process.platform];
+  if (digest(fs.readFileSync(safeFile(root, relative))) !== pinnedHash) fail('scanner-digest-mismatch');
   const version = execFileSync(executable, ['version'], { encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   if (version !== '8.30.1') fail('scanner-version-mismatch');
-  return { executable, version, sha256: scannerHash };
+  return { executable, version, sha256: pinnedHash };
 }
 const safeReasons = new Set('not-executed source-link-denied source-entry-denied unknown-source-classification unknown-history-classification shallow-history partial-history missing-history-object invalid-metadata-report scanner-execution-failed scanner-provenance-unavailable-for-os scanner-missing scanner-digest-mismatch scanner-version-mismatch locked-eslint-tool-missing-or-mismatched sast-empty-source sast-unexpected-ignored-source sast-timeout sast-tool-or-config-failed sast-incomplete source-changed-during-projection private-projection-cleanup-failed evidence-link-denied invalid-scanner-timeout'.split(' '));
 const safeCodes = new Set(['ENOENT', 'EACCES', 'EPERM', 'MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND', 'ESLINT_INVALID_OPTIONS']);

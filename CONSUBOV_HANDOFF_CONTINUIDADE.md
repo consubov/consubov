@@ -1,5 +1,17 @@
 # CONSUBOV - Continuidade operacional
 
+## Auditoria da retomada 2026-10-14 — correcoes de QA Linux publicadas (NAO APROVADAS)
+
+- [x] Confirmado no GitHub que `main` e ancestral da branch `work/fase5-6-7-pwa-local`: 130 commits de desenvolvimento a frente e **PR #43 draft**, sem qualquer check remoto (total=0). Nao criar novo PR/branch.
+- [x] Backup remoto `codespace-probable-acorn-v6vvq9rrvjjgcw6w` possui **7 commits exclusivos** divergentes. Preservar e auditar esses commits antes de qualquer exclusao: nao reduzir ramas apagando historico nao integrado.
+- [x] Corrigida de modo estrito a selecao de binario Gitleaks em `scripts/qa/run-security-local.mjs` e a fixture `scripts/tests/security-local-integrity.test.mjs`: Windows x64 e Linux x64, hashes SHA-256 imutaveis e exigencia real de versao 8.30.1. No Codespace foi validado `gitleaks_8.30.1_linux_x64.tar.gz` do release oficial: archive `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`, binario `88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509`. **A correção publicada ainda NAO tem QA local reexecutado**.
+- [x] Gates locais no checkout anterior **dirty=true**: `qa:check` PASS (Web 197/197), FASE 6 PASS (44/44 browsers Chromium/WebKit), FASE 7 PASS, FASE 8 PASS dry-run, FASE 9 PASS synthetic, FASE 10 PASS mocks. Referir artefatos e hashes registrados no Checklist Mestre no Notion (nao atribuir ao novo commit).
+- [ ] `qa:regressions` ultimo resultado **421/477 PASS, 56 FAIL**, antes dos patches publicados; um erro TypeScript no teste `scripts/tests/playwright-listener-integrity.test.mjs` permanece no checkout remoto e precisa de correção e reexecucao `qa:regressions` completa. A ultima tentativa de editar esse arquivo estava apenas no Codespace com seis alteracoes `dirty=true`; preservar esse trabalho sem `reset`/force.
+- [ ] Renovar acesso ao Codespace, revisar `git status --short`/`git diff`/`git stash list`/`git worktree list`, sincronizar com cuidado (arquivos locais dirty), executar `qa:regressions`, `qa:phase5`, `qa:matrix` e gates FASES 6–10 no commit definitivo limpo.
+- [ ] Corrigir validacao `tenantId` por registro no exportador FASE10, remover fallback pseudo-SHA-256, homologar RLS em PostgreSQL isolado, testes de campo/rollback e suite no SHA final. **SEM autorizacao para passar `main` ou deploy enquanto houver blockers P0/P1.**
+- [ ] Frontend visual, `main`, Supabase remoto/legado e outros repositorios intocados. Nada de deploy, migrations remotas ou rotacao de secrets. FASE 11 pode ser PLANEJADA localmente; aceite de producao nao equivale ao fechamento de mock/fixture.
+
+
 ## FASE 10 encerrada — Módulos Congelados, Expansões & Ports (DEV LOCAL READY) — 2026-10-14
 
 - **Status:** **DEV LOCAL READY** comprovado pelo gate oficial `task qa:phase10` PASS.

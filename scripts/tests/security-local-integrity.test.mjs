@@ -7,8 +7,8 @@ import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
 const project = path.resolve(import.meta.dirname, '../..');
-const realScanner = path.join(project, '.qa/tools/gitleaks-8.30.1/gitleaks.exe');
 const toolName = process.platform === 'win32' ? 'gitleaks.exe' : 'gitleaks';
+const realScanner = path.join(project, '.qa/tools/gitleaks-8.30.1', toolName);
 const timeout = 45_000;
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'security fixture espaço-'));
@@ -31,6 +31,7 @@ function fixture(t) {
   const scanner = path.join(root, '.qa/tools/gitleaks-8.30.1', toolName);
   fs.mkdirSync(path.dirname(scanner), { recursive: true });
   fs.copyFileSync(realScanner, scanner);
+  if (process.platform !== 'win32') fs.chmodSync(scanner, 0o755);
   const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
   git('init', '-q'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Security Fixture'); git('config', 'user.email', 'qa@example.invalid');
   git('add', '.'); git('commit', '-qm', 'Baseline');
