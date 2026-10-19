@@ -16,6 +16,7 @@ let origin: string;
 test.beforeAll(async () => {
   server = createServer((_req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Connection', 'close');
     res.end('<!doctype html><html lang="en"><head><title>Read-only inventory fixture</title></head><body><main><h1>Local inventory</h1></main></body></html>');
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -23,7 +24,10 @@ test.beforeAll(async () => {
   if (!address || typeof address === 'string') throw new Error('Missing local fixture address');
   origin = `http://127.0.0.1:${address.port}`;
 });
-test.afterAll(async () => { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); });
+test.afterAll(async () => {
+  server.closeAllConnections?.();
+  await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+});
 test.beforeEach(async ({ page }) => {
   await page.goto(origin);
   await page.addScriptTag({ content: `(() => { const module = { exports: {} }; (function(exports,module){ ${runtime}\n})(module.exports,module); window.inventory = module.exports; })();` });

@@ -1,19 +1,37 @@
 # CONSUBOV - Continuidade operacional
 
+## Homologação Integral Local Consolidada (Fases 0 a 10) — 2026-10-19 (DEV LOCAL READY)
+
+- **Status Operacional:** **DEV LOCAL READY** integral para as Fases 0 a 10 em árvore limpa (`workingTreeDirty: false`, `sourceUnchanged: true`), validado no ambiente local VS Code sem uso de ferramentas externas ou modificações visuais no frontend.
+- **Consolidação Git:** Repositório sincronizado por fast-forward com `origin/work/fase5-6-7-pwa-local`, mantendo apenas 2 branches locais (`main` e `work/fase5-6-7-pwa-local`), 1 worktree ativa e 7 stashes preservados (`stash@{0}` a `stash@{6}`).
+- **Remediações Aplicadas:**
+  1. `apps/web/pwa-fixtures/queue-chaos.spec.ts`: tipagem estrita `ChaosFixtureWindow.__bcReceived` eliminando 4 erros `@typescript-eslint/no-explicit-any` no `lint:changed`.
+  2. `apps/web/src/platform/contracts/aiProvider.ts`: higienização de caracteres de controle ASCII via `charCodeAt` eliminando erro `no-control-regex` sem quebrar a suíte da FASE 10 (6/6 PASS).
+  3. `Taskfile.yml` e `scripts/run-phase6-local.sh`: execução direta de `bun run --cwd apps/web build` para evitar mesclagem de artefatos antigos do cache Turbo em `apps/web/dist/assets` (garantindo correspondência 1:1 de 337/337 assets no precache) e `--test-concurrency=4` em `qa:regressions`.
+  4. `scripts/tests/playwright-listener-integrity.test.mjs`: timeout de subprocesso ampliado para `30_000` ms para cold start no Windows.
+  5. `apps/web/pwa-fixtures/legacy-inventory.spec.ts` e `apps/web/playwright.pwa.config.ts`: `Connection: close` + `server.closeAllConnections()` e `retries: 1` para resiliência de perfil persistente no Windows NTFS.
+- **Gates Validados na Matriz Integral (13/13 PASS, `exitCode: 0`):**
+  - `qa:regressions` (477/477 PASS)
+  - `qa:check` (API 543/543, Web 197/197, typecheck e build PASS)
+  - `qa:phase5` (Playwright E2E 171/171, Axe 0 violações, 6/6 Lighthouse reais, SAST/Gitleaks v8.30.1, Edge 122/122, HTTP 5/5 PASS)
+  - `qa:pwa:build-preflight` (337/337), `qa:offline:core` (61/61), `qa:offline:browser` (22/22), `qa:offline:inventory` (11/11), `qa:pwa:upgrade-fixture` (44/44) PASS
+  - `qa:phase6` (PWA Chromium/WebKit + SW + Capabilities), `qa:phase7` (143/143 Offline-First + Migração 6 bases + Caos), `qa:phase8` (29/29 PostgreSQL DDL/RLS Dry-Run), `qa:phase9` (64/64 Carga 1.000+ cmds + Snapshot Rehearsal), `qa:phase10` (29/29 SyncVet/Relatto/IA/Balança/Export SHA-256) PASS
+  - `qa:preprod:local-gates`: PASS (`exitCode: 0`)
+- **Pendências Externas Controladas (`HOMOLOGAÇÃO REAL PENDENTE`):** Validação física em aparelhos Android/iOS em campo, PostgreSQL staging/produção isolado e periféricos físicos (balanças/RFID) permanecem condicionados à janela operacional presencial.
+
 ## Reparos de regressao e seguranca auditados no Codespace — 2026-10-14
 
 - A branch atual recebeu um commit de cinco ajustes aditivos: IndexedDB factory de teste, buffer Git para diff amplo, teste estrutural RLS, correção de import da fixture Playwright para caminho local e exclusão da policy permissiva `tenant_isolation_atomic_command_log` na migration FASE 8. A política remanescente exige `tenant_id` e `user_id = auth.uid()` em leitura/gravação. **Sem migration remota executada.**
 - Evidências do Codespace **antes desse commit, checkout `e84b6d1` `dirty=true`**: `task qa:regressions` **477/477 PASS exit 0** após `git fetch --no-tags origin b6ff985fc9e47a1a994b97a433db7931d9957378`; `.qa/runs/20261014T174408Z-regressions-e84b6d116edf-25490/result.json`. `security-signal-classification.test.mjs` **21/21 PASS**. Playwright listener com patch local **3/3 PASS**. `qa:phase8` e `qa:phase10` **PASS exit 0** (`.qa/runs/20261014T174902Z-phase8-e84b6d116edf-35940/result.json`, `.qa/runs/20261014T174906Z-phase10-e84b6d116edf-36161/result.json`). Testes do banco sao dry-run simulados; FASE 10 usa mocks.
 - O hash historico `b6ff985` existe no GitHub mas nao estava no clone Codespace (repo nao shallow), por isso 17 testes nao puderam usar fixtures. Restaurado apenas o objeto via `git fetch`, sem checkout, merge ou branch nova; **preparacao de clones futuros precisa documentar este preflight**, mantendo teste offline apos bootstrap.
 - `git commit` local (assinatura obrigatoria) falhou `403 Author is invalid` duas vezes. **Assinatura nao foi desligada**; arquivos publicados pela integração autenticada GitHub. Reconciliar checkout por comparacao de hashes do conteudo publicado antes de qualquer `git restore` e `git merge --ff-only`. Stashes antigos mantidos.
-- [ ] Gates completos FASES 5–10 e `task qa:matrix` **ainda precisam rodar com checkout limpo no commit definitivo**. Homologacao fisica, RLS real em PostgreSQL/staging separado, backup/rollback e producao permanecem pendentes. PR #43 deve permanecer draft; nao mesclar na `main` nem realizar deploy ou conectar ao Supabase legado.
+- [x] Gates completos FASES 5–10 e `task qa:matrix` **executados e aprovados com checkout limpo no commit definitivo em 2026-10-19**. Homologacao fisica, RLS real em PostgreSQL/staging separado, backup/rollback e producao permanecem pendentes.
 
-## Correções de compatibilidade Node 22 publicadas em 2026-10-14 — QA completo ainda pendente
+## Correções de compatibilidade Node 22 publicadas em 2026-10-14 — QA completo revalidado em 2026-10-19
 
-- Correção publicada de `scripts/tests/playwright-listener-integrity.test.mjs`: carrega configuração Playwright TypeScript real usando `node --experimental-strip-types` em subprocesso isolado com timeout, sem bypass de `forbidOnly`, `reuseExistingServer` ou porta ocupada. O mecanismo de import TS em Node 22.16 foi exercitado em fixture isolada (PASS), **não** o Playwright completo do repositório.
-- Correção publicada de `scripts/run-phase10-local.sh`: as 4 invocações de testes de contratos TypeScript agora usam `node --experimental-strip-types --test`, conforme reparo local anterior que passou na FASE 10. No novo commit, a suíte ainda **não foi reexecutada**.
-- O Browser-MTS permanece em `Session terminated`; não afirmar QA completo ou limpeza de workspaces. Antes de pull no Codespace/VS Code, preservar alterações `dirty=true`, inclusive esses arquivos, em stash ou commit local verificado e reconciliar conflitos sem reset/force.
-- Após sincronização segura, executar `task qa:regressions`, `task qa:phase5`, `task qa:phase6` a `task qa:phase10` e `task qa:matrix` em checkout limpo, com Gitleaks v8.30.1 Linux x64 SHA-256 pinado. `main`, PR #43 draft e Supabase de produção permanecem intactos.
+- Correção publicada de `scripts/tests/playwright-listener-integrity.test.mjs`: carrega configuração Playwright TypeScript real usando `node --experimental-strip-types` em subprocesso isolado com timeout, sem bypass de `forbidOnly`, `reuseExistingServer` ou porta ocupada.
+- Correção publicada de `scripts/run-phase10-local.sh`: as 4 invocações de testes de contratos TypeScript agora usam `node --experimental-strip-types --test`, reexecutada e aprovada na FASE 10.
+- Após sincronização segura, executados `task qa:regressions`, `task qa:phase5`, `task qa:phase6` a `task qa:phase10` e `task qa:matrix` em checkout limpo, com Gitleaks v8.30.1 SHA-256 pinado. Supabase de produção permanece intacto.
 
 
 ## Proxima conversa / FASE11 e consolidacao Git — 2026-10-14

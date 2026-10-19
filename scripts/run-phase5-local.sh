@@ -136,7 +136,7 @@ node --test --test-concurrency=1 apps/web/tests/sw-integrity.test.cjs apps/web/t
 echo "[phase5] edge functions"
 (
   cd supabase/functions
-  bunx vitest@3.2.4 run
+  node ../../node_modules/vitest/vitest.mjs run
 )
 
 echo "[phase5] api smoke"

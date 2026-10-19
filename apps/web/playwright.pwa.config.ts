@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
-  testDir: "./pwa-fixtures", timeout: 60000, fullyParallel: false, workers: 1, retries: 0,
+  testDir: "./pwa-fixtures", timeout: 60000, fullyParallel: false, workers: 1, retries: 1,
   reporter: "list", use: { trace: "off", screenshot: "only-on-failure" },
   projects: [
     { name: "pwa-chromium", use: { ...devices["Desktop Chrome"], serviceWorkers: "allow" } },

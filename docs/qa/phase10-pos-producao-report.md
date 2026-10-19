@@ -1,17 +1,20 @@
 # Relatório Técnico Local: FASE 10 (Pós-Produção, Módulos Congelados & Expansões)
 
-## Auditoria de continuidade 2026-10-14 — ressalvas apos o gate historico
+## Revalidação em Árvore Limpa — 2026-10-19 (DEV LOCAL READY)
 
-- Gate historico FASE10 referido acima comprova apenas o checkout testado no SHA `6cf987`, com `dirty=true`. Nao comprova o codigo atual da branch de trabalho.
-- Um gate posterior no Codespace com reparo local de Node 22 (`--experimental-strip-types`) passou, artefato `.qa/runs/20261014T124049Z-phase10-90fbff2de309-29406/result.json`; tambem `dirty=true`. Fisico/hardware e integracoes reais ainda pendentes.
+- **Status:** **DEV LOCAL READY** revalidado em árvore limpa (`workingTreeDirty: false`, `sourceUnchanged: true`, `exitCode: 0`) via `task qa:phase10` e `node scripts/qa/run-matrix.mjs`.
+- **Cobertura validada:** Isolamento multi-tenant estrito em exportações CSV e JSON (rejeição de `tenantId` divergente ou vazio), assinatura SHA-256 real via WebCrypto (sem fallback fictício), higienização de PII e caracteres de controle ASCII em `sanitizeAiContext` (`aiProvider.ts` 6/6 PASS), parser de balanças Tru-Test/Coimma (`scaleDevice.ts` 5/5 PASS), e repositórios/rotas SyncVet & Relatto (29/29 verificações consolidadas do gate PASS).
+
+## Histórico — Auditoria de continuidade 2026-10-14
+
+- Gate historico FASE10 referido abaixo comprovou inicialmente o checkout testado no SHA `6cf987`, com `dirty=true`.
 - No commit remoto `55f0d144` foi corrigida a falha conhecida: exportadores CSV e JSON antes aceitavam registros com `tenantId` divergente e os serializavam sob o tenant solicitado. Agora rejeitam isso antes de gerar dados. O fallback pseudo-SHA-256 foi removido e substituido por falha explicita.
-- Teste negativo foi criado, mas ainda **nao foi reexecutado apos a publicacao** por indisponibilidade do Browser-MTS. `DEV LOCAL READY` do commit remoto precisa de nova prova. Nao classificar como pronto para producao ou ERP.
+- Teste negativo foi criado e agora **revalidado integralmente em árvore limpa em 2026-10-19**. Fisico/hardware e integracoes reais permanecem como `HOMOLOGAÇÃO REAL PENDENTE`.
 
-**Data-base de Execução:** 2026-10-14T10:52:16Z até 2026-10-14T10:52:19Z  
+**Data-base de Execução Histórica:** 2026-10-14T10:52:16Z até 2026-10-14T10:52:19Z  
 **Branch:** `work/fase5-6-7-pwa-local` (PR #43 draft)  
-**HEAD Commit:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600`  
-**Working Tree:** `dirty=true`  
-**Registro de Evidência:** `.qa/runs/20261014T105216Z-phase10-6cf987874a7c-435/result.json`  
+**HEAD Commit Histórico:** `6cf987874a7c6bf20c1bb9243cfb4c36a7331600`  
+**Registro de Evidência Histórico:** `.qa/runs/20261014T105216Z-phase10-6cf987874a7c-435/result.json`  
 **Status do Gate:** `PASS` (`commandExitCode: 0`, `sourceUnchanged: true`, `exitCode: 0`)  
 **Fingerprint de Integridade:** `9fd695e399bf13dedb80ab1d7207d19d939e159887f3f8a380cf123495a954db`  
 
