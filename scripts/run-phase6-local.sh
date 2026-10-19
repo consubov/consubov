@@ -19,6 +19,7 @@ fi
 export PLAYWRIGHT_BROWSERS_PATH="$ROOT_DIR/.qa/tools/playwright-browsers"
 
 echo "[phase6] step 1: check static pwa build integrity"
+bun run --cwd apps/web build
 node scripts/qa/check-pwa-build.mjs
 
 echo "[phase6] step 2: service worker & precache integrity tests"

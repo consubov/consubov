@@ -40,9 +40,13 @@ export const MAX_AI_CONTEXT_CHARS = 8000;
 export function sanitizeAiContext(rawText: string, maxChars = MAX_AI_CONTEXT_CHARS): string {
   if (!rawText) return "";
   
-  // Limpeza de caracteres de controle e normalização
-  let sanitized = rawText
-    .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, "")
+  // Limpeza de caracteres de controle ASCII (exceto tab/LF/CR) sem regex de controle literal
+  let sanitized = Array.from(rawText)
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return !(code <= 0x08 || code === 0x0b || code === 0x0c || (code >= 0x0e && code <= 0x1f));
+    })
+    .join("")
     .trim();
 
   // Mascaramento básico de CPF para compliance LGPD

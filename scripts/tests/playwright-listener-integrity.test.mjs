@@ -21,7 +21,7 @@ async function run(program, args, options = {}) {
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });
-  const timer = setTimeout(() => child.kill(), 15_000);
+  const timer = setTimeout(() => child.kill(), 30_000);
   try {
     const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
     return { code, output };

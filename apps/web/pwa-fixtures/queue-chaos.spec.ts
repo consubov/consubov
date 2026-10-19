@@ -44,6 +44,7 @@ type ChaosFixtureWindow = Window & {
   __owner: import("../src/platform/offline/commandPolicy").CommandOwner;
   __transport: import("../src/platform/offline/LocalQueueDrainer").FakeOfflineCommandTransport;
   __drainer: import("../src/platform/offline/LocalQueueDrainer").LocalQueueDrainer;
+  __bcReceived?: Array<{ type?: string; commandId?: string }>;
 };
 
 let server: Server;
@@ -274,10 +275,10 @@ test("BroadcastChannel notifies inactive tab of sync progress and completion", a
 
     // Tab 2 listens on BroadcastChannel
     await other.evaluate(() => {
-      const received: any[] = [];
+      const received: Array<{ type?: string; commandId?: string }> = [];
       const bc = new BroadcastChannel("consubov-vnext-sync");
-      bc.onmessage = (event) => received.push(event.data);
-      (window as any).__bcReceived = received;
+      bc.onmessage = (event: MessageEvent<{ type?: string; commandId?: string }>) => received.push(event.data);
+      (window as unknown as ChaosFixtureWindow).__bcReceived = received;
     });
 
     // Tab 1 enqueues and drains
@@ -306,14 +307,14 @@ test("BroadcastChannel notifies inactive tab of sync progress and completion", a
 
     // Check events in Tab 2
     await other.waitForFunction(() => {
-      const events = (window as any).__bcReceived as any[];
-      return events && events.some((e) => e.type === "COMMAND_ACKED" && e.commandId === "cmd-broadcast-1");
+      const events = (window as unknown as ChaosFixtureWindow).__bcReceived;
+      return Boolean(events && events.some((e) => e.type === "COMMAND_ACKED" && e.commandId === "cmd-broadcast-1"));
     }, { timeout: 3000 });
 
-    const receivedEvents = await other.evaluate(() => (window as any).__bcReceived);
-    const ackEvent = receivedEvents.find((e: any) => e.type === "COMMAND_ACKED");
+    const receivedEvents = await other.evaluate(() => (window as unknown as ChaosFixtureWindow).__bcReceived ?? []);
+    const ackEvent = receivedEvents.find((e) => e.type === "COMMAND_ACKED");
     expect(ackEvent).toBeTruthy();
-    expect(ackEvent.commandId).toBe("cmd-broadcast-1");
+    expect(ackEvent?.commandId).toBe("cmd-broadcast-1");
   } finally {
     await other.close();
   }
