@@ -50,7 +50,13 @@ const PROFILES: Record<string, PwaProfile> = {
 
 export function profileForPath(pathname: string): PwaProfile {
   const p = pathname.toLowerCase();
-  if (p === "/relatto" || p.startsWith("/relatto/") || p.startsWith("/consultor")) {
+  const search = typeof window !== "undefined" ? window.location.search.toLowerCase() : "";
+  if (
+    p === "/relatto" ||
+    p.startsWith("/relatto/") ||
+    p.startsWith("/consultor") ||
+    (p === "/baixar" && search.includes("app=relatto"))
+  ) {
     return PROFILES.relatto;
   }
   if (

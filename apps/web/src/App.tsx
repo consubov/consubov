@@ -37,6 +37,7 @@ const EscritoriosPage = lazy(() => import("./pages/EscritoriosPage"));
 const AuditoriaConfigPage = lazy(() => import("./pages/AuditoriaConfigPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const RelattoLandingPage = lazy(() => import("./pages/RelattoLandingPage"));
+const BaixarAppPage = lazy(() => import("./pages/BaixarAppPage"));
 
 const EscritorioLayout = lazy(() => import("./pages/EscritorioLayout"));
 const TransferenciaRetiroPage = lazy(() => import("./pages/TransferenciaRetiroPage"));
@@ -114,6 +115,12 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
 import { getRoleHomePath } from "@/lib/authNavigation";
 import { RouteMemory } from "@/components/RouteMemory";
+import {
+  activateStandaloneSession,
+  isRelattoActiveProfile,
+  markAppInstalled,
+  resolveSurfaceRedirect,
+} from "@/lib/appSurface";
 
 function PushNotificationsBootstrap() {
   usePushNotifications();
@@ -126,6 +133,68 @@ function PwaProfileSync() {
     applyPwaProfile(location.pathname);
   }, [location.pathname]);
   return null;
+}
+
+function StandaloneAppGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const redirectTarget = resolveSurfaceRedirect(location.pathname, location.search);
+
+  useEffect(() => {
+    if (redirectTarget && /^https?:\/\//i.test(redirectTarget)) {
+      window.location.replace(redirectTarget);
+    }
+  }, [redirectTarget]);
+
+  // Quando o navegador conclui a instalação e move a aba /baixar para a janela do App
+  // (display-mode: standalone ou appinstalled), inicia imediatamente na tela de Login/Sistema.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const enterInstalledApp = () => {
+      const brand = isRelattoActiveProfile(window.location.search) ? "relatto" : "consubov";
+      markAppInstalled(brand);
+      activateStandaloneSession();
+      const p = window.location.pathname.toLowerCase();
+      if (p === "/" || p === "/index" || p === "/landing" || p === "/baixar" || p === "/relatto") {
+        navigate("/login", { replace: true });
+      }
+    };
+
+    const mqlStandalone =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(display-mode: standalone)")
+        : null;
+    const mqlOverlay =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(display-mode: window-controls-overlay)")
+        : null;
+
+    const onDisplayModeChange = (e: MediaQueryListEvent) => {
+      if (e.matches) enterInstalledApp();
+    };
+
+    window.addEventListener("appinstalled", enterInstalledApp);
+    mqlStandalone?.addEventListener?.("change", onDisplayModeChange);
+    mqlOverlay?.addEventListener?.("change", onDisplayModeChange);
+
+    return () => {
+      window.removeEventListener("appinstalled", enterInstalledApp);
+      mqlStandalone?.removeEventListener?.("change", onDisplayModeChange);
+      mqlOverlay?.removeEventListener?.("change", onDisplayModeChange);
+    };
+  }, [navigate]);
+
+  if (redirectTarget) {
+    if (/^https?:\/\//i.test(redirectTarget)) {
+      return <LoadingScreen />;
+    }
+    if (redirectTarget !== `${location.pathname}${location.search}`) {
+      return <Navigate to={redirectTarget} replace />;
+    }
+  }
+
+  return <>{children}</>;
 }
 
 
@@ -250,10 +319,12 @@ const App = () => (
             <PesagemEmAndamentoPrompt />
 
             <Suspense fallback={<LoadingScreen />}>
+              <StandaloneAppGuard>
               <Routes>
 
               <Route path="/" element={<LandingPage />} />
               <Route path="/relatto/*" element={<RelattoLandingPage />} />
+              <Route path="/baixar" element={<BaixarAppPage />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
 
               <Route path="/index" element={<Navigate to="/" replace />} />
@@ -374,6 +445,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
               </Routes>
+              </StandaloneAppGuard>
             </Suspense>
           </AuthProvider>
         </PainelPeriodoProvider>

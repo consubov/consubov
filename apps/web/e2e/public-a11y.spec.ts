@@ -14,8 +14,8 @@ for (const path of ['/', '/login', '/recuperar-senha']) {
     expect(results.violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('public-page.png') });
     if (path === '/') {
-      await page.getByRole('link', { name: 'Entrar', exact: true }).click();
-      await expect(page).toHaveURL(/\/login$/);
+      await page.getByRole('link', { name: 'Baixar App', exact: true }).click();
+      await expect(page).toHaveURL(/\/baixar$/);
     } else if (path === '/login') {
       await page.getByLabel('E-mail', { exact: true }).fill('qa@example.invalid');
       await page.getByRole('link', { name: 'Esqueci minha senha' }).click();

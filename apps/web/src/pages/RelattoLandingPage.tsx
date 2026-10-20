@@ -150,9 +150,9 @@ export default function RelattoLandingPage() {
             >
               <PlayCircle className="w-4 h-4" /> Demo
             </Button>
-            <Link to="/login">
+            <Link to="/baixar?app=relatto">
               <Button size="sm" className="rounded-full font-semibold">
-                {t("relatto_cta_entrar", "Entrar")}
+                {t("relatto_cta_entrar", "Baixar App")}
               </Button>
             </Link>
           </div>

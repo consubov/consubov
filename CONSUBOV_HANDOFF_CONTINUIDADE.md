@@ -1,5 +1,18 @@
 # CONSUBOV - Continuidade operacional
 
+## Separação Arquitetural Site Institucional vs. App Nativo em Subdomínio — 2026-10-20
+
+- **Documento canônico:** [`docs/70-separacao-site-e-app-nativo.md`](docs/70-separacao-site-e-app-nativo.md) (registrado também em `AGENTS.md` e `docs/README.md` para todos os agentes de IA).
+- **Decisões implementadas e obrigatórias:**
+  1. **Botão `"Baixar App"` nas Landing Pages (`/` e `/relatto`):** Substitui o antigo botão `"Entrar"`, levando o usuário para a página dedicada de download e instalação do App (`/baixar` e `/baixar?app=relatto`, ou `${VITE_APP_URL}/baixar` quando o Site aponta para o subdomínio externo `app.*`).
+  2. **Proibição da sigla `"PWA"` para o usuário:** Toda a interface (`BaixarAppPage.tsx` e fluxos públicos) refere-se ao sistema exclusivamente como **"App"** ou **"Aplicativo"** (ex.: *Baixar App Consubov*, *Baixar App Relatto*), nunca mencionando "PWA".
+  3. **Acesso exclusivo pelo ícone instalado no dispositivo (`standalone`):**
+     - No subdomínio do App (`app.*` / `VITE_SURFACE_MODE=app`), abrir qualquer rota em aba comum do navegador (Mobile ou Desktop) bloqueia o uso na aba e redireciona para `/baixar`.
+     - Quando o usuário abre o App pelo **ícone instalado no dispositivo** (`display-mode: standalone` / `navigator.standalone`), a raiz (`/`) e `/baixar` abrem diretamente no sistema (`/app` → `/login` ou painel do perfil autenticado, e `/consultor` para Relatto), sem passar pela Landing Page e com comportamento 100% nativo (`overscroll-behavior-y: none`, sem barra de endereço).
+  4. **Builds separados:**
+     - `bun run --cwd apps/web build` (`apps/web/dist`): Build completo do App com Service Worker offline-first para o subdomínio `app.*`.
+     - `bun run --cwd apps/web build:site` (`apps/web/dist-site`, via `apps/web/vite.site.config.ts`): Build dedicado do Site Institucional (`VITE_SURFACE_MODE=site`).
+
 ## Homologação Integral Local Consolidada (Fases 0 a 10) — 2026-10-19 (DEV LOCAL READY)
 
 - **Status Operacional:** **DEV LOCAL READY** integral para as Fases 0 a 10 em árvore limpa (`workingTreeDirty: false`, `sourceUnchanged: true`), validado no ambiente local VS Code sem uso de ferramentas externas ou modificações visuais no frontend.

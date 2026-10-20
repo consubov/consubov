@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-site
 dist-ssr
 *.local
 .env
@@ -27,6 +28,7 @@ dist-ssr
 
 .turbo
 apps/*/dist
+apps/*/dist-site
 apps/*/coverage
 apps/*/test-results
 *.tsbuildinfo

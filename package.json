@@ -13,6 +13,7 @@
     "dev:api": "turbo run dev --filter=@consubov/api",
     "build": "turbo run build",
     "build:web": "turbo run build --filter=@consubov/web",
+    "build:site": "bun run --cwd apps/web build:site",
     "build:api": "turbo run build --filter=@consubov/api",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

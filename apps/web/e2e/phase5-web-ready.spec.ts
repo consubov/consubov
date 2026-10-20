@@ -222,7 +222,7 @@ test.describe("@web-ready FASE 5 — autenticação, perfis e superfícies crít
 
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Baixar App" })).toBeVisible();
   });
 
   test("admin abre estrutura, QR, nutrição, lançamento e relatórios sem 404/overflow", async ({ page }) => {
@@ -557,10 +557,10 @@ test.describe("@a11y-smoke @web-ready FASE 5 — acessibilidade e responsividade
     await expectHealthySurface(page);
 
     await page.goto("/");
-    const loginLink = page.getByRole("link", { name: "Entrar" });
-    await loginLink.focus();
+    const downloadLink = page.getByRole("link", { name: "Baixar App" });
+    await downloadLink.focus();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/baixar$/);
   });
 
   test("rotas autenticadas prioritárias não criam overflow horizontal em desktop/mobile", async ({ browser }) => {

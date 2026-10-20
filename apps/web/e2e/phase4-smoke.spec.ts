@@ -146,9 +146,36 @@ test.describe("@smoke FASE 4 — auth público e proteção de navegação", () 
     await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   });
 
-  test("landing pública mantém entrada para autenticação", async ({ page }) => {
+  test("landing pública direciona para baixar o App sem mencionar PWA", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/login");
+    const downloadLink = page.getByRole("link", { name: "Baixar App" });
+    await expect(downloadLink).toHaveAttribute("href", "/baixar");
+    await downloadLink.click();
+    await expect(page).toHaveURL(/\/baixar$/);
+    await expect(page.getByRole("heading", { name: "Baixar App Consubov" })).toBeVisible();
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toMatch(/\bPWA\b/i);
+  });
+
+  test("subdomínio do App bloqueia uso na aba do navegador e exige abertura pelo ícone instalado", async ({ page }) => {
+    await page.goto("/login?surface=app");
+    await expect(page).toHaveURL(/\/baixar$/);
+    await expect(page.getByRole("heading", { name: "Baixar App Consubov" })).toBeVisible();
+  });
+
+  test("abertura pelo ícone instalado no dispositivo (standalone) leva direto ao sistema sem Landing Page", async ({ page }) => {
+    await page.goto("/?standalone=1");
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "Consubov" })).toBeVisible();
+  });
+
+  test("identifica quando o App já foi instalado e bloqueia segunda instalação", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("consubov:app-installed:consubov", "1");
+    });
+    await page.goto("/baixar");
+    await expect(page.getByTestId("app-already-installed-banner")).toContainText("App Consubov já está instalado neste dispositivo");
+    await expect(page.getByRole("button", { name: /Baixar e Instalar App/i })).toHaveCount(0);
   });
 });
 

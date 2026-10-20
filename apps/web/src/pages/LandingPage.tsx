@@ -433,11 +433,11 @@ export default function LandingPage() {
             </button>
 
             <Link
-              to="/login"
+              to="/baixar"
               className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
-              Entrar
+              Baixar App
             </Link>
             <button
               onClick={scrollToForm}

@@ -78,3 +78,4 @@ Os critérios detalhados do checklist anterior foram [preservados integralmente]
 
 - [Ensaio local de reconciliacao e restauracao - FASES 8/9](./67-local-snapshot-rehearsal.md)
 - [QA local: transicoes da fila e aberturas abandonadas](./qa/queue-transition-snapshot-2026-10-13.md)
+- [Separação entre Site Institucional e App Nativo (Subdomínio + Acesso Exclusivo pelo Ícone)](./70-separacao-site-e-app-nativo.md) — regra arquitetural obrigatória: botão `Baixar App` nas Landing Pages (`/` e `/relatto`), página instaladora `/baixar`, builds separados (`build` vs `build:site`), proibição da sigla `PWA` na interface (sempre `App`/`Aplicativo`) e abertura exclusiva pelo ícone instalado no dispositivo (`standalone`).

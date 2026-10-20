@@ -38,6 +38,7 @@
 - Keep the circular month picker isolated in `CircularMonthSelect`; only the Gerente GMD seasons block uses its infinite-scroll behavior.
 - Gerente/Admin screen data is cached in memory via `apps/web/src/lib/screenCache.ts` (keys include every filter; any successful DB write invalidates; resume refresh only after 5 min); why: back/minimize must not reload screens. Capataz hooks must not use it.
 - New PWA updates require explicit user consent and verified worker activation. Recheck critical work at the side-effect boundary after asynchronous waits; never purge the installed offline shell on manual refresh. A cold start alone is not consent to interrupt work.
+- **Site vs. App Separation (`docs/70-separacao-site-e-app-nativo.md`):** The institutional site (`/` and `/relatto`, built via `bun run build:site` into `apps/web/dist-site`) and the operational App (`app.*` subdomain, built via `bun run build` into `apps/web/dist`) are separated. Header CTAs on Landing Pages must say **"Baixar App"** (pointing to `/baixar` or `VITE_APP_URL/baixar`), never `"Entrar"`. Never mention the acronym `"PWA"` in user-facing UI or copy—always refer to it as **"App"** or **"Aplicativo"**. On the `app.*` subdomain (`VITE_SURFACE_MODE=app`), opening routes in a regular browser tab redirects to `/baixar`; users access the system exclusively via the installed home-screen/device icon (`standalone` mode, which routes `/` and `/baixar` directly to `/app` or `/consultor`).
 
 <!-- BEGIN:turborepo-agent-rules -->
 

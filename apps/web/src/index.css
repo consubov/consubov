@@ -112,4 +112,10 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  html.app-standalone,
+  html.app-standalone body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }

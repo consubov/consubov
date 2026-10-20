@@ -25,23 +25,23 @@
             isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
           } catch (e) {}
 
-          // Correção específica do Relatto: iOS/Android podem reaproveitar um
-          // webclip antigo com start_url "/" mesmo instalado pela rota /relatto.
-          // Em modo instalado, a raiz nunca deve renderizar a landing Consubov
-          // quando o perfil Relatto já foi detectado — redireciona antes do React.
-          if ((p === '/' || p === '/index.html') && isStandalone) {
+          // Em modo instalado pelo ícone do dispositivo (standalone), a raiz e /baixar
+          // nunca devem renderizar a Landing Page — abrem direto o sistema nativo.
+          if ((p === '/' || p === '/index.html' || p === '/baixar') && isStandalone) {
             var lastPwa = null;
             var hasRelattoCookie = false;
             try { lastPwa = localStorage.getItem('relatto:pwa-profile'); } catch (e) {}
             try { hasRelattoCookie = /(?:^|;\s*)relatto_pwa_profile=relatto(?:;|$)/.test(document.cookie || ''); } catch (e) {}
-            if (lastPwa === 'relatto' || hasRelattoCookie || location.search.indexOf('pwa=relatto') !== -1) {
-              location.replace('/relatto');
+            if (lastPwa === 'relatto' || hasRelattoCookie || location.search.indexOf('pwa=relatto') !== -1 || location.search.indexOf('app=relatto') !== -1) {
+              location.replace('/consultor');
               return;
             }
+            location.replace('/app');
+            return;
           }
 
           var m = null;
-          if (p === '/relatto' || p.indexOf('/relatto/') === 0 || p.indexOf('/consultor') === 0) {
+          if (p === '/relatto' || p.indexOf('/relatto/') === 0 || p.indexOf('/consultor') === 0 || (p === '/baixar' && location.search.toLowerCase().indexOf('app=relatto') !== -1)) {
             m = { id: 'relatto', title: 'Relatto' };
           } else if (p.indexOf('/maisarrobas') === 0 || p.indexOf('/mais-arrobas') === 0 || p.indexOf('/pecuarista') === 0 || p.indexOf('/pesador') === 0) {
             m = { id: 'maisarrobas', title: 'Mais Arrobas' };
