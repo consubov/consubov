@@ -1,5 +1,11 @@
 # CONSUBOV - Continuidade operacional
 
+## Unificação Canônica na Branch `main` para Produção — 2026-10-20
+
+- **Decisão:** O repositório foi 100% unificado na branch `main` como ramo único canônico de produção.
+- Todas as entregas das FASES 5, 6 e 7, a separação Site Institucional vs App Nativo, a tela `/baixar` e as correções de assets foram integradas via fast-forward em `main` e enviadas para o GitHub remoto (`origin/main`).
+- As branches secundárias (`work/fase5-6-7-pwa-local` e `codespace-probable-acorn-v6vvq9rrvjjgcw6w`) foram removidas do remote para evitar confusão de sincronização no GitHub Desktop e manter o fluxo de deploy simples e direto.
+
 ## Separação Arquitetural Site Institucional vs. App Nativo em Subdomínio — 2026-10-20
 
 - **Documento canônico:** [`docs/70-separacao-site-e-app-nativo.md`](docs/70-separacao-site-e-app-nativo.md) (registrado também em `AGENTS.md` e `docs/README.md` para todos os agentes de IA).

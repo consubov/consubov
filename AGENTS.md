@@ -4,7 +4,7 @@
 
 - **Codex no VS Code local:** executar o handoff `instructions/active/HANDOFF-CODEX-LOCAL-FASES5-9-2026-10-13.md` e o PRD ativo FASES 5–9. O Codex deve fazer `pull --ff-only` da branch de trabalho depois de confirmar clone correto e arvore limpa; nao criar branches nem PRs adicionais.
 
-- Work on `work/fase5-6-7-pwa-local` (PR #43, draft). The remote has `main`, this active branch, and the **backup-only** `codespace-probable-acorn-v6vvq9rrvjjgcw6w` (not a development branch; preserve pending review). `main` still lacks the active delivery; do not silently switch agents to it.
+- **Branch canônica de produção unificada:** A branch `main` é agora a única branch ativa do repositório (todas as entregas das FASES 5, 6 e 7, bem como a separação Site Institucional vs App Nativo, foram repassadas e unificadas em `main`). Branches de trabalho secundárias foram incorporadas e removidas. Trabalhar diretamente sobre `main` com árvore limpa.
 - Before a local pull or agent edit, read `docs/68-sincronizacao-local-e-agentes.md`, inspect `git status --short --branch` and `git diff`, fetch origin, and require fast-forward only on a clean target branch. Preserve uncommitted files, stashes and other agents' work; never use hard reset, forced push or blind merges.
 - One Codespace `special garbanzo` was verified clean on `396bf2ff`; real local gates passed including `qa:check`, offline core, PWA smoke/build, and Chromium/WebKit offline queue. Evidence and nonapproved gates: `docs/qa/qa-real-monorepo-2026-10-13.md`. Four stashes remain and must not be dropped. Always recheck HEAD before QA; these are not full phase or production acceptance.
 - This project follows PWA React/Vite plus IndexedDB; Capacitor/SQLite are historical experiments, not active. Follow existing acceptance gates; a Git cleanup is not a production release.
@@ -20,7 +20,7 @@
 - Existing flows that are not functional yet may remain frontend-only; do not invent missing business rules.
 - Keep code small, explicit, testable, and organized by responsibility. Comments should explain domain decisions, constraints, and non-obvious reasons.
 - PRDs and handoffs are temporary. After acceptance, move durable knowledge to `docs/` and delete the completed files from `instructions/active/`.
-- Use `work/fase5-6-7-pwa-local` and preserve other contributors' local changes. Inspect divergence before synchronizing: `main` contains conflicting native/SQLite work. Do not merge, reset, force-push or delete branches to hide that conflict. Do not execute archived kits over current code.
+- A branch oficial é `main` e deve-se preservar o histórico limpo e as entregas homologadas. Não criar branches nem PRs desnecessários.
 
 ## QA local obrigatório (Go Task + VS Code)
 
