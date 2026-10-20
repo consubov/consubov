@@ -38,7 +38,6 @@
 - [x] Na branch de trabalho, corrigido `apps/web/src/platform/contracts/enterpriseExport.ts`: CSV e JSON recusam mistura de tenants ou tenant de destino vazio antes de emitir conteudo; SHA-256 deixa de produzir fallback de hash ficticio quando WebCrypto esta indisponivel.
 - [x] Teste negativo adicionado a `scripts/tests/phase10-contracts-integrity.test.mjs` para os dois formatos e ausencia de tenant; **alteracoes nao executadas no Codespace no novo SHA `55f0d144`**.
 - [ ] Reexecutar gates FASE10, `qa:check`, `qa:regressions`, FASE5 e matriz integral em SHA limpo. Scanner Linux foi corrigido no commit anterior `70b6648`, mas ainda nao foi medido em CI/Codespace neste estado.
-- [ ] `main` e producao NAO liberadas. FASE11 pode ter inicio *local* apos conferir conflitos/contratos e usar PRD existente (Notion FASE11), independente de homologacao remota anterior; nao requer merge prematuro na `main`. Nenhum rollout ou migracao remota autorizado.
 
 ## Auditoria da retomada 2026-10-14 — correcoes de QA Linux publicadas (NAO APROVADAS)
 
@@ -49,7 +48,6 @@
 - [ ] `qa:regressions` ultimo resultado **421/477 PASS, 56 FAIL**, antes dos patches publicados; um erro TypeScript no teste `scripts/tests/playwright-listener-integrity.test.mjs` permanece no checkout remoto e precisa de correção e reexecucao `qa:regressions` completa. A ultima tentativa de editar esse arquivo estava apenas no Codespace com seis alteracoes `dirty=true`; preservar esse trabalho sem `reset`/force.
 - [ ] Renovar acesso ao Codespace, revisar `git status --short`/`git diff`/`git stash list`/`git worktree list`, sincronizar com cuidado (arquivos locais dirty), executar `qa:regressions`, `qa:phase5`, `qa:matrix` e gates FASES 6–10 no commit definitivo limpo.
 - [ ] Corrigir validacao `tenantId` por registro no exportador FASE10, remover fallback pseudo-SHA-256, homologar RLS em PostgreSQL isolado, testes de campo/rollback e suite no SHA final. **SEM autorizacao para passar `main` ou deploy enquanto houver blockers P0/P1.**
-- [ ] Frontend visual, `main`, Supabase remoto/legado e outros repositorios intocados. Nada de deploy, migrations remotas ou rotacao de secrets. FASE 11 pode ser PLANEJADA localmente; aceite de producao nao equivale ao fechamento de mock/fixture.
  de Execucao
 
 ## FASE 5 — CONCLUIDA LOCALMENTE / QA APROVADO — 2026-10-14
@@ -232,7 +230,7 @@ Branch ativa: `work/fase5-6-7-pwa-local`. PR #43 draft. Este painel consolida a 
 
 ## Planejamento integral preservado - leitura obrigatoria
 
-- Snapshot completo imediatamente anterior: [checklist preservado](docs/archive/CHECKLIST_antes_reconciliacao_ramos_2026-10-13.md), mesmo blob `564b90abd1fa36150f8b31be586124a8543cc7f5`. Contem todos os itens, vinculos, resultados e o planejamento da FASE 11 existentes antes desta consolidacao.
+- Snapshot completo imediatamente anterior: [checklist preservado](docs/archive/CHECKLIST_antes_reconciliacao_ramos_2026-10-13.md), mesmo blob `564b90abd1fa36150f8b31be586124a8543cc7f5`. Contem o historico, vinculos, resultados e planejamento anteriores a esta consolidacao.
 - Criterios originais completos: [arquivo integral de 2026-10-09](docs/archive/CONSUBOV_CHECKLIST_MESTRE_antes_auditoria_2026-10-09.md). Ler o capitulo da fase antes de implementar.
 - PRD unico: `instructions/active/ROADMAP-PRD-HANDOFF-2026-10-09-FASES5-9-LOCAL.md`.
 - Handoff: `CONSUBOV_HANDOFF_CONTINUIDADE.md`; Notion ao vivo: `3ec8e0bd-0f4d-816d-9bb5-d807e8e2cdc9`.
@@ -257,9 +255,7 @@ Branch ativa: `work/fase5-6-7-pwa-local`. PR #43 draft. Este painel consolida a 
 | 8 | DEV LOCAL READY (Gate `task qa:phase8` PASS) | 29/29 PASS (DDL/RLS dry-run e idempotência UP->DOWN->UP); staging/remoto exige janela própria |
 | 9 | DEV LOCAL READY (Gate `task qa:phase9` PASS) | 64/64 PASS (carga 1.000+ cmds, snapshot rehearsal e runbooks); piloto físico pendente |
 | 10 | DEV LOCAL READY (Gate `task qa:phase10` PASS) | 29/29 PASS (SyncVet, Relatto, IA, Balança e Export SHA-256); hardware físico pendente |
-| 11 | Planejamento documental | Perfis/hierarquia/curriculo/ranking; sem codigo, migracoes ou permissoes aprovadas |
 
-FASE 11: [PRD existente](docs/67-fase11-perfis-auditoria-prd.md). Sua numeracao nao cria gate automatico para trabalho independente, mas contratos, privacidade e conflitos precisam ser resolvidos antes de implementar.
 
 ## Regras de continuidade
 
@@ -304,7 +300,7 @@ Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-
 
 ## Escopo reiterado pelo responsável — todas as fases restantes
 
-- [x] Inventário canônico de fases restantes consultado: além de 5–9, FASE 10 contém SyncVet, Relatto, campanhas, IA, integrações empresariais e equipamentos; FASE 11 está planejada em `docs/67-fase11-perfis-auditoria-prd.md`. Evidência de leitura: `.qa/remaining-phases-inventory-2026-10-13.md`; nenhuma implementação desses blocos ocorreu nesta retomada.
+- [x] Inventário canônico de fases restantes consultado: além de 5–9, FASE 10 contém SyncVet, Relatto, campanhas, IA, integrações empresariais e equipamentos; Planejamentos posteriores continuam preservados nos documentos próprios; nenhuma implementação desses blocos ocorreu nesta retomada.
 - [ ] Executar a sequência e os incrementos locais autorizados, mantendo pendências concretas de produto, permissões, privacidade, scoring, provedores e hardware explícitas. Pedido amplo não define regras ausentes nem autoriza remoto/deploy/secrets; opção nativa/SQLite permanece histórica. Primeiro fechar o bloco local FASE 5 e seguir para a 6.
 
 ## FASE 6 — PWA Local Ready (Substituição Legado → Novo sem Perda — Remediação Consolidada)
@@ -329,60 +325,14 @@ Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-
 
 
 
-## FASE 11 - Consultor: permissoes granulares de consulta (planejada 2026-10-13)
 
-- [x] Auditoria read-only de codigo e metadados do legado: papel consultor, painel, visitas, IndexedDB e cadastro `fazendas_consultor` ja existem; este cadastro nao equivale a permissao de acesso a `fazendas` operacionais.
-- [x] Item **11.3A - Consultor** acrescentado ao checklist detalhado da FASE 11 no Notion; preserve o PRD existente `docs/67-fase11-perfis-auditoria-prd.md` ate a proxima revisao autorizada de escopo.
-- [ ] Acrescentar no cadastro atual de Consultores a arvore simples Fazenda > Retiro > Pasto, com selecao em lote, busca, resumo e revogacao. Reaproveitar o papel e as rotas existentes.
-- [ ] Aprovar alçadas de concessao e matriz por acao. Leitura por escopo explicito como proposta conservadora; escrita, exportacao e administracao negadas ate aprovacao.
-- [ ] Projetar grants aditivos por tenant, identidade, fazenda e retiro/pasto opcionais; validar hierarquia e origem de cada permissao no backend, sem confiar em UI, URL ou nomes.
-- [ ] Cobrir APIs, relatorios, PDF, arquivos, QR, cache offline, sync, auditoria e revogacao; preservar os dados/visitas legados e os perfis existentes.
-- [ ] Testar isolamento cross-tenant, URL/ID adulterado, tentativa de escalada de privilegio, fazenda inteira, retiro, pasto, multiplos vinculos, acesso revogado, offline e regressao; OpenAPI/docs/QA aprovados antes do aceite.
-- [ ] Nao implementar nem migrar remoto nesta etapa; conflitos com trabalhos em curso devem ser avaliados antes de codigo.
-
-## Planejamento FASE 12 - auditoria Supabase e correcoes de vulnerabilidades (2026-10-13)
-
-- [x] FASE 12 detalhada criada no Notion: https://app.notion.com/p/3f98e0bd0f4d81dab582edcf1c304138
-- [x] Auditoria **somente leitura**: 132 tabelas public; 107 sem RLS e com privilegios de SELECT/INSERT/UPDATE/DELETE para anon; 25 public com RLS. Exposicao potencial grave; nao afirmar vazamento efetivo sem teste isolado.
-- [x] Inventario: 185 policies public, 20 storage; 35 alertas policies com RLS desligado; 8 views SECURITY DEFINER; 15 avisos search_path mutable; 49 funcoes SQL public (29 SECURITY DEFINER); 32 registros de triggers public; 132 PK, 223 FK; 143 migrations.
-- [x] Inventario: 8 buckets (3 publicos: landing, mapas, relatorios) e 10 Edge Functions com verify_jwt=false; autenticacao interna deve ser auditada antes de classificar uma funcao como sem auth.
-- [x] Lints de performance inventariados: 113 FKs sem indice de cobertura, 62 auth_rls_initplan, 76 multiple_permissive_policies, 25 unused_index e 1 duplicate_index; validar impacto antes de qualquer alteracao.
-- [ ] **12.0 Baseline**: reconciliar schemas, tabelas, views, constraints, indices, grants, policies, SQL/RPC, triggers, Edge Functions, auth, storage, migrations, jobs, consumidores Web/PWA e backend; mapear risco com evidencia.
-- [ ] **12.1 P0 - RLS/grants**: definir politicas por ator/tenant/fazenda/retiro/pasto e matriz allow/deny; planejar remediacao incremental dos privilegios anon e das 107 tabelas; nao ligar RLS em massa sem policy/teste.
-- [ ] **12.2 Isolamento**: revisar policies existentes, SELECT true, com/sem RLS; incluir relatorios, URLs, recursos do Consultor FASE 11, storage, RPC e sync; testes negativos multi-tenant.
-- [ ] **12.3 SQL**: auditar views definer, funcoes privilegiadas acessiveis a anon/authenticated, search_path, triggers, dynamic SQL, ownership e controles de tenant; corrigir apenas em ambiente e janela autorizados.
-- [ ] **12.4 Auth/Edge**: revisar JWT ou autenticacao interna em cada funcao, caller/role/tenant, rate limiting, CORS, logs/PII, secrets e aviso de protecao contra senhas vazadas; preservar hardening ja realizado na FASE 1.
-- [ ] **12.5 Storage/LGPD**: avaliar buckets publicos, PDF/relatorios, permissoes de objetos, URLs assinadas, caches, consentimento, retencao e dados pessoais; nao privatizar automaticamente.
-- [ ] **12.6 Integridade/performance**: analisar 223 FKs, consultas, indices, transacoes, concorrencia, estoque/pesagem, idempotencia, auditoria e inconsistencias da migracao; nao remover indices apenas por lints.
-- [ ] **12.7 Remediacao segura**: classificar P0/P1/P2, plano por dependencia e tabela, dry-run local/staging autorizado, backup/restore, rollback e monitoramento antes de qualquer migration remota.
-- [ ] **12.8 QA**: testes anon/auth/perfil/cross-tenant/arquivos/Edge/SQL, regressao Web/PWA/offline, CI e relatorio com SHA/evidencias; QA reprovado bloqueia aceite.
-- [ ] Publicar atualizacoes de docs/ADRs/OpenAPI/handoff e evidencias quando houver implementacao efetiva; nao marcar fase concluida por existir planejamento.
-- [ ] **Gate**: nenhuma DDL, policy, migration, REVOKE, ALTER, deploy, alteracao Auth, bucket, segredo ou banco remoto nesta tarefa. Qualquer acao futura exige autorizacao expressa e criterios dos gates anteriores.
-
-## GATE EXPLICITO - FASE 12 NAO PODE INICIAR SEM NOVO PEDIDO (2026-10-13)
-
-- [x] Decisao do responsavel: FASE 12 permanece apenas PLANEJADA/BLOQUEADA. Nem achados P0 nem conclusao de fases previas autorizam iniciar, atribuir agente, criar PR de implementacao, executar migrations, RLS/grants/policies, mexer em storage/Auth/Edge Functions ou mudar status.
-- [ ] **Liberacao obrigatoria:** receber nova solicitacao explicita do responsavel para INICIAR A FASE 12. Mesmo depois disso, alteracoes remotas/irreversiveis requerem autorizacao propria, PRD, testes, QA e revisao de conflitos.
-- [x] Investigar metadados e codigo em read-only fora da execucao da FASE 12 e permitido; levantamento nao equivale a iniciar a fase nem a aprovar achados.
-
-### Auditoria preparatoria complementar da aplicacao e banco (somente leitura)
-
-- [x] Policies de `storage.objects` para `visitas-consultor-fotos` autorizam SELECT/INSERT/UPDATE/DELETE por `bucket_id` para qualquer authenticated; `logos-consultor` e `syncvet-medicamentos` tambem tem policies amplas sem vinculo de proprietario no predicado. Exige revisao por identidade/tenant.
-- [x] Das 9 views public, 8 nao declaram `security_invoker=true`; todas possuem grant SELECT para anon. Alcance via API/tenant nao foi testado.
-- [x] `GerentesPage.tsx` e `CapatazesPage.tsx` trocam todos os vinculos com DELETE seguido de INSERT em chamadas separadas: planejar atomicidade e rollback; ha exclusao fisica de cadastros.
-- [x] Onboarding/reset de gerente/capataz usa senha predefinida no codigo; planejar convite/recuperacao com credencial unica e troca obrigatoria, sem revelar a senha no checklist.
-- [x] API Bun atual documenta so health/readiness/OpenAPI/docs e nega rotas administrativas ate auth ser implementada; nenhuma integracao remota da nova arquitetura foi executada.
-- [x] Consultoria faz leituras de dados por ID sem predicado de consultor no frontend; IndexedDB legado usa chave por visita e nao evidencia isolamento por tenant/conta no schema; testar backend, JWT, rotas, troca de sessao, cache offline e revogacao.
-- [x] Consultas agregadas read-only: 0 referencias orfas entre retiro/fazenda, pasto/retiro, fazenda_consultor/consultor e gerente_fazenda/fazenda; 0 divergencias de vinculo principal nos grupos consultados. Nao generalizar para toda a base.
-- [ ] Backlog futuro adicional: transacoes atomicas, soft-delete com historico, restauracao, governanca de senha, limites/rate limiting de fluxos publicos, policies de storage, isolamento de offline, observabilidade, backup/restore e regressao por papel/tenant.
-- [ ] Todos os achados permanecem para futuro estudo/implementacao **somente quando a fase pertinente for explicitamente autorizada**. Nao marcar QA/FASE 12 como iniciado.
 
 ## Checkpoint local — sincronizacao e fechamento FASE5 em andamento
 
 - [x] Pull FF correto e preservacao verificavel de48paths locais: HEAD/origin b4eb7f1f29e688c9e0abcd5d863337a1dda9ef2b,5stashes antigos+1backup mantidos,sem staging/commit/push; `.qa/safe-sync-1791939896250/result.json`.
 - [x] Correcoes API de tipo e coletor local:53 testes,tipagem/ESLint focados e5 controles negativos PASS; revisao independente `.qa/task3-api-secret-independent-review.md`.
 - [ ] Classificacao exata de4sinais publicos/ficticios:18+3 controles PASS; tres controles de agregacao,autorizacao explicita exigida pela revisao automatica e scan integral ainda pendentes. Nenhum segredo novo pode ser ignorado.
-- [ ] FASE5 integral/baseline real/aprovacao atuais; FASE6 possui especificacao local,sem implementacao iniciada antes deste fechamento. FASE12 permanece PLANEJADA/BLOQUEADA ate novo pedido explicito conforme decisao remota incorporada.
+- [ ] FASE5 integral/baseline real/aprovacao atuais; FASE6 possui especificacao local,sem implementacao iniciada antes deste fechamento. nenhuma etapa posterior à FASE 10 é acompanhada por este checklist.
 
 - [x] Check completo local em b4eb7f1f, fonte dirty estavel: API543/Web171, tipagem/build e cache0 PASS; `.qa/runs/20261014T010744Z-check-b4eb7f1f29e6-536/result.json`. Anterior aos ultimos controles/documentacao; nao equivale a FASE5 integral atual.
 - [x] Autorizacao explicita do responsavel para SOMENTE4classificacoes exatas e testes finais registrada em `.qa/task3-exact-signal-explicit-approval.md`; preserva rawscanner e falha para desconhecidos. Scan e gate integral atuais permanecem pendentes.
@@ -393,21 +343,6 @@ Relatorio: [reconciliacao Git e limites](docs/qa/git-branch-reconciliation-2026-
 - [x] Correções E2E/contraste focadas17/17 PASS,0retry/skip/flaky; linkescuro9.07/claro11.25; lint0erros14avisos/typecheckPASS. `.qa/task3-e2e-lifecycle-final-verification.json`; integral171casos ainda pendente.
 - [x] Build pós-correção de contraste349assets/precache/cache0 PASS, `.qa/runs/20261014T015135Z-pwa-build-b4eb7f1f29e6-353/result.json`; sem provar upgrade/migração.
 
-## FASE 13 - continuidade offline, migracao sem perda e preservacao (PLANEJADA / BLOQUEADA)
-
-- [x] FASE 13 detalhada no Notion: https://app.notion.com/p/3f98e0bd0f4d81ec9208dd80c7fd85d4
-- [x] Dossie de planejamento no repo: `docs/69-fase13-offline-migracao-preservacao-planejamento.md`. Registro nao constitui execucao nem PRD de implementacao liberado.
-- [ ] **Gate FASE 12:** a FASE 12 continua PLANEJADA e NAO INICIA sem NOVA autorizacao explicita do responsavel; revisao/read-only nao equivale a iniciar.
-- [ ] **Gate FASE 13:** somente pode INICIAR APOS encerramento e QA APROVADO da FASE 12 e nova autorizacao especifica de execucao. Conclusao da FASE 12 nao inicia automaticamente a FASE 13.
-- [ ] **PRESERVACAO ABSOLUTA NESTE PLANEJAMENTO:** NAO apagar fotos, documentos, arquivos Storage, historicos, Auth, registros PostgreSQL, dados locais, IndexedDB/localStorage, backup, filas, ACKs ou tombstones. NAO criar prazo de validade/TTL, campo expires_at/delete_after, limite de retencao, lifecycle, expurgo, job de exclusao ou desativar dados. A antiga sugestao de 90 dias NAO foi aprovada.
-- [ ] Verificar em leitura a rotina preexistente `limpar-fotos-diario` e a funcao `limpar_fotos_antigas()`, atualmente ativas no Supabase e relacionadas a limpeza de referencias; esta auditoria NAO interrompeu nem alterou a rotina. Qualquer mudanca exige autorizacao remota especifica.
-- [ ] **FASE 7 NAO DEVE ESPERAR FASE 13:** finalizar por trabalho ja atribuido a persistencia duravel local (sem sucesso falso), autosync em reconexao, fila por tenant/user/device, idempotencia, ACK/retentativas, fotos, migracao das seis bases existentes e QA integrado. Evitar tarefa duplicada com PR #43 e agentes ativos.
-- [ ] **FASE 8 permanece gate remoto:** inventariar e mapear schema PostgreSQL/relacionamentos, Auth, Storage fisico, arquivos base64, historiais e filas de aparelhos; fazer provas de reconciliacao e restauracao local/staging isolado autorizado, sem novo backend conectado ao Supabase produtivo agora.
-- [ ] **Recomendacao de cutover:** manter app legado operacional e sua base atual; projetar schema/camadas seguras atras da API Bun, testar sem escrita dupla de saldo/estoque/pesagem/transferencias, migrar com IDs e checksums, rollback demonstrado. SOMENTE conectar nova API, mudar trafego ou desligar app atual com gates das FASES 5-9/12, QA e autorizacao externa expressa.
-- [ ] Evidencia de QA futura: cliente iOS/Android rural, sem internet prolongada, reconexao, travamento, multiaba, troca de conta/tenant, falta de armazenamento, service worker, foto Blob, duplicacao, conflito, backup/restore, contagens/saldos e todas as filas migradas.
-- [ ] Nenhuma configuracao de expiracao nem exclusao permitida apenas por este checklist; politica futura de descarte de imagens exige nova decisao separada e justificativa de dados/historico, sem prazos presumidos.
-
-**Convivencia:** nao redesenhar FASE 7/8 ou reatribuir trabalho sem consultar Notion vivo; preservar `main`, PR #43 draft e stashes. Nenhum SQL, migration, RLS/grant, auth/storage/cron, deploy ou programa remoto alterado pela criacao deste plano.
 
 - [x] BaselineLighthouse local medida6originais/revisada/orçamento não regressivo inicial aprovado; `.qa/task3-lh-measured-baseline-review.md`, fonte histórica b4ebdirtyFP8ed013; home56mediana/LCP6.3s continua fraca, nãoaprovarCWV/aparelho/produção.
 - [x] FF documental49paths preservados/7stashes: HEAD/origin6cf987874a7c6bf20c1bb9243cfb4c36a7331600; `.qa/safe-sync-1791943903529/result.json`; planos12/13bloqueados não iniciados.
