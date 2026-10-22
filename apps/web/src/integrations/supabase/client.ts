@@ -6,13 +6,28 @@ import { brokeredPreviewStorage } from './previewAuthStorage';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// A static preview can serve public pages before its backend is connected.
+// Never fall back to the production Supabase project or attempt real requests.
+const hasBackend =
+  typeof SUPABASE_URL === 'string' && SUPABASE_URL.trim().length > 0 &&
+  typeof SUPABASE_PUBLISHABLE_KEY === 'string' && SUPABASE_PUBLISHABLE_KEY.trim().length > 0;
+
+const offlineFetch: typeof fetch = async () => {
+  throw new Error('Supabase nao configurado neste ambiente de visualizacao.');
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: brokeredPreviewStorage(),
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+export const supabase = createClient<Database>(
+  hasBackend ? SUPABASE_URL : 'https://preview.consubov.invalid',
+  hasBackend ? SUPABASE_PUBLISHABLE_KEY : 'offline-preview-only',
+  {
+    auth: {
+      storage: brokeredPreviewStorage(),
+      persistSession: hasBackend,
+      autoRefreshToken: hasBackend,
+    },
+    ...(hasBackend ? {} : { global: { fetch: offlineFetch } }),
+  },
+);
