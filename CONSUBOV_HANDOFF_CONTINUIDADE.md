@@ -1,3 +1,14 @@
+## Vercel suporteagrodigital — 4 projetos isolados (2026-10-22)
+
+- **Escopo:** publicacao tecnica de demonstracao a partir de `consubov/consubov` / `main`, preservando `consubov.com.br` e os clientes do legado. Proibido alterar banco em producao, registros, schema, RLS, grants, auth, secrets, DNS ou provedores existentes nesta etapa.
+- **Equipe Vercel:** `suporteagrodigital` (Hobby), quatro projetos independentes criados e ligados ao mesmo repositorio GitHub: `consubov-site` (Vite, `apps/web`, `bun run build:site`, `dist-site`), `consubov-app` (Vite, `apps/web`, `bun run build`, `dist`), `relatto-site` (mesmo build separado do site, `dist-site`) e `relatto-app` (build completo `dist`). Dominio Vercel verificado: `consubov-site.vercel.app`, `consubov-app.vercel.app`, `relatto-site.vercel.app`, `relatto-app.vercel.app`.
+- **Ambiente frontend nao sensivel configurado:** `VITE_APP_URL` no Site Consubov aponta para `https://consubov-app.vercel.app`; no Site Relatto, para `https://relatto-app.vercel.app`. `VITE_SURFACE_MODE=app` nos projetos App Consubov e App Relatto. Nenhuma URL/chave Supabase configurada.
+- **Validacao observada:** primeira compilacao do projeto `relatto-app` em `main` commit `4ed98dedbd59405a8761595a67667a21f51f410e` concluiu `READY`; acesso direto a `/baixar?app=relatto` exibiu a pagina e o botao `BAIXAR E INSTALAR APP RELATTO`. Foram publicadas rewrites Vercel para as rotas SPA e redirect raiz para `/baixar?app=relatto`. Os outros tres projetos estavam sem deploy no levantamento inicial; nao marcar como concluidos sem evidencias individuais posteriores.
+- **Bloqueio de conexao ao banco:** consulta somente leitura ao projeto Supabase atual `zptkqeiyvkqogrimbvna` encontrou 107 tabelas `public` sem RLS e com privilegios `SELECT/INSERT/UPDATE/DELETE` ao papel `anon` (e `authenticated`). Ligar chave publica no novo frontend nessas condicoes nao demonstra isolamento multitenant e ampliaria a superficie exposta. Conexao remota somente apos desenho comprovado de acesso seguro, compatibilidade de Auth e QA, sem provocar alteracoes no legado.
+- **Gates:** READY/HTTP 200 nao aprova instalacao PWA, login, seguranca, isolamento ou sincronizacao; manter pendencia de QA integral. Vercel Hobby tem restricao de uso pessoal nao comercial: nao tratar estes enderecos como liberacao comercial de SaaS.
+
+---
+
 # CONSUBOV - Continuidade operacional
 
 ## Unificação Canônica na Branch `main` para Produção — 2026-10-20
