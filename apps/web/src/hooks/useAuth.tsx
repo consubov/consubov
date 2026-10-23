@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { clearConsubovResumeRoute } from "@/components/RouteMemory";
+import { clearConsubovResumeRoute } from "@/lib/consubovRouteResume";
 import {
   saveAuthSession,
   getAuthSession,
@@ -308,7 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Sessões de demonstração NUNCA são persistidas offline.
           if (!isDemoEmail(currentSession.user.email)) {
             deferNonCritical(() => {
-              void saveAuthSession(buildSessionPayload(currentSession));
+              if (!explicitSignOutRef.current) void saveAuthSession(buildSessionPayload(currentSession));
             });
           }
 
@@ -395,11 +395,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let restoring = false;
     async function tryRestoreBackup(): Promise<boolean> {
-      if (restoring) return false;
+      if (restoring || explicitSignOutRef.current) return false;
       restoring = true;
       try {
         const persisted = await getAuthSession();
-        if (!persisted?.access_token || !persisted?.refresh_token) return false;
+        if (explicitSignOutRef.current || !persisted?.access_token || !persisted?.refresh_token) return false;
         const { data, error } = await supabase.auth.setSession({
           access_token: persisted.access_token,
           refresh_token: persisted.refresh_token,
@@ -418,9 +418,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Persist session payload on every auth change so refresh tokens are
       // always up-to-date in IndexedDB even when the page reloads cold.
-      if (session && !isDemoEmail(session.user?.email)) {
+      if (!explicitSignOutRef.current && session && !isDemoEmail(session.user?.email)) {
         deferNonCritical(() => {
-          void saveAuthSession(buildSessionPayload(session));
+          if (!explicitSignOutRef.current) void saveAuthSession(buildSessionPayload(session));
         });
       }
 
@@ -466,7 +466,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const persisted = await getAuthSession();
-        if (persisted?.access_token && persisted?.refresh_token) {
+        if (!explicitSignOutRef.current && persisted?.access_token && persisted?.refresh_token) {
           const { data, error } = await supabase.auth.setSession({
             access_token: persisted.access_token,
             refresh_token: persisted.refresh_token,
@@ -523,6 +523,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    explicitSignOutRef.current = false;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
@@ -540,8 +541,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearCachedCapatazRole();
       // Wait for the offline authentication backup to be deleted before any
       // navigation can initiate a new session restoration.
-      await clearAuthSession();
       clearConsubovResumeRoute();
+      await clearAuthSession();
       if (typeof window !== "undefined") {
         window.location.replace("/");
       }

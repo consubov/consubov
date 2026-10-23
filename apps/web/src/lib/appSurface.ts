@@ -157,7 +157,10 @@ export async function detectInstalledAppAsync(
     const nav = window.navigator as NavigatorWithInstalledApps;
     if (typeof nav.getInstalledRelatedApps === "function") {
       const related = await nav.getInstalledRelatedApps();
-      if (Array.isArray(related) && related.length > 0) {
+      if (Array.isArray(related) && related.some((app) =>
+        brand === "relatto" ? Boolean(app.id?.includes("relatto")) :
+          app.id === "/" || app.id === new URL("/", window.location.origin).href
+      )) {
         markAppInstalled(brand);
         return true;
       }

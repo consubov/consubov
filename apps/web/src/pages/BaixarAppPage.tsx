@@ -163,6 +163,12 @@ export default function BaixarAppPage() {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       if (choice.outcome === "accepted") {
+        if (!isRelatto) {
+          // The browser will confirm installation with appinstalled.
+          setDeferredPrompt(null);
+          setShowManualHint(false);
+          return;
+        }
         markAppInstalled(brandId);
         activateStandaloneSession();
         setInstalled(true);
@@ -183,6 +189,11 @@ export default function BaixarAppPage() {
   };
 
   const handleConfirmManualInstall = () => {
+    if (!isRelatto) {
+      // Manual installation cannot be verified from the web page.
+      setShowManualHint(false);
+      return;
+    }
     markAppInstalled(brandId);
     activateStandaloneSession();
     setInstalled(true);
