@@ -114,7 +114,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
 import { getRoleHomePath } from "@/lib/authNavigation";
-import { RouteMemory, getConsubovResumeRoute } from "@/components/RouteMemory";
+import { RouteMemory } from "@/components/RouteMemory";
+import { getConsubovResumeRoute } from "@/lib/consubovRouteResume";
 import {
   activateStandaloneSession,
   isRelattoActiveProfile,
