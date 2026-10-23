@@ -1,3 +1,12 @@
+## 2026-10-23 — Compatibilidade das marcas e conexao dos novos Apps
+
+- Pedido atual do responsavel: preparar migracao dos usuarios de teste do legado para a versao 1.155.0, sem desligar Supabase ou alterar registros/schema. Falhas de seguranca conhecidas serao tratadas em etapa posterior; registrar risco e nao confundir a migracao do frontend com resolucao de RLS.
+- URL e chave **publishable** do projeto Supabase existente adicionadas exclusivamente aos projetos Vercel `consubov-app` e `relatto-app` no ambiente `production` (os Previews ja as possuíam). Nenhum `service_role`, secret administrativo, DML ou migration foi executado. Endereco `consubov.com.br` e repositorio legado permanecem intocados.
+- Ajuste minimo de codigo para Relatto: reconhecer dominios Site/App/Preview nos redirecionamentos ao login, preservar seu manifest `id=/relatto` e exibir marca Relatto no Login em vez de Consubov. Testes Vitest de reconhecimento de host adicionados.
+- Plano de migracao da PWA instalada: manter **mesma origem** `https://consubov.com.br` para a primeira troca, preservando `manifest.id=/`, cache, storage e IndexedDB. Nao redirecionar os usuarios ja instalados para dominio `.vercel.app` como substituicao, pois a origem muda e nao transporta dados locais. Validar geracao anterior de SW, sessao, filas, fotos, login/roles e rollback antes de mexer no dominio.
+- **Nao marcar cutover concluido:** pendente homologacao real de upgrade 1.154.0→1.155.0 na mesma origem, testes de perfis alem de admin e validação CI inclusive Security Code Scan. Ambiente Vercel Hobby somente para testes conforme uso permitido; operacao comercial deve usar hospedagem autorizada.
+
+---
 ## 2026-10-22 — Preparacao v1.155.0 e API sem localhost
 
 - Versao de codigo elevada a `1.155.0` (legado atualmente `1.154.0`); fallback de API `127.0.0.1:3000` removido de codigo e de `.env.example`.

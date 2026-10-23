@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
+import relattoLogo from "@/assets/relatto-logo.png.asset.json";
+import { isRelattoActiveProfile } from "@/lib/appSurface";
 
 export default function Login() {
   // Guarda SOMENTE o e-mail no aparelho. A senha nunca é armazenada pelo app.
@@ -24,6 +26,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const location = useLocation();
+  const isRelatto = isRelattoActiveProfile(location.search);
+  const brandName = isRelatto ? "Relatto" : "Consubov";
   const passwordReset = Boolean((location.state as { passwordReset?: boolean } | null)?.passwordReset);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,10 +54,12 @@ export default function Login() {
         <CardHeader className="text-center pb-2 pt-8">
           <div className="flex flex-col items-center gap-2">
             <div className="w-20 h-20 rounded-xl overflow-hidden mb-2">
-              <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
+              <img src={isRelatto ? relattoLogo.url : logoConsubov} alt={brandName} className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Consubov</h1>
-            <p className="text-sm text-muted-foreground">Sistema de Gestão Pecuária</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">{brandName}</h1>
+            <p className="text-sm text-muted-foreground">
+              {isRelatto ? "Relatórios Técnicos de Campo" : "Sistema de Gestão Pecuária"}
+            </p>
           </div>
         </CardHeader>
         <CardContent className="pt-4 pb-8 px-8">

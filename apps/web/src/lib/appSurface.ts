@@ -281,12 +281,18 @@ export function isStandaloneApp(probe?: StandaloneProbeInput): boolean {
   return detected;
 }
 
+export function isRelattoHostname(hostname: string): boolean {
+  // Site, App and Preview can use distinct hosts while sharing one PWA codebase.
+  return /(^|[.-])relatto([.-]|$)/i.test(hostname.trim());
+}
+
 export function isRelattoActiveProfile(search = ""): boolean {
   const params = new URLSearchParams(search);
   if (params.get("app") === "relatto" || params.get("pwa") === "relatto") {
     return true;
   }
   if (typeof window !== "undefined") {
+    if (isRelattoHostname(window.location.hostname)) return true;
     try {
       if (window.localStorage.getItem("relatto:pwa-profile") === "relatto") {
         return true;

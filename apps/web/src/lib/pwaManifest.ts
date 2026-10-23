@@ -4,6 +4,8 @@
  * funcionalidade de módulo.
  */
 
+import { isRelattoHostname } from "./appSurface";
+
 export interface PwaProfile {
   id: string;
   title: string;
@@ -48,10 +50,14 @@ const PROFILES: Record<string, PwaProfile> = {
   },
 };
 
-export function profileForPath(pathname: string): PwaProfile {
+export function profileForPath(
+  pathname: string,
+  hostname = typeof window !== "undefined" ? window.location.hostname : "",
+): PwaProfile {
   const p = pathname.toLowerCase();
   const search = typeof window !== "undefined" ? window.location.search.toLowerCase() : "";
   if (
+    isRelattoHostname(hostname) ||
     p === "/relatto" ||
     p.startsWith("/relatto/") ||
     p.startsWith("/consultor") ||
