@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
  * Never restore a route from another account or from a different product.
  * This does not persist unsaved form contents or authentication credentials.
  */
-import { eligible, clearConsubovResumeRoute } from "@/lib/consubovRouteResume";
+import { eligible, clearConsubovResumeRoute, rememberConsubovResumeRoute } from "@/lib/consubovRouteResume";
 
 const SCROLL_PREFIX = "consubov:scroll:";
 
@@ -30,11 +30,7 @@ export function RouteMemory() {
       clearConsubovResumeRoute();
     previousIdentity.current = identity;
     if (!eligible(fullPath, role)) return;
-    try {
-      window.localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify({
-        userId: identity, role, path: fullPath,
-      } satisfies SavedRoute));
-    } catch { /* storage unavailable */ }
+    if (role) rememberConsubovResumeRoute(identity, role, fullPath);
   }, [fullPath, identity, role, roleResolved]);
 
   // Keep the original scroll restoration behavior without changing the

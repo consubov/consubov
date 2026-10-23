@@ -23,6 +23,13 @@ export function eligible(path: string, role: string | null | undefined): boolean
   );
 }
 
+export function rememberConsubovResumeRoute(userId: string, role: string, path: string): void {
+  if (!userId || !eligible(path, role) || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify({ userId, role, path } satisfies SavedRoute));
+  } catch { /* unavailable */ }
+}
+
 export function clearConsubovResumeRoute(): void {
   if (typeof window === "undefined") return;
   try { window.localStorage.removeItem(LAST_ROUTE_KEY); } catch { /* unavailable */ }
