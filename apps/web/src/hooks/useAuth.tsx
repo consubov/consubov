@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearConsubovResumeRoute } from "@/components/RouteMemory";
 import {
   saveAuthSession,
   getAuthSession,
@@ -537,7 +538,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRoleData(emptyRoleData);
       clearCachedCapatazRole();
-      void clearAuthSession();
+      // Wait for the offline authentication backup to be deleted before any
+      // navigation can initiate a new session restoration.
+      await clearAuthSession();
+      clearConsubovResumeRoute();
       if (typeof window !== "undefined") {
         window.location.replace("/");
       }
