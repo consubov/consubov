@@ -5,7 +5,8 @@ import {
 } from "./apiConfig";
 
 describe("normalizeApiBaseUrl", () => {
-  it("uses the local API when no value is configured", () => {
+  it("keeps the API disabled when no URL is configured", () => {
+    expect(DEFAULT_API_BASE_URL).toBe("");
     expect(normalizeApiBaseUrl()).toBe(DEFAULT_API_BASE_URL);
     expect(normalizeApiBaseUrl("   ")).toBe(DEFAULT_API_BASE_URL);
   });

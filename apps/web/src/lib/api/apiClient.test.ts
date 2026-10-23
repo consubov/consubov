@@ -32,6 +32,14 @@ describe("createApiClient", () => {
     vi.unstubAllGlobals();
   });
 
+  it("rejects requests with no API base before network traffic", async () => {
+    const offlineApi = createApiClient({ baseUrl: "", defaultTimeoutMs: 5_000 });
+    await expect(offlineApi.request("/api/v1/health")).rejects.toMatchObject({
+      name: "ApiClientError", status: 503, code: "API_NOT_CONFIGURED",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("parses a successful JSON response and applies safe defaults", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 

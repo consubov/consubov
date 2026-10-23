@@ -1,3 +1,13 @@
+## 2026-10-22 — Preparacao v1.155.0 e API sem localhost
+
+- Versao de codigo elevada a `1.155.0` (legado atualmente `1.154.0`); fallback de API `127.0.0.1:3000` removido de codigo e de `.env.example`.
+- Cliente de API nega requisicoes sem `VITE_API_BASE_URL` com `API_NOT_CONFIGURED` (503), sem trafego de rede. URLs remotas explicitas mantidas.
+- Testes locais isolados Node 22: 3/3 PASS; **matriz completa e E2E nao executados** — nao liberar troca de producao.
+- Apenas os dois Apps da Vercel `suporteagrodigital` receberam URL/chave publishable do Supabase **no Preview**, nunca no Production nesta etapa. Nenhum banco, RLS, dado, chaves administrativas ou dominio antigo alterados.
+- Relatorio: `docs/qa/qa-versao-api-preview-2026-10-22.md`. 107 tabelas sem RLS exigem isolamento testado antes de habilitar acesso publico. API nova nao esta operacionalmente conectada sem testes de negocio.
+
+---
+
 ## Vercel suporteagrodigital — 4 projetos isolados (2026-10-22)
 
 - **Escopo:** publicacao tecnica de demonstracao a partir de `consubov/consubov` / `main`, preservando `consubov.com.br` e os clientes do legado. Proibido alterar banco em producao, registros, schema, RLS, grants, auth, secrets, DNS ou provedores existentes nesta etapa.

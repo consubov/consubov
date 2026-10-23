@@ -95,6 +95,14 @@ export function createApiClient(config: ApiClientConfig) {
     path: string,
     options: ApiRequestOptions = {},
   ): Promise<T> {
+    if (!config.baseUrl.trim()) {
+      throw new ApiClientError(
+        "Backend API is not configured for this environment",
+        503,
+        "API_NOT_CONFIGURED",
+      );
+    }
+
     const {
       timeoutMs,
       correlationId: _correlationId,
