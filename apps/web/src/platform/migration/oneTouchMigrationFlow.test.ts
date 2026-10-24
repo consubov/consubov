@@ -263,11 +263,11 @@ describe("CONSUBOV v2 single-consent migration", () => {
 
   it("resumes automatically without a second notification after verified consent", async () => {
     const port = makePort({
-      recoverPreviouslyGrantedConsent: vi.fn(async ({ identity: user }) => ({
+      recoverPreviouslyGrantedConsent: vi.fn(async ({ identity: user }: Parameters<NonNullable<MigrationPort["recoverPreviouslyGrantedConsent"]>>[0]) => ({
         id: "consent-1",
         identity: user,
-        textVersion: CONSENT_TEXT_VERSION,
-        releaseId: MIGRATION_RELEASE_ID,
+        textVersion: CONSENT_TEXT_VERSION as typeof CONSENT_TEXT_VERSION,
+        releaseId: MIGRATION_RELEASE_ID as typeof MIGRATION_RELEASE_ID,
       })),
     });
     const result = await flow(port).resumePreviouslyAuthorized();
