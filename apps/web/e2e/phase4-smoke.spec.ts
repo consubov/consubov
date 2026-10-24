@@ -112,6 +112,24 @@ test.describe("@smoke FASE 4 — auth público e proteção de navegação", () 
     await expect(page).toHaveURL(/\/admin(?:\/|$)/);
   });
 
+  test("Consubov: reabrir o App mantém a última tela autorizada do administrador", async ({ page }) => {
+    await mockAuthenticatedRole(page, "administradores");
+    await page.goto("/login?standalone=1");
+    await page.getByLabel("E-mail", { exact: true }).fill("fase4@example.com");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-local");
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/\/admin(?:\/|$)/);
+
+    await page.goto("/admin/inteligencia");
+    await expect(page).toHaveURL(/\/admin\/inteligencia$/);
+    await expect.poll(() => page.evaluate(() =>
+      JSON.parse(window.localStorage.getItem("consubov:resume-route:v2") || "null")?.path
+    )).toBe("/admin/inteligencia");
+
+    await page.goto("/app?standalone=1");
+    await expect(page).toHaveURL(/\/admin\/inteligencia$/);
+  });
+
   test("login de gerente resolve o redirect do perfil", async ({ page }) => {
     await mockAuthenticatedRole(page, "gerentes");
     await page.goto("/login");
