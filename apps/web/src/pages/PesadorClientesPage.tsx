@@ -19,7 +19,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { z } from "zod";
+import { clienteSchema } from "@/lib/zodSchemas";
 import { enqueueMa, getMaPendingRows, mergeMaRows } from "@/lib/maisArrobasQueue";
 
 type Cliente = {
@@ -31,13 +31,6 @@ type Cliente = {
   telefone: string | null;
   created_at: string | null;
 };
-
-const clienteSchema = z.object({
-  nome: z.string().trim().min(1, "Nome obrigatório").max(120),
-  nome_fazenda: z.string().trim().max(120).optional().or(z.literal("")),
-  cidade: z.string().trim().max(80).optional().or(z.literal("")),
-  telefone: z.string().trim().max(30).optional().or(z.literal("")),
-});
 
 export default function PesadorClientesPage() {
   const { roleData } = useAuth();

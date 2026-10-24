@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendPush } from "@/lib/pushService";
-import { z } from "zod";
+import { leadSchema } from "@/lib/zodSchemas";
 import { LandingIcon as LucideIcon } from "@/components/landing/LandingIcon";
 import {
   RefreshCw,
@@ -31,14 +31,6 @@ import { useLandingContent } from "@/hooks/useLandingContent";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { APP_VERSION } from "@/lib/appVersion";
 
-
-const leadSchema = z.object({
-  nome: z.string().trim().min(2, "Nome obrigatório").max(100),
-  email: z.string().trim().email("E-mail inválido").max(255),
-  telefone: z.string().trim().min(10, "Telefone inválido").max(20),
-  whatsapp: z.string().trim().min(10, "WhatsApp inválido").max(20),
-  mensagem: z.string().trim().max(1000).optional(),
-});
 
 const NEON = "#22FF88";
 const NEON_DIM = "rgba(34,255,136,0.55)";

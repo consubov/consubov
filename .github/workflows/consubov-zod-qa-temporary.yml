@@ -26,17 +26,18 @@ jobs:
       - name: Web lint changed
         working-directory: apps/web
         run: bun run lint:changed
-      - name: Dependency audit high
-        run: bun audit --audit-level=high
       - name: Install Chromium
         working-directory: apps/web
         run: bunx playwright install --with-deps chromium
-      - name: E2E smoke
+      - name: Full E2E Chromium
         working-directory: apps/web
-        run: bun run test:e2e:smoke
+        run: bun run test:e2e
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
       - name: Edge Functions unit tests
         working-directory: supabase/functions
         run: bunx vitest@3.2.4 run
+
+      - name: Dependency audit high
+        run: bun audit --audit-level=high
