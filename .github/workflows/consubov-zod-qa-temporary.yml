@@ -1,0 +1,41 @@
+name: CONSUBOV Zod 4 QA Temporary
+on:
+  push:
+    branches:
+      - fix/consubov-zod4-compat-20261024
+permissions:
+  contents: read
+jobs:
+  zod-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact branch SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Frozen install
+        run: bun install --frozen-lockfile
+      - name: Typecheck build unit tests
+        run: bun run check
+      - name: Web lint changed
+        working-directory: apps/web
+        run: bun run lint:changed
+      - name: Dependency audit high
+        run: bun audit --audit-level=high
+      - name: Install Chromium
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - name: E2E smoke
+        working-directory: apps/web
+        run: bun run test:e2e:smoke
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
+      - name: Edge Functions unit tests
+        working-directory: supabase/functions
+        run: bunx vitest@3.2.4 run
