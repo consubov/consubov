@@ -20,7 +20,7 @@ describe("Single invitation, explicit one-tap consent", () => {
       />,
     );
     expect(screen.getByText("Atualização CONSUBOV 2.0")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Autorizo a transferência/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Autorizar e atualizar/i })).toBeTruthy();
     expect(run).not.toHaveBeenCalled();
   });
 
@@ -36,7 +36,7 @@ describe("Single invitation, explicit one-tap consent", () => {
         onOpenNewApp={onOpen}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Autorizo a transferência/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Autorizar e atualizar/i }));
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(url));
     expect(run).toHaveBeenCalledWith(true, expect.any(Function));
     expect(run).toHaveBeenCalledTimes(1);
@@ -57,7 +57,7 @@ describe("Single invitation, explicit one-tap consent", () => {
         onOpenNewApp={onOpen}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Autorizo a transferência/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Autorizar e atualizar/i }));
     await waitFor(() => expect(screen.getByText("Seus dados continuam na versão atual.")).toBeTruthy());
     expect(onOpen).not.toHaveBeenCalled();
   });

@@ -86,8 +86,8 @@ export function V2MigrationConsentDialog({
           <Button type="button" variant="outline" onClick={onDismiss} disabled={working}>
             Agora não
           </Button>
-          <Button type="button" onClick={() => { void authorizeAndUpdate(); }} disabled={working}>
-            {working ? "Preparando atualização..." : "Autorizo a transferência e quero atualizar"}
+          <Button type="button" className="h-auto min-h-11 w-full whitespace-normal px-4 py-3 text-center" onClick={() => { void authorizeAndUpdate(); }} disabled={working}>
+            {working ? "Preparando atualização..." : "Autorizar e atualizar"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
