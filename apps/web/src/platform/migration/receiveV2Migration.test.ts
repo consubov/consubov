@@ -69,7 +69,7 @@ describe("V2 destination: redeem and rehydrate from server", () => {
 
   it("automatically finds a verified migration after iOS installation loses the URL fragment", async () => {
     const port = createPort({
-      findVerifiedMigrationForIdentity: vi.fn(async ({ tenantId, userId }) => ({
+      findVerifiedMigrationForIdentity: vi.fn(async ({ tenantId, userId }: Parameters<NonNullable<DestinationMigrationPort["findVerifiedMigrationForIdentity"]>>[0]) => ({
         migrationId: "migration-1",
         sourceSnapshotId: "snapshot-1",
         tenantId,
