@@ -49,6 +49,14 @@ export interface DestinationMigrationPort {
   /** Backend verifies scope, one-time nonce, TTL and user permission. */
   redeemOneTimeReference(code: string): Promise<RedeemedMigration>;
   /** Fetch permitted records/files through authenticated API, hydrate IDB. */
+  /**
+   * Fallback for iOS home-screen installation when a URL fragment is lost.
+   * Backend must select a UNIQUE, authenticated, consented pending migration
+   * for this user/tenant or return null. Never match on client-provided PII.
+   */
+  findVerifiedMigrationForIdentity?(
+    identity: DestinationIdentity,
+  ): Promise<RedeemedMigration | null>;
   hydrateAuthorizedData(receipt: RedeemedMigration): Promise<HydrationProof>;
   /** Mark complete only after durable local cache and server reconciliation. */
   confirmDestinationReady(proof: HydrationProof): Promise<void>;
@@ -77,7 +85,7 @@ export async function receiveV2Migration(
   port: DestinationMigrationPort,
 ): Promise<DestinationResult> {
   if (input.origin !== NEW_APP_ORIGIN) return { ok: false, code: "WRONG_DESTINATION" };
-  if (!input.code || !/^[A-Za-z0-9_-]{20,160}$/.test(input.code)) {
+  if (input.code && !/^[A-Za-z0-9_-]{20,160}$/.test(input.code)) {
     return { ok: false, code: "NO_HANDOFF" };
   }
   try {
@@ -86,7 +94,10 @@ export async function receiveV2Migration(
       // The UI can wait for a standard login before calling again.
       return { ok: false, code: "LOGIN_REQUIRED" };
     }
-    const receipt = await port.redeemOneTimeReference(input.code);
+    const receipt = input.code
+      ? await port.redeemOneTimeReference(input.code)
+      : await port.findVerifiedMigrationForIdentity?.(identity);
+    if (!receipt) return { ok: false, code: "NO_HANDOFF" };
     const expiry = Date.parse(receipt.expiresAt);
     if (
       !receipt.migrationId || !receipt.sourceSnapshotId ||

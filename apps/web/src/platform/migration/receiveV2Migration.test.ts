@@ -56,13 +56,52 @@ describe("V2 destination: redeem and rehydrate from server", () => {
     expect(cleared).toHaveBeenCalledOnce();
   });
 
-  it("rejects foreign origins and absent tickets without contacting the backend", async () => {
+  it("rejects foreign origins and absent verified handoffs", async () => {
     const port = createPort();
     expect(await receiveV2Migration({ origin: "https://attacker.test", code: CODE, now }, port))
       .toMatchObject({ ok: false, code: "WRONG_DESTINATION" });
+    expect(port.currentIdentity).not.toHaveBeenCalled();
     expect(await receiveV2Migration({ origin: NEW_APP_ORIGIN, code: null, now }, port))
       .toMatchObject({ ok: false, code: "NO_HANDOFF" });
-    expect(port.currentIdentity).not.toHaveBeenCalled();
+    expect(port.redeemOneTimeReference).not.toHaveBeenCalled();
+  });
+
+
+  it("automatically finds a verified migration after iOS installation loses the URL fragment", async () => {
+    const port = createPort({
+      findVerifiedMigrationForIdentity: vi.fn(async ({ tenantId, userId }) => ({
+        migrationId: "migration-1",
+        sourceSnapshotId: "snapshot-1",
+        tenantId,
+        userId,
+        expectedDatabases: [...TRANSFERABLE_DATABASES],
+        expiresAt: NEXT,
+      })),
+    });
+    expect(await receiveV2Migration({ origin: NEW_APP_ORIGIN, code: null, now }, port))
+      .toEqual({ ok: true, migrationId: "migration-1" });
+    expect(port.findVerifiedMigrationForIdentity).toHaveBeenCalledWith({
+      tenantId: "tenant-a",
+      userId: "user-a",
+    });
+    expect(port.redeemOneTimeReference).not.toHaveBeenCalled();
+    expect(port.confirmDestinationReady).toHaveBeenCalledOnce();
+  });
+
+  it("blocks discovery of a migration belonging to another tenant", async () => {
+    const port = createPort({
+      findVerifiedMigrationForIdentity: async () => ({
+        migrationId: "migration-other",
+        sourceSnapshotId: "snapshot-1",
+        tenantId: "tenant-b",
+        userId: "user-a",
+        expectedDatabases: [...TRANSFERABLE_DATABASES],
+        expiresAt: NEXT,
+      }),
+    });
+    expect(await receiveV2Migration({ origin: NEW_APP_ORIGIN, code: null, now }, port))
+      .toMatchObject({ ok: false, code: "HANDOFF_UNVERIFIED" });
+    expect(port.hydrateAuthorizedData).not.toHaveBeenCalled();
   });
 
   it("requires normal authenticated login in the new origin", async () => {
