@@ -300,6 +300,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadRole(currentSession: Session | null) {
       if (cancelled) return;
+      // When a user signs in after the anonymous state, roleResolved may still
+      // be true from that earlier state. Reset it before setting the new user
+      // so /app never briefly renders the "no profile" error while querying.
+      if (currentSession?.user) {
+        setRoleResolved(false);
+        setLoading(true);
+      }
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
@@ -317,6 +324,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cachedCapatazRole && !cancelled) {
           setRoleData(cachedCapatazRole);
           if (typeof navigator !== "undefined" && !navigator.onLine) {
+            // Cached offline role is enough to resume the capataz immediately.
+            setRoleResolved(true);
             setLoading(false);
           }
         }

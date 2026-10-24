@@ -130,6 +130,34 @@ test.describe("@smoke FASE 4 — auth público e proteção de navegação", () 
     await expect(page).toHaveURL(/\/admin\/inteligencia$/);
   });
 
+  test("Consubov não exibe falso 'sem perfil' durante login com consulta lenta", async ({ page }) => {
+    await mockAuthenticatedRole(page, "administradores");
+    // Delay the valid administrator lookup to expose a premature redirect.
+    await page.route("**/rest/v1/administradores?*", async route => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ id: "role-1", ativo: true }),
+      });
+    });
+    await page.goto("/login?standalone=1");
+    // Record any transient false-error render before submitting the form.
+    await page.evaluate(() => {
+      const observer = new MutationObserver(() => {
+        if (document.body?.innerText.includes("Usuário sem perfil configurado")) {
+          window.sessionStorage.setItem("test:role-flash", "1");
+        }
+      });
+      observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
+    });
+    await page.getByLabel("E-mail", { exact: true }).fill("fase4@example.com");
+    await page.getByLabel("Senha", { exact: true }).fill("senha-local");
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/\/admin(?:\/|$)/);
+    expect(await page.evaluate(() => window.sessionStorage.getItem("test:role-flash"))).toBeNull();
+  });
+
   test("login de gerente resolve o redirect do perfil", async ({ page }) => {
     await mockAuthenticatedRole(page, "gerentes");
     await page.goto("/login");
