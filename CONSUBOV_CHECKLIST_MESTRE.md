@@ -1,5 +1,16 @@
 # CONSUBOV - Checklist Mestre
 
+## 2026-10-24 — FASE 9: Revalidação SAST de arquivos arquiteturais (PR #62)
+- [x] Analisados os 19 avisos de `security/detect-non-literal-fs-filename` do Security #176: 6 em `apps/api/src/architecture/layer-rules.ts` e 13 em `layer-rules.test.ts`, arquivos de verificação arquitetural e suas fixtures.
+- [x] Identificado o problema: exceções **já condicionadas à integridade SHA-256 e à proteção contra symlinks** em `apps/api/eslint.config.js` contêm hashes antigos; os arquivos atuais não correspondiam e o gate falhava de forma conservadora.
+- [x] Criado [PR #62](https://github.com/consubov/consubov/pull/62) **draft**, independente de [PR #61](https://github.com/consubov/consubov/pull/61) e [PR #60](https://github.com/consubov/consubov/pull/60). Corrigidos apenas dois hashes; sem alteração dos módulos runtime. Relatório `docs/qa/qa-sast-architecture-seal-2026-10-24.md`.
+- [ ] [CI #267](https://github.com/consubov/consubov/actions/runs/40087647162) e [Security #177](https://github.com/consubov/consubov/actions/runs/40087647184) ainda **em execução** na abertura deste registro; não dar SAST PASS antecipado.
+- [ ] Zod 3.25.76 continua HIGH em PR #62 porque o patch de dependências Web está isolado em PR #61. Gate geral de release continua REPROVADO até tratar Zod e demais bloqueios.
+- [ ] Validar negativo: a versão com hashes antigos produziu os 19 avisos e deve continuar fail-closed se os arquivos auditados mudarem. Não desabilitar a regra globalmente.
+- [ ] Antes de integrar, reconciliar arquivos compartilhados de documentação de PR #61 e #62; sem merge, Supabase remoto, RLS, domínio, produção ou custo extra.
+- [ ] Obsidian Local MTS desconectado: sincronização pendente; Notion é a coordenação no momento.
+
+
 ## 2026-10-22 — Preparacao v1.155.0 e API sem localhost
 
 - Versao de codigo elevada a `1.155.0` (legado atualmente `1.154.0`); fallback de API `127.0.0.1:3000` removido de codigo e de `.env.example`.

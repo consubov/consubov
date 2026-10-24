@@ -1,3 +1,10 @@
+## Handoff 2026-10-24 — SAST isolado PR #62
+**FASE ATUAL:** FASE 6.3A PWA [PR #60](https://github.com/consubov/consubov/pull/60) funcional, FASE 9 patch de dependências [PR #61](https://github.com/consubov/consubov/pull/61) CI #266 PASS, e revalidação SAST [PR #62](https://github.com/consubov/consubov/pull/62) em QA.
+**EM ANDAMENTO:** PR #62 draft `fix/consubov-api-sast-seal-20261024`: somente hashes de duas exceções já seladas; comparado SHA-256 dos arquivos atuais, revisadas barreiras de caminho, symlink, fd, tamanho e fixtures. CI #267 e Security #177 abertos; NÃO antecipar resultado. PR #61 reduziu vulnerabilidades high de 3 para 1, Zod continua pendente.
+**PRÓXIMO ITEM LIVRE:** confirmar CI/SAST PR #62, tratar Zod 3→4 em proposta isolada com compatibilidade de formulários e testes, avaliar risco/rollback de PWA antes de publicação.
+**RESTRIÇÕES:** produção no SHA `aed2e0e`, nenhum PR mesclado. Supabase é o único serviço pago autorizado; não modificar Supabase remoto, RLS, DNS ou usuários. Relatto/veterinário fora de escopo. Obsidian indisponível (`Session terminated`); manter o Notion atualizado.
+**Evidência:** `docs/qa/qa-sast-architecture-seal-2026-10-24.md`.
+
 ## 2026-10-23 — Compatibilidade das marcas e conexao dos novos Apps
 
 - Pedido atual do responsavel: preparar migracao dos usuarios de teste do legado para a versao 1.155.0, sem desligar Supabase ou alterar registros/schema. Falhas de seguranca conhecidas serao tratadas em etapa posterior; registrar risco e nao confundir a migracao do frontend com resolucao de RLS.
