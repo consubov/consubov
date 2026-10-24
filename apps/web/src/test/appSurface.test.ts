@@ -133,6 +133,18 @@ describe("appSurface — separação Site vs App e acesso exclusivo pelo ícone 
     ).toBe(true);
   });
 
+  it("não marca Consubov como instalado quando standalone foi apenas simulado", () => {
+    expect(isStandaloneApp({
+      standaloneMedia: false,
+      navigatorStandalone: false,
+      referrer: "",
+      search: "?standalone=1",
+    })).toBe(true);
+    expect(window.localStorage.getItem("consubov:app-installed:consubov")).toBeNull();
+    // The simulated session persists only as UI state, never as proof of install.
+    expect(isAppInstalledOnDevice("consubov")).toBe(false);
+  });
+
   it("identifica quando o App já foi instalado no dispositivo para evitar instalação duplicada", async () => {
     expect(isAppInstalledOnDevice("consubov")).toBe(false);
     expect(isAppInstalledOnDevice("relatto")).toBe(false);

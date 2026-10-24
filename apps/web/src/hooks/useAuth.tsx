@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearConsubovResumeRoute } from "@/lib/consubovRouteResume";
 import {
   saveAuthSession,
   getAuthSession,
@@ -172,7 +173,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const syncvetMember = await probe<{ id: string; empresa_id: string; perfil: string }>(
     "syncvet_equipe",
     () => supabase.from("syncvet_equipe").select("id, empresa_id, perfil")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (syncvetMember) {
     return found({
@@ -189,7 +190,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const consultor = await probe<{ id: string }>(
     "consultores",
     () => supabase.from("consultores").select("id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (consultor) {
     return found({ role: "consultor", roleId: consultor.id, fazendaId: null, retiroId: null, consultorId: consultor.id });
@@ -199,7 +200,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const pesador = await probe<{ id: string }>(
     "pesadores",
     () => supabase.from("pesadores").select("id")
-      .eq("user_id", userId).maybeSingle() as any,
+      .eq("user_id", userId).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (pesador) {
     return found({ role: "pesador", roleId: pesador.id, fazendaId: null, retiroId: null });
@@ -209,7 +210,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const pecuarista = await probe<{ id: string }>(
     "pecuaristas",
     () => supabase.from("pecuaristas").select("id")
-      .eq("user_id", userId).maybeSingle() as any,
+      .eq("user_id", userId).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (pecuarista) {
     return found({ role: "pecuarista", roleId: pecuarista.id, fazendaId: null, retiroId: null });
@@ -219,7 +220,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const operador = await probe<{ id: string; fabrica_id: string }>(
     "operadores_fabrica",
     () => supabase.from("operadores_fabrica").select("id, fabrica_id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (operador) {
     return found({ role: "operador_fabrica", roleId: operador.id, fazendaId: null, retiroId: null, fabricaId: operador.fabrica_id });
@@ -229,7 +230,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const capataz = await probe<{ id: string; retiro_id: string }>(
     "capatazes",
     () => supabase.from("capatazes").select("id, retiro_id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (capataz) {
     return found({ role: "capataz", roleId: capataz.id, fazendaId: null, retiroId: capataz.retiro_id });
@@ -239,7 +240,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const gerente = await probe<{ id: string; fazenda_id: string }>(
     "gerentes",
     () => supabase.from("gerentes").select("id, fazenda_id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (gerente) {
     return found({ role: "gerente", roleId: gerente.id, fazendaId: gerente.fazenda_id, retiroId: null });
@@ -249,7 +250,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const escritorio = await probe<{ id: string; fazenda_id: string }>(
     "escritorios",
     () => supabase.from("escritorios").select("id, fazenda_id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (escritorio) {
     return found({ role: "escritorio", roleId: escritorio.id, fazendaId: escritorio.fazenda_id, retiroId: null });
@@ -259,7 +260,7 @@ async function detectRoleOnce(userId: string): Promise<DetectRoleResult> {
   const admin = await probe<{ id: string }>(
     "administradores",
     () => supabase.from("administradores").select("id")
-      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any,
+      .eq("user_id", userId).eq("ativo", true).maybeSingle() as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- pre-existing Supabase generated typing
   );
   if (admin) {
     return found({ role: "administrador", roleId: admin.id, fazendaId: null, retiroId: null });
@@ -299,6 +300,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadRole(currentSession: Session | null) {
       if (cancelled) return;
+      // When a user signs in after the anonymous state, roleResolved may still
+      // be true from that earlier state. Reset it before setting the new user
+      // so /app never briefly renders the "no profile" error while querying.
+      if (currentSession?.user) {
+        setRoleResolved(false);
+        setLoading(true);
+      }
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
@@ -307,7 +315,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Sessões de demonstração NUNCA são persistidas offline.
           if (!isDemoEmail(currentSession.user.email)) {
             deferNonCritical(() => {
-              void saveAuthSession(buildSessionPayload(currentSession));
+              if (!explicitSignOutRef.current) void saveAuthSession(buildSessionPayload(currentSession));
             });
           }
 
@@ -316,6 +324,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cachedCapatazRole && !cancelled) {
           setRoleData(cachedCapatazRole);
           if (typeof navigator !== "undefined" && !navigator.onLine) {
+            // Cached offline role is enough to resume the capataz immediately.
+            setRoleResolved(true);
             setLoading(false);
           }
         }
@@ -394,11 +404,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let restoring = false;
     async function tryRestoreBackup(): Promise<boolean> {
-      if (restoring) return false;
+      if (restoring || explicitSignOutRef.current) return false;
       restoring = true;
       try {
         const persisted = await getAuthSession();
-        if (!persisted?.access_token || !persisted?.refresh_token) return false;
+        if (explicitSignOutRef.current || !persisted?.access_token || !persisted?.refresh_token) return false;
         const { data, error } = await supabase.auth.setSession({
           access_token: persisted.access_token,
           refresh_token: persisted.refresh_token,
@@ -417,9 +427,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Persist session payload on every auth change so refresh tokens are
       // always up-to-date in IndexedDB even when the page reloads cold.
-      if (session && !isDemoEmail(session.user?.email)) {
+      if (!explicitSignOutRef.current && session && !isDemoEmail(session.user?.email)) {
         deferNonCritical(() => {
-          void saveAuthSession(buildSessionPayload(session));
+          if (!explicitSignOutRef.current) void saveAuthSession(buildSessionPayload(session));
         });
       }
 
@@ -465,7 +475,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const persisted = await getAuthSession();
-        if (persisted?.access_token && persisted?.refresh_token) {
+        if (!explicitSignOutRef.current && persisted?.access_token && persisted?.refresh_token) {
           const { data, error } = await supabase.auth.setSession({
             access_token: persisted.access_token,
             refresh_token: persisted.refresh_token,
@@ -522,6 +532,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    explicitSignOutRef.current = false;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
@@ -537,7 +548,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRoleData(emptyRoleData);
       clearCachedCapatazRole();
-      void clearAuthSession();
+      // Wait for the offline authentication backup to be deleted before any
+      // navigation can initiate a new session restoration.
+      clearConsubovResumeRoute();
+      await clearAuthSession();
       if (typeof window !== "undefined") {
         window.location.replace("/");
       }

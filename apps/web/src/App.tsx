@@ -115,6 +115,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
 import { getRoleHomePath } from "@/lib/authNavigation";
 import { RouteMemory } from "@/components/RouteMemory";
+import { getConsubovResumeRoute } from "@/lib/consubovRouteResume";
 import {
   activateStandaloneSession,
   isRelattoActiveProfile,
@@ -275,8 +276,11 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function RoleRedirect() {
-  const { role, loading, roleResolved, signOut } = useAuth();
+  const { role, loading, roleResolved, signOut, user } = useAuth();
   if (loading || !roleResolved) return <LoadingScreen />;
+
+  const resume = user && role ? getConsubovResumeRoute(user.id, role) : null;
+  if (resume) return <Navigate to={resume} replace />;
 
   const target = getRoleHomePath(role);
   if (target) return <Navigate to={target} replace />;

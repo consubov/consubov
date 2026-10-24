@@ -116,6 +116,24 @@ export function clearAppInstalledMark(brand: AppBrandId = "consubov"): void {
   }
 }
 
+/**
+ * Confirmed installed context, rather than a URL testing flag or cached
+ * standalone-session marker. A normal browser tab may use ?standalone=1
+ * for QA, but that must never persist an "installed" claim.
+ */
+function hasObservedInstalledContext(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (typeof window.matchMedia === "function" &&
+      (window.matchMedia("(display-mode: standalone)").matches ||
+       window.matchMedia("(display-mode: window-controls-overlay)").matches)) {
+      return true;
+    }
+  } catch { /* not supported */ }
+  if ((window.navigator as NavigatorWithInstalledApps).standalone === true) return true;
+  return typeof document !== "undefined" && document.referrer.startsWith("android-app://");
+}
+
 export function isAppInstalledOnDevice(brand: AppBrandId = "consubov"): boolean {
   if (typeof window === "undefined") return false;
 
@@ -138,6 +156,9 @@ export function isAppInstalledOnDevice(brand: AppBrandId = "consubov"): boolean 
   }
 
   if (isStandaloneApp()) {
+    // Consubov: URL/query or session-memory simulation is NOT an installation.
+    // Keep the existing Relatto behavior untouched until its own phase.
+    if (brand === "consubov" && !hasObservedInstalledContext()) return false;
     markAppInstalled(brand);
     return true;
   }
@@ -157,7 +178,14 @@ export async function detectInstalledAppAsync(
     const nav = window.navigator as NavigatorWithInstalledApps;
     if (typeof nav.getInstalledRelatedApps === "function") {
       const related = await nav.getInstalledRelatedApps();
-      if (Array.isArray(related) && related.length > 0) {
+      // Relatto keeps its previous behavior; only Consubov is constrained to
+      // matching its own PWA identity in this focused fix.
+      const installedMatch = brand === "relatto"
+        ? Array.isArray(related) && related.length > 0
+        : Array.isArray(related) && related.some((app) =>
+            app.id === "/" || app.id === new URL("/", window.location.origin).href
+          );
+      if (installedMatch) {
         markAppInstalled(brand);
         return true;
       }
@@ -275,7 +303,11 @@ export function isStandaloneApp(probe?: StandaloneProbeInput): boolean {
     const activeBrand: AppBrandId = isRelattoActiveProfile(search)
       ? "relatto"
       : "consubov";
-    markAppInstalled(activeBrand);
+    // Never mark Consubov as installed solely because ?standalone=1 or a
+    // restored in-tab simulation set a sessionStorage marker.
+    if (activeBrand !== "consubov" || hasObservedInstalledContext()) {
+      markAppInstalled(activeBrand);
+    }
   }
 
   return detected;

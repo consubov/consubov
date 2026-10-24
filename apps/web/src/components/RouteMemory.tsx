@@ -1,83 +1,70 @@
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { useLocation, useNavigationType } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * Memória de tela do Gerente/Admin (não se aplica ao Capataz):
- *  - guarda a última tela (com filtros da URL) e a rolagem de cada tela na sessão;
- *  - ao voltar para uma tela, devolve a rolagem;
- *  - se o app foi aberto do zero (ex.: iPhone descartou da memória) e caiu na
- *    entrada, leva de volta para a última tela.
+ * Consubov only: restore a route after an authenticated cold start.
+ * Never restore a route from another account or from a different product.
+ * This does not persist unsaved form contents or authentication credentials.
  */
-const LAST_ROUTE_KEY = "consubov:last-route";
+import { eligible, clearConsubovResumeRoute, rememberConsubovResumeRoute } from "@/lib/consubovRouteResume";
+
 const SCROLL_PREFIX = "consubov:scroll:";
-
-const PREFIXES: Record<string, string[]> = {
-  gerente: ["/gerente", "/dashboard/", "/conferencia", "/mapa/"],
-  administrador: ["/admin", "/dashboard/", "/conferencia", "/mapa/", "/gerente/materias-primas", "/gerente/entrada-materias-primas"],
-};
-
-function isTracked(path: string, role: string | null | undefined) {
-  if (!role) return false;
-  const list = PREFIXES[role];
-  return !!list?.some((p) => path.startsWith(p));
-}
 
 export function RouteMemory() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { role, roleResolved } = useAuth();
+  const { role, roleResolved, user } = useAuth();
   const navType = useNavigationType();
-  const restoredRef = useRef(false);
   const fullPath = location.pathname + location.search;
+  const identity = user?.id ?? null;
+  const previousIdentity = useRef<string | null>(null);
 
-  // Abertura do zero: restaura a última tela uma única vez.
   useEffect(() => {
-    if (restoredRef.current || !roleResolved) return;
-    restoredRef.current = true;
-    if (location.pathname !== "/" && location.pathname !== "/app") return;
-    try {
-      const last = sessionStorage.getItem(LAST_ROUTE_KEY);
-      if (last && last !== fullPath && isTracked(last.split("?")[0], role)) {
-        navigate(last, { replace: true });
-      }
-    } catch { /* ignore */ }
-  }, [roleResolved, role, location.pathname, fullPath, navigate]);
+    if (!roleResolved) return;
+    if (!identity) {
+      clearConsubovResumeRoute();
+      previousIdentity.current = null;
+      return;
+    }
+    if (previousIdentity.current && previousIdentity.current !== identity)
+      clearConsubovResumeRoute();
+    previousIdentity.current = identity;
+    if (!eligible(fullPath, role)) return;
+    if (role) rememberConsubovResumeRoute(identity, role, fullPath);
+  }, [fullPath, identity, role, roleResolved]);
 
-  // Guarda a tela atual e a rolagem; devolve a rolagem ao voltar.
+  // Keep the original scroll restoration behavior without changing the
+  // current React page on foreground/background transitions.
   useEffect(() => {
-    if (!isTracked(location.pathname, role)) return;
-    try { sessionStorage.setItem(LAST_ROUTE_KEY, fullPath); } catch { /* ignore */ }
-
-    const key = SCROLL_PREFIX + fullPath;
-    // Só devolve a rolagem ao voltar (ou reabrir); abrir uma tela nova começa do topo.
+    if (!identity || !eligible(fullPath, role)) return;
+    const key = SCROLL_PREFIX + identity + ":" + fullPath;
     let saved = 0;
     if (navType !== "PUSH") {
-      try { saved = Number(sessionStorage.getItem(key) || 0); } catch { /* ignore */ }
+      try { saved = Number(window.sessionStorage.getItem(key) || 0); } catch { /* unavailable */ }
     }
-
     let cancelled = false;
     let tries = 0;
     let userScrolled = false;
     const onUserScroll = () => { userScrolled = true; };
     window.addEventListener("touchstart", onUserScroll, { passive: true, once: true });
     window.addEventListener("wheel", onUserScroll, { passive: true, once: true });
-    // Os dados podem chegar logo depois: tenta por até ~2s até a página ter altura.
     const restore = () => {
       if (cancelled || userScrolled || saved <= 0) return;
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      if (max >= saved || tries > 20) { window.scrollTo(0, Math.min(saved, Math.max(max, 0))); return; }
+      if (max >= saved || tries > 20) {
+        window.scrollTo(0, Math.min(saved, Math.max(max, 0)));
+        return;
+      }
       tries++;
       window.setTimeout(restore, 100);
     };
     requestAnimationFrame(restore);
-
     let raf = 0;
     const onScroll = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        try { sessionStorage.setItem(key, String(Math.round(window.scrollY))); } catch { /* ignore */ }
+        try { window.sessionStorage.setItem(key, String(Math.round(window.scrollY))); } catch { /* unavailable */ }
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -88,7 +75,6 @@ export function RouteMemory() {
       window.removeEventListener("touchstart", onUserScroll);
       window.removeEventListener("wheel", onUserScroll);
     };
-  }, [fullPath, location.pathname, role, navType]);
-
+  }, [fullPath, identity, role, navType]);
   return null;
 }
