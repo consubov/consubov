@@ -1,0 +1,28 @@
+name: CONSUBOV Zod Inventory Temporary
+on:
+  push:
+    branches:
+      - fix/consubov-zod4-compat-20261024
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Inventory Zod usages (no tests, no external services)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== ZOD SOURCE FILES ==="
+          git grep -l -E 'from.*(zod|@hookform/resolvers)|zodResolver|require.*zod' -- apps/web/src apps/api/src supabase/functions || true
+          echo "=== ZOD SCHEMAS AND ERROR HANDLING ==="
+          git grep -n -E 'z\.(array|set|map|record|coerce|object)|\.error\.errors|\.error\.issues|zodResolver' -- apps/web/src apps/api/src supabase/functions | head -120 || true
+          echo "=== REACT HOOK FORM IMPORTS ==="
+          git grep -l -E 'react-hook-form|@hookform/resolvers' -- apps/web/src || true
