@@ -16,7 +16,7 @@ function readAppVersion(): string {
 }
 
 // Replaces __BUILD_TIMESTAMP__ in public/sw.js so each deploy invalidates caches.
-function injectSwBuildTimestamp(): Plugin {
+function injectSwBuildTimestamp(releaseChannel?: "legacy-inplace"): Plugin {
   return {
     name: "inject-sw-build-timestamp",
     apply: "build",
@@ -54,18 +54,26 @@ function injectSwBuildTimestamp(): Plugin {
 
       fs.writeFileSync(
         path.resolve(__dirname, "dist/version.json"),
-        JSON.stringify({ version: buildTimestamp, appVersion: readAppVersion() }, null, 2),
+        JSON.stringify({
+          version: buildTimestamp,
+          appVersion: readAppVersion(),
+          ...(releaseChannel ? { releaseChannel } : {}),
+        }, null, 2),
       );
     },
   };
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   // Environment files live at the monorepo root so web/API tooling shares one source.
   envDir: path.resolve(__dirname, "../.."),
   define: {
     __APP_BUILD_VERSION__: JSON.stringify(buildTimestamp),
+    // Legacy installs on consubov.com.br must get the App, never the site build.
+    ...(mode === "legacy-upgrade" ? {
+      "import.meta.env.VITE_SURFACE_MODE": JSON.stringify("app"),
+    } : {}),
   },
   server: {
     host: "::",
@@ -76,7 +84,7 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
-    injectSwBuildTimestamp(),
+    injectSwBuildTimestamp(mode === "legacy-upgrade" ? "legacy-inplace" : undefined),
   ].filter(Boolean),
   resolve: {
     alias: {

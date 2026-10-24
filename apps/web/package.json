@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:site": "vite build --config vite.site.config.ts",
+    "build:legacy-upgrade": "vite build --mode legacy-upgrade",
+    "check:legacy-upgrade-build": "node ../../scripts/qa/check-legacy-upgrade-build.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "lint:changed": "bun ../../scripts/lint-changed-web.mjs",

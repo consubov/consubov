@@ -111,6 +111,8 @@ const SyncVetNovoManejoPage = lazy(() => import("./pages/SyncVetNovoManejoPage")
 const SyncVetManejoExecucaoPage = lazy(() => import("./pages/SyncVetManejoExecucaoPage"));
 const SyncVetMeuPainelPage = lazy(() => import("./pages/SyncVetMeuPainelPage"));
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { shouldShowInstalledConsubovUpdate } from "@/lib/installedConsubovUpdate";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
 import { getRoleHomePath } from "@/lib/authNavigation";
@@ -119,6 +121,7 @@ import { getConsubovResumeRoute } from "@/lib/consubovRouteResume";
 import {
   activateStandaloneSession,
   isRelattoActiveProfile,
+  isStandaloneApp,
   markAppInstalled,
   resolveSurfaceRedirect,
 } from "@/lib/appSurface";
@@ -134,6 +137,18 @@ function PwaProfileSync() {
     applyPwaProfile(location.pathname);
   }, [location.pathname]);
   return null;
+}
+
+
+// This App-level notice reaches installed Consubov users on internal routes,
+// including capataz. Public pages and the independent Relatto/SyncVet surfaces
+// retain their existing behavior. This does not migrate between web origins.
+function InstalledConsubovUpdateNotice() {
+  const location = useLocation();
+  const standalone = isStandaloneApp();
+  const relatto = isRelattoActiveProfile(location.search);
+  if (!shouldShowInstalledConsubovUpdate(location.pathname, standalone, relatto)) return null;
+  return <UpdateBanner />;
 }
 
 function StandaloneAppGuard({ children }: { children: React.ReactNode }) {
@@ -318,6 +333,7 @@ const App = () => (
         <PainelPeriodoProvider>
           <AuthProvider>
             <PwaProfileSync />
+            <InstalledConsubovUpdateNotice />
             <RouteMemory />
             <PushNotificationsBootstrap />
             <PesagemEmAndamentoPrompt />
