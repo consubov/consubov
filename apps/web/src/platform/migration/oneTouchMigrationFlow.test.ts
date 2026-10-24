@@ -250,6 +250,33 @@ describe("CONSUBOV v2 single-consent migration", () => {
     });
   });
 
+
+  it("does not resume without a backend-validated previous consent", async () => {
+    const port = makePort();
+    expect(await flow(port).resumePreviouslyAuthorized()).toMatchObject({
+      ok: false,
+      code: "CONSENT_NOT_CONFIRMED",
+    });
+    expect(port.recordExplicitConsent).not.toHaveBeenCalled();
+    expect(port.createNonDestructiveBackup).not.toHaveBeenCalled();
+  });
+
+  it("resumes automatically without a second notification after verified consent", async () => {
+    const port = makePort({
+      recoverPreviouslyGrantedConsent: vi.fn(async ({ identity: user }) => ({
+        id: "consent-1",
+        identity: user,
+        textVersion: CONSENT_TEXT_VERSION,
+        releaseId: MIGRATION_RELEASE_ID,
+      })),
+    });
+    const result = await flow(port).resumePreviouslyAuthorized();
+    expect(result.ok).toBe(true);
+    expect(port.recoverPreviouslyGrantedConsent).toHaveBeenCalledOnce();
+    expect(port.recordExplicitConsent).not.toHaveBeenCalled();
+    expect(port.synchronizeEveryPendingDomain).toHaveBeenCalledOnce();
+  });
+
   it("deduplicates simultaneous presses so consent and upload run once", async () => {
     let release: (() => void) | undefined;
     const wait = new Promise<void>((resolve) => { release = resolve; });

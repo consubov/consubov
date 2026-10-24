@@ -94,6 +94,12 @@ export interface MigrationPort {
     textVersion: typeof CONSENT_TEXT_VERSION;
     grantedAt: string;
   }): Promise<ConsentReceipt>;
+  /** Recover ONLY backend-validated prior consent after an interrupted migration. */
+  recoverPreviouslyGrantedConsent?(input: {
+    identity: MigrationIdentity;
+    releaseId: typeof MIGRATION_RELEASE_ID;
+    textVersion: typeof CONSENT_TEXT_VERSION;
+  }): Promise<ConsentReceipt | null>;
   createNonDestructiveBackup(identity: MigrationIdentity): Promise<LocalBackup>;
   synchronizeEveryPendingDomain(input: {
     identity: MigrationIdentity;
@@ -193,7 +199,20 @@ export class OneTouchMigrationFlow {
     onProgress?: (phase: MigrationPhase) => void,
   ): Promise<MigrationResult> {
     if (this.inFlight) return this.inFlight;
-    const task = this.perform(userAuthorized, onProgress).finally(() => {
+    const task = this.perform(userAuthorized, onProgress, false).finally(() => {
+      if (this.inFlight === task) this.inFlight = null;
+    });
+    this.inFlight = task;
+    return task;
+  }
+
+  /**
+   * Invoked on app reopen/reconnect only after the user consented previously.
+   * Reuses the same idempotent snapshot/ACK adapters, never stores credentials.
+   */
+  resumePreviouslyAuthorized(onProgress?: (phase: MigrationPhase) => void): Promise<MigrationResult> {
+    if (this.inFlight) return this.inFlight;
+    const task = this.perform(false, onProgress, true).finally(() => {
       if (this.inFlight === task) this.inFlight = null;
     });
     this.inFlight = task;
@@ -203,8 +222,9 @@ export class OneTouchMigrationFlow {
   private async perform(
     userAuthorized: boolean,
     onProgress?: (phase: MigrationPhase) => void,
+    recoverExistingConsent = false,
   ): Promise<MigrationResult> {
-    if (!userAuthorized) return blocked("CONSENT_REQUIRED");
+    if (!userAuthorized && !recoverExistingConsent) return blocked("CONSENT_REQUIRED");
     if (this.env.origin !== LEGACY_APP_ORIGIN) return blocked("WRONG_SOURCE_ORIGIN");
     if (!this.port.isOnline()) return blocked("OFFLINE");
 
@@ -217,14 +237,20 @@ export class OneTouchMigrationFlow {
       if (!auditIsComplete(initialAudit)) return blocked("INCOMPLETE_INVENTORY");
 
       const now = this.env.now?.() ?? new Date();
-      const consent = await this.port.recordExplicitConsent({
-        identity,
-        releaseId: MIGRATION_RELEASE_ID,
-        textVersion: CONSENT_TEXT_VERSION,
-        grantedAt: now.toISOString(),
-      });
+      const consent = recoverExistingConsent
+        ? await this.port.recoverPreviouslyGrantedConsent?.({
+            identity,
+            releaseId: MIGRATION_RELEASE_ID,
+            textVersion: CONSENT_TEXT_VERSION,
+          })
+        : await this.port.recordExplicitConsent({
+            identity,
+            releaseId: MIGRATION_RELEASE_ID,
+            textVersion: CONSENT_TEXT_VERSION,
+            grantedAt: now.toISOString(),
+          });
       if (
-        !consent.id ||
+        !consent?.id ||
         !sameIdentity(consent.identity, identity) ||
         consent.textVersion !== CONSENT_TEXT_VERSION ||
         consent.releaseId !== MIGRATION_RELEASE_ID
