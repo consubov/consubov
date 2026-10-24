@@ -56,7 +56,7 @@ export function V2MigrationConsentDialog({
         // by the coordinator, never read from an untrusted push payload.
         onOpenNewApp(outcome.url);
       } else {
-        setError(outcome.message);
+        setError("message" in outcome ? outcome.message : "Seus dados continuam na versão atual.");
       }
     } catch {
       setError("Seus dados continuam na versão atual. Tente novamente.");
@@ -69,7 +69,6 @@ export function V2MigrationConsentDialog({
     <AlertDialog open={open}>
       <AlertDialogContent
         onEscapeKeyDown={(event) => { if (working) event.preventDefault(); }}
-        onInteractOutside={(event) => event.preventDefault()}
       >
         <AlertDialogHeader>
           <AlertDialogTitle>Atualização CONSUBOV 2.0</AlertDialogTitle>

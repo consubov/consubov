@@ -39,11 +39,11 @@ function makePort(overrides: Partial<MigrationPort> = {}): MigrationPort {
     isOnline: vi.fn(() => true),
     readAuthenticatedIdentity: vi.fn(async () => identity),
     inspectAllLocalDatabases: vi.fn(async () => audit()),
-    recordExplicitConsent: vi.fn(async ({ identity: user }) => ({
+    recordExplicitConsent: vi.fn(async ({ identity: user }: Parameters<MigrationPort["recordExplicitConsent"]>[0]) => ({
       id: "consent-1",
       identity: user,
-      textVersion: CONSENT_TEXT_VERSION,
-      releaseId: MIGRATION_RELEASE_ID,
+      textVersion: CONSENT_TEXT_VERSION as typeof CONSENT_TEXT_VERSION,
+      releaseId: MIGRATION_RELEASE_ID as typeof MIGRATION_RELEASE_ID,
     })),
     createNonDestructiveBackup: vi.fn(async (user) => ({
       snapshotId: "snapshot-1",
