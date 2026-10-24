@@ -1,3 +1,9 @@
+## Handoff de continuidade — 2026-10-24: PWA e segurança
+- **FASE ATUAL:** PWA CONSUBOV FASE 6.3A (PR #60, CI #264 PASS) + segurança FASE 9 (PR #61 draft).
+- **EM ANDAMENTO:** PR #61 elevou Vite 6.4.3→6.4.4 e DOMPurify 3.4.1→3.4.17; CI de Bun 1.4.0 regenerou lockfile e frozen install PASS; Security #176 agora tem 1 HIGH (Zod 3.25.76), SAST API com 19 warnings.
+- **PRÓXIMO ITEM LIVRE:** concluir QA PR #61, tratar Zod 3→4 cuidadosamente e investigar SAST; depois certificar rollback e PWA instalada, sem derrubar testadores.
+- **GATES:** produção `main` `aed2e0e` não alterada. Não mexer em Supabase/RLS, DNS, deployment público, Relatto/SyncVet. Apenas Supabase pago; demais provedores em planos gratuitos. [Checklist Notion](https://app.notion.com/p/3ec8e0bd0f4d816d9bb5d807e8e2cdc9); Obsidian ainda desconectado.
+
 ## 2026-10-23 — Compatibilidade das marcas e conexao dos novos Apps
 
 - Pedido atual do responsavel: preparar migracao dos usuarios de teste do legado para a versao 1.155.0, sem desligar Supabase ou alterar registros/schema. Falhas de seguranca conhecidas serao tratadas em etapa posterior; registrar risco e nao confundir a migracao do frontend com resolucao de RLS.

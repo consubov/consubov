@@ -35,3 +35,12 @@ Branch de trabalho: `fix/consubov-web-deps-20261024` a partir de `main`, indepen
 
 ## Relatório final esperado
 Branch/SHA, lista de arquivos, vulnerabilidades corrigidas/não corrigidas, diff do lockfile, testes executados com comandos/resultado, impacto em workspaces e risco residual, link da execução, plano de reversão e sincronização de Checklist/Notion/Obsidian.
+## Evidência da execução — 24/10/2026
+
+- [x] [PR #61](https://github.com/consubov/consubov/pull/61) draft e isolado de PR #60.
+- [x] Bun 1.4.0 na branch [workflow #3](https://github.com/consubov/consubov/actions/runs/40086393606): geração de lockfile e `bun install --frozen-lockfile` PASS.
+- [x] [Security #176](https://github.com/consubov/consubov/actions/runs/40086393656): DOMPurify 3.4.17 e Vite 6.4.4 não aparecem mais no `bun audit`. Alertas high caíram de 3 para **1**.
+- [ ] **Security continua reprovado**: `zod@3.25.76` permanece high e 19 warnings SAST API; necessidade de triagem separada.
+- [ ] **CI final ainda não concluído** nesta revisão; atualizar por SHA e resultado real, sem usar evidência de outro commit.
+- [ ] Workflow temporário de atualização do lockfile precisa ser retirado do PR antes de merge.
+- [ ] Revisar impacto no lockfile compartilhado e possíveis conflitos com Dependabot #57-59.

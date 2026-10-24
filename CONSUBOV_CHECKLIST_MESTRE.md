@@ -1,5 +1,14 @@
 # CONSUBOV - Checklist Mestre
 
+## 2026-10-24 — FASE 9: remediação de dependências Web, PR #61
+- [x] Criada branch isolada `fix/consubov-web-deps-20261024` e [PR #61](https://github.com/consubov/consubov/pull/61) draft. Patches de DOMPurify (3.4.17) e Vite (6.4.4), `bun.lock` corrigido com Bun 1.4.0.
+- [x] [Security #176](https://github.com/consubov/consubov/actions/runs/40086393656) passou de 3 para 1 vulnerabilidade HIGH na lista de dependências.
+- [ ] Zod 3.25.76 permanece vulnerável; migrar para linha 4 apenas após compatibilidade e testes, não forçar major.
+- [ ] Os 19 warnings SAST API continuam e precisam de revisão própria.
+- [ ] Aprovar QA sobre SHA final, sem ignorar gate de segurança. Sem merge/deploy/banco remoto. PR #60 PWA permanece independente e validado em CI #264.
+- [ ] Alinhar com Obsidian quando conector `Session terminated` estiver acessível.
+
+
 ## 2026-10-22 — Preparacao v1.155.0 e API sem localhost
 
 - Versao de codigo elevada a `1.155.0` (legado atualmente `1.154.0`); fallback de API `127.0.0.1:3000` removido de codigo e de `.env.example`.
