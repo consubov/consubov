@@ -79,3 +79,12 @@ O próximo executor deve entregar: arquivos/SHA, adaptadores e rotas implementad
 **QA pendente de verificação real no novo commit:** GitHub CI/typecheck/build/lint, teste no celular físico Android/iPhone, confirmação de instalação nativa e reabertura. Os testes criados não são evidência de execução até o workflow concluído.
 
 **Gates de release anteriores continuam válidos:** Security Scan HIGH e pendências de backend, restore real, tenant/RLS e backup impedem declarar migração de dados 2.0 pronta. Não habilitar flag de migração, não disparar notificação aos usuários e não promover produção por este ajuste isolado.
+
+
+### 25/10/2026 — Identidade de instalação nova + correção do CI
+
+- O usuário verificou fisicamente que `https://app.consubov.com.br/baixar` seguia abrindo login. **Causa de produção:** a Vercel ainda entregava `main` SHA `aed2e0ef20ed856efe7d8316bc1b6ffef0afeb30`, e a correção PR #64 não tinha sido implantada.
+- Causa adicional no manifesto da branch: `manifest-consubov-v2.json` tinha `id: "/"`, igual ao `manifest.json` já instalado no mesmo origin. Foi alterado para **`id: "/consubov-v2"`**, nome `Consubov 2.0` e `start_url: "/"`, permitindo que navegadores compatíveis distingam a instalação 2.0 sem desinstalar uma PWA anterior. A identidade deve permanecer estável nos patches seguintes; não colocar build timestamp ou números de patch no `id`. Isso **não** move dados entre origens.
+- No fluxo v2 `appinstalled` da página de baixar, permanecer na página e orientar abertura pelo novo ícone; não injetar `activateStandaloneSession()` numa aba comum e não saltar para o login. No iOS, o clique em “Já adicionei à Tela de Início” apenas mostra as instruções para abrir o novo ícone, sem declarar instalação verificada ou forçar login.
+- CI #297 reprovara por **uma asserção antiga** em `src/test/appSurface.test.ts` que ainda esperava `/baixar -> /app` em `standalone`. Essa asserção foi alinhada ao comportamento atual aprovado: `/baixar` explícito para a nova superfície fica na instalação, enquanto `/` via ícone continua `/app`. Criado/estendido teste do ID distinto e do evento de instalação.
+- **Prova pendente:** CI do novo HEAD, browser/Android/iOS físicos, instalação e separação de ícones. O Security Scan ainda reprovava por DOMPurify, Vite launch-editor, Zod e 19 avisos SAST; esses itens pertencem a PRs em andamento #61–#63, não devem ser corrigidos às cegas aqui. **NO-GO** para promover o PR inteiro a `app.consubov.com.br` até correções e validação real. A aplicação antiga no Lovable não foi tocada.
