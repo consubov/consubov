@@ -52,6 +52,7 @@ export default function BaixarAppPage() {
     isAppInstalledOnDevice(brandId),
   );
   const [showManualHint, setShowManualHint] = useState(false);
+  const [showInstalledV2Hint, setShowInstalledV2Hint] = useState(false);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
   const v2DownloadRoute = isConsubovV2DownloadRoute(
@@ -101,11 +102,16 @@ export default function BaixarAppPage() {
 
     const onAppInstalled = () => {
       markAppInstalled(brandId);
-      activateStandaloneSession();
       setInstalled(true);
       setDeferredPrompt(null);
       setShowManualHint(false);
-      // Assim que o App termina de baixar/instalar, inicia imediatamente na tela de Login
+      if (v2DownloadRoute) {
+        // The browser tab is not the installed app: keep the installer visible.
+        // Launching the new icon (start_url: "/") will reach login normally.
+        setShowInstalledV2Hint(true);
+        return;
+      }
+      activateStandaloneSession();
       navigate("/login", { replace: true });
     };
 
@@ -201,6 +207,13 @@ export default function BaixarAppPage() {
   };
 
   const handleConfirmManualInstall = () => {
+    if (v2DownloadRoute) {
+      // iOS does not provide a reliable appinstalled event; do not fake one or
+      // redirect browser users into login without seeing the installed icon.
+      setShowManualHint(false);
+      setShowInstalledV2Hint(true);
+      return;
+    }
     markAppInstalled(brandId);
     activateStandaloneSession();
     setInstalled(true);
@@ -391,6 +404,13 @@ export default function BaixarAppPage() {
                   </p>
                 )}
 
+                {v2DownloadRoute && showInstalledV2Hint && (
+                  <p className="rounded-xl border border-[#22FF88] bg-[#22FF8817] p-4 text-center text-sm text-[#D8EFE2]" role="status">
+                    Abra o novo ícone <strong>Consubov 2.0</strong> na tela inicial.
+                    A versão antiga pode continuar instalada.
+                  </p>
+                )}
+
                 {showManualHint && (
                   <div
                     className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
@@ -421,7 +441,7 @@ export default function BaixarAppPage() {
                         color: "#FFFFFF",
                       }}
                     >
-                      Já concluí a instalação — Ir para Login
+                      {v2DownloadRoute ? "Já adicionei à Tela de Início" : "Já concluí a instalação — Ir para Login"}
                     </button>
                   </div>
                 )}
