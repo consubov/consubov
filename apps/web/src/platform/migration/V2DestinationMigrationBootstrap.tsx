@@ -102,9 +102,9 @@ export function V2DestinationMigrationBootstrap() {
         try { clearPendingMigrationCode(window.sessionStorage); } catch { /* ignore */ }
         setCode(null);
         setStatus("complete");
-      } else if (result.code === "NO_HANDOFF" && !pendingCode) {
+      } else if ("code" in result && result.code === "NO_HANDOFF" && !pendingCode) {
         setStatus("idle");
-      } else if (result.code === "LOGIN_REQUIRED") {
+      } else if ("code" in result && result.code === "LOGIN_REQUIRED") {
         setStatus("waiting-login");
       } else {
         // Never tell the user that transfer is complete without real ACK.

@@ -61,12 +61,12 @@ export function createV2MigrationApiPort(
   return {
     async currentIdentity(): Promise<DestinationIdentity | null> {
       const result = await call<unknown>("/api/v1/migration/me", "GET");
-      return identitySchema.parse(result);
+      return identitySchema.parse(result) as DestinationIdentity;
     },
     async redeemOneTimeReference(code): Promise<RedeemedMigration> {
       if (!/^[A-Za-z0-9_-]{20,160}$/.test(code)) throw new Error("INVALID_REFERENCE");
       const result = await call<unknown>("/api/v1/migration/redeem", "POST", { code });
-      return migrationSchema.parse(result);
+      return migrationSchema.parse(result) as RedeemedMigration;
     },
     async findVerifiedMigrationForIdentity(identity): Promise<RedeemedMigration | null> {
       // No userId or tenantId in request: backend derives both from JWT.
@@ -76,7 +76,7 @@ export function createV2MigrationApiPort(
       if (parsed.tenantId !== identity.tenantId || parsed.userId !== identity.userId) {
         throw new Error("TENANT_MISMATCH");
       }
-      return parsed;
+      return parsed as RedeemedMigration;
     },
     async hydrateAuthorizedData(receipt): Promise<HydrationProof> {
       if (!options.hydrateVerifiedData) {
