@@ -54,7 +54,7 @@ describe("V2 migration destination API contract", () => {
       userId: "user-synthetic-1",
     });
     expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, opts] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.example.test/api/v1/migration/me");
     expect(opts.credentials).toBe("omit");
     expect(opts.cache).toBe("no-store");
@@ -82,7 +82,9 @@ describe("V2 migration destination API contract", () => {
       JSON.stringify({ ...VALID_MIGRATION, tenantId: "other-tenant" }),
       { status: 200, headers: { "content-type": "application/json" } },
     )));
-    await expect(api().findVerifiedMigrationForIdentity?.({
+    const port = api();
+    if (!port.findVerifiedMigrationForIdentity) throw new Error("DISCOVERY_NOT_CONFIGURED");
+    await expect(port.findVerifiedMigrationForIdentity({
       tenantId: VALID_MIGRATION.tenantId,
       userId: VALID_MIGRATION.userId,
     })).rejects.toThrow("TENANT_MISMATCH");
