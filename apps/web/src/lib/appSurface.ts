@@ -304,6 +304,24 @@ export function isRelattoActiveProfile(search = ""): boolean {
   return false;
 }
 
+/**
+ * Opening the CONSUBOV 2.0 installation link must display the installer,
+ * even when the device is running an installed app window or has an old marker.
+ * Relatto keeps its independent installed-app behavior.
+ */
+export function isConsubovV2DownloadRoute(
+  pathname: string,
+  search: string,
+  surfaceMode: SurfaceMode,
+): boolean {
+  if (surfaceMode !== "app" || pathname.toLowerCase() !== "/baixar") return false;
+  const params = new URLSearchParams(search);
+  return (
+    params.get("app")?.toLowerCase() !== "relatto" &&
+    params.get("pwa")?.toLowerCase() !== "relatto"
+  );
+}
+
 const PUBLIC_SITE_PREFIXES = ["/", "/index", "/landing", "/relatto", "/baixar"];
 
 function isPublicSitePath(pathname: string): boolean {
@@ -322,11 +340,12 @@ export function resolveSurfaceRedirect(
   const standalone = context?.standalone ?? isStandaloneApp({ search });
   const surfaceMode = context?.surfaceMode ?? getSurfaceMode({ search });
   const relatto = context?.relattoProfile ?? isRelattoActiveProfile(search);
+  const v2DownloadRoute = isConsubovV2DownloadRoute(normalizedPath, search, surfaceMode);
 
   // 1. Dispositivo abrindo pelo ícone instalado (standalone):
   // A Landing Page e a tela /baixar nunca devem aparecer dentro do App instalado;
   // o ícone leva direto para o sistema (/app -> /login se deslogado, ou painel se logado).
-  if (standalone) {
+  if (standalone && !v2DownloadRoute) {
     if (
       normalizedPath === "/" ||
       normalizedPath === "/index" ||
