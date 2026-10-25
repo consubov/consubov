@@ -56,3 +56,8 @@ A aplicação antiga permanece acessível, com os seis bancos e anexos intactos 
 Branch `feat/consubov-v2-migration-consent-20261024` baseada em `main` `aed2e0e`; PR draft. Não sobrescrever PRs #60–#63. Proibidos: merge na main, reset/force-push, deploy, disparo de push, alteração remota de banco, DNS ou secrets sem autorização.
 
 O próximo executor deve entregar: arquivos/SHA, adaptadores e rotas implementados, recibo/consentimento, prova de preservação e ACK por domínio, testes reais, segurança, limites iOS, rollback, Notion e Obsidian atualizados. Não declarar "pronto para produção" por passing mocks.
+
+
+### 25/10/2026 — Ordem aprovada pelo responsável
+- Depois de um consentimento: **enviar dados ao servidor primeiro** com idempotência, **preservando os dados locais**, depois fazer backup completo das seis bases/Blobs/fotos, conferir ACK durável e ausência de pendências, e somente então permitir instalação/recepção no destino. O código exige que o adaptador de sync declare `originalsPreserved: true`; isso **não substitui** QA nem integridade real de adaptadores. Sem backend/ACK a migração fica bloqueada.
+- Não remover o PWA antigo por automação: atualização de origem não pode desinstalar a instalação anterior, cujo backup local deve permanecer disponível até a nova confirmar migração.

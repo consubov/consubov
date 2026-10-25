@@ -52,7 +52,7 @@ function makePort(overrides: Partial<MigrationPort> = {}): MigrationPort {
       durableOnOriginalDevice: true,
       binaryAttachmentsPreserved: true,
     })),
-    synchronizeEveryPendingDomain: vi.fn(async () => {}),
+    synchronizeEveryPendingDomain: vi.fn(async () => ({ originalsPreserved: true })),
     verifyDurableServerAcks: vi.fn(async ({ identity: user }) => ({
       migrationId: "migration-1",
       snapshotId: "snapshot-1",
@@ -137,6 +137,16 @@ describe("CONSUBOV v2 single-consent migration", () => {
     expect(port.createNonDestructiveBackup).not.toHaveBeenCalled();
   });
 
+  it("refuses a synchronizer that deletes original records before backup", async () => {
+    const port = makePort({
+      synchronizeEveryPendingDomain: async () => ({ originalsPreserved: false }),
+    });
+    const result = await flow(port).run(true);
+    expect(result).toMatchObject({ code: "SOURCE_DATA_NOT_PRESERVED" });
+    expect(port.createNonDestructiveBackup).not.toHaveBeenCalled();
+    expect(port.createSingleUseHandoff).not.toHaveBeenCalled();
+  });
+
   it("never migrates if backup excludes photos, blobs, a database or another owner", async () => {
     const port = makePort({
       createNonDestructiveBackup: async (user) => ({
@@ -150,7 +160,7 @@ describe("CONSUBOV v2 single-consent migration", () => {
       }),
     });
     expect(await flow(port).run(true)).toMatchObject({ code: "BACKUP_INCOMPLETE" });
-    expect(port.synchronizeEveryPendingDomain).not.toHaveBeenCalled();
+    expect(port.synchronizeEveryPendingDomain).toHaveBeenCalledOnce();
     const mismatched = makePort({
       createNonDestructiveBackup: async () => ({
         snapshotId: "snapshot-1",
@@ -241,7 +251,7 @@ describe("CONSUBOV v2 single-consent migration", () => {
     expect(url.search).toBe("");
     expect(url.hash).toBe("#migration=" + CODE);
     expect(result.migrationId).toBe("migration-1");
-    expect(stages).toEqual(["checking", "backup", "syncing", "verifying", "opening"]);
+    expect(stages).toEqual(["checking", "syncing", "backup", "verifying", "opening"]);
     expect(port.recordExplicitConsent).toHaveBeenCalledWith({
       identity,
       releaseId: MIGRATION_RELEASE_ID,
@@ -281,7 +291,7 @@ describe("CONSUBOV v2 single-consent migration", () => {
     let release: (() => void) | undefined;
     const wait = new Promise<void>((resolve) => { release = resolve; });
     const port = makePort({
-      synchronizeEveryPendingDomain: vi.fn(async () => { await wait; }),
+      synchronizeEveryPendingDomain: vi.fn(async () => { await wait; return { originalsPreserved: true }; }),
     });
     const migration = flow(port);
     const first = migration.run(true);

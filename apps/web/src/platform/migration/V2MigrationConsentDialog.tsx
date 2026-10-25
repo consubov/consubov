@@ -15,8 +15,8 @@ import {
 
 const progressMessage: Record<MigrationPhase, string> = {
   checking: "Verificando os dados deste aparelho...",
-  backup: "Protegendo seus lançamentos e fotos...",
-  syncing: "Sincronizando automaticamente...",
+  backup: "Fazendo backup dos seus lançamentos e fotos...",
+  syncing: "Enviando seus dados ao servidor...",
   verifying: "Conferindo o recebimento dos dados...",
   opening: "Abrindo CONSUBOV 2.0...",
 };

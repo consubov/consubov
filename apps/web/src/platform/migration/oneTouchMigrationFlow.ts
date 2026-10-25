@@ -101,11 +101,11 @@ export interface MigrationPort {
     textVersion: typeof CONSENT_TEXT_VERSION;
   }): Promise<ConsentReceipt | null>;
   createNonDestructiveBackup(identity: MigrationIdentity): Promise<LocalBackup>;
+  /** Upload first without deleting source data, even after individual ACKs. */
   synchronizeEveryPendingDomain(input: {
     identity: MigrationIdentity;
-    backup: LocalBackup;
     consent: ConsentReceipt;
-  }): Promise<void>;
+  }): Promise<{ originalsPreserved: boolean }>;
   verifyDurableServerAcks(input: {
     identity: MigrationIdentity;
     backup: LocalBackup;
@@ -256,6 +256,17 @@ export class OneTouchMigrationFlow {
         consent.releaseId !== MIGRATION_RELEASE_ID
       ) return blocked("CONSENT_NOT_CONFIRMED");
 
+      // User-approved order: send data to server first, then perform a full
+      // non-destructive local backup. The sending adapter MUST retain source
+      // records and Blobs until both the backup and durable ACK are verified.
+      if (!this.port.isOnline()) return blocked("OFFLINE");
+      onProgress?.("syncing");
+      const sync = await this.port.synchronizeEveryPendingDomain({
+        identity,
+        consent,
+      });
+      if (!sync?.originalsPreserved) return blocked("SOURCE_DATA_NOT_PRESERVED");
+
       onProgress?.("backup");
       const backup = await this.port.createNonDestructiveBackup(identity);
       if (
@@ -265,14 +276,6 @@ export class OneTouchMigrationFlow {
         !backup.binaryAttachmentsPreserved ||
         !exactCoverage(backup.coveredDatabases, LEGACY_DATABASES)
       ) return blocked("BACKUP_INCOMPLETE");
-
-      if (!this.port.isOnline()) return blocked("OFFLINE");
-      onProgress?.("syncing");
-      await this.port.synchronizeEveryPendingDomain({
-        identity,
-        backup,
-        consent,
-      });
 
       onProgress?.("verifying");
       const receipt = await this.port.verifyDurableServerAcks({
