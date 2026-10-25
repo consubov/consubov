@@ -63,7 +63,9 @@ export default function BaixarAppPage() {
     applyPwaProfile(window.location.pathname);
     document.title = isRelatto
       ? "Baixar App Relatto — Aplicativo Oficial"
-      : "Baixar App Consubov — Aplicativo Oficial";
+      : surfaceMode === "app"
+        ? "Baixar App Consubov 2.0 — Aplicativo Oficial"
+        : "Baixar App Consubov — Aplicativo Oficial";
 
     // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
     if (isStandaloneApp()) {
@@ -137,7 +139,7 @@ export default function BaixarAppPage() {
         /* ignore */
       }
     };
-  }, [brandId, isRelatto, navigate]);
+  }, [brandId, isRelatto, navigate, surfaceMode]);
 
   const handleInstallClick = async () => {
     // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
@@ -196,7 +198,7 @@ export default function BaixarAppPage() {
     setShowManualHint(false);
   };
 
-  const brandName = isRelatto ? "Relatto" : "Consubov";
+  const brandName = isRelatto ? "Relatto" : surfaceMode === "app" ? "Consubov 2.0" : "Consubov";
   const brandSubtitle = isRelatto
     ? "Aplicativo oficial de relatórios técnicos de campo"
     : "Aplicativo oficial de inteligência nutricional e gestão pecuária";
