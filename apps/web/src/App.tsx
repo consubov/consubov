@@ -115,6 +115,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { applyPwaProfile } from "@/lib/pwaManifest";
 import { getRoleHomePath } from "@/lib/authNavigation";
 import { RouteMemory } from "@/components/RouteMemory";
+import { V2DestinationMigrationBootstrap } from "@/platform/migration/V2DestinationMigrationBootstrap";
 import {
   activateStandaloneSession,
   isRelattoActiveProfile,
@@ -315,6 +316,7 @@ const App = () => (
           <AuthProvider>
             <PwaProfileSync />
             <RouteMemory />
+            <V2DestinationMigrationBootstrap />
             <PushNotificationsBootstrap />
             <PesagemEmAndamentoPrompt />
 
