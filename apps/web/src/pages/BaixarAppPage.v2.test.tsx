@@ -83,6 +83,23 @@ describe("CONSUBOV 2.0 installation page", () => {
     expect(await screen.findByText(/Confirme a instalação no seu navegador/i)).toBeTruthy();
   });
 
+  it("keeps the installer visible after the real appinstalled event", async () => {
+    mount();
+    fireEvent(window, new Event("appinstalled"));
+    expect(await screen.findByText(/Abra o novo ícone/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Baixar e Instalar App Consubov 2\\.0/i })).toBeTruthy();
+    expect(screen.queryByText("LOGIN_SCREEN")).toBeNull();
+  });
+
+  it("does not mark manual instructions as proof of installation or jump to login", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: /Baixar e Instalar App Consubov 2\\.0/i }));
+    const manualButton = await screen.findByRole("button", { name: /Já adicionei à Tela de Início/i });
+    fireEvent.click(manualButton);
+    expect(await screen.findByText(/Abra o novo ícone/i)).toBeTruthy();
+    expect(screen.queryByText("LOGIN_SCREEN")).toBeNull();
+  });
+
   it("preserves the existing installed-app banner for Relatto", () => {
     mount("/baixar?app=relatto");
     expect(screen.getByTestId("app-already-installed-banner")).toBeTruthy();
