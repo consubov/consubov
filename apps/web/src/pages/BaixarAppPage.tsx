@@ -20,6 +20,7 @@ import {
   detectInstalledAppAsync,
   getInstalledStorageKey,
   getSurfaceMode,
+  isConsubovV2DownloadRoute,
   isAppInstalledOnDevice,
   isStandaloneApp,
   markAppInstalled,
@@ -53,6 +54,11 @@ export default function BaixarAppPage() {
   const [showManualHint, setShowManualHint] = useState(false);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
+  const v2DownloadRoute = isConsubovV2DownloadRoute(
+    window.location.pathname,
+    window.location.search,
+    surfaceMode,
+  );
   const externalAppOrigin = (
     (import.meta.env.VITE_APP_URL as string | undefined) ?? ""
   )
@@ -67,24 +73,28 @@ export default function BaixarAppPage() {
         ? "Baixar App Consubov 2.0 — Aplicativo Oficial"
         : "Baixar App Consubov — Aplicativo Oficial";
 
-    // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
-    if (isStandaloneApp()) {
+    // A URL explícita da nova versão sempre mostra primeiro a instalação.
+    // As demais rotas e outros apps preservam a navegação normal pelo ícone.
+    if (isStandaloneApp() && !v2DownloadRoute) {
       markAppInstalled(brandId);
       navigate("/login", { replace: true });
       return;
     }
 
-    setInstalled(isAppInstalledOnDevice(brandId));
-    void detectInstalledAppAsync(brandId).then((alreadyInstalled) => {
-      if (alreadyInstalled) {
-        setInstalled(true);
-        setShowManualHint(false);
-      }
-    });
+    // O marcador da antiga PWA não prova que a CONSUBOV 2.0 foi instalada.
+    if (!v2DownloadRoute) {
+      setInstalled(isAppInstalledOnDevice(brandId));
+      void detectInstalledAppAsync(brandId).then((alreadyInstalled) => {
+        if (alreadyInstalled) {
+          setInstalled(true);
+          setShowManualHint(false);
+        }
+      });
+    }
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      if (!isAppInstalledOnDevice(brandId)) {
+      if (v2DownloadRoute || !isAppInstalledOnDevice(brandId)) {
         setDeferredPrompt(e as BeforeInstallPromptEvent);
       }
     };
@@ -139,11 +149,11 @@ export default function BaixarAppPage() {
         /* ignore */
       }
     };
-  }, [brandId, isRelatto, navigate, surfaceMode]);
+  }, [brandId, isRelatto, navigate, surfaceMode, v2DownloadRoute]);
 
   const handleInstallClick = async () => {
-    // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
-    if (installed || isAppInstalledOnDevice(brandId)) {
+    // Só o fluxo legado bloqueia segunda instalação; 2.0 tem origem própria.
+    if (!v2DownloadRoute && (installed || isAppInstalledOnDevice(brandId))) {
       setInstalled(true);
       setShowManualHint(false);
       return;
@@ -165,6 +175,12 @@ export default function BaixarAppPage() {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       if (choice.outcome === "accepted") {
+        if (v2DownloadRoute) {
+          // Não confundir aceitação do prompt com a instalação concluída.
+          // O evento appinstalled confirma a instalação e abre o login.
+          setDeferredPrompt(null);
+          return;
+        }
         markAppInstalled(brandId);
         activateStandaloneSession();
         setInstalled(true);
@@ -315,8 +331,8 @@ export default function BaixarAppPage() {
               </div>
             </div>
 
-            {/* Estado: App já instalado (bloqueia 2ª instalação) vs Botão para instalar */}
-            {installed ? (
+            {/* CONSUBOV 2.0 sempre oferece instalação, inclusive com marcador do legado. */}
+            {installed && !v2DownloadRoute ? (
               <div
                 className="rounded-xl p-6 text-center space-y-3"
                 style={{
@@ -367,6 +383,13 @@ export default function BaixarAppPage() {
                   <Download className="w-5 h-5" />
                   Baixar e Instalar App {brandName}
                 </button>
+
+                {v2DownloadRoute && (
+                  <p className="text-center text-xs sm:text-sm text-[#D8EFE2] leading-relaxed">
+                    O aplicativo antigo continua instalado. O Consubov 2.0 é
+                    independente e precisa ser instalado neste novo endereço.
+                  </p>
+                )}
 
                 {showManualHint && (
                   <div
