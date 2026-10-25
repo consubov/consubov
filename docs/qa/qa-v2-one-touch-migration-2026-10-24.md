@@ -61,3 +61,21 @@ O próximo executor deve entregar: arquivos/SHA, adaptadores e rotas implementad
 ### 25/10/2026 — Ordem aprovada pelo responsável
 - Depois de um consentimento: **enviar dados ao servidor primeiro** com idempotência, **preservando os dados locais**, depois fazer backup completo das seis bases/Blobs/fotos, conferir ACK durável e ausência de pendências, e somente então permitir instalação/recepção no destino. O código exige que o adaptador de sync declare `originalsPreserved: true`; isso **não substitui** QA nem integridade real de adaptadores. Sem backend/ACK a migração fica bloqueada.
 - Não remover o PWA antigo por automação: atualização de origem não pode desinstalar a instalação anterior, cujo backup local deve permanecer disponível até a nova confirmar migração.
+
+## 25/10/2026 — Correção isolada: entrada obrigatória na instalação da CONSUBOV 2.0
+
+**Demanda:** quando o aplicativo Lovable antigo direciona o usuário para `https://app.consubov.com.br/baixar`, deve aparecer a instalação nova, **mesmo com a antiga instalada** ou marcador de instalação/standalone persistido.
+
+**Modificações na branch do PR #64, sem alterar produção/legado:**
+
+- `apps/web/src/lib/appSurface.ts`: `isConsubovV2DownloadRoute()` impede `resolveSurfaceRedirect` de levar `/baixar` para `/app` quando standalone na superfície nova, mantendo o caminho de Relatto e a abertura normal do ícone via `/`.
+- `apps/web/index.html`: não executa o redirecionamento HTML antecipado de `/baixar` em `app.consubov.com.br` (ou preview `consubov-*.vercel.app`), inclusive quando detecta modo standalone.
+- `apps/web/src/pages/BaixarAppPage.tsx`: sempre oferece o botão **Baixar e Instalar App Consubov 2.0** na rota de instalação do app; não aceita marcador de app antigo como prova da instalação da v2; respeita fallback de instalação Android/iOS. A aceitação de `beforeinstallprompt` não é tratada como instalação concluída até `appinstalled`.
+- `apps/web/src/App.tsx`: não pula do link de instalação da v2 para o login em mudanças de display-mode; após instalação confirmada, a própria página mantém a lógica de navegação.
+- `apps/web/src/lib/appSurface.v2-download.test.ts` e `apps/web/src/pages/BaixarAppPage.v2.test.tsx`: cenários de marcador antigo, standalone, prompt, fallback, regressão de Relatto.
+
+**Critérios de aceite:** link explícito `/baixar` com CTA visível em aba normal e standalone, abertura pelo ícone da nova PWA através de `/` continua indo ao sistema, usuário não perde dados nem é obrigado a desinstalar o legado, Relatto permanece intacto.
+
+**QA pendente de verificação real no novo commit:** GitHub CI/typecheck/build/lint, teste no celular físico Android/iPhone, confirmação de instalação nativa e reabertura. Os testes criados não são evidência de execução até o workflow concluído.
+
+**Gates de release anteriores continuam válidos:** Security Scan HIGH e pendências de backend, restore real, tenant/RLS e backup impedem declarar migração de dados 2.0 pronta. Não habilitar flag de migração, não disparar notificação aos usuários e não promover produção por este ajuste isolado.
