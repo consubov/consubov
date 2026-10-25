@@ -60,6 +60,12 @@ export default function BaixarAppPage() {
     window.location.search,
     surfaceMode,
   );
+  const brandName = isRelatto
+    ? "Relatto"
+    : v2DownloadRoute
+      ? "Consubov 2.0"
+      : "Consubov";
+  const displayVersion = v2DownloadRoute ? "2.0.0" : APP_VERSION;
   const externalAppOrigin = (
     (import.meta.env.VITE_APP_URL as string | undefined) ?? ""
   )
@@ -275,7 +281,7 @@ export default function BaixarAppPage() {
                   border: "1px solid rgba(34,255,136,0.28)",
                 }}
               >
-                App v{APP_VERSION}
+                App v{displayVersion}
               </span>
             </div>
           </div>
@@ -399,8 +405,7 @@ export default function BaixarAppPage() {
 
                 {v2DownloadRoute && (
                   <p className="text-center text-xs sm:text-sm text-[#D8EFE2] leading-relaxed">
-                    O aplicativo antigo continua instalado. O Consubov 2.0 é
-                    independente e precisa ser instalado neste novo endereço.
+                    O CONSUBOV 2.0 é um novo aplicativo. A versão anterior pode permanecer instalada no seu dispositivo.
                   </p>
                 )}
 
@@ -642,7 +647,7 @@ export default function BaixarAppPage() {
         className="w-full py-6 px-5 text-center text-xs text-[#9BB8A8] border-t"
         style={{ borderColor: "rgba(34,255,136,0.12)" }}
       >
-        © 2026 {brandName} • Aplicativo Oficial v{APP_VERSION}
+        © 2026 {brandName} • Aplicativo Oficial v{displayVersion}
       </footer>
     </div>
   );
