@@ -180,12 +180,14 @@ describe("appSurface — separação Site vs App e acesso exclusivo pelo ícone 
     });
     expect(redirectFromRoot).toBe("/app");
 
+    // The explicit /baixar invitation must show the new 2.0 installer,
+    // even if an earlier application is already running standalone.
     const redirectFromBaixar = resolveSurfaceRedirect("/baixar", "", {
       surfaceMode: "app",
       standalone: true,
       relattoProfile: false,
     });
-    expect(redirectFromBaixar).toBe("/app");
+    expect(redirectFromBaixar).toBeNull();
 
     const redirectRelatto = resolveSurfaceRedirect("/", "", {
       surfaceMode: "app",
