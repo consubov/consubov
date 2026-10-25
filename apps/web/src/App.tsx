@@ -118,6 +118,8 @@ import { RouteMemory } from "@/components/RouteMemory";
 import { V2DestinationMigrationBootstrap } from "@/platform/migration/V2DestinationMigrationBootstrap";
 import {
   activateStandaloneSession,
+  getSurfaceMode,
+  isConsubovV2DownloadRoute,
   isRelattoActiveProfile,
   markAppInstalled,
   resolveSurfaceRedirect,
@@ -153,6 +155,13 @@ function StandaloneAppGuard({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
 
     const enterInstalledApp = () => {
+      // A entrada explícita da nova PWA é uma tela de instalação, não login.
+      // Deixe o próprio BaixarAppPage tratar appinstalled após o usuário instalar.
+      if (isConsubovV2DownloadRoute(
+        window.location.pathname,
+        window.location.search,
+        getSurfaceMode(),
+      )) return;
       const brand = isRelattoActiveProfile(window.location.search) ? "relatto" : "consubov";
       markAppInstalled(brand);
       activateStandaloneSession();
