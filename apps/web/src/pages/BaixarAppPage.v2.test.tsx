@@ -25,6 +25,8 @@ vi.mock("@/lib/appSurface", () => ({
 vi.mock("@/lib/pwaManifest", () => ({ applyPwaProfile: vi.fn() }));
 
 function mount(entry = "/baixar") {
+  // The component intentionally reads the real browser URL, not only Router state.
+  window.history.replaceState({}, "", entry);
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
