@@ -29,7 +29,7 @@
         } else if (path.indexOf('/syncvet') === 0) {
           manifest = '/manifest-syncvet.json';
         } else if (hostname.startsWith('app.') ||
-                   (/^consubov-[a-z0-9-]+\\.vercel\\.app$/.test(hostname) && query.indexOf('surface=app') !== -1)) {
+                   (/^consubov-[a-z0-9-]+\.vercel\.app$/.test(hostname) && query.indexOf('surface=app') !== -1)) {
           manifest = '/manifest-consubov-v2.json';
         }
         var link = document.createElement('link');
