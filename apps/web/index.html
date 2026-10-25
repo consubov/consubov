@@ -8,7 +8,36 @@
     <meta name="description" content="Sistema de gestão pecuária Consubov.">
     <meta name="robots" content="index,follow">
     <meta name="author" content="Consubov" />
-    <link rel="manifest" href="/manifest.json" />
+    <script>
+      // Link correto ANTES da leitura do manifesto pelo navegador: /baixar da
+      // nova origem deve instalar a PWA 2.0 com ID próprio, não o App anterior.
+      (function () {
+        var path = location.pathname.toLowerCase();
+        var query = location.search.toLowerCase();
+        var hostname = location.hostname.toLowerCase();
+        var manifest = '/manifest.json';
+        if (/(^|[.-])relatto([.-]|$)/.test(hostname) ||
+            path === '/relatto' || path.indexOf('/relatto/') === 0 ||
+            path.indexOf('/consultor') === 0 ||
+            (path === '/baixar' && (query.indexOf('app=relatto') !== -1 || query.indexOf('pwa=relatto') !== -1))) {
+          manifest = '/manifest-relatto.json';
+        } else if (path.indexOf('/maisarrobas') === 0 ||
+                   path.indexOf('/mais-arrobas') === 0 ||
+                   path.indexOf('/pecuarista') === 0 ||
+                   path.indexOf('/pesador') === 0) {
+          manifest = '/manifest-maisarrobas.json';
+        } else if (path.indexOf('/syncvet') === 0) {
+          manifest = '/manifest-syncvet.json';
+        } else if (hostname.startsWith('app.') ||
+                   (/^consubov-[a-z0-9-]+\\.vercel\\.app$/.test(hostname) && query.indexOf('surface=app') !== -1)) {
+          manifest = '/manifest-consubov-v2.json';
+        }
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifest;
+        document.head.appendChild(link);
+      })();
+    </script>
     <meta name="theme-color" content="#1B4332" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
