@@ -4,7 +4,7 @@
  * funcionalidade de módulo.
  */
 
-import { isRelattoHostname } from "./appSurface";
+import { getSurfaceMode, isRelattoHostname } from "./appSurface";
 
 export interface PwaProfile {
   id: string;
@@ -23,6 +23,15 @@ const PROFILES: Record<string, PwaProfile> = {
     appleIcon: "/icon-192.png",
     themeColor: "#1B4332",
     appleTitle: "Consubov",
+  },
+  // Identidade de instalação exclusiva do novo App, sem alterar o site ou o legado Lovable.
+  consubovV2: {
+    id: "consubov",
+    title: "Consubov 2.0",
+    manifest: "/manifest-consubov-v2.json",
+    appleIcon: "/icon-192.png",
+    themeColor: "#1B4332",
+    appleTitle: "Consubov 2.0",
   },
   relatto: {
     id: "relatto",
@@ -74,7 +83,11 @@ export function profileForPath(
     return PROFILES.maisarrobas;
   }
   if (p.startsWith("/syncvet")) return PROFILES.syncvet;
-  return PROFILES.consubov;
+  // O novo subdomínio tem nome/manifest próprios; o site segue com a marca existente.
+  const isAppSubdomain = hostname.toLowerCase().startsWith("app.");
+  return isAppSubdomain || getSurfaceMode({ hostname }) === "app"
+    ? PROFILES.consubovV2
+    : PROFILES.consubov;
 }
 
 function setLink(rel: string, href: string) {
