@@ -25,9 +25,17 @@
             isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
           } catch (e) {}
 
-          // Em modo instalado pelo ícone do dispositivo (standalone), a raiz e /baixar
-          // nunca devem renderizar a Landing Page — abrem direto o sistema nativo.
-          if ((p === '/' || p === '/index.html' || p === '/baixar') && isStandalone) {
+          // O convite vindo do legado deve mostrar a instalação CONSUBOV 2.0,
+          // mesmo quando o navegador abre o endereço dentro de uma PWA instalada.
+          var host = location.hostname.toLowerCase();
+          var isV2Host = host === 'app.consubov.com.br' ||
+            /^consubov-[a-z0-9-]+\.vercel\.app$/.test(host);
+          var explicitRelatto = /(?:\?|&)(?:app|pwa)=relatto(?:&|$)/i.test(location.search);
+          var isV2Download = p === '/baixar' && isV2Host && !explicitRelatto;
+
+          // Ao abrir pelo ícone, a raiz continua indo para o sistema.
+          // Apenas a entrada explícita /baixar da versão 2.0 permanece na instalação.
+          if ((p === '/' || p === '/index.html' || (p === '/baixar' && !isV2Download)) && isStandalone) {
             var lastPwa = null;
             var hasRelattoCookie = false;
             try { lastPwa = localStorage.getItem('relatto:pwa-profile'); } catch (e) {}
