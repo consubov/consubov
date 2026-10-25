@@ -48,6 +48,15 @@
           } else if (p.indexOf('/syncvet') === 0) {
             m = { id: 'syncvet', title: 'SyncVet' };
           }
+          // Mantém o site institucional inalterado e identifica a PWA do novo domínio.
+          if (!m && location.hostname.toLowerCase().startsWith('app.')) {
+            document.title = 'Consubov 2.0 | Gestão Pecuária';
+            var manifestV2 = document.querySelector('link[rel="manifest"]');
+            if (manifestV2) manifestV2.setAttribute('href', '/manifest-consubov-v2.json');
+            var appleTitleV2 = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+            if (appleTitleV2) appleTitleV2.setAttribute('content', 'Consubov 2.0');
+            return;
+          }
           if (!m) return;
           document.title = m.title;
           var man = document.querySelector('link[rel="manifest"]');
