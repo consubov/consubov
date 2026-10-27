@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useLandingContent } from "@/hooks/useLandingContent";
+import { useSiteLanguage } from "@/hooks/useSiteLanguage";
+import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+import { siteCopy, sitePhrase } from "@/lib/siteLanguage";
 import RelattoDemoModal from "@/components/landing/RelattoDemoModal";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import {
@@ -67,21 +70,28 @@ const RECURSOS_FALLBACK = [
 const RECURSO_ICONS = [ClipboardList, FileText, WifiOff, LayoutDashboard, CalendarDays, Fuel];
 
 export default function RelattoLandingPage() {
-  const { t, arr } = useLandingContent("relatto");
+  const { t: cmsText, arr } = useLandingContent("relatto");
+  const { language, setLanguage } = useSiteLanguage();
+  const t = (key: string, fallback: string) => siteCopy(language, key, fallback, cmsText);
+  const phrase = (value: string) => sitePhrase(language, value);
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [slideIndex, setSlideIndex] = useState(0);
   const [demoOpen, setDemoOpen] = useState(false);
 
   useEffect(() => {
-    document.title = "Relatto — Relatório técnico profissional, direto do campo";
+    document.title = language === "en-US"
+      ? "Relatto — Professional Field Reports"
+      : "Relatto — Relatório técnico profissional, direto do campo";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) {
       meta.setAttribute(
         "content",
-        "O Relatto transforma sua visita técnica em um relatório pronto, com fotos, notas e gráficos, mesmo sem internet.",
+        language === "en-US"
+          ? "Create professional technical reports with photos, notes, and charts, even offline."
+          : "O Relatto transforma sua visita técnica em um relatório pronto, com fotos, notas e gráficos, mesmo sem internet.",
       );
     }
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     let mounted = true;
@@ -99,9 +109,12 @@ export default function RelattoLandingPage() {
     };
   }, []);
 
-  const slides = arr<Slide>("relatto_slides", SLIDES_FALLBACK).slice(0, 4);
-  const passos = arr<{ titulo: string; descricao: string }>("relatto_passos", PASSOS_FALLBACK);
-  const recursos = arr<{ titulo: string; descricao: string }>("relatto_recursos", RECURSOS_FALLBACK);
+  const slides = arr<Slide>("relatto_slides", SLIDES_FALLBACK).slice(0, 4)
+    .map((slide) => ({ ...slide, titulo: phrase(slide.titulo), subtitulo: phrase(slide.subtitulo) }));
+  const passos = arr<{ titulo: string; descricao: string }>("relatto_passos", PASSOS_FALLBACK)
+    .map((passo) => ({ ...passo, titulo: phrase(passo.titulo), descricao: phrase(passo.descricao) }));
+  const recursos = arr<{ titulo: string; descricao: string }>("relatto_recursos", RECURSOS_FALLBACK)
+    .map((recurso) => ({ ...recurso, titulo: phrase(recurso.titulo), descricao: phrase(recurso.descricao) }));
 
   useEffect(() => {
     if (slides.length < 2) return;
@@ -123,6 +136,7 @@ export default function RelattoLandingPage() {
             <span className="text-lg font-bold tracking-tight">Relatto</span>
           </div>
           <div className="flex items-center gap-1.5">
+            {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} mode="light" />}
             <Button
               variant="outline"
               size="sm"
@@ -179,7 +193,7 @@ export default function RelattoLandingPage() {
               {slides.map((_, i) => (
                 <button
                   key={i}
-                  aria-label={`Ir para o slide ${i + 1}`}
+                  aria-label={`${phrase("Ir para o slide")} ${i + 1}`}
                   onClick={() => setSlideIndex(i)}
                   className={`h-2 rounded-full transition-all ${
                     i === slideIndex ? "w-6 bg-primary" : "w-2 bg-neutral-300"
@@ -263,7 +277,7 @@ export default function RelattoLandingPage() {
                   {p.logo_url ? (
                     <img
                       src={p.logo_url}
-                      alt={p.nome || "Parceiro"}
+                      alt={p.nome || phrase("Parceiro")}
                       loading="lazy"
                       className="max-h-14 w-auto object-contain"
                     />
@@ -288,7 +302,7 @@ export default function RelattoLandingPage() {
         </p>
       </footer>
 
-      <RelattoDemoModal open={demoOpen} onOpenChange={setDemoOpen} />
+      <RelattoDemoModal open={demoOpen} onOpenChange={setDemoOpen} language={language} />
     </div>
   );
 }
