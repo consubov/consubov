@@ -340,12 +340,11 @@ export default function BaixarAppPage() {
                   App {brandName} {copy("já está instalado neste dispositivo", "is already installed on this device")}
                 </p>
                 <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed max-w-lg mx-auto">
-                  Identificamos que o <strong>App {brandName}</strong> já foi
-                  instalado neste aparelho. Para evitar duplicidade, uma nova
-                  instalação foi bloqueada. Feche esta aba do navegador e abra o
-                  aplicativo diretamente pelo{" "}
-                  <strong>ícone {brandName}</strong> na tela inicial do seu
-                  dispositivo.
+                  {isEnglishSite ? (
+                    <>The <strong>{brandName} App</strong> is already installed. To avoid duplicates, installation is disabled here. Close this browser tab and launch the app using the <strong>{brandName} icon</strong> on your home screen.</>
+                  ) : (
+                    <>Identificamos que o <strong>App {brandName}</strong> já foi instalado neste aparelho. Para evitar duplicidade, uma nova instalação foi bloqueada. Feche esta aba do navegador e abra o aplicativo diretamente pelo <strong>ícone {brandName}</strong> na tela inicial do seu dispositivo.</>
+                  )}
                 </p>
                 <div className="pt-2">
                   <button
@@ -388,10 +387,10 @@ export default function BaixarAppPage() {
                     </p>
                     <p className="text-[#E6F5EC] leading-relaxed">
                       {platform === "ios"
-                        ? 'No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".'
+                        ? copy('No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".', 'On iPhone or iPad, tap Share in Safari and choose Add to Home Screen.')
                         : platform === "android"
-                          ? 'No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".'
-                          : 'No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".'}
+                          ? copy('No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".', 'On Android, confirm the Install app prompt, or open the browser menu (⋮) and choose Install app.')
+                          : copy('No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".', 'On desktop, click the install icon in the address bar, or open the browser menu (⋮) and choose Install app.')}
                     </p>
                     <button
                       type="button"
@@ -423,10 +422,11 @@ export default function BaixarAppPage() {
                 style={{ color: "#22FF88" }}
               />
               <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed">
-                <strong>Acesso exclusivo pelo ícone do App:</strong> Para sua
-                segurança e funcionamento 100% offline no campo, o sistema não é
-                utilizado dentro da aba do navegador. Após instalar, abra sempre
-                pelo <strong>ícone do App {brandName}</strong> no seu aparelho.
+                {isEnglishSite ? (
+                  <><strong>Use the App icon to sign in:</strong> For secure, fully offline field work, use the installed app rather than a browser tab. After installation, always launch it using the <strong>{brandName} App icon</strong>.</>
+                ) : (
+                  <><strong>Acesso exclusivo pelo ícone do App:</strong> Para sua segurança e funcionamento 100% offline no campo, o sistema não é utilizado dentro da aba do navegador. Após instalar, abra sempre pelo <strong>ícone do App {brandName}</strong> no seu aparelho.</>
+                )}
               </p>
             </div>
 
