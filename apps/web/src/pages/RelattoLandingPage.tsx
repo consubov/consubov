@@ -131,12 +131,12 @@ export default function RelattoLandingPage() {
     <div className="min-h-screen bg-white text-neutral-900">
       {/* Cabeçalho */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-neutral-100">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 px-4 py-2.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 px-2 sm:px-4 py-2.5">
           <button
             type="button"
             onClick={scrollToSiteTop}
             aria-label={language === "en-US" ? "Relatto: back to top" : "Relatto: voltar ao topo"}
-            className="flex items-center gap-2 min-w-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            className="flex shrink-0 items-center gap-1 sm:gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
             <img src={relattoLogo.url} alt="Logo Relatto" className="w-9 h-9 object-contain" />
             <span className="text-lg font-bold tracking-tight">Relatto</span>
@@ -146,14 +146,17 @@ export default function RelattoLandingPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full gap-1.5"
+              className="h-9 w-9 shrink-0 rounded-full p-0 sm:w-auto sm:px-3 sm:gap-1.5"
               onClick={() => setDemoOpen(true)}
+              aria-label="Demo"
+              title="Demo"
             >
-              <PlayCircle className="w-4 h-4" /> Demo
+              <PlayCircle className="w-4 h-4" /> <span className="hidden sm:inline">Demo</span>
             </Button>
             <Link to="/baixar?app=relatto">
-              <Button size="sm" className="rounded-full font-semibold">
-                {t("relatto_cta_entrar", "Baixar App")}
+              <Button size="sm" className="rounded-full px-2 font-semibold sm:px-3">
+                <span className="hidden sm:inline">{t("relatto_cta_entrar", "Baixar App")}</span>
+                <span className="sm:hidden">{language === "en-US" ? "Get App" : "Baixar"}</span>
               </Button>
             </Link>
           </div>
