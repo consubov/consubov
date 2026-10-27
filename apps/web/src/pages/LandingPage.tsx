@@ -6,7 +6,6 @@ import { sendPush } from "@/lib/pushService";
 import { z } from "zod";
 import { LandingIcon as LucideIcon } from "@/components/landing/LandingIcon";
 import {
-  RefreshCw,
   ArrowRight,
   CheckCircle2,
   QrCode,
@@ -28,8 +27,6 @@ import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { DeferredBrasilMap as BrasilMap } from "@/components/landing/DeferredBrasilMap";
 import { useLandingContent } from "@/hooks/useLandingContent";
-import { UpdateBanner } from "@/components/UpdateBanner";
-import { APP_VERSION } from "@/lib/appVersion";
 
 
 const leadSchema = z.object({
@@ -368,7 +365,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden" style={{ background: BG, color: "#E6F5EC", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <UpdateBanner />
       <style>{`
         @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px ${NEON_DIM}} 50%{box-shadow:0 0 40px ${NEON}} }
         @keyframes floatSlow { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-18px) rotate(2deg)} }
@@ -411,27 +407,6 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <span
-              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
-              style={{ background: "rgba(34,255,136,0.12)", color: NEON, border: `1px solid ${BORDER}` }}
-            >
-              v{APP_VERSION}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set("__v", String(Date.now()));
-                window.location.replace(url.toString());
-              }}
-              className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full transition hover:opacity-80 shrink-0"
-              style={{ background: NEON, color: "#03110A" }}
-              aria-label="Atualizar aplicativo"
-              title={`Atualizar app (v${APP_VERSION})`}
-            >
-              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </button>
-
             <Link
               to="/baixar"
               className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
@@ -1001,17 +976,6 @@ export default function LandingPage() {
               {t("footer_cidade", "Araguaína — TO, Brasil")} • {t("footer_telefone", "(63) 99113-6071")}
             </p>
             <p>© {t("footer_ano", "2026")} {t("footer_copyright", "Consubov. Todos os direitos reservados.")}</p>
-            <div className="mt-2 flex items-center gap-2 md:justify-end justify-center">
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
-                style={{ background: "rgba(34,255,136,0.12)", color: NEON, border: `1px solid ${BORDER}` }}
-              >
-                v{APP_VERSION}
-              </span>
-
-
-
-            </div>
           </div>
         </div>
       </footer>
