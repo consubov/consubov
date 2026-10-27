@@ -25,6 +25,8 @@ import {
   markAppInstalled,
 } from "@/lib/appSurface";
 import { applyPwaProfile } from "@/lib/pwaManifest";
+import { useSiteLanguage } from "@/hooks/useSiteLanguage";
+import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -53,6 +55,10 @@ export default function BaixarAppPage() {
   const [showManualHint, setShowManualHint] = useState(false);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
+  const isSiteBuild = import.meta.env.VITE_SURFACE_MODE === "site";
+  const { language, setLanguage } = useSiteLanguage();
+  const isEnglishSite = isSiteBuild && language === "en-US";
+  const copy = (pt: string, en: string) => isEnglishSite ? en : pt;
   const externalAppOrigin = (
     (import.meta.env.VITE_APP_URL as string | undefined) ?? ""
   )
@@ -61,9 +67,9 @@ export default function BaixarAppPage() {
 
   useEffect(() => {
     applyPwaProfile(window.location.pathname);
-    document.title = isRelatto
-      ? "Baixar App Relatto — Aplicativo Oficial"
-      : "Baixar App Consubov — Aplicativo Oficial";
+    document.title = isEnglishSite
+      ? `Download ${isRelatto ? "Relatto" : "Consubov"} App — Official App`
+      : isRelatto ? "Baixar App Relatto — Aplicativo Oficial" : "Baixar App Consubov — Aplicativo Oficial";
 
     // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
     if (isStandaloneApp()) {
@@ -137,7 +143,7 @@ export default function BaixarAppPage() {
         /* ignore */
       }
     };
-  }, [brandId, isRelatto, navigate]);
+  }, [brandId, isRelatto, navigate, isEnglishSite]);
 
   const handleInstallClick = async () => {
     // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
@@ -198,8 +204,8 @@ export default function BaixarAppPage() {
 
   const brandName = isRelatto ? "Relatto" : "Consubov";
   const brandSubtitle = isRelatto
-    ? "Aplicativo oficial de relatórios técnicos de campo"
-    : "Aplicativo oficial de inteligência nutricional e gestão pecuária";
+    ? copy("Aplicativo oficial de relatórios técnicos de campo", "Official app for technical field reports")
+    : copy("Aplicativo oficial de inteligência nutricional e gestão pecuária", "Official app for cattle nutrition intelligence and livestock management");
 
   return (
     <div
@@ -217,7 +223,7 @@ export default function BaixarAppPage() {
           background: "rgba(5,7,10,0.92)",
         }}
       >
-        <div className="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg overflow-hidden shrink-0"
@@ -236,7 +242,7 @@ export default function BaixarAppPage() {
               <span className="font-extrabold tracking-widest text-sm uppercase">
                 {brandName}
               </span>
-              <span
+              {!isSiteBuild && <span
                 className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
                 style={{
                   background: "rgba(34,255,136,0.14)",
@@ -245,10 +251,12 @@ export default function BaixarAppPage() {
                 }}
               >
                 App v{APP_VERSION}
-              </span>
+              </span>}
             </div>
           </div>
 
+          <div className="flex items-center gap-1.5">
+          {isSiteBuild && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
           {surfaceMode !== "app" && (
             <Link
               to={isRelatto ? "/relatto" : "/"}
@@ -259,9 +267,10 @@ export default function BaixarAppPage() {
               }}
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Voltar ao site
+              {copy("Voltar ao site", "Back to website")}
             </Link>
           )}
+          </div>
         </div>
       </header>
 
@@ -286,7 +295,7 @@ export default function BaixarAppPage() {
               >
                 <img
                   src={isRelatto ? relattoLogo.url : logoConsubov}
-                  alt={`Ícone do App ${brandName}`}
+                  alt={copy(`Ícone do App ${brandName}`, `${brandName} App icon`)}
                   className="w-full h-full object-contain"
                 />
               </div>
