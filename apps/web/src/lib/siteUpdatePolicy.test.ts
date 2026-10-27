@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { cleanupSiteServiceWorker } from "./siteUpdatePolicy";
+import { cleanupSiteServiceWorker, isSiteBrowserSurface } from "./siteUpdatePolicy";
 
 describe("site update policy", () => {
+  it("follows build mode and preserves installed App behavior", () => {
+    expect(isSiteBrowserSurface("site", false)).toBe(true);
+    expect(isSiteBrowserSurface("site", true)).toBe(false);
+    expect(isSiteBrowserSurface("app", false)).toBe(false);
+    expect(isSiteBrowserSurface(undefined, false)).toBe(false);
+  });
+
   it("only unregisters the legacy root /sw.js", async () => {
     const unregisterLegacy = vi.fn().mockResolvedValue(true);
     const unregisterOther = vi.fn().mockResolvedValue(true);
