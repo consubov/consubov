@@ -1,4 +1,6 @@
 import { reloadWhenAuthIdle } from "./lib/authIdle";
+import { getSurfaceMode, isStandaloneApp } from "./lib/appSurface";
+import { cleanupSiteServiceWorker } from "./lib/siteUpdatePolicy";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -80,7 +82,9 @@ async function bootstrap() {
   // Nada aqui pode impedir a renderização — se falhar, o app abre mesmo assim.
   try {
     applyPwaProfile(window.location.pathname);
-    const didReload = await resetServiceWorkerStateOnFirstLoad();
+    const didReload = getSurfaceMode() === "site" && !isStandaloneApp()
+      ? false
+      : await resetServiceWorkerStateOnFirstLoad();
     if (didReload) return;
   } catch (err) {
     console.warn("Bootstrap pré-render falhou:", err);
@@ -89,7 +93,11 @@ async function bootstrap() {
   render();
 
   try {
-    registerSW();
+    if (getSurfaceMode() === "site" && !isStandaloneApp()) {
+      void cleanupSiteServiceWorker();
+    } else {
+      registerSW();
+    }
   } catch (err) {
     console.warn("registerSW falhou:", err);
   }
