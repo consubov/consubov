@@ -24,10 +24,10 @@ export default defineConfig(() => ({
     react(),
     {
       name: "retire-legacy-service-worker-on-site-only",
-      transformIndexHtml() {
-        // Only the SITE build gets this early listener. An old CSS hash can
-        // fail before the main React module mounts.
-        return [{
+      transformIndexHtml(html) {
+        // The deprecated Apple-specific meta belongs to the installed App build.
+        // Only the public site gets modern metadata and early CSS recovery.
+        return { html: html.replace('<meta name="apple-mobile-web-app-capable" content="yes" />', ""), tags: [{
           tag: "script",
           injectTo: "head-prepend" as const,
           children: `(() => {
@@ -59,7 +59,7 @@ export default defineConfig(() => ({
               location.replace(next.toString());
             }, true);
           })();`,
-        }];
+        }] };
       },
       closeBundle() {
         // Site and App have different build configs and deployment projects.
