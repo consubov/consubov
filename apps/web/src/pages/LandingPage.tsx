@@ -423,7 +423,7 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col leading-none min-w-0">
               <span className="whitespace-nowrap font-extrabold tracking-[0.05em] sm:tracking-[0.2em] text-[10px] sm:text-sm">CONSUBOV</span>
-              <span className="hidden lg:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
+              <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
             </div>
           </button>
 
