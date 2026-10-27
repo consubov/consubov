@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useLandingContent } from "@/hooks/useLandingContent";
 import { useSiteLanguage } from "@/hooks/useSiteLanguage";
 import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+import { BackToTopButton, scrollToSiteTop } from "@/components/landing/BackToTopButton";
 import { siteCopy, sitePhrase } from "@/lib/siteLanguage";
 import RelattoDemoModal from "@/components/landing/RelattoDemoModal";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
@@ -131,10 +132,15 @@ export default function RelattoLandingPage() {
       {/* Cabeçalho */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-neutral-100">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 px-4 py-2.5">
-          <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={scrollToSiteTop}
+            aria-label={language === "en-US" ? "Relatto: back to top" : "Relatto: voltar ao topo"}
+            className="flex items-center gap-2 min-w-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
             <img src={relattoLogo.url} alt="Logo Relatto" className="w-9 h-9 object-contain" />
             <span className="text-lg font-bold tracking-tight">Relatto</span>
-          </div>
+          </button>
           <div className="flex items-center gap-1.5">
             {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} mode="light" />}
             <Button
@@ -303,6 +309,7 @@ export default function RelattoLandingPage() {
       </footer>
 
       <RelattoDemoModal open={demoOpen} onOpenChange={setDemoOpen} language={language} />
+      {import.meta.env.VITE_SURFACE_MODE === "site" && <BackToTopButton language={language} mode="light" />}
     </div>
   );
 }
