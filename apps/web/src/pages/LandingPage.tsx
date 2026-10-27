@@ -258,7 +258,7 @@ export default function LandingPage() {
   const { t: cmsText, arr } = useLandingContent();
   const { language, setLanguage } = useSiteLanguage();
   const t = (key: string, fallback: string) => siteCopy(language, key, fallback, cmsText);
-  const phrase = (value: string) => sitePhrase(language, value);
+  const phrase = useCallback((value: string) => sitePhrase(language, value), [language]);
 
   useEffect(() => {
     if (import.meta.env.VITE_SURFACE_MODE !== "site") return;
@@ -351,7 +351,7 @@ export default function LandingPage() {
     );
     setForm({});
     setTimeout(() => setSubmitted(false), 6000);
-  }, [form, website, language]);
+  }, [form, website, phrase]);
 
   const scrollToForm = () =>
     document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" });
