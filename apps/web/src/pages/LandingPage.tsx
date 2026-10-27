@@ -411,7 +411,7 @@ export default function LandingPage() {
           borderBottom: scrolled ? `1px solid ${BORDER}` : "1px solid transparent",
         }}
       >
-        <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 px-2.5 py-2 md:flex md:h-16 md:justify-between md:gap-2 md:px-5 md:py-0">
+        <div className="mx-auto flex max-w-7xl flex-col gap-y-1.5 px-2.5 py-2 md:h-16 md:flex-row md:items-center md:justify-between md:gap-2 md:px-5 md:py-0">
           <button
             type="button"
             onClick={scrollToSiteTop}
@@ -427,13 +427,11 @@ export default function LandingPage() {
             </div>
           </button>
 
-          <div className="contents md:flex md:items-center md:gap-2 lg:gap-3">
-            <div className="col-start-2 row-start-1 justify-self-end md:contents">
-              {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
-            </div>
+          <div className="flex w-full min-w-0 items-center justify-between gap-1 md:w-auto md:justify-end md:gap-2 lg:gap-3">
+            {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
             <Link
               to="/baixar"
-              className="col-start-1 row-start-2 justify-self-start whitespace-nowrap rounded-lg px-2.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-all hover:bg-white/5 md:px-4 md:py-2 md:text-sm"
+              className="shrink-0 whitespace-nowrap rounded-lg px-1.5 py-2 text-[10px] font-bold uppercase tracking-tight transition-all hover:bg-white/5 sm:px-2.5 sm:text-[11px] md:px-4 md:text-sm md:tracking-wider"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
               {phrase("Baixar App")}
@@ -443,7 +441,7 @@ export default function LandingPage() {
               onClick={scrollToForm}
               aria-label={language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}
               title={language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}
-              className="glow-btn col-start-2 row-start-2 flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 text-[10px] font-bold uppercase tracking-tight whitespace-nowrap md:h-auto md:gap-2 md:px-4 md:py-2 md:text-sm md:tracking-wider"
+              className="glow-btn flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg px-1.5 text-[10px] font-bold uppercase tracking-tight whitespace-nowrap sm:px-2.5 sm:text-[11px] md:h-auto md:gap-2 md:px-4 md:py-2 md:text-sm md:tracking-wider"
               style={{ background: NEON, color: "#03110A" }}
             >
               <span>{language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}</span>
