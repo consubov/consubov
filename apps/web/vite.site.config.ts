@@ -34,7 +34,7 @@ export default defineConfig(() => ({
           'self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));',
           'self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));',
           "",
-        ].join("\\n");
+        ].join("\n");
         writeFileSync(path.resolve(__dirname, "dist-site/sw.js"), retirementWorker, "utf8");
       },
     },
