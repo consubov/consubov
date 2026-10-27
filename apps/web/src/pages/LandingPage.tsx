@@ -411,27 +411,27 @@ export default function LandingPage() {
           borderBottom: scrolled ? `1px solid ${BORDER}` : "1px solid transparent",
         }}
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-y-1.5 px-2.5 py-2 md:h-16 md:flex-row md:items-center md:justify-between md:gap-2 md:px-5 md:py-0">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-1 px-1.5 sm:gap-2 sm:px-4 lg:px-5">
           <button
             type="button"
             onClick={scrollToSiteTop}
             aria-label={language === "en-US" ? "Consubov: back to top" : "Consubov: voltar ao topo"}
-            className="flex items-center gap-1 sm:gap-3 min-w-0 shrink-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88]"
+            className="flex min-w-0 shrink-0 items-center gap-1 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88] sm:gap-3"
           >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden ring-1 shrink-0" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
+            <div className="h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 sm:h-9 sm:w-9" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
-            <div className="flex flex-col leading-none min-w-0">
+            <div className="hidden min-w-0 flex-col leading-none sm:flex">
               <span className="whitespace-nowrap font-extrabold tracking-[0.05em] sm:tracking-[0.2em] text-[10px] sm:text-sm">CONSUBOV</span>
-              <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
+              <span className="hidden text-[10px] tracking-[0.3em] lg:inline" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
             </div>
           </button>
 
-          <div className="flex w-full min-w-0 items-center justify-between gap-1 md:w-auto md:justify-end md:gap-2 lg:gap-3">
-            {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
+          <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
+            {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} compactOnMobile />}
             <Link
               to="/baixar"
-              className="shrink-0 whitespace-nowrap rounded-lg px-1.5 py-2 text-[10px] font-bold uppercase tracking-tight transition-all hover:bg-white/5 sm:px-2.5 sm:text-[11px] md:px-4 md:text-sm md:tracking-wider"
+              className="shrink-0 whitespace-nowrap rounded-lg px-1 py-2 text-[9px] font-bold uppercase tracking-tight transition-all hover:bg-white/5 sm:px-2.5 sm:text-[11px] lg:px-4 lg:text-sm lg:tracking-wider"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
               {phrase("Baixar App")}
@@ -441,11 +441,11 @@ export default function LandingPage() {
               onClick={scrollToForm}
               aria-label={language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}
               title={language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}
-              className="glow-btn flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg px-1.5 text-[10px] font-bold uppercase tracking-tight whitespace-nowrap sm:px-2.5 sm:text-[11px] md:h-auto md:gap-2 md:px-4 md:py-2 md:text-sm md:tracking-wider"
+              className="glow-btn flex h-9 shrink-0 items-center justify-center rounded-lg px-1 text-[9px] font-bold uppercase tracking-tight whitespace-nowrap sm:px-2.5 sm:text-[11px] lg:h-auto lg:gap-2 lg:px-4 lg:py-2 lg:text-sm lg:tracking-wider"
               style={{ background: NEON, color: "#03110A" }}
             >
               <span>{language === "en-US" ? "Request a Demo" : "Solicitar Demonstração"}</span>
-              <ArrowRight className="hidden h-3.5 w-3.5 md:block" aria-hidden="true" />
+              <ArrowRight className="hidden h-3.5 w-3.5 lg:block" aria-hidden="true" />
             </button>
           </div>
 
