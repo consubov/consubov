@@ -597,7 +597,7 @@ export default function BaixarAppPage() {
         className="w-full py-6 px-5 text-center text-xs text-[#9BB8A8] border-t"
         style={{ borderColor: "rgba(34,255,136,0.12)" }}
       >
-        © 2026 {brandName} • Aplicativo Oficial v{APP_VERSION}
+        © 2026 {brandName} • Aplicativo Oficial{surfaceMode === "app" ? ` v${APP_VERSION}` : ""}
       </footer>
     </div>
   );
