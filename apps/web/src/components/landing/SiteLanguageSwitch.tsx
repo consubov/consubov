@@ -4,6 +4,7 @@ interface SiteLanguageSwitchProps {
   language: SiteLanguage;
   onChange: (next: SiteLanguage) => void;
   mode?: "dark" | "light";
+  compactOnMobile?: boolean;
 }
 
 /** Vector flags render consistently even where emoji country flags are unavailable. */
@@ -68,6 +69,7 @@ export function SiteLanguageSwitch({
   language,
   onChange,
   mode = "dark",
+  compactOnMobile = false,
 }: SiteLanguageSwitchProps) {
   const light = mode === "light";
   return (
@@ -89,7 +91,8 @@ export function SiteLanguageSwitch({
           title={title}
           onClick={() => onChange(id)}
           className={
-            "inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors " +
+            (compactOnMobile ? "inline-flex h-7 w-7 sm:h-8 sm:w-8" : "inline-flex h-8 w-8") +
+            " items-center justify-center rounded-full transition-colors " +
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 " +
             (language === id
               ? (light ? "bg-white shadow-sm ring-1 ring-neutral-300" : "bg-white/25 ring-1 ring-white/50")
