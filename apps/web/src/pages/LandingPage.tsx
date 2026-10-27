@@ -29,6 +29,7 @@ import { DeferredBrasilMap as BrasilMap } from "@/components/landing/DeferredBra
 import { useLandingContent } from "@/hooks/useLandingContent";
 import { useSiteLanguage } from "@/hooks/useSiteLanguage";
 import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+import { BackToTopButton, scrollToSiteTop } from "@/components/landing/BackToTopButton";
 import { siteCopy, sitePhrase } from "@/lib/siteLanguage";
 
 
@@ -411,7 +412,12 @@ export default function LandingPage() {
         }}
       >
         <div className="max-w-7xl mx-auto px-2.5 sm:px-5 h-16 flex items-center justify-between gap-1">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={scrollToSiteTop}
+            aria-label={language === "en-US" ? "Consubov: back to top" : "Consubov: voltar ao topo"}
+            className="flex items-center gap-2 sm:gap-3 min-w-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88]"
+          >
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden ring-1 shrink-0" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
@@ -419,7 +425,7 @@ export default function LandingPage() {
               <span className="font-extrabold tracking-[0.15em] sm:tracking-[0.2em] text-xs sm:text-sm">CONSUBOV</span>
               <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-1 sm:gap-3">
             {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
@@ -552,10 +558,6 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
-            <span className="text-[10px] tracking-[0.3em]">{language === "en-US" ? "SCROLL" : "ROLAR"}</span>
-            <div className="w-px h-10 bg-gradient-to-b from-transparent via-white to-transparent" />
-          </div>
         </div>
       </section>
 
@@ -995,6 +997,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      {import.meta.env.VITE_SURFACE_MODE === "site" && <BackToTopButton language={language} />}
     </div>
   );
 }
