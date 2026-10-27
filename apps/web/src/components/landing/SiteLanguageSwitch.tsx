@@ -91,7 +91,7 @@ export function SiteLanguageSwitch({
           title={title}
           onClick={() => onChange(id)}
           className={
-            (compactOnMobile ? "inline-flex h-7 w-7 sm:h-8 sm:w-8" : "inline-flex h-8 w-8") +
+            (compactOnMobile ? "inline-flex h-6 w-6 min-[375px]:h-7 min-[375px]:w-7 sm:h-8 sm:w-8" : "inline-flex h-8 w-8") +
             " items-center justify-center rounded-full transition-colors " +
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 " +
             (language === id
