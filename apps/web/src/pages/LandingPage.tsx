@@ -416,13 +416,13 @@ export default function LandingPage() {
             type="button"
             onClick={scrollToSiteTop}
             aria-label={language === "en-US" ? "Consubov: back to top" : "Consubov: voltar ao topo"}
-            className="flex items-center gap-2 sm:gap-3 min-w-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88]"
+            className="flex items-center gap-1 sm:gap-3 min-w-0 shrink-0 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88]"
           >
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden ring-1 shrink-0" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col leading-none min-w-0">
-              <span className="font-extrabold tracking-[0.15em] sm:tracking-[0.2em] text-xs sm:text-sm">CONSUBOV</span>
+              <span className="whitespace-nowrap font-extrabold tracking-[0.05em] sm:tracking-[0.2em] text-[10px] sm:text-sm">CONSUBOV</span>
               <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
             </div>
           </button>
@@ -437,12 +437,14 @@ export default function LandingPage() {
               {phrase("Baixar App")}
             </Link>
             <button
+              type="button"
               onClick={scrollToForm}
-              className="glow-btn flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap"
+              aria-label={language === "en-US" ? "Request a demo" : "Solicitar demonstração"}
+              title={language === "en-US" ? "Request a demo" : "Solicitar demonstração"}
+              className="glow-btn flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg px-0 py-1.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
               style={{ background: NEON, color: "#03110A" }}
             >
               <span className="hidden sm:inline">{phrase("Demonstração")}</span>
-              <span className="sm:hidden">Demo</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
