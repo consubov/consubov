@@ -310,14 +310,13 @@ export default function BaixarAppPage() {
                   }}
                 >
                   <Smartphone className="w-3.5 h-3.5" />
-                  Aplicativo Nativo para o Seu Dispositivo
+                  {copy("Aplicativo Nativo para o Seu Dispositivo", "App for Your Device")}
                 </span>
                 <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-                  Baixar App {brandName}
+                  {copy("Baixar App", "Download App")} {brandName}
                 </h1>
                 <p className="text-sm sm:text-base text-[#C4DDD0] leading-relaxed">
-                  {brandSubtitle}. Instale no seu aparelho e acesse diretamente
-                  pelo ícone na tela inicial.
+                  {brandSubtitle}. {copy("Instale no seu aparelho e acesse diretamente pelo ícone na tela inicial.", "Install it on your device and launch it from the home-screen icon.")}
                 </p>
               </div>
             </div>
@@ -338,7 +337,7 @@ export default function BaixarAppPage() {
                   style={{ color: "#22FF88" }}
                 />
                 <p className="font-extrabold text-base sm:text-lg text-white">
-                  App {brandName} já está instalado neste dispositivo
+                  App {brandName} {copy("já está instalado neste dispositivo", "is already installed on this device")}
                 </p>
                 <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed max-w-lg mx-auto">
                   Identificamos que o <strong>App {brandName}</strong> já foi
@@ -354,8 +353,7 @@ export default function BaixarAppPage() {
                     onClick={handleResetInstallMark}
                     className="text-[11px] underline text-[#9BB8A8] hover:text-white transition cursor-pointer"
                   >
-                    Desinstalou o ícone do aparelho e precisa instalar
-                    novamente? Liberar instalação
+                    {copy("Desinstalou o ícone do aparelho e precisa instalar novamente? Liberar instalação", "Removed the app icon and need to install again? Enable installation")}
                   </button>
                 </div>
               </div>
@@ -372,7 +370,7 @@ export default function BaixarAppPage() {
                   }}
                 >
                   <Download className="w-5 h-5" />
-                  Baixar e Instalar App {brandName}
+                  {copy("Baixar e Instalar App", "Download and Install")} {brandName}
                 </button>
 
                 {showManualHint && (
@@ -386,7 +384,7 @@ export default function BaixarAppPage() {
                     role="status"
                   >
                     <p className="font-bold text-[#22FF88]">
-                      Confirme a instalação no seu navegador:
+                      {copy("Confirme a instalação no seu navegador:", "Confirm the installation in your browser:")}
                     </p>
                     <p className="text-[#E6F5EC] leading-relaxed">
                       {platform === "ios"
@@ -405,7 +403,7 @@ export default function BaixarAppPage() {
                         color: "#FFFFFF",
                       }}
                     >
-                      Já concluí a instalação — Ir para Login
+                      {copy("Já concluí a instalação — Ir para Login", "Installation complete — Go to Login")}
                     </button>
                   </div>
                 )}
@@ -436,10 +434,10 @@ export default function BaixarAppPage() {
             <div id="instrucoes-instalacao" className="space-y-4 pt-2">
               <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-white">
                 {platform === "ios"
-                  ? "Como instalar no seu iPhone ou iPad:"
+                  ? copy("Como instalar no seu iPhone ou iPad:", "How to install on iPhone or iPad:")
                   : platform === "android"
-                    ? "Como instalar no seu celular Android:"
-                    : "Como instalar e abrir o App no seu dispositivo:"}
+                    ? copy("Como instalar no seu celular Android:", "How to install on Android:")
+                    : copy("Como instalar e abrir o App no seu dispositivo:", "How to install and open the App:")}
               </h2>
 
               {platform === "ios" ? (
@@ -569,7 +567,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>100% Offline no campo</span>
+                <span>{copy("100% Offline no campo", "100% Offline in the Field")}</span>
               </div>
               <div
                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
@@ -582,7 +580,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>Tela cheia nativa</span>
+                <span>{copy("Tela cheia nativa", "Full-Screen App")}</span>
               </div>
               <div
                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
@@ -595,7 +593,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>Sincronização segura</span>
+                <span>{copy("Sincronização segura", "Secure Sync")}</span>
               </div>
             </div>
           </div>
@@ -606,7 +604,7 @@ export default function BaixarAppPage() {
         className="w-full py-6 px-5 text-center text-xs text-[#9BB8A8] border-t"
         style={{ borderColor: "rgba(34,255,136,0.12)" }}
       >
-        © 2026 {brandName} • Aplicativo Oficial{import.meta.env.VITE_SURFACE_MODE !== "site" && surfaceMode === "app" ? ` v${APP_VERSION}` : ""}
+        © 2026 {brandName} • {copy("Aplicativo Oficial", "Official App")}{!isSiteBuild && surfaceMode === "app" ? ` v${APP_VERSION}` : ""}
       </footer>
     </div>
   );
