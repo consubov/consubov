@@ -24,6 +24,43 @@ export default defineConfig(() => ({
     react(),
     {
       name: "retire-legacy-service-worker-on-site-only",
+      transformIndexHtml() {
+        // Only the SITE build gets this early listener. An old CSS hash can
+        // fail before the main React module mounts.
+        return [{
+          tag: "script",
+          injectTo: "head-prepend" as const,
+          children: `(() => {
+            let retrying = false;
+            window.addEventListener("error", async (event) => {
+              const element = event.target;
+              if (retrying || !(element instanceof HTMLLinkElement) ||
+                  element.rel !== "stylesheet" || !element.href.includes("/assets/")) return;
+              const key = "consubov:site-css-retry-at";
+              const now = Date.now();
+              try {
+                if (now - Number(sessionStorage.getItem(key) || 0) < 60000) return;
+                sessionStorage.setItem(key, String(now));
+              } catch { return; }
+              retrying = true;
+              try {
+                if ("serviceWorker" in navigator) {
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  const origin = location.origin;
+                  await Promise.all(registrations.filter((registration) => {
+                    const script = registration.active?.scriptURL || registration.waiting?.scriptURL || "";
+                    return registration.scope === origin + "/" &&
+                      script.startsWith(origin + "/sw.js");
+                  }).map((registration) => registration.unregister()));
+                }
+              } catch { /* do not block CSS recovery */ }
+              const next = new URL(location.href);
+              next.searchParams.set("__site_asset_retry", String(now));
+              location.replace(next.toString());
+            }, true);
+          })();`,
+        }];
+      },
       closeBundle() {
         // Site and App have different build configs and deployment projects.
         // Never modify public/sw.js: it powers the installed offline App.
