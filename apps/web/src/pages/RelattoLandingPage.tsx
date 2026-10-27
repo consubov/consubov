@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useLandingContent } from "@/hooks/useLandingContent";
-import { APP_VERSION } from "@/lib/appVersion";
 import RelattoDemoModal from "@/components/landing/RelattoDemoModal";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
 import {
@@ -13,7 +12,6 @@ import {
   LayoutDashboard,
   CalendarDays,
   Fuel,
-  RefreshCw,
   PlayCircle,
 } from "lucide-react";
 
@@ -113,12 +111,6 @@ export default function RelattoLandingPage() {
     return () => window.clearInterval(id);
   }, [slides.length]);
 
-  const handleRefresh = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("__v", String(Date.now()));
-    window.location.replace(url.toString());
-  };
-
   const slide = slides[Math.min(slideIndex, slides.length - 1)] ?? SLIDES_FALLBACK[0];
 
   return (
@@ -129,19 +121,8 @@ export default function RelattoLandingPage() {
           <div className="flex items-center gap-2 min-w-0">
             <img src={relattoLogo.url} alt="Logo Relatto" className="w-9 h-9 object-contain" />
             <span className="text-lg font-bold tracking-tight">Relatto</span>
-            <span className="ml-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-mono font-semibold text-neutral-500">
-              v{APP_VERSION}
-            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleRefresh}
-              aria-label="Atualizar página"
-              title="Atualizar"
-              className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
             <Button
               variant="outline"
               size="sm"
@@ -305,7 +286,6 @@ export default function RelattoLandingPage() {
         <p className="mt-3 text-sm text-neutral-500">
           {t("relatto_footer_texto", "Relatto é uma marca Consubov.")}
         </p>
-        <p className="mt-1 text-xs text-neutral-400">v{APP_VERSION}</p>
       </footer>
 
       <RelattoDemoModal open={demoOpen} onOpenChange={setDemoOpen} />
