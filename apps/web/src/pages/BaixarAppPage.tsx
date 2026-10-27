@@ -454,9 +454,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>1.</strong> Toque no botão{" "}
-                      <strong>Compartilhar</strong> na barra do navegador do seu
-                      iPhone.
+                      <strong>1.</strong>{" "}
+                      {copy("Toque no botão Compartilhar na barra do navegador do seu iPhone.", "Tap Share in your iPhone browser toolbar.")}
                     </span>
                   </li>
                   <li
@@ -471,8 +470,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>2.</strong> Role as opções e toque em{" "}
-                      <strong>&ldquo;Adicionar à Tela de Início&rdquo;</strong>.
+                      <strong>2.</strong>{" "}
+                      {copy('Role as opções e toque em "Adicionar à Tela de Início".', 'Scroll through the options and tap "Add to Home Screen".')}
                     </span>
                   </li>
                   <li
@@ -487,10 +486,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>3.</strong> Confirme em{" "}
-                      <strong>Adicionar</strong> e abra o{" "}
-                      <strong>App {brandName}</strong> pelo ícone criado na tela
-                      inicial do seu aparelho.
+                      <strong>3.</strong>{" "}
+                      {copy(`Confirme em Adicionar e abra o App ${brandName} pelo ícone criado na tela inicial do seu aparelho.`, `Tap Add, then open ${brandName} from its new home-screen icon.`)}
                     </span>
                   </li>
                 </ol>
@@ -508,12 +505,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>1.</strong> Clique no botão verde{" "}
-                      <strong>
-                        &ldquo;Baixar e Instalar App {brandName}&rdquo;
-                      </strong>{" "}
-                      acima (ou no menu do navegador &rarr;{" "}
-                      <strong>&ldquo;Instalar aplicativo&rdquo;</strong>).
+                      <strong>1.</strong>{" "}
+                      {copy(`Clique no botão verde Baixar e Instalar App ${brandName} acima, ou use Instalar aplicativo no menu do navegador.`, `Click the green Download and Install ${brandName} button, or choose Install app in the browser menu.`)}
                     </span>
                   </li>
                   <li
@@ -528,9 +521,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>2.</strong> O ícone oficial do{" "}
-                      <strong>App {brandName}</strong> será adicionado à tela
-                      inicial do seu dispositivo.
+                      <strong>2.</strong>{" "}
+                      {copy(`O ícone oficial do App ${brandName} será adicionado à tela inicial do seu dispositivo.`, `The official ${brandName} App icon will be added to your home screen.`)}
                     </span>
                   </li>
                   <li
@@ -545,9 +537,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>3.</strong> Assim que instalado, o{" "}
-                      <strong>App {brandName}</strong> inicia direto na tela de{" "}
-                      <strong>Login</strong>.
+                      <strong>3.</strong>{" "}
+                      {copy(`Assim que instalado, o App ${brandName} inicia direto na tela de Login.`, `Once installed, the ${brandName} App opens directly to the login screen.`)}
                     </span>
                   </li>
                 </ol>
