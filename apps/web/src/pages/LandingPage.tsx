@@ -27,6 +27,9 @@ import phoneImg from "@/assets/landing-phone.png";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { DeferredBrasilMap as BrasilMap } from "@/components/landing/DeferredBrasilMap";
 import { useLandingContent } from "@/hooks/useLandingContent";
+import { useSiteLanguage } from "@/hooks/useSiteLanguage";
+import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+import { siteCopy, sitePhrase } from "@/lib/siteLanguage";
 
 
 const leadSchema = z.object({
@@ -252,7 +255,19 @@ function parseMetric(numero: string): { value: number; suffix: string } {
 
 /* ---------------- Page ---------------- */
 export default function LandingPage() {
-  const { t, arr } = useLandingContent();
+  const { t: cmsText, arr } = useLandingContent();
+  const { language, setLanguage } = useSiteLanguage();
+  const t = (key: string, fallback: string) => siteCopy(language, key, fallback, cmsText);
+  const phrase = (value: string) => sitePhrase(language, value);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_SURFACE_MODE !== "site") return;
+    document.title = language === "en-US" ? "Consubov | Livestock Management" : "Consubov | Gestão Pecuária";
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (description) description.content = language === "en-US"
+      ? "Consubov livestock management technology for modern cattle operations."
+      : "Sistema de gestão pecuária Consubov.";
+  }, [language]);
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [website, setWebsite] = useState("");
@@ -285,7 +300,7 @@ export default function LandingPage() {
     try {
       const lastSubmit = Number(sessionStorage.getItem(LEAD_SUBMIT_KEY) || 0);
       if (Date.now() - lastSubmit < LEAD_SUBMIT_COOLDOWN_MS) {
-        toast.error("Aguarde alguns segundos antes de enviar novamente.");
+        toast.error(phrase("Aguarde alguns segundos antes de enviar novamente."));
         return;
       }
     } catch {
@@ -306,7 +321,7 @@ export default function LandingPage() {
     if (!result.success) {
       const errs: Record<string, string> = {};
       result.error.errors.forEach((e) => {
-        errs[e.path[0] as string] = e.message;
+        errs[e.path[0] as string] = phrase(e.message);
       });
       setErrors(errs);
       return;
@@ -323,7 +338,7 @@ export default function LandingPage() {
     setSubmitting(false);
     if (error) {
       console.error("Erro ao enviar lead:", error);
-      toast.error("Erro ao enviar. Tente novamente.");
+      toast.error(phrase("Erro ao enviar. Tente novamente."));
       return;
     }
     try { sessionStorage.setItem(LEAD_SUBMIT_KEY, String(Date.now())); } catch { /* best-effort */ }
@@ -336,7 +351,7 @@ export default function LandingPage() {
     );
     setForm({});
     setTimeout(() => setSubmitted(false), 6000);
-  }, [form, website]);
+  }, [form, website, language]);
 
   const scrollToForm = () =>
     document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" });
@@ -344,9 +359,9 @@ export default function LandingPage() {
     document.getElementById("solucao")?.scrollIntoView({ behavior: "smooth" });
 
   // Dynamic content
-  const metricas = arr<{ icone_lucide: string; numero: string; label: string }>("impacto_metricas", DEFAULT_METRICAS);
-  const problemaItens = arr<{ texto: string }>("problema_itens", DEFAULT_PROBLEMA);
-  const solucaoFeatures = arr<{ icone_lucide: string; texto: string }>("solucao_features", DEFAULT_FEATURES);
+  const metricas = arr<{ icone_lucide: string; numero: string; label: string }>("impacto_metricas", DEFAULT_METRICAS).map((item) => ({ ...item, label: phrase(item.label), numero: phrase(item.numero) }));
+  const problemaItens = arr<{ texto: string }>("problema_itens", DEFAULT_PROBLEMA).map((item) => ({ ...item, texto: phrase(item.texto) }));
+  const solucaoFeatures = arr<{ icone_lucide: string; texto: string }>("solucao_features", DEFAULT_FEATURES).map((item) => ({ ...item, texto: phrase(item.texto) }));
   const redeEstados = arr<{ sigla: string; status: string }>("rede_estados", DEFAULT_ESTADOS);
   const parceiros = arr<{ url_imagem: string; nome_alt: string }>("parceiros_logos", []);
   const depoimentos = arr<{ nome: string; cargo: string; fazenda: string; texto: string; foto_url: string }>("depoimentos", []);
@@ -395,31 +410,32 @@ export default function LandingPage() {
           borderBottom: scrolled ? `1px solid ${BORDER}` : "1px solid transparent",
         }}
       >
-        <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-5 h-16 flex items-center justify-between gap-1">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden ring-1 shrink-0" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
               <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col leading-none min-w-0">
               <span className="font-extrabold tracking-[0.15em] sm:tracking-[0.2em] text-xs sm:text-sm">CONSUBOV</span>
-              <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>INTELIGÊNCIA NUTRICIONAL</span>
+              <span className="hidden sm:inline text-[10px] tracking-[0.3em]" style={{ color: NEON }}>{phrase("INTELIGÊNCIA NUTRICIONAL")}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
+            {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
             <Link
               to="/baixar"
               className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider transition-all hover:bg-white/5"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
-              Baixar App
+              {phrase("Baixar App")}
             </Link>
             <button
               onClick={scrollToForm}
               className="glow-btn flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap"
               style={{ background: NEON, color: "#03110A" }}
             >
-              <span className="hidden sm:inline">Demonstração</span>
+              <span className="hidden sm:inline">{phrase("Demonstração")}</span>
               <span className="sm:hidden">Demo</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -433,7 +449,7 @@ export default function LandingPage() {
       {/* ========== HERO ========== */}
       <section className="relative w-full overflow-hidden" style={{ minHeight: "100vh" }}>
         <div className="absolute inset-0" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>
-          <img src={heroImg} alt="Fazenda futurista" className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
+          <img src={heroImg} alt={language === "en-US" ? "Futuristic cattle ranch" : "Fazenda futurista"} className="w-full h-full object-cover" style={{ opacity: 0.55 }} />
           <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at center, transparent 0%, ${BG} 75%)` }} />
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 60%, ${BG} 100%)` }} />
         </div>
@@ -537,7 +553,7 @@ export default function LandingPage() {
           </div>
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
-            <span className="text-[10px] tracking-[0.3em]">SCROLL</span>
+            <span className="text-[10px] tracking-[0.3em]">{language === "en-US" ? "SCROLL" : "ROLAR"}</span>
             <div className="w-px h-10 bg-gradient-to-b from-transparent via-white to-transparent" />
           </div>
         </div>
@@ -750,7 +766,7 @@ export default function LandingPage() {
       {/* ========== MANIFESTO ========== */}
       <section className="relative overflow-hidden" style={{ minHeight: "80vh" }}>
         <div className="absolute inset-0">
-          <img src={manifestoBg || pecuaristaImg} alt="Pecuarista visionário" className="w-full h-full object-cover" loading="lazy" />
+          <img src={manifestoBg || pecuaristaImg} alt={language === "en-US" ? "Cattle rancher" : "Pecuarista visionário"} className="w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${BG} 0%, transparent 30%, transparent 70%, ${BG} 100%)` }} />
           <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${BG}cc 0%, transparent 50%)` }} />
         </div>
@@ -800,7 +816,7 @@ export default function LandingPage() {
                   >
                     <img
                       src={p.url_imagem}
-                      alt={p.nome_alt || `Parceiro ${i + 1}`}
+                      alt={p.nome_alt || `${phrase("Parceiro")} ${i + 1}`}
                       style={{ width: "100%", height: "100%", objectFit: "contain", padding: "12px" }}
                       loading="lazy"
                     />
@@ -817,9 +833,9 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto">
             <Reveal>
               <div className="text-center mb-12">
-                <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// VOZES DO CAMPO</span>
+                <span className="text-xs tracking-[0.4em] font-medium" style={{ color: NEON }}>// {phrase("VOZES DO CAMPO")}</span>
                 <h2 className="text-3xl md:text-5xl font-black mt-3 tracking-tight">
-                  Quem já <span className="neon-text" style={{ color: NEON }}>opera com a Consubov.</span>
+                  {phrase("Quem já")} <span className="neon-text" style={{ color: NEON }}>{phrase("opera com a Consubov.")}</span>
                 </h2>
               </div>
             </Reveal>
@@ -890,10 +906,10 @@ export default function LandingPage() {
             {submitted ? (
               <div className="text-center py-12 relative">
                 <Sparkles className="w-12 h-12 mx-auto mb-4" style={{ color: NEON }} />
-                <h3 className="text-2xl font-bold mb-2" style={{ color: NEON }}>Mensagem enviada!</h3>
+                <h3 className="text-2xl font-bold mb-2" style={{ color: NEON }}>{phrase("Mensagem enviada!")}</h3>
                 <p className="opacity-70 text-sm leading-relaxed">
-                  Nossa equipe irá analisar com atenção e entrar em contato.<br />
-                  <span className="font-semibold mt-2 inline-block">Equipe Consubov</span>
+                  {phrase("Nossa equipe irá analisar com atenção e entrar em contato.")}<br />
+                  <span className="font-semibold mt-2 inline-block">{phrase("Equipe Consubov")}</span>
                 </p>
               </div>
             ) : (
@@ -922,7 +938,7 @@ export default function LandingPage() {
                     <div key={idx}>
                       {isTextarea ? (
                         <textarea
-                          placeholder={field.placeholder}
+                          placeholder={phrase(field.placeholder)}
                           value={form[key] || ""}
                           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                           rows={3}
@@ -932,7 +948,7 @@ export default function LandingPage() {
                       ) : (
                         <input
                           type={field.tipo}
-                          placeholder={field.placeholder}
+                          placeholder={phrase(field.placeholder)}
                           value={form[key] || ""}
                           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                           className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all focus:border-[#22FF88]"
@@ -949,7 +965,7 @@ export default function LandingPage() {
                   className="glow-btn w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.2em] disabled:opacity-50 mt-2"
                   style={{ background: NEON, color: "#03110A" }}
                 >
-                  {submitting ? "Enviando..." : t("form_botao_texto", "Quero fazer parte")}
+                  {submitting ? phrase("Enviando...") : t("form_botao_texto", "Quero fazer parte")}
                 </button>
               </div>
             )}
@@ -968,7 +984,7 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="font-extrabold tracking-[0.2em] text-sm">CONSUBOV</div>
-              <div className="text-[10px] tracking-[0.3em] opacity-60">INTELIGÊNCIA NUTRICIONAL</div>
+              <div className="text-[10px] tracking-[0.3em] opacity-60">{phrase("INTELIGÊNCIA NUTRICIONAL")}</div>
             </div>
           </div>
           <div className="text-center md:text-right text-xs opacity-60 leading-relaxed">
