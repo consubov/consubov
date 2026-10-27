@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { writeFileSync } from "node:fs";
 
 const buildTimestamp = Date.now().toString();
 
@@ -19,7 +20,25 @@ export default defineConfig(() => ({
     outDir: "dist-site",
     emptyOutDir: true,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "retire-legacy-service-worker-on-site-only",
+      closeBundle() {
+        // Site and App have different build configs and deployment projects.
+        // Never modify public/sw.js: it powers the installed offline App.
+        // A waiting legacy worker sees changed bytes, activates, then allows
+        // fresh network navigation instead of pinning stale HTML/CSS.
+        // No Cache API, localStorage or IndexedDB records are deleted.
+        const retirementWorker = [
+          'self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));',
+          'self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));',
+          "",
+        ].join("\\n");
+        writeFileSync(path.resolve(__dirname, "dist-site/sw.js"), retirementWorker, "utf8");
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
