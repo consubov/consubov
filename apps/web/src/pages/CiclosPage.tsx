@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { RotateCcw, Trash2, CalendarDays } from "lucide-react";
+import { RotateCcw, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -33,7 +33,7 @@ export default function CiclosPage() {
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<{ type: "reabrir" | "excluir"; ciclo: Ciclo } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<Ciclo | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   async function load() {
@@ -61,7 +61,7 @@ export default function CiclosPage() {
   }, [fazendas]);
 
   async function logAuditoria(ciclo: Ciclo, acao: string) {
-    await supabase.from("ciclos_auditoria" as any).insert({
+    const { error } = await supabase.from("ciclos_auditoria" as any).insert({
       ciclo_id: ciclo.id,
       fazenda_id: ciclo.fazenda_id,
       acao,
@@ -69,36 +69,39 @@ export default function CiclosPage() {
       usuario_email: user?.email,
       detalhes: { mes: ciclo.mes, ano: ciclo.ano, fazenda: fazendaMap[ciclo.fazenda_id] },
     });
+    return error;
   }
 
   async function handleReabrir(ciclo: Ciclo) {
     setActionLoading(true);
-    const { error } = await supabase.from("ciclos").update({ fechado: false, fechado_em: null }).eq("id", ciclo.id);
-    if (error) {
-      toast.error("Erro ao reabrir ciclo");
-    } else {
-      await logAuditoria(ciclo, "reabertura");
-      toast.success("Ciclo reaberto com sucesso");
-      load();
-    }
-    setActionLoading(false);
-    setConfirmAction(null);
-  }
+    try {
+      const { data, error } = await supabase.from("ciclos")
+        .update({ fechado: false, fechado_em: null })
+        .eq("id", ciclo.id)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Não foi possível confirmar a reabertura do ciclo");
+        return;
+      }
 
-  async function handleExcluir(ciclo: Ciclo) {
-    setActionLoading(true);
-    // Delete linked lancamentos by fazenda + mes/ano
-    await supabase.from("lancamentos").delete().eq("fazenda_id", ciclo.fazenda_id).eq("mes_referencia", ciclo.mes).eq("ano_referencia", ciclo.ano);
-    const { error } = await supabase.from("ciclos").delete().eq("id", ciclo.id);
-    if (error) {
-      toast.error("Erro ao excluir ciclo");
-    } else {
-      await logAuditoria(ciclo, "exclusao");
-      toast.success("Ciclo excluído com sucesso");
-      load();
+      try {
+        const auditError = await logAuditoria(ciclo, "reabertura");
+        if (auditError) {
+          toast.error("Ciclo reaberto, mas o registro de auditoria falhou");
+        } else {
+          toast.success("Ciclo reaberto com sucesso");
+        }
+      } catch {
+        toast.error("Ciclo reaberto, mas a auditoria não pôde ser confirmada");
+      }
+      void load().catch(() => toast.error("Falha ao atualizar a lista de ciclos"));
+    } catch {
+      toast.error("Falha inesperada. Confira o estado do ciclo antes de tentar novamente");
+    } finally {
+      setActionLoading(false);
+      setConfirmAction(null);
     }
-    setActionLoading(false);
-    setConfirmAction(null);
   }
 
   return (
@@ -111,6 +114,9 @@ export default function CiclosPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Todos os Ciclos</CardTitle>
+          <p className="text-sm text-muted-foreground" role="status">
+            A exclusão de ciclos está temporariamente indisponível para proteger lançamentos e o histórico.
+          </p>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -162,20 +168,12 @@ export default function CiclosPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setConfirmAction({ type: "reabrir", ciclo: c })}
+                              onClick={() => setConfirmAction(c)}
                             >
                               <RotateCcw className="w-4 h-4 mr-1" />
                               Reabrir
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => setConfirmAction({ type: "excluir", ciclo: c })}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Excluir
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -190,27 +188,21 @@ export default function CiclosPage() {
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction?.type === "reabrir" ? "Reabrir Ciclo" : "Excluir Ciclo"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Reabrir Ciclo</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction?.type === "reabrir"
-                ? "Deseja reabrir este ciclo? Ele voltará para edição."
-                : "Tem certeza que deseja excluir este ciclo? Essa ação não poderá ser desfeita."}
+              Deseja reabrir este ciclo? Ele voltará para edição.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               disabled={actionLoading}
-              className={confirmAction?.type === "excluir" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}
               onClick={(e) => {
                 e.preventDefault();
-                if (confirmAction?.type === "reabrir") handleReabrir(confirmAction.ciclo);
-                else if (confirmAction?.type === "excluir") handleExcluir(confirmAction.ciclo);
+                if (confirmAction) void handleReabrir(confirmAction);
               }}
             >
-              {actionLoading ? "Processando..." : confirmAction?.type === "reabrir" ? "Reabrir" : "Excluir"}
+              {actionLoading ? "Processando..." : "Reabrir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
