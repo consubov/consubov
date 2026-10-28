@@ -62,6 +62,36 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain("setConfirmAction(null)");
   });
 
+  it("valida a identidade no Supabase Auth antes do UPDATE", () => {
+    const authIndex = source.indexOf("await supabase.auth.getUser()");
+    const updateIndex = source.indexOf('.update({ fechado: false, fechado_em: null })');
+    expect(authIndex).toBeGreaterThan(0);
+    expect(updateIndex).toBeGreaterThan(authIndex);
+    expect(source).toContain('sessionData?.user?.id !== user.id');
+    expect(source).toContain('Sessão não confirmada');
+  });
+
+  it("usa trava síncrona contra duplo clique, liberada no finally", () => {
+    expect(source).toContain('const actionInFlight = useRef(false)');
+    expect(source).toContain('if (actionInFlight.current) return');
+    expect(source).toContain('actionInFlight.current = true');
+    expect(source).toContain('actionInFlight.current = false');
+  });
+
+  it("distingue erro SQL de ausência de ciclos e oferece recuperação", () => {
+    expect(source).toContain('setLoadError(true)');
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('Tentar novamente');
+    expect(source).toContain('loadError && visibleCiclos.length === 0 ? null');
+  });
+
+  it("não escreve auditoria com identidade trocada após a atualização", () => {
+    const fenceIndex = source.indexOf('if (activeUserId.current !== user.id)');
+    const auditIndex = source.indexOf('const auditError = await logAuditoria');
+    expect(fenceIndex).toBeGreaterThan(0);
+    expect(auditIndex).toBeGreaterThan(fenceIndex);
+  });
+
   it("não reporta sucesso silencioso quando a auditoria falha", () => {
     expect(source).toContain("Ciclo reaberto, mas o registro de auditoria falhou");
     expect(source).toContain("a auditoria não pôde ser confirmada");
