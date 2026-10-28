@@ -22,6 +22,12 @@ test('candidate checks effective permissions and aborts on regression', () => {
   assert.match(candidate, /RAISE EXCEPTION 'Legitimate read\/reopen grants were changed/);
 });
 
+test('candidate refuses the remote database without a local-only gate', () => {
+  assert.match(candidate, /current_database\(\) !~ '\^consubov_qa_'/);
+  assert.match(candidate, /current_setting\('consubov\.qa_isolated_pg17', true\) IS DISTINCT FROM 'acknowledged'/);
+  assert.match(candidate, /RAISE EXCEPTION 'Candidate restricted to a named isolated QA database'/);
+});
+
 test('preflight is read only and checks all four access expectations', () => {
   assert.match(check, /BEGIN TRANSACTION READ ONLY;/);
   assert.match(check, /ROLLBACK;/);

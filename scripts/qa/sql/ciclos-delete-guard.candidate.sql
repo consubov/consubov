@@ -11,6 +11,11 @@ BEGIN
   IF current_setting('server_version_num')::int < 170000 THEN
     RAISE EXCEPTION 'Requires PostgreSQL 17 or newer';
   END IF;
+  -- Fail closed if someone accidentally executes the candidate against Supabase.
+  IF current_database() !~ '^consubov_qa_' OR
+     current_setting('consubov.qa_isolated_pg17', true) IS DISTINCT FROM 'acknowledged' THEN
+    RAISE EXCEPTION 'Candidate restricted to a named isolated QA database';
+  END IF;
   IF to_regclass('public.ciclos') IS NULL THEN
     RAISE EXCEPTION 'public.ciclos is missing';
   END IF;
