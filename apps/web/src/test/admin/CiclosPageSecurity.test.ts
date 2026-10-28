@@ -35,6 +35,19 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain("if (error || !data)");
   });
 
+  it("nega reabertura sem sessão e evita reabertura repetida ou de outra fazenda", () => {
+    expect(source).toContain("if (!user?.id)");
+    expect(source).toContain("if (!ciclo.fechado)");
+    expect(source).toContain('.eq("fechado", true)');
+    expect(source).toContain('.eq("fazenda_id", ciclo.fazenda_id)');
+    expect(source).toContain("if (error || !data)");
+  });
+
+  it("não substitui listagens existentes por vazio se a consulta falhar", () => {
+    expect(source).toContain("if (ciclosRes.error || fazendasRes.error)");
+    expect(source).toContain("Não foi possível carregar os ciclos");
+  });
+
   it("não reporta sucesso silencioso quando a auditoria falha", () => {
     expect(source).toContain("Ciclo reaberto, mas o registro de auditoria falhou");
     expect(source).toContain("a auditoria não pôde ser confirmada");

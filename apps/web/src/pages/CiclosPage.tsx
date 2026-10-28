@@ -37,13 +37,22 @@ export default function CiclosPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   async function load() {
-    const [ciclosRes, fazendasRes] = await Promise.all([
-      supabase.from("ciclos").select("id, mes, ano, fechado, fechado_em, fazenda_id, data_inicio, data_fim, duracao_dias").order("ano", { ascending: false }).order("mes", { ascending: false }),
-      supabase.from("fazendas").select("id, nome").eq("ativo", true),
-    ]);
-    setCiclos(ciclosRes.data ?? []);
-    setFazendas(fazendasRes.data ?? []);
-    setLoading(false);
+    try {
+      const [ciclosRes, fazendasRes] = await Promise.all([
+        supabase.from("ciclos").select("id, mes, ano, fechado, fechado_em, fazenda_id, data_inicio, data_fim, duracao_dias").order("ano", { ascending: false }).order("mes", { ascending: false }),
+        supabase.from("fazendas").select("id, nome").eq("ativo", true),
+      ]);
+      if (ciclosRes.error || fazendasRes.error) {
+        toast.error("Não foi possível carregar os ciclos. Tente novamente.");
+        return;
+      }
+      setCiclos(ciclosRes.data ?? []);
+      setFazendas(fazendasRes.data ?? []);
+    } catch {
+      toast.error("Não foi possível carregar os ciclos. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -75,9 +84,19 @@ export default function CiclosPage() {
   async function handleReabrir(ciclo: Ciclo) {
     setActionLoading(true);
     try {
+      if (!user?.id) {
+        toast.error("Sessão expirada. Entre novamente antes de reabrir o ciclo.");
+        return;
+      }
+      if (!ciclo.fechado) {
+        toast.error("Este ciclo já está aberto. Atualize a lista antes de tentar novamente.");
+        return;
+      }
       const { data, error } = await supabase.from("ciclos")
         .update({ fechado: false, fechado_em: null })
         .eq("id", ciclo.id)
+        .eq("fazenda_id", ciclo.fazenda_id)
+        .eq("fechado", true)
         .select("id")
         .maybeSingle();
       if (error || !data) {
@@ -95,7 +114,7 @@ export default function CiclosPage() {
       } catch {
         toast.error("Ciclo reaberto, mas a auditoria não pôde ser confirmada");
       }
-      void load().catch(() => toast.error("Falha ao atualizar a lista de ciclos"));
+      await load();
     } catch {
       toast.error("Falha inesperada. Confira o estado do ciclo antes de tentar novamente");
     } finally {
