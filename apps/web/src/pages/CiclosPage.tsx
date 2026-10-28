@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,33 +35,60 @@ export default function CiclosPage() {
   const [loading, setLoading] = useState(true);
   const [confirmAction, setConfirmAction] = useState<Ciclo | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [loadedForUser, setLoadedForUser] = useState<string | null>(null);
+  const requestVersion = useRef(0);
+  const activeUserId = useRef<string | null>(user?.id ?? null);
+  const confirmationUserId = useRef<string | null>(null);
 
   async function load() {
+    const sessionUserId = user?.id ?? null;
+    if (!sessionUserId || activeUserId.current !== sessionUserId) return;
+    const version = ++requestVersion.current;
+    const isCurrent = () => version === requestVersion.current && activeUserId.current === sessionUserId;
     try {
       const [ciclosRes, fazendasRes] = await Promise.all([
         supabase.from("ciclos").select("id, mes, ano, fechado, fechado_em, fazenda_id, data_inicio, data_fim, duracao_dias").order("ano", { ascending: false }).order("mes", { ascending: false }),
         supabase.from("fazendas").select("id, nome").eq("ativo", true),
       ]);
+      if (!isCurrent()) return;
       if (ciclosRes.error || fazendasRes.error) {
         toast.error("Não foi possível carregar os ciclos. Tente novamente.");
         return;
       }
       setCiclos(ciclosRes.data ?? []);
       setFazendas(fazendasRes.data ?? []);
+      setLoadedForUser(sessionUserId);
     } catch {
-      toast.error("Não foi possível carregar os ciclos. Tente novamente.");
+      if (isCurrent()) toast.error("Não foi possível carregar os ciclos. Tente novamente.");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }
 
   useEffect(() => {
-    load();
+    activeUserId.current = user?.id ?? null;
+    requestVersion.current += 1; // Invalida resultados pendentes da sessão anterior.
+    setCiclos([]);
+    setFazendas([]);
+    setLoadedForUser(null);
+    confirmationUserId.current = null;
+    setConfirmAction(null);
+    setLoading(Boolean(user?.id));
+    if (!user?.id) return;
+
+    void load();
     const channel = supabase.channel("ciclos-admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => { void load(); })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    return () => {
+      requestVersion.current += 1;
+      activeUserId.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  // Dados de outro usuário nunca são exibidos durante uma troca de sessão.
+  const visibleCiclos = user?.id && loadedForUser === user.id ? ciclos : [];
 
   const fazendaMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -82,10 +109,15 @@ export default function CiclosPage() {
   }
 
   async function handleReabrir(ciclo: Ciclo) {
+    if (actionLoading) return;
     setActionLoading(true);
     try {
       if (!user?.id) {
         toast.error("Sessão expirada. Entre novamente antes de reabrir o ciclo.");
+        return;
+      }
+      if (confirmationUserId.current !== user.id || activeUserId.current !== user.id) {
+        toast.error("Sua sessão mudou. Abra novamente a confirmação do ciclo.");
         return;
       }
       if (!ciclo.fechado) {
@@ -114,7 +146,7 @@ export default function CiclosPage() {
       } catch {
         toast.error("Ciclo reaberto, mas a auditoria não pôde ser confirmada");
       }
-      await load();
+      if (activeUserId.current === user.id) await load();
     } catch {
       toast.error("Falha inesperada. Confira o estado do ciclo antes de tentar novamente");
     } finally {
@@ -144,7 +176,7 @@ export default function CiclosPage() {
                 <div key={i} className="h-12 bg-muted animate-pulse rounded" />
               ))}
             </div>
-          ) : ciclos.length === 0 ? (
+          ) : visibleCiclos.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhum ciclo encontrado.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -161,7 +193,7 @@ export default function CiclosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ciclos.map(c => (
+                  {visibleCiclos.map(c => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{fazendaMap[c.fazenda_id] ?? "—"}</TableCell>
                       <TableCell>{meses[c.mes - 1]}/{c.ano}</TableCell>
@@ -187,7 +219,10 @@ export default function CiclosPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setConfirmAction(c)}
+                              onClick={() => {
+                                confirmationUserId.current = user?.id ?? null;
+                                setConfirmAction(c);
+                              }}
                             >
                               <RotateCcw className="w-4 h-4 mr-1" />
                               Reabrir

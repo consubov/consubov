@@ -48,6 +48,20 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain("Não foi possível carregar os ciclos");
   });
 
+  it("descarta consultas antigas e separa os dados por usuário", () => {
+    expect(source).toContain("const requestVersion = useRef(0)");
+    expect(source).toContain("if (!isCurrent()) return");
+    expect(source).toContain("setLoadedForUser(sessionUserId)");
+    expect(source).toContain("loadedForUser === user.id");
+    expect(source).toContain("}, [user?.id]);");
+  });
+
+  it("não reutiliza confirmação de outra sessão", () => {
+    expect(source).toContain("confirmationUserId.current = user?.id ?? null");
+    expect(source).toContain("confirmationUserId.current !== user.id");
+    expect(source).toContain("setConfirmAction(null)");
+  });
+
   it("não reporta sucesso silencioso quando a auditoria falha", () => {
     expect(source).toContain("Ciclo reaberto, mas o registro de auditoria falhou");
     expect(source).toContain("a auditoria não pôde ser confirmada");
