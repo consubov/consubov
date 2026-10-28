@@ -419,7 +419,7 @@ export default function LandingPage() {
             className="flex min-w-0 shrink-0 items-center gap-0.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22FF88] min-[375px]:gap-1 sm:gap-3"
           >
             <div className="h-6 w-6 shrink-0 overflow-hidden rounded-lg ring-1 min-[375px]:h-7 min-[375px]:w-7 sm:h-9 sm:w-9" style={{ boxShadow: `0 0 18px ${NEON_DIM}` }}>
-              <img src={logoConsubov} alt="Consubov" className="w-full h-full object-cover" />
+              <img src={logoConsubov} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex min-w-0 flex-col leading-none">
               <span className="whitespace-nowrap text-[8px] font-extrabold tracking-tight min-[375px]:text-[10px] sm:text-sm sm:tracking-[0.2em]">CONSUBOV</span>
