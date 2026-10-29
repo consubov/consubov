@@ -210,8 +210,6 @@ export function useGerenteData(filters?: GerenteFilters) {
         const lancRes = await lancQuery;
         const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
         snap.lancamentos = (lancList);
-
-        console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
         snap.pastos = ([]);
         snap.lancamentos = ([]);
