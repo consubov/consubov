@@ -73,7 +73,7 @@ describe("CONSUBOV Fazendas release gates: minimum 2.0.0 and offline integrity",
     hooks().bundle();
     const metadata = JSON.parse(fs.readFileSync(path.join(root, "dist/version.json"), "utf8"));
     expect(metadata.appVersion).toBe("2.0.0");
-    expect(metadata.version).toMatch(/^\\d{12,15}$/);
+    expect(metadata.version).toMatch(/^\d{12,15}$/);
     const output = fs.readFileSync(swFile, "utf8");
     expect(output).not.toContain("__BUILD_TIMESTAMP__");
     expect(output).toContain("/assets/main.hash1234.js");
