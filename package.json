@@ -52,5 +52,15 @@
     "picomatch@<2.3.2": "2.3.2",
     "source-map-js@<1.2.2": "1.2.2",
     "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
+  },
+  "dependencies": {
+    "d3-color": "^3.1.0",
+    "d3-interpolate": "^3.0.1",
+    "d3-transition": "^3.0.1",
+    "d3-zoom": "^3.0.0",
+    "dompurify": "^3.4.17",
+    "react-simple-maps": "^5.0.5",
+    "vite": "^8.3.5",
+    "zod": "^4.6.7"
   }
 }

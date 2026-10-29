@@ -23,9 +23,9 @@ describe("Identificadores", () => {
       try {
         createAssinanteId("");
         expect(true).toBe(false); // não deve chegar aqui
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(VisitaDominioError);
-        expect(error.codigo).toBe("ASSINANTE_ID_INVALIDO");
+        expect((error as VisitaDominioError).codigo).toBe("ASSINANTE_ID_INVALIDO");
       }
     });
 
@@ -37,9 +37,9 @@ describe("Identificadores", () => {
       try {
         createAssinanteId(idLongo);
         expect(true).toBe(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(VisitaDominioError);
-        expect(error.codigo).toBe("ASSINANTE_ID_INVALIDO");
+        expect((error as VisitaDominioError).codigo).toBe("ASSINANTE_ID_INVALIDO");
       }
     });
 
@@ -70,9 +70,9 @@ describe("Identificadores", () => {
       try {
         createVisitaId("");
         expect(true).toBe(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(VisitaDominioError);
-        expect(error.codigo).toBe("VISITA_ID_INVALIDO");
+        expect((error as VisitaDominioError).codigo).toBe("VISITA_ID_INVALIDO");
       }
     });
 
@@ -84,9 +84,9 @@ describe("Identificadores", () => {
       try {
         createVisitaId(idLongo);
         expect(true).toBe(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
         expect(error).toBeInstanceOf(VisitaDominioError);
-        expect(error.codigo).toBe("VISITA_ID_INVALIDO");
+        expect((error as VisitaDominioError).codigo).toBe("VISITA_ID_INVALIDO");
       }
     });
 
