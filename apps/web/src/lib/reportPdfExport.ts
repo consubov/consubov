@@ -37,10 +37,13 @@ export function releaseReportPdfDownload(file:ReportPdfDownload):void {window.se
 export async function fetchPdfBinaryWithTimeout(url: string, timeoutMs = REPORT_EXPORT_QUERY_TIMEOUT_MS): Promise<Blob> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const deadlineAt = Date.now() + timeoutMs;
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await withReportExportDeadline(
+      fetch(url, { signal: controller.signal }), "Download do arquivo", deadlineAt, timeoutMs,
+    );
     if (!response.ok) throw new Error(`HTTP ${response.status} ao obter arquivo`);
-    const blob = await response.blob();
+    const blob = await withReportExportDeadline(response.blob(), "Leitura do arquivo", deadlineAt, timeoutMs);
     if (!blob.size) throw new Error("Arquivo vazio");
     return blob;
   } finally { clearTimeout(timer); }
