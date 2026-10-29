@@ -321,9 +321,11 @@ export default function LandingPage() {
     const result = leadSchema.safeParse(payload);
     if (!result.success) {
       const errs: Record<string, string> = {};
-      result.error.errors.forEach((e) => {
-        errs[e.path[0] as string] = phrase(e.message);
-      });
+      if (result.error && result.error.issues) {
+        result.error.issues.forEach((e) => {
+          errs[e.path[0] as string] = phrase(e.message);
+        });
+      }
       setErrors(errs);
       return;
     }
