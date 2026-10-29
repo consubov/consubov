@@ -82,7 +82,6 @@ export function useRemoteSyncCommands(
           return;
         }
         if (data && data.length > 0) {
-          console.log(`[useRemoteSyncCommands] poll found ${data.length} pending command(s)`);
           // Run sync once and acknowledge all pending rows
           await handleCommand(data[0].id);
           if (data.length > 1) {
