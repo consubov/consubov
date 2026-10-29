@@ -20,6 +20,8 @@ h1{text-align:center;font-size:30px;line-height:1.1;margin:12px 0 10px}p{line-he
 .cta{display:block;width:100%;background:#30e891;border:0;color:#06160e;border-radius:13px;margin:24px 0 8px;padding:18px 14px;font-size:17px;font-weight:850;cursor:pointer}
 .cta:focus-visible,.secondary:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .cta:active{transform:translateY(1px)}
+.cta[hidden]{display:none}
+.cta-link{text-align:center;text-decoration:none}
 .notice{background:#17382a;border:1px solid #376f50;padding:13px;border-radius:12px;font-size:13px;line-height:1.55;color:#dcf5e5;margin-top:18px}
 .instructions{margin-top:18px;padding:16px;border-radius:12px;border:1px solid #385746;background:#0b1a12}
 .instructions h2{font-size:16px;margin:0 0 12px}.instructions p{text-align:left;margin:10px 0;font-size:14px}
@@ -71,6 +73,7 @@ small{display:block;text-align:center;font-size:12px;color:#a6c7b6;margin-top:16
 </details>
 </section>
 <button class="cta" id="install" type="button">Instalar App CONSUBOV 2.0</button>
+<a class="cta cta-link" id="open-installed-app" href="/app" hidden>Abrir CONSUBOV 2.0</a>
 <p class="status" id="status" role="status" aria-live="polite"></p>
 <div class="notice"><strong>Segurança em evolução.</strong> Nova versão com endereço próprio e melhorias contínuas na experiência de acesso à plataforma.</div>
 <section class="instructions" id="manual" hidden aria-label="Instruções de instalação">
@@ -188,6 +191,40 @@ var url='https://app.consubov.com.br/baixar';
 try{await navigator.clipboard.writeText(url);status.textContent='Endereço copiado. Abra no navegador para instalar.';}
 catch(e){status.textContent='Digite no navegador: '+url;}
 });
+// app-launch-detection:start
+// A verified same-origin PWA can offer opening instead of another installation.
+var existingAppLink = document.getElementById('open-installed-app');
+var expectedAppId = 'https://app.consubov.com.br/';
+var expectedManifests = [
+  'https://app.consubov.com.br/manifest-consubov-v2.json',
+  'https://app.consubov.com.br/manifest.json'
+];
+function isInstalledConsubov(app) {
+  if (!app || app.platform !== 'webapp') return false;
+  try {
+    var id = typeof app.id === 'string' ? new URL(app.id, location.origin).href : '';
+    var manifestUrl = typeof app.url === 'string' ? new URL(app.url, location.origin).href : '';
+    return (id === expectedAppId || (!id && expectedManifests.includes(manifestUrl))) &&
+      (!manifestUrl || expectedManifests.includes(manifestUrl));
+  } catch (error) {
+    return false;
+  }
+}
+function showInstalledApp() {
+  if (!existingAppLink || !existingAppLink.hidden) return;
+  install.hidden = true;
+  existingAppLink.hidden = false;
+  manual.hidden = true;
+  promptEvent = null;
+  status.textContent = 'CONSUBOV 2.0 ja instalado. Clique em Abrir CONSUBOV.';
+}
+window.addEventListener('appinstalled', showInstalledApp);
+if (typeof navigator.getInstalledRelatedApps === 'function') {
+  navigator.getInstalledRelatedApps().then(function(apps) {
+    if (Array.isArray(apps) && apps.some(isInstalledConsubov)) showInstalledApp();
+  }).catch(function() { /* Browser without reliable detection: preserve installation flow. */ });
+}
+// app-launch-detection:end
 })();
 </script>
 </body></html>

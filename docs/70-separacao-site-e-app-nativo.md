@@ -1,5 +1,14 @@
 # 70 — Separação entre Site Institucional e App Nativo (Subdomínio + Acesso Exclusivo pelo Ícone)
 
+## 29/10/2026 — F6/6.3A: abrir App instalado pelo instalador oficial (candidato sem release)
+
+- Alvo exclusivamente APP: em \`https://app.consubov.com.br/baixar\`, o HTML servido por Vercel é \`public/instalar-consubov-v2.html\` (rewrite). Não confundir com o componente React \`BaixarAppPage.tsx\` nem mudar a rota do SITE institucional.
+- Se \`navigator.getInstalledRelatedApps()\` confirmar a PWA \`webapp\` da identidade do CONSUBOV (\`https://app.consubov.com.br/\`, manifesto correto), ocultar o botão Instalar e mostrar \`Abrir CONSUBOV 2.0\` com link HTTPS normal \`/app\`. O Chrome pode capturar esse link e abrir/reutilizar a janela instalada; essa decisão depende de sistema, navegador, preferências e contexto da navegação. Nunca prometer abertura garantida nem inventar launcher de SO.
+- O manifesto **apenas do APP 2.0** (\`manifest-consubov-v2.json\`) declara \`related_applications\` de si mesmo e \`launch_handler.client_mode = focus-existing\`; preservar \`id=/\`, \`scope=/\`, \`start_url=/\`, ícones, versão 2.0.0, SW e bases offline. \`manifest.json\` do build compartilhado SITE não é alterado (a rota de manifesto do APP em Vercel faz rewrite para o manifesto específico).
+- Se API estiver ausente, retornar lista vazia, rejeitar ou identificar produto diferente, manter instalação/manual originais e o bloqueio existente de duplicação. Após evento nativo \`appinstalled\`, alternar CTA para Abrir; não depender de uma confirmação manual falsa. Safari/iOS não tem abertura forçada via JS; o usuário abre pelo ícone do App.
+- QA: \`node --test apps/web/scripts/qa/check-installed-app-launch.mjs\`, além de E2E físico Chrome/Android/iOS e verificação de aba vs janela do PWA. **Sem release, merge, CI ou mudança no SITE até QA e autorização específica.**
+
+
 **Data:** 2026-10-20
 **Status:** Regra Arquitetural Ativa e Obrigatória para Humanos e Agentes de IA
 
