@@ -1,75 +1,80 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '@/hooks/useAuth';
-import AdminDashboard from '@/pages/AdminDashboard';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import AdminDashboard from "@/pages/AdminDashboard";
 
-// Supabase mock
-const mockCounts = {
-  fazendas: 5,
-  retiros: 5,
-  pastos: 5,
-  produtos: 5,
-  ciclos: 5,
-  lancamentos: 5,
-  fabricas: 5,
-};
-
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-    },
-    from: (table: string) => {
-      console.log('Supabase mock called:', table, { head: false }); // Simplified for mock
-      return {
-        select: (_cols: any, opts: any = {}) => {
-          const isHead = opts && opts.head;
-          if (isHead) {
-            const result = { count: mockCounts[table] ?? 0 };
-            return {
-              eq: () => Promise.resolve(result),
-              then: (resolve: any, _reject: any) => resolve(result),
-            } as any;
-          }
-          if (table === 'pastos' && (_cols === 'num_animais' || (_cols && Array.isArray(_cols) && _cols.includes('num_animais')))) {
-            const mockData = Array.from({ length: 10 }, (_, i) => ({ id: i, num_animais: 5 }));
-            return {
-              eq: () => Promise.resolve({ data: mockData }),
-            };
-          }
-          return {
-            eq: () => Promise.resolve({ count: mockCounts[table] ?? 0 }),
+const fixtures = vi.hoisted(() => ({ unauthorized: false, authValid: true }));
+vi.mock("@/integrations/supabase/client", () => {
+  const headCounts: Record<string, number> = {
+    fazendas: 5, retiros: 5, pastos: 5, produtos: 5,
+    ciclos: 5, lancamentos: 5, fabricas: 5,
+  };
+  return {
+    supabase: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        getUser: vi.fn(() => Promise.resolve(fixtures.authValid
+          ? { data: { user: { id: "verified-admin" } }, error: null }
+          : { data: { user: null }, error: { message: "invalid jwt" } })),
+        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      },
+      from: (table: string) => ({
+        select: (columns: string, options: { head?: boolean } = {}) => {
+          const response = table === "administradores"
+            ? { data: { id: "active-admin" }, error: null, status: 200 }
+            : fixtures.unauthorized && table === "fazendas"
+            ? { data: null, count: null, error: { code: "42501" }, status: 403 }
+            : options.head
+            ? { data: null, count: headCounts[table] ?? 0, error: null, status: 200 }
+            : columns === "num_animais"
+            ? { data: Array.from({ length: 10 }, () => ({ num_animais: 5 })), error: null, status: 200 }
+            : { data: [], error: null, status: 200 };
+          const query = {
+            eq: () => query,
+            maybeSingle: () => query,
+            abortSignal: () => query,
+            then: (resolve: (value: typeof response) => unknown, reject?: (error: unknown) => unknown) =>
+              Promise.resolve(response).then(resolve, reject),
           };
+          return query;
         },
-      };
+      }),
+      channel: vi.fn(() => ({
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn(),
+      })),
+      removeChannel: vi.fn(),
     },
-    channel: vi.fn().mockReturnValue({
-      on: vi.fn().mockReturnThis(),
-      subscribe: vi.fn().mockResolvedValue({}),
-    }),
-    removeChannel: vi.fn(),
-  },
-}));
+  };
+});
+vi.mock("@/components/admin/AdminListSection", () => ({ default: () => null }));
 
-vi.mock('@/components/admin/AdminListSection', () => ({
-  default: () => null,
-}));
+const mount = () => render(
+  <AuthProvider><MemoryRouter><AdminDashboard /></MemoryRouter></AuthProvider>
+);
+beforeEach(() => { fixtures.unauthorized = false; fixtures.authValid = true; });
 
-describe('AdminDashboard component', () => {
-  it('renders stats after data load', async () => {
-    render(
-      <AuthProvider>
-        <MemoryRouter>
-          <AdminDashboard />
-        </MemoryRouter>
-      </AuthProvider>
-    );
+describe("AdminDashboard", () => {
+  it("shows verified totals only when queries succeed", async () => {
+    mount();
+    expect(await screen.findByText("50")).toBeInTheDocument();
+    expect(screen.getAllByText("5")).toHaveLength(7);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByText(/Fazendas/i)).toBeInTheDocument();
-      expect(screen.getAllByText('5')).toHaveLength(7);
-      expect(screen.getByText('50')).toBeInTheDocument();
-    });
+  it("does not show false zeros when a query is denied by RLS", async () => {
+    fixtures.unauthorized = true;
+    mount();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
+    expect(screen.queryByText("50")).not.toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("rejects a cached admin view without a verified live session", async () => {
+    fixtures.authValid = false;
+    mount();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 });
