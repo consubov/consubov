@@ -14,8 +14,9 @@ import { purgeOrphanQueueItems, purgeTopicoFromQueue } from "@/lib/consultorOffl
 const VISITA = "visita-1";
 
 // jsdom pode não implementar Blob.arrayBuffer
-if (typeof (Blob.prototype as any).arrayBuffer !== "function") {
-  (Blob.prototype as any).arrayBuffer = function () {
+type BlobWithBuffer = typeof Blob.prototype & { arrayBuffer?: () => Promise<ArrayBuffer> };
+if (typeof (Blob.prototype as BlobWithBuffer).arrayBuffer !== "function") {
+  (Blob.prototype as BlobWithBuffer).arrayBuffer = function () {
     return new Promise<ArrayBuffer>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as ArrayBuffer);
@@ -47,7 +48,7 @@ function foto(localId: string, parentId: string) {
   };
 }
 
-function mutation(id: string, rowId: string, table: string, operation: any = "upsert") {
+function mutation(id: string, rowId: string, table: string, operation: "upsert" | "delete" = "upsert") {
   return {
     id,
     visitaId: VISITA,
