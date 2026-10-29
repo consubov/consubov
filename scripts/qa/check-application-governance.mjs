@@ -32,8 +32,8 @@ export function branchErrors(branch,c,legacy=[]){
 }
 
 export function checkSource(source,c){
- const id=source.match(/export\\s+const\\s+APP_ID\\s*=\\s*"([^"]+)"/)?.[1];
- const version=source.match(/export\\s+const\\s+APP_VERSION\\s*=\\s*"([^"]+)"/)?.[1];
+ const id=source.match(/export\s+const\s+APP_ID\s*=\s*"([^"]+)"/)?.[1];
+ const version=source.match(/export\s+const\s+APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
  const errors=[];
  if(!id||!Object.hasOwn(c.apps,id))errors.push("unknown app id");
  if(!version)errors.push("appVersion.ts requires literal SemVer for Vite version.json");
