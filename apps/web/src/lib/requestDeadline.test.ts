@@ -18,8 +18,9 @@ describe("runWithDeadline", () => {
       signal = s;
       return new Promise<never>(() => undefined);
     }, { timeoutMs: 12000 });
+    const assertion = expect(operation).rejects.toBeInstanceOf(RequestTimeoutError);
     await vi.advanceTimersByTimeAsync(12000);
-    await expect(operation).rejects.toBeInstanceOf(RequestTimeoutError);
+    await assertion;
     expect(signal?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
   });
