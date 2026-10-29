@@ -32,8 +32,11 @@ export async function fetchScoreWeights(): Promise<ScoreWeights> {
       .in("chave", ["score_meta", "score_salga", "score_cocho", "score_total"])
       .eq("ativo", true);
     if (error || !data || data.length === 0) return FALLBACK_WEIGHTS;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byKey = new Map<string, any>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const row of data as any[]) byKey.set(row.chave, row.parametros ?? {});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const num = (v: any, d: number) => (Number.isFinite(Number(v)) ? Number(v) : d);
     return {
       pesoMeta: num(byKey.get("score_meta")?.peso_maximo, 5),
@@ -205,6 +208,7 @@ export async function fetchNotaCochoConsultor(
       .order("hora_inicio", { ascending: false });
     if (!visitas || visitas.length === 0) return null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const visitaIds = visitas.map((v: any) => v.id);
     if (visitaIds.length === 0) return null;
 
@@ -218,7 +222,9 @@ export async function fetchNotaCochoConsultor(
       .select("id, visita_id")
       .in("visita_id", visitaIds);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vpIds = (vps ?? []).map((r: any) => r.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vcIds = (vcs ?? []).map((r: any) => r.id);
 
     // Busca as notas para todos os pastos e currais encontrados
@@ -265,6 +271,7 @@ export async function fetchNotaCochoConsultor(
     }
 
     // Encontra a primeira visita (mais recente) que tem notas
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const v of visitas as any[]) {
       const vvpIds = vpsPorVisita.get(v.id) ?? [];
       const vvcIds = vcsPorVisita.get(v.id) ?? [];
