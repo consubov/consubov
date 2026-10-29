@@ -84,7 +84,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zod": "^3.25.76"
+    "zod": "3.24.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -106,7 +106,7 @@
     "fake-indexeddb": "^6.2.5",
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
-    "lighthouse": "^13.5.0",
+    "lighthouse": "^13.6.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
