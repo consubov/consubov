@@ -116,10 +116,10 @@ export default function ExportarRelatorioModal({
 
   async function handleExportar() {
     if (loading) return;
-    const token = ++exportSequence.current;
+    const exportRunId = ++exportSequence.current;
     const deadlineAt = Date.now() + REPORT_EXPORT_DEADLINE_MS;
     const assertActive = () => {
-      if (exportSequence.current !== token) throw new Error("export-cancelled");
+      if (exportSequence.current !== exportRunId) throw new Error("export-cancelled");
     };
     const bounded = async <T extends PromiseLike<unknown>>(operation: T, stage: string, stepLimitMs?: number): Promise<Awaited<T>> => {
       const result = await withReportExportDeadline(operation, stage, deadlineAt, stepLimitMs);
@@ -723,13 +723,13 @@ export default function ExportarRelatorioModal({
       }
       toast.success("PDF gerado. Se não baixar automaticamente, use 'Baixar PDF gerado'.");
     } catch (e) {
-      if (token !== exportSequence.current) return;
+      if (exportRunId !== exportSequence.current) return;
       console.error("Erro ao gerar relatório PDF:", e);
       toast.error(e instanceof ReportExportTimeoutError
         ? `Tempo limite ao consultar ${e.stage}. Verifique a conexão e tente novamente.`
         : "Não foi possível gerar o relatório PDF. Tente novamente.");
     } finally {
-      if (token === exportSequence.current) {
+      if (exportRunId === exportSequence.current) {
         setLoading(false);
         setEtapa("");
       }
