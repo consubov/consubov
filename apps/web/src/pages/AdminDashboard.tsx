@@ -50,7 +50,7 @@ export default function AdminDashboard() {
         const admin = await deadline(signal =>
           supabase.from("administradores").select("id")
             .eq("user_id", identity.data.user.id).eq("ativo", true)
-            .maybeSingle().abortSignal(signal),
+            .abortSignal(signal).maybeSingle(),
         );
         if (admin.error) {
           throw new DashboardQueryError(
