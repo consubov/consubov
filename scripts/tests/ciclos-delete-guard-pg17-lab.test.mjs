@@ -19,6 +19,25 @@ function labTargetError({ ack, host, database, port }) {
   return null;
 }
 
+// libpq accepts PGHOSTADDR even when -h/PGHOST appears to be localhost.
+// Forward only the connection parameters that this rehearsal explicitly approves.
+function safePsqlEnvironment(target, sourceEnv = process.env) {
+  const env = Object.fromEntries(
+    Object.entries(sourceEnv).filter(([name]) => !name.startsWith('PG')),
+  );
+  Object.assign(env, {
+    PGHOST: target.host,
+    PGHOSTADDR: target.host === '::1' ? '::1' : '127.0.0.1',
+    PGDATABASE: target.database,
+    PGPORT: target.port,
+    PGCONNECT_TIMEOUT: '4',
+    PGAPPNAME: 'consubov-ciclos-pg17-rollback',
+  });
+  if (sourceEnv.PGUSER) env.PGUSER = sourceEnv.PGUSER;
+  if (sourceEnv.PGPASSWORD) env.PGPASSWORD = sourceEnv.PGPASSWORD;
+  return env;
+}
+
 function rollbackTrial(sql) {
   assert.equal((sql.match(/^REVOKE DELETE ON TABLE public\.ciclos FROM authenticated;$/gm) ?? []).length, 1);
   assert.match(sql, /\bBEGIN;/);
@@ -26,7 +45,15 @@ function rollbackTrial(sql) {
   assert.equal((sql.match(/\bCOMMIT;/g) ?? []).length, 1);
   assert.doesNotMatch(sql, /\bROLLBACK;/);
 
-  const reversible = sql.replace(/\bCOMMIT;\s*$/, 'ROLLBACK;');
+  const insideTransaction = `
+SELECT 'ACL_DURING|' ||
+ has_table_privilege('authenticated', 'public.ciclos', 'DELETE')::text || '|' ||
+ has_table_privilege('authenticated', 'public.ciclos', 'SELECT')::text || '|' ||
+ has_table_privilege('authenticated', 'public.ciclos', 'UPDATE')::text || '|' ||
+ has_table_privilege('service_role', 'public.ciclos', 'DELETE')::text;
+`;
+  // Check the revocation before rolling back, then verify original ACL after it.
+  const reversible = sql.replace(/\bCOMMIT;\s*$/, `${insideTransaction}ROLLBACK;`);
   const evidence = `
 SELECT 'ACL_BEFORE|' ||
  has_table_privilege('authenticated', 'public.ciclos', 'DELETE')::text || '|' ||
@@ -61,8 +88,33 @@ test('rehearsal rolls back the original candidate, never commits it', () => {
   assert.match(rehearsal, /\bROLLBACK;/);
   assert.doesNotMatch(rehearsal, /\bCOMMIT;/);
   assert.match(rehearsal, /ACL_BEFORE/);
+  assert.match(rehearsal, /ACL_DURING/);
   assert.match(rehearsal, /ACL_AFTER/);
   assert.match(rehearsal, /set_config\('consubov\.qa_isolated_pg17', 'acknowledged', false\)/);
+});
+
+test('libpq environment cannot redirect a loopback rehearsal to a remote address', () => {
+  const target = { host: 'localhost', database: 'consubov_qa_ciclos', port: '5432' };
+  const incoming = {
+    PATH: '/usr/bin',
+    PGHOST: 'localhost', PGHOSTADDR: '198.51.100.77',
+    PGSERVICE: 'remote-production', PGSERVICEFILE: '/tmp/remote-service',
+    PGOPTIONS: '-c application_name=remote', PGSSLMODE: 'require',
+    PGUSER: 'qa_user', PGPASSWORD: 'test_only',
+  };
+  const env = safePsqlEnvironment(target, incoming);
+  assert.equal(env.PGHOST, 'localhost');
+  assert.equal(env.PGHOSTADDR, '127.0.0.1');
+  assert.equal(env.PGDATABASE, 'consubov_qa_ciclos');
+  assert.equal(env.PGPORT, '5432');
+  assert.equal(env.PGUSER, 'qa_user');
+  assert.equal(env.PGPASSWORD, 'test_only');
+  assert.equal(env.PGSERVICE, undefined);
+  assert.equal(env.PGSERVICEFILE, undefined);
+  assert.equal(env.PGOPTIONS, undefined);
+  assert.equal(env.PGSSLMODE, undefined);
+  assert.equal(incoming.PGHOSTADDR, '198.51.100.77', 'Do not mutate process environment');
+  assert.equal(safePsqlEnvironment({ ...target, host: '::1' }, incoming).PGHOSTADDR, '::1');
 });
 
 test('the lab-only execution is opt-in and rollback-preserving', (t) => {
@@ -85,12 +137,14 @@ test('the lab-only execution is opt-in and rollback-preserving', (t) => {
     encoding: 'utf8',
     timeout: 20_000,
     maxBuffer: 64 * 1024,
-    env: { ...process.env, PGCONNECT_TIMEOUT: '4', PGHOST: target.host, PGDATABASE: target.database, PGPORT: target.port },
+    env: safePsqlEnvironment(target),
   });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr || 'psql failed');
   const before = result.stdout.match(/^ACL_BEFORE\|(.+)$/m)?.[1];
+  const during = result.stdout.match(/^ACL_DURING\|(.+)$/m)?.[1];
   const after = result.stdout.match(/^ACL_AFTER\|(.+)$/m)?.[1];
   assert.equal(before, 'true|true|true|true', 'Expected local database privileges differ');
+  assert.equal(during, 'false|true|true|true', 'Revocation was not effective inside transaction');
   assert.equal(after, before, 'ACL was not restored after the rollback rehearsal');
 });
