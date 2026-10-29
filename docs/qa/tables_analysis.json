@@ -1,0 +1,1329 @@
+[
+  {
+    "table": "abate_config",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "abates",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "administradores",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "animais_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "apartacao_destinos_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "apartacao_lotes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "apartacoes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "apartacoes_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "app_secrets",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "audit_conferencias",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "audit_sorteios",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "avaliacao_fabrica_visita",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "avaliacoes_fabrica_quesito",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "avaliacoes_score",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "batidas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "batidas_producao",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "capatazes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "capatazes_retiros",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "categorias_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "ciclos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "ciclos_auditoria",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "clientes_pesador",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "conferencias_checklist",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "configuracoes_gerais",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "configuracoes_historico",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "consultores",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "despesas_combustivel",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "dieta_categorias",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "dietas_consultor",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "elementos_mapa",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "entradas_materias_primas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "escritorios",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "estoque_produto_acabado",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "estoque_retiro",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "eventos_lote",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "eventos_sanitarios",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fabrica_destinos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fabricas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fazendas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fazendas_consultor",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fazendas_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "formula_ingredientes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "formulas_fabrica",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "formulas_sistema",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "fotos_salga",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "gerentes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "gerentes_fazendas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "gmd_config",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "indicadores_zootecnicos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "indicadores_zootecnicos_faixa",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "inventarios_fabrica",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "lancamentos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "landing_page_content",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "landing_parceiros",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "leads",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "leituras_balancao_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "leituras_balancao_pesador",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "linhas_mapa",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "lotes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "lotes_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "mapas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "materias_primas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "mortalidades",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "movimentacoes_animais",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "movimentacoes_estoque",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "notificacoes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "observacoes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "ocupacoes_pasto",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "operacoes_capataz",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "operadores_fabrica",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pastos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pastos_mapa",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pecuaristas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "penn_state_analise_fotos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "penn_state_analises",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesadores",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesagens",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesagens_compra",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesagens_compra_categorias",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesagens_lote_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesos_animais_pecuarista",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "pesos_pesagem_compra",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "produtos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "produtos_fazendas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "push_subscriptions",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "recebimentos_transferencia",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "relatorios_despesas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "retiros",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "snapshots",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "solicitacoes_lancamento_itens",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "solicitacoes_lancamento_manual",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "sync_commands",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "sync_log",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_animais",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_auditoria",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_empresas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_equipe",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_equipe_notificacoes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_estacao_protocolos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_estacao_semen",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_estacoes_monta",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_fazendas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_lote_ciclos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_lotes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_manejo_resultados",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_manejos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_medicamentos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_prenhez_historico",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_protocolo_etapa_itens",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_protocolo_etapas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_protocolos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_racas_gestacao",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_semen",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_servico_equipe",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_servico_itens",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_servico_manejos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_servicos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_tabela_precos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_trajetos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "teste",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "transferencias_estoque",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "transferencias_fabrica",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "transferencias_retiros",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_assinantes",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_currais",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_fotos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_pastos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_topico_fotos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visita_topicos",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visitas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "visitas_tecnicas",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": []
+  },
+  {
+    "table": "syncvet_view_historico_animal",
+    "hasTenant": false,
+    "hasFazenda": false,
+    "hasUser": false,
+    "hasEmpresa": false,
+    "hasConsultor": false,
+    "hasVisita": false,
+    "colNames": [
+      "Relationships",
+      "Row",
+      "Relationships",
+      "Row",
+      "Relationships",
+      "Row"
+    ]
+  }
+]
