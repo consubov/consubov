@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-
-const source = readFileSync(new URL("../../pages/CiclosPage.tsx", import.meta.url), "utf8");
+import source from "../../pages/CiclosPage.tsx?raw";
 const ast = ts.createSourceFile("CiclosPage.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
 function containsCall(method: string): boolean {
