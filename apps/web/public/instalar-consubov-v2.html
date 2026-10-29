@@ -216,7 +216,7 @@ function showInstalledApp() {
   existingAppLink.hidden = false;
   manual.hidden = true;
   promptEvent = null;
-  status.textContent = 'CONSUBOV 2.0 ja instalado. Clique em Abrir CONSUBOV.';
+  status.textContent = 'CONSUBOV 2.0 já instalado. Toque em Abrir; se o navegador não abrir o aplicativo, use o ícone instalado.';
 }
 window.addEventListener('appinstalled', showInstalledApp);
 if (typeof navigator.getInstalledRelatedApps === 'function') {
