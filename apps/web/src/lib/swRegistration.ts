@@ -81,9 +81,7 @@ function scheduleExplicitUpdateTimeout() {
   }, 15_000);
 }
 
-function logSw(message: string, ...args: unknown[]) {
-  console.log(`[SW] ${message}`, ...args);
-}
+function logSw(_message: string, ..._args: unknown[]) {}
 
 function notifyListeners(waiting: boolean) {
   listeners.forEach((fn) => fn(waiting));
