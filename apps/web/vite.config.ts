@@ -44,7 +44,9 @@ function injectSwBuildTimestamp(): Plugin {
     apply: "build",
     closeBundle() {
       const swPath = path.resolve(__dirname, "dist/sw.js");
-      if (!fs.existsSync(swPath)) return;
+      if (!fs.existsSync(swPath)) {
+        throw new Error("PWA build missing service worker sw.js");
+      }
       // Route-level lazy chunks must also be present before offline update.
       // All built assets are included instead of guessing import graphs.
       const assetRoot = path.resolve(__dirname, "dist/assets");
@@ -67,6 +69,9 @@ function injectSwBuildTimestamp(): Plugin {
       const content = fs.readFileSync(swPath, "utf-8");
       if (!content.includes("'__PRECACHE_ASSETS__'")) {
         throw new Error("PWA precache placeholder missing from service worker");
+      }
+      if (!content.includes("__BUILD_TIMESTAMP__")) {
+        throw new Error("PWA build timestamp placeholder missing from service worker");
       }
       fs.writeFileSync(
         swPath,
