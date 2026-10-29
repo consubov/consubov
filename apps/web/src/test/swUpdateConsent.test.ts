@@ -7,20 +7,43 @@ vi.mock("@/lib/criticalOperations", () => ({
   onCriticalOperationsDrained: controls.drain,
 }));
 
-describe("PWA update consent (runtime)", () => {
-  beforeEach(() => {
-    vi.resetModules(); vi.useFakeTimers();
-    controls.busy = false; controls.reload.mockReset(); controls.drain.mockReset();
-    vi.stubGlobal("__APP_BUILD_VERSION__", "test-build-a");
-  });
-  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+const LOCAL_BUILD = "1793286452000";
+const REMOTE_BUILD = "1793286453000";
 
-  async function fixture() {
+describe("PWA update consent (verified 2.0.0 release)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    controls.busy = false;
+    controls.reload.mockReset();
+    controls.drain.mockReset();
+    controls.drain.mockReturnValue(() => undefined);
+    vi.stubGlobal("__APP_BUILD_VERSION__", LOCAL_BUILD);
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ appVersion: "2.0.0", version: REMOTE_BUILD }),
+    })));
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function fixture(waitingVersion = REMOTE_BUILD) {
     const events = new Map<string, (event?: unknown) => void>();
-    const waiting = { postMessage: vi.fn(), scriptURL: "https://example.test/sw.js?v=b" };
-    const registration = { waiting, update: vi.fn(async () => undefined), addEventListener: vi.fn() };
+    const waiting = {
+      postMessage: vi.fn(),
+      scriptURL: window.location.origin + "/sw.js?v=" + waitingVersion,
+    };
+    const registration = {
+      waiting,
+      update: vi.fn(async () => undefined),
+      addEventListener: vi.fn(),
+    };
     const sw = {
-      controller: { scriptURL: "https://example.test/sw.js?v=a" },
+      controller: { scriptURL: window.location.origin + "/sw.js?v=" + LOCAL_BUILD },
       getRegistration: vi.fn(async () => registration),
       addEventListener: (name: string, handler: (event?: unknown) => void) => events.set(name, handler),
     };
@@ -28,31 +51,48 @@ describe("PWA update consent (runtime)", () => {
     return { sw, events, waiting, module: await import("@/lib/swRegistration") };
   }
 
-  it("does not reload after a consent timeout with the old controller", async () => {
+  it("refuses a regressive 1.155.0 release despite a newer build timestamp", async () => {
     const f = await fixture();
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ appVersion: "1.155.0", version: REMOTE_BUILD }),
+    })));
     await f.module.applyPendingUpdateNow("user-click");
-    expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
-    await vi.advanceTimersByTimeAsync(16000);
-    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: "test-build-b" } });
+    expect(f.waiting.postMessage).not.toHaveBeenCalled();
     expect(controls.reload).not.toHaveBeenCalled();
   });
 
-  it("does not activate a waiting worker while a field operation is critical", async () => {
+  it("refuses a worker whose timestamp does not match the published release", async () => {
+    const f = await fixture("1793286454000");
+    await f.module.applyPendingUpdateNow("user-click");
+    expect(f.waiting.postMessage).not.toHaveBeenCalled();
+    expect(controls.reload).not.toHaveBeenCalled();
+  });
+
+  it("keeps the current controller after a consent timeout", async () => {
+    const f = await fixture();
+    await f.module.applyPendingUpdateNow("user-click");
+    expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+    await vi.advanceTimersByTimeAsync(16_000);
+    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: REMOTE_BUILD } });
+    expect(controls.reload).not.toHaveBeenCalled();
+  });
+
+  it("never activates a worker while a field operation is critical", async () => {
     const f = await fixture();
     controls.busy = true;
-    controls.drain.mockReturnValue(() => undefined);
     await f.module.applyPendingUpdateNow("user-click");
     expect(f.waiting.postMessage).not.toHaveBeenCalled();
     expect(controls.drain).toHaveBeenCalledOnce();
     expect(controls.reload).not.toHaveBeenCalled();
   });
 
-  it("requires both explicit consent and a changed controller before scheduling reload", async () => {
+  it("needs explicit consent and a changed controller before scheduling reload", async () => {
     const f = await fixture();
     await f.module.applyPendingUpdateNow("user-click");
     f.events.get("controllerchange")?.();
     expect(controls.reload).not.toHaveBeenCalled();
-    f.sw.controller = { scriptURL: "https://example.test/sw.js?v=b" };
+    f.sw.controller = { scriptURL: window.location.origin + "/sw.js?v=" + REMOTE_BUILD };
     f.events.get("controllerchange")?.();
     expect(controls.reload).toHaveBeenCalledOnce();
     f.events.get("controllerchange")?.();
