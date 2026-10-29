@@ -220,7 +220,8 @@ export default function ExportarRelatorioModal({
           .in("pasto_id", pastoIds)
           .is("data_saida", null)
           .order("data_entrada", { ascending: false });
-        ocupacaoProdutoByPasto = (ocupData ?? []).reduce((acc: Record<string, string>, o) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ocupacaoProdutoByPasto = (ocupData ?? []).reduce((acc: Record<string, string>, o: any) => {
           if (o.produto_id) acc[o.pasto_id] ??= o.produto_id;
           return acc;
         }, {});
