@@ -1,0 +1,13 @@
+{
+  "apps": {
+    "consubov-fazendas-app": "2.0.0",
+    "admin-global-app": null,
+    "mais-arrobas-app": null,
+    "syncvet-app": null,
+    "relatto-app": null
+  },
+  "sites": [
+    "consubov-site",
+    "relatto-site"
+  ]
+}

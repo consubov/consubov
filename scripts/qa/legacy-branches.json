@@ -1,0 +1,20 @@
+[
+  "feat/consubov-site-tema-claro-20261028",
+  "feat/consubov-v2-migration-consent-20261024",
+  "fix/admin-fazendas-loading-deadline-20261029",
+  "fix/consubov-api-sast-seal-20261024",
+  "fix/consubov-pwa-resume-20261023",
+  "fix/consubov-web-deps-20261024",
+  "fix/consubov-zod4-compat-20261024",
+  "fix/f12-ciclos-contencao-p1-20261028",
+  "fix/f12-gmd-confirmed-writes-20261028",
+  "fix/i18n-site-language-import-20261029",
+  "fix/landing-navigation-flags-20261027",
+  "fix/mapa-pinos-vetoriais-20261027",
+  "fix/site-baixar-app-url-20261029",
+  "fix/site-language-type-import-20261029",
+  "fix/site-without-app-update-20261027",
+  "hotfix/app-baixar-install-launch-20261029",
+  "hotfix/pdf-export-all-surfaces-vapid-20261029",
+  "hotfix/relatorio-pdf-download-20261029"
+]
