@@ -429,13 +429,13 @@ export default function LandingPage() {
 
           <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
             {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} compactOnMobile />}
-            <a
-              href="https://app.consubov.com.br/baixar"
+            <Link
+              to="/baixar"
               className="shrink-0 whitespace-nowrap rounded-lg px-1 py-2 text-[8px] font-bold uppercase tracking-tight transition-all hover:bg-white/5 min-[375px]:text-[9px] sm:px-2.5 sm:text-[11px] lg:px-4 lg:text-sm lg:tracking-wider"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
               {phrase("Baixar App")}
-            </a>
+            </Link>
             <button
               type="button"
               onClick={scrollToForm}

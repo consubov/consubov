@@ -25,6 +25,10 @@ import {
   markAppInstalled,
 } from "@/lib/appSurface";
 import { applyPwaProfile } from "@/lib/pwaManifest";
+import {
+  requestConsubovCrossOriginInstall,
+  type CrossOriginInstallNavigator,
+} from "@/lib/crossOriginInstall";
 import { useSiteLanguage } from "@/hooks/useSiteLanguage";
 import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
 
@@ -46,16 +50,18 @@ export default function BaixarAppPage() {
   const navigate = useNavigate();
   const isRelatto = searchParams.get("app")?.toLowerCase() === "relatto";
   const brandId: AppBrandId = isRelatto ? "relatto" : "consubov";
+  const isSiteBuild = import.meta.env.VITE_SURFACE_MODE === "site";
+  const siteCrossOriginInstall = isSiteBuild && !isRelatto;
 
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState<boolean>(() =>
-    isAppInstalledOnDevice(brandId),
+    siteCrossOriginInstall ? false : isAppInstalledOnDevice(brandId),
   );
   const [showManualHint, setShowManualHint] = useState(false);
+  const [siteInstallUnavailable, setSiteInstallUnavailable] = useState(false);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
-  const isSiteBuild = import.meta.env.VITE_SURFACE_MODE === "site";
   const { language, setLanguage } = useSiteLanguage();
   const isEnglishSite = isSiteBuild && language === "en-US";
   const copy = (pt: string, en: string) => isEnglishSite ? en : pt;
@@ -72,28 +78,36 @@ export default function BaixarAppPage() {
       : isRelatto ? "Baixar App Relatto — Aplicativo Oficial" : "Baixar App Consubov — Aplicativo Oficial";
 
     // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
-    if (isStandaloneApp()) {
+    if (!siteCrossOriginInstall && isStandaloneApp()) {
       markAppInstalled(brandId);
       navigate("/login", { replace: true });
       return;
     }
 
-    setInstalled(isAppInstalledOnDevice(brandId));
-    void detectInstalledAppAsync(brandId).then((alreadyInstalled) => {
-      if (alreadyInstalled) {
-        setInstalled(true);
-        setShowManualHint(false);
-      }
-    });
+    if (siteCrossOriginInstall) {
+      // A origem do site não pode comprovar instalação do app em outro domínio.
+      setInstalled(false);
+    } else {
+      setInstalled(isAppInstalledOnDevice(brandId));
+      void detectInstalledAppAsync(brandId).then((alreadyInstalled) => {
+        if (alreadyInstalled) {
+          setInstalled(true);
+          setShowManualHint(false);
+        }
+      });
+    }
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      // Nunca instalar o site institucional como se fosse o app de campo.
+      if (siteCrossOriginInstall) return;
       if (!isAppInstalledOnDevice(brandId)) {
         setDeferredPrompt(e as BeforeInstallPromptEvent);
       }
     };
 
     const onAppInstalled = () => {
+      if (siteCrossOriginInstall) return;
       markAppInstalled(brandId);
       activateStandaloneSession();
       setInstalled(true);
@@ -104,6 +118,7 @@ export default function BaixarAppPage() {
     };
 
     const onStorageChange = (e: StorageEvent) => {
+      if (siteCrossOriginInstall) return;
       if (e.key === getInstalledStorageKey(brandId)) {
         setInstalled(e.newValue === "1");
       }
@@ -143,9 +158,24 @@ export default function BaixarAppPage() {
         /* ignore */
       }
     };
-  }, [brandId, isRelatto, navigate, isEnglishSite]);
+  }, [brandId, isRelatto, navigate, isEnglishSite, siteCrossOriginInstall]);
 
   const handleInstallClick = async () => {
+    if (siteCrossOriginInstall) {
+      // Este pedido só alcança o popup sem navegar quando o navegador oferece
+      // a API de instalação entre origens (ainda experimental).
+      const result = await requestConsubovCrossOriginInstall(
+        window.navigator as CrossOriginInstallNavigator,
+      );
+      if (result === "installed") {
+        setInstalled(true);
+        setSiteInstallUnavailable(false);
+        return;
+      }
+      if (result !== "dismissed") setSiteInstallUnavailable(true);
+      return;
+    }
+
     // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
     if (installed || isAppInstalledOnDevice(brandId)) {
       setInstalled(true);
@@ -372,6 +402,40 @@ export default function BaixarAppPage() {
                   {copy("Baixar e Instalar App", "Download and Install")} {brandName}
                 </button>
 
+                {siteInstallUnavailable && (
+                  <div
+                    className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
+                    style={{
+                      background: "rgba(34,255,136,0.1)",
+                      border: "1px solid rgba(34,255,136,0.45)",
+                      color: "#FFFFFF",
+                    }}
+                    role="status"
+                    data-testid="cross-origin-install-fallback"
+                  >
+                    <p className="font-bold text-[#22FF88]">
+                      {copy(
+                        "A instalação direta ainda não está disponível neste navegador.",
+                        "Direct installation is not available in this browser yet.",
+                      )}
+                    </p>
+                    <p className="text-[#D8EFE2]">
+                      {copy(
+                        "Não abrimos outra página automaticamente. O aplicativo fica no domínio oficial app.consubov.com.br. Para instalar neste navegador, use opcionalmente a página de instalação do App.",
+                        "We did not open another page automatically. The app is hosted at app.consubov.com.br. If you wish, you can use the official app installation page.",
+                      )}
+                    </p>
+                    <a
+                      href="https://app.consubov.com.br/baixar"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block underline text-[#22FF88] font-semibold"
+                    >
+                      {copy("Abrir instalação oficial (opcional)", "Open official installation (optional)")}
+                    </a>
+                  </div>
+                )}
+
                 {showManualHint && (
                   <div
                     className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
@@ -431,7 +495,7 @@ export default function BaixarAppPage() {
             </div>
 
             {/* Guia passo a passo por plataforma */}
-            <div id="instrucoes-instalacao" className="space-y-4 pt-2">
+            <div id="instrucoes-instalacao" hidden={siteCrossOriginInstall} className="space-y-4 pt-2">
               <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-white">
                 {platform === "ios"
                   ? copy("Como instalar no seu iPhone ou iPad:", "How to install on iPhone or iPad:")
