@@ -62,3 +62,11 @@ Todos os resultados de teste devem ser identificados com o SHA do commit; **não
 - Usados mocks locais do Supabase/role e React Testing Library, **sem backend remoto nem credenciais**. O arquivo passou no parse TSX local (TypeScript 5.8.3); o teste Vitest completo ainda depende do CI disparado pela alteração.
 - Gates anteriores do commit `0b70319660c090243da651525df4a5f2643db5e7`: build-and-test, SAST e Secret Scanning PASS, Dependency Scan FAIL por três vulnerabilidades altas sob PRs #61/#63. Não reutilizar os resultados para aprovar o novo SHA.
 - F12 permanece NO-GO: RLS de `gmd_config` OFF, ausência de UNIQUE e gravação não transacional; PR ainda DRAFT.
+
+## 29/10/2026 — Base provisória da PR #68 para homologação dos testes React
+
+- Para validar os três testes React novos, a PR #68 foi **temporariamente apontada para a branch do PR #69** `fix/site-language-type-import-20261029` (correção isolada do erro TS2307 introduzido na main). Nenhum merge/rebase/deploy ocorreu.
+- A comparação GitHub antes da mudança de base confirmou apenas cinco arquivos GMD no diff, sem tocar dependências, App P0, Ciclos ou site.
+- O antigo CI do PR #68 falhou na importação do tipo `SiteLanguage` da main, ANTES da execução desses testes, não por falha comprovada do GMD.
+- **Gates desta base provisória ainda pendentes de execução:** typecheck real, Vitest do novo componente, lint, E2E e scans no novo SHA. Dependency Audit segue um bloqueio separado sob PRs #61/#63.
+- **Antes de integrar:** resolver PR #69 mediante QA e autorização, retargetar PR #68 novamente à main, revisar SHA/locks e repetir QA. Não mesclar PR #68 na branch provisória.
