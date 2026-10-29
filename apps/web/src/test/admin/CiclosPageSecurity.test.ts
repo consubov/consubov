@@ -94,4 +94,14 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain("Ciclo reaberto, mas o registro de auditoria falhou");
     expect(source).toContain("a auditoria não pôde ser confirmada");
   });
+  it("estabiliza load com useCallback e inclui a dependência no efeito Realtime", () => {
+    expect(source).toContain('const load = useCallback(async () => {');
+    expect(source).toContain('}, [user?.id, load]);');
+  });
+
+  it("usa o tipo gerado de ciclos_auditoria sem any", () => {
+    expect(source).toContain('supabase.from("ciclos_auditoria").insert({');
+    expect(source).not.toContain('"ciclos_auditoria" as any');
+  });
+
 });

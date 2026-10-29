@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default function CiclosPage() {
   const confirmationUserId = useRef<string | null>(null);
   const actionInFlight = useRef(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     const sessionUserId = user?.id ?? null;
     if (!sessionUserId || activeUserId.current !== sessionUserId) return;
     const version = ++requestVersion.current;
@@ -70,7 +70,7 @@ export default function CiclosPage() {
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }
+  }, [user?.id]);
 
   useEffect(() => {
     activeUserId.current = user?.id ?? null;
@@ -93,7 +93,7 @@ export default function CiclosPage() {
       activeUserId.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, load]);
 
   // Dados de outro usuário nunca são exibidos durante uma troca de sessão.
   const visibleCiclos = user?.id && loadedForUser === user.id ? ciclos : [];
@@ -105,7 +105,7 @@ export default function CiclosPage() {
   }, [fazendas]);
 
   async function logAuditoria(ciclo: Ciclo, acao: string) {
-    const { error } = await supabase.from("ciclos_auditoria" as any).insert({
+    const { error } = await supabase.from("ciclos_auditoria").insert({
       ciclo_id: ciclo.id,
       fazenda_id: ciclo.fazenda_id,
       acao,
