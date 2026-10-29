@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { RotateCcw, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { administradorAtivoParaReabertura } from "@/lib/ciclosAuthorization";
 
 interface Ciclo {
   id: string;
@@ -137,6 +138,12 @@ export default function CiclosPage() {
       const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
       if (sessionError || sessionData?.user?.id !== user.id || activeUserId.current !== user.id) {
         toast.error("Sessão não confirmada. Entre novamente antes de reabrir o ciclo.");
+        return;
+      }
+      // Role em cache nao e prova de autorizacao; revalidar no banco antes do UPDATE.
+      const administradorAtivo = await administradorAtivoParaReabertura(user.id);
+      if (!administradorAtivo || activeUserId.current !== user.id) {
+        toast.error("Permissao administrativa nao confirmada. Tente novamente apos entrar no sistema.");
         return;
       }
       const { data, error } = await supabase.from("ciclos")

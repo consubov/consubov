@@ -99,6 +99,15 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain('}, [user?.id, load]);');
   });
 
+  it("revalida a permissao administrativa antes do UPDATE de ciclo", () => {
+    const authIndex = source.indexOf("await supabase.auth.getUser()");
+    const adminIndex = source.indexOf("await administradorAtivoParaReabertura(user.id)");
+    const updateIndex = source.indexOf('.update({ fechado: false, fechado_em: null })');
+    expect(adminIndex).toBeGreaterThan(authIndex);
+    expect(updateIndex).toBeGreaterThan(adminIndex);
+    expect(source).toContain("if (!administradorAtivo || activeUserId.current !== user.id)");
+  });
+
   it("usa o tipo gerado de ciclos_auditoria sem any", () => {
     expect(source).toContain('supabase.from("ciclos_auditoria").insert({');
     expect(source).not.toContain('"ciclos_auditoria" as any');
