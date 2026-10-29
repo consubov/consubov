@@ -56,8 +56,8 @@ export default function PecuaristaHistoricoPage() {
     try {
       const url = await gerarPdfPesagemPecuaristaHistorico(item.rawId, item.categoria);
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, pdfUrl: url } : i)));
-      toast.success("PDF gerado");
-      void downloadPdfFromUrl(url, `pesagem-${item.rawId}.pdf`);
+      await downloadPdfFromUrl(url, `pesagem-${item.rawId}.pdf`, { allowRemoteFallback: false });
+      toast.success("PDF gerado; download iniciado");
     } catch (e: any) {
       toast.error("Erro ao gerar PDF: " + (e?.message ?? ""));
     }

@@ -1,3 +1,4 @@
+import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,7 +211,7 @@ export default function SyncVetManejoExecucaoPage() {
           categoria: null,
           diagnostico: r.resultado,
         }));
-        const blob = await gerarManejoPDF({
+        const blob = await withReportExportDeadline(gerarManejoPDF({
           tipo,
           data: manejo.data_prevista,
           empresa: empresaNome,
@@ -221,13 +222,8 @@ export default function SyncVetManejoExecucaoPage() {
           semen: semenNome || null,
           observacoes: obsFinais || null,
           animais: pdfAnimais,
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `manejo-${tipo}-${manejo.data_prevista}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+        }), "PDF do manejo", Date.now() + 60_000, 60_000);
+        downloadGeneratedPdf(blob, `manejo-${tipo}-${manejo.data_prevista}.pdf`);
       }
 
       toast.success("Manejo finalizado");

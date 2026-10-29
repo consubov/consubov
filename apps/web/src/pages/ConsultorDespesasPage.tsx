@@ -1,3 +1,4 @@
+import { forEachLimited, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -201,20 +202,25 @@ export default function ConsultorDespesasPage() {
       const valor_total = pendentes.reduce((s, d) => s + Number(d.valor), 0);
 
       // Public URLs for the PDF (create signed URLs then fetch)
-      const items = await Promise.all(pendentes.map(async (d) => {
-        const path = extractPath(d.foto_cupom_url) || d.foto_cupom_url;
-        const { data: signed } = await supabase.storage.from("despesas-consultor-fotos").createSignedUrl(path, 3600);
-        return { data_despesa: d.data_despesa, valor: Number(d.valor), foto_cupom_url: signed?.signedUrl ?? "" };
-      }));
+      const items: { data_despesa: string; valor: number; foto_cupom_url: string }[] = new Array(pendentes.length);
+      const deadline = Date.now() + 120_000;
+      await forEachLimited(pendentes.map((d, index) => ({ d, index })), 4, async ({ d, index }) => {
+        const filePath = extractPath(d.foto_cupom_url) || d.foto_cupom_url;
+        const { data: signed } = await withReportExportDeadline(
+          supabase.storage.from("despesas-consultor-fotos").createSignedUrl(filePath, 3600),
+          "Assinatura da imagem do cupom", deadline,
+        );
+        items[index] = { data_despesa: d.data_despesa, valor: Number(d.valor), foto_cupom_url: signed?.signedUrl ?? "" };
+      });
 
-      const blob = await gerarDespesasPdf({
+      const blob = await withReportExportDeadline(gerarDespesasPdf({
         consultor_nome: consultorNome,
         data_inicio: genIni,
         data_fim: genFim,
         tipo_periodo: genTipo,
         despesas: items,
         valor_total,
-      });
+      }), "Geração do PDF de despesas", deadline, 60_000);
 
       const pdfPath = `${consultorId}/relatorios/${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from("relatorios").upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
