@@ -18,8 +18,8 @@ describe("Identificadores", () => {
       expect(() => createVisitaId("")).toThrow("Visita id must be non-empty and at most 128 characters.");
       try {
         createVisitaId("");
-      } catch (e: any) {
-        expect(e.codigo).toBe("VISITA_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("VISITA_ID_INVALIDO");
       }
     });
 
@@ -27,8 +27,8 @@ describe("Identificadores", () => {
       expect(() => createVisitaId("   ")).toThrow(VisitaDominioError);
       try {
         createVisitaId("   ");
-      } catch (e: any) {
-        expect(e.codigo).toBe("VISITA_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("VISITA_ID_INVALIDO");
       }
     });
 
@@ -37,8 +37,8 @@ describe("Identificadores", () => {
       expect(() => createVisitaId(longId)).toThrow(VisitaDominioError);
       try {
         createVisitaId(longId);
-      } catch (e: any) {
-        expect(e.codigo).toBe("VISITA_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("VISITA_ID_INVALIDO");
       }
     });
 
@@ -63,8 +63,8 @@ describe("Identificadores", () => {
       expect(() => createAssinanteId("")).toThrow("Assinante id must be non-empty and at most 128 characters.");
       try {
         createAssinanteId("");
-      } catch (e: any) {
-        expect(e.codigo).toBe("ASSINANTE_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("ASSINANTE_ID_INVALIDO");
       }
     });
 
@@ -72,8 +72,8 @@ describe("Identificadores", () => {
       expect(() => createAssinanteId("   ")).toThrow(VisitaDominioError);
       try {
         createAssinanteId("   ");
-      } catch (e: any) {
-        expect(e.codigo).toBe("ASSINANTE_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("ASSINANTE_ID_INVALIDO");
       }
     });
 
@@ -82,8 +82,8 @@ describe("Identificadores", () => {
       expect(() => createAssinanteId(longId)).toThrow(VisitaDominioError);
       try {
         createAssinanteId(longId);
-      } catch (e: any) {
-        expect(e.codigo).toBe("ASSINANTE_ID_INVALIDO");
+      } catch (e) {
+        expect((e as VisitaDominioError).codigo).toBe("ASSINANTE_ID_INVALIDO");
       }
     });
 
