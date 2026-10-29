@@ -25,6 +25,8 @@ import {
   markAppInstalled,
 } from "@/lib/appSurface";
 import { applyPwaProfile } from "@/lib/pwaManifest";
+import { useSiteLanguage } from "@/hooks/useSiteLanguage";
+import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -53,6 +55,10 @@ export default function BaixarAppPage() {
   const [showManualHint, setShowManualHint] = useState(false);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
+  const isSiteBuild = import.meta.env.VITE_SURFACE_MODE === "site";
+  const { language, setLanguage } = useSiteLanguage();
+  const isEnglishSite = isSiteBuild && language === "en-US";
+  const copy = (pt: string, en: string) => isEnglishSite ? en : pt;
   const externalAppOrigin = (
     (import.meta.env.VITE_APP_URL as string | undefined) ?? ""
   )
@@ -61,9 +67,9 @@ export default function BaixarAppPage() {
 
   useEffect(() => {
     applyPwaProfile(window.location.pathname);
-    document.title = isRelatto
-      ? "Baixar App Relatto — Aplicativo Oficial"
-      : "Baixar App Consubov — Aplicativo Oficial";
+    document.title = isEnglishSite
+      ? `Download ${isRelatto ? "Relatto" : "Consubov"} App — Official App`
+      : isRelatto ? "Baixar App Relatto — Aplicativo Oficial" : "Baixar App Consubov — Aplicativo Oficial";
 
     // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
     if (isStandaloneApp()) {
@@ -137,7 +143,7 @@ export default function BaixarAppPage() {
         /* ignore */
       }
     };
-  }, [brandId, isRelatto, navigate]);
+  }, [brandId, isRelatto, navigate, isEnglishSite]);
 
   const handleInstallClick = async () => {
     // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
@@ -198,8 +204,8 @@ export default function BaixarAppPage() {
 
   const brandName = isRelatto ? "Relatto" : "Consubov";
   const brandSubtitle = isRelatto
-    ? "Aplicativo oficial de relatórios técnicos de campo"
-    : "Aplicativo oficial de inteligência nutricional e gestão pecuária";
+    ? copy("Aplicativo oficial de relatórios técnicos de campo", "Official app for technical field reports")
+    : copy("Aplicativo oficial de inteligência nutricional e gestão pecuária", "Official app for cattle nutrition intelligence and livestock management");
 
   return (
     <div
@@ -217,7 +223,7 @@ export default function BaixarAppPage() {
           background: "rgba(5,7,10,0.92)",
         }}
       >
-        <div className="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg overflow-hidden shrink-0"
@@ -236,7 +242,7 @@ export default function BaixarAppPage() {
               <span className="font-extrabold tracking-widest text-sm uppercase">
                 {brandName}
               </span>
-              <span
+              {!isSiteBuild && <span
                 className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
                 style={{
                   background: "rgba(34,255,136,0.14)",
@@ -245,10 +251,12 @@ export default function BaixarAppPage() {
                 }}
               >
                 App v{APP_VERSION}
-              </span>
+              </span>}
             </div>
           </div>
 
+          <div className="flex items-center gap-1.5">
+          {isSiteBuild && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
           {surfaceMode !== "app" && (
             <Link
               to={isRelatto ? "/relatto" : "/"}
@@ -259,9 +267,10 @@ export default function BaixarAppPage() {
               }}
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Voltar ao site
+              {copy("Voltar ao site", "Back to website")}
             </Link>
           )}
+          </div>
         </div>
       </header>
 
@@ -286,7 +295,7 @@ export default function BaixarAppPage() {
               >
                 <img
                   src={isRelatto ? relattoLogo.url : logoConsubov}
-                  alt={`Ícone do App ${brandName}`}
+                  alt={copy(`Ícone do App ${brandName}`, `${brandName} App icon`)}
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -301,14 +310,13 @@ export default function BaixarAppPage() {
                   }}
                 >
                   <Smartphone className="w-3.5 h-3.5" />
-                  Aplicativo Nativo para o Seu Dispositivo
+                  {copy("Aplicativo Nativo para o Seu Dispositivo", "App for Your Device")}
                 </span>
                 <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-                  Baixar App {brandName}
+                  {copy("Baixar App", "Download App")} {brandName}
                 </h1>
                 <p className="text-sm sm:text-base text-[#C4DDD0] leading-relaxed">
-                  {brandSubtitle}. Instale no seu aparelho e acesse diretamente
-                  pelo ícone na tela inicial.
+                  {brandSubtitle}. {copy("Instale no seu aparelho e acesse diretamente pelo ícone na tela inicial.", "Install it on your device and launch it from the home-screen icon.")}
                 </p>
               </div>
             </div>
@@ -329,15 +337,14 @@ export default function BaixarAppPage() {
                   style={{ color: "#22FF88" }}
                 />
                 <p className="font-extrabold text-base sm:text-lg text-white">
-                  App {brandName} já está instalado neste dispositivo
+                  App {brandName} {copy("já está instalado neste dispositivo", "is already installed on this device")}
                 </p>
                 <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed max-w-lg mx-auto">
-                  Identificamos que o <strong>App {brandName}</strong> já foi
-                  instalado neste aparelho. Para evitar duplicidade, uma nova
-                  instalação foi bloqueada. Feche esta aba do navegador e abra o
-                  aplicativo diretamente pelo{" "}
-                  <strong>ícone {brandName}</strong> na tela inicial do seu
-                  dispositivo.
+                  {isEnglishSite ? (
+                    <>The <strong>{brandName} App</strong> is already installed. To avoid duplicates, installation is disabled here. Close this browser tab and launch the app using the <strong>{brandName} icon</strong> on your home screen.</>
+                  ) : (
+                    <>Identificamos que o <strong>App {brandName}</strong> já foi instalado neste aparelho. Para evitar duplicidade, uma nova instalação foi bloqueada. Feche esta aba do navegador e abra o aplicativo diretamente pelo <strong>ícone {brandName}</strong> na tela inicial do seu dispositivo.</>
+                  )}
                 </p>
                 <div className="pt-2">
                   <button
@@ -345,8 +352,7 @@ export default function BaixarAppPage() {
                     onClick={handleResetInstallMark}
                     className="text-[11px] underline text-[#9BB8A8] hover:text-white transition cursor-pointer"
                   >
-                    Desinstalou o ícone do aparelho e precisa instalar
-                    novamente? Liberar instalação
+                    {copy("Desinstalou o ícone do aparelho e precisa instalar novamente? Liberar instalação", "Removed the app icon and need to install again? Enable installation")}
                   </button>
                 </div>
               </div>
@@ -363,7 +369,7 @@ export default function BaixarAppPage() {
                   }}
                 >
                   <Download className="w-5 h-5" />
-                  Baixar e Instalar App {brandName}
+                  {copy("Baixar e Instalar App", "Download and Install")} {brandName}
                 </button>
 
                 {showManualHint && (
@@ -377,14 +383,14 @@ export default function BaixarAppPage() {
                     role="status"
                   >
                     <p className="font-bold text-[#22FF88]">
-                      Confirme a instalação no seu navegador:
+                      {copy("Confirme a instalação no seu navegador:", "Confirm the installation in your browser:")}
                     </p>
                     <p className="text-[#E6F5EC] leading-relaxed">
                       {platform === "ios"
-                        ? 'No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".'
+                        ? copy('No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".', 'On iPhone or iPad, tap Share in Safari and choose Add to Home Screen.')
                         : platform === "android"
-                          ? 'No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".'
-                          : 'No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".'}
+                          ? copy('No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".', 'On Android, confirm the Install app prompt, or open the browser menu (⋮) and choose Install app.')
+                          : copy('No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".', 'On desktop, click the install icon in the address bar, or open the browser menu (⋮) and choose Install app.')}
                     </p>
                     <button
                       type="button"
@@ -396,7 +402,7 @@ export default function BaixarAppPage() {
                         color: "#FFFFFF",
                       }}
                     >
-                      Já concluí a instalação — Ir para Login
+                      {copy("Já concluí a instalação — Ir para Login", "Installation complete — Go to Login")}
                     </button>
                   </div>
                 )}
@@ -416,10 +422,11 @@ export default function BaixarAppPage() {
                 style={{ color: "#22FF88" }}
               />
               <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed">
-                <strong>Acesso exclusivo pelo ícone do App:</strong> Para sua
-                segurança e funcionamento 100% offline no campo, o sistema não é
-                utilizado dentro da aba do navegador. Após instalar, abra sempre
-                pelo <strong>ícone do App {brandName}</strong> no seu aparelho.
+                {isEnglishSite ? (
+                  <><strong>Use the App icon to sign in:</strong> For secure, fully offline field work, use the installed app rather than a browser tab. After installation, always launch it using the <strong>{brandName} App icon</strong>.</>
+                ) : (
+                  <><strong>Acesso exclusivo pelo ícone do App:</strong> Para sua segurança e funcionamento 100% offline no campo, o sistema não é utilizado dentro da aba do navegador. Após instalar, abra sempre pelo <strong>ícone do App {brandName}</strong> no seu aparelho.</>
+                )}
               </p>
             </div>
 
@@ -427,10 +434,10 @@ export default function BaixarAppPage() {
             <div id="instrucoes-instalacao" className="space-y-4 pt-2">
               <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-white">
                 {platform === "ios"
-                  ? "Como instalar no seu iPhone ou iPad:"
+                  ? copy("Como instalar no seu iPhone ou iPad:", "How to install on iPhone or iPad:")
                   : platform === "android"
-                    ? "Como instalar no seu celular Android:"
-                    : "Como instalar e abrir o App no seu dispositivo:"}
+                    ? copy("Como instalar no seu celular Android:", "How to install on Android:")
+                    : copy("Como instalar e abrir o App no seu dispositivo:", "How to install and open the App:")}
               </h2>
 
               {platform === "ios" ? (
@@ -447,9 +454,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>1.</strong> Toque no botão{" "}
-                      <strong>Compartilhar</strong> na barra do navegador do seu
-                      iPhone.
+                      <strong>1.</strong>{" "}
+                      {copy("Toque no botão Compartilhar na barra do navegador do seu iPhone.", "Tap Share in your iPhone browser toolbar.")}
                     </span>
                   </li>
                   <li
@@ -464,8 +470,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>2.</strong> Role as opções e toque em{" "}
-                      <strong>&ldquo;Adicionar à Tela de Início&rdquo;</strong>.
+                      <strong>2.</strong>{" "}
+                      {copy('Role as opções e toque em "Adicionar à Tela de Início".', 'Scroll through the options and tap "Add to Home Screen".')}
                     </span>
                   </li>
                   <li
@@ -480,10 +486,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>3.</strong> Confirme em{" "}
-                      <strong>Adicionar</strong> e abra o{" "}
-                      <strong>App {brandName}</strong> pelo ícone criado na tela
-                      inicial do seu aparelho.
+                      <strong>3.</strong>{" "}
+                      {copy(`Confirme em Adicionar e abra o App ${brandName} pelo ícone criado na tela inicial do seu aparelho.`, `Tap Add, then open ${brandName} from its new home-screen icon.`)}
                     </span>
                   </li>
                 </ol>
@@ -501,12 +505,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>1.</strong> Clique no botão verde{" "}
-                      <strong>
-                        &ldquo;Baixar e Instalar App {brandName}&rdquo;
-                      </strong>{" "}
-                      acima (ou no menu do navegador &rarr;{" "}
-                      <strong>&ldquo;Instalar aplicativo&rdquo;</strong>).
+                      <strong>1.</strong>{" "}
+                      {copy(`Clique no botão verde Baixar e Instalar App ${brandName} acima, ou use Instalar aplicativo no menu do navegador.`, `Click the green Download and Install ${brandName} button, or choose Install app in the browser menu.`)}
                     </span>
                   </li>
                   <li
@@ -521,9 +521,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>2.</strong> O ícone oficial do{" "}
-                      <strong>App {brandName}</strong> será adicionado à tela
-                      inicial do seu dispositivo.
+                      <strong>2.</strong>{" "}
+                      {copy(`O ícone oficial do App ${brandName} será adicionado à tela inicial do seu dispositivo.`, `The official ${brandName} App icon will be added to your home screen.`)}
                     </span>
                   </li>
                   <li
@@ -538,9 +537,8 @@ export default function BaixarAppPage() {
                       style={{ color: "#22FF88" }}
                     />
                     <span>
-                      <strong>3.</strong> Assim que instalado, o{" "}
-                      <strong>App {brandName}</strong> inicia direto na tela de{" "}
-                      <strong>Login</strong>.
+                      <strong>3.</strong>{" "}
+                      {copy(`Assim que instalado, o App ${brandName} inicia direto na tela de Login.`, `Once installed, the ${brandName} App opens directly to the login screen.`)}
                     </span>
                   </li>
                 </ol>
@@ -560,7 +558,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>100% Offline no campo</span>
+                <span>{copy("100% Offline no campo", "100% Offline in the Field")}</span>
               </div>
               <div
                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
@@ -573,7 +571,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>Tela cheia nativa</span>
+                <span>{copy("Tela cheia nativa", "Full-Screen App")}</span>
               </div>
               <div
                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
@@ -586,7 +584,7 @@ export default function BaixarAppPage() {
                   className="w-4 h-4 shrink-0"
                   style={{ color: "#22FF88" }}
                 />
-                <span>Sincronização segura</span>
+                <span>{copy("Sincronização segura", "Secure Sync")}</span>
               </div>
             </div>
           </div>
@@ -597,7 +595,7 @@ export default function BaixarAppPage() {
         className="w-full py-6 px-5 text-center text-xs text-[#9BB8A8] border-t"
         style={{ borderColor: "rgba(34,255,136,0.12)" }}
       >
-        © 2026 {brandName} • Aplicativo Oficial v{APP_VERSION}
+        © 2026 {brandName} • {copy("Aplicativo Oficial", "Official App")}{!isSiteBuild && surfaceMode === "app" ? ` v${APP_VERSION}` : ""}
       </footer>
     </div>
   );

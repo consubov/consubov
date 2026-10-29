@@ -1,0 +1,661 @@
+diff --git a/apps/web/src/lib/appSurface.ts b/apps/web/src/lib/appSurface.ts
+index f39b7ab3..952c4c15 100644
+--- a/apps/web/src/lib/appSurface.ts
++++ b/apps/web/src/lib/appSurface.ts
+@@ -116,6 +116,19 @@ export function clearAppInstalledMark(brand: AppBrandId = "consubov"): void {
+   }
+ }
+ 
++/** A real app window, not a URL flag or browser session remembered for QA. */
++export function isObservedInstalledWindow(): boolean {
++  if (typeof window === "undefined") return false;
++  try {
++    if (typeof window.matchMedia === "function" && (
++      window.matchMedia("(display-mode: standalone)").matches ||
++      window.matchMedia("(display-mode: window-controls-overlay)").matches
++    )) return true;
++  } catch { /* browser does not support display-mode queries */ }
++  if ((window.navigator as NavigatorWithInstalledApps).standalone === true) return true;
++  return typeof document !== "undefined" && document.referrer.startsWith("android-app://");
++}
++
+ export function isAppInstalledOnDevice(brand: AppBrandId = "consubov"): boolean {
+   if (typeof window === "undefined") return false;
+ 
+@@ -137,7 +150,7 @@ export function isAppInstalledOnDevice(brand: AppBrandId = "consubov"): boolean
+     /* ignore */
+   }
+ 
+-  if (isStandaloneApp()) {
++  if (isObservedInstalledWindow()) {
+     markAppInstalled(brand);
+     return true;
+   }
+@@ -157,7 +170,18 @@ export async function detectInstalledAppAsync(
+     const nav = window.navigator as NavigatorWithInstalledApps;
+     if (typeof nav.getInstalledRelatedApps === "function") {
+       const related = await nav.getInstalledRelatedApps();
+-      if (Array.isArray(related) && related.length > 0) {
++      // Only the matching PWA is evidence; another installed brand is not.
++      const sameApp = brand === "relatto"
++        ? Array.isArray(related) && related.length > 0
++        : Array.isArray(related) && related.some((app) => {
++            if (app.platform !== "webapp" || !app.url) return false;
++            try {
++              const manifest = new URL(app.url, window.location.origin);
++              return manifest.origin === window.location.origin &&
++                ["/manifest-consubov-v2.json", "/manifest.json"].includes(manifest.pathname);
++            } catch { return false; }
++          });
++      if (sameApp) {
+         markAppInstalled(brand);
+         return true;
+       }
+@@ -275,7 +299,10 @@ export function isStandaloneApp(probe?: StandaloneProbeInput): boolean {
+     const activeBrand: AppBrandId = isRelattoActiveProfile(search)
+       ? "relatto"
+       : "consubov";
+-    markAppInstalled(activeBrand);
++    // ?standalone=1 and a persisted browser-session flag are not proof of installation.
++    if (activeBrand !== "consubov" || isObservedInstalledWindow()) {
++      markAppInstalled(activeBrand);
++    }
+   }
+ 
+   return detected;
+@@ -304,6 +331,24 @@ export function isRelattoActiveProfile(search = ""): boolean {
+   return false;
+ }
+ 
++/**
++ * Opening the CONSUBOV 2.0 installation link must display the installer,
++ * even when the device is running an installed app window or has an old marker.
++ * Relatto keeps its independent installed-app behavior.
++ */
++export function isConsubovV2DownloadRoute(
++  pathname: string,
++  search: string,
++  surfaceMode: SurfaceMode,
++): boolean {
++  if (surfaceMode !== "app" || pathname.toLowerCase() !== "/baixar") return false;
++  const params = new URLSearchParams(search);
++  return (
++    params.get("app")?.toLowerCase() !== "relatto" &&
++    params.get("pwa")?.toLowerCase() !== "relatto"
++  );
++}
++
+ const PUBLIC_SITE_PREFIXES = ["/", "/index", "/landing", "/relatto", "/baixar"];
+ 
+ function isPublicSitePath(pathname: string): boolean {
+@@ -322,11 +367,12 @@ export function resolveSurfaceRedirect(
+   const standalone = context?.standalone ?? isStandaloneApp({ search });
+   const surfaceMode = context?.surfaceMode ?? getSurfaceMode({ search });
+   const relatto = context?.relattoProfile ?? isRelattoActiveProfile(search);
++  const v2DownloadRoute = isConsubovV2DownloadRoute(normalizedPath, search, surfaceMode);
+ 
+   // 1. Dispositivo abrindo pelo ícone instalado (standalone):
+   // A Landing Page e a tela /baixar nunca devem aparecer dentro do App instalado;
+   // o ícone leva direto para o sistema (/app -> /login se deslogado, ou painel se logado).
+-  if (standalone) {
++  if (standalone && (!v2DownloadRoute || isObservedInstalledWindow())) {
+     if (
+       normalizedPath === "/" ||
+       normalizedPath === "/index" ||
+diff --git a/apps/web/src/lib/installPrompt.ts b/apps/web/src/lib/installPrompt.ts
+new file mode 100644
+index 00000000..892f22f6
+--- /dev/null
++++ b/apps/web/src/lib/installPrompt.ts
+@@ -0,0 +1,16 @@
++/** Capture Chromium's one-time install prompt before lazy-loaded /baixar mounts. */
++export interface AppInstallPromptEvent extends Event {
++  prompt: () => Promise<void>;
++  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
++}
++let pending: AppInstallPromptEvent | null = null;
++if (typeof window !== "undefined") {
++  window.addEventListener("beforeinstallprompt", (event: Event) => {
++    event.preventDefault();
++    pending = event as AppInstallPromptEvent;
++    window.dispatchEvent(new Event("consubov:install-prompt-ready"));
++  });
++  window.addEventListener("appinstalled", () => { pending = null; });
++}
++export function getPendingInstallPrompt(): AppInstallPromptEvent | null { return pending; }
++export function clearPendingInstallPrompt(): void { pending = null; }
+diff --git a/apps/web/src/pages/BaixarAppPage.tsx b/apps/web/src/pages/BaixarAppPage.tsx
+index d3b48cf2..7b77eef9 100644
+--- a/apps/web/src/pages/BaixarAppPage.tsx
++++ b/apps/web/src/pages/BaixarAppPage.tsx
+@@ -20,17 +20,20 @@ import {
+   detectInstalledAppAsync,
+   getInstalledStorageKey,
+   getSurfaceMode,
++  isConsubovV2DownloadRoute,
+   isAppInstalledOnDevice,
+-  isStandaloneApp,
++  isObservedInstalledWindow,
+   markAppInstalled,
+ } from "@/lib/appSurface";
+ import { applyPwaProfile } from "@/lib/pwaManifest";
+-import { useSiteLanguage } from "@/hooks/useSiteLanguage";
+-import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
++import { getPendingInstallPrompt, clearPendingInstallPrompt } from "@/lib/installPrompt";
+ 
+-interface BeforeInstallPromptEvent extends Event {
+-  prompt: () => Promise<void>;
+-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
++import type { AppInstallPromptEvent as BeforeInstallPromptEvent } from "@/lib/installPrompt";
++
++const USER_CONFIRMED_KEY = "consubov:installation-confirmed-by-user";
++function readUserConfirmation(): boolean {
++  try { return localStorage.getItem(USER_CONFIRMED_KEY) === "1"; }
++  catch { return false; }
+ }
+ 
+ function detectPlatform(): "ios" | "android" | "desktop" {
+@@ -53,12 +56,16 @@ export default function BaixarAppPage() {
+     isAppInstalledOnDevice(brandId),
+   );
+   const [showManualHint, setShowManualHint] = useState(false);
++  const [showOpenGuide, setShowOpenGuide] = useState(false);
++  // Manual confirmation is a UI preference, not OS-verified installation.
++  const [userConfirmed, setUserConfirmed] = useState(readUserConfirmation);
+   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
+   const surfaceMode = getSurfaceMode();
+-  const isSiteBuild = import.meta.env.VITE_SURFACE_MODE === "site";
+-  const { language, setLanguage } = useSiteLanguage();
+-  const isEnglishSite = isSiteBuild && language === "en-US";
+-  const copy = (pt: string, en: string) => isEnglishSite ? en : pt;
++  const v2DownloadRoute = isConsubovV2DownloadRoute(
++    window.location.pathname,
++    window.location.search,
++    surfaceMode,
++  );
+   const externalAppOrigin = (
+     (import.meta.env.VITE_APP_URL as string | undefined) ?? ""
+   )
+@@ -67,17 +74,21 @@ export default function BaixarAppPage() {
+ 
+   useEffect(() => {
+     applyPwaProfile(window.location.pathname);
+-    document.title = isEnglishSite
+-      ? `Download ${isRelatto ? "Relatto" : "Consubov"} App — Official App`
+-      : isRelatto ? "Baixar App Relatto — Aplicativo Oficial" : "Baixar App Consubov — Aplicativo Oficial";
++    document.title = isRelatto
++      ? "Baixar App Relatto — Aplicativo Oficial"
++      : surfaceMode === "app"
++        ? "Baixar App Consubov 2.0 — Aplicativo Oficial"
++        : "Baixar App Consubov — Aplicativo Oficial";
+ 
+-    // Se já estiver rodando dentro do App instalado (standalone), inicia direto na tela de Login
+-    if (isStandaloneApp()) {
++    // A URL explícita da nova versão sempre mostra primeiro a instalação.
++    // As demais rotas e outros apps preservam a navegação normal pelo ícone.
++    if (isObservedInstalledWindow()) {
+       markAppInstalled(brandId);
+-      navigate("/login", { replace: true });
++      navigate(isRelatto ? "/login" : "/app", { replace: true });
+       return;
+     }
+ 
++    // Consultar evidência real e preferência explícita também em /baixar do App.
+     setInstalled(isAppInstalledOnDevice(brandId));
+     void detectInstalledAppAsync(brandId).then((alreadyInstalled) => {
+       if (alreadyInstalled) {
+@@ -86,27 +97,40 @@ export default function BaixarAppPage() {
+       }
+     });
+ 
++    // O evento pode chegar antes da montagem desta rota lazy-loaded.
++    const syncPrompt = () => {
++      if ((!isRelatto && readUserConfirmation()) || isAppInstalledOnDevice(brandId)) return;
++      const pending = getPendingInstallPrompt();
++      if (pending) setDeferredPrompt(pending);
++    };
++    syncPrompt();
++    window.addEventListener("consubov:install-prompt-ready", syncPrompt);
++
+     const onBeforeInstallPrompt = (e: Event) => {
+       e.preventDefault();
+-      if (!isAppInstalledOnDevice(brandId)) {
++      if (!isAppInstalledOnDevice(brandId) && (isRelatto || !readUserConfirmation())) {
+         setDeferredPrompt(e as BeforeInstallPromptEvent);
+       }
+     };
+ 
+     const onAppInstalled = () => {
+       markAppInstalled(brandId);
+-      activateStandaloneSession();
+       setInstalled(true);
+       setDeferredPrompt(null);
+       setShowManualHint(false);
+-      // Assim que o App termina de baixar/instalar, inicia imediatamente na tela de Login
++      clearPendingInstallPrompt();
++      if (!isRelatto) {
++        // A aba normal não vira um aplicativo só por receber appinstalled.
++        setShowOpenGuide(true);
++        return;
++      }
++      activateStandaloneSession();
+       navigate("/login", { replace: true });
+     };
+ 
+     const onStorageChange = (e: StorageEvent) => {
+-      if (e.key === getInstalledStorageKey(brandId)) {
+-        setInstalled(e.newValue === "1");
+-      }
++      if (e.key === getInstalledStorageKey(brandId)) setInstalled(e.newValue === "1");
++      if (e.key === USER_CONFIRMED_KEY) setUserConfirmed(e.newValue === "1");
+     };
+ 
+     let channel: BroadcastChannel | null = null;
+@@ -134,6 +158,7 @@ export default function BaixarAppPage() {
+     window.addEventListener("storage", onStorageChange);
+ 
+     return () => {
++      window.removeEventListener("consubov:install-prompt-ready", syncPrompt);
+       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+       window.removeEventListener("appinstalled", onAppInstalled);
+       window.removeEventListener("storage", onStorageChange);
+@@ -143,11 +168,11 @@ export default function BaixarAppPage() {
+         /* ignore */
+       }
+     };
+-  }, [brandId, isRelatto, navigate, isEnglishSite]);
++  }, [brandId, isRelatto, navigate, surfaceMode, v2DownloadRoute]);
+ 
+   const handleInstallClick = async () => {
+-    // Bloqueia tentativa de instalar 2 vezes se já estiver instalado neste dispositivo
+-    if (installed || isAppInstalledOnDevice(brandId)) {
++    // Só o fluxo legado bloqueia segunda instalação; 2.0 tem origem própria.
++    if (installed || (!isRelatto && userConfirmed) || isAppInstalledOnDevice(brandId)) {
+       setInstalled(true);
+       setShowManualHint(false);
+       return;
+@@ -168,7 +193,14 @@ export default function BaixarAppPage() {
+     if (deferredPrompt) {
+       await deferredPrompt.prompt();
+       const choice = await deferredPrompt.userChoice;
++      clearPendingInstallPrompt();
+       if (choice.outcome === "accepted") {
++        if (!isRelatto) {
++          // Não confundir aceitação do prompt com a instalação concluída.
++          // O evento appinstalled confirma a instalação e abre o login.
++          setDeferredPrompt(null);
++          return;
++        }
+         markAppInstalled(brandId);
+         activateStandaloneSession();
+         setInstalled(true);
+@@ -189,6 +221,14 @@ export default function BaixarAppPage() {
+   };
+ 
+   const handleConfirmManualInstall = () => {
++    if (!isRelatto) {
++      // Explicit self-report: save only the CTA preference, NOT app installation proof.
++      try { localStorage.setItem(USER_CONFIRMED_KEY, "1"); } catch { /* disabled */ }
++      setUserConfirmed(true);
++      setShowManualHint(false);
++      setShowOpenGuide(true);
++      return;
++    }
+     markAppInstalled(brandId);
+     activateStandaloneSession();
+     setInstalled(true);
+@@ -198,14 +238,28 @@ export default function BaixarAppPage() {
+ 
+   const handleResetInstallMark = () => {
+     clearAppInstalledMark(brandId);
++    try { localStorage.removeItem(USER_CONFIRMED_KEY); } catch { /* disabled */ }
++    setUserConfirmed(false);
+     setInstalled(false);
++    setShowOpenGuide(false);
+     setShowManualHint(false);
+   };
+ 
+-  const brandName = isRelatto ? "Relatto" : "Consubov";
++  const handleOpenAppClick = () => {
++    if (isObservedInstalledWindow()) {
++      navigate("/app", { replace: true });
++    } else {
++      // No cross-browser API can programmatically foreground an installed PWA.
++      // Do not navigate to /app in a tab: the site's standalone guard redirects back.
++      setShowOpenGuide(true);
++    }
++  };
++
++  const showOpen = !isRelatto && (installed || userConfirmed);
++  const brandName = isRelatto ? "Relatto" : surfaceMode === "app" ? "Consubov 2.0" : "Consubov";
+   const brandSubtitle = isRelatto
+-    ? copy("Aplicativo oficial de relatórios técnicos de campo", "Official app for technical field reports")
+-    : copy("Aplicativo oficial de inteligência nutricional e gestão pecuária", "Official app for cattle nutrition intelligence and livestock management");
++    ? "Aplicativo oficial de relatórios técnicos de campo"
++    : "Aplicativo oficial de inteligência nutricional e gestão pecuária";
+ 
+   return (
+     <div
+@@ -223,7 +277,7 @@ export default function BaixarAppPage() {
+           background: "rgba(5,7,10,0.92)",
+         }}
+       >
+-        <div className="max-w-4xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
++        <div className="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+             <div
+               className="w-9 h-9 rounded-lg overflow-hidden shrink-0"
+@@ -242,7 +296,7 @@ export default function BaixarAppPage() {
+               <span className="font-extrabold tracking-widest text-sm uppercase">
+                 {brandName}
+               </span>
+-              {!isSiteBuild && <span
++              <span
+                 className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold"
+                 style={{
+                   background: "rgba(34,255,136,0.14)",
+@@ -251,12 +305,10 @@ export default function BaixarAppPage() {
+                 }}
+               >
+                 App v{APP_VERSION}
+-              </span>}
++              </span>
+             </div>
+           </div>
+ 
+-          <div className="flex items-center gap-1.5">
+-          {isSiteBuild && <SiteLanguageSwitch language={language} onChange={setLanguage} />}
+           {surfaceMode !== "app" && (
+             <Link
+               to={isRelatto ? "/relatto" : "/"}
+@@ -267,10 +319,9 @@ export default function BaixarAppPage() {
+               }}
+             >
+               <ArrowLeft className="w-3.5 h-3.5" />
+-              {copy("Voltar ao site", "Back to website")}
++              Voltar ao site
+             </Link>
+           )}
+-          </div>
+         </div>
+       </header>
+ 
+@@ -295,7 +346,7 @@ export default function BaixarAppPage() {
+               >
+                 <img
+                   src={isRelatto ? relattoLogo.url : logoConsubov}
+-                  alt={copy(`Ícone do App ${brandName}`, `${brandName} App icon`)}
++                  alt={`Ícone do App ${brandName}`}
+                   className="w-full h-full object-contain"
+                 />
+               </div>
+@@ -310,19 +361,42 @@ export default function BaixarAppPage() {
+                   }}
+                 >
+                   <Smartphone className="w-3.5 h-3.5" />
+-                  {copy("Aplicativo Nativo para o Seu Dispositivo", "App for Your Device")}
++                  Aplicativo para o Seu Dispositivo
+                 </span>
+                 <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+-                  {copy("Baixar App", "Download App")} {brandName}
++                  {showOpen ? "Abrir App" : "Baixar App"} {brandName}
+                 </h1>
+                 <p className="text-sm sm:text-base text-[#C4DDD0] leading-relaxed">
+-                  {brandSubtitle}. {copy("Instale no seu aparelho e acesse diretamente pelo ícone na tela inicial.", "Install it on your device and launch it from the home-screen icon.")}
++                  {brandSubtitle}. Instale no seu aparelho e acesse diretamente
++                  pelo ícone na tela inicial.
+                 </p>
+               </div>
+             </div>
+ 
+-            {/* Estado: App já instalado (bloqueia 2ª instalação) vs Botão para instalar */}
+-            {installed ? (
++            {/* Estado comprovado pelo navegador ou informado pelo usuário: sem CTA duplicado. */}
++            {showOpen ? (
++              <div className="rounded-xl p-6 text-center space-y-4" style={{
++                background: "rgba(34,255,136,0.14)", border: "1px solid #22FF88",
++              }} role="status" data-testid="app-open-banner">
++                <CheckCircle2 className="w-9 h-9 mx-auto" style={{ color: "#22FF88" }} />
++                <p className="font-extrabold text-white">{installed ? "O aplicativo Consubov foi reconhecido neste navegador." : "Você indicou que já tem o aplicativo Consubov instalado."}</p>
++                <button type="button" onClick={handleOpenAppClick}
++                  className="w-full py-4 px-6 rounded-xl font-extrabold uppercase tracking-wider cursor-pointer"
++                  style={{ background: "#22FF88", color: "#03110A" }}>
++                  Abrir no App {brandName}
++                </button>
++                {showOpenGuide && (
++                  <p className="text-sm text-[#D8EFE2] leading-relaxed" data-testid="app-open-guide">
++                    Abra o ícone <strong>Consubov 2.0</strong> na tela inicial do aparelho.
++                    Este navegador não pode garantir a abertura automática de um App instalado.
++                  </p>
++                )}
++                <button type="button" onClick={handleResetInstallMark}
++                  className="text-xs underline text-[#9BB8A8] hover:text-white">
++                  Não tenho mais o aplicativo — instalar novamente
++                </button>
++              </div>
++            ) : installed && !v2DownloadRoute ? (
+               <div
+                 className="rounded-xl p-6 text-center space-y-3"
+                 style={{
+@@ -337,14 +411,15 @@ export default function BaixarAppPage() {
+                   style={{ color: "#22FF88" }}
+                 />
+                 <p className="font-extrabold text-base sm:text-lg text-white">
+-                  App {brandName} {copy("já está instalado neste dispositivo", "is already installed on this device")}
++                  App {brandName} já está instalado neste dispositivo
+                 </p>
+                 <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed max-w-lg mx-auto">
+-                  {isEnglishSite ? (
+-                    <>The <strong>{brandName} App</strong> is already installed. To avoid duplicates, installation is disabled here. Close this browser tab and launch the app using the <strong>{brandName} icon</strong> on your home screen.</>
+-                  ) : (
+-                    <>Identificamos que o <strong>App {brandName}</strong> já foi instalado neste aparelho. Para evitar duplicidade, uma nova instalação foi bloqueada. Feche esta aba do navegador e abra o aplicativo diretamente pelo <strong>ícone {brandName}</strong> na tela inicial do seu dispositivo.</>
+-                  )}
++                  Identificamos que o <strong>App {brandName}</strong> já foi
++                  instalado neste aparelho. Para evitar duplicidade, uma nova
++                  instalação foi bloqueada. Feche esta aba do navegador e abra o
++                  aplicativo diretamente pelo{" "}
++                  <strong>ícone {brandName}</strong> na tela inicial do seu
++                  dispositivo.
+                 </p>
+                 <div className="pt-2">
+                   <button
+@@ -352,7 +427,8 @@ export default function BaixarAppPage() {
+                     onClick={handleResetInstallMark}
+                     className="text-[11px] underline text-[#9BB8A8] hover:text-white transition cursor-pointer"
+                   >
+-                    {copy("Desinstalou o ícone do aparelho e precisa instalar novamente? Liberar instalação", "Removed the app icon and need to install again? Enable installation")}
++                    Desinstalou o ícone do aparelho e precisa instalar
++                    novamente? Liberar instalação
+                   </button>
+                 </div>
+               </div>
+@@ -369,9 +445,19 @@ export default function BaixarAppPage() {
+                   }}
+                 >
+                   <Download className="w-5 h-5" />
+-                  {copy("Baixar e Instalar App", "Download and Install")} {brandName}
++                  Baixar e Instalar App {brandName}
+                 </button>
+ 
++                {v2DownloadRoute && (
++                  <button type="button" onClick={() => {
++                    try { localStorage.setItem(USER_CONFIRMED_KEY, "1"); } catch { /* disabled */ }
++                    setUserConfirmed(true);
++                    setShowOpenGuide(true);
++                  }} className="w-full text-xs text-[#D8EFE2] underline underline-offset-4">
++                    Já tenho o App instalado — mostrar como abrir
++                  </button>
++                )}
++
+                 {showManualHint && (
+                   <div
+                     className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
+@@ -383,14 +469,14 @@ export default function BaixarAppPage() {
+                     role="status"
+                   >
+                     <p className="font-bold text-[#22FF88]">
+-                      {copy("Confirme a instalação no seu navegador:", "Confirm the installation in your browser:")}
++                      Confirme a instalação no seu navegador:
+                     </p>
+                     <p className="text-[#E6F5EC] leading-relaxed">
+                       {platform === "ios"
+-                        ? copy('No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".', 'On iPhone or iPad, tap Share in Safari and choose Add to Home Screen.')
++                        ? 'No iPhone/iPad, toque no ícone "Compartilhar" na barra do Safari e selecione "Adicionar à Tela de Início".'
+                         : platform === "android"
+-                          ? copy('No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".', 'On Android, confirm the Install app prompt, or open the browser menu (⋮) and choose Install app.')
+-                          : copy('No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".', 'On desktop, click the install icon in the address bar, or open the browser menu (⋮) and choose Install app.')}
++                          ? 'No Android, confirme no aviso "Instalar aplicativo" ou toque nos três pontos (⋮) no topo do navegador e selecione "Instalar aplicativo".'
++                          : 'No computador, clique no ícone de instalação (computador com seta para baixo) no canto direito da barra de endereço do navegador ou no menu (⋮) -> "Instalar aplicativo".'}
+                     </p>
+                     <button
+                       type="button"
+@@ -402,7 +488,7 @@ export default function BaixarAppPage() {
+                         color: "#FFFFFF",
+                       }}
+                     >
+-                      {copy("Já concluí a instalação — Ir para Login", "Installation complete — Go to Login")}
++                      {v2DownloadRoute ? "Já adicionei à Tela de Início" : "Já concluí a instalação — Ir para Login"}
+                     </button>
+                   </div>
+                 )}
+@@ -422,11 +508,10 @@ export default function BaixarAppPage() {
+                 style={{ color: "#22FF88" }}
+               />
+               <p className="text-xs sm:text-sm text-[#D8EFE2] leading-relaxed">
+-                {isEnglishSite ? (
+-                  <><strong>Use the App icon to sign in:</strong> For secure, fully offline field work, use the installed app rather than a browser tab. After installation, always launch it using the <strong>{brandName} App icon</strong>.</>
+-                ) : (
+-                  <><strong>Acesso exclusivo pelo ícone do App:</strong> Para sua segurança e funcionamento 100% offline no campo, o sistema não é utilizado dentro da aba do navegador. Após instalar, abra sempre pelo <strong>ícone do App {brandName}</strong> no seu aparelho.</>
+-                )}
++                <strong>Acesso exclusivo pelo ícone do App:</strong> Para sua
++                segurança e funcionamento 100% offline no campo, o sistema não é
++                utilizado dentro da aba do navegador. Após instalar, abra sempre
++                pelo <strong>ícone do App {brandName}</strong> no seu aparelho.
+               </p>
+             </div>
+ 
+@@ -434,10 +519,10 @@ export default function BaixarAppPage() {
+             <div id="instrucoes-instalacao" className="space-y-4 pt-2">
+               <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-white">
+                 {platform === "ios"
+-                  ? copy("Como instalar no seu iPhone ou iPad:", "How to install on iPhone or iPad:")
++                  ? "Como instalar no seu iPhone ou iPad:"
+                   : platform === "android"
+-                    ? copy("Como instalar no seu celular Android:", "How to install on Android:")
+-                    : copy("Como instalar e abrir o App no seu dispositivo:", "How to install and open the App:")}
++                    ? "Como instalar no seu celular Android:"
++                    : "Como instalar e abrir o App no seu dispositivo:"}
+               </h2>
+ 
+               {platform === "ios" ? (
+@@ -454,8 +539,9 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>1.</strong>{" "}
+-                      {copy("Toque no botão Compartilhar na barra do navegador do seu iPhone.", "Tap Share in your iPhone browser toolbar.")}
++                      <strong>1.</strong> Toque no botão{" "}
++                      <strong>Compartilhar</strong> na barra do navegador do seu
++                      iPhone.
+                     </span>
+                   </li>
+                   <li
+@@ -470,8 +556,8 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>2.</strong>{" "}
+-                      {copy('Role as opções e toque em "Adicionar à Tela de Início".', 'Scroll through the options and tap "Add to Home Screen".')}
++                      <strong>2.</strong> Role as opções e toque em{" "}
++                      <strong>&ldquo;Adicionar à Tela de Início&rdquo;</strong>.
+                     </span>
+                   </li>
+                   <li
+@@ -486,8 +572,10 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>3.</strong>{" "}
+-                      {copy(`Confirme em Adicionar e abra o App ${brandName} pelo ícone criado na tela inicial do seu aparelho.`, `Tap Add, then open ${brandName} from its new home-screen icon.`)}
++                      <strong>3.</strong> Confirme em{" "}
++                      <strong>Adicionar</strong> e abra o{" "}
++                      <strong>App {brandName}</strong> pelo ícone criado na tela
++                      inicial do seu aparelho.
+                     </span>
+                   </li>
+                 </ol>
+@@ -505,8 +593,12 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>1.</strong>{" "}
+-                      {copy(`Clique no botão verde Baixar e Instalar App ${brandName} acima, ou use Instalar aplicativo no menu do navegador.`, `Click the green Download and Install ${brandName} button, or choose Install app in the browser menu.`)}
++                      <strong>1.</strong> Clique no botão verde{" "}
++                      <strong>
++                        &ldquo;Baixar e Instalar App {brandName}&rdquo;
++                      </strong>{" "}
++                      acima (ou no menu do navegador &rarr;{" "}
++                      <strong>&ldquo;Instalar aplicativo&rdquo;</strong>).
+                     </span>
+                   </li>
+                   <li
+@@ -521,8 +613,9 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>2.</strong>{" "}
+-                      {copy(`O ícone oficial do App ${brandName} será adicionado à tela inicial do seu dispositivo.`, `The official ${brandName} App icon will be added to your home screen.`)}
++                      <strong>2.</strong> O ícone oficial do{" "}
++                      <strong>App {brandName}</strong> será adicionado à tela
++                      inicial do seu dispositivo.
+                     </span>
+                   </li>
+                   <li
+@@ -537,8 +630,9 @@ export default function BaixarAppPage() {
+                       style={{ color: "#22FF88" }}
+                     />
+                     <span>
+-                      <strong>3.</strong>{" "}
+-                      {copy(`Assim que instalado, o App ${brandName} inicia direto na tela de Login.`, `Once installed, the ${brandName} App opens directly to the login screen.`)}
++                      <strong>3.</strong> Assim que instalado, o{" "}
++                      <strong>App {brandName}</strong> inicia direto na tela de{" "}
++                      <strong>Login</strong>.
+                     </span>
+                   </li>
+                 </ol>
+@@ -558,7 +652,7 @@ export default function BaixarAppPage() {
+                   className="w-4 h-4 shrink-0"
+                   style={{ color: "#22FF88" }}
+                 />
+-                <span>{copy("100% Offline no campo", "100% Offline in the Field")}</span>
++                <span>100% Offline no campo</span>
+               </div>
+               <div
+                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
+@@ -571,7 +665,7 @@ export default function BaixarAppPage() {
+                   className="w-4 h-4 shrink-0"
+                   style={{ color: "#22FF88" }}
+                 />
+-                <span>{copy("Tela cheia nativa", "Full-Screen App")}</span>
++                <span>Tela cheia nativa</span>
+               </div>
+               <div
+                 className="p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-medium text-[#D8EFE2]"
+@@ -584,7 +678,7 @@ export default function BaixarAppPage() {
+                   className="w-4 h-4 shrink-0"
+                   style={{ color: "#22FF88" }}
+                 />
+-                <span>{copy("Sincronização segura", "Secure Sync")}</span>
++                <span>Sincronização segura</span>
+               </div>
+             </div>
+           </div>
+@@ -595,7 +689,7 @@ export default function BaixarAppPage() {
+         className="w-full py-6 px-5 text-center text-xs text-[#9BB8A8] border-t"
+         style={{ borderColor: "rgba(34,255,136,0.12)" }}
+       >
+-        © 2026 {brandName} • {copy("Aplicativo Oficial", "Official App")}{!isSiteBuild && surfaceMode === "app" ? ` v${APP_VERSION}` : ""}
++        © 2026 {brandName} • Aplicativo Oficial v{APP_VERSION}
+       </footer>
+     </div>
+   );

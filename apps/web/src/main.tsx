@@ -1,4 +1,6 @@
 import { reloadWhenAuthIdle } from "./lib/authIdle";
+import { isStandaloneApp } from "./lib/appSurface";
+import { cleanupSiteServiceWorker, isSiteBrowserSurface } from "./lib/siteUpdatePolicy";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -77,10 +79,15 @@ async function bootstrap() {
     try { sessionStorage.removeItem(CHUNK_RECOVERY_KEY); } catch { /* ignore */ }
   }, 10000);
 
+  // O build de site nao deve iniciar SW do App, mesmo com ?surface=app na URL.
+  const isPublicSite = isSiteBrowserSurface(import.meta.env.VITE_SURFACE_MODE, isStandaloneApp());
+
   // Nada aqui pode impedir a renderização — se falhar, o app abre mesmo assim.
   try {
     applyPwaProfile(window.location.pathname);
-    const didReload = await resetServiceWorkerStateOnFirstLoad();
+    const didReload = isPublicSite
+      ? false
+      : await resetServiceWorkerStateOnFirstLoad();
     if (didReload) return;
   } catch (err) {
     console.warn("Bootstrap pré-render falhou:", err);
@@ -89,7 +96,11 @@ async function bootstrap() {
   render();
 
   try {
-    registerSW();
+    if (isPublicSite) {
+      void cleanupSiteServiceWorker();
+    } else {
+      registerSW();
+    }
   } catch (err) {
     console.warn("registerSW falhou:", err);
   }

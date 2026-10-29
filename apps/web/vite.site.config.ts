@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { writeFileSync } from "node:fs";
 
 const buildTimestamp = Date.now().toString();
 
@@ -19,7 +20,62 @@ export default defineConfig(() => ({
     outDir: "dist-site",
     emptyOutDir: true,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "retire-legacy-service-worker-on-site-only",
+      transformIndexHtml(html) {
+        // The deprecated Apple-specific meta belongs to the installed App build.
+        // Only the public site gets modern metadata and early CSS recovery.
+        return { html: html.replace('<meta name="apple-mobile-web-app-capable" content="yes" />', ""), tags: [{
+          tag: "script",
+          injectTo: "head-prepend" as const,
+          children: `(() => {
+            let retrying = false;
+            window.addEventListener("error", async (event) => {
+              const element = event.target;
+              if (retrying || !(element instanceof HTMLLinkElement) ||
+                  element.rel !== "stylesheet" || !element.href.includes("/assets/")) return;
+              const key = "consubov:site-css-retry-at";
+              const now = Date.now();
+              try {
+                if (now - Number(sessionStorage.getItem(key) || 0) < 60000) return;
+                sessionStorage.setItem(key, String(now));
+              } catch { return; }
+              retrying = true;
+              try {
+                if ("serviceWorker" in navigator) {
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  const origin = location.origin;
+                  await Promise.all(registrations.filter((registration) => {
+                    const script = registration.active?.scriptURL || registration.waiting?.scriptURL || "";
+                    return registration.scope === origin + "/" &&
+                      script.startsWith(origin + "/sw.js");
+                  }).map((registration) => registration.unregister()));
+                }
+              } catch { /* do not block CSS recovery */ }
+              const next = new URL(location.href);
+              next.searchParams.set("__site_asset_retry", String(now));
+              location.replace(next.toString());
+            }, true);
+          })();`,
+        }] };
+      },
+      closeBundle() {
+        // Site and App have different build configs and deployment projects.
+        // Never modify public/sw.js: it powers the installed offline App.
+        // A waiting legacy worker sees changed bytes, activates, then allows
+        // fresh network navigation instead of pinning stale HTML/CSS.
+        // No Cache API, localStorage or IndexedDB records are deleted.
+        const retirementWorker = [
+          'self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));',
+          'self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));',
+          "",
+        ].join("\n");
+        writeFileSync(path.resolve(__dirname, "dist-site/sw.js"), retirementWorker, "utf8");
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -42,16 +42,16 @@ export default tseslint.config(
       "security/detect-possible-timing-attacks": "warn",
     },
   },
-  // This test-only source collector is a reviewed dynamic-FS hotspot. Its plain
+  // Revalidated 2026-10-24: this test-only source collector is a reviewed dynamic-FS hotspot. Its plain
   // root, links, containment and read bounds are audited in the sealed bytes.
   // Any source change or missing/linked file restores the normal warning.
-  ...(auditedArchitectureFile("./src/architecture/layer-rules.ts", "17a05c2a9f243e96765f6d1d7ff6ddfa39a3ea24583b517ab4cf476f4cbd950a") ? [{
+  ...(auditedArchitectureFile("./src/architecture/layer-rules.ts", "51c32d28a954ba816852842c5029fcab0196720d4f3a18cb3f562f91b544cfdc") ? [{
     files: ["src/architecture/layer-rules.ts"],
     rules: { "security/detect-non-literal-fs-filename": "off" },
   }] : []),
-  // Only the exact audited owned-fixture setup/cleanup receives this exception;
+  // Revalidated 2026-10-24: only the exact audited owned-fixture setup/cleanup receives this exception;
   // changed test bytes restore warnings, and all other tests keep the rule.
-  ...(auditedArchitectureFile("./src/architecture/layer-rules.test.ts", "4d61f38d0f3590bc990d5d68426c4042cc341ee2bd523eb73292a38bd31b799c") ? [{
+  ...(auditedArchitectureFile("./src/architecture/layer-rules.test.ts", "37e742b60f4adb1e7ee7e822c9a8a96bd668f517fc60416fbd5390485c254caa") ? [{
     files: ["src/architecture/layer-rules.test.ts"],
     rules: { "security/detect-non-literal-fs-filename": "off" },
   }] : []),
