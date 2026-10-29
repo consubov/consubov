@@ -6,7 +6,7 @@ import {
   getStoredPushEnabledPreference,
   isPushSupported,
   savePushSubscription,
-  VAPID_PUBLIC_KEY,
+  isVapidConfigured,
 } from "@/lib/pushNotifications";
 
 /**
@@ -25,8 +25,8 @@ export function usePushNotifications() {
       return;
     }
 
-    if (!VAPID_PUBLIC_KEY) {
-      console.warn("[Push] VITE_VAPID_PUBLIC_KEY ausente — abortando");
+    if (!isVapidConfigured()) {
+      // Não solicita permissão, não altera inscrição existente e não mostra erro técnico.
       return;
     }
 
