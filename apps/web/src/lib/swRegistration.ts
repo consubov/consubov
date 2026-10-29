@@ -297,6 +297,12 @@ async function activateWaitingServiceWorker(registration: ServiceWorkerRegistrat
     });
     return false;
   }
+  // A validacao acima e assincrona: duas chamadas podem passar juntas pela
+  // primeira guarda. Revalidar antes de enviar SKIP_WAITING para evitar duplicar
+  // a ativacao ou aplicar um worker trocado durante o preflight.
+  if (!userRequestedUpdate || registration.waiting !== worker || activationRequested.has(worker)) {
+    return false;
+  }
   activationRequested.add(worker);
   logSw("Aplicando atualização (SKIP_WAITING)");
   worker.postMessage({ type: "SKIP_WAITING" });

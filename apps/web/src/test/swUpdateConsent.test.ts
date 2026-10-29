@@ -69,6 +69,16 @@ describe("PWA update consent (verified 2.0.0 release)", () => {
     expect(controls.reload).not.toHaveBeenCalled();
   });
 
+  it("issues SKIP_WAITING only once even if async checks race", async () => {
+    const f = await fixture();
+    await f.module.applyPendingUpdateNow("user-click");
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(f.waiting.postMessage).toHaveBeenCalledTimes(1);
+    expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+  });
+
   it("keeps the current controller after a consent timeout", async () => {
     const f = await fixture();
     await f.module.applyPendingUpdateNow("user-click");
