@@ -214,7 +214,7 @@ export default function GerenteGmdPage() {
         assertMutation(result, "Remoção de regras anteriores", apagar.length, apagar);
         ensureFarm();
       }
-      const fazPatch: Record<string, string | number | null> = { gmd_modo: draftModo };
+      const fazPatch: { gmd_modo: Modo; verao_mes_inicio?: number | null; verao_mes_fim?: number | null } = { gmd_modo: draftModo };
       if (draftModo === "geral") {
         fazPatch.verao_mes_inicio = draftVerao.ini;
         fazPatch.verao_mes_fim = draftVerao.fim;
