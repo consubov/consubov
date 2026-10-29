@@ -24,6 +24,12 @@ tasks:
     desc: Local check, build and unit tests with evidence
     cmds: [bash scripts/qa/record.sh check bun run check]
 
+  qa:release-governance:
+    desc: Validate independent application versions and branch names locally
+    cmds:
+      - bash scripts/qa/record.sh release-governance node scripts/qa/check-application-governance.mjs
+      - bash scripts/qa/record.sh release-governance-tests node --test scripts/tests/application-governance.test.mjs
+
   qa:web:unit:
     desc: All Web unit tests with local source evidence
     cmds: [bash scripts/qa/record.sh web-unit bun run --cwd apps/web test]

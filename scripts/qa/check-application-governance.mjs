@@ -11,7 +11,7 @@ export function validate(c,tags=[],releaseApp=""){
  for(const k of Object.keys(c))if(!["apps","sites"].includes(k))e.push("global version not allowed");
  for(const [id,v] of Object.entries(c.apps)){
  if(!/^[a-z][a-z0-9-]*-app$/.test(id))e.push("invalid APP_ID "+id);
- if(v!==null&&!SEMVER.test(String(v)))e.push("invalid app version "+id);
+ if(v!==null&&!SEMVER.test(String(v))){e.push("invalid app version "+id);continue;}
  if(v===null){if(tags.some(t=>t.startsWith(id+"/v")))e.push("unpublished app has release "+id);continue;}
  if(id==="consubov-fazendas-app"&&cmp(v,"2.0.0")<0)e.push("CONSUBOV version regression below 2.0.0");
  const last=tags.filter(t=>t.startsWith(id+"/v")).map(t=>t.slice(id.length+2)).filter(v=>SEMVER.test(v)).sort(cmp).at(-1);
@@ -30,6 +30,16 @@ export function branchErrors(branch,c,legacy=[]){
  if(m[1]==="hotfix"&&!m[3].startsWith("inc-"))e.push("hotfix requires incident");
  return e;
 }
+
+export function checkSource(source,c){
+ const id=source.match(/export\\s+const\\s+APP_ID\\s*=\\s*"([^"]+)"/)?.[1];
+ const version=source.match(/export\\s+const\\s+APP_VERSION\\s*=\\s*"([^"]+)"/)?.[1];
+ const errors=[];
+ if(!id||!Object.hasOwn(c.apps,id))errors.push("unknown app id");
+ if(!version)errors.push("appVersion.ts requires literal SemVer for Vite version.json");
+ else if(id&&version!==c.apps[id])errors.push("app version mismatches registry");
+ return errors;
+}
 export function run(root=ROOT,branchOverride=""){
  const c=JSON.parse(readFileSync(join(root,"config/application-releases.json"),"utf8"));
  const legacy=JSON.parse(readFileSync(join(root,"scripts/qa/legacy-branches.json"),"utf8"));
@@ -39,7 +49,7 @@ export function run(root=ROOT,branchOverride=""){
  const tags=git("tag","--list").split("\n").filter(Boolean);
  const releaseApp=process.argv.includes("--release-app")?process.argv[process.argv.indexOf("--release-app")+1]:"";
  const errors=[...validate(c,tags,releaseApp),...branchErrors(branch,c,legacy)];
- if(!source.includes('applicationReleases.apps[APP_ID]')||!source.includes('"consubov-fazendas-app"'))errors.push("appVersion.ts not linked to per-app catalog");
+ errors.push(...checkSource(source,c));
  return {errors,branch};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

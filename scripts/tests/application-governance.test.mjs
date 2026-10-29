@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {validate,branchErrors,cmp} from "../qa/check-application-governance.mjs";
+import {validate,branchErrors,cmp,checkSource} from "../qa/check-application-governance.mjs";
+import {readFileSync} from "node:fs";
 const c={apps:{"consubov-fazendas-app":"2.0.0","admin-global-app":null,"mais-arrobas-app":null,"syncvet-app":null,"relatto-app":null},sites:["consubov-site","relatto-site"]};
 test("baseline 2.0.0 valid",()=>assert.deepEqual(validate(c),[]));
 test("regression 1.155.0 rejected",()=>assert.match(validate({...c,apps:{...c.apps,"consubov-fazendas-app":"1.155.0"}}).join(","),/regression/));
@@ -18,3 +19,7 @@ test("existing branch accepted",()=>assert.deepEqual(branchErrors("fix/site-old-
 test("bots accepted",()=>assert.deepEqual(branchErrors("dependabot/bun/react-19",c),[]));
 test("unknown scope blocked",()=>assert.match(branchErrors("fix/invented-app/gov-001-fix",c).join(","),/unknown/));
 test("hotfix must be incident",()=>assert.match(branchErrors("hotfix/platform/gov-001-fix",c).join(","),/incident/));
+const source=readFileSync(new URL("../../apps/web/src/lib/appVersion.ts",import.meta.url),"utf8");
+test("appVersion literal matches catalog and Vite reader",()=>{assert.deepEqual(checkSource(source,c),[]);assert.equal(source.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1],"2.0.0")});
+test("app version regression in code rejected",()=>assert.match(checkSource(source.replace('"2.0.0"','"1.155.0"'),c).join(","),/mismatches/));
+test("dynamic app version not supported by Vite reader",()=>assert.match(checkSource(source.replace('APP_VERSION = "2.0.0"','APP_VERSION = registry.apps[APP_ID]'),c).join(","),/literal/));

@@ -1,3 +1,15 @@
+## Aplicativo, versao e rastreabilidade
+
+- APP_ID(s) ou SITE_ID(s):
+- TASK_ID / owner / referencia Obsidian:
+- Branch / SHA base / SHA HEAD / PRs dependentes:
+- Versao vigente por app (site: N/A):
+- Versao candidata (A_DEFINIR; site: N/A):
+- Consumidores compartilhados, QA e rollback:
+- Gate local `task qa:release-governance` com evidencia:
+
+> Sites nao possuem SemVer. Apenas releases autorizados incrementam versoes de apps. Preservar ramos legados e do Dependabot.
+
 ## Objetivo
 
 <!-- Explique o que esta mudanca resolve. -->
