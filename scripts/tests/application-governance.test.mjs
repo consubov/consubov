@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {validate,branchErrors,cmp,checkSource} from "../qa/check-application-governance.mjs";
+import {validate,branchErrors,cmp,checkSource,ensureBuildVersion} from "../qa/check-application-governance.mjs";
 import {readFileSync} from "node:fs";
 const c={apps:{"consubov-fazendas-app":"2.0.0","admin-global-app":null,"mais-arrobas-app":null,"syncvet-app":null,"relatto-app":null},sites:["consubov-site","relatto-site"]};
 test("baseline 2.0.0 valid",()=>assert.deepEqual(validate(c),[]));
@@ -23,3 +23,11 @@ const source=readFileSync(new URL("../../apps/web/src/lib/appVersion.ts",import.
 test("appVersion literal matches catalog and Vite reader",()=>{assert.deepEqual(checkSource(source,c),[]);assert.equal(source.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1],"2.0.0")});
 test("app version regression in code rejected",()=>assert.match(checkSource(source.replace('"2.0.0"','"1.155.0"'),c).join(","),/mismatches/));
 test("dynamic app version not supported by Vite reader",()=>assert.match(checkSource(source.replace('APP_VERSION = "2.0.0"','APP_VERSION = registry.apps[APP_ID]'),c).join(","),/literal/));
+test("Vite build guard accepts published app 2.0.0",()=>assert.equal(ensureBuildVersion(source,c),"2.0.0"));
+test("Vite build guard blocks old 1.155.0 in source",()=>assert.throws(()=>ensureBuildVersion(source.replace('APP_VERSION = "2.0.0"','APP_VERSION = "1.155.0"'),c),/APP_RELEASE_BLOCKED/));
+test("Vite build guard blocks downgrade when both source and registry are reverted",()=>assert.throws(()=>ensureBuildVersion(source.replace('APP_VERSION = "2.0.0"','APP_VERSION = "1.155.0"'),{...c,apps:{...c.apps,"consubov-fazendas-app":"1.155.0"}}),/regression/));
+test("Vite build guard blocks missing source constant",()=>assert.throws(()=>ensureBuildVersion(source.replace('APP_VERSION = "2.0.0"','VERSION = "2.0.0"'),c),/APP_RELEASE_BLOCKED/));
+test("Vite build guard blocks attempt to put SemVer on a site",()=>assert.throws(()=>ensureBuildVersion(source,{...c,sites:[{id:"consubov-site",version:"2.0.0"}]}),/sites may not have version/));
+test("future app release stays independent",()=>assert.equal(ensureBuildVersion(source,{...c,apps:{...c.apps,"syncvet-app":"1.0.0"}}),"2.0.0"));
+const viteConfig=readFileSync(new URL("../../apps/web/vite.config.ts",import.meta.url),"utf8");
+test("Vite prebuild guard runs before bundle and has no fallback",()=>{assert.match(viteConfig,/buildStart\(\)\s*\{\s*validatedAppVersion\s*=\s*readAppVersion\(\)/);assert.match(viteConfig,/ensureBuildVersion\(src, catalog\)/);assert.doesNotMatch(viteConfig,/0\.0\.0/)});

@@ -16,5 +16,9 @@
   "fix/site-without-app-update-20261027",
   "hotfix/app-baixar-install-launch-20261029",
   "hotfix/pdf-export-all-surfaces-vapid-20261029",
-  "hotfix/relatorio-pdf-download-20261029"
+  "hotfix/relatorio-pdf-download-20261029",
+  "hotfix/admin-global-dashboard-prod-20261029",
+  "hotfix/pwa-manifest-static-404-20261029",
+  "fix/app/f12-l34-observacoes-ack-20261029",
+  "fix/site/p0-pwa-popup-manifest-20261029"
 ]

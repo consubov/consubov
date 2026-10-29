@@ -40,6 +40,13 @@ export function checkSource(source,c){
  else if(id&&version!==c.apps[id])errors.push("app version mismatches registry");
  return errors;
 }
+/** Fail closed at Vite build start, even when GitHub Actions are unavailable. */
+export function ensureBuildVersion(source,c,tags=[]){
+ const errors=[...validate(c,tags),...checkSource(source,c)];
+ if(errors.length)throw Error("APP_RELEASE_BLOCKED: "+errors.join("; "));
+ return source.match(/export\s+const\s+APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
+}
+
 export function run(root=ROOT,branchOverride=""){
  const c=JSON.parse(readFileSync(join(root,"config/application-releases.json"),"utf8"));
  const legacy=JSON.parse(readFileSync(join(root,"scripts/qa/legacy-branches.json"),"utf8"));

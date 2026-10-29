@@ -1,3 +1,14 @@
+# CONSUBOV — Release and branch rule (supersedes older instructions below)
+
+- **Mandatory before editing:** consult the Obsidian `02-PROJECTS/CONSUBOV/17-CATALOGO-APLICACOES-E-VERSOES.md` plus `02-PROTOCOLO-AGENTES.md`, current Notion Checklist (coordinator) and actual Git/base SHA. Do not infer the released application version from package.json or a branch name.
+- **CONSUBOV Fazendas released app version is 2.0.0.** `1.155.0` is a legacy regression, **not** the current app version. Never change `APP_VERSION` backwards. Only the authorized release integrator may increment it, with QA evidence and release tag per APP_ID.
+- **Sites have no product SemVer.** Each app has its own version, no global version. Use branch `tipo/app-id-ou-site-id/task-id-descricao`; existing branches are preserved. Record APP_ID/SITE_ID, TASK_ID, QA, owner and SHA in each PR.
+- **Fail closed:** run `node scripts/qa/check-application-governance.mjs --branch <ramo>` and `node --test scripts/tests/application-governance.test.mjs`, then full QA on the real commit. Vite app build validates registry/version at build start; a failed check prohibits release. The compiled `/version.json` must match the app version and actual published SHA. Never bypass checks or invent a release tag.
+- **Critical drift:** `main` is not automatically equal to production. Before merging or deploying, reconcile the actual production SHA, PDF/admin/PWA hotfixes, and consumers. Never deploy old `main` just to correct the version. **No production, Supabase, migration, secret or Vercel actions without explicit authorization.**
+- If an older paragraph below tells an agent to work directly on `main` or use the legacy `1.155.0`, **this more recent rule overrides it**.
+
+---
+
 # Architecture rules
 
 ## Git baseline for human and AI continuity
