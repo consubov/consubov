@@ -1,0 +1,35 @@
+name: INC012 Update Vulnerable Lockfile Once
+on:
+  push:
+    branches: [reconcile/main-consubov-v2-release-floor-20261029]
+    paths:
+      - '.github/workflows/inc012-update-lock-once.yml'
+permissions:
+  contents: write
+jobs:
+  regenerate-lockfile:
+    if: github.ref == 'refs/heads/reconcile/main-consubov-v2-release-floor-20261029' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Regenerate lockfile for pinned patched packages
+        run: |
+          bun install
+          git diff --exit-code -- package.json apps/web/package.json
+      - name: Reject remaining HIGH vulnerabilities
+        run: bun audit --audit-level=high
+      - name: Commit only regenerated lockfile to this branch
+        run: |
+          git add -- bun.lock
+          git diff --cached --name-only | grep -qx 'bun.lock'
+          if ! git diff --cached --quiet; then
+            git -c user.name='CONSUBOV dependency maintenance' -c user.email='actions@users.noreply.github.com' commit -m 'fix(deps): refresh Bun lock for patched DOMPurify, Vite and Zod'
+            git push origin HEAD:refs/heads/reconcile/main-consubov-v2-release-floor-20261029
+          fi
