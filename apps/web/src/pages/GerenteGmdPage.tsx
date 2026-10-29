@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,11 +16,12 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pencil } from "lucide-react";
 import { CATEGORIAS_PASTO } from "@/lib/categoriaPasto";
 import { CircularMonthSelect } from "@/components/gerente/CircularMonthSelect";
+import { assertMutation, expectedGmd, parseGmd, validateLoadedGmd, verifyGmdReadback, type GmdModo, type GmdRow, type GmdReadback } from "@/lib/gmdGuards";
 
 // Fase de configuração apenas: grava em gmd_config e fazendas (gmd_modo, verao_mes_*).
 // Não calcula peso projetado nem altera pastos/consumo.
 
-type Modo = "geral" | "categoria" | "retiro";
+type Modo = GmdModo;
 const MODOS: { v: Modo; label: string }[] = [
   { v: "geral", label: "Geral" },
   { v: "categoria", label: "Por categoria" },
@@ -31,23 +32,10 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 const GMD_MIN = -1;
 const GMD_MAX = 3;
 
-interface GmdRow {
-  id: string; fazenda_id: string; retiro_id: string | null; categoria: string | null;
-  gmd_kg: number | null; gmd_verao_kg: number | null; gmd_inverno_kg: number | null;
-}
-
 type CatForm = Record<string, string>;
 const emptyCat = (): CatForm => Object.fromEntries(CATEGORIAS_PASTO.map((c) => [c, ""]));
 
 const fmt = (n: number | null | undefined) => (n == null ? "" : Number(n).toFixed(3).replace(".", ","));
-
-function parseGmd(s: string): number | null | "invalid" {
-  const t = s.trim().replace(",", ".");
-  if (!t) return null;
-  const n = Number(t);
-  if (!Number.isFinite(n) || n < GMD_MIN || n > GMD_MAX) return "invalid";
-  return Math.round(n * 1000) / 1000;
-}
 
 function modoDaLinha(r: GmdRow): Modo {
   if (r.retiro_id) return "retiro";
@@ -89,29 +77,75 @@ export default function GerenteGmdPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loadedFazendaId, setLoadedFazendaId] = useState<string | null>(null);
+  const requestSeq = useRef(0);
+  const selectedFazendaRef = useRef(fazendaId);
+  const saveInFlight = useRef(false);
 
-  // Fazenda ativa compartilhada com o Painel do Gerente.
-  useEffect(() => { if (carregado && !fazendaId) setLoading(false); }, [carregado, fazendaId]);
+  // A response belongs to the selected farm AND the latest request, otherwise discard it.
+  useEffect(() => {
+    selectedFazendaRef.current = fazendaId;
+    if (!carregado) return;
+    if (fazendaId) void load(fazendaId).catch(() => { /* load exposes a retry state */ });
+    else { requestSeq.current++; setLoading(false); setLoadedFazendaId(null); setLoadError(false); }
+    return () => { requestSeq.current++; };
+  }, [carregado, fazendaId]);
 
-  async function load(id: string) {
+  async function load(id: string, expected?: GmdReadback): Promise<boolean> {
+    const seq = ++requestSeq.current;
     setLoading(true);
-    const [{ data: f }, { data: r }, { data: g }] = await Promise.all([
-      supabase.from("fazendas").select("verao_mes_inicio, verao_mes_fim, gmd_modo" as any).eq("id", id).maybeSingle(),
-      supabase.from("retiros").select("id, nome").eq("fazenda_id", id).eq("ativo", true).order("nome"),
-      (supabase as any).from("gmd_config").select("id, fazenda_id, retiro_id, categoria, gmd_kg, gmd_verao_kg, gmd_inverno_kg").eq("fazenda_id", id),
-    ]);
-    const m = (f as any)?.gmd_modo;
-    setModo(m === "geral" || m === "categoria" || m === "retiro" ? m : null);
-    setVerao({ ini: (f as any)?.verao_mes_inicio ?? null, fim: (f as any)?.verao_mes_fim ?? null });
-    setRetiros((r ?? []) as any);
-    setRows((g ?? []) as GmdRow[]);
+    setLoadError(false);
+    setLoadedFazendaId(null);
     setEditing(false);
-    setLoading(false);
+    try {
+      const [faz, ret, conf] = await Promise.all([
+        supabase.from("fazendas").select("id, verao_mes_inicio, verao_mes_fim, gmd_modo" as any).eq("id", id).maybeSingle(),
+        supabase.from("retiros").select("id, nome").eq("fazenda_id", id).eq("ativo", true).order("nome"),
+        (supabase as any).from("gmd_config").select("id, fazenda_id, retiro_id, categoria, gmd_kg, gmd_verao_kg, gmd_inverno_kg").eq("fazenda_id", id),
+      ]);
+      if (seq !== requestSeq.current || selectedFazendaRef.current !== id) return false;
+      if (faz.error || ret.error || conf.error || !faz.data || !Array.isArray(ret.data) || !Array.isArray(conf.data)) {
+        throw new Error("Falha ao obter dados de GMD.");
+      }
+      const farm = faz.data as unknown as { id: string; gmd_modo: string | null; verao_mes_inicio: number | null; verao_mes_fim: number | null };
+      const retreatRows = ret.data as { id: string; nome: string }[];
+      const configRows = conf.data as GmdRow[];
+      if (farm.id !== id || (farm.gmd_modo !== null && !MODOS.some((m) => m.v === farm.gmd_modo))) {
+        throw new Error("Resposta GMD incompatível com a fazenda selecionada.");
+      }
+      validateLoadedGmd(configRows, id, retreatRows.map((r) => r.id));
+      if (expected && !verifyGmdReadback(farm, configRows, expected)) {
+        throw new Error("A gravação não corresponde ao estado confirmado pelo banco.");
+      }
+      setModo(farm.gmd_modo as Modo | null);
+      setVerao({ ini: farm.verao_mes_inicio ?? null, fim: farm.verao_mes_fim ?? null });
+      setRetiros(retreatRows);
+      setRows(configRows);
+      setLoadedFazendaId(id);
+      return true;
+    } catch (error) {
+      if (seq === requestSeq.current && selectedFazendaRef.current === id) {
+        setLoadError(true);
+        setRows([]);
+        setRetiros([]);
+      }
+      throw error;
+    } finally {
+      if (seq === requestSeq.current && selectedFazendaRef.current === id) setLoading(false);
+    }
   }
 
-  useEffect(() => { if (fazendaId) void load(fazendaId); }, [fazendaId]);
+  function chooseFarm(id: string) {
+    if (saveInFlight.current) return;
+    selectedFazendaRef.current = id;
+    requestSeq.current++;
+    setLoadedFazendaId(null);
+    setFazendaId(id);
+  }
 
   function startEdit(novoModo?: Modo) {
+    if (saveInFlight.current || loadedFazendaId !== fazendaId || loadError) return;
     const geral = rows.find((x) => !x.retiro_id && !x.categoria);
     setDraftGeral({ verao: fmt(geral?.gmd_verao_kg), inverno: fmt(geral?.gmd_inverno_kg) });
     const cats: Record<string, CatForm> = { faz: catFromRows(rows, null) };
@@ -123,6 +157,7 @@ export default function GerenteGmdPage() {
   }
 
   function onEscolherModo(v: string) {
+    if (saveInFlight.current || loadedFazendaId !== fazendaId || !MODOS.some((m) => m.v === v)) return;
     const m = v as Modo;
     if (!editing) startEdit(m);
     else setDraftModo(m);
@@ -131,6 +166,7 @@ export default function GerenteGmdPage() {
   const linhasOutroModo = (m: Modo) => rows.filter((r) => modoDaLinha(r) !== m);
 
   function pedirSalvar() {
+    if (saveInFlight.current || loadedFazendaId !== fazendaId || loadError) return;
     if (!draftModo) { toast.error("Escolha como o GMD será definido nesta fazenda."); return; }
     if (draftModo === "geral") {
       if ((draftVerao.ini == null) !== (draftVerao.fim == null)) { toast.error("Informe o mês de início e o de fim do verão."); return; }
@@ -151,68 +187,102 @@ export default function GerenteGmdPage() {
   }
 
   async function save() {
-    if (!draftModo) return;
+    // ref guard is synchronous; React's `saving` flag alone allows double clicks before re-render.
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
     setConfirmOpen(false);
+    const id = fazendaId;
     setSaving(true);
-    const agora = new Date().toISOString();
-    const por = roleData?.roleId ?? null;
     const tbl = () => (supabase as any).from("gmd_config");
+    let startedWrites = false;
     try {
-      // 1. Apaga regras que não pertencem ao modo escolhido
-      const apagar = linhasOutroModo(draftModo).map((r) => r.id);
-      if (apagar.length) {
-        const { error } = await tbl().delete().in("id", apagar);
-        if (error) throw error;
+      if (selectedFazendaRef.current !== id || loadedFazendaId !== id || loadError || !draftModo || !roleData?.roleId) {
+        throw new Error("Dados da fazenda ou identificação do gerente indisponíveis.");
       }
-
-      // 2. Modo (e estações, só no modo geral)
-      const fazPatch: any = { gmd_modo: draftModo };
-      if (draftModo === "geral") { fazPatch.verao_mes_inicio = draftVerao.ini; fazPatch.verao_mes_fim = draftVerao.fim; }
-      const { error: ef } = await supabase.from("fazendas").update(fazPatch).eq("id", fazendaId);
-      if (ef) throw ef;
-
+      // Validate again here (not just in the confirmation button) and snapshot the intended outcome.
+      const expected = expectedGmd(draftModo, draftVerao, draftGeral, draftCat, retiros.map((r) => r.id));
+      const ensureFarm = () => {
+        if (selectedFazendaRef.current !== id) throw new Error("A fazenda ativa mudou durante a gravação.");
+      };
+      const agora = new Date().toISOString();
+      const por = roleData.roleId;
+      const apagar = linhasOutroModo(draftModo).map((r) => r.id);
+      ensureFarm();
+      if (apagar.length) {
+        startedWrites = true;
+        const result = await tbl().delete().in("id", apagar).eq("fazenda_id", id).select("id");
+        assertMutation(result, "Remoção de regras anteriores", apagar.length, apagar);
+        ensureFarm();
+      }
+      const fazPatch: Record<string, string | number | null> = { gmd_modo: draftModo };
+      if (draftModo === "geral") {
+        fazPatch.verao_mes_inicio = draftVerao.ini;
+        fazPatch.verao_mes_fim = draftVerao.fim;
+      }
+      startedWrites = true;
+      const updatedFarm = await supabase.from("fazendas").update(fazPatch).eq("id", id).select("id");
+      assertMutation(updatedFarm, "Configuração da fazenda", 1, [id]);
+      ensureFarm();
       const upsertLinha = async (retiroId: string | null, categoria: string | null, campos: Record<string, number | null>) => {
-        const existente = rows.find((x) => (x.retiro_id ?? null) === retiroId && (x.categoria ?? null) === categoria);
+        ensureFarm();
+        const existente = rows.find((r) => (r.retiro_id ?? null) === retiroId && (r.categoria ?? null) === categoria);
         const tudoVazio = Object.values(campos).every((v) => v == null);
         if (tudoVazio) {
           if (existente) {
-            const { error } = await tbl().delete().eq("id", existente.id);
-            if (error) throw error;
+            startedWrites = true;
+            const result = await tbl().delete().eq("id", existente.id).eq("fazenda_id", id).select("id");
+            assertMutation(result, "Remoção de GMD vazio", 1, [existente.id]);
+            ensureFarm();
           }
           return;
         }
         if (existente) {
-          const mudou = Object.entries(campos).some(([k, v]) => (existente as any)[k] == null ? v != null : Number((existente as any)[k]) !== v);
+          const mudou = Object.entries(campos).some(([k, v]) =>
+            (existente as unknown as Record<string, number | null>)[k] == null ? v != null :
+              Number((existente as unknown as Record<string, number | null>)[k]) !== v);
           if (!mudou) return;
-          const { error } = await tbl().update({ ...campos, atualizado_em: agora, atualizado_por: por }).eq("id", existente.id);
-          if (error) throw error;
+          startedWrites = true;
+          const result = await tbl().update({ ...campos, atualizado_em: agora, atualizado_por: por })
+            .eq("id", existente.id).eq("fazenda_id", id).select("id");
+          assertMutation(result, "Atualização de GMD", 1, [existente.id]);
+          ensureFarm();
         } else {
-          const { error } = await tbl().insert({ fazenda_id: fazendaId, retiro_id: retiroId, categoria, ...campos, atualizado_em: agora, atualizado_por: por });
-          if (error) throw error;
+          startedWrites = true;
+          const result = await tbl().insert({ fazenda_id: id, retiro_id: retiroId, categoria,
+            ...campos, atualizado_em: agora, atualizado_por: por }).select("id");
+          assertMutation(result, "Criação de GMD", 1);
+          ensureFarm();
         }
       };
-
-      // 3. Regras do modo escolhido
       if (draftModo === "geral") {
         await upsertLinha(null, null, {
           gmd_verao_kg: parseGmd(draftGeral.verao) as number | null,
           gmd_inverno_kg: parseGmd(draftGeral.inverno) as number | null,
         });
       } else {
-        const escopos = draftModo === "categoria"
-          ? [{ key: "faz", retiroId: null as string | null }]
-          : retiros.map((r) => ({ key: r.id, retiroId: r.id as string | null }));
-        for (const e of escopos) {
-          for (const c of CATEGORIAS_PASTO) {
-            await upsertLinha(e.retiroId, c, { gmd_kg: parseGmd(draftCat[e.key]?.[c] ?? "") as number | null });
+        const scope = draftModo === "categoria"
+          ? [{ key: "faz", retreatId: null as string | null }]
+          : retiros.map((r) => ({ key: r.id, retreatId: r.id as string | null }));
+        for (const item of scope) {
+          for (const category of CATEGORIAS_PASTO) {
+            await upsertLinha(item.retreatId, category, {
+              gmd_kg: parseGmd(draftCat[item.key][category]) as number | null,
+            });
           }
         }
       }
+      ensureFarm();
+      if (!await load(id, expected)) throw new Error("Não foi possível confirmar a gravação.");
       toast.success("Configuração de GMD salva");
-      await load(fazendaId);
-    } catch (e: any) {
-      toast.error("Erro ao salvar: " + (e?.message ?? ""));
+    } catch {
+      toast.error(startedWrites
+        ? "Gravação não confirmada. Algumas alterações podem ter sido aplicadas; confira os dados antes de tentar novamente."
+        : "Configuração inválida ou indisponível. Nenhuma gravação foi iniciada.");
+      if (selectedFazendaRef.current === id) {
+        try { await load(id); } catch { /* leave the retry/error state visible */ }
+      }
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   }
@@ -225,7 +295,7 @@ export default function GerenteGmdPage() {
     return (
       <div key={key} className="space-y-1">
         <label className="text-xs font-medium">{label}</label>
-        <Input inputMode="decimal" placeholder="0,000" value={val} onChange={(e) => on(e.target.value)} className={inval ? "border-destructive" : ""} />
+        <Input inputMode="decimal" placeholder="0,000" value={val} onChange={(e: { target: { value: string } }) => on(e.target.value)} className={inval ? "border-destructive" : ""} />
       </div>
     );
   };
@@ -244,10 +314,10 @@ export default function GerenteGmdPage() {
         </div>
       );
     }
-    const f = draftCat[key] ?? emptyCat();
+    const f = { ...emptyCat(), ...(draftCat[key] ?? {}) };
     return (
       <div className="grid grid-cols-2 gap-2">
-        {CATEGORIAS_PASTO.map((c) => campo(c, f[c], (s) => setDraftCat((all) => ({ ...all, [key]: { ...f, [c]: s } })), c))}
+        {CATEGORIAS_PASTO.map((c) => campo(c, f[c] ?? "", (s) => setDraftCat((all) => ({ ...all, [key]: { ...f, [c]: s } })), c))}
       </div>
     );
   };
@@ -266,11 +336,16 @@ export default function GerenteGmdPage() {
         <h1 className="text-base font-bold">GMD</h1>
       </header>
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
-        <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={setFazendaId} dirty={editing} />
+        <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={chooseFarm} dirty={editing || saving} />
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : !fazendaId ? (
           <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p>
+        ) : loadError || loadedFazendaId !== fazendaId ? (
+          <div className="space-y-3" role="alert">
+            <p className="text-sm text-destructive">Não foi possível confirmar os dados de GMD desta fazenda. Nenhuma alteração pode ser feita.</p>
+            <Button variant="outline" onClick={() => void load(fazendaId).catch(() => {})}>Tentar novamente</Button>
+          </div>
         ) : (
           <>
             <Card>
@@ -299,13 +374,13 @@ export default function GerenteGmdPage() {
                         <span>Verão:</span>
                         <CircularMonthSelect
                           value={draftVerao.ini}
-                          onChange={(ini) => setDraftVerao((d) => ({ ...d, ini }))}
+                          onChange={(ini: number | null) => setDraftVerao((d) => ({ ...d, ini }))}
                           ariaLabel="Mês de início do verão"
                         />
                         <span>até</span>
                         <CircularMonthSelect
                           value={draftVerao.fim}
-                          onChange={(fim) => setDraftVerao((d) => ({ ...d, fim }))}
+                          onChange={(fim: number | null) => setDraftVerao((d) => ({ ...d, fim }))}
                           ariaLabel="Mês de fim do verão"
                         />
                       </div>
