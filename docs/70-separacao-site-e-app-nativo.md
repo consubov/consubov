@@ -1,5 +1,12 @@
 # 70 — Separação entre Site Institucional e App Nativo (Subdomínio + Acesso Exclusivo pelo Ícone)
 
+## Adendo 29/10/2026 — CTA de instalacao do site (aprovado pelo responsavel)
+
+- Em `consubov.com.br/baixar`, o clique no botao `Baixar e Instalar App CONSUBOV` navega diretamente, na mesma aba, para `https://app.consubov.com.br/baixar`. O site nao instala a PWA institucional e nao depende de `navigator.install` (API experimental entre origens).
+- O APP fornece seu proprio botao `Instalar App CONSUBOV 2.0`; somente na origem `app.consubov.com.br` o evento `beforeinstallprompt` pode oferecer a confirmacao nativa. A navegacao NAO transfere a ativacao do usuario para forcar esse popup: se necessario, clicar no botao do APP ou no icone de instalar do Chrome na origem do APP.
+- Preservar manifestos/identidade da PWA, SW, IndexedDB, filas offline, release do APP 2.0.0 e o fluxo Relatto. Este adendo substitui a regra anterior de tentar popup cross-origin pelo botao do site.
+
+
 **Data:** 2026-10-20
 **Status:** Regra Arquitetural Ativa e Obrigatória para Humanos e Agentes de IA
 

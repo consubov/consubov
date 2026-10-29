@@ -25,12 +25,10 @@ import {
   markAppInstalled,
 } from "@/lib/appSurface";
 import { applyPwaProfile } from "@/lib/pwaManifest";
-import {
-  requestConsubovCrossOriginInstall,
-  type CrossOriginInstallNavigator,
-} from "@/lib/crossOriginInstall";
 import { useSiteLanguage } from "@/hooks/useSiteLanguage";
 import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+
+const CONSUBOV_APP_INSTALL_URL = "https://app.consubov.com.br/baixar";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -59,7 +57,6 @@ export default function BaixarAppPage() {
     siteCrossOriginInstall ? false : isAppInstalledOnDevice(brandId),
   );
   const [showManualHint, setShowManualHint] = useState(false);
-  const [siteInstallIssue, setSiteInstallIssue] = useState<"unsupported" | "invalid-data" | "failed" | null>(null);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
   const { language, setLanguage } = useSiteLanguage();
@@ -162,21 +159,9 @@ export default function BaixarAppPage() {
 
   const handleInstallClick = async () => {
     if (siteCrossOriginInstall) {
-      // Este pedido só alcança o popup sem navegar quando o navegador oferece
-      // a API de instalação entre origens (ainda experimental).
-      const result = await requestConsubovCrossOriginInstall(
-        window.navigator as CrossOriginInstallNavigator,
-      );
-      if (result === "installed") {
-        setInstalled(true);
-        setSiteInstallIssue(null);
-        return;
-      }
-      if (result === "dismissed") {
-        setSiteInstallIssue(null);
-        return;
-      }
-      setSiteInstallIssue(result);
+      // O prompt nativo pertence ao dominio do App, nao a PWA do site institucional.
+      // A navegacao so ocorre apos o clique autorizado do usuario.
+      window.location.assign(CONSUBOV_APP_INSTALL_URL);
       return;
     }
 
@@ -397,48 +382,6 @@ export default function BaixarAppPage() {
                   <Download className="w-5 h-5" />
                   {copy("Baixar e Instalar App", "Download and Install")} {brandName}
                 </button>
-
-                {siteInstallIssue && (
-                  <div
-                    className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
-                    style={{
-                      background: "rgba(34,255,136,0.1)",
-                      border: "1px solid rgba(34,255,136,0.45)",
-                      color: "#FFFFFF",
-                    }}
-                    role="status"
-                    data-testid="cross-origin-install-fallback"
-                  >
-                    <p className="font-bold text-[#22FF88]">
-                      {copy(
-                        siteInstallIssue === "unsupported"
-                          ? "Este navegador não oferece o popup de instalação entre domínios."
-                          : siteInstallIssue === "invalid-data"
-                            ? "O navegador não conseguiu validar os dados de instalação do App."
-                            : "O navegador não conseguiu iniciar a instalação do App.",
-                        siteInstallIssue === "unsupported"
-                          ? "This browser does not support cross-origin app installation prompts."
-                          : siteInstallIssue === "invalid-data"
-                            ? "The browser could not validate the App installation data."
-                            : "The browser could not start the App installation.",
-                      )}
-                    </p>
-                    <p className="text-[#D8EFE2]">
-                      {copy(
-                        "Não abrimos outra página automaticamente. O aplicativo fica no domínio oficial app.consubov.com.br. Para instalar neste navegador, use opcionalmente a página de instalação do App.",
-                        "We did not open another page automatically. The app is hosted at app.consubov.com.br. If you wish, you can use the official app installation page.",
-                      )}
-                    </p>
-                    <a
-                      href="https://app.consubov.com.br/baixar"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block underline text-[#22FF88] font-semibold"
-                    >
-                      {copy("Abrir instalação oficial (opcional)", "Open official installation (optional)")}
-                    </a>
-                  </div>
-                )}
 
                 {showManualHint && (
                   <div

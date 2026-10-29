@@ -26,4 +26,18 @@ describe("installer: access remains URL-only and install is not faked", () => {
     expect(installerSource).toContain("Baixar e Instalar App");
     expect(installerSource).toContain("100% Offline no campo");
   });
+  it("sends the site CONSUBOV install button to the official App origin", () => {
+    expect(installerSource).toContain('const CONSUBOV_APP_INSTALL_URL = "https://app.consubov.com.br/baixar"');
+    expect(installerSource).toContain("window.location.assign(CONSUBOV_APP_INSTALL_URL)");
+    expect(installerSource).not.toContain("requestConsubovCrossOriginInstall(");
+    expect(installerSource).not.toContain("siteInstallIssue");
+    expect(installerSource).not.toContain("cross-origin-install-fallback");
+    expect(installerSource).not.toContain("Este navegador não oferece o popup de instalação entre domínios.");
+  });
+
+  it("preserves the separate Relatto install flow", () => {
+    expect(installerSource).toContain("const siteCrossOriginInstall = isSiteBuild && !isRelatto");
+    expect(installerSource).toContain("${externalAppOrigin}/baixar?app=relatto");
+  });
+
 });
