@@ -48,3 +48,10 @@ Todos os resultados de teste devem ser identificados com o SHA do commit; **não
 - Sem merge/deploy até QA real independente e aprovação do Checklist Mestre.
 - Reversão do frontend: reverter **somente** o commit desta branch/PR; não usar reset forçado; não há rollback de banco por não ter havido mudança remota.
 - Relatório do executor/revisor: branch, SHA base/HEAD, arquivos alterados, resultado dos testes por gate (PASS/FAIL/NÃO EXECUTADO), riscos, evidência de revisão/rollback, atualização de Cérebro e Notion e autorização final antes de merge.
+
+## 29/10/2026 — revisão dos checks após a correção TS2345
+
+- No commit `1158153ec60ec219a7b3a521635b318ca0aa39cb`, o CI real passou typecheck API/Web, build e testes: **47 arquivos e 231 testes Web passaram**; a job `build-and-test` falhou depois em `lint:changed` por **3 usos de `any` e 1 aviso de cleanup do `useEffect` nesta tela** (job `123423733816`).
+- Esta revisão tipa `gmd_config` usando diretamente o cliente Supabase gerado, restringe os campos de update/insert da GMD e retira o acesso direto ao contador ref do cleanup do efeito. **Não muda RLS nem corrige a gravação multipartes sem transação.**
+- SAST do commit anterior: 19 warnings no módulo de arquitetura da API, fora desta frente (job `123423734352`). Audit: três HIGH em DOMPurify, Vite/launch-editor e Zod (job `123423734543`), dependências sob PRs #61/#63. **Não foram ocultados/ignorados**.
+- **Estado desta nova alteração:** aguardando checks no SHA gerado pela publicação. Não liberar o PR #68 para merge ou deploy até QA global aprovado e backend protegido.

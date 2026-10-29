@@ -33,6 +33,7 @@ const GMD_MIN = -1;
 const GMD_MAX = 3;
 
 type CatForm = Record<string, string>;
+type GmdValueFields = { gmd_kg?: number | null; gmd_verao_kg?: number | null; gmd_inverno_kg?: number | null };
 const emptyCat = (): CatForm => Object.fromEntries(CATEGORIAS_PASTO.map((c) => [c, ""]));
 
 const fmt = (n: number | null | undefined) => (n == null ? "" : Number(n).toFixed(3).replace(".", ","));
@@ -83,13 +84,15 @@ export default function GerenteGmdPage() {
   const selectedFazendaRef = useRef(fazendaId);
   const saveInFlight = useRef(false);
 
+  function invalidatePendingReads() { requestSeq.current++; }
+
   // A response belongs to the selected farm AND the latest request, otherwise discard it.
   useEffect(() => {
     selectedFazendaRef.current = fazendaId;
     if (!carregado) return;
     if (fazendaId) void load(fazendaId).catch(() => { /* load exposes a retry state */ });
-    else { requestSeq.current++; setLoading(false); setLoadedFazendaId(null); setLoadError(false); }
-    return () => { requestSeq.current++; };
+    else { invalidatePendingReads(); setLoading(false); setLoadedFazendaId(null); setLoadError(false); }
+    return () => { invalidatePendingReads(); };
   }, [carregado, fazendaId]);
 
   async function load(id: string, expected?: GmdReadback): Promise<boolean> {
@@ -100,9 +103,9 @@ export default function GerenteGmdPage() {
     setEditing(false);
     try {
       const [faz, ret, conf] = await Promise.all([
-        supabase.from("fazendas").select("id, verao_mes_inicio, verao_mes_fim, gmd_modo" as any).eq("id", id).maybeSingle(),
+        supabase.from("fazendas").select("id, verao_mes_inicio, verao_mes_fim, gmd_modo").eq("id", id).maybeSingle(),
         supabase.from("retiros").select("id, nome").eq("fazenda_id", id).eq("ativo", true).order("nome"),
-        (supabase as any).from("gmd_config").select("id, fazenda_id, retiro_id, categoria, gmd_kg, gmd_verao_kg, gmd_inverno_kg").eq("fazenda_id", id),
+        supabase.from("gmd_config").select("id, fazenda_id, retiro_id, categoria, gmd_kg, gmd_verao_kg, gmd_inverno_kg").eq("fazenda_id", id),
       ]);
       if (seq !== requestSeq.current || selectedFazendaRef.current !== id) return false;
       if (faz.error || ret.error || conf.error || !faz.data || !Array.isArray(ret.data) || !Array.isArray(conf.data)) {
@@ -193,7 +196,7 @@ export default function GerenteGmdPage() {
     setConfirmOpen(false);
     const id = fazendaId;
     setSaving(true);
-    const tbl = () => (supabase as any).from("gmd_config");
+    const tbl = () => supabase.from("gmd_config");
     let startedWrites = false;
     try {
       if (selectedFazendaRef.current !== id || loadedFazendaId !== id || loadError || !draftModo || !roleData?.roleId) {
@@ -223,7 +226,7 @@ export default function GerenteGmdPage() {
       const updatedFarm = await supabase.from("fazendas").update(fazPatch).eq("id", id).select("id");
       assertMutation(updatedFarm, "Configuração da fazenda", 1, [id]);
       ensureFarm();
-      const upsertLinha = async (retiroId: string | null, categoria: string | null, campos: Record<string, number | null>) => {
+      const upsertLinha = async (retiroId: string | null, categoria: string | null, campos: GmdValueFields) => {
         ensureFarm();
         const existente = rows.find((r) => (r.retiro_id ?? null) === retiroId && (r.categoria ?? null) === categoria);
         const tudoVazio = Object.values(campos).every((v) => v == null);
