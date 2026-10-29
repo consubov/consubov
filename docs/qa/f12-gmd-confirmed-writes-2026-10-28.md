@@ -55,3 +55,10 @@ Todos os resultados de teste devem ser identificados com o SHA do commit; **não
 - Esta revisão tipa `gmd_config` usando diretamente o cliente Supabase gerado, restringe os campos de update/insert da GMD e retira o acesso direto ao contador ref do cleanup do efeito. **Não muda RLS nem corrige a gravação multipartes sem transação.**
 - SAST do commit anterior: 19 warnings no módulo de arquitetura da API, fora desta frente (job `123423734352`). Audit: três HIGH em DOMPurify, Vite/launch-editor e Zod (job `123423734543`), dependências sob PRs #61/#63. **Não foram ocultados/ignorados**.
 - **Estado desta nova alteração:** aguardando checks no SHA gerado pela publicação. Não liberar o PR #68 para merge ou deploy até QA global aprovado e backend protegido.
+
+## 29/10/2026 — QA adicional de componente React (CI do novo SHA pendente)
+
+- Adicionados testes reais de componente em `apps/web/src/test/pages/GerenteGmdPage.test.tsx` para três cenários: erro 42501 da leitura `gmd_config` bloqueia edição e não revela detalhe SQL; retry somente libera edição após read válido; `UPDATE` sem linhas não gera toast de sucesso.
+- Usados mocks locais do Supabase/role e React Testing Library, **sem backend remoto nem credenciais**. O arquivo passou no parse TSX local (TypeScript 5.8.3); o teste Vitest completo ainda depende do CI disparado pela alteração.
+- Gates anteriores do commit `0b70319660c090243da651525df4a5f2643db5e7`: build-and-test, SAST e Secret Scanning PASS, Dependency Scan FAIL por três vulnerabilidades altas sob PRs #61/#63. Não reutilizar os resultados para aprovar o novo SHA.
+- F12 permanece NO-GO: RLS de `gmd_config` OFF, ausência de UNIQUE e gravação não transacional; PR ainda DRAFT.
