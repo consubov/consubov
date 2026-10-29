@@ -12,12 +12,13 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { clearMaAcknowledgedRows, enqueueMa, flushMaAndCount, getMaAcknowledgedRows, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
 import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
 
 export type MaPerfil = "pesador" | "pecuarista";
 
-export const MA_OFFLINE_TABLES: Record<MaPerfil, string[]> = {
+export const MA_OFFLINE_TABLES: Record<MaPerfil, (keyof Database["public"]["Tables"])[]> = {
   pesador: [
     "pesadores",
     "clientes_pesador",
@@ -111,11 +112,11 @@ function loadMem() {
   return memLoaded;
 }
 
-async function fetchAll(table: string) {
+async function fetchAll(table: keyof Database["public"]["Tables"]) {
   const out: any[] = [];
   const page = 1000;
   for (let from = 0; ; from += page) {
-    const { data, error } = await (supabase as any).from(table).select("*").range(from, from + page - 1);
+    const { data, error } = await supabase.from(table).select("*").range(from, from + page - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < page) break;
