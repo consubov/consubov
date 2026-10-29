@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendPush } from "@/lib/pushService";
@@ -40,6 +39,8 @@ const leadSchema = z.object({
   whatsapp: z.string().trim().min(10, "WhatsApp inválido").max(20),
   mensagem: z.string().trim().max(1000).optional(),
 });
+
+const CONSUBOV_INSTALL_HREF = "https://app.consubov.com.br/baixar";
 
 const NEON = "#22FF88";
 const NEON_DIM = "rgba(34,255,136,0.55)";
@@ -429,13 +430,13 @@ export default function LandingPage() {
 
           <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
             {import.meta.env.VITE_SURFACE_MODE === "site" && <SiteLanguageSwitch language={language} onChange={setLanguage} compactOnMobile />}
-            <Link
-              to="/baixar"
+            <a
+              href={import.meta.env.VITE_SURFACE_MODE === "site" ? CONSUBOV_INSTALL_HREF : "/baixar"}
               className="shrink-0 whitespace-nowrap rounded-lg px-1 py-2 text-[8px] font-bold uppercase tracking-tight transition-all hover:bg-white/5 min-[375px]:text-[9px] sm:px-2.5 sm:text-[11px] lg:px-4 lg:text-sm lg:tracking-wider"
               style={{ border: `1px solid ${NEON_DIM}`, color: "#E6F5EC" }}
             >
               {phrase("Baixar App")}
-            </Link>
+            </a>
             <button
               type="button"
               onClick={scrollToForm}

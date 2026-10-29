@@ -1,5 +1,11 @@
 # 70 — Separação entre Site Institucional e App Nativo (Subdomínio + Acesso Exclusivo pelo Ícone)
 
+## Adendo 29/10/2026 — Homepage vai direto ao instalador (aprovado pelo responsavel)
+
+- No site institucional `https://consubov.com.br/`, o CTA `Baixar App` abre diretamente na mesma aba `https://app.consubov.com.br/baixar`, sem carregar `consubov.com.br/baixar`. O link e um anchor absoluto no build de site. O build de app mantem a rota `/baixar` propria.
+- O endereco legado `https://consubov.com.br/baixar` passa a fazer redirecionamento HTTP 307 pela regra Vercel de rotas do projeto site, sem renderizar a pagina intermediaria. Requisicoes `/baixar?app=relatto` continuam com fluxo separado, sem encaminhar para o endpoint `app.consubov.com.br/baixar?app=relatto` (HTTP 404 no estado atual).
+- Nao apagar `BaixarAppPage.tsx`, pois o app e o fluxo Relatto compartilham o componente. Nao alterar versao 2.0.0, manifestos, service workers, IndexedDB ou filas offline.
+
 ## Adendo 29/10/2026 — CTA de instalacao do site (aprovado pelo responsavel)
 
 - Em `consubov.com.br/baixar`, o clique no botao `Baixar e Instalar App CONSUBOV` navega diretamente, na mesma aba, para `https://app.consubov.com.br/baixar`. O site nao instala a PWA institucional e nao depende de `navigator.install` (API experimental entre origens).
@@ -21,7 +27,7 @@ Para garantir melhor organização, segurança de superfície e experiência 100
    - **App (`app.consubov.com.br` — build `@consubov/web` modo `app` / `bun run build`):** Hospeda o aplicativo operacional, a página instaladora (`/baixar`) e o Service Worker offline-first.
 2. **Substituição de `"Entrar"` por `"Baixar App"` nas Landing Pages:**
    - Tanto na Landing Page principal (`/`) quanto na página do Relatto (`/relatto`), o botão de ação no cabeçalho é **"Baixar App"** (nunca `"Entrar"`).
-   - Ao clicar em **"Baixar App"**, o usuário é levado para a página dedicada de instalação (`/baixar` ou `${VITE_APP_URL}/baixar`, e `/baixar?app=relatto` a partir do Relatto).
+   - Na página inicial do CONSUBOV em modo site, **"Baixar App"** abre diretamente `https://app.consubov.com.br/baixar` (sem rota intermediária). No modo app, continua `/baixar`; o Relatto usa seu fluxo `/baixar?app=relatto`.
 3. **Proibição Terminológica (`"PWA"` → `"App"`):**
    - **Nunca** utilizar a sigla `"PWA"`, `"Progressive Web App"` ou `"versão web"` na interface, nos botões, nos textos de ajuda ou nas instruções de instalação visíveis ao usuário.
    - Toda comunicação com o usuário deve se referir ao produto exclusivamente como **"App"** ou **"Aplicativo"** (ex.: *"Baixar App"*, *"Instalar Aplicativo Consubov"*, *"Abra o App pelo ícone na tela inicial do seu aparelho"*).
@@ -75,7 +81,7 @@ O módulo `appSurface.ts` centraliza as regras de superfície e instalação:
 
 ## 3. Regras Obrigatórias para Agentes de IA
 
-1. **Não reintroduzir botão `"Entrar"` nas Landing Pages (`/` e `/relatto`):** O CTA de cabeçalho nas Landing Pages deve permanecer **"Baixar App"** apontando para `getDownloadAppHref()`.
+1. **Não reintroduzir botão `"Entrar"` nas Landing Pages (`/` e `/relatto`):** o CTA deve permanecer **"Baixar App"**. No site CONSUBOV, direcionar à URL oficial `https://app.consubov.com.br/baixar`; não criar etapa intermediária `/baixar`. Preservar separadamente o Relatto.
 2. **Não usar o termo `"PWA"` na UI:** Qualquer texto visível ao usuário deve usar **"App"** ou **"Aplicativo"**.
 3. **Preservar identidade do `manifest.json`:** Não alterar `id: "/"`, `scope: "/"`, `start_url: "/"` e `display: "standalone"` em `apps/web/public/manifest.json`, pois o gate `scripts/qa/check-pwa-build.mjs` exige identidade estável para atualização in-place sem perda de dados offline. O redirecionamento de `/` para `/app` em modo `standalone` é feito em runtime pelo `index.html` e pelo `StandaloneAppGuard`.
 4. **Bloqueio de instalação duplicada (`isAppInstalledOnDevice` / `detectInstalledAppAsync`):** A página `/baixar` identifica automaticamente se o App (`consubov` ou `relatto`) já foi instalado no dispositivo (via `localStorage`, cookie de longa duração, `navigator.getInstalledRelatedApps()` e abertura em modo `standalone`) e oculta o botão de instalação, exibindo o aviso de que o App já está instalado e deve ser aberto pelo ícone na tela inicial do aparelho.

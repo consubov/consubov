@@ -7,6 +7,10 @@ const installerSource = readFileSync(
   new URL("../pages/BaixarAppPage.tsx", import.meta.url),
   "utf8",
 );
+const landingSource = readFileSync(
+  new URL("../pages/LandingPage.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("installer: access remains URL-only and install is not faked", () => {
   it("does not show an extra login action or declare manual installation completed", () => {
@@ -38,6 +42,12 @@ describe("installer: access remains URL-only and install is not faked", () => {
   it("preserves the separate Relatto install flow", () => {
     expect(installerSource).toContain("const siteCrossOriginInstall = isSiteBuild && !isRelatto");
     expect(installerSource).toContain("${externalAppOrigin}/baixar?app=relatto");
+  });
+
+  it("uses official app installer directly from the site homepage", () => {
+    expect(landingSource).toContain('const CONSUBOV_INSTALL_HREF = "https://app.consubov.com.br/baixar";');
+    expect(landingSource).toContain('href={import.meta.env.VITE_SURFACE_MODE === "site" ? CONSUBOV_INSTALL_HREF : "/baixar"}');
+    expect(landingSource).not.toContain('to="/baixar"');
   });
 
 });
