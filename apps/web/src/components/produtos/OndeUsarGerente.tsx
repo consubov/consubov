@@ -73,6 +73,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
     const p = prodById[id];
     return p ? p.nome : "outro produto";
   };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const produtosDisp = useMemo(() => produtos.filter((p) => disponiveis.includes(p.id) && (p as any).ativo !== false), [produtos, disponiveis]);
   // Cor fixa por produto: ordem estável por nome entre todos os produtos usados/disponíveis.
   const corIdx = useMemo(() => {
@@ -152,6 +153,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
           consumo_recria1: null, consumo_recria2: null, consumo_engorda: null,
           margem_recria1: null, margem_recria2: null, margem_engorda: null,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase.from("retiros").update(campos as any).eq("id", r.id).eq("fazenda_id", fazendaId);
         if (error) throw new Error(`retiro ${r.nome}: ${error.message}`);
       }));
@@ -172,6 +174,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
       toast.success("Alterações salvas!");
       setConfirmOpen(false);
       await load();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(`Erro ao salvar: ${err?.message || "erro desconhecido"}`);
     } finally {
@@ -248,7 +251,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
             <div key={r.id} className={`rounded-lg border bg-card ${retirosMudados.includes(r) ? "border-secondary" : ""}`}>
               <div className="p-3 space-y-2">
                 <button type="button" className="w-full flex items-center gap-2 text-left"
-                  onClick={() => setAbertos((prev) => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}>
+                  onClick={() => setAbertos((prev) => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}>
                   <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? "" : "-rotate-90"}`} />
                   <span className="font-semibold text-sm">{r.nome}</span>
                   {nProd > 1 && <Badge variant="outline" className="text-[10px]">Usa {nProd} produtos</Badge>}
@@ -277,7 +280,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                     return (
                       <div key={p.id} className={`flex items-center gap-2 px-3 py-2 ${pend ? "bg-secondary/15" : ""}`}>
                         <Checkbox checked={sel.has(p.id)}
-                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />
+                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{p.nome}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{p.num_animais} cab · {p.categoria || "sem categoria"}</p>
