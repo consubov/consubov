@@ -51,6 +51,10 @@
     "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
     "picomatch@<2.3.2": "2.3.2",
     "source-map-js@<1.2.2": "1.2.2",
-    "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
+    "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb",
+    "zod": "4.6.6"
+  },
+  "dependencies": {
+    "zod": "4.6.6"
   }
 }
