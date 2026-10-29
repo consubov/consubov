@@ -1,0 +1,13 @@
+--- apps/web/src/test/topicoDelete.test.ts
++++ apps/web/src/test/topicoDelete.test.ts
+@@ -23,7 +23,9 @@
+ }
+
+ function makeBlob(): Blob {
+-  return new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
++  const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
++  Object.setPrototypeOf(blob, Blob.prototype);
++  return blob;
+ }
+
+ function foto(localId: string, parentId: string) {

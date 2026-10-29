@@ -26,7 +26,9 @@ if (typeof (Blob.prototype as any).arrayBuffer !== "function") {
 }
 
 function makeBlob(): Blob {
-  return new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
+  const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
+  Object.setPrototypeOf(blob, Blob.prototype);
+  return blob;
 }
 
 function foto(localId: string, parentId: string) {
