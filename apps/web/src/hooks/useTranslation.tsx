@@ -1,5 +1,5 @@
 import { useContext, createContext } from "react";
-import type { SiteLanguage } from "./siteLanguage";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 interface I18nContextType {
   language: SiteLanguage;
