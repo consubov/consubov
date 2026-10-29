@@ -8,6 +8,7 @@ on:
       - bun.lock
       - package.json
       - apps/web/package.json
+      - apps/web/src/pages/LandingPage.tsx
   workflow_dispatch:
 
 permissions:
