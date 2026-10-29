@@ -1,3 +1,4 @@
+import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -69,9 +70,16 @@ export default function ExportarPesagemModal({
         reader.readAsDataURL(blob);
       } else {
         const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
-        await supabase.storage
-          .from("relatorios")
-          .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
+        try {
+          const { error } = await withReportExportDeadline(
+            supabase.storage.from("relatorios").upload(storagePath, blob, { upsert: true, contentType: "application/pdf" }),
+            "Backup da pesagem", Date.now() + 25_000,
+          );
+          if (error) throw error;
+        } catch (uploadError) {
+          console.warn("[PDF] Pesagem gerada, cópia remota pendente:", uploadError);
+          toast.warning("PDF disponível no aparelho, mas não foi possível confirmar o backup.");
+        }
       }
 
       const localUrl = URL.createObjectURL(blob);
@@ -93,8 +101,9 @@ export default function ExportarPesagemModal({
     }
     const blob = await ensurePdf();
     if (blob) {
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const url = pdfUrl || URL.createObjectURL(blob);
+      const tab = window.open(url, "_blank");
+      if (!tab) downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
     }
   }
 
@@ -112,11 +121,7 @@ export default function ExportarPesagemModal({
           // fallback
         }
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pesagem-${pesagemId}.pdf`;
-      a.click();
+      downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
     } finally {
       setSharingPdf(false);
     }

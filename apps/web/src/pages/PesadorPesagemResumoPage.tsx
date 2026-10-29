@@ -1,3 +1,4 @@
+import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useNavigate, useParams } from "react-router-dom";
@@ -209,7 +210,7 @@ export default function PesadorPesagemResumoPage() {
         pesadorNome = (pes as any)?.nome ?? null;
       }
 
-      const blob = await gerarPesagemPdf({
+      const blob = await withReportExportDeadline(gerarPesagemPdf({
         header: {
           produtor: clienteNome,
           fazenda: clienteFazenda,
@@ -228,13 +229,21 @@ export default function PesadorPesagemResumoPage() {
         semValores,
         rendimentoEstimado: rendimentoRotina,
         leiturasBalancao: leiturasBalancao.length ? leiturasBalancao : undefined,
-      });
+      }), "Geração PDF da pesagem", Date.now() + 60_000, 60_000);
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
-      const { error: upErr } = await supabase.storage
-        .from("relatorios")
-        .upload(path, blob, { contentType: "application/pdf", upsert: true });
-      if (upErr) throw upErr;
+      try {
+        const { error: upErr } = await withReportExportDeadline(
+          supabase.storage.from("relatorios").upload(path, blob, { contentType: "application/pdf", upsert: true }),
+          "Upload PDF da pesagem", Date.now() + 25_000,
+        );
+        if (upErr) throw upErr;
+      } catch (uploadError) {
+        console.warn("[PDF] Servidor não confirmou a gravação da pesagem:", uploadError);
+        downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
+        toast({ title: "PDF baixado localmente", description: "O backup no servidor não foi confirmado; evite repetir a finalização antes de verificar." });
+        return;
+      }
       const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
       const url = pub.publicUrl;
       await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
