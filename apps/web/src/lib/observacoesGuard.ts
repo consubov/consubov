@@ -7,7 +7,11 @@ export interface ObservationResolved extends ObservationIdentity {
 }
 export interface ObservationResult<T> {
   data: T[] | null;
-  error: { code?: string; message?: string } | null;
+  error: { code?: string; message?: string; status?: number } | null;
+}
+/** A known permission rejection must invalidate stale UI caches, not fall back to them. */
+export function isObservationAccessDenied(error: { code?: string; status?: number } | null | undefined): boolean {
+  return error?.code === "42501" || error?.status === 401 || error?.status === 403;
 }
 function rowsOrThrow<T>(result: ObservationResult<T>): T[] {
   if (result.error || !Array.isArray(result.data)) throw new Error("Não foi possível confirmar os dados de observações.");

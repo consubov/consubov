@@ -9,10 +9,10 @@ import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMi
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent } from "@/lib/observacoesGuard";
+import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied } from "@/lib/observacoesGuard";
 import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
-import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
@@ -162,6 +162,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       return;
     }
     if (!getScreenCache(cacheKey) && isCurrent()) setLoading(true);
+    let observationsDenied = false;
     const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
     try {
       const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
@@ -244,6 +245,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       snap.produtos = ((produtosRes.data ?? []) as Produto[]);
 
       const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      observationsDenied = isObservationAccessDenied(obsRes.error);
       snap.observacoes = confirmObservationRead(obsRes, fazendaId);
       // Never publish an old tenant response or cache a failed SELECT as empty data.
       if (!isCurrent()) return;
@@ -252,7 +254,15 @@ export function useGerenteData(filters?: GerenteFilters) {
       setLoadError(null);
     } catch (e) {
       if (isCurrent()) {
-        setLoadError("Não foi possível confirmar os dados da fazenda. Tente novamente.");
+        if (observationsDenied) {
+          // Revoked SELECT must not leave a previously valid manager cache readable.
+          dropScreenCacheScopes(["gerente"]);
+          setAppliedCacheKey("");
+          setObservacoes([]);
+        }
+        setLoadError(observationsDenied
+          ? "Acesso às observações não confirmado. Faça login novamente ou contate o suporte."
+          : "Não foi possível confirmar os dados da fazenda. Tente novamente.");
         console.error("Error loading gerente data:", e);
       }
     } finally {
@@ -464,7 +474,7 @@ export function useGerenteData(filters?: GerenteFilters) {
 
   // Frontend ACK is a UX safeguard, not authorization: the database must enforce RLS.
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
-    if (!id || !fazendaId || appliedCacheKey !== cacheKey ||
+    if (loadError || !id || !fazendaId || appliedCacheKey !== cacheKey ||
         !observacoes.some(o => o.id === id && o.fazenda_id === fazendaId && !o.resolvido)) {
       toast.error("Observação indisponível para esta fazenda.");
       return;
@@ -478,6 +488,16 @@ export function useGerenteData(filters?: GerenteFilters) {
         .update({ resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() })
         .eq("id", id).eq("fazenda_id", fazendaId)
         .select("id, fazenda_id, resolvido, resolvido_em, resolvido_por");
+      if (isObservationAccessDenied(response.error)) {
+        if (activeCacheKey.current === contextAtStart) {
+          loadSequence.current++;
+          dropScreenCacheScopes(["gerente"]);
+          setAppliedCacheKey("");
+          setObservacoes([]);
+          setLoadError("Acesso às observações não confirmado. Faça login novamente ou contate o suporte.");
+        }
+        return;
+      }
       const confirmed = confirmObservationResolved(response, id, fazendaId);
       if (!isObservationContextCurrent(contextAtStart, activeCacheKey.current,
           loadAtStart, loadSequence.current)) return;
@@ -495,7 +515,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       resolvingIds.current.delete(id);
     }
-  }, [fazendaId, cacheKey, appliedCacheKey, observacoes]);
+  }, [fazendaId, cacheKey, appliedCacheKey, observacoes, loadError]);
 
   const scopedObservacoes = useMemo(() => appliedCacheKey === cacheKey ? observacoes : [], [appliedCacheKey, cacheKey, observacoes]);
   const obsPendentes = useMemo(() => scopedObservacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [scopedObservacoes]);

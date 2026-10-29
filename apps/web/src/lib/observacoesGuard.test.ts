@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent } from "./observacoesGuard";
+import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied } from "./observacoesGuard";
 
 const row = { id: "obs-a", fazenda_id: "farm-a", resolvido: true,
   resolvido_em: "2026-10-29T12:00:00Z", resolvido_por: "gerente-a" };
@@ -30,6 +30,14 @@ describe("F12-L34 observation client guard", () => {
     expect(() => confirmObservationResolved(ok([row]), "obs-a", "farm-b")).toThrow();
     expect(() => confirmObservationResolved(ok([{...row,resolvido:false}]), "obs-a", "farm-a")).toThrow();
     expect(() => confirmObservationResolved(ok([{...row,resolvido_em:"bad"}]), "obs-a", "farm-a")).toThrow();
+  });
+  it("detects access revocation while keeping transient errors distinct", () => {
+    expect(isObservationAccessDenied({code:"42501"})).toBe(true);
+    expect(isObservationAccessDenied({status:401})).toBe(true);
+    expect(isObservationAccessDenied({status:403})).toBe(true);
+    expect(isObservationAccessDenied({code:"PGRST116"})).toBe(false);
+    expect(isObservationAccessDenied({code:"NETWORK_ERROR"})).toBe(false);
+    expect(isObservationAccessDenied(null)).toBe(false);
   });
   it("discards stale tenant/sequence responses", () => {
     expect(isObservationContextCurrent("A","B",3,3)).toBe(false);

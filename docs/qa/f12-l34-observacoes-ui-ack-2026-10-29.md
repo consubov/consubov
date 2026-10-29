@@ -28,3 +28,10 @@ Data: 29/10/2026. Status: DRAFT, sem merge ou deploy.
 - Só branch isolada `fix/app/f12-l34-observacoes-ack-20261029`, PR DRAFT; não alterar main, branches do agente local, CapatazDashboard, lockfile ou migrations.
 - Reversão via revert exclusivo dos commits deste PR. Sem force-push/reset; requer QA real e autorização antes de merge.
 - Reportar HEAD/base SHA, arquivos, resultado por teste/gate, riscos remanescentes, autorização, atualização Cérebro/Handoff/Notion e bloqueios F12.
+
+## 29/10/2026 — hardening de revogação e QA complementar
+
+- Correção para revogação de permissões de observações: erro SQL `42501` e códigos HTTP 401/403 em consulta invalidam os snapshots de gerente, removem a chave aplicada e exibem bloqueio/relogin, **mesmo quando havia cache da mesma fazenda**. Erro transitório conserva informação histórica apenas do mesmo contexto, mas a resolução fica desabilitada enquanto o erro persistir.
+- Atualização com autorização negada também invalida a exibição; nenhum ACK é emitido. Os erros retornados ao usuário não contêm mensagens SQL.
+- Teste adicional em `observacoesGuard.test.ts` distingue negação de acesso e falha transitória. Execução CI do novo SHA ainda deve ser confirmada; E2E de revogação e reinstalação da RLS não foram realizados.
+- Evidência do SHA anterior `57d0ad4`: `build-and-test` SUCCESS, 251 testes Web, 180 E2E Web, 122 Edge, SAST e Secret Scanning SUCCESS; Dependency Audit FAILURE com três HIGH (DOMPurify, Vite/launch-editor, Zod). O passo `Web axe baseline` ficou marcado como SUCCESS na job, mas `axe` saiu com erro de ChromeDriver incompatível e `continue-on-error: true`; **não considerar acessibilidade aprovada** até corrigir o runner/driver e executar axe efetivamente. Não alterar workflows da frente de CI compartilhada neste PR.
