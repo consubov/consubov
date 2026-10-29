@@ -4,13 +4,14 @@
  * API experimental: só executa quando o navegador oferece navigator.install.
  */
 export const CONSUBOV_INSTALL_MANIFEST =
-  "https://app.consubov.com.br/manifest-consubov-v2.json";
+  "https://app.consubov.com.br/manifest.json";
 export const CONSUBOV_INSTALL_ID = "https://app.consubov.com.br/";
 
 export type CrossOriginInstallResult =
   | "installed"
   | "dismissed"
   | "unsupported"
+  | "invalid-data"
   | "failed";
 
 export interface CrossOriginInstallNavigator {
@@ -40,6 +41,12 @@ export async function requestConsubovCrossOriginInstall(
       "name" in error &&
       error.name === "AbortError"
     ) return "dismissed";
+    if (
+      error !== null &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "DataError"
+    ) return "invalid-data";
     return "failed";
   }
 }

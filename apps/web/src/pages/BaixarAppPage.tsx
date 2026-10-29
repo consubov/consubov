@@ -59,7 +59,7 @@ export default function BaixarAppPage() {
     siteCrossOriginInstall ? false : isAppInstalledOnDevice(brandId),
   );
   const [showManualHint, setShowManualHint] = useState(false);
-  const [siteInstallUnavailable, setSiteInstallUnavailable] = useState(false);
+  const [siteInstallIssue, setSiteInstallIssue] = useState<"unsupported" | "invalid-data" | "failed" | null>(null);
   const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   const surfaceMode = getSurfaceMode();
   const { language, setLanguage } = useSiteLanguage();
@@ -169,10 +169,14 @@ export default function BaixarAppPage() {
       );
       if (result === "installed") {
         setInstalled(true);
-        setSiteInstallUnavailable(false);
+        setSiteInstallIssue(null);
         return;
       }
-      if (result !== "dismissed") setSiteInstallUnavailable(true);
+      if (result === "dismissed") {
+        setSiteInstallIssue(null);
+        return;
+      }
+      setSiteInstallIssue(result);
       return;
     }
 
@@ -402,7 +406,7 @@ export default function BaixarAppPage() {
                   {copy("Baixar e Instalar App", "Download and Install")} {brandName}
                 </button>
 
-                {siteInstallUnavailable && (
+                {siteInstallIssue && (
                   <div
                     className="rounded-xl p-4 text-xs sm:text-sm space-y-3"
                     style={{
@@ -415,8 +419,16 @@ export default function BaixarAppPage() {
                   >
                     <p className="font-bold text-[#22FF88]">
                       {copy(
-                        "A instalação direta ainda não está disponível neste navegador.",
-                        "Direct installation is not available in this browser yet.",
+                        siteInstallIssue === "unsupported"
+                          ? "Este navegador não oferece o popup de instalação entre domínios."
+                          : siteInstallIssue === "invalid-data"
+                            ? "O navegador não conseguiu validar os dados de instalação do App."
+                            : "O navegador não conseguiu iniciar a instalação do App.",
+                        siteInstallIssue === "unsupported"
+                          ? "This browser does not support cross-origin app installation prompts."
+                          : siteInstallIssue === "invalid-data"
+                            ? "The browser could not validate the App installation data."
+                            : "The browser could not start the App installation.",
                       )}
                     </p>
                     <p className="text-[#D8EFE2]">

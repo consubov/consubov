@@ -12,6 +12,8 @@ describe("site institutional cross-origin PWA installation", () => {
       install: async (options) => { requests.push(options); },
     })).toBe("installed");
     expect(requests).toEqual([{manifest: CONSUBOV_INSTALL_MANIFEST, manifestId: CONSUBOV_INSTALL_ID}]);
+    expect(CONSUBOV_INSTALL_MANIFEST).toBe("https://app.consubov.com.br/manifest.json");
+    expect(CONSUBOV_INSTALL_ID).toBe("https://app.consubov.com.br/");
   });
 
   it("does not redirect or install the institutional site without browser support", async () => {
@@ -22,6 +24,12 @@ describe("site institutional cross-origin PWA installation", () => {
     expect(await requestConsubovCrossOriginInstall({
       install: async () => { throw new DOMException("User dismissed", "AbortError"); },
     })).toBe("dismissed");
+  });
+
+  it("reports invalid manifest data distinctly from missing browser support", async () => {
+    expect(await requestConsubovCrossOriginInstall({
+      install: async () => { throw new DOMException("Invalid app manifest", "DataError"); },
+    })).toBe("invalid-data");
   });
 
   it("does not claim a successful install on unexpected browser errors", async () => {
