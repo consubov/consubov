@@ -15,6 +15,28 @@ function readAppVersion(): string {
   }
 }
 
+/** Release floor independent of GitHub Actions: an App build cannot silently
+ * ship an older product version when CI has no quota or a workflow is skipped.
+ * Site builds use vite.site.config.ts and remain unversioned.
+ */
+function requireConsubovReleaseFloor(): Plugin {
+  return {
+    name: "consubov-fazendas-release-floor",
+    apply: "build",
+    buildStart() {
+      const version = readAppVersion();
+      const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
+      const major = match ? Number(match[1]) : Number.NaN;
+      const minor = match ? Number(match[2]) : Number.NaN;
+      const patch = match ? Number(match[3]) : Number.NaN;
+      if (!Number.isSafeInteger(major) || !Number.isSafeInteger(minor) ||
+          !Number.isSafeInteger(patch) || major < 2) {
+        throw new Error(`CONSUBOV Fazendas: build bloqueado por regressao de versao (${version}); minimo aprovado 2.0.0`);
+      }
+    },
+  };
+}
+
 // Replaces __BUILD_TIMESTAMP__ in public/sw.js so each deploy invalidates caches.
 function injectSwBuildTimestamp(): Plugin {
   return {
@@ -76,6 +98,7 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
+    requireConsubovReleaseFloor(),
     injectSwBuildTimestamp(),
   ].filter(Boolean),
   resolve: {
