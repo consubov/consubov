@@ -184,7 +184,7 @@ export default function GerenteDashboard() {
     loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
-    alertasAtraso, intervaloDefinido,
+    alertasAtraso, intervaloDefinido, loadError, hasCurrentCache,
   } = useGerenteData(filters);
 
   const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
@@ -295,6 +295,14 @@ export default function GerenteDashboard() {
     navigate(`/dashboard/retiro/${retiroId}?mes=${mes}&ano=${ano}`);
   };
 
+  if (loadError && !hasCurrentCache) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6" role="alert">
+        <p className="text-sm text-destructive text-center">{loadError}</p>
+        <Button variant="outline" onClick={() => void refresh()}>Tentar novamente</Button>
+      </main>
+    );
+  }
   if (loading) return <LoadingScreen />;
 
   if (salgaReportOpen && roleData.fazendaId) {
@@ -309,6 +317,12 @@ export default function GerenteDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {loadError && (
+        <div role="alert" className="bg-muted px-4 py-2 flex items-center justify-between gap-3">
+          <span className="text-sm">Não foi possível atualizar os dados. Exibindo informações anteriores desta fazenda.</span>
+          <Button variant="outline" size="sm" onClick={() => void refresh()}>Tentar novamente</Button>
+        </div>
+      )}
       <UpdateBanner />
       <EnableNotificationsBanner />
       {/* Header */}
