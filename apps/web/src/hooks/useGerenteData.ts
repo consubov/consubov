@@ -120,6 +120,10 @@ export function useGerenteData(filters?: GerenteFilters) {
     consumoAno,
   );
 
+  const hasFilters = filters !== undefined;
+  const filterAno = filters?.ano;
+  const filterMes = filters?.mes;
+  const filterStatus = filters?.cicloStatus;
   const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
   const ic = getScreenCache<GerenteCache>(cacheKey);
   const activeCacheKey = useRef("");
@@ -176,15 +180,15 @@ export function useGerenteData(filters?: GerenteFilters) {
       snap.ciclosDisponiveis = (allCiclos);
 
       let activeCiclo: Ciclo | null = null;
-      if (filters) {
+      if (hasFilters) {
         let filtered = allCiclos;
-        filtered = filtered.filter(c => c.ano === filters.ano);
-        if (filters.mes != null) {
-          filtered = filtered.filter(c => c.mes === filters.mes);
+        filtered = filtered.filter(c => c.ano === filterAno);
+        if (filterMes != null) {
+          filtered = filtered.filter(c => c.mes === filterMes);
         }
-        if (filters.cicloStatus === 'aberto') {
+        if (filterStatus === 'aberto') {
           filtered = filtered.filter(c => !c.fechado);
-        } else if (filters.cicloStatus === 'fechado') {
+        } else if (filterStatus === 'fechado') {
           filtered = filtered.filter(c => c.fechado);
         }
         activeCiclo = filtered[0] ?? null;
@@ -215,10 +219,10 @@ export function useGerenteData(filters?: GerenteFilters) {
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
-        if (filters) {
-          lancQuery = lancQuery.eq("ano_referencia", filters.ano);
-          if (filters.mes != null) {
-            lancQuery = lancQuery.eq("mes_referencia", filters.mes);
+        if (hasFilters) {
+          lancQuery = lancQuery.eq("ano_referencia", filterAno);
+          if (filterMes != null) {
+            lancQuery = lancQuery.eq("mes_referencia", filterMes);
           }
         } else if (activeCiclo) {
           lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
@@ -254,7 +258,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filterAno, filterMes, filterStatus, hasFilters, cacheKey, applyCache]);
 
   useEffect(() => {
     activeCacheKey.current = cacheKey;
@@ -263,9 +267,11 @@ export function useGerenteData(filters?: GerenteFilters) {
     else { setAppliedCacheKey(""); setLoading(true); }
     setLoadError(null);
     void loadData();
+    const sequence = loadSequence;
+    const activeKey = activeCacheKey;
     return () => {
-      loadSequence.current++;
-      activeCacheKey.current = "";
+      sequence.current++;
+      activeKey.current = "";
     };
   }, [loadData, cacheKey, applyCache]);
 
@@ -296,12 +302,12 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     if (!gmdPastoIds) { setGmdPastos({}); return; }
     let cancel = false;
-    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+    const dia = dataReferenciaGmd(hasFilters ? filterMes : consumoMes, consumoAno);
     fetchGmdPastos(gmdPastoIds.split(","), dia)
       .then((m) => { if (!cancel) setGmdPastos(m); })
       .catch((e) => console.error("GMD pastos error:", e));
     return () => { cancel = true; };
-  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
+  }, [gmdPastoIds, hasFilters, filterMes, consumoMes, consumoAno]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -406,7 +412,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     if (!fazendaId) { setCapatazScores([]); return; }
     let cancelled = false;
-    const anual = filters != null && filters.mes == null;
+    const anual = hasFilters && filterMes == null;
     const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
     const end = anual ? new Date(consumoAno, 11, 31, 23, 59, 59) : new Date(consumoAno, consumoMes, 0, 23, 59, 59);
     fetchScoresCapataz({
@@ -425,7 +431,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, hasFilters, filterMes, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -491,7 +497,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     }
   }, [fazendaId, cacheKey, appliedCacheKey, observacoes]);
 
-  const scopedObservacoes = appliedCacheKey === cacheKey ? observacoes : [];
+  const scopedObservacoes = useMemo(() => appliedCacheKey === cacheKey ? observacoes : [], [appliedCacheKey, cacheKey, observacoes]);
   const obsPendentes = useMemo(() => scopedObservacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [scopedObservacoes]);
   const obsResolvidas = useMemo(() => scopedObservacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [scopedObservacoes]);
 
