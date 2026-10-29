@@ -102,7 +102,7 @@ function loadMem() {
       try {
         const db = await getDb();
         const keys = (await db.getAllKeys(STORE)) as string[];
-        for (const k of keys) mem.set(k, ((await db.get(STORE, k)) as any[]) ?? []);
+        for (const k of keys) mem.set(k, ((await db.get(STORE, k)) as Record<string, unknown>[]) ?? []);
       } catch (e) {
         console.error("[maOffline] load failed", e);
       }
