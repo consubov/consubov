@@ -108,6 +108,14 @@ describe("CiclosPage — contenção de exclusão insegura", () => {
     expect(source).toContain("if (!administradorAtivo || activeUserId.current !== user.id)");
   });
 
+  it("impede fechar o diálogo enquanto a reabertura está em processamento", () => {
+    expect(source).toContain("if (!open && !actionLoading) {");
+    expect(source).toContain("confirmationUserId.current = null;");
+    expect(source).toContain("setConfirmAction(null);");
+    expect(source).toContain("<AlertDialogCancel disabled={actionLoading}>");
+    expect(source).toContain("disabled={actionLoading}");
+  });
+
   it("usa o tipo gerado de ciclos_auditoria sem any", () => {
     expect(source).toContain('supabase.from("ciclos_auditoria").insert({');
     expect(source).not.toContain('"ciclos_auditoria" as any');

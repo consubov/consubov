@@ -277,7 +277,13 @@ export default function CiclosPage() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => {
+        // O ciclo pode ter sido alterado mesmo se a confirmação for fechada durante a requisição.
+        if (!open && !actionLoading) {
+          confirmationUserId.current = null;
+          setConfirmAction(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reabrir Ciclo</AlertDialogTitle>
