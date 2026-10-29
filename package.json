@@ -1,32 +1,6 @@
 {
   "name": "consubov",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
-  "packageManager": "bun@1.4.0",
-  "workspaces": [
-    "apps/*"
-  ],
-  "scripts": {
-    "dev": "turbo run dev",
-    "dev:web": "turbo run dev --filter=@consubov/web",
-    "dev:api": "turbo run dev --filter=@consubov/api",
-    "build": "turbo run build",
-    "build:web": "turbo run build --filter=@consubov/web",
-    "build:site": "bun run --cwd apps/web build:site",
-    "build:api": "turbo run build --filter=@consubov/api",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "check": "bun run typecheck && bun run build && bun run test",
-    "test:web": "turbo run test --filter=@consubov/web",
-    "quality:phase5:local": "bash scripts/run-phase5-local.sh",
-    "quality:phase6:local": "bash scripts/run-phase6-local.sh",
-    "quality:phase7:local": "bash scripts/run-phase7-local.sh",
-    "quality:phase8:local": "bash scripts/run-phase8-local.sh",
-    "quality:phase9:local": "bash scripts/run-phase9-local.sh",
-    "quality:phase10:local": "bash scripts/run-phase10-local.sh"
-  },
   "devDependencies": {
     "@supabase/supabase-js": "^2.117.2",
     "eslint-plugin-security": "^4.2.0",
@@ -52,5 +26,31 @@
     "picomatch@<2.3.2": "2.3.2",
     "source-map-js@<1.2.2": "1.2.2",
     "braces": "github:FSDevelop/braces#d0d575e55e74a4e0218e5248fafb79efc3e54ebb"
-  }
+  },
+  "packageManager": "bun@1.4.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@consubov/web",
+    "dev:api": "turbo run dev --filter=@consubov/api",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@consubov/web",
+    "build:site": "bun run --cwd apps/web build:site",
+    "build:api": "turbo run build --filter=@consubov/api",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "bun run typecheck && bun run build && bun run test",
+    "test:web": "turbo run test --filter=@consubov/web",
+    "quality:phase5:local": "bash scripts/run-phase5-local.sh",
+    "quality:phase6:local": "bash scripts/run-phase6-local.sh",
+    "quality:phase7:local": "bash scripts/run-phase7-local.sh",
+    "quality:phase8:local": "bash scripts/run-phase8-local.sh",
+    "quality:phase9:local": "bash scripts/run-phase9-local.sh",
+    "quality:phase10:local": "bash scripts/run-phase10-local.sh"
+  },
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ]
 }
