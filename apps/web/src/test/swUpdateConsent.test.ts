@@ -11,16 +11,20 @@ describe("PWA update consent (runtime)", () => {
   beforeEach(() => {
     vi.resetModules(); vi.useFakeTimers();
     controls.busy = false; controls.reload.mockReset(); controls.drain.mockReset();
-    vi.stubGlobal("__APP_BUILD_VERSION__", "test-build-a");
+    vi.stubGlobal("__APP_BUILD_VERSION__", "1793294986866");
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ version: "1793294987866", appVersion: "2.0.0" }),
+    })));
   });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   async function fixture() {
     const events = new Map<string, (event?: unknown) => void>();
-    const waiting = { postMessage: vi.fn(), scriptURL: "https://example.test/sw.js?v=b" };
+    const waiting = { postMessage: vi.fn(), scriptURL: `${window.location.origin}/sw.js?v=1793294987866` };
     const registration = { waiting, update: vi.fn(async () => undefined), addEventListener: vi.fn() };
     const sw = {
-      controller: { scriptURL: "https://example.test/sw.js?v=a" },
+      controller: { scriptURL: `${window.location.origin}/sw.js?v=1793294986866` },
       getRegistration: vi.fn(async () => registration),
       addEventListener: (name: string, handler: (event?: unknown) => void) => events.set(name, handler),
     };
@@ -33,7 +37,7 @@ describe("PWA update consent (runtime)", () => {
     await f.module.applyPendingUpdateNow("user-click");
     expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
     await vi.advanceTimersByTimeAsync(16000);
-    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: "test-build-b" } });
+    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: "1793294987866" } });
     expect(controls.reload).not.toHaveBeenCalled();
   });
 
@@ -52,7 +56,7 @@ describe("PWA update consent (runtime)", () => {
     await f.module.applyPendingUpdateNow("user-click");
     f.events.get("controllerchange")?.();
     expect(controls.reload).not.toHaveBeenCalled();
-    f.sw.controller = { scriptURL: "https://example.test/sw.js?v=b" };
+    f.sw.controller = { scriptURL: `${window.location.origin}/sw.js?v=1793294987866` };
     f.events.get("controllerchange")?.();
     expect(controls.reload).toHaveBeenCalledOnce();
     f.events.get("controllerchange")?.();
