@@ -8,7 +8,7 @@ on:
       - 'scripts/ci/pwa-release-gate.mjs'
       - '.github/workflows/pwa-release-gate.yml'
   push:
-    branches: [main, hotfix/pwa-update-loop-20261029]
+    branches: [main]
     paths:
       - 'apps/web/**'
       - 'scripts/ci/pwa-release-gate.mjs'

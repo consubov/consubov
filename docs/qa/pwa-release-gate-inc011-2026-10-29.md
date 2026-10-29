@@ -29,3 +29,12 @@ node scripts/ci/pwa-release-gate.mjs apps/web/dist --smoke-url=https://app.consu
 Esta chamada HTTP apenas lê as rotas e valida o manifesto V2 e os JS/CSS atuais. O comando não é executado automaticamente em cada deploy.
 
 **Estado do gate**: CI só é considerado PASS após checks e E2E do SHA final no GitHub. **Configuração Vercel/branch protection para exigir esse status antes da publicação ainda não foi alterada**; portanto o gate não bloqueia, por si só, um deploy automático. QA com dispositivo real e outros usuários permanece pendente. NUNCA limpar IndexedDB, cache ou filas como solução. Reconciliar PR #77 e GOV-001 antes de merge.
+
+## Evidência de execução no GitHub Actions — 29/10/2026
+
+- Commit de código `ef82234ee77f0efa7250a9920d5ef25836ed989a`: Workflow PWA Release Safety Gate **SUCCESS** em `40925246608` e `40925254853`.
+- Vitest `publishedUpdate`, `publishedUpdateRegression`, `pwaStaticRouteTargets`: **19/19 PASS**.
+- Bun/Vite build **PASS**; validação local **PASS** para release 2.0.0, SW/version.json alinhados, **341 arquivos** precache, JS/CSS existentes, manifesto + installer e HTTP Vite preview.
+- Playwright `pwa-fixtures/upgrade.spec.ts` em Chromium persistente isolado: **3/3 PASS** (consentimento + IndexedDB Blob, falha lazy asset preservando versão antiga, seis bases offline com filas/fotos intactas). Nenhum dado de usuário ou serviço remoto utilizado.
+- Falha inicial identificada: testes estáticos usavam `new URL(..., import.meta.url)` e resolviam `/public`/`undefined` sob Vitest no runner. Corrigido com `resolve(process.cwd(), "public", name)` em `ef82234` antes do sucesso integral.
+- A homologação em dispositivo real, a condição **required check** para impedir deploy e a comparação do SHA main x deploy ainda são **PENDENTES**. Check após commit documental deve ser novamente consultado.
