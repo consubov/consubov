@@ -48,7 +48,7 @@ import {
   resolveSurfaceRedirect,
 } from "@/lib/appSurface";
 
-describe("appSurface — separação Site vs App e acesso exclusivo pelo ícone instalado", () => {
+describe("appSurface — Site público e App acessível por navegador ou instalado", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -149,27 +149,30 @@ describe("appSurface — separação Site vs App e acesso exclusivo pelo ícone 
     expect(isAppInstalledOnDevice("consubov")).toBe(false);
   });
 
-  it("bloqueia acesso na aba do navegador quando na superfície do App (app.*) e redireciona para /baixar", () => {
-    const redirectLogin = resolveSurfaceRedirect("/login", "", {
-      surfaceMode: "app",
-      standalone: false,
-      relattoProfile: false,
-    });
-    expect(redirectLogin).toBe("/baixar");
+  it("mantém login e demais rotas do App acessíveis no navegador sem instalar", () => {
+    for (const path of [
+      "/login", "/app", "/admin", "/consultor", "/baixar", "/",
+      "/recuperar-senha", "/redefinir-senha",
+    ]) {
+      expect(resolveSurfaceRedirect(path, "", {
+        surfaceMode: "app",
+        standalone: false,
+        relattoProfile: false,
+      })).toBeNull();
+    }
+  });
 
-    const redirectRoot = resolveSurfaceRedirect("/", "", {
-      surfaceMode: "app",
-      standalone: false,
-      relattoProfile: false,
-    });
-    expect(redirectRoot).toBe("/baixar");
-
-    const redirectBaixar = resolveSurfaceRedirect("/baixar", "", {
-      surfaceMode: "app",
-      standalone: false,
-      relattoProfile: false,
-    });
-    expect(redirectBaixar).toBeNull();
+  it("não permite usar query surface=app para burlar o modo fixo do site", () => {
+    expect(getSurfaceMode({
+      hostname: "consubov.com.br",
+      search: "?surface=app",
+      envMode: "site",
+    })).toBe("site");
+    expect(getSurfaceMode({
+      hostname: "app.consubov.com.br",
+      search: "?surface=site",
+      envMode: "",
+    })).toBe("app");
   });
 
   it("abre diretamente no sistema (/app ou /consultor) quando acionado pelo ícone instalado (standalone)", () => {

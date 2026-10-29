@@ -5,13 +5,11 @@
  * Regras de produto (docs/70-separacao-site-e-app-nativo.md):
  * 1. O Site institucional aponta para a página de download do App (/baixar).
  * 2. Nunca mencionar a sigla "PWA" para o usuário final; usar sempre "App" / "Aplicativo".
- * 3. No subdomínio do App (app.*), o uso em aba comum do navegador antes de instalar é bloqueado
- *    e redirecionado para /baixar.
- * 4. Quando aberto pelo ícone instalado no dispositivo (standalone) ou assim que a instalação
- *    conclui, a raiz (/) e /baixar abrem diretamente na tela de Login / Sistema (/app -> /login),
- *    nunca voltando para a página de baixar.
- * 5. A aplicação identifica quando o App já foi instalado no dispositivo e bloqueia
- *    uma segunda instalação duplicada.
+ * 3. No subdomínio do App (app.*), o login e as rotas protegidas podem ser usados
+ *    no navegador comum, sem exigir instalação nem perder autorização por perfil.
+ * 4. Quando aberto pelo ícone instalado, a raiz e /baixar continuam enviando o
+ *    usuário ao sistema (/app ou /consultor), preservando os dados offline.
+ * 5. O Site permanece público, sem rotas privadas ou novos botões de acesso.
  */
 
 export type SurfaceMode = "site" | "app" | "unified";
@@ -183,24 +181,13 @@ export function getDownloadAppHref(
 }
 
 export function getSurfaceMode(probe?: SurfaceProbeInput): SurfaceMode {
-  const search =
-    probe?.search ??
-    (typeof window !== "undefined" && window.location
-      ? window.location.search
-      : "");
-  const params = new URLSearchParams(search);
-  const querySurface = params.get("surface")?.toLowerCase();
-  if (querySurface === "app") return "app";
-  if (querySurface === "site") return "site";
-
+  // Configuração do build vence parâmetros da URL: o site não pode ser
+  // transformado em superfície privada com ?surface=app.
   const envMode = (
     probe?.envMode ??
     ((import.meta.env.VITE_SURFACE_MODE as string | undefined) ?? "")
-  )
-    .trim()
-    .toLowerCase();
-  if (envMode === "app") return "app";
-  if (envMode === "site") return "site";
+  ).trim().toLowerCase();
+  if (envMode === "site" || envMode === "app") return envMode;
 
   const hostname = (
     probe?.hostname ??
@@ -208,11 +195,18 @@ export function getSurfaceMode(probe?: SurfaceProbeInput): SurfaceMode {
       ? window.location.hostname
       : "")
   ).toLowerCase();
+  if (hostname.startsWith("app.")) return "app";
 
-  if (hostname.startsWith("app.")) {
-    return "app";
-  }
-
+  // Overrides de superfície continuam disponíveis somente nos builds
+  // unified/de QA, quando não há um modo de build fixo.
+  const search =
+    probe?.search ??
+    (typeof window !== "undefined" && window.location
+      ? window.location.search
+      : "");
+  const querySurface = new URLSearchParams(search).get("surface")?.toLowerCase();
+  if (querySurface === "app") return "app";
+  if (querySurface === "site") return "site";
   return "unified";
 }
 
@@ -339,20 +333,10 @@ export function resolveSurfaceRedirect(
     return null;
   }
 
-  // 2. Superfície exclusiva do App (subdomínio app.* ou VITE_SURFACE_MODE=app) aberta na aba do navegador:
-  // Bloqueia o uso na aba comum do navegador e exige instalação/abertura pelo ícone.
-  if (surfaceMode === "app") {
-    if (normalizedPath !== "/baixar") {
-      const brand: AppBrandId =
-        relatto ||
-        normalizedPath.startsWith("/relatto") ||
-        normalizedPath.startsWith("/consultor")
-          ? "relatto"
-          : "consubov";
-      return getDownloadAppHref(brand, "");
-    }
-    return null;
-  }
+  // 2. O App pode ser aberto no navegador: /login e rotas operacionais
+  // não dependem de display-mode: standalone. Login e ProtectedRoute mantêm
+  // autenticação e autorização por papel.
+  if (surfaceMode === "app") return null;
 
   // 3. Superfície exclusiva do Site institucional (VITE_SURFACE_MODE=site):
   // Rotas autenticadas não rodam no domínio do site; encaminham para baixar o App.
