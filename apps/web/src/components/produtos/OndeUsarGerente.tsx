@@ -145,7 +145,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
   async function executar() {
     setSaving(true);
     try {
-      for (const r of retirosMudados) {
+      await Promise.all(retirosMudados.map(async (r) => {
         const pid = retPend[r.id];
         const campos = camposProdutoParaRetiro(prodById[pid], pid, {
           peso_saco_kg: null, preco_por_kg: null,
@@ -154,14 +154,17 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         });
         const { error } = await supabase.from("retiros").update(campos as any).eq("id", r.id).eq("fazenda_id", fazendaId);
         if (error) throw new Error(`retiro ${r.nome}: ${error.message}`);
-      }
+      }));
+
       const conf = new Set(conflitosALimpar.map((p) => p.id));
+
       // Pastos: mesma gravação da PastoDetailPage (produto_id ou null).
-      for (const p of pastosMudados) {
-        if (conf.has(p.id)) continue;
+      await Promise.all(pastosMudados.map(async (p) => {
+        if (conf.has(p.id)) return;
         const { error } = await supabase.from("pastos").update({ produto_id: pastoPend[p.id] ?? null }).eq("id", p.id).eq("retiro_id", p.retiro_id);
         if (error) throw new Error(`pasto ${p.nome}: ${error.message}`);
-      }
+      }));
+
       if (conf.size > 0) {
         const { error } = await supabase.from("pastos").update({ produto_id: null }).in("id", Array.from(conf)).in("retiro_id", retiros.map((r) => r.id));
         if (error) throw new Error(`pastos seguindo o retiro: ${error.message}`);
