@@ -33,7 +33,9 @@ export function isAuthorizedModernPushMachine(
   }
 
   if (typeof entries !== "object" || entries === null || Array.isArray(entries)) return false;
-  const expected = (entries as Record<string, unknown>).default;
+  // Never reuse the project-wide default admin key to authorize push sends.
+  // The named key 'push' must be provisioned and enabled separately.
+  const expected = (entries as Record<string, unknown>).push;
   if (
     typeof expected !== "string" ||
     !expected.startsWith("sb_secret_") ||

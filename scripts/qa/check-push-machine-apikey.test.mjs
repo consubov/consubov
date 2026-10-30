@@ -4,7 +4,8 @@ import { isAuthorizedModernPushMachine } from '../../supabase/functions/send-pus
 
 const SECRET='sb_secret_synthetic_machine_key';
 const READ=(vars)=>name=>vars[name];
-const CONFIG=JSON.stringify({default:SECRET});
+const ADMIN='sb_secret_generic_admin_synthetic';
+const CONFIG=JSON.stringify({default:ADMIN,push:SECRET});
 const verify=(apikey, vars)=>isAuthorizedModernPushMachine(apikey,READ(vars));
 const ON={CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED:'true',SUPABASE_SECRET_KEYS:CONFIG};
 
@@ -24,9 +25,12 @@ test('malformed JSON denied without throwing',()=>assert.equal(verify(SECRET,{..
 test('empty JSON denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:''}),false));
 test('array config denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:'[]'}),false));
 test('null config denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:'null'}),false));
-test('missing default denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:'{"other":"sb_secret_other"}'}),false));
-test('public value in default denied',()=>assert.equal(verify('sb_secret_wrong',{...ON,SUPABASE_SECRET_KEYS:'{"default":"sb_publishable_abc"}'}),false));
-test('whitespace in configured default denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({default:SECRET+' '})}),false));
-test('other named secrets do not interfere',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({other:'sb_secret_other',default:SECRET})}),true));
+test('missing named push key denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:'{"other":"sb_secret_other"}'}),false));
+test('public value in push slot denied',()=>assert.equal(verify('sb_secret_wrong',{...ON,SUPABASE_SECRET_KEYS:'{"push":"sb_publishable_abc"}'}),false));
+test('whitespace in configured push denied',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({push:SECRET+' '})}),false));
+test('other named secrets do not interfere',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({other:'sb_secret_other',default:ADMIN,push:SECRET})}),true));
 test('near-match is rejected',()=>assert.equal(verify(SECRET+'x',ON),false));
 test('case change rejected',()=>assert.equal(verify(SECRET.toUpperCase(),ON),false));
+
+test('generic project-wide default key denied for push',()=>assert.equal(verify(ADMIN,ON),false));
+test('named push required even if default key equals candidate',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({default:SECRET})}),false));

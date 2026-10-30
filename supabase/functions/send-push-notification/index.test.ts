@@ -199,10 +199,42 @@ describe("send-push-notification edge function", () => {
       const original = (globalThis as any).Deno.env.get;
       (globalThis as any).Deno.env.get = (name: string) =>
         name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
-        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: "sb_secret_generic_admin_synthetic", push: modernKey }) :
         original(name);
       try {
         const response = await handler(request("sb_secret_incorrect"));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("never accepts the shared default admin secret as a push credential", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      const adminKey = "sb_secret_generic_admin_synthetic";
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: adminKey, push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(adminKey));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("rejects a default-only key set even when the caller has that key", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
         expect(response.status).toBe(401);
         expect(hoisted.sendNotification).not.toHaveBeenCalled();
       } finally {
@@ -214,7 +246,7 @@ describe("send-push-notification edge function", () => {
       const original = (globalThis as any).Deno.env.get;
       (globalThis as any).Deno.env.get = (name: string) =>
         name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
-        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: "sb_secret_generic_admin_synthetic", push: modernKey }) :
         original(name);
       try {
         const response = await handler(request(modernKey));
