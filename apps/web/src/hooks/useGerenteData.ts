@@ -16,7 +16,7 @@ import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useSc
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; intervalo_padrao_dias?: number | null; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -67,7 +67,7 @@ export interface AlertaAtraso {
 
 export interface StatusDistribution {
   baixo: number; ideal: number; alto: number;
-  baixoPct: number; idealPct: number; altoPct: number;
+  baixoPct: number; idealPct: number; altoPct: number; atencaoPct?: number;
 }
 
 export interface PainelData {
@@ -155,7 +155,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       snap.gerenteNome = requireReadValue(gerenteRes).nome;
@@ -183,7 +183,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = requireReadRows(retirosRes).map((r: any) => ({
+      const retirosList = requireReadRows(retirosRes).map(r => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
@@ -232,7 +232,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         snap.produtos = requireReadRows(produtosRes) as Produto[];
       } else snap.produtos = [];
 
-      const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
       snap.observacoes = requireReadRows(obsRes) as Observacao[];
       if (currentKey.current !== cacheKey) return;
       setScreenCache(cacheKey, snap);
@@ -365,7 +365,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number((r as any).intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDefinido = Number(r.intervalo_padrao_dias ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -470,7 +470,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Resolve observacao
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
     try {
-      await (supabase as any).from("observacoes").update({
+      await supabase.from("observacoes").update({
         resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString(),
       }).eq("id", id);
       setObservacoes(prev => prev.map(o =>
