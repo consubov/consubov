@@ -177,6 +177,61 @@ describe("send-push-notification edge function", () => {
     handler = await loadHandler();
   });
 
+  describe("modern machine apikey (opt-in only)", () => {
+    const modernKey = "sb_secret_synthetic_machine_key";
+
+    const request = (apikey: string) => new Request(
+      "http://localhost/functions/send-push-notification",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey },
+        body: JSON.stringify({ user_ids: [MEMBER_ID] }),
+      },
+    );
+
+    it("does not enable machine access just because a modern API key exists", async () => {
+      const response = await handler(request(modernKey));
+      expect(response.status).toBe(401);
+      expect(hoisted.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("denies wrong apikey with opt-in enabled", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request("sb_secret_incorrect"));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("authenticates a matching machine apikey, preserving forbidden user targets", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
+        expect(response.status).toBe(403); // Machine cannot select arbitrary users.
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(lastAudit(warnSpy)).toMatchObject({
+          event: "push.request.denied",
+          caller: "machine",
+          reason: "selecao_proibida",
+        });
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+  });
+
   describe("HTTP semantics", () => {
     it("OPTIONS preflight responds 200 with allow-methods and allow-origin", async () => {
       const res = await handler(createRequest({}, { method: "OPTIONS" }));
