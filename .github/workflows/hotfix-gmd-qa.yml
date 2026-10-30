@@ -73,7 +73,11 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, chromium-tablet, chromium-mobile]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -87,7 +91,7 @@ jobs:
         run: bunx playwright install --with-deps chromium
       - name: Web/PWA smoke (mock backend only)
         working-directory: apps/web
-        run: bun run test:e2e:smoke
+        run: bunx playwright test --grep '@smoke|@a11y-smoke|@web-ready' --project ${{ matrix.project }}
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
