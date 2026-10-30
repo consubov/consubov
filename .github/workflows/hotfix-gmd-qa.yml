@@ -55,6 +55,8 @@ jobs:
       - name: Verify built bundle has no secrets
         working-directory: apps/web
         run: bun run check:dist-secrets
+      - name: PWA hashed Vite asset offline regression
+        run: node --test apps/web/scripts/qa/check-sw-vite-hashed-assets.mjs
   security-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
