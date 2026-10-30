@@ -1,4 +1,3 @@
-import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
@@ -35,7 +34,8 @@ function fmtBRL(v: number) {
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
   try {
-    const blob = await fetchPdfBinaryWithTimeout(url);
+    const res = await fetch(url);
+    const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
@@ -47,7 +47,8 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
 
 async function urlToJpeg(url: string, maxDim = 1400, quality = 0.78): Promise<string | null> {
   try {
-    const blob = await fetchPdfBinaryWithTimeout(url);
+    const res = await fetch(url);
+    const blob = await res.blob();
     const bmp = await createImageBitmap(blob);
     let { width, height } = bmp;
     if (width > maxDim || height > maxDim) {
@@ -169,7 +170,7 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
     startY: 158,
     head: [["#", "Data", "Valor"]],
     body: data.despesas.map((d, i) => [String(i + 1), fmtDate(d.data_despesa), fmtBRL(d.valor)]),
-    headStyles: { fillColor: [20, 67, 43] as [number, number, number], textColor: 255 },
+    headStyles: { fillColor: [20, 67, 43] as any, textColor: 255 },
     styles: { fontSize: 9 },
     margin: { left: 15, right: 15 },
   });
@@ -193,9 +194,9 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
       const areaH = areaBottom - areaTop;
       // Get natural size to fit inside area
       try {
-        const props = (doc as typeof doc & { getImageProperties?: (data: string) => { width: number; height: number } }).getImageProperties?.(jpeg);
-        const iw = props?.width ?? areaW;
-        const ih = props?.height ?? areaH;
+        const props = (doc as any).getImageProperties?.(jpeg);
+        let iw = props?.width ?? areaW;
+        let ih = props?.height ?? areaH;
         const scale = Math.min(areaW / iw, areaH / ih);
         const drawW = iw * scale;
         const drawH = ih * scale;

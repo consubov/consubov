@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
-import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
@@ -105,7 +104,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const fazendaId = filters?.fazendaId ?? roleData.fazendaId;
   const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
   const consumoAno = filters?.ano ?? new Date().getFullYear();
-  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } = useConsumoMineral({
+  const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
     fazendaId: fazendaId ?? "",
     mes: consumoMes,
     ano: consumoAno,
@@ -122,11 +121,6 @@ export function useGerenteData(filters?: GerenteFilters) {
   const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
   const ic = getScreenCache<GerenteCache>(cacheKey);
   const [loading, setLoading] = useState(!ic);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  // Tag the loaded snapshot so old farm data never drives a new farm\u0027s GMD requests.
-  const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
-  const currentKey = useRef(cacheKey);
-  currentKey.current = cacheKey;
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
   const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
   const [ciclo, setCiclo] = useState<Ciclo | null>(ic?.ciclo ?? null);
@@ -158,11 +152,11 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
-      snap.gerenteNome = requireReadValue(gerenteRes).nome;
-      const fData = requireReadValue(fazendaRes);
-      snap.fazendaData = ({ nome: fData.nome, intervalo_padrao_dias: fData.intervalo_padrao_dias ?? 3 });
+      snap.gerenteNome = (gerenteRes.data?.nome ?? "");
+      const fData = fazendaRes.data as any;
+      snap.fazendaData = ({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
 
-      const allCiclos = requireReadRows(allCiclosRes) as Ciclo[];
+      const allCiclos = (allCiclosRes.data ?? []) as Ciclo[];
       snap.ciclosDisponiveis = (allCiclos);
 
       let activeCiclo: Ciclo | null = null;
@@ -183,7 +177,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = requireReadRows(retirosRes).map((r: any) => ({
+      const retirosList = (retirosRes.data ?? []).map((r: any) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
@@ -197,7 +191,7 @@ export function useGerenteData(filters?: GerenteFilters) {
           .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
-        const pastosList = requireReadRows(pastosRes) as Pasto[];
+        const pastosList = (pastosRes.data ?? []) as Pasto[];
         snap.pastos = (pastosList);
 
         let lancQuery = supabase.from("view_consumo_tempo_real" as any)
@@ -214,47 +208,39 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = requireReadRows(lancRes) as Lancamento[];
+        const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
         snap.lancamentos = (lancList);
 
-
+        console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
         snap.pastos = ([]);
         snap.lancamentos = ([]);
       }
 
       const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
-      // A failed link read must NEVER turn into an unscoped products query.
-      if (produtoIdsFazenda === null) throw new DataReadFailure("unavailable");
-      if (produtoIdsFazenda.length) {
-        const produtosRes = await supabase.from("produtos")
-          .select("id, peso_saco_kg, preco_por_kg").in("id", produtoIdsFazenda);
-        snap.produtos = requireReadRows(produtosRes) as Produto[];
-      } else snap.produtos = [];
+      let produtosQuery = supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
+      if (produtoIdsFazenda) produtosQuery = produtosQuery.in("id", produtoIdsFazenda);
+      const produtosRes = await produtosQuery;
+      snap.produtos = ((produtosRes.data ?? []) as Produto[]);
 
-      const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
-      snap.observacoes = requireReadRows(obsRes) as Observacao[];
-      if (currentKey.current !== cacheKey) return;
+      try {
+        const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
+        snap.observacoes = ((obsRes.data ?? []) as Observacao[]);
+      } catch {
+        snap.observacoes = ([]);
+      }
       setScreenCache(cacheKey, snap);
       applyCache(snap);
-      setLoadedCacheKey(cacheKey);
-      setLoadError(null);
     } catch (e) {
-      if (currentKey.current === cacheKey) setLoadError(dataReadErrorMessage(e));
+      console.error("Error loading gerente data:", e);
     } finally {
-      if (currentKey.current === cacheKey) setLoading(false);
+      setLoading(false);
     }
   }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
-    if (c) { applyCache(c); setLoadedCacheKey(cacheKey); setLoading(false); }
-    else {
-      setLoadedCacheKey("");
-      applyCache({ gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] });
-      setLoading(true);
-    }
-    setLoadError(null);
+    if (c) { applyCache(c); setLoading(false); }
     void loadData();
   }, [loadData, cacheKey, applyCache]);
 
@@ -279,40 +265,18 @@ export function useGerenteData(filters?: GerenteFilters) {
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
 
-  // GMD is independent from other farm metrics: isolate scope, cancel obsolete
-  // requests and surface failures instead of silently treating them as no GMD.
-  const [gmdState, setGmdState] = useState<{
-    scope: string; values: Record<string, number | null>; error: string | null;
-  }>({ scope: "", values: {}, error: null });
-  const [gmdRetryTick, setGmdRetryTick] = useState(0);
-  const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
-  const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
-  const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
-  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
-  const gmdPastos = gmdState.scope === gmdScope ? gmdState.values : {};
-  const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
-
+  // GMD de cada pasto via gmd_do_pasto (hoje no mês em andamento; último dia em meses passados).
+  const [gmdPastos, setGmdPastos] = useState<Record<string, number | null>>({});
+  const gmdPastoIds = pastos.map(p => p.id).join(",");
   useEffect(() => {
-    const controller = new AbortController();
-    setGmdState({ scope: gmdScope, values: {}, error: null });
-    if (!fazendaId || !gmdPastoIds) return () => controller.abort();
-
-    fetchGmdPastos(gmdPastoIds.split(","), gmdDia, controller.signal)
-      .then(values => {
-        if (!controller.signal.aborted) {
-          setGmdState({ scope: gmdScope, values, error: null });
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setGmdState({
-            scope: gmdScope, values: {},
-            error: "Não foi possível confirmar o GMD. Tente novamente.",
-          });
-        }
-      });
-    return () => controller.abort();
-  }, [gmdScope, gmdPastoIds, gmdDia, fazendaId, gmdRetryTick]);
+    if (!gmdPastoIds) { setGmdPastos({}); return; }
+    let cancel = false;
+    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+    fetchGmdPastos(gmdPastoIds.split(","), dia)
+      .then((m) => { if (!cancel) setGmdPastos(m); })
+      .catch((e) => console.error("GMD pastos error:", e));
+    return () => { cancel = true; };
+  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -488,7 +452,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading, error: loadError || consumoError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

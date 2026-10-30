@@ -1,4 +1,3 @@
-import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -80,7 +79,8 @@ function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | 
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
   try {
-    const blob = await fetchPdfBinaryWithTimeout(url);
+    const res = await fetch(url);
+    const blob = await res.blob();
     const bmp = await createImageBitmap(blob);
     let { width, height } = bmp;
     if (width > maxDim || height > maxDim) {
@@ -240,7 +240,7 @@ function drawFirstHeader(
     let h = maxH; let w = h * ratio;
     if (w > maxW) { w = maxW; h = w / ratio; }
     const yLogo = topY + (HEADER_H - h) / 2;
-    try { doc.addImage(logo.dataUrl, "JPEG", W - 15 - w, yLogo, w, h); } catch { /* Optional logo rendering must not block the report. */ }
+    try { doc.addImage(logo.dataUrl, "JPEG", W - 15 - w, yLogo, w, h); } catch {}
   }
 
   doc.setFillColor(GREEN);
@@ -338,12 +338,12 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 2.5, textColor: INK, lineColor: LINE },
     columnStyles: {
-      0: { fontStyle: "bold", fillColor: [247, 244, 234] as [number, number, number], cellWidth: 70 },
+      0: { fontStyle: "bold", fillColor: [247, 244, 234] as any, cellWidth: 70 },
       1: { halign: "right" },
     },
     margin: { left: 15, right: 15 },
   });
-  y = ((doc as typeof doc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
+  y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
 
   const H = doc.internal.pageSize.getHeight();
   let pesosParaGrafico: number[] = [];
@@ -369,10 +369,10 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
       body,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: [31, 122, 77] as [number, number, number], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
       margin: { left: 15, right: 15 },
     });
-    y = ((doc as typeof doc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 6;
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
     pesosParaGrafico = data.identificados.map((r) => r.peso_kg);
   } else if (!data.header.identificado && data.semId && data.semId.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
@@ -424,7 +424,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
       ]),
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [31, 122, 77] as [number, number, number], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
       margin: { left: 15, right: 15 },
     });
   }
@@ -546,12 +546,12 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
       columnStyles: {
-        0: { fontStyle: "bold", fillColor: [247, 244, 234] as [number, number, number], cellWidth: 70 },
+        0: { fontStyle: "bold", fillColor: [247, 244, 234] as any, cellWidth: 70 },
         1: { halign: "right" },
       },
       margin: { left: 15, right: 15 },
     });
-    y = ((doc as typeof doc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 4;
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 4;
 
     let pesosDest: number[] = [];
 
@@ -570,10 +570,10 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
         body,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 1.8, textColor: INK, lineColor: LINE },
-        headStyles: { fillColor: [31, 122, 77] as [number, number, number], textColor: 255, fontStyle: "bold" },
+        headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
         margin: { left: 15, right: 15 },
       });
-      y = ((doc as typeof doc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 6;
+      y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
       pesosDest = d.identificados.map((r) => r.peso_kg);
     } else if (!d.identificado && d.semId && d.semId.length > 0) {
       const cols = 4;

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { RequestCancelledError, RequestTimeoutError, runWithDeadline } from "@/lib/requestDeadline";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -28,8 +27,7 @@ import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Fazenda = Pick<Tables<"fazendas">, "id" | "nome" | "cidade" | "estado" | "ativo">;
-const FAZENDAS_TIMEOUT_MS = 12000;
+type Fazenda = Tables<"fazendas">;
 
 interface FazendaForm {
   nome: string;
@@ -51,56 +49,38 @@ export default function FazendasPage() {
   const [form, setForm] = useState<FazendaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const [refreshKey, setRefreshKey] = useState(0);
-  const reloadFazendas = () => setRefreshKey((key) => key + 1);
+  async function loadFazendas() {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data, error, status } = await supabase
+        .from("fazendas")
+        .select("*")
+        .order("nome");
+      if (error) {
+        const denied = status === 401 || status === 403 || error.code === "42501";
+        const message = denied
+          ? "Acesso não autorizado para carregar fazendas."
+          : "Erro ao carregar fazendas. Tente novamente.";
+        setFazendas([]);
+        setLoadError(message);
+        toast.error(message);
+        return;
+      }
+      setFazendas(data ?? []);
+    } catch {
+      const message = "Erro ao carregar fazendas. Tente novamente.";
+      setFazendas([]);
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-
-    async function loadFazendas() {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        // Fetch only the fields used by this screen. The deadline also covers
-        // auth/network locks that do not settle a PostgREST request.
-        const { data, error, status } = await runWithDeadline(
-          (signal) => supabase
-            .from("fazendas")
-            .select("id, nome, cidade, estado, ativo")
-            .order("nome")
-            .abortSignal(signal),
-          { signal: controller.signal, timeoutMs: FAZENDAS_TIMEOUT_MS },
-        );
-        if (!active) return;
-        if (error) {
-          const denied = status === 401 || status === 403 || error.code === "42501";
-          const message = denied
-            ? "Acesso não autorizado para carregar fazendas."
-            : "Erro ao carregar fazendas. Verifique a conexão e tente novamente.";
-          setLoadError(message);
-          setFazendas([]);
-          return;
-        }
-        setFazendas(data ?? []);
-      } catch (error) {
-        if (!active || error instanceof RequestCancelledError) return;
-        const message = error instanceof RequestTimeoutError
-          ? "A consulta demorou demais. Verifique sua conexão e tente novamente."
-          : "Não foi possível carregar fazendas. Tente novamente.";
-        setLoadError(message);
-        setFazendas([]);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    void loadFazendas();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [refreshKey]);
+    loadFazendas();
+  }, []);
 
   function openNew() {
     setEditingId(null);
@@ -155,7 +135,7 @@ export default function FazendasPage() {
 
     setSaving(false);
     setDialogOpen(false);
-    reloadFazendas();
+    loadFazendas();
   }
 
   async function handleDelete(id: string) {
@@ -167,14 +147,14 @@ export default function FazendasPage() {
       return;
     }
     toast.success("Fazenda excluída.");
-    reloadFazendas();
+    loadFazendas();
   }
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Fazendas</h1>
-        <Button onClick={openNew} className="gap-1.5" disabled={loading || loadError !== null}>
+        <Button onClick={openNew} className="gap-1.5">
           <Plus className="w-4 h-4" />
           Nova Fazenda
         </Button>
@@ -184,7 +164,7 @@ export default function FazendasPage() {
         <Card role="alert">
           <CardContent className="p-8 space-y-3">
             <p className="text-red-700 dark:text-red-400">{loadError}</p>
-            <Button type="button" variant="outline" onClick={reloadFazendas}>
+            <Button type="button" variant="outline" onClick={() => void loadFazendas()}>
               Tentar novamente
             </Button>
           </CardContent>

@@ -1,4 +1,3 @@
-import { fetchPdfBinaryWithTimeout, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 // Baixa um PDF como arquivo local (blob) para evitar mostrar a URL bruta do
 // Storage na barra de navegação. Fluxos sensíveis podem desativar o fallback
 // remoto para garantir que a URL técnica nunca seja aberta no navegador.
@@ -20,9 +19,12 @@ export async function downloadPdfFromUrl(
   };
 
   try {
-    const blob = await fetchPdfBinaryWithTimeout(url);
-    if ((await blob.slice(0, 5).text()) !== "%PDF-") throw new Error("Arquivo retornado não é um PDF");
-    downloadGeneratedPdf(blob, name);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("fetch failed");
+    const blob = await resp.blob();
+    const objUrl = URL.createObjectURL(blob);
+    clickAnchor(objUrl, true);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 2000);
   } catch (error) {
     if (options.allowRemoteFallback === false) throw error;
     // Fallback: força download via query param sem navegar para a URL bruta.
