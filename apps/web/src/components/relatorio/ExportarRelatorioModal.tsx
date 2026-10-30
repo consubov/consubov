@@ -129,7 +129,6 @@ export default function ExportarRelatorioModal({
       const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
       if (periodoSelecionado === "mensal") {
         await Promise.all(retiroIds.map(async (rid) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
             p_fazenda_id: fazendaId,
             p_retiro_id: rid,
@@ -148,12 +147,9 @@ export default function ExportarRelatorioModal({
       }
 
       // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const painelPastoByPastoId: Record<string, any> = {};
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let painelPastoRows: any[] = [];
       if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: vpRows } = await (supabase as any)
           .from("view_painel_mae_pasto")
           .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, kg_fornecido, cab_dias_global, eficiencia_pasto")
@@ -175,13 +171,11 @@ export default function ExportarRelatorioModal({
       const gmdDia = periodoSelecionado === "mensal" ? dataReferenciaGmd(mes, ano)
         : periodoSelecionado === "anual" ? dataReferenciaGmd(null, ano)
         : (() => { const hoje = dataReferenciaGmd(null, 9999); const fim = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`; return fim < hoje ? fim : hoje; })();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const gmdPastos = await fetchGmdPastos(pastos.map((p: any) => p.id), gmdDia);
       const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
 
       // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
       // O escopo de retiro é aplicado pelos IDs antes do filtro de produto do relatório.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: abateConfigRows, error: abateConfigError } = await (supabase as any)
         .from("abate_config")
         .select("id")
@@ -191,11 +185,9 @@ export default function ExportarRelatorioModal({
 
       let previsaoAbate: PrevisaoAbatePDFData | null = null;
       if ((abateConfigRows ?? []).length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: previsaoRows, error: previsaoError } = await (supabase as any)
           .rpc("previsao_abate", { p_fazenda: fazendaId });
         if (previsaoError) throw previsaoError;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rows = ((previsaoRows ?? []) as any[])
           .filter(row => pastoIdsEscopoRelatorio.has(row.pasto_id))
           .map(row => ({
@@ -221,18 +213,19 @@ export default function ExportarRelatorioModal({
       let pastoIds = pastos.map(p => p.id);
 
       // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
-      const ocupacaoProdutoByPasto: Record<string, string> = {};
+      let ocupacaoProdutoByPasto: Record<string, string> = {};
       if (pastoIds.length > 0) {
         const { data: ocupData } = await supabase.from("ocupacoes_pasto")
           .select("pasto_id, produto_id, data_entrada, data_saida")
           .in("pasto_id", pastoIds)
           .is("data_saida", null)
           .order("data_entrada", { ascending: false });
-        for (const o of (ocupData ?? [])) {
-          if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
-            ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
+        ocupacaoProdutoByPasto = (ocupData ?? []).reduce((acc: Record<string, string>, o) => {
+          if (o.produto_id) {
+            acc[o.pasto_id] = acc[o.pasto_id] ?? o.produto_id;
           }
-        }
+          return acc;
+        }, {});
       }
 
       // O relatório herda o produto do Painel do Gerente. A fonte do produto
@@ -250,7 +243,6 @@ export default function ExportarRelatorioModal({
 
         // Recalcula os mesmos agregados mensais sobre o conjunto filtrado.
         if (periodoSelecionado === "mensal") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: realRows } = await (supabase as any)
             .from("view_lancamento_consumo_real")
             .select("pasto_id, kg_fornecido, cab_dias_assumidos")
@@ -261,16 +253,13 @@ export default function ExportarRelatorioModal({
             const rPastos = pastos.filter(p => p.retiro_id === ret.id);
             const rIds = new Set(rPastos.map(p => p.id));
             const rView = painelPastoRows.filter(row => rIds.has(row.pasto_id));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const rReal = (realRows ?? []).filter((row: any) => rIds.has(row.pasto_id));
             const cabDiasGlobal = rView.reduce((sum, row) => sum + (Number(row.cab_dias_global) || 0), 0);
             const eficienciaPonderada = rView.reduce(
               (sum, row) => sum + (Number(row.eficiencia_pasto) || 0) * (Number(row.cab_dias_global) || 0),
               0,
             );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const kgReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.kg_fornecido) || 0), 0);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cabDiasReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.cab_dias_assumidos) || 0), 0);
             let pesoSum = 0;
             let animaisPeso = 0;
@@ -291,10 +280,8 @@ export default function ExportarRelatorioModal({
       }
 
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let lancamentos: any[] = [];
       if (pastoIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let lQuery = supabase.from("view_consumo_tempo_real" as any)
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia, ciclo_id, origem")
           .in("pasto_id", pastoIds);
@@ -339,13 +326,10 @@ export default function ExportarRelatorioModal({
         amarelo_buffer_g: number;
       }> = {};
       if (produtoIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: prodData } = await (supabase as any).from("produtos")
           .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda, margem_mais_recria1_pct, margem_menos_recria1_pct, margem_mais_recria2_pct, margem_menos_recria2_pct, margem_mais_engorda_pct, margem_menos_engorda_pct, amarelo_buffer_g")
           .in("id", produtoIds);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const num = (v: any) => (v == null ? null : Number(v));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const p of ((prodData ?? []) as any[])) {
           produtosMap[p.id] = {
             nome: p.nome,
@@ -373,7 +357,6 @@ export default function ExportarRelatorioModal({
       if (periodoSelecionado === "mensal" && pastoIds.length > 0) {
         await Promise.all(
           pastos.map(async (p) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: rows } = await (supabase as any).rpc("get_consumo_real_v2", {
               p_retiro_id: p.retiro_id,
               p_pasto_id: p.id,
@@ -460,7 +443,6 @@ export default function ExportarRelatorioModal({
           const lastP = sortedPLanc[0];
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           // Categoria calculada ao vivo (peso + sexo), nunca o campo salvo.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const cat = calcularCategoriaViva(pesoMedio, (p as any).sexo);
           const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
           let diasConsiderados = 0;
@@ -474,7 +456,6 @@ export default function ExportarRelatorioModal({
           }
 
           // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
           const pProd = produtosMap[pProdId] ?? prod;
           const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
@@ -542,7 +523,6 @@ export default function ExportarRelatorioModal({
             consumoPor100kg,
             pesoSacoKg: pesoSacoPasto,
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
             origemQr: pLanc.some(l => (l as any).origem === "qr"),
           };
         });
@@ -597,16 +577,13 @@ export default function ExportarRelatorioModal({
 
       // ===== SEÇÃO 5 — Métricas por categoria =====
       // Período sempre por mes_referencia/ano_referencia (nunca created_at).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let lancCat: any[] = lancamentos;
       if (periodoSelecionado !== "mensal" && periodoSelecionado !== "anual" && pastoIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: lc } = await supabase.from("view_consumo_tempo_real" as any)
           .select("id, pasto_id, num_sacos, num_animais, dias_no_pasto, categoria, created_at, retiro_id, mes_referencia, ano_referencia")
           .in("pasto_id", pastoIds)
           .eq("mes_referencia", mes)
           .eq("ano_referencia", ano);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lancCat = (lc as any[]) ?? [];
       }
       // Categoria e num_animais sempre da tabela lancamentos (a view inflava a contagem).
@@ -614,7 +591,6 @@ export default function ExportarRelatorioModal({
       const lancById: Record<string, { categoria: string | null; num_animais: number | null }> = {};
       for (let i = 0; i < catIds.length; i += 200) {
         const { data: cr } = await supabase.from("lancamentos").select("id, categoria, num_animais").in("id", catIds.slice(i, i + 200));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (cr ?? []).forEach((r: any) => { lancById[r.id] = { categoria: r.categoria, num_animais: r.num_animais }; });
       }
       lancCat = lancCat.map(l => ({ ...l, categoria: l.id in lancById ? lancById[l.id].categoria : l.categoria }));
@@ -635,7 +611,6 @@ export default function ExportarRelatorioModal({
           .select("id, num_animais, categoria")
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (pastosAnimais ?? []).forEach((p: any) => {
           const n = Number(p.num_animais) || 0;
           if (n <= 0) return;
