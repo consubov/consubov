@@ -161,6 +161,7 @@ describe("requireAdmin auth helper", () => {
     const modernKey = "sb_secret_synthetic_not_live";
     (globalThis as any).Deno.env.get = vi.fn((key: string) => ({
       SUPABASE_URL: "http://localhost:54321",
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true",
       SUPABASE_SECRET_KEYS: JSON.stringify({ default: modernKey }),
       SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
     } as Record<string, string>)[key]);
@@ -180,6 +181,7 @@ describe("requireAdmin auth helper", () => {
   it("returns 500 when modern server-key configuration is malformed even with legacy present", async () => {
     (globalThis as any).Deno.env.get = vi.fn((key: string) => ({
       SUPABASE_URL: "http://localhost:54321",
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true",
       SUPABASE_SECRET_KEYS: "{malformed",
       SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
     } as Record<string, string>)[key]);

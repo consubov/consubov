@@ -9,14 +9,14 @@ const env = (values: Record<string, string>) =>
 describe("getAdminApiKey backend-only credential", () => {
   it("prefers a modern default secret when available", () => {
     expect(getAdminApiKey(env({
-      SUPABASE_SECRET_KEYS: JSON.stringify({ default: modern }),
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true", SUPABASE_SECRET_KEYS: JSON.stringify({ default: modern }),
       SUPABASE_SERVICE_ROLE_KEY: legacy,
     }))).toBe(modern);
   });
 
   it("supports a named modern secret alongside other server secrets", () => {
     expect(getAdminApiKey(env({
-      SUPABASE_SECRET_KEYS: JSON.stringify({ billing: "sb_secret_billing", default: modern }),
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true", SUPABASE_SECRET_KEYS: JSON.stringify({ billing: "sb_secret_billing", default: modern }),
     }))).toBe(modern);
   });
 
@@ -28,7 +28,7 @@ describe("getAdminApiKey backend-only credential", () => {
     "rejects invalid modern key configuration %s",
     (value) => {
       expect(() => getAdminApiKey(env({
-        SUPABASE_SECRET_KEYS: value,
+        CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true", SUPABASE_SECRET_KEYS: value,
         SUPABASE_SERVICE_ROLE_KEY: legacy,
       }))).toThrow();
     },
@@ -36,14 +36,35 @@ describe("getAdminApiKey backend-only credential", () => {
 
   it("never accepts a publishable key as privileged server credentials", () => {
     expect(() => getAdminApiKey(env({
-      SUPABASE_SECRET_KEYS: JSON.stringify({ default: "sb_publishable_not_secret" }),
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true", SUPABASE_SECRET_KEYS: JSON.stringify({ default: "sb_publishable_not_secret" }),
     }))).toThrow(/not a server secret/);
   });
 
   it("rejects leading or trailing whitespace in a secret", () => {
     expect(() => getAdminApiKey(env({
-      SUPABASE_SECRET_KEYS: JSON.stringify({ default: ` ${modern}` }),
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true", SUPABASE_SECRET_KEYS: JSON.stringify({ default: ` ${modern}` }),
     }))).toThrow();
+  });
+
+  it("does not automatically select the injected modern secret", () => {
+    expect(getAdminApiKey(env({
+      SUPABASE_SECRET_KEYS: JSON.stringify({ default: modern }),
+      SUPABASE_SERVICE_ROLE_KEY: legacy,
+    }))).toBe(legacy);
+  });
+
+  it("rejects unknown cutover flag values", () => {
+    expect(() => getAdminApiKey(env({
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "invalid",
+      SUPABASE_SERVICE_ROLE_KEY: legacy,
+    }))).toThrow(/must be true or false/);
+  });
+
+  it("requires a modern secret when opted in", () => {
+    expect(() => getAdminApiKey(env({
+      CONSUBOV_ADMIN_MODERN_KEY_ENABLED: "true",
+      SUPABASE_SERVICE_ROLE_KEY: legacy,
+    }))).toThrow(/required/);
   });
 
   it("returns null if neither credential is available", () => {
