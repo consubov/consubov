@@ -1,14 +1,10 @@
 name: INC012 Temporary Isolated QA
 on:
+  # Every update to this isolated integration branch must be tested, including
+  # merges from main that do not change dependency manifests.
   push:
     branches:
       - reconcile/main-consubov-v2-release-floor-20261029
-    paths:
-      - .github/workflows/inc012-temporary-qa.yml
-      - bun.lock
-      - package.json
-      - apps/web/package.json
-      - apps/web/src/pages/LandingPage.tsx
   workflow_dispatch:
 
 permissions:
