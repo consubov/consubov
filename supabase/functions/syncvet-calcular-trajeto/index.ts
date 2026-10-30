@@ -1,6 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { getSupabasePublishableKey } from '../_shared/apiKeys.ts';
 
 const BodySchema = z.object({
   origem_lat: z.number().min(-90).max(90),
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      getSupabasePublishableKey((name) => Deno.env.get(name)),
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace('Bearer ', '');
