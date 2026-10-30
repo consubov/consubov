@@ -220,6 +220,13 @@ type ConsultorCabecalho = Pick<Database["public"]["Tables"]["consultores"]["Row"
   "nome" | "logo_esquerda_url" | "logo_direita_url">;
 
 // Snapshots podem conter dados parciais; o contrato reflete apenas os campos lidos.
+type SnapshotScore = {
+  id?: string;
+  visita_pasto_id?: string | null;
+  tipo: string;
+  nota: number;
+};
+
 type SnapshotPasto = {
   id: string;
   fotos?: Foto[];
@@ -388,22 +395,22 @@ export default function RevisaoVisitaPage() {
     setFazenda(fazendaRow); setConsultor(consultorRow);
 
     const pastoMutations = localMutations.filter((m) => m.table === "visita_pastos");
-    const pendingPastoPatch = new Map<string, Record<string, any>>();
+    const pendingPastoPatch = new Map<string, Record<string, unknown>>();
     pastoMutations.forEach((m) => {
       if ((m.operation ?? "update") === "delete") return;
       pendingPastoPatch.set(m.rowId, { ...(pendingPastoPatch.get(m.rowId) || {}), ...m.patch });
     });
-    let pastoRows = ((ps as any[]) || []).map((p: any) => ({ ...p, ...(pendingPastoPatch.get(p.id) || {}) }));
-    if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as any[];
+    let pastoRows: SnapshotPasto[] = (ps || []).map((p) => ({ ...p, ...(pendingPastoPatch.get(p.id) || {}) }));
+    if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as SnapshotPasto[];
     // Pastos que ainda só existem localmente (criados off-line) precisam aparecer
     // mesmo quando o servidor já respondeu com outros pastos.
-    (snap?.pastos || []).forEach((sp: any) => {
-      if (sp?.id && !pastoRows.some((p: any) => p.id === sp.id)) {
+    (snap?.pastos || []).forEach((sp: SnapshotPasto) => {
+      if (sp?.id && !pastoRows.some((p) => p.id === sp.id)) {
         pastoRows = [...pastoRows, { ...sp, ...(pendingPastoPatch.get(sp.id) || {}) }];
       }
     });
     pendingPastoPatch.forEach((patch, rowId) => {
-      if (!pastoRows.some((p: any) => p.id === rowId)) pastoRows.push({ id: rowId, ...patch });
+      if (!pastoRows.some((p) => p.id === rowId)) pastoRows.push({ id: rowId, ...patch });
     });
     const ids = pastoRows.map(p => p.id);
     type Bucket = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -427,54 +434,55 @@ export default function RevisaoVisitaPage() {
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
       ]);
-      (sc || []).forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
-      (ft || []).forEach((f: any) => {
-        fotosByPasto[f.visita_pasto_id] = [...(fotosByPasto[f.visita_pasto_id] || []), f];
+      (sc || []).forEach((s) => pushSample(s.visita_pasto_id || "", s.tipo, { id: s.id, nota: s.nota }));
+      (ft || []).forEach((f) => {
+        const key = String(f.visita_pasto_id);
+        fotosByPasto[key] = [...(fotosByPasto[key] || []), f];
       });
     }
     // União com as amostras locais (snapshot / fila off-line) — MESMA fonte da
     // tela de edição. Sem isso a Revisão aparecia vazia enquanto houvesse
     // qualquer avaliação ainda não sincronizada.
-    ((snap?.avaliacoes_score as any[]) || []).forEach((s: any) =>
-      pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+    ((snap?.avaliacoes_score || []) as SnapshotScore[]).forEach((s) =>
+      pushSample(s.visita_pasto_id || "", s.tipo, { id: s.id, nota: s.nota }));
     localMutations
       .filter((m) => m.table === "avaliacoes_score" && (m.operation ?? "update") !== "delete")
       .forEach((m) => pushSample(String(m.patch.visita_pasto_id || ""), String(m.patch.tipo || ""), {
         id: m.rowId,
         nota: Number(m.patch.nota),
       }));
-    (snap?.pastos || []).forEach((sp: any) => {
+    (snap?.pastos || []).forEach((sp: SnapshotPasto) => {
       const local = sp?.samples;
       if (!local) return;
       (["fezes", "corporal", "bebedouro"] as const).forEach((tipo) => {
-        (local[tipo] || []).forEach((s: any) => pushSample(sp.id, tipo, { id: s.id, nota: s.nota }));
+        (local[tipo] || []).forEach((s) => pushSample(sp.id, tipo, { id: s.id, nota: s.nota }));
       });
     });
 
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
-      const snapPasto = (snap?.pastos || []).find((x: any) => x.id === p.id) as any;
-      const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : (snapPasto?.fotos || []);
+      const snapPasto = ((snap?.pastos || []) as SnapshotPasto[]).find((x) => x.id === p.id);
+      const fallbackFotos: Foto[] = Array.isArray(p.fotos) ? p.fotos : (snapPasto?.fotos || []);
       const remoteFotos = fotosByPasto[p.id] || [];
-      const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
+      const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...(p.signed || {}) };
       // Fotos ainda na fila local (IndexedDB) — garantem que a Revisão mostre
       // exatamente o que aparece na tela de edição do pasto.
       const queuedItems = await getQueuedPhotosForParent("pasto", p.id).catch(() => []);
-      const queuedFromQueue: any[] = queuedItems.map((it: any) => {
+      const queuedFromQueue: Foto[] = queuedItems.map((it) => {
         signed[it.localId] = URL.createObjectURL(it.blob);
         return { id: it.localId, visita_pasto_id: p.id, url: `queued:${it.localId}`, ordem: it.ordem };
       });
-      const queuedFromSnap = (fallbackFotos as any[]).filter((f: any) =>
+      const queuedFromSnap = fallbackFotos.filter((f) =>
         String(f.url || "").startsWith("queued:") && !queuedFromQueue.some((q) => q.id === f.id));
-       const localSyncedFotos = (fallbackFotos as any[]).filter((f: any) => !String(f.url || "").startsWith("queued:"));
+       const localSyncedFotos = fallbackFotos.filter((f) => !String(f.url || "").startsWith("queued:"));
        const fotos = [...remoteFotos, ...localSyncedFotos, ...queuedFromQueue, ...queuedFromSnap]
-        .filter((f: any, i: number, arr: any[]) => arr.findIndex((x) => x.id === f.id) === i)
-        .sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
+        .filter((f, i, arr) => arr.findIndex((x) => x.id === f.id) === i)
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
       await Promise.all(fotos
-        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
+        .filter((f) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
-        samples: samplesByPasto[p.id] || (p as any).samples || snapPasto?.samples || { fezes: [], corporal: [], bebedouro: [] },
+        samples: samplesByPasto[p.id] || p.samples || snapPasto?.samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       } as Pasto;
     }));
