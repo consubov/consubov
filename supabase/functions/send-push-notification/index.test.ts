@@ -242,6 +242,22 @@ describe("send-push-notification edge function", () => {
       }
     });
 
+    it("rejects a named push key when it reuses the admin default value", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey, push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
     it("authenticates a matching machine apikey, preserving forbidden user targets", async () => {
       const original = (globalThis as any).Deno.env.get;
       (globalThis as any).Deno.env.get = (name: string) =>

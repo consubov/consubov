@@ -42,5 +42,8 @@ export function isAuthorizedModernPushMachine(
     expected.trim() !== expected
   ) return false;
 
+  // A dedicated push key must not reuse the project-wide administrative key.
+  if ((entries as Record<string, unknown>).default === expected) return false;
+
   return constantTimeMatch(apikey, expected);
 }

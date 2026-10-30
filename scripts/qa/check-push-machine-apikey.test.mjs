@@ -34,3 +34,5 @@ test('case change rejected',()=>assert.equal(verify(SECRET.toUpperCase(),ON),fal
 
 test('generic project-wide default key denied for push',()=>assert.equal(verify(ADMIN,ON),false));
 test('named push required even if default key equals candidate',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({default:SECRET})}),false));
+
+test('named push alias of default rejected even with opt-in',()=>assert.equal(verify(SECRET,{...ON,SUPABASE_SECRET_KEYS:JSON.stringify({default:SECRET,push:SECRET})}),false));
