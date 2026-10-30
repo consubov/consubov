@@ -158,7 +158,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
       const pastoMap: Record<string, number> = {};
       const cochoMap: Record<string, number> = {};
-      lancData.forEach((l: any) => {
+      lancData.forEach((l) => {
         pastoMap[l.pasto_id] = (pastoMap[l.pasto_id] || 0) + (l.num_sacos || 0);
         if (l.cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
       });
@@ -212,7 +212,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       const localUrl = URL.createObjectURL(blob);
       setPdfUrl(localUrl);
       toast.success("PDF gerado com sucesso!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erro ao gerar PDF de salga:", err);
       toast.error("Erro ao gerar PDF. Tente novamente.");
     } finally {
