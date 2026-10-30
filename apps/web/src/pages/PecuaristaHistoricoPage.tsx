@@ -14,6 +14,35 @@ import { toast } from "sonner";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { gerarPdfPesagemPecuaristaHistorico } from "@/lib/pecuaristaPdfHistorico";
 
+type HistoricoLote = {
+  id: string;
+  nome_lote: string;
+  fazenda_id: string;
+  categoria: string;
+  categoria_customizada_id: string | null;
+};
+
+type HistoricoPesagem = {
+  id: string;
+  lote_id: string;
+  data_pesagem: string;
+  gmd: number | null;
+  pdf_url: string | null;
+};
+
+type HistoricoApartacao = {
+  id: string;
+  lote_origem_id: string;
+  data_apartacao: string;
+  pdf_url: string | null;
+};
+
+function getErrorMessage(error: unknown): string | undefined {
+  return error !== null && typeof error === "object" &&
+    "message" in error && typeof error.message === "string"
+    ? error.message : undefined;
+}
+
 const CATEGORIAS_PADRAO: Record<string, string> = {
   boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
   boi_magro: "Boi Magro", garrote: "Garrote", novilha: "Novilha",
@@ -58,8 +87,8 @@ export default function PecuaristaHistoricoPage() {
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, pdfUrl: url } : i)));
       await downloadPdfFromUrl(url, `pesagem-${item.rawId}.pdf`, { allowRemoteFallback: false });
       toast.success("PDF gerado; download iniciado");
-    } catch (e: any) {
-      toast.error("Erro ao gerar PDF: " + (e?.message ?? ""));
+    } catch (e) {
+      toast.error("Erro ao gerar PDF: " + (getErrorMessage(e) ?? ""));
     }
     setGerandoId(null);
   }
@@ -70,7 +99,7 @@ export default function PecuaristaHistoricoPage() {
     const uid = authUser.user?.id;
     if (!uid) { setLoading(false); return; }
     const { data: p } = await maFrom("pecuaristas").select("id").eq("user_id", uid).maybeSingle();
-    const pid = (p as any)?.id as string | undefined;
+    const pid = (p as unknown as { id: string } | null)?.id;
     if (!pid) { setLoading(false); return; }
 
     const [lotesRes, fazRes, catRes] = await Promise.all([
@@ -78,16 +107,16 @@ export default function PecuaristaHistoricoPage() {
       maFrom("fazendas_pecuarista").select("id, nome_fazenda").eq("pecuarista_id", pid),
       maFrom("categorias_pecuarista").select("id, nome").eq("pecuarista_id", pid),
     ]);
-    const lotes = (lotesRes.data ?? []) as any[];
+    const lotes = (lotesRes.data ?? []) as unknown as HistoricoLote[];
     const fazMap: Record<string, string> = {};
-    (fazRes.data ?? []).forEach((f: any) => { fazMap[f.id] = f.nome_fazenda; });
+    ((fazRes.data ?? []) as unknown as Array<{ id: string; nome_fazenda: string }>).forEach((f) => { fazMap[f.id] = f.nome_fazenda; });
     const catMap: Record<string, string> = {};
-    (catRes.data ?? []).forEach((c: any) => { catMap[c.id] = c.nome; });
+    ((catRes.data ?? []) as unknown as Array<{ id: string; nome: string }>).forEach((c) => { catMap[c.id] = c.nome; });
 
     const loteMap: Record<string, { nome: string; fazenda: string; categoria: string }> = {};
     lotes.forEach((l) => {
       const cat = l.categoria === "customizada"
-        ? (catMap[l.categoria_customizada_id] ?? "Personalizada")
+        ? (catMap[String(l.categoria_customizada_id)] ?? "Personalizada")
         : (CATEGORIAS_PADRAO[l.categoria] ?? l.categoria);
       loteMap[l.id] = { nome: l.nome_lote, fazenda: fazMap[l.fazenda_id] ?? "—", categoria: cat };
     });
@@ -103,7 +132,7 @@ export default function PecuaristaHistoricoPage() {
         .gt("quantidade_animais", 0)
         .is("apartacao_id", null)
         .order("data_pesagem", { ascending: false });
-      for (const r of (pes ?? []) as any[]) {
+      for (const r of (pes ?? []) as unknown as HistoricoPesagem[]) {
         const l = loteMap[r.lote_id];
         if (!l) continue;
         collected.push({
@@ -124,7 +153,7 @@ export default function PecuaristaHistoricoPage() {
         .eq("pecuarista_id", pid)
         .not("pdf_url", "is", null)
         .order("data_apartacao", { ascending: false });
-      for (const r of (aps ?? []) as any[]) {
+      for (const r of (aps ?? []) as unknown as HistoricoApartacao[]) {
         const l = loteMap[r.lote_origem_id];
         if (!l) continue;
         collected.push({
@@ -164,7 +193,7 @@ export default function PecuaristaHistoricoPage() {
           .from("pesagens_lote_pecuarista")
           .select("id")
           .eq("apartacao_id", toDelete.rawId);
-        const pesIds = (pesFilhas ?? []).map((r: any) => r.id);
+        const pesIds = ((pesFilhas ?? []) as Array<{ id: string }>).map((r) => r.id);
         if (pesIds.length > 0) {
           await sb.from("pesos_animais_pecuarista").delete().in("pesagem_lote_id", pesIds);
           await sb.from("pesagens_lote_pecuarista").delete().in("id", pesIds);
@@ -183,8 +212,8 @@ export default function PecuaristaHistoricoPage() {
       toast.success("Registro excluído.");
       setToDelete(null);
       await load();
-    } catch (e: any) {
-      toast.error("Erro ao excluir: " + (e?.message || "desconhecido"));
+    } catch (e) {
+      toast.error("Erro ao excluir: " + (getErrorMessage(e) || "desconhecido"));
     } finally {
       setDeleting(false);
     }
