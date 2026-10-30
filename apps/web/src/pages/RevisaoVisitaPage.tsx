@@ -354,7 +354,7 @@ export default function RevisaoVisitaPage() {
     const visitaRow: Visita | null | undefined = v
       ? ({ ...v, ...visitaPatch } as Visita)
       : (snap?.visita as Visita | null | undefined);
-    if (isVisitaDeleted(visitaRow as Record<string, unknown> | null | undefined)) { setVisita(null); setLoading(false); return; }
+    if (isVisitaDeleted(visitaRow as unknown as Record<string, unknown> | null | undefined)) { setVisita(null); setLoading(false); return; }
     if (!visitaRow) { setLoading(false); return; }
     setVisita(visitaRow);
     setObsGerais(visitaRow.observacoes_gerais || "");
