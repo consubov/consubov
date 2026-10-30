@@ -1,0 +1,66 @@
+name: PWA Release Safety Gate
+
+# Read-only CI; this workflow does NOT deploy or mutate remote systems.
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'scripts/ci/pwa-release-gate.mjs'
+      - '.github/workflows/pwa-release-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'scripts/ci/pwa-release-gate.mjs'
+      - '.github/workflows/pwa-release-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pwa-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pwa-regression:
+    name: PWA anti-regression and installed-browser QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Test SemVer, downgrade, worker identity and notification dedupe
+        working-directory: apps/web
+        run: bunx vitest run src/lib/publishedUpdate.test.ts src/lib/publishedUpdateRegression.test.ts src/lib/pwaStaticRouteTargets.test.ts
+      - name: Build release candidate without production credentials
+        run: bun run --cwd apps/web build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-fixture-only
+      - name: Fail on missing rewrite targets, stale SW or JS/CSS chunks
+        run: node scripts/ci/pwa-release-gate.mjs apps/web/dist
+      - name: Smoke locally built app over HTTP
+        working-directory: apps/web
+        shell: bash
+        run: |
+          bun run preview -- --host 127.0.0.1 --port 4173 --strictPort >/tmp/consubov-pwa-preview.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          READY=0
+          for _ in {1..50}; do
+            if curl --fail --silent http://127.0.0.1:4173/app >/dev/null; then READY=1; break; fi
+            sleep 0.2
+          done
+          if [ "$READY" -ne 1 ]; then cat /tmp/consubov-pwa-preview.log; exit 1; fi
+          node ../../scripts/ci/pwa-release-gate.mjs dist --smoke-url=http://127.0.0.1:4173
+      - name: Install Chromium
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - name: Test PWA installed profile, update consent, offline queues and blobs
+        working-directory: apps/web
+        run: bunx playwright test pwa-fixtures/upgrade.spec.ts --config=playwright.pwa.config.ts --project=pwa-chromium
