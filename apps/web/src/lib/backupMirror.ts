@@ -68,27 +68,33 @@ export async function backupPendingToLocalStorage(userInfo?: PendingBackup["user
   if (typeof window === "undefined") return { ok: false, bytes: 0, trimmed: false };
   try {
     const payload = await collectPendingBackup(userInfo);
-    let json = JSON.stringify(payload);
-    let trimmed = false;
-    // localStorage budget is browser-dependent (~5MB). If we approach it,
-    // strip large base64 photo URLs from the mirror (originals stay in IDB).
-    if (json.length > 4_500_000) {
-      const slim: PendingBackup = {
-        ...payload,
-        lancamentos: payload.lancamentos.map((l) => ({
-          ...l,
-          foto_auditoria_url: l?.foto_auditoria_url ? "[stripped]" : null,
-          foto_cocho_url: l?.foto_cocho_url ? "[stripped]" : null,
-          observacoes: Array.isArray(l?.observacoes)
-            ? l.observacoes.map((o: any) => ({ ...o, foto_url: o?.foto_url ? "[stripped]" : null }))
-            : [],
-        })),
-        observacoes: payload.observacoes.map((o) => ({
-          ...o,
-          foto_url: o?.foto_url ? "[stripped]" : null,
-        })),
-      };
-      json = JSON.stringify(slim);
+    // Avoid materializing a huge intermediate JSON with all base64 photos on
+    // memory-constrained phones. The source photos remain in IndexedDB.
+    const photoChars = payload.lancamentos.reduce((n, l) =>
+      n + (l?.foto_auditoria_url?.length ?? 0) + (l?.foto_cocho_url?.length ?? 0) +
+      (Array.isArray(l?.observacoes)
+        ? l.observacoes.reduce((m: number, o: any) => m + (o?.foto_url?.length ?? 0), 0) : 0), 0) +
+      payload.observacoes.reduce((n, o) => n + (o?.foto_url?.length ?? 0), 0);
+    const withoutPhotos = (): PendingBackup => ({
+      ...payload,
+      lancamentos: payload.lancamentos.map((l) => ({
+        ...l,
+        foto_auditoria_url: l?.foto_auditoria_url ? '[stripped]' : null,
+        foto_cocho_url: l?.foto_cocho_url ? '[stripped]' : null,
+        observacoes: Array.isArray(l?.observacoes)
+          ? l.observacoes.map((o: any) => ({ ...o, foto_url: o?.foto_url ? '[stripped]' : null }))
+          : [],
+      })),
+      observacoes: payload.observacoes.map((o) => ({
+        ...o, foto_url: o?.foto_url ? '[stripped]' : null,
+      })),
+    });
+    // Retain photo redundancy for small backups, but never construct a huge
+    // JSON only to discard it immediately afterwards.
+    let trimmed = photoChars > 2_000_000;
+    let json = JSON.stringify(trimmed ? withoutPhotos() : payload);
+    if (!trimmed && json.length > 4_500_000) {
+      json = JSON.stringify(withoutPhotos());
       trimmed = true;
     }
     window.localStorage.setItem(BACKUP_KEY, json);
