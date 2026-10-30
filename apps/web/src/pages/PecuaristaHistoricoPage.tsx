@@ -181,7 +181,7 @@ export default function PecuaristaHistoricoPage() {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      const sb = supabase as any;
+      const sb = supabase;
       if (toDelete.tipo === "pesagem") {
         // filhos: pesos individuais
         await sb.from("pesos_animais_pecuarista").delete().eq("pesagem_lote_id", toDelete.rawId);
