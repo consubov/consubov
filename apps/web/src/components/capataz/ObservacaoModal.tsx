@@ -30,7 +30,7 @@ interface Props {
   fazendaId: string;
   capatazNome: string;
   editingObs?: ObservacaoOffline | null;
-  onSave: (obs: Omit<ObservacaoOffline, 'id' | 'criado_em' | 'status'>) => void;
+  onSave: (obs: Omit<ObservacaoOffline, 'id' | 'criado_em' | 'status'>) => Promise<void>;
 }
 
 export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome, editingObs, onSave }: Props) {
@@ -104,7 +104,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
     setSaving(true);
     try {
-      onSave({
+      await onSave({
         pasto_id: pastoId || null,
         pasto_nome: pastos.find(p => p.id === pastoId)?.nome || "",
         retiro_id: retiroId,
@@ -114,8 +114,12 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         descricao: texto || null,
         foto_url: fotoBase64,
       });
-      toast.success("✅ Observação salva offline");
+      toast.success("Observação salva offline");
       onClose();
+    } catch (error) {
+      // Keep the photo, fields and dialog open until the IDB transaction succeeds.
+      console.warn('[ObservacaoModal] offline save rejected:', error);
+      toast.error('Não foi possível salvar no aparelho. Libere espaço e tente novamente.');
     } finally {
       setSaving(false);
     }

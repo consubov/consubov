@@ -109,6 +109,8 @@ export default function GerenteDashboard() {
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [scoreAberto, setScoreAberto] = useState<string | null>(null);
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [fazendasError, setFazendasError] = useState<string | null>(null);
+  const [fazendasRetry, setFazendasRetry] = useState(0);
   // Filtros guardados na sessão: ao voltar para a tela (ou se o iPhone
   // descartar o app da memória) eles são restaurados em vez de zerados.
   const [savedFiltros] = useState(() => readGerenteFiltros());
@@ -121,28 +123,39 @@ export default function GerenteDashboard() {
     if (!roleData.roleId) return;
     let cancelled = false;
     const carregarFazendas = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("gerentes_fazendas")
         .select("fazenda_id, fazendas(id, nome)")
         .eq("gerente_id", roleData.roleId);
       if (cancelled) return;
-      const opcoes = (data ?? []).flatMap((item: any) => {
+      if (error || !data) {
+        setFazendasError("Não foi possível carregar os vínculos das fazendas. Tente novamente.");
+        return;
+      }
+      const opcoes = data.flatMap((item: any) => {
         const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
         return fazenda?.id ? [{ id: fazenda.id, nome: fazenda.nome }] : [];
       });
-      if (opcoes.length === 0 && roleData.fazendaId) {
-        const { data: fazenda } = await supabase.from("fazendas").select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
-        if (!cancelled && fazenda) setFazendasVinculadas([fazenda]);
-        return;
+      // Principal is part of the authorized scope even if the join is incomplete.
+      if (roleData.fazendaId && !opcoes.some(f => f.id === roleData.fazendaId)) {
+        const { data: principal, error: principalError } = await supabase.from("fazendas")
+          .select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
+        if (cancelled) return;
+        if (principalError || !principal) {
+          setFazendasError("Não foi possível validar a fazenda principal. Tente novamente.");
+          return;
+        }
+        opcoes.unshift(principal);
       }
       setFazendasVinculadas(opcoes);
+      setFazendasError(null);
       if (opcoes.length > 0 && !opcoes.some(f => f.id === fazendaSelecionadaId)) {
         setFazendaSelecionadaId(opcoes[0].id);
       }
     };
     void carregarFazendas();
     return () => { cancelled = true; };
-  }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId]);
+  }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId, fazendasRetry]);
 
   const activeFazendaId = fazendaSelecionadaId || roleData.fazendaId || "";
 
@@ -181,13 +194,13 @@ export default function GerenteDashboard() {
   }), [ano, mes, activeFazendaId, activeRetiroId]);
 
   const {
-    loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading, error: painelError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
-  const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
+  const { painelMae, error: painelMaeError } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
 
@@ -297,6 +310,16 @@ export default function GerenteDashboard() {
 
   if (loading) return <LoadingScreen />;
 
+  if (painelError || painelMaeError || fazendasError) {
+    return (
+      <div role="alert" className="p-6 max-w-xl mx-auto space-y-4">
+        <h1 className="font-semibold text-destructive">Não foi possível confirmar os dados das fazendas</h1>
+        <p className="text-sm">{painelError || painelMaeError || fazendasError}</p>
+        <Button variant="outline" onClick={() => { setFazendasRetry(n => n + 1); void handleRefresh(); }} disabled={refreshing}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
   if (salgaReportOpen && roleData.fazendaId) {
     return (
       <RelatorioSalgaPage
@@ -311,6 +334,12 @@ export default function GerenteDashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
       <EnableNotificationsBanner />
+      {gmdError && (
+        <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm flex-1">{gmdError} Os demais indicadores não foram zerados.</p>
+          <Button variant="outline" size="sm" onClick={retryGmd}>Tentar GMD novamente</Button>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0 space-y-2">
         {/* Linha 1: identidade + ações principais */}
