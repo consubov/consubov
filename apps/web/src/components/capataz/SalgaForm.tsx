@@ -43,7 +43,7 @@ interface SalgaFormProps {
   exigirFotoCocho?: boolean;
   initialDraft?: SalgaFormDraft | null;
   onDraftChange?: (draft: SalgaFormDraft) => void;
-  onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => Promise<void>;
+  onSave: (lancamento: Omit<LancamentoOffline, 'id' | 'data' | 'status'>) => void;
   onBack: () => void;
   numAnimais: number;
   sugestao: SalgaSugestao | null;
@@ -133,11 +133,10 @@ export default function SalgaForm({
     return true;
   };
 
-  const handleSave = async () => {
-    if (saving || !canSave()) return;
+  const handleSave = () => {
+    if (!canSave()) return;
     setSaving(true);
-    try {
-      await onSave({
+    onSave({
       tipo,
       pasto_id: pastoId,
       pasto_nome: pastoNome,
@@ -149,11 +148,7 @@ export default function SalgaForm({
       justificativa_falha_qr: justificativaFalhaQr,
       cocho_cheio: cochoChecked,
       foto_cocho_url: cochoChecked ? fotoCocho : null,
-      });
-    } finally {
-      // A failed IndexedDB write leaves the draft on screen and re-enables retry.
-      setSaving(false);
-    }
+    });
   };
 
   return (

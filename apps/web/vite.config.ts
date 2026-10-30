@@ -23,22 +23,6 @@ function injectSwBuildTimestamp(): Plugin {
     closeBundle() {
       const swPath = path.resolve(__dirname, "dist/sw.js");
       if (!fs.existsSync(swPath)) return;
-      // Recovery is INLINE in the built HTML. Even if the Vite entrypoint is 404,
-      // the installed PWA can verify and safely activate a complete new shell.
-      const indexPath = path.resolve(__dirname, "dist/index.html");
-      const repairSourcePath = path.resolve(__dirname, "src/lib/pwaBootRepair.inline.js");
-      const marker = "<!-- CONSUBOV_BOOT_REPAIR_INLINE -->";
-      const indexHtml = fs.readFileSync(indexPath, "utf-8");
-      const repairSource = fs.readFileSync(repairSourcePath, "utf-8");
-      if (!indexHtml.includes(marker) || repairSource.includes("</script")) {
-        throw new Error("PWA inline recovery injection missing or unsafe");
-      }
-      const repairScript = repairSource
-        .replace(/__CONSUBOV_BUILD_TIMESTAMP__/g, buildTimestamp)
-        .replace(/__CONSUBOV_APP_VERSION__/g, readAppVersion());
-      fs.writeFileSync(indexPath, indexHtml.replace(marker,
-        `<script data-consubov-boot-repair>\n${repairScript}\n</script>`));
-
       // Route-level lazy chunks must also be present before offline update.
       // All built assets are included instead of guessing import graphs.
       const assetRoot = path.resolve(__dirname, "dist/assets");

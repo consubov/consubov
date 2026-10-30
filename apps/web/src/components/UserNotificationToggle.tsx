@@ -13,7 +13,7 @@ import {
   requestPushPermission,
   savePushSubscription,
   setStoredPushEnabledPreference,
-  isVapidConfigured,
+  VAPID_PUBLIC_KEY,
 } from "@/lib/pushNotifications";
 
 type State = "loading" | "missing" | "denied" | "enabled" | "disabled" | "unsupported";
@@ -35,7 +35,6 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
 
   const refresh = useCallback(async () => {
     if (!session || !user?.id) return;
-    if (!isVapidConfigured()) { setState("unsupported"); return; }
     if (!isPushSupported()) { setState("unsupported"); return; }
     if (Notification.permission === "denied") { setState("denied"); return; }
     setState("missing");
@@ -70,10 +69,10 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
   }, [session, user?.id, refresh]);
 
   if (!session || !user?.id) return null;
-  if (state === "loading" || !isVapidConfigured()) return null;
+  if (state === "loading") return null;
 
   const enableFlow = async () => {
-    if (!isVapidConfigured()) { toast.error("Notificações temporariamente indisponíveis"); return; }
+    if (!VAPID_PUBLIC_KEY) { toast.error("VAPID ausente no servidor"); return; }
     setBusy(true);
     try {
       const { isIos, isStandalone } = getIosStandaloneRequirement();

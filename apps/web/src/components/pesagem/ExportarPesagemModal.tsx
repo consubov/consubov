@@ -1,4 +1,3 @@
-import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -70,16 +69,9 @@ export default function ExportarPesagemModal({
         reader.readAsDataURL(blob);
       } else {
         const storagePath = `pesagens/${fazendaId}/${pesagemId}/${fileName}`;
-        try {
-          const { error } = await withReportExportDeadline(
-            supabase.storage.from("relatorios").upload(storagePath, blob, { upsert: true, contentType: "application/pdf" }),
-            "Backup da pesagem", Date.now() + 25_000,
-          );
-          if (error) throw error;
-        } catch (uploadError) {
-          console.warn("[PDF] Pesagem gerada, cópia remota pendente:", uploadError);
-          toast.warning("PDF disponível no aparelho, mas não foi possível confirmar o backup.");
-        }
+        await supabase.storage
+          .from("relatorios")
+          .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
       }
 
       const localUrl = URL.createObjectURL(blob);
@@ -101,9 +93,8 @@ export default function ExportarPesagemModal({
     }
     const blob = await ensurePdf();
     if (blob) {
-      const url = pdfUrl || URL.createObjectURL(blob);
-      const tab = window.open(url, "_blank");
-      if (!tab) downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
     }
   }
 
@@ -113,15 +104,19 @@ export default function ExportarPesagemModal({
       const blob = await ensurePdf();
       if (!blob) return;
       const file = new File([blob], `pesagem-${pesagemId}.pdf`, { type: "application/pdf" });
-      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+      if ((navigator as any).share && (navigator as any).canShare?.({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: "Pesagem Consubov" });
+          await (navigator as any).share({ files: [file], title: "Pesagem Consubov" });
           return;
         } catch {
           // fallback
         }
       }
-      downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pesagem-${pesagemId}.pdf`;
+      a.click();
     } finally {
       setSharingPdf(false);
     }
