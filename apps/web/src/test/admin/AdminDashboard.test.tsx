@@ -1,80 +1,94 @@
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import AdminDashboard from "@/pages/AdminDashboard";
 
-const fixtures = vi.hoisted(() => ({ unauthorized: false, authValid: true }));
+const fixtures = vi.hoisted(() => ({
+  authValid: true, adminPresent: true, rlsDenied: false, offline: false,
+}));
+
+vi.mock("@/hooks/useAuth", () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    user: fixtures.authValid ? { id: "admin-id" } : null,
+    role: "administrador", roleResolved: true, loading: false,
+    roleData: { role: "administrador", roleId: "cached-id" },
+  }),
+}));
+
 vi.mock("@/integrations/supabase/client", () => {
-  const headCounts: Record<string, number> = {
-    fazendas: 5, retiros: 5, pastos: 5, produtos: 5,
-    ciclos: 5, lancamentos: 5, fabricas: 5,
-  };
-  return {
-    supabase: {
-      auth: {
-        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-        getUser: vi.fn(() => Promise.resolve(fixtures.authValid
-          ? { data: { user: { id: "verified-admin" } }, error: null }
-          : { data: { user: null }, error: { message: "invalid jwt" } })),
-        onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-      },
-      from: (table: string) => ({
-        select: (columns: string, options: { head?: boolean } = {}) => {
-          const response = table === "administradores"
-            ? { data: { id: "active-admin" }, error: null, status: 200 }
-            : fixtures.unauthorized && table === "fazendas"
-            ? { data: null, count: null, error: { code: "42501" }, status: 403 }
-            : options.head
-            ? { data: null, count: headCounts[table] ?? 0, error: null, status: 200 }
-            : columns === "num_animais"
-            ? { data: Array.from({ length: 10 }, () => ({ num_animais: 5 })), error: null, status: 200 }
-            : { data: [], error: null, status: 200 };
-          const query = {
-            eq: () => query,
-            maybeSingle: () => query,
-            abortSignal: () => query,
-            then: (resolve: (value: typeof response) => unknown, reject?: (error: unknown) => unknown) =>
-              Promise.resolve(response).then(resolve, reject),
-          };
-          return query;
-        },
-      }),
-      channel: vi.fn(() => ({
-        on: vi.fn().mockReturnThis(),
-        subscribe: vi.fn(),
-      })),
-      removeChannel: vi.fn(),
+  const counts: Record<string, number> = { fazendas: 5, retiros: 5, pastos: 5,
+    produtos: 5, ciclos: 5, lancamentos: 5, fabricas: 5 };
+  const from = vi.fn((table: string) => ({
+    select: (cols: string, opts: { head?: boolean } = {}) => {
+      const response = table === "administradores"
+        ? { data: fixtures.adminPresent ? { id: "active-id" } : null, error: null, status: 200 }
+        : fixtures.rlsDenied && table === "fazendas"
+        ? { data: null, count: null, error: { code: "42501" }, status: 403 }
+        : fixtures.offline && table === "fazendas"
+        ? { data: null, count: null, error: { code: "NETWORK" }, status: 503 }
+        : opts.head
+        ? { data: null, count: counts[table] ?? 0, error: null, status: 200 }
+        : cols === "num_animais"
+        ? { data: Array.from({ length: 10 }, () => ({ num_animais: 5 })), error: null, status: 200 }
+        : { data: [], error: null, status: 200 };
+      const q = {
+        eq: () => q, maybeSingle: () => q, abortSignal: () => q,
+        then: (resolve: (value: typeof response) => unknown, reject?: (err: unknown) => unknown) =>
+          Promise.resolve(response).then(resolve, reject),
+      };
+      return q;
     },
-  };
+  }));
+  return { supabase: {
+    auth: { getUser: vi.fn(async () => { throw new Error("auth offline"); }) },
+    from, channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
+    removeChannel: vi.fn(),
+  }};
 });
 vi.mock("@/components/admin/AdminListSection", () => ({ default: () => null }));
 
-const mount = () => render(
-  <AuthProvider><MemoryRouter><AdminDashboard /></MemoryRouter></AuthProvider>
-);
-beforeEach(() => { fixtures.unauthorized = false; fixtures.authValid = true; });
+import { supabase } from "@/integrations/supabase/client";
+import AdminDashboard from "@/pages/AdminDashboard";
 
-describe("AdminDashboard", () => {
-  it("shows verified totals only when queries succeed", async () => {
-    mount();
+function renderDashboard() {
+  return render(<MemoryRouter><AdminDashboard /></MemoryRouter>);
+}
+beforeEach(() => {
+  vi.clearAllMocks();
+  Object.assign(fixtures, { authValid: true, adminPresent: true, rlsDenied: false, offline: false });
+});
+
+describe("AdminDashboard production auth regression", () => {
+  it("renders verified metrics without calling the redundant auth network endpoint", async () => {
+    renderDashboard();
     expect(await screen.findByText("50")).toBeInTheDocument();
     expect(screen.getAllByText("5")).toHaveLength(7);
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(supabase.auth.getUser).not.toHaveBeenCalled();
+    expect(supabase.from).toHaveBeenCalledWith("administradores");
   });
-
-  it("does not show false zeros when a query is denied by RLS", async () => {
-    fixtures.unauthorized = true;
-    mount();
+  it("rejects missing admin membership even when browser role is cached", async () => {
+    fixtures.adminPresent = false;
+    renderDashboard();
     expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
     expect(screen.queryByText("50")).not.toBeInTheDocument();
-    expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
-
-  it("rejects a cached admin view without a verified live session", async () => {
+  it("rejects missing session user", async () => {
     fixtures.authValid = false;
-    mount();
+    renderDashboard();
     expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
-    expect(screen.queryByText("0")).not.toBeInTheDocument();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+  it("does not render false zeros on a server-side RLS denial", async () => {
+    fixtures.rlsDenied = true;
+    renderDashboard();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
+    expect(screen.queryByText("50")).not.toBeInTheDocument();
+  });
+  it("offers retry when the data API is unavailable", async () => {
+    fixtures.offline = true;
+    renderDashboard();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Não foi possível consultar o banco/);
+    expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeEnabled();
   });
 });

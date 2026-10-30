@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { RequestCancelledError, RequestTimeoutError, runWithDeadline } from "@/lib/requestDeadline";
 import { DashboardQueryError, requireDashboardCount, requireAnimalTotal } from "@/lib/adminDashboardMetrics";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { user: sessionUser } = useAuth();
+  const sessionUserId = sessionUser?.id;
   const [refreshKey, setRefreshKey] = useState(0);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
   const [searchParams] = useSearchParams();
@@ -42,14 +45,13 @@ export default function AdminDashboard() {
       setLoadError(null);
       setStats(null);
       try {
-        // Cached roles do not grant access. Verify the live session and the
-        // administrator record before trusting count responses (RLS can return
-        // zero visible rows without a PostgREST error for a non-admin).
-        const identity = await deadline(() => supabase.auth.getUser());
-        if (identity.error || !identity.data.user) throw new DashboardQueryError("permission");
+        // AuthProvider already established the session before entering /admin.
+        // The user id is only a selector: PostgREST JWT + RLS verifies membership.
+        // Do not require an extra /auth/v1/user request to render this page.
+        if (!sessionUserId) throw new DashboardQueryError("permission");
         const admin = await deadline(signal =>
           supabase.from("administradores").select("id")
-            .eq("user_id", identity.data.user.id).eq("ativo", true)
+            .eq("user_id", sessionUserId).eq("ativo", true)
             .abortSignal(signal).maybeSingle(),
         );
         if (admin.error) {
@@ -101,7 +103,7 @@ export default function AdminDashboard() {
       active = false;
       controller.abort();
     };
-  }, [refreshKey]);
+  }, [refreshKey, sessionUserId]);
 
   // Realtime notifications do not start concurrent requests or write stale data.
   useEffect(() => {
