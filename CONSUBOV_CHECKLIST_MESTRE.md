@@ -1,3 +1,14 @@
+## 2026-10-29 — INC-011 gate CI de PWA (PR #79)
+
+- [x] Codigo do gate de build/SW/assets, workflow e testes de politica de versao incluidos na branch de trabalho (evidencia: commits/PR; nao equivale a CI executado).
+- [x] Gate `PWA Release Safety Gate` PASS no SHA de codigo `ef82234ee77f0efa7250a9920d5ef25836ed989a` (runs 40925246608 e 40925254853). Vitest **19/19 PASS**; build, SW/version.json, precache 341 assets, manifesto, instalador e HTTP local PASS.
+- [x] Playwright Chromium com perfil persistente isolado **3/3 PASS**: consentimento, fallback com asset ausente e seis bases de dados offline/Blob preservados.
+- [ ] Apos esta atualizacao documental, confirmar checks no novo HEAD; QA em dispositivo fisico real e homologacao com usuario seguem separados.
+- [ ] Reconciliar `main` com hotfix de producao, configurar status obrigatorio em release Vercel se autorizado, e validar smoke no host apos deploy.
+- [ ] F12 GLOBAL NO-GO permanece; nenhum deploy/migration/secret/SQL remoto nesta tarefa.
+
+---
+
 # CONSUBOV - Checklist Mestre
 
 ## 2026-10-22 — Preparacao v1.155.0 e API sem localhost
