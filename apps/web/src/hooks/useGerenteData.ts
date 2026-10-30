@@ -200,7 +200,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
-        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
+        let lancQuery = supabase.from("view_consumo_tempo_real")
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
@@ -289,7 +289,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
   const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
   const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
-  const gmdPastos = gmdState.scope === gmdScope ? gmdState.values : {};
+  const gmdPastos = useMemo(() => gmdState.scope === gmdScope ? gmdState.values : {}, [gmdState, gmdScope]);
   const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
 
   useEffect(() => {
