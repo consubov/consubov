@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { AnimalCalc, PesagemCompraCfg } from "./pesagemCompra";
@@ -61,8 +62,7 @@ function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | 
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85): Promise<{ dataUrl: string; w: number; h: number } | null> {
   try {
-    const res = await fetch(url);
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     const bmp = await createImageBitmap(blob);
     let { width, height } = bmp;
     if (width > maxDim || height > maxDim) {
@@ -505,13 +505,13 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 3, textColor: INK, lineColor: LINE },
     columnStyles: {
-      0: { fontStyle: "bold", fillColor: [247, 244, 234] as any, cellWidth: 70 },
+      0: { fontStyle: "bold", fillColor: [247, 244, 234] as [number, number, number], cellWidth: 70 },
       1: { halign: "right" },
     },
     margin: { left: 15, right: 15 },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY ?? 80;
+  const finalY = (doc as typeof doc & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 80;
 
   if (semValores) {
     if (data.rendimentoEstimado != null) {
@@ -554,7 +554,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
       ]),
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
-      headStyles: { fillColor: [31, 122, 77] as any, textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [31, 122, 77] as [number, number, number], textColor: 255, fontStyle: "bold" },
       margin: { left: 15, right: 15 },
     });
   }

@@ -1,3 +1,4 @@
+import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,9 +12,36 @@ import {
   totalizar,
   type PesagemCompraCfg,
   type PesoAnimal,
+  type TipoPrecoIndividual,
 } from "@/lib/pesagemCompra";
 import { gerarPesagemPdf } from "@/lib/pesagemPdf";
 import { downloadPdfFromUrl } from "@/lib/downloadPdf";
+
+type PesagemExtras = {
+  created_at?: string | null;
+  valor_total_pago?: number | null;
+  sem_valores?: boolean | null;
+  pdf_url?: string | null;
+};
+
+type PesagemCategoriaRow = {
+  categoria: string;
+  tipo_preco: TipoPrecoIndividual;
+  preco_valor: number;
+};
+
+type LeituraBalancaoRow = {
+  ordem: number;
+  peso_total: number;
+  quantidade_animais: number;
+  peso_individual: number;
+};
+
+type PesadorRow = {
+  logo_url: string | null;
+  nome_empresa: string | null;
+  nome: string | null;
+};
 
 const CATEGORIA_LABELS: Record<string, string> = {
   boi_gordo: "Boi Gordo",
@@ -56,21 +84,22 @@ export default function PesadorPesagemResumoPage() {
         .eq("id", pesagemId)
         .maybeSingle();
       if (p) {
+        const extras = p as unknown as PesagemExtras;
         setCfg({
-          tipo_preco: (p.tipo_preco as any) ?? null,
+          tipo_preco: (p.tipo_preco as PesagemCompraCfg["tipo_preco"]) ?? null,
           preco_valor: Number(p.preco_valor ?? 0),
-          modo_percentual: (p.modo_percentual as any) ?? "na",
+          modo_percentual: (p.modo_percentual as PesagemCompraCfg["modo_percentual"]) ?? "na",
           percentual_fixo: p.percentual_fixo != null ? Number(p.percentual_fixo) : null,
           preco_arroba: p.preco_arroba != null ? Number(p.preco_arroba) : null,
           preco_kg: p.preco_kg != null ? Number(p.preco_kg) : null,
           preco_fixo_animal: p.preco_fixo_animal != null ? Number(p.preco_fixo_animal) : null,
-        } as any);
+        } as PesagemCompraCfg);
         setCategoria(p.categoria);
         setFinalizadaAt(p.finalizada_at);
-        setCreatedAt((p as any).created_at ?? null);
-        setValorTotalPago((p as any).valor_total_pago != null ? Number((p as any).valor_total_pago) : null);
-        setSemValores(!!(p as any).sem_valores);
-        setPdfUrl((p as any).pdf_url ?? null);
+        setCreatedAt(extras.created_at ?? null);
+        setValorTotalPago(extras.valor_total_pago != null ? Number(extras.valor_total_pago) : null);
+        setSemValores(!!extras.sem_valores);
+        setPdfUrl(extras.pdf_url ?? null);
         const { data: c } = await maFrom("clientes_pesador")
           .select("nome, nome_fazenda, cidade")
           .eq("id", p.cliente_id)
@@ -84,7 +113,7 @@ export default function PesadorPesagemResumoPage() {
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
       setPesos(
-        (ps ?? []).map((x: any) => ({
+        ((ps ?? []) as unknown as PesoAnimal[]).map((x) => ({
           ordem: x.ordem,
           peso_kg: Number(x.peso_kg),
           percentual_individual:
@@ -97,8 +126,8 @@ export default function PesadorPesagemResumoPage() {
         const { data: cats } = await maFrom("pesagens_compra_categorias")
           .select("categoria, tipo_preco, preco_valor")
           .eq("pesagem_id", pesagemId);
-        const map: Record<string, { tipo_preco: any; preco_valor: number }> = {};
-        (cats ?? []).forEach((r: any) => {
+        const map: NonNullable<PesagemCompraCfg["categorias_map"]> = {};
+        ((cats ?? []) as unknown as PesagemCategoriaRow[]).forEach((r) => {
           map[r.categoria] = { tipo_preco: r.tipo_preco, preco_valor: Number(r.preco_valor) };
         });
         setCfg((prev) => (prev ? { ...prev, categorias_map: map } : prev));
@@ -108,7 +137,7 @@ export default function PesadorPesagemResumoPage() {
         .eq("pesagem_id", pesagemId)
         .order("ordem", { ascending: true });
       setLeiturasBalancao(
-        (lts ?? []).map((r: any) => ({
+        ((lts ?? []) as unknown as LeituraBalancaoRow[]).map((r) => ({
           ordem: Number(r.ordem),
           peso_total: Number(r.peso_total),
           quantidade_animais: Number(r.quantidade_animais),
@@ -204,12 +233,13 @@ export default function PesadorPesagemResumoPage() {
           .select("logo_url, nome_empresa, nome")
           .eq("user_id", authUser.user.id)
           .maybeSingle();
-        pesadorLogoUrl = (pes as any)?.logo_url ?? null;
-        pesadorNomeEmpresa = (pes as any)?.nome_empresa ?? null;
-        pesadorNome = (pes as any)?.nome ?? null;
+        const pesador = pes as unknown as PesadorRow | null;
+        pesadorLogoUrl = pesador?.logo_url ?? null;
+        pesadorNomeEmpresa = pesador?.nome_empresa ?? null;
+        pesadorNome = pesador?.nome ?? null;
       }
 
-      const blob = await gerarPesagemPdf({
+      const blob = await withReportExportDeadline(gerarPesagemPdf({
         header: {
           produtor: clienteNome,
           fazenda: clienteFazenda,
@@ -228,13 +258,21 @@ export default function PesadorPesagemResumoPage() {
         semValores,
         rendimentoEstimado: rendimentoRotina,
         leiturasBalancao: leiturasBalancao.length ? leiturasBalancao : undefined,
-      });
+      }), "Geração PDF da pesagem", Date.now() + 60_000, 60_000);
 
       const path = `pesagens/${pesagemId}-${Date.now()}.pdf`;
-      const { error: upErr } = await supabase.storage
-        .from("relatorios")
-        .upload(path, blob, { contentType: "application/pdf", upsert: true });
-      if (upErr) throw upErr;
+      try {
+        const { error: upErr } = await withReportExportDeadline(
+          supabase.storage.from("relatorios").upload(path, blob, { contentType: "application/pdf", upsert: true }),
+          "Upload PDF da pesagem", Date.now() + 25_000,
+        );
+        if (upErr) throw upErr;
+      } catch (uploadError) {
+        console.warn("[PDF] Servidor não confirmou a gravação da pesagem:", uploadError);
+        downloadGeneratedPdf(blob, `pesagem-${pesagemId}.pdf`);
+        toast({ title: "PDF baixado localmente", description: "O backup no servidor não foi confirmado; evite repetir a finalização antes de verificar." });
+        return;
+      }
       const { data: pub } = supabase.storage.from("relatorios").getPublicUrl(path);
       const url = pub.publicUrl;
       await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
@@ -256,13 +294,13 @@ export default function PesadorPesagemResumoPage() {
       const resp = await fetch(pdfUrl);
       const blob = await resp.blob();
       const file = new File([blob], fileName, { type: "application/pdf" });
-      const nav: any = navigator;
+      const nav = navigator;
       if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title, text });
         return;
       }
-    } catch (e: any) {
-      if (e?.name === "AbortError") return;
+    } catch (e: unknown) {
+      if (e !== null && typeof e === "object" && "name" in e && e.name === "AbortError") return;
     }
     // Sem compartilhamento de arquivo: baixa o PDF (nunca expõe a URL técnica).
     try {
