@@ -183,7 +183,7 @@ export default function SyncVetManejoExecucaoPage() {
       setNumero("");
       setTimeout(() => inputRef.current?.focus(), 30);
     } catch (e: unknown) {
-      toast.error(errorMessage(e, "Erro ao registrar");
+      toast.error(errorMessage(e, "Erro ao registrar"));
     } finally {
       setConfirmando(false);
     }
@@ -237,7 +237,7 @@ export default function SyncVetManejoExecucaoPage() {
       toast.success("Manejo finalizado");
       navigate(`/syncvet/agenda`);
     } catch (e: unknown) {
-      toast.error(errorMessage(e, "Erro ao finalizar");
+      toast.error(errorMessage(e, "Erro ao finalizar"));
     } finally {
       setSaving(false);
     }
