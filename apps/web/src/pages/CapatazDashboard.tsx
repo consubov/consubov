@@ -40,18 +40,19 @@ import { useOfflinePesagemSync } from "@/hooks/useOfflinePesagem";
 import {
   cachePastos, cacheRetiro, cacheCiclos, getCachedPastos, getCachedRetiro, sortPastos,
   getCachedCiclos,
-  saveLancamento, getAllLancamentos, getLancamentosPendentes, markSincronizado, deleteLancamento,
+  saveLancamento, getLancamentosResumo, getLancamentoIds, lancamentosDoRetiro, getLancamentosPendentes, markSincronizado, deleteLancamento,
   getPastoByQr, setConfig, getConfig,
   saveObservacaoOffline, getObservacoesPendentes, getObservacoesSincronizadas,
   markObservacaoSincronizada, deleteObservacaoOffline,
   saveFecharMes, getFecharMesPendente, clearFecharMes,
   cacheProdutoAtivo, getCachedProdutoAtivo, cacheFazenda, getCachedFazenda,
-  logSyncError, clearSyncError, clearRetiroScopedCache,
+  logSyncError, clearSyncError, activateRetiroReference, assertRetiroSwitchSafe, assertLancamentoNoRetiroAtivo,
   type PastoCache, type RetiroCache, type CicloCache, type LancamentoOffline, type ObservacaoOffline,
   type FecharMesPendente, type ProdutoCache, type FazendaCache,
 } from "@/lib/offlineDb";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
+import { requestPersistentStorage } from "@/lib/storageProtection";
 import { compressImageDataUrl } from "@/lib/imageCompression";
 import { iniciarFilaFotosSalga } from "@/lib/fotoSalgaQueue";
 import { iniciarFilaOperacoes, reportOperacao } from "@/lib/operacaoReporter";
@@ -259,6 +260,10 @@ export default function CapatazDashboard() {
   const [retiroAtivoId, setRetiroAtivoId] = useState<string | null>(null);
   const [trocandoRetiro, setTrocandoRetiro] = useState(false);
   const activeRetiroId = retiroAtivoId ?? roleData.retiroId ?? null;
+  const activeRetiroIdRef = useRef(activeRetiroId);
+  activeRetiroIdRef.current = activeRetiroId;
+  // Reject responses from older remote loads after switching retiro.
+  const remoteLoadEpochRef = useRef(0);
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
   // Restaura o retiro ativo persistido e carrega a lista de vínculos
@@ -478,12 +483,13 @@ export default function CapatazDashboard() {
   }, [activeRetiroId]);
 
   const refreshLancamentosState = useCallback(async (cicloId?: string) => {
-    const [allLancamentos, pendentes] = await Promise.all([
-      getAllLancamentos(),
-      getLancamentosPendentes(),
+    const [allLancamentos, pendentes, scopePastos] = await Promise.all([
+      getLancamentosResumo(),
+      getTotalPendingCount(),
+      getCachedPastos(),
     ]);
 
-    applyLancamentosState(allLancamentos, pendentes.length, cicloId ?? selectedCicloIdRef.current);
+    applyLancamentosState(lancamentosDoRetiro(allLancamentos, scopePastos), pendentes, cicloId ?? selectedCicloIdRef.current);
   }, [applyLancamentosState]);
 
   const restoreUiState = useCallback((
@@ -569,14 +575,17 @@ export default function CapatazDashboard() {
       getCachedPastos(),
       getCachedRetiro(),
       getCachedCiclos(),
-      getAllLancamentos(),
-      getLancamentosPendentes(),
+      getLancamentosResumo(),
+      getTotalPendingCount(),
       getConfig('selectedCicloId'),
       getConfig('capatazUiState'),
       getConfig('fazendaId'),
       getCachedProdutoAtivo(),
       getCachedFazenda(),
     ]);
+    // Discard an old in-flight local read after the active retiro changed.
+    // It must not overwrite freshly committed references from a new retiro.
+    if (cachedRetiro?.id && activeRetiroIdRef.current && cachedRetiro.id !== activeRetiroIdRef.current) return;
     if (!serverPastosLoadedRef.current) {
       setPastos(sortPastos(cachedPastos));
     }
@@ -593,7 +602,7 @@ export default function CapatazDashboard() {
       nextCicloId = cachedCiclos.length > 0 ? (escolherCicloAtivo(cachedCiclos)?.id ?? "") : "";
       setSelectedCicloId(nextCicloId);
     }
-    applyLancamentosState(allLancamentos, pendentes.length, nextCicloId);
+    applyLancamentosState(lancamentosDoRetiro(allLancamentos, cachedPastos), pendentes, nextCicloId);
 
     if (!uiStateRestoredRef.current) {
       restoreUiState(savedUiState, cachedPastos, cachedRetiro || null, cachedCiclos, cachedProd, cachedFaz);
@@ -660,12 +669,19 @@ export default function CapatazDashboard() {
   }, [bootReady]);
 
   useEffect(() => {
-    if (!backgroundBootReady) return;
+    // Local data is the first paint; network/background tasks are intentionally deferred.
+    if (!bootReady) return;
     void loadLocalData().catch((error) => {
       console.error('[CapatazDashboard] local bootstrap failed:', error);
       setStartupError('Não foi possível iniciar os dados offline do capataz.');
     });
-  }, [backgroundBootReady, loadLocalData]);
+  }, [bootReady, loadLocalData]);
+
+  useEffect(() => {
+    if (!bootReady || !user?.id) return;
+    // Best effort; the browser is free to deny persistence. Never clear local data.
+    void requestPersistentStorage();
+  }, [bootReady, user?.id]);
 
   useEffect(() => {
     if (!uiStateReady) return;
@@ -680,13 +696,21 @@ export default function CapatazDashboard() {
   useEffect(() => {
     if (!uiStateReady) return;
 
+    let refreshTimer: number | null = null;
+    const refreshOnce = () => {
+      // Safari may fire pageshow + visibilitychange together. One IDB read is enough.
+      if (refreshTimer !== null) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void loadLocalData();
+      }, 100);
+    };
     const handleVisibilityChange = () => {
       if (document.hidden) {
         void persistUiState();
         return;
       }
-
-      void loadLocalData();
+      refreshOnce();
     };
 
     const handlePageHide = () => {
@@ -694,7 +718,7 @@ export default function CapatazDashboard() {
     };
 
     const handlePageShow = () => {
-      void loadLocalData();
+      refreshOnce();
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -705,6 +729,7 @@ export default function CapatazDashboard() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
     };
   }, [loadLocalData, persistUiState, uiStateReady]);
 
@@ -714,20 +739,26 @@ export default function CapatazDashboard() {
   }, [refreshLancamentosState, selectedCicloId, uiStateReady]);
 
   const loadFromSupabase = useCallback(async () => {
+    const requestedRetiro = activeRetiroId;
+    if (!requestedRetiro) return;
+    const epoch = remoteLoadEpochRef.current;
+    const obsolete = () => epoch !== remoteLoadEpochRef.current || activeRetiroIdRef.current !== requestedRetiro;
     try {
       // Get retiro + fazenda
       const { data: retiroData } = await supabase
         .from("retiros")
         .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id, auditoria_fotos_por_bloco, exigir_foto_cocho")
-        .eq("id", activeRetiroId!)
+        .eq("id", requestedRetiro)
         .maybeSingle();
 
+      if (obsolete()) return;
       if (retiroData) {
         const { data: fazenda } = await supabase
           .from("fazendas")
           .select("nome, intervalo_padrao_dias, auditoria_fotos_por_bloco, exigir_foto_cocho")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
+        if (obsolete()) return;
 
         const retiroCache: RetiroCache = {
           id: retiroData.id,
@@ -763,6 +794,7 @@ export default function CapatazDashboard() {
             .select("id, nome, peso_saco_kg, consumo_por_100kg, consumo_recria1, consumo_recria2, consumo_engorda")
             .eq("id", retiroProdutoId)
             .maybeSingle();
+          if (obsolete()) return;
           if (prodData) {
             const pCache: ProdutoCache = {
               id: prodData.id,
@@ -785,6 +817,7 @@ export default function CapatazDashboard() {
           .eq("retiro_id", retiroData.id)
           .eq("ativo", true)
           .order("nome", { ascending: true });
+        if (obsolete()) return;
 
         if (pastosData) {
           const pastosOrdenados = sortPastos(pastosData);
@@ -797,31 +830,37 @@ export default function CapatazDashboard() {
               .from("lancamentos")
               .select("id, pasto_id, num_sacos, created_at, mes_referencia, ano_referencia, origem")
               .in("pasto_id", pastosData.map((p) => p.id))
-              .order("created_at", { ascending: false });
+              .order("created_at", { ascending: false })
+              // First paint needs recent history; older server rows remain
+              // untouched. Local history already stored is never deleted.
+              .limit(350);
+            if (obsolete()) return;
 
             if (lancamentosData && lancamentosData.length > 0) {
               const pastosById = new Map(pastosData.map((p) => [p.id, p.nome]));
-              const existingIds = new Set((await getAllLancamentos()).map((l) => l.id));
+              const existingIds = new Set(await getLancamentoIds());
 
-              await Promise.all(
-                lancamentosData
-                  .filter((lancamento) => !existingIds.has(lancamento.id))
-                  .map((lancamento) => saveLancamento({
-                    id: lancamento.id,
-                    tipo: 'salga',
-                    pasto_id: lancamento.pasto_id,
-                    pasto_nome: pastosById.get(lancamento.pasto_id) || 'Pasto',
-                    sacos: lancamento.num_sacos,
-                    foto_auditoria_url: null,
-                    foto_auditoria_exigida: false,
-                    observacoes: [],
-                    data: lancamento.created_at || new Date().toISOString(),
-                    status: 'sincronizado',
-                    ciclo_id: undefined,
-                    status_consumo: undefined,
-                    indice_consumo: undefined,
-                  }))
-              );
+              const recentes = lancamentosData.filter((lancamento) => !existingIds.has(lancamento.id));
+              // Safari/Android can evict the PWA if hundreds of simultaneous IDB
+              // transactions compete with image decoding. Commit a few at a time.
+              for (let i = 0; i < recentes.length; i += 4) {
+                if (obsolete()) return;
+                await Promise.all(recentes.slice(i, i + 4).map((lancamento) => saveLancamento({
+                  id: lancamento.id,
+                  tipo: 'salga',
+                  pasto_id: lancamento.pasto_id,
+                  pasto_nome: pastosById.get(lancamento.pasto_id) || 'Pasto',
+                  sacos: lancamento.num_sacos,
+                  foto_auditoria_url: null,
+                  foto_auditoria_exigida: false,
+                  observacoes: [],
+                  data: lancamento.created_at || new Date().toISOString(),
+                  status: 'sincronizado',
+                  ciclo_id: undefined,
+                  status_consumo: undefined,
+                  indice_consumo: undefined,
+                })));
+              }
             }
           }
         }
@@ -833,6 +872,7 @@ export default function CapatazDashboard() {
           .eq("fazenda_id", retiroData.fazenda_id)
           .order("ano", { ascending: false })
           .order("mes", { ascending: false });
+        if (obsolete()) return;
 
         // If no ciclos exist, auto-create the current month's ciclo
         if (!ciclosData || ciclosData.length === 0) {
@@ -847,6 +887,7 @@ export default function CapatazDashboard() {
               .eq("fazenda_id", retiroData.fazenda_id)
               .order("ano", { ascending: false })
               .order("mes", { ascending: false });
+            if (obsolete()) return;
             ciclosData = refreshed;
           }
         }
@@ -870,67 +911,134 @@ export default function CapatazDashboard() {
     }
   }, [refreshLancamentosState, activeRetiroId]);
 
-  // Troca de retiro: exige conexão e recarrega todo o cache local do novo retiro.
+  // Keep the active retiro's offline data intact until the new data is verified.
+  // The replacement is ONE IDB transaction, never a clear-then-download sequence.
   const handleTrocarRetiro = useCallback(async (novoRetiroId: string) => {
     if (!novoRetiroId || novoRetiroId === activeRetiroId) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      toast.error('Sem conexão', {
-        description: 'É preciso estar online para trocar de retiro.',
-      });
+      toast.error('Sem conexão', { description: 'É preciso estar online para trocar de retiro.' });
       return;
     }
+    if (trocandoRetiro) return;
     setTrocandoRetiro(true);
     try {
-      await clearRetiroScopedCache();
-      serverPastosLoadedRef.current = false;
-      serverCiclosLoadedRef.current = false;
-      setPastos([]);
-      setRetiro(null);
-      setCiclos([]);
-      setSelectedCicloId("");
-      setProdutoAtivo(undefined);
-      setFazendaCache(undefined);
-      setFazendaId("");
+      // Fail closed if IndexedDB is unreadable or if there are unsent launches.
+      // The current sync protocol uses the active retiro for older records.
+      await assertRetiroSwitchSafe();
+      remoteLoadEpochRef.current += 1;
+      const { data: rd, error: re } = await supabase.from('retiros')
+        .select('id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id, auditoria_fotos_por_bloco, exigir_foto_cocho')
+        .eq('id', novoRetiroId).maybeSingle();
+      if (re || !rd) throw new Error('Retiro indisponível ou sem permissão');
+
+      const [pastosResult, ciclosResult, fazendaResult, produtoResult] = await Promise.all([
+        supabase.from('pastos')
+          .select('id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia')
+          .eq('retiro_id', rd.id).eq('ativo', true),
+        supabase.from('ciclos')
+          .select('id, mes, ano, fechado, num_dias, data_inicio, data_fim, duracao_dias')
+          .eq('fazenda_id', rd.fazenda_id).order('ano', { ascending: false }).order('mes', { ascending: false }),
+        supabase.from('fazendas')
+          .select('nome, intervalo_padrao_dias, auditoria_fotos_por_bloco, exigir_foto_cocho')
+          .eq('id', rd.fazenda_id).maybeSingle(),
+        rd.produto_id
+          ? supabase.from('produtos')
+            .select('id, nome, peso_saco_kg, consumo_por_100kg, consumo_recria1, consumo_recria2, consumo_engorda')
+            .eq('id', rd.produto_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (pastosResult.error || !pastosResult.data || ciclosResult.error || !ciclosResult.data) {
+        throw new Error('Não foi possível carregar os dados do novo retiro');
+      }
+      const proximoRetiro: RetiroCache = {
+        id: rd.id, nome: rd.nome, fazenda_nome: fazendaResult.data?.nome ?? '',
+        gmd_recria1: rd.gmd_recria1, gmd_recria2: rd.gmd_recria2, gmd_engorda: rd.gmd_engorda,
+      };
+      const novosPastos = sortPastos(pastosResult.data as PastoCache[]);
+      const novosCiclos = ciclosResult.data as CicloCache[];
+      const novoProduto: ProdutoCache | null = produtoResult.data ? {
+        id: produtoResult.data.id,
+        nome: produtoResult.data.nome,
+        peso_saco_kg: Number(produtoResult.data.peso_saco_kg),
+        consumo_por_100kg: produtoResult.data.consumo_por_100kg == null ? null : Number(produtoResult.data.consumo_por_100kg),
+        consumo_recria1: produtoResult.data.consumo_recria1 == null ? null : Number(produtoResult.data.consumo_recria1),
+        consumo_recria2: produtoResult.data.consumo_recria2 == null ? null : Number(produtoResult.data.consumo_recria2),
+        consumo_engorda: produtoResult.data.consumo_engorda == null ? null : Number(produtoResult.data.consumo_engorda),
+      } : null;
+      const novaFazenda: FazendaCache | null = fazendaResult.data ? {
+        id: rd.fazenda_id, nome: fazendaResult.data.nome ?? '',
+        intervalo_padrao_dias: fazendaResult.data.intervalo_padrao_dias ?? 4,
+        auditoria_fotos_por_bloco: resolverAuditoria(rd, fazendaResult.data).fotosPorBloco,
+        exigir_foto_cocho: resolverAuditoria(rd, fazendaResult.data).exigirFotoCocho,
+      } : null;
+      const cicloAtivoId = escolherCicloAtivo(novosCiclos)?.id ?? '';
+      await activateRetiroReference({
+        retiro: proximoRetiro, pastos: novosPastos, ciclos: novosCiclos,
+        produto: novoProduto, fazenda: novaFazenda, fazendaId: rd.fazenda_id, cicloAtivoId,
+      });
+      // Only after durable commit may the active screen switch retiros.
+      activeRetiroIdRef.current = novoRetiroId;
+      serverPastosLoadedRef.current = true;
+      serverCiclosLoadedRef.current = true;
+      setPastos(novosPastos);
+      setRetiro(proximoRetiro);
+      setCiclos(novosCiclos);
+      setSelectedCicloId(cicloAtivoId);
+      setProdutoAtivo(novoProduto ?? undefined);
+      setFazendaCache(novaFazenda ?? undefined);
+      setFazendaId(rd.fazenda_id);
       setConsumoGlobalMap({});
       setRetiroAtivoId(novoRetiroId);
-      await setConfig('capatazRetiroAtivoId', novoRetiroId);
+      await refreshLancamentosState(cicloAtivoId);
       toast.success('Retiro alterado');
-    } catch {
-      toast.error('Não foi possível trocar de retiro. Tente novamente.');
+    } catch (error) {
+      console.warn('[CapatazDashboard] troca de retiro cancelada:', error);
+      toast.error(error instanceof Error && error.message.includes('Sincronize')
+        ? error.message
+        : 'Não foi possível carregar o novo retiro. Seus dados anteriores foram mantidos.');
     } finally {
       setTrocandoRetiro(false);
     }
-  }, [activeRetiroId]);
+  }, [activeRetiroId, refreshLancamentosState, setSelectedCicloId, trocandoRetiro]);
 
-  // Try to load from Supabase on mount (if online)
+  // Silent *read-only* refresh on connection/resume. Sending pending field
+  // commands remains manual (or explicitly forced by the manager).
   useEffect(() => {
     if (!backgroundBootReady || !activeRetiroId) return;
-    void loadFromSupabase().catch((error) => {
-      console.warn('[CapatazDashboard] supabase bootstrap failed:', error);
-    });
+    let lastReadAt = 0;
+    const refresh = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastReadAt < 45_000) return;
+      lastReadAt = now;
+      void loadFromSupabase().catch((error) => {
+        console.warn('[CapatazDashboard] background read failed:', error);
+      });
+    };
+    const onVisible = () => { if (!document.hidden) refresh(); };
+    refresh();
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [backgroundBootReady, loadFromSupabase, activeRetiroId]);
 
   // Prepare offline mode
   const handleIniciarSalga = async () => {
     setScreen('prep');
     setPrepStatus('loading');
-    try {
-      await loadFromSupabase();
-    } catch {
-      // offline, use cache
-    }
-    // Preload lazy chunks needed for offline scanning + salga flow.
-    // Triggers SW/browser cache so they're available even without network.
-    try {
-      await Promise.all([
-        import("@/components/capataz/QrScanner"),
-        import("@/components/capataz/SalgaForm"),
-        import("@/components/capataz/PastoActionSheet"),
-        import("@zxing/browser"),
-      ]);
-    } catch (err) {
-      console.warn('[CapatazDashboard] preload offline chunks failed:', err);
-    }
+    // Remote refresh already runs in the background. Never gate a field action
+    // on a slow or unavailable network when the retiro is cached.
+    // Preload scan/form modules without blocking the cached work flow.
+    void Promise.all([
+      import("@/components/capataz/QrScanner"),
+      import("@/components/capataz/SalgaForm"),
+      import("@/components/capataz/PastoActionSheet"),
+      import("@zxing/browser"),
+    ]).catch((err) => console.warn('[CapatazDashboard] preload offline chunks failed:', err));
     const cached = await getCachedPastos();
     if (cached.length === 0) {
       toast.error("Sem dados de pastos. Conecte-se à internet primeiro.");
@@ -1067,7 +1175,13 @@ export default function CapatazDashboard() {
       ciclo_id: cicloAtivo.id,
       duplicado_confirmado: formDuplicadoConfirmado || undefined,
     };
-    await saveLancamento(lancamento);
+    try {
+      await saveLancamento(lancamento);
+    } catch {
+      // Keep the form/draft open: the write has NOT been committed.
+      toast.error('Não foi possível salvar no aparelho. Confira o armazenamento e tente novamente.');
+      return;
+    }
     setFormDuplicadoConfirmado(false);
 
     // Register audit counter ONLY for normal salga (not cocho cheio)
@@ -1131,6 +1245,9 @@ export default function CapatazDashboard() {
         let produto_id_final: string | null = null;
 
         const pasto = pastos.find(p => p.id === l.pasto_id);
+        // A legacy unsent record can outlive a retiro switch. Never send it
+        // under the currently selected fazenda/retiro without matching scope.
+        assertLancamentoNoRetiroAtivo(l, pastos, activeRetiroId, fazendaId);
         if (pasto && !l.cocho_cheio) {
           // Get retiro produto_id as fallback
           let retiroProdutoId: string | null = null;
@@ -1947,7 +2064,12 @@ export default function CapatazDashboard() {
                           data: new Date().toISOString(),
                           status: 'pendente',
                         };
-                        await saveFecharMes(action);
+                        try {
+                          await saveFecharMes(action);
+                        } catch {
+                          toast.error('Não foi possível guardar o fechamento no aparelho.');
+                          return;
+                        }
                         setFecharMesPendente(action);
                         toast.success("Mês fechado. Sincronize para confirmar.");
                       }}>
@@ -2107,7 +2229,11 @@ export default function CapatazDashboard() {
               criado_em: editingObs?.criado_em || new Date().toISOString(),
               status: 'pendente',
             };
-            await saveObservacaoOffline(obs);
+            try {
+              await saveObservacaoOffline(obs);
+            } catch {
+              throw new Error('Não foi possível salvar a observação no aparelho.');
+            }
             await refreshObservacoes();
             setEditingObs(null);
           }}

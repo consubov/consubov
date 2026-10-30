@@ -276,6 +276,35 @@ async function safeRun<T>(op: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+/** Writes must never return a success-shaped fallback on IndexedDB/quota errors. */
+export class OfflineWriteError extends Error {
+  readonly code = 'OFFLINE_WRITE_FAILED';
+
+  constructor() {
+    super('Não foi possível salvar no aparelho. Libere espaço e tente novamente.');
+    this.name = 'OfflineWriteError';
+  }
+}
+
+async function confirmedPut<K extends 'lancamentos' | 'observacoesOffline' | 'pesagensPendentes' | 'config'>(
+  store: K,
+  value: ConsubovDB[K]['value'],
+  id: string,
+): Promise<void> {
+  try {
+    const db = await getDb();
+    // The transaction must COMMIT before the caller can claim an offline save.
+    const tx = db.transaction(store, 'readwrite');
+    await tx.store.put(value as never);
+    await tx.done;
+    // getKey does not clone large base64 photos back into JS memory.
+    if ((await db.getKey(store, id)) !== id) throw new Error('IndexedDB key not persisted');
+  } catch (error) {
+    console.error('[offlineDb] durable write failed:', error);
+    throw new OfflineWriteError();
+  }
+}
+
 // Pastos
 // Ordenação única e determinística da lista de pastos (mesma ordem no cache
 // local e nos dados vindos do servidor) — evita a lista "pular" ao alternar
@@ -347,12 +376,77 @@ export async function getCachedCiclos(): Promise<CicloCache[]> {
   }, []);
 }
 
+// Lightweight read: never clone an entire history of base64 photos into memory
+// merely to compute daily labels and totals. Full records remain untouched in IDB.
+export async function getLancamentosResumo(): Promise<LancamentoOffline[]> {
+  const db = await getDb();
+  const tx = db.transaction('lancamentos', 'readonly');
+  const rows: LancamentoOffline[] = [];
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    const r = cursor.value;
+    if (r) rows.push({
+      id: r.id, tipo: r.tipo, pasto_id: r.pasto_id, pasto_nome: r.pasto_nome,
+      sacos: r.sacos, data: r.data, status: r.status,
+      foto_auditoria_url: null, foto_auditoria_exigida: r.foto_auditoria_exigida,
+      observacoes: [], ciclo_id: r.ciclo_id, cocho_cheio: r.cocho_cheio,
+      status_consumo: r.status_consumo, indice_consumo: r.indice_consumo,
+      duplicado_confirmado: r.duplicado_confirmado,
+    });
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return rows;
+}
+
+/** The local history may contain completed salgas from an earlier retiro.
+ * Never expose those rows as today's work after a retiro switch.
+ */
+export function lancamentosDoRetiro<T extends { pasto_id: string }>(
+  lancamentos: T[],
+  pastos: Array<{ id: string }>,
+): T[] {
+  const permitidos = new Set(pastos.map((p) => p.id));
+  return lancamentos.filter((l) => permitidos.has(l.pasto_id));
+}
+
+/** Fail closed before submitting any offline launch. The RPC receives the
+ * current fazenda/retiro; an old pasto must not inherit a different scope.
+ */
+export function assertLancamentoNoRetiroAtivo(
+  lancamento: { pasto_id: string },
+  pastosAtuais: Array<{ id: string }>,
+  retiroId: string | null,
+  fazendaId: string | null,
+): void {
+  if (!retiroId || !fazendaId || !pastosAtuais.some((p) => p.id === lancamento.pasto_id)) {
+    throw new Error('Registro de outro retiro ou dados de fazenda indisponíveis. Sincronização bloqueada para evitar mistura.');
+  }
+}
+
+/** Read only IDs to deduplicate remote history without cloning photo payloads. */
+export async function getLancamentoIds(): Promise<string[]> {
+  const db = await getDb();
+  return await db.getAllKeys('lancamentos');
+}
+
+/** Fail closed: a retiro switch cannot mix an unsynced action with the new scope.
+ * Every check throws on IndexedDB read errors instead of using []/0 fallbacks.
+ */
+export async function assertRetiroSwitchSafe(): Promise<void> {
+  const db = await getDb();
+  const [pendentes, fechamento] = await Promise.all([
+    db.countFromIndex('lancamentos', 'by-status', 'pendente'),
+    db.get('config', 'fechar_mes_pendente'),
+  ]);
+  if (pendentes > 0 || fechamento?.value) {
+    throw new Error('Sincronize os lançamentos e fechamentos pendentes antes de trocar de retiro.');
+  }
+}
+
 // Lancamentos
-export async function saveLancamento(lancamento: LancamentoOffline) {
-  return safeRun(async () => {
-    const db = await getDb();
-    await db.put('lancamentos', lancamento);
-  }, undefined);
+export async function saveLancamento(lancamento: LancamentoOffline): Promise<void> {
+  await confirmedPut('lancamentos', lancamento, lancamento.id);
 }
 
 export async function getLancamentosPendentes(): Promise<LancamentoOffline[]> {
@@ -423,11 +517,8 @@ export async function getSacosHojePorPasto(): Promise<Record<string, number>> {
 }
 
 // Observações Offline
-export async function saveObservacaoOffline(obs: ObservacaoOffline) {
-  return safeRun(async () => {
-    const db = await getDb();
-    await db.put('observacoesOffline', obs);
-  }, undefined);
+export async function saveObservacaoOffline(obs: ObservacaoOffline): Promise<void> {
+  await confirmedPut('observacoesOffline', obs, obs.id);
 }
 
 export async function getAllObservacoes(): Promise<ObservacaoOffline[]> {
@@ -477,11 +568,8 @@ export interface FecharMesPendente {
   status: 'pendente';
 }
 
-export async function saveFecharMes(action: FecharMesPendente) {
-  return safeRun(async () => {
-    const db = await getDb();
-    await db.put('config', { key: 'fechar_mes_pendente', value: JSON.stringify(action) });
-  }, undefined);
+export async function saveFecharMes(action: FecharMesPendente): Promise<void> {
+  await confirmedPut('config', { key: 'fechar_mes_pendente', value: JSON.stringify(action) }, 'fechar_mes_pendente');
 }
 
 export async function getFecharMesPendente(): Promise<FecharMesPendente | null> {
@@ -543,11 +631,8 @@ export async function getCachedFazenda(): Promise<FazendaCache | undefined> {
 }
 
 // Pesagens Pendentes (offline)
-export async function savePesagemPendente(pesagem: PesagemPendente) {
-  return safeRun(async () => {
-    const db = await getDb();
-    await db.put('pesagensPendentes', pesagem);
-  }, undefined);
+export async function savePesagemPendente(pesagem: PesagemPendente): Promise<void> {
+  await confirmedPut('pesagensPendentes', pesagem, pesagem.id);
 }
 
 export async function getPesagensPendentes(): Promise<PesagemPendente[]> {
@@ -639,14 +724,16 @@ export async function getSyncErrors(): Promise<SyncErrorLog[]> {
 export async function getTotalPendingCount(): Promise<number> {
   return safeRun(async () => {
     const db = await getDb();
+    // Index counts avoid cloning every pending base64 image into memory every 10 s.
+    // Pesagens use an indexed boolean (not a valid IDB key), so they still need filtering.
     const [lanc, obs, pes, fechar] = await Promise.all([
-      db.getAllFromIndex('lancamentos', 'by-status', 'pendente'),
-      db.getAllFromIndex('observacoesOffline', 'by-status', 'pendente'),
+      db.countFromIndex('lancamentos', 'by-status', 'pendente'),
+      db.countFromIndex('observacoesOffline', 'by-status', 'pendente'),
       db.getAll('pesagensPendentes'),
       db.get('config', 'fechar_mes_pendente'),
     ]);
     const pesPend = (pes ?? []).filter((p) => p && !p.sincronizado).length;
-    return (lanc?.length ?? 0) + (obs?.length ?? 0) + pesPend + (fechar?.value ? 1 : 0);
+    return lanc + obs + pesPend + (fechar?.value ? 1 : 0);
   }, 0);
 }
 
@@ -690,4 +777,70 @@ export async function clearRetiroScopedCache() {
       if (l?.status === 'sincronizado') await db.delete('lancamentos', l.id);
     }
   }, undefined);
+}
+
+/** Walk a bounded page of records without loading the full photo history.
+ * Cursor is an exclusive launch id, and is reset to null after the final page.
+ * Read-only: never modifies pending records, history, or photos.
+ */
+export async function getLancamentosFotoPage(
+  afterId: string | null,
+  pageSize = 8,
+): Promise<{ records: LancamentoOffline[]; cursor: string | null; hasMore: boolean }> {
+  const db = await getDb();
+  const limit = Math.max(1, Math.min(32, Math.floor(pageSize)));
+  const range = afterId ? IDBKeyRange.lowerBound(afterId, true) : undefined;
+  const tx = db.transaction('lancamentos', 'readonly');
+  let entry = await tx.store.openCursor(range);
+  let scanned = 0;
+  let cursor = afterId;
+  const records: LancamentoOffline[] = [];
+  while (entry && scanned < limit) {
+    scanned += 1;
+    cursor = String(entry.primaryKey);
+    const row = entry.value;
+    if (row?.foto_auditoria_url?.startsWith('data:image/')) records.push(row);
+    entry = await entry.continue();
+  }
+  await tx.done;
+  return { records, cursor, hasMore: Boolean(entry) };
+}
+
+/** Atomic replacement of the active retiro's reference data.
+ * Never touch unsent commands, photos, pesagens, or launch history.
+ * If quota/write fails, IndexedDB aborts the transaction and old references survive.
+ */
+export interface RetiroReferenceSnapshot {
+  retiro: RetiroCache;
+  pastos: PastoCache[];
+  ciclos: CicloCache[];
+  produto: ProdutoCache | null;
+  fazenda: FazendaCache | null;
+  fazendaId: string;
+  cicloAtivoId: string;
+}
+
+export async function activateRetiroReference(snapshot: RetiroReferenceSnapshot): Promise<void> {
+  try {
+    const db = await getDb();
+    const stores = ['pastos', 'retiro', 'ciclos', 'produtoAtivo', 'fazendaCache', 'config'] as const;
+    const tx = db.transaction(stores, 'readwrite');
+    await tx.objectStore('pastos').clear();
+    for (const row of snapshot.pastos) await tx.objectStore('pastos').put(row);
+    await tx.objectStore('retiro').clear();
+    await tx.objectStore('retiro').put(snapshot.retiro);
+    await tx.objectStore('ciclos').clear();
+    for (const row of snapshot.ciclos) await tx.objectStore('ciclos').put(row);
+    await tx.objectStore('produtoAtivo').clear();
+    if (snapshot.produto) await tx.objectStore('produtoAtivo').put(snapshot.produto);
+    await tx.objectStore('fazendaCache').clear();
+    if (snapshot.fazenda) await tx.objectStore('fazendaCache').put(snapshot.fazenda);
+    await tx.objectStore('config').put({ key: 'capatazRetiroAtivoId', value: snapshot.retiro.id });
+    await tx.objectStore('config').put({ key: 'fazendaId', value: snapshot.fazendaId });
+    await tx.objectStore('config').put({ key: 'selectedCicloId', value: snapshot.cicloAtivoId });
+    await tx.done;
+  } catch (error) {
+    console.error('[offlineDb] active retiro replacement aborted:', error);
+    throw new OfflineWriteError();
+  }
 }
