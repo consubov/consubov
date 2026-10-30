@@ -219,6 +219,14 @@ type FazendaCabecalho = Pick<Database["public"]["Tables"]["fazendas_consultor"][
 type ConsultorCabecalho = Pick<Database["public"]["Tables"]["consultores"]["Row"],
   "nome" | "logo_esquerda_url" | "logo_direita_url">;
 
+// Snapshots podem conter dados parciais; o contrato reflete apenas os campos lidos.
+type SnapshotPasto = {
+  id: string;
+  fotos?: Foto[];
+  signed?: Record<string, string>;
+  samples?: Partial<Pasto["samples"]>;
+} & Record<string, unknown>;
+
 interface Visita {
   id: string; tipo: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
@@ -475,8 +483,8 @@ export default function RevisaoVisitaPage() {
     // IMPORTANTE: mesclar (nunca sobrescrever) para não apagar amostras/fotos locais.
     if (online) {
       void patchSnapshot(visitaId!, (current) => {
-        const mergedPastos = built.map((b: any) => {
-          const latest = (current.pastos || []).find((x: any) => x.id === b.id) as any;
+        const mergedPastos = built.map((b) => {
+          const latest = ((current.pastos || []) as SnapshotPasto[]).find((x) => x.id === b.id);
           return {
             ...(latest || {}),
             ...b,
@@ -506,9 +514,9 @@ export default function RevisaoVisitaPage() {
 
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
-    const dbPatch: any = {};
-    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"].forEach(k => {
-      if (k in patch) dbPatch[k] = (patch as any)[k];
+    const dbPatch: Record<string, unknown> = {};
+    (["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"] as const).forEach(k => {
+      if (k in patch) dbPatch[k] = patch[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
     const res = await offlineUpdate({
@@ -518,7 +526,7 @@ export default function RevisaoVisitaPage() {
       patch: dbPatch,
       applyToSnapshot: (curr, p) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, ...p } : x),
+        pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId ? { ...x, ...p } : x),
       }),
     });
     if (!res.ok && !res.queued) toast.error("Erro ao salvar");
@@ -538,7 +546,7 @@ export default function RevisaoVisitaPage() {
       payload: { visita_pasto_id: pastoId, tipo, nota },
       applyToSnapshot: (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
+        pastos: (curr.pastos || []).map((p: SnapshotPasto) => p.id === pastoId
           ? { ...p, samples: { ...(p.samples || {}), [tipo]: [...((p.samples || {})[tipo] || []), { id, nota }] } }
           : p),
       }),
@@ -559,8 +567,8 @@ export default function RevisaoVisitaPage() {
       rowId: s.id,
       applyToSnapshot: (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
-          ? { ...p, samples: { ...(p.samples || {}), [tipo]: ((p.samples || {})[tipo] || []).filter((x: any) => x.id !== s.id) } }
+        pastos: (curr.pastos || []).map((p: SnapshotPasto) => p.id === pastoId
+          ? { ...p, samples: { ...(p.samples || {}), [tipo]: ((p.samples || {})[tipo] || []).filter((x: ScoreSample) => x.id !== s.id) } }
           : p),
       }),
     });
@@ -597,7 +605,7 @@ export default function RevisaoVisitaPage() {
       });
       await patchSnapshot(visitaId!, (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
+        pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId
           ? (() => {
               const current = (x.fotos || []) as Foto[];
               const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
@@ -628,7 +636,7 @@ export default function RevisaoVisitaPage() {
     updatePasto(pastoId, { fotos: p.fotos.filter(x => x.id !== f.id) });
     await patchSnapshot(visitaId!, (curr) => ({
       ...curr,
-      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
+      pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId
         ? { ...x, fotos: (x.fotos || []).filter((foto: Foto) => foto.id !== f.id) }
         : x),
     }));
@@ -645,7 +653,7 @@ export default function RevisaoVisitaPage() {
     updatePasto(pastoId, { fotos: updates });
     await patchSnapshot(visitaId!, (curr) => ({
       ...curr,
-      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, fotos: updates } : x),
+      pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId ? { ...x, fotos: updates } : x),
     }));
     await Promise.all(updates
       .filter(u => String(u.url).startsWith("queued:"))
