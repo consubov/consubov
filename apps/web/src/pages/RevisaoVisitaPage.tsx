@@ -1,3 +1,4 @@
+import { withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -781,7 +782,7 @@ export default function RevisaoVisitaPage() {
       );
 
       const cab = cabecalhoEfetivo();
-      const { blob, fileName } = await generateVisitaPdf({
+      const { blob, fileName } = await withReportExportDeadline(generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
           nome_fazenda: cab.fazenda_nome,
@@ -815,7 +816,7 @@ export default function RevisaoVisitaPage() {
           corporal: sampleChartCorporal,
           bebedouro: sampleChartBebedouro,
         },
-      });
+      }), "Geração PDF da visita técnica", Date.now() + 120_000, 120_000);
 
 
       const pdfUrl = await withConsultorTimeout(

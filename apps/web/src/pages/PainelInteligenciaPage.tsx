@@ -19,6 +19,7 @@ import {
 } from "@/lib/consumoCalc";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { pdf } from "@react-pdf/renderer";
+import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import PainelInteligenciaPDF, { type PainelPDFData, type CatMetricsPDF } from "@/components/painel/PainelInteligenciaPDF";
 import { toast } from "sonner";
 import { fetchVinculosPorProduto } from "@/lib/produtosFazenda";
@@ -599,11 +600,11 @@ export default function PainelInteligenciaPage() {
       // mesma regra do card "Total Animais": pastos ativos de retiros/fazendas ativos,
       // agrupados pela categoria do pasto.
       const SEM_CAT_PDF = "Sem categoria";
-      const [fFresh, rFresh, pFresh] = await Promise.all([
+      const [fFresh, rFresh, pFresh] = await withReportExportDeadline(Promise.all([
         supabase.from("fazendas").select("id, cidade, estado").eq("ativo", true),
         supabase.from("retiros").select("id, fazenda_id").eq("ativo", true),
         supabase.from("pastos").select("retiro_id, num_animais, categoria").eq("ativo", true),
-      ]);
+      ]), "Consulta de indicadores do painel", Date.now() + 30_000, 30_000);
       if (fFresh.error || rFresh.error || pFresh.error) throw (fFresh.error || rFresh.error || pFresh.error);
       const fazFresh = new Map((fFresh.data ?? []).map((f: any) => [f.id, f]));
       const retFresh = new Map((rFresh.data ?? []).map((r: any) => [r.id, r]));
@@ -650,13 +651,11 @@ export default function PainelInteligenciaPage() {
         })),
       };
 
-      const blob = await pdf(<PainelInteligenciaPDF data={pdfData} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `painel_inteligencia_${MESES_NOMES[filtroMes - 1].toLowerCase()}_${filtroAno}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = await withReportExportDeadline(
+        pdf(<PainelInteligenciaPDF data={pdfData} />).toBlob(),
+        "Geração PDF do painel", Date.now() + 60_000, 60_000,
+      );
+      downloadGeneratedPdf(blob, `painel_inteligencia_${MESES_NOMES[filtroMes - 1].toLowerCase()}_${filtroAno}.pdf`);
       toast.success("PDF exportado com sucesso!");
     } catch (e) {
       console.error("Erro ao gerar PDF:", e);

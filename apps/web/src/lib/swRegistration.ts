@@ -1,4 +1,6 @@
 import { reloadWhenAuthIdle } from "@/lib/authIdle";
+import { APP_VERSION } from "@/lib/appVersion";
+import { classifyPublishedRelease, isNewerBuildTimestamp, isWaitingWorkerForPublishedRelease, shouldNotifyPublishedBuild, type PublishedRelease } from "@/lib/publishedUpdate";
 import { useEffect, useState, useCallback } from "react";
 import { hasCriticalOperations, onCriticalOperationsDrained } from "./criticalOperations";
 
@@ -24,7 +26,6 @@ let ignoreFirstControllerChange =
 const observedRegistrations = new WeakSet<ServiceWorkerRegistration>();
 const listeners = new Set<(waiting: boolean) => void>();
 const APP_CACHE_PREFIX = "consubov-";
-const SW_SCRIPT_URL = `/sw.js?v=${__APP_BUILD_VERSION__}`;
 const VERSION_URL = "/version.json";
 const UPDATE_NOTIFICATION_STORAGE_KEY = "consubov:update-notified-version";
 let lastKnownRemoteVersion = __APP_BUILD_VERSION__;
@@ -76,7 +77,7 @@ function scheduleExplicitUpdateTimeout() {
     finishVerifiedUpdate();
     if (reloadingForUpdate) return;
     userRequestedUpdate = false;
-    notifyListeners(true);
+    notifyListeners(false);
     logSw("Atualização não confirmada; versão instalada preservada");
   }, 15_000);
 }
@@ -108,9 +109,12 @@ function bindControllerChangeReload() {
     }
     if (data?.type !== "CONSUBOV_SW_ACTIVATED") return;
     if (data.version) lastKnownRemoteVersion = data.version;
-    if (data.version === __APP_BUILD_VERSION__) return;
+    if (!isNewerBuildTimestamp(data.version, __APP_BUILD_VERSION__)) return;
     if (userRequestedUpdate) finishVerifiedUpdate();
-    else notifyListeners(true);
+    else {
+      notifyListeners(false);
+      void maybeUpdateActiveServiceWorker();
+    }
   });
 
 
@@ -127,7 +131,10 @@ function bindControllerChangeReload() {
     }
     if (reloadingForUpdate) return;
     if (userRequestedUpdate) finishVerifiedUpdate();
-    else notifyListeners(true);
+    else {
+      notifyListeners(false);
+      void maybeUpdateActiveServiceWorker();
+    }
   });
 }
 
@@ -141,11 +148,16 @@ export async function applyPendingUpdateNow(updateToken?: string) {
     schedulePostDrainAction(() => void applyPendingUpdateNow(updateToken));
     return;
   }
-  logSw("Iniciando aplicação explícita da atualização", updateToken ?? "sem token");
-  if (!("serviceWorker" in navigator)) {
-    explicitUpdateReload(updateToken);
+  // A notificação ou um worker waiting pode ser de um build ANTIGO.
+  // Não iniciar activation, reload ou tentativa de downgrade sem metadata válida.
+  const release = await fetchPublishedRelease();
+  if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer") {
+    notifyListeners(false);
+    logSw("Atualização rejeitada: versão remota não é mais nova");
     return;
   }
+  logSw("Iniciando atualização publicada verificada", release.version);
+  if (!("serviceWorker" in navigator)) return;
   userRequestedUpdate = true;
   pendingUpdateToken = updateToken;
   controllerBeforeUpdate = navigator.serviceWorker.controller;
@@ -200,25 +212,24 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
 
   const waitingVersion = getWaitingServiceWorkerVersion(registration);
 
-  // Dedupe apenas na sessão atual — assim, se o usuário recarregar sem aplicar
-  // a atualização, ele volta a ser notificado em vez de ficar para sempre em
-  // silêncio (problema relatado em Android).
+  // Persist across app restarts: a given build may notify the device once.
+  // The in-app banner/manual refresh remain available for pending updates.
   if (notifiedUpdateVersions.has(waitingVersion)) return;
 
   let storedVersion: string | null = null;
   try {
-    storedVersion = window.sessionStorage.getItem(UPDATE_NOTIFICATION_STORAGE_KEY);
+    storedVersion = window.localStorage.getItem(UPDATE_NOTIFICATION_STORAGE_KEY);
   } catch {
-    /* sessionStorage pode falhar em modo privado — usa apenas memória */
+    /* localStorage pode falhar em modo privado — usa apenas memória */
   }
 
-  if (storedVersion === waitingVersion) {
+  if (!shouldNotifyPublishedBuild(waitingVersion, __APP_BUILD_VERSION__, storedVersion)) {
     notifiedUpdateVersions.add(waitingVersion);
     return;
   }
 
   try {
-    window.sessionStorage.setItem(UPDATE_NOTIFICATION_STORAGE_KEY, waitingVersion);
+    window.localStorage.setItem(UPDATE_NOTIFICATION_STORAGE_KEY, waitingVersion);
   } catch {
     /* idem */
   }
@@ -240,7 +251,7 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
       icon: "/icon-192.png",
       badge: "/icon-96.png",
       tag: "consubov-update",
-      renotify: true,
+      renotify: false,
       data: { url: "/", type: "update" },
     } as NotificationOptions);
   } catch {
@@ -250,22 +261,36 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
 
 
 function notifyWaiting(registration: ServiceWorkerRegistration) {
-  if (registration.waiting && navigator.serviceWorker.controller) {
-    logSw("Nova versão instalada e pronta, aguardando ação do usuário");
+  if (!registration.waiting || !navigator.serviceWorker.controller) return false;
+  void (async () => {
+    const release = await fetchPublishedRelease();
+    if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer" ||
+      !isWaitingWorkerForPublishedRelease(registration.waiting?.scriptURL, release.version as string, window.location.origin)) {
+      logSw("Worker waiting antigo/incompatível ignorado");
+      notifyListeners(false);
+      return;
+    }
+    logSw("Nova versão verificada, aguardando confirmação do usuário", release.version);
     notifyListeners(true);
-    // Notifica o usuário no dispositivo (mesmo com o app aberto/minimizado)
-    // que existe uma nova versão. Funciona em Android e iOS PWA.
+    // Avisar somente após confirmar versão e integridade da origem do worker.
     void showUpdateNotificationOnce(registration);
-    return true;
-  }
-  return false;
+  })();
+  return true;
 }
 
 async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
   const worker = registration.waiting;
   if (!worker || !userRequestedUpdate || activationRequested.has(worker)) return false;
-  // A field operation can start while update()/getRegistration() is awaiting.
-  // Recheck at the side-effect boundary, not just when the button was clicked.
+  const release = await fetchPublishedRelease();
+  if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer" ||
+    !isWaitingWorkerForPublishedRelease(worker.scriptURL, release.version as string, window.location.origin)) {
+    logSw("SKIP_WAITING bloqueado: worker e publicação não correspondem ou são antigos");
+    userRequestedUpdate = false;
+    cancelExplicitUpdateTimer();
+    notifyListeners(false);
+    return false;
+  }
+  // Recheck after the async preflight: a field operation could start meanwhile.
   if (hasCriticalOperations()) {
     schedulePostDrainAction(() => {
       if (userRequestedUpdate) void activateWaitingServiceWorker(registration);
@@ -299,27 +324,27 @@ function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
   });
 }
 
-async function fetchPublishedBuildVersion() {
+async function fetchPublishedRelease(): Promise<PublishedRelease | null> {
   try {
     const response = await fetch(`${VERSION_URL}?t=${Date.now()}`, {
       cache: "no-store",
-      headers: {
-        "cache-control": "no-cache",
-      },
+      headers: { "cache-control": "no-cache" },
     });
     if (!response.ok) return null;
-    const data = (await response.json()) as { version?: string };
-    return data.version ?? null;
+    const data: unknown = await response.json();
+    return data && typeof data === "object" ? data as PublishedRelease : null;
   } catch {
     return null;
   }
 }
 
-async function ensureLatestPublishedVersion() {
-  const remoteVersion = await fetchPublishedBuildVersion();
-  if (!remoteVersion || remoteVersion === lastKnownRemoteVersion) {
+async function ensureLatestPublishedVersion(published?: PublishedRelease | null) {
+  const release = published ?? await fetchPublishedRelease();
+  if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer") {
     return false;
   }
+  const remoteVersion = release.version as string;
+  if (remoteVersion === lastKnownRemoteVersion) return false;
 
   lastKnownRemoteVersion = remoteVersion;
   logSw("Versão remota detectada", remoteVersion);
@@ -341,8 +366,10 @@ async function ensureLatestPublishedVersion() {
     // A published version can be newer without having an installed worker.
     // Report availability, but never reload the cached shell automatically.
     if (remoteVersion !== __APP_BUILD_VERSION__) {
-      notifyListeners(true);
-      return true;
+      // A newer version.json does not mean the offline shell finished installing.
+      // Do not advertise an update that cannot be safely applied yet.
+      logSw("Aguardando worker de atualização completo", remoteVersion);
+      return false;
     }
   } catch (error) {
     console.warn("Remote SW version sync failed:", error);
@@ -368,7 +395,13 @@ export async function maybeUpdateActiveServiceWorker() {
   }
 
   try {
-    await ensureLatestPublishedVersion();
+    const release = await fetchPublishedRelease();
+    const status = classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release);
+    if (status !== "newer" && status !== "current") {
+      logSw("Sem update: metadata remota inválida ou anterior ao build carregado", status);
+      return false;
+    }
+    await ensureLatestPublishedVersion(release);
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return false;
     swRegistration = registration;
@@ -446,18 +479,22 @@ export function registerSW() {
   });
   window.addEventListener("online", () => triggerUpdateCheck());
 
-  navigator.serviceWorker
-    .register(SW_SCRIPT_URL, { updateViaCache: "none" })
-    .then((reg) => {
-      swRegistration = reg;
-      attachRegistrationListeners(reg);
-      void reg.update();
-      void maybeUpdateActiveServiceWorker();
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        notifyWaiting(reg);
-      }
-    })
-    .catch((err) => console.warn("SW registration failed:", err));
+  // Nunca sequer registrar um SW vindo de uma publicação regressiva.
+  // O SW/cache instalado continua intacto caso /version.json esteja offline ou antigo.
+  void (async () => {
+    const release = await fetchPublishedRelease();
+    const status = classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release);
+    if (!release || (status !== "current" && status !== "newer")) {
+      logSw("SW existente preservado: release inválida/mais antiga", status);
+      return;
+    }
+    const reg = await navigator.serviceWorker.register(`/sw.js?v=${release.version as string}`, { updateViaCache: "none" });
+    swRegistration = reg;
+    attachRegistrationListeners(reg);
+    void reg.update();
+    void maybeUpdateActiveServiceWorker();
+    if (reg.waiting && navigator.serviceWorker.controller) notifyWaiting(reg);
+  })().catch((err) => console.warn("SW registration failed:", err));
 
   // Verificação periódica de hora em hora (antes: 5 min), suficiente para
   // entregar novas versões sem interromper o usuário em campo.
@@ -472,23 +509,22 @@ export function useSWUpdate() {
     listeners.add(handler);
 
     const checkWaiting = async () => {
-      if (swRegistration?.waiting) {
-        setUpdateAvailable(true);
+      if (!("serviceWorker" in navigator)) {
+        setUpdateAvailable(false);
         return;
       }
-      if ("serviceWorker" in navigator) {
-        try {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg) {
-            swRegistration = reg;
-            attachRegistrationListeners(reg);
-            if (reg.waiting && navigator.serviceWorker.controller) {
-              setUpdateAvailable(true);
-            }
-          }
-        } catch {
-          /* noop */
+      try {
+        const reg = swRegistration ?? await navigator.serviceWorker.getRegistration();
+        if (!reg || !reg.waiting || !navigator.serviceWorker.controller) {
+          setUpdateAvailable(false);
+          return;
         }
+        swRegistration = reg;
+        attachRegistrationListeners(reg);
+        // Never trust a waiting worker until metadata and origin/version match.
+        notifyWaiting(reg);
+      } catch {
+        setUpdateAvailable(false);
       }
     };
 

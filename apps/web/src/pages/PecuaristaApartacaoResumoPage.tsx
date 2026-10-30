@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,8 +83,7 @@ export default function PecuaristaApartacaoResumoPage() {
     if (!pdfUrl) return;
     setSharing(true);
     try {
-      const resp = await fetch(pdfUrl);
-      const blob = await resp.blob();
+      const blob = await fetchPdfBinaryWithTimeout(pdfUrl);
       const file = new File([blob], `apartacao-${apartacaoId}.pdf`, { type: "application/pdf" });
       const nav: any = navigator;
       if (nav.canShare?.({ files: [file] }) && nav.share) {

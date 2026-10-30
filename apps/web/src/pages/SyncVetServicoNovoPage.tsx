@@ -1,3 +1,4 @@
+import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -247,7 +248,7 @@ export default function SyncVetServicoNovoPage() {
         valor_unitario: it.valor_unitario,
         valor_total: (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0),
       }));
-      const blob = await gerarServicoPDF({
+      const blob = await withReportExportDeadline(gerarServicoPDF({
         numero: servicoId.slice(0, 8).toUpperCase(),
         data_referencia: dataFim || new Date().toISOString().slice(0, 10),
         data_vencimento: dataVencimento || null,
@@ -265,11 +266,8 @@ export default function SyncVetServicoNovoPage() {
         km_total: kmTotal,
         animais_atendidos: animaisTotal,
         observacoes,
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `servico-${servicoId.slice(0, 8)}.pdf`;
-      a.click(); URL.revokeObjectURL(url);
+      }), "PDF do serviço", Date.now() + 60_000, 60_000);
+      downloadGeneratedPdf(blob, `servico-${servicoId.slice(0, 8)}.pdf`);
 
       toast.success("Serviço gerado com sucesso");
       navigate("/syncvet/contas");

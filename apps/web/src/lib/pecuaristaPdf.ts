@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -79,8 +80,7 @@ function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | 
 
 async function urlToJpeg(url: string, maxDim = 800, quality = 0.85) {
   try {
-    const res = await fetch(url);
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     const bmp = await createImageBitmap(blob);
     let { width, height } = bmp;
     if (width > maxDim || height > maxDim) {

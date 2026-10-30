@@ -1,5 +1,5 @@
 import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, calcularCategoriaViva, classificarConsumo4, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
 
@@ -38,6 +38,7 @@ import {
 import { Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import RelatorioPDF, { type RelatorioPDFData, type RetiroReportData, type PastoReportData, type CatMetricsPDF, type PrevisaoAbatePDFData } from "./RelatorioPDF";
+import { REPORT_EXPORT_DEADLINE_MS, forEachLimited, prepareReportPdfDownload, releaseReportPdfDownload, ReportExportTimeoutError, triggerReportPdfDownload, withReportExportDeadline, type ReportPdfDownload } from "@/lib/reportPdfExport";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -77,6 +78,26 @@ export default function ExportarRelatorioModal({
   const [retiroFiltro, setRetiroFiltro] = useState(lockedRetiroId ?? "todos");
   const [retirosList, setRetirosList] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [etapa, setEtapa] = useState("");
+  const [arquivoPronto, setArquivoPronto] = useState<ReportPdfDownload | null>(null);
+  const exportSequence = useRef(0);
+  useEffect(() => () => { if (arquivoPronto) releaseReportPdfDownload(arquivoPronto); }, [arquivoPronto]);
+  useEffect(() => {
+    if (open) return;
+    exportSequence.current += 1;
+    setLoading(false);
+    setEtapa("");
+    setArquivoPronto(null);
+  }, [open]);
+  const closeModal = (next: boolean) => {
+    if (!next) {
+      exportSequence.current += 1;
+      setLoading(false);
+      setEtapa("");
+      setArquivoPronto(null);
+    }
+    onOpenChange(next);
+  };
 
   useEffect(() => {
     if (!open || !fazendaId) return;
@@ -94,9 +115,22 @@ export default function ExportarRelatorioModal({
   }, [open, initialMes, initialAno, lockedRetiroId]);
 
   async function handleExportar() {
+    if (loading) return;
+    const exportRunId = ++exportSequence.current;
+    const deadlineAt = Date.now() + REPORT_EXPORT_DEADLINE_MS;
+    const assertActive = () => {
+      if (exportSequence.current !== exportRunId) throw new Error("export-cancelled");
+    };
+    const bounded = async <T extends PromiseLike<unknown>>(operation: T, stage: string, stepLimitMs?: number): Promise<Awaited<T>> => {
+      const result = await withReportExportDeadline(operation, stage, deadlineAt, stepLimitMs);
+      assertActive();
+      return result as Awaited<T>;
+    };
+    setArquivoPronto(null);
     setLoading(true);
+    setEtapa("Consultando dados da fazenda...");
     try {
-      const formulas = await fetchFormulasConfig();
+      const formulas = await bounded(fetchFormulasConfig(), "Fórmulas do sistema");
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
       const retiroSelecionado = lockedRetiroId ?? (retiroFiltro !== "todos" ? retiroFiltro : null);
       const produtoSelecionado = produtoId && produtoId !== "todos" ? produtoId : null;
@@ -108,7 +142,7 @@ export default function ExportarRelatorioModal({
       if (retiroSelecionado) {
         retQuery = retQuery.eq("id", retiroSelecionado);
       }
-      const { data: retirosData } = await retQuery;
+      const { data: retirosData } = await bounded(retQuery, "Retiros");
       if (!retirosData || retirosData.length === 0) {
         toast.error("Nenhum retiro encontrado.");
         setLoading(false);
@@ -118,9 +152,9 @@ export default function ExportarRelatorioModal({
       const retiroIds = retirosData.map(r => r.id);
 
       // Buscar ciclos dos retiros para calcular dias considerados corretamente.
-      const { data: ciclosData } = await supabase.from("ciclos")
+      const { data: ciclosData } = await bounded(supabase.from("ciclos")
         .select("id, retiro_id, mes, ano, fechado, data_inicio, duracao_dias")
-        .in("retiro_id", retiroIds);
+        .in("retiro_id", retiroIds), "Ciclos");
       const ciclosById: Record<string, { id: string; retiro_id: string; mes: number; ano: number; fechado: boolean; data_inicio: string | null; duracao_dias: number | null }> = {};
       for (const c of (ciclosData ?? [])) ciclosById[c.id] = c;
 
@@ -128,13 +162,13 @@ export default function ExportarRelatorioModal({
       // Só é aplicável ao período mensal (a RPC recebe mês/ano).
       const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
       if (periodoSelecionado === "mensal") {
-        await Promise.all(retiroIds.map(async (rid) => {
-          const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
+        await forEachLimited(retiroIds, 4, async (rid) => {
+          const { data: rows } = await bounded((supabase as any).rpc("get_painel_mae", {
             p_fazenda_id: fazendaId,
             p_retiro_id: rid,
             p_mes: mes,
             p_ano: ano,
-          });
+          }), "Indicadores do retiro");
           const row = Array.isArray(rows) ? rows[0] : rows;
           if (row) {
             painelMaeByRetiro[rid] = {
@@ -143,19 +177,19 @@ export default function ExportarRelatorioModal({
               consumo_real_g_cab_dia: Number(row.consumo_real_g_cab_dia) || 0,
             };
           }
-        }));
+        });
       }
 
       // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
       const painelPastoByPastoId: Record<string, any> = {};
       let painelPastoRows: any[] = [];
       if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
-        const { data: vpRows } = await (supabase as any)
+        const { data: vpRows } = await bounded((supabase as any)
           .from("view_painel_mae_pasto")
           .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, kg_fornecido, cab_dias_global, eficiencia_pasto")
           .in("retiro_id", retiroIds)
           .eq("mes_referencia", mes)
-          .eq("ano_referencia", ano);
+          .eq("ano_referencia", ano), "Métricas por pasto");
         painelPastoRows = vpRows ?? [];
         for (const row of painelPastoRows) painelPastoByPastoId[row.pasto_id] = row;
       }
@@ -163,30 +197,30 @@ export default function ExportarRelatorioModal({
 
 
 
-      const { data: pastosData } = await supabase.from("pastos")
+      const { data: pastosData } = await bounded(supabase.from("pastos")
         .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria, sexo")
-        .in("retiro_id", retiroIds).eq("ativo", true);
+        .in("retiro_id", retiroIds).eq("ativo", true), "Pastos");
       let pastos = pastosData ?? [];
       // GMD configurado (projeção): gmd_do_pasto, direto do banco na hora de gerar.
       const gmdDia = periodoSelecionado === "mensal" ? dataReferenciaGmd(mes, ano)
         : periodoSelecionado === "anual" ? dataReferenciaGmd(null, ano)
         : (() => { const hoje = dataReferenciaGmd(null, 9999); const fim = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`; return fim < hoje ? fim : hoje; })();
-      const gmdPastos = await fetchGmdPastos(pastos.map((p: any) => p.id), gmdDia);
+      const gmdPastos = await bounded(fetchGmdPastos(pastos.map((p: any) => p.id), gmdDia), "GMD dos pastos", 45_000);
       const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
 
       // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
       // O escopo de retiro é aplicado pelos IDs antes do filtro de produto do relatório.
-      const { data: abateConfigRows, error: abateConfigError } = await (supabase as any)
+      const { data: abateConfigRows, error: abateConfigError } = await bounded((supabase as any)
         .from("abate_config")
         .select("id")
         .eq("fazenda_id", fazendaId)
-        .limit(1);
+        .limit(1), "Configuração de abate");
       if (abateConfigError) throw abateConfigError;
 
       let previsaoAbate: PrevisaoAbatePDFData | null = null;
       if ((abateConfigRows ?? []).length > 0) {
-        const { data: previsaoRows, error: previsaoError } = await (supabase as any)
-          .rpc("previsao_abate", { p_fazenda: fazendaId });
+        const { data: previsaoRows, error: previsaoError } = await bounded((supabase as any)
+          .rpc("previsao_abate", { p_fazenda: fazendaId }), "Previsão de abate");
         if (previsaoError) throw previsaoError;
         const rows = ((previsaoRows ?? []) as any[])
           .filter(row => pastoIdsEscopoRelatorio.has(row.pasto_id))
@@ -215,11 +249,11 @@ export default function ExportarRelatorioModal({
       // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
       const ocupacaoProdutoByPasto: Record<string, string> = {};
       if (pastoIds.length > 0) {
-        const { data: ocupData } = await supabase.from("ocupacoes_pasto")
+        const { data: ocupData } = await bounded(supabase.from("ocupacoes_pasto")
           .select("pasto_id, produto_id, data_entrada, data_saida")
           .in("pasto_id", pastoIds)
           .is("data_saida", null)
-          .order("data_entrada", { ascending: false });
+          .order("data_entrada", { ascending: false }), "Ocupações dos pastos");
         for (const o of (ocupData ?? [])) {
           if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
             ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
@@ -242,12 +276,12 @@ export default function ExportarRelatorioModal({
 
         // Recalcula os mesmos agregados mensais sobre o conjunto filtrado.
         if (periodoSelecionado === "mensal") {
-          const { data: realRows } = await (supabase as any)
+          const { data: realRows } = await bounded((supabase as any)
             .from("view_lancamento_consumo_real")
             .select("pasto_id, kg_fornecido, cab_dias_assumidos")
             .in("pasto_id", pastoIds)
             .eq("mes_referencia", mes)
-            .eq("ano_referencia", ano);
+            .eq("ano_referencia", ano), "Consumo real por produto");
           for (const ret of retirosData) {
             const rPastos = pastos.filter(p => p.retiro_id === ret.id);
             const rIds = new Set(rPastos.map(p => p.id));
@@ -295,7 +329,7 @@ export default function ExportarRelatorioModal({
           lQuery = lQuery.gte("created_at", startIso).lte("created_at", endIso);
         }
 
-        const { data: lancData, error: lancError } = await lQuery;
+        const { data: lancData, error: lancError } = await bounded(lQuery, "Lançamentos");
         if (lancError) {
           console.error("Erro ao buscar lançamentos para PDF:", lancError);
           toast.error("Erro ao buscar dados de lançamentos.");
@@ -325,9 +359,9 @@ export default function ExportarRelatorioModal({
         amarelo_buffer_g: number;
       }> = {};
       if (produtoIds.length > 0) {
-        const { data: prodData } = await (supabase as any).from("produtos")
+        const { data: prodData } = await bounded((supabase as any).from("produtos")
           .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda, margem_mais_recria1_pct, margem_menos_recria1_pct, margem_mais_recria2_pct, margem_menos_recria2_pct, margem_mais_engorda_pct, margem_menos_engorda_pct, amarelo_buffer_g")
-          .in("id", produtoIds);
+          .in("id", produtoIds), "Produtos");
         const num = (v: any) => (v == null ? null : Number(v));
         for (const p of ((prodData ?? []) as any[])) {
           produtosMap[p.id] = {
@@ -354,26 +388,27 @@ export default function ExportarRelatorioModal({
       // Consumo real por pasto usando intervalo_padrao_dias como cobertura (somente mensal)
       const consumoRealV2ByPasto: Record<string, number> = {};
       if (periodoSelecionado === "mensal" && pastoIds.length > 0) {
-        await Promise.all(
-          pastos.map(async (p) => {
-            const { data: rows } = await (supabase as any).rpc("get_consumo_real_v2", {
+        await forEachLimited(
+          pastos, 4, async (p) => {
+            const { data: rows } = await bounded((supabase as any).rpc("get_consumo_real_v2", {
               p_retiro_id: p.retiro_id,
               p_pasto_id: p.id,
               p_mes: mes,
               p_ano: ano,
-            });
+            }), "Consumo real mensal");
             const row = Array.isArray(rows) ? rows[0] : rows;
             if (row) {
               consumoRealV2ByPasto[p.id] = Number(row.consumo_real_g_cab_dia ?? 0);
             }
-          }),
+          },
         );
       }
 
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
       // Nota do Capataz: fonte única compartilhada com a aba Ranking do Painel.
-      const scores = await fetchScoresCapataz({
+      setEtapa("Calculando indicadores e notas do capataz...");
+      const scores = await bounded(fetchScoresCapataz({
         fazendaId,
         start,
         end,
@@ -382,7 +417,7 @@ export default function ExportarRelatorioModal({
         ano,
         retiroId: retiroSelecionado,
         pastoIds: produtoSelecionado ? pastoIds : null,
-      });
+      }), "Indicadores e score do capataz", 55_000);
       const diasIntervalo = scores.diasIntervalo;
 
       const retiroReportData: RetiroReportData[] = retirosData.map(ret => {
@@ -578,18 +613,18 @@ export default function ExportarRelatorioModal({
       // Período sempre por mes_referencia/ano_referencia (nunca created_at).
       let lancCat: any[] = lancamentos;
       if (periodoSelecionado !== "mensal" && periodoSelecionado !== "anual" && pastoIds.length > 0) {
-        const { data: lc } = await supabase.from("view_consumo_tempo_real" as any)
+        const { data: lc } = await bounded(supabase.from("view_consumo_tempo_real" as any)
           .select("id, pasto_id, num_sacos, num_animais, dias_no_pasto, categoria, created_at, retiro_id, mes_referencia, ano_referencia")
           .in("pasto_id", pastoIds)
           .eq("mes_referencia", mes)
-          .eq("ano_referencia", ano);
+          .eq("ano_referencia", ano), "Métricas por categoria");
         lancCat = (lc as any[]) ?? [];
       }
       // Categoria e num_animais sempre da tabela lancamentos (a view inflava a contagem).
       const catIds = lancCat.map(l => l.id).filter(Boolean);
       const lancById: Record<string, { categoria: string | null; num_animais: number | null }> = {};
       for (let i = 0; i < catIds.length; i += 200) {
-        const { data: cr } = await supabase.from("lancamentos").select("id, categoria, num_animais").in("id", catIds.slice(i, i + 200));
+        const { data: cr } = await bounded(supabase.from("lancamentos").select("id, categoria, num_animais").in("id", catIds.slice(i, i + 200)), "Categorias dos lançamentos");
         (cr ?? []).forEach((r: any) => { lancById[r.id] = { categoria: r.categoria, num_animais: r.num_animais }; });
       }
       lancCat = lancCat.map(l => ({ ...l, categoria: l.id in lancById ? lancById[l.id].categoria : l.categoria }));
@@ -606,10 +641,10 @@ export default function ExportarRelatorioModal({
       const animaisPorCat: Record<string, number> = {};
       const gmdPorCat: Record<string, { soma: number; anim: number }> = {};
       {
-        const { data: pastosAnimais } = await supabase.from("pastos")
+        const { data: pastosAnimais } = await bounded(supabase.from("pastos")
           .select("id, num_animais, categoria")
           .in("retiro_id", retiroIds)
-          .eq("ativo", true);
+          .eq("ativo", true), "Rebanho por categoria");
         (pastosAnimais ?? []).forEach((p: any) => {
           const n = Number(p.num_animais) || 0;
           if (n <= 0) return;
@@ -673,23 +708,31 @@ export default function ExportarRelatorioModal({
         previsaoAbate,
       };
 
-      const blob = await pdf(<RelatorioPDF data={reportData} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      setEtapa("Gerando o arquivo PDF...");
+      const blob = await bounded(pdf(<RelatorioPDF data={reportData} />).toBlob(), "Renderização do PDF", 45_000);
+      assertActive();
       const safeName = fazendaNome.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
       const safeLabel = label.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
       const dateStr = new Date().toISOString().slice(0, 10);
-      a.href = url;
-      a.download = `relatorio_${safeName}_${safeLabel}_${dateStr}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Relatório exportado com sucesso!");
-      onOpenChange(false);
+      const arquivo = prepareReportPdfDownload(blob, `relatorio_${safeName}_${safeLabel}_${dateStr}.pdf`);
+      assertActive();
+      setArquivoPronto(arquivo);
+      setEtapa("");
+      try { triggerReportPdfDownload(arquivo); } catch (e) {
+        console.warn("Download automático indisponível. A opção manual permanece disponível.", e);
+      }
+      toast.success("PDF gerado. Se não baixar automaticamente, use 'Baixar PDF gerado'.");
     } catch (e) {
-      console.error("Erro ao gerar PDF:", e);
-      toast.error("Erro ao gerar o relatório. Tente novamente.");
+      if (exportRunId !== exportSequence.current) return;
+      console.error("Erro ao gerar relatório PDF:", e);
+      toast.error(e instanceof ReportExportTimeoutError
+        ? `Tempo limite ao consultar ${e.stage}. Verifique a conexão e tente novamente.`
+        : "Não foi possível gerar o relatório PDF. Tente novamente.");
     } finally {
-      setLoading(false);
+      if (exportRunId === exportSequence.current) {
+        setLoading(false);
+        setEtapa("");
+      }
     }
   }
 
@@ -722,7 +765,7 @@ export default function ExportarRelatorioModal({
     : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={closeModal}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -833,11 +876,19 @@ export default function ExportarRelatorioModal({
           )}
         </div>
 
+        {loading && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{etapa || "Preparando relatório..."}</p>}
+        {arquivoPronto && !loading && (
+          <a href={arquivoPronto.url} download={arquivoPronto.filename}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            aria-label="Baixar PDF gerado">
+            <FileDown className="h-4 w-4" /> Baixar PDF gerado
+          </a>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleExportar} disabled={loading} className="gap-1.5">
+          <Button variant="outline" onClick={() => closeModal(false)}>{loading ? "Cancelar exportação" : "Fechar"}</Button>
+          <Button onClick={() => void handleExportar()} disabled={loading} className="gap-1.5">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-            Exportar PDF
+            {loading ? "Gerando..." : "Exportar PDF"}
           </Button>
         </DialogFooter>
       </DialogContent>

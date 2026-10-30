@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
@@ -34,8 +35,7 @@ function fmtBRL(v: number) {
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url);
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     return await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
@@ -47,8 +47,7 @@ async function fetchAssetDataUrl(url: string): Promise<string | null> {
 
 async function urlToJpeg(url: string, maxDim = 1400, quality = 0.78): Promise<string | null> {
   try {
-    const res = await fetch(url);
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     const bmp = await createImageBitmap(blob);
     let { width, height } = bmp;
     if (width > maxDim || height > maxDim) {
