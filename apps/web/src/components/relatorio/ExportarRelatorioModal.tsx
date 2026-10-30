@@ -213,18 +213,19 @@ export default function ExportarRelatorioModal({
       let pastoIds = pastos.map(p => p.id);
 
       // Produto em uso por pasto: ocupação ativa (fallback pasto/retiro adiante)
-      const ocupacaoProdutoByPasto: Record<string, string> = {};
+      let ocupacaoProdutoByPasto: Record<string, string> = {};
       if (pastoIds.length > 0) {
         const { data: ocupData } = await supabase.from("ocupacoes_pasto")
           .select("pasto_id, produto_id, data_entrada, data_saida")
           .in("pasto_id", pastoIds)
           .is("data_saida", null)
           .order("data_entrada", { ascending: false });
-        for (const o of (ocupData ?? [])) {
-          if (o.produto_id && !ocupacaoProdutoByPasto[o.pasto_id]) {
-            ocupacaoProdutoByPasto[o.pasto_id] = o.produto_id;
+        ocupacaoProdutoByPasto = (ocupData ?? []).reduce((acc: Record<string, string>, o) => {
+          if (o.produto_id) {
+            acc[o.pasto_id] = acc[o.pasto_id] ?? o.produto_id;
           }
-        }
+          return acc;
+        }, {});
       }
 
       // O relatório herda o produto do Painel do Gerente. A fonte do produto
