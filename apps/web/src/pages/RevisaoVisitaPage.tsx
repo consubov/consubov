@@ -349,30 +349,31 @@ export default function RevisaoVisitaPage() {
       : { data: null };
     const visitaPatch = localMutations
       .filter((m) => m.table === "visitas_tecnicas" && m.rowId === visitaId && (m.operation ?? "update") !== "delete")
-      .reduce((acc, m) => ({ ...acc, ...m.patch }), {} as Record<string, any>);
-    const visitaRow = (v as any)
-      ? { ...(v as any), ...visitaPatch }
-      : snap?.visita;
-    if (isVisitaDeleted(visitaRow as any)) { setVisita(null); setLoading(false); return; }
+      .reduce((acc, m) => ({ ...acc, ...m.patch }), {} as Partial<Visita>);
+    // Sem converter dados: mantém a prioridade atual (servidor + patch local, senão snapshot).
+    const visitaRow: Visita | null | undefined = v
+      ? ({ ...v, ...visitaPatch } as Visita)
+      : (snap?.visita as Visita | null | undefined);
+    if (isVisitaDeleted(visitaRow as Record<string, unknown> | null | undefined)) { setVisita(null); setLoading(false); return; }
     if (!visitaRow) { setLoading(false); return; }
-    setVisita(visitaRow as any);
+    setVisita(visitaRow);
     setObsGerais(visitaRow.observacoes_gerais || "");
     setConclusao(visitaRow.conclusao || "");
-    setObjetivo((visitaRow as any).objetivo_visita || "");
-    setResumo((visitaRow as any).resumo_executivo || "");
-    setIndicadores((visitaRow as any).indicadores_gerais || "");
-    setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
+    setObjetivo(visitaRow.objetivo_visita || "");
+    setResumo(visitaRow.resumo_executivo || "");
+    setIndicadores(visitaRow.indicadores_gerais || "");
+    setIndicadoresTabela((visitaRow.indicadores_tabela as Record<string,string>) || {});
     setAreaAlqueires(
-      (visitaRow as any).area_total_alqueires != null
-        ? String((visitaRow as any).area_total_alqueires).replace(".", ",")
+      visitaRow.area_total_alqueires != null
+        ? String(visitaRow.area_total_alqueires).replace(".", ",")
         : ""
     );
     setOverrides({
-      fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
-      localizacao: (visitaRow as any).localizacao_override || "",
-      proprietario: (visitaRow as any).proprietario_override || "",
-      responsavel: (visitaRow as any).responsavel_override || "",
-      consultor_nome: (visitaRow as any).consultor_nome_override || "",
+      fazenda_nome: visitaRow.fazenda_nome_override || "",
+      localizacao: visitaRow.localizacao_override || "",
+      proprietario: visitaRow.proprietario_override || "",
+      responsavel: visitaRow.responsavel_override || "",
+      consultor_nome: visitaRow.consultor_nome_override || "",
     });
 
     const [{ data: fz }, { data: cs }, { data: ps }] = online
