@@ -14,6 +14,14 @@ import { gerarManejoPDF } from "@/lib/syncvetManejoPdf";
 
 type Resultado = "prenha" | "vazia" | "realizado";
 
+function errorMessage(error: unknown, fallback: string): string {
+  if (error !== null && typeof error === "object" && "message" in error &&
+    typeof error.message === "string") {
+    return error.message;
+  }
+  return fallback;
+}
+
 type Registro = {
   animal_id: string;
   numero: string;
@@ -74,44 +82,44 @@ export default function SyncVetManejoExecucaoPage() {
         supabase.from("syncvet_lotes").select("nome").eq("id", m.lote_id).maybeSingle(),
         m.responsavel_id
           ? supabase.from("syncvet_equipe").select("nome").eq("id", m.responsavel_id).maybeSingle()
-          : Promise.resolve({ data: null } as any),
+          : Promise.resolve({ data: null as { nome: string } | null }),
       ]);
-      setFazendaNome((f as any)?.nome ?? "");
-      setLoteNome((l as any)?.nome ?? "");
-      setResponsavelNome((r as any)?.nome ?? "");
+      setFazendaNome(f?.nome ?? "");
+      setLoteNome(l?.nome ?? "");
+      setResponsavelNome(r?.nome ?? "");
 
-      if ((f as any)?.empresa_id) {
-        const { data: emp } = await supabase.from("syncvet_empresas").select("nome").eq("id", (f as any).empresa_id).maybeSingle();
-        setEmpresaNome((emp as any)?.nome ?? "");
+      if (f?.empresa_id) {
+        const { data: emp } = await supabase.from("syncvet_empresas").select("nome").eq("id", f.empresa_id).maybeSingle();
+        setEmpresaNome(emp?.nome ?? "");
       }
       if (m.protocolo_id) {
         const { data: p } = await supabase.from("syncvet_protocolos").select("nome").eq("id", m.protocolo_id).maybeSingle();
-        setProtocoloNome((p as any)?.nome ?? "");
+        setProtocoloNome(p?.nome ?? "");
       }
       if (m.semen_id) {
         const { data: s } = await supabase.from("syncvet_semen").select("touro, codigo").eq("id", m.semen_id).maybeSingle();
-        if (s) setSemenNome(`${(s as any).touro}${(s as any).codigo ? ` (${(s as any).codigo})` : ""}`);
+        if (s) setSemenNome(`${s.touro}${s.codigo ? ` (${s.codigo})` : ""}`);
       } else if (m.semen_descricao_fazenda) {
         setSemenNome(m.semen_descricao_fazenda);
       }
 
       // carrega resultados existentes + animais para exibir número
-      const { data: rs } = await (supabase as any)
+      const { data: rs } = await supabase
         .from("syncvet_manejo_resultados")
         .select("animal_id, resultado")
         .eq("manejo_id", manejoId);
-      const animalIds = ((rs as any[]) ?? []).map((r: any) => r.animal_id);
-      let animMap: Record<string, string> = {};
+      const animalIds = (rs ?? []).map((r) => r.animal_id);
+      const animMap: Record<string, string> = {};
       if (animalIds.length > 0) {
         const { data: an } = await supabase
           .from("syncvet_animais")
           .select("id, numero, brinco")
           .in("id", animalIds);
-        for (const a of ((an as any[]) ?? [])) {
+        for (const a of (an ?? [])) {
           animMap[a.id] = a.numero || a.brinco || "";
         }
       }
-      const regs: Registro[] = ((rs as any[]) ?? []).map((r: any) => ({
+      const regs: Registro[] = (rs ?? []).map((r) => ({
         animal_id: r.animal_id,
         numero: animMap[r.animal_id] ?? "",
         resultado: r.resultado as Resultado,
@@ -137,14 +145,14 @@ export default function SyncVetManejoExecucaoPage() {
     setConfirmando(true);
     try {
       // busca animal
-      let { data: existing } = await supabase
+      const { data: existing } = await supabase
         .from("syncvet_animais")
         .select("id, numero, brinco")
         .eq("lote_id", manejo.lote_id)
         .or(`numero.eq.${num},brinco.eq.${num}`)
         .maybeSingle();
 
-      let animalId = (existing as any)?.id as string | undefined;
+      let animalId = existing?.id;
       if (!animalId) {
         const { data: created, error: cErr } = await supabase
           .from("syncvet_animais")
@@ -152,18 +160,18 @@ export default function SyncVetManejoExecucaoPage() {
           .select("id")
           .single();
         if (cErr) throw cErr;
-        animalId = (created as any).id;
+        animalId = created.id;
       }
 
       // se já existe registro para esse animal, atualiza; senão insere
       const idx = registros.findIndex(r => r.animal_id === animalId);
       if (idx >= 0) {
-        await (supabase as any).from("syncvet_manejo_resultados")
+        await supabase.from("syncvet_manejo_resultados")
           .delete()
           .eq("manejo_id", manejo.id)
           .eq("animal_id", animalId);
       }
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("syncvet_manejo_resultados")
         .insert({ manejo_id: manejo.id, animal_id: animalId, resultado });
       if (error) throw error;
@@ -174,8 +182,8 @@ export default function SyncVetManejoExecucaoPage() {
       });
       setNumero("");
       setTimeout(() => inputRef.current?.focus(), 30);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao registrar");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e, "Erro ao registrar");
     } finally {
       setConfirmando(false);
     }
@@ -183,7 +191,7 @@ export default function SyncVetManejoExecucaoPage() {
 
   async function removerRegistro(animal_id: string) {
     if (!manejo) return;
-    await (supabase as any).from("syncvet_manejo_resultados")
+    await supabase.from("syncvet_manejo_resultados")
       .delete()
       .eq("manejo_id", manejo.id)
       .eq("animal_id", animal_id);
@@ -195,7 +203,7 @@ export default function SyncVetManejoExecucaoPage() {
     if (registros.length === 0) { toast.error("Registre pelo menos um animal"); return; }
     setSaving(true);
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("syncvet_manejos")
         .update({
           status: "concluido",
@@ -228,8 +236,8 @@ export default function SyncVetManejoExecucaoPage() {
 
       toast.success("Manejo finalizado");
       navigate(`/syncvet/agenda`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao finalizar");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e, "Erro ao finalizar");
     } finally {
       setSaving(false);
     }
