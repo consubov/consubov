@@ -1,0 +1,97 @@
+name: Emergency GMD hotfix QA
+on:
+  push:
+    branches:
+      - hotfix/consubov-app/gmd-failfast-live-20261030
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gmd-hotfix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact hotfix commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: GMD unit tests
+        working-directory: apps/web
+        run: bunx vitest run src/lib/gmdConfigurado.test.ts
+      - name: Full Web unit regression suite
+        working-directory: apps/web
+        run: bunx vitest run
+      - name: Changed-files ESLint
+        working-directory: apps/web
+        run: bunx eslint src/lib/gmdConfigurado.ts src/lib/gmdConfigurado.test.ts src/hooks/useGerenteData.ts src/pages/GerenteDashboard.tsx
+  types-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Web TypeScript typecheck
+        working-directory: apps/web
+        run: bun run typecheck
+      - name: Web build
+        working-directory: apps/web
+        run: bun run build
+      - name: Verify built bundle has no secrets
+        working-directory: apps/web
+        run: bun run check:dist-secrets
+      - name: PWA hashed Vite asset offline regression
+        run: node --test apps/web/scripts/qa/check-sw-vite-hashed-assets.mjs
+  security-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Dependency audit (high or worse)
+        run: bun audit --audit-level=high
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, chromium-tablet, chromium-mobile]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - name: Install Chromium for browser regression
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - name: Web/PWA smoke (mock backend only)
+        working-directory: apps/web
+        run: bunx playwright test --grep '@smoke|@a11y-smoke|@web-ready' --project ${{ matrix.project }}
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
