@@ -1,10 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { authorizeTenantAccess, hasScope } from "./authorization";
 import { SecurityContractValidationError } from "./errors";
 import {
   createAuthenticatedRequestContext,
   createPermissionScope,
-  createTenantId,
 } from "./identity";
 
 describe("security contracts", () => {
