@@ -28,6 +28,9 @@ jobs:
       - name: GMD unit tests
         working-directory: apps/web
         run: bunx vitest run src/lib/gmdConfigurado.test.ts
+      - name: Full Web unit regression suite
+        working-directory: apps/web
+        run: bunx vitest run
       - name: Changed-files ESLint
         working-directory: apps/web
         run: bunx eslint src/lib/gmdConfigurado.ts src/lib/gmdConfigurado.test.ts src/hooks/useGerenteData.ts src/pages/GerenteDashboard.tsx
@@ -48,6 +51,9 @@ jobs:
       - name: Web build
         working-directory: apps/web
         run: bun run build
+      - name: Verify built bundle has no secrets
+        working-directory: apps/web
+        run: bun run check:dist-secrets
   security-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
