@@ -652,7 +652,7 @@ export default function RevisaoVisitaPage() {
   async function confirmarRevisao() {
     setConfirmando(true);
     try {
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
+      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" });
       toast.success("Visita revisada. Pronta para gerar o PDF.");
       await load(true);
     } finally { setConfirmando(false); }
@@ -746,16 +746,16 @@ export default function RevisaoVisitaPage() {
       // Refetch fresh fotos direct from Supabase — local state may still carry
       // queued: URLs from photos that just synced.
       const topicosForPdf = await Promise.all(topicos.map(async t => {
-        const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
+        const { data: fresh } = await withConsultorTimeout(supabase.from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
-        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
+        const fotos = (fresh ?? []).map((f) => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
-        const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
+        const { data: fresh } = await withConsultorTimeout(supabase.from("visita_fotos")
           .select("*").eq("visita_pasto_id", p.id).order("ordem"), "busca de fotos dos pastos");
-        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        const fotos = (fresh ?? []).map((f) => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -764,24 +764,24 @@ export default function RevisaoVisitaPage() {
           peso_medio_kg: p.peso_medio_kg,
           consumo_esperado_kg: p.consumo_esperado_kg,
           consumo_real_kg: p.consumo_real_kg,
-          area_alqueires: (p as any).area_alqueires ?? null,
+          area_alqueires: p.area_alqueires ?? null,
           scores: {
             fezes: averageOf(p.samples.fezes),
             corporal: averageOf(p.samples.corporal),
             bebedouro: averageOf(p.samples.bebedouro),
           },
           samples: {
-            fezes: p.samples.fezes.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
-            corporal: p.samples.corporal.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
-            bebedouro: p.samples.bebedouro.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+            fezes: p.samples.fezes.map((s) => s.nota).filter((n) => Number.isFinite(n)),
+            corporal: p.samples.corporal.map((s) => s.nota).filter((n) => Number.isFinite(n)),
+            bebedouro: p.samples.bebedouro.map((s) => s.nota).filter((n) => Number.isFinite(n)),
           },
           fotos,
         };
       }));
 
       const numeroMap = computeRotinaPhotoNumbering(
-        (topicosForPdf as any[]).map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
-        (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
+        topicosForPdf.map((t) => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+        pastosForPdf.map((p) => ({ id: p.id, fotos: p.fotos })),
       );
 
       const cab = cabecalhoEfetivo();
