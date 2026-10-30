@@ -2,6 +2,7 @@ import { withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import MentionTextarea from "@/components/consultor/MentionTextarea";
 import MentionablePhoto from "@/components/consultor/MentionablePhoto";
@@ -213,6 +214,11 @@ interface Pasto {
   fotos: Foto[];
   signed: Record<string, string>;
 }
+type FazendaCabecalho = Pick<Database["public"]["Tables"]["fazendas_consultor"]["Row"],
+  "nome_fazenda" | "municipio" | "uf" | "proprietario" | "responsavel">;
+type ConsultorCabecalho = Pick<Database["public"]["Tables"]["consultores"]["Row"],
+  "nome" | "logo_esquerda_url" | "logo_direita_url">;
+
 interface Visita {
   id: string; tipo: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
@@ -221,6 +227,8 @@ interface Visita {
   objetivo_visita: string | null;
   resumo_executivo: string | null;
   indicadores_gerais: string | null;
+  indicadores_tabela?: Record<string, string> | null;
+  area_total_alqueires?: number | null;
   fazenda_nome_override?: string | null;
   localizacao_override?: string | null;
   proprietario_override?: string | null;
@@ -248,8 +256,8 @@ export default function RevisaoVisitaPage() {
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
   const [tipoLoaded, setTipoLoaded] = useState<string | null>(null);
-  const [fazenda, setFazenda] = useState<any>(null);
-  const [consultor, setConsultor] = useState<any>(null);
+  const [fazenda, setFazenda] = useState<FazendaCabecalho | null>(null);
+  const [consultor, setConsultor] = useState<ConsultorCabecalho | null>(null);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
@@ -567,7 +575,7 @@ export default function RevisaoVisitaPage() {
       visitaId: visitaId!,
       table: "visitas_tecnicas",
       rowId: visitaId!,
-      patch: patch as any,
+      patch,
     });
     if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
@@ -731,9 +739,9 @@ export default function RevisaoVisitaPage() {
           objetivo_visita: objetivo || null,
           resumo_executivo: resumo || null,
           indicadores_gerais: indicadores || null,
-          indicadores_tabela: indicadoresTabela as any,
+          indicadores_tabela: indicadoresTabela,
           area_total_alqueires: parseAlqueires(areaAlqueires),
-        } as any,
+        },
       });
       if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
 
@@ -887,7 +895,7 @@ export default function RevisaoVisitaPage() {
     setOverrides(prev => ({ ...prev, [key]: final || "" }));
     const column = `${key}_override` as const;
     setVisita(prev => prev ? { ...prev, [column]: final } as Visita : prev);
-    await autosaveVisita({ [column]: final } as any);
+    await autosaveVisita({ [column]: final } as Partial<Visita>);
   }
 
 
@@ -1146,7 +1154,7 @@ export default function RevisaoVisitaPage() {
             onChange={e => setAreaAlqueires(e.target.value)}
             onBlur={() => {
               const n = parseAlqueires(areaAlqueires);
-              void autosaveVisita({ area_total_alqueires: n } as any);
+              void autosaveVisita({ area_total_alqueires: n });
             }}
             className="h-8 text-sm"
           />
@@ -1165,7 +1173,7 @@ export default function RevisaoVisitaPage() {
                   value={override}
                   placeholder={placeholder}
                   onChange={e => setIndicadoresTabela(prev => ({ ...prev, [key]: e.target.value }))}
-                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela } as any)}
+                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -1189,7 +1197,7 @@ export default function RevisaoVisitaPage() {
         horaFim={visita.hora_fim}
         onChange={async (patch) => {
           setVisita(prev => prev ? { ...prev, ...patch } as Visita : prev);
-          await autosaveVisita(patch as any);
+          await autosaveVisita(patch);
         }}
       />
 
@@ -1266,9 +1274,9 @@ export default function RevisaoVisitaPage() {
                     objetivo_visita: objetivo || null,
                     resumo_executivo: resumo || null,
                     indicadores_gerais: indicadores || null,
-                    indicadores_tabela: indicadoresTabela as any,
+                    indicadores_tabela: indicadoresTabela,
                     area_total_alqueires: parseAlqueires(areaAlqueires),
-                  } as any);
+                  });
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
                   navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
