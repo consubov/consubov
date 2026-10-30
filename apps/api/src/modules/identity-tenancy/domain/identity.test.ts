@@ -1,0 +1,55 @@
+import { describe, expect, test } from "bun:test";
+import { createPermissionScope } from "./identity";
+import { SecurityContractValidationError } from "./errors";
+
+describe("createPermissionScope", () => {
+  test("accepts valid permission scopes", () => {
+    expect(createPermissionScope("resource:action")).toBe("resource:action");
+    expect(createPermissionScope("user:read")).toBe("user:read");
+    expect(createPermissionScope("system.admin:write")).toBe("system.admin:write");
+    expect(createPermissionScope("tenant_manager:delete")).toBe("tenant_manager:delete");
+    expect(createPermissionScope("domain-name:action-name")).toBe("domain-name:action-name");
+    expect(createPermissionScope("123:456")).toBe("123:456");
+  });
+
+  test("normalizes by trimming whitespace and converting to lowercase", () => {
+    expect(createPermissionScope("  Resource:Action  ")).toBe("resource:action");
+    expect(createPermissionScope("\tUSER:READ\n")).toBe("user:read");
+  });
+
+  test("rejects scopes that are empty or whitespace only", () => {
+    expect(() => createPermissionScope("")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("   ")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("\n\t")).toThrow(SecurityContractValidationError);
+  });
+
+  test("rejects scopes that exceed the max length constraint", () => {
+    const longResource = "a".repeat(100);
+    const longAction = "b".repeat(29);
+    // 100 + 1 (:) + 29 = 130 characters, which exceeds 128
+    expect(() => createPermissionScope(`${longResource}:${longAction}`)).toThrow(SecurityContractValidationError);
+  });
+
+  test("rejects scopes with invalid formats (no colon)", () => {
+    expect(() => createPermissionScope("resource")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("resource_action")).toThrow(SecurityContractValidationError);
+  });
+
+  test("rejects scopes with invalid formats (multiple colons)", () => {
+    expect(() => createPermissionScope("resource:action:subaction")).toThrow(SecurityContractValidationError);
+  });
+
+  test("rejects scopes with invalid formats (invalid start characters)", () => {
+    // Must start with [a-z0-9]
+    expect(() => createPermissionScope("-resource:action")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope(".resource:action")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("_resource:action")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("resource:-action")).toThrow(SecurityContractValidationError);
+  });
+
+  test("rejects scopes with invalid formats (invalid characters)", () => {
+    expect(() => createPermissionScope("resource!:action")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("resource:action@")).toThrow(SecurityContractValidationError);
+    expect(() => createPermissionScope("resource:action#")).toThrow(SecurityContractValidationError);
+  });
+});
