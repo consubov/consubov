@@ -12,7 +12,7 @@ import {
   isPushSupported,
   requestPushPermission,
   savePushSubscription,
-  isVapidConfigured,
+  VAPID_PUBLIC_KEY,
 } from "@/lib/pushNotifications";
 
 function isLovablePreview() {
@@ -53,10 +53,6 @@ export function EnableNotificationsBanner() {
   useEffect(() => {
     if (!session || !user?.id) return;
     if (dismissedThisSession) return;
-    if (!isVapidConfigured()) {
-      setStatus("hidden");
-      return;
-    }
     if (getBannerDecision()) {
       setStatus("hidden");
       return;
@@ -147,8 +143,8 @@ export function EnableNotificationsBanner() {
         setBusy(false);
         return;
       }
-      if (!isVapidConfigured()) {
-        setError("Notificações temporariamente indisponíveis. Tente mais tarde.");
+      if (!VAPID_PUBLIC_KEY) {
+        setError("Chave VAPID ausente no servidor.");
         setBusy(false);
         return;
       }

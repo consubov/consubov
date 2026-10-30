@@ -1,6 +1,5 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { requireReadRows, dataReadErrorMessage } from "@/lib/dataReadGuard";
 import type { FormulaConfig } from "@/lib/formulasSistema";
 import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 
@@ -124,14 +123,10 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
   const cacheKey = screenCacheKey("consumoMineral", [fazendaId, retiroId, mes, ano]);
   const [data, setData] = useState<ConsumoMineralRetiro[]>(() => getScreenCache<ConsumoMineralRetiro[]>(cacheKey) ?? []);
   const [loading, setLoading] = useState(() => !getScreenCache(cacheKey));
-  const [error, setError] = useState<string | null>(null);
-  const activeCacheKey = useRef(cacheKey);
-  activeCacheKey.current = cacheKey;
 
   const fetchData = useCallback(async () => {
     if (!fazendaId) {
       setData([]);
-      setError(null);
       setLoading(false);
       return;
     }
@@ -142,24 +137,28 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
         p_mes: mes,
         p_ano: ano,
       });
-      let rows = requireReadRows<ConsumoMineralRetiro>({ data: result, error });
-      if (retiroId) rows = rows.filter(r => r.retiro_id === retiroId);
-      if (activeCacheKey.current !== cacheKey) return;
-      setScreenCache(cacheKey, rows);
-      setData(rows);
-      setError(null);
+      if (error) {
+        console.error("[useConsumoMineral] RPC error:", error);
+        setData([]);
+      } else {
+        let rows = (result ?? []) as ConsumoMineralRetiro[];
+        if (retiroId) {
+          rows = rows.filter(r => r.retiro_id === retiroId);
+        }
+        setScreenCache(cacheKey, rows);
+        setData(rows);
+      }
     } catch (e) {
-      if (activeCacheKey.current === cacheKey) setError(dataReadErrorMessage(e));
+      console.error("[useConsumoMineral] error:", e);
+      setData([]);
     } finally {
-      if (activeCacheKey.current === cacheKey) setLoading(false);
+      setLoading(false);
     }
   }, [fazendaId, mes, ano, retiroId, cacheKey]);
 
   useEffect(() => {
     const cached = getScreenCache<ConsumoMineralRetiro[]>(cacheKey);
-    setData(cached ?? []);
-    setError(null);
-    setLoading(!cached);
+    if (cached) { setData(cached); setLoading(false); }
     void fetchData();
   }, [fetchData, cacheKey]);
 
@@ -178,5 +177,5 @@ export function useConsumoMineral({ fazendaId, mes, ano, retiroId }: UseConsumoM
   useResumeRefresh(() => { void fetchData(); });
   useScreenCacheInvalidation(() => { void fetchData(); });
 
-  return { data, loading, error, refresh: fetchData };
+  return { data, loading, refresh: fetchData };
 }

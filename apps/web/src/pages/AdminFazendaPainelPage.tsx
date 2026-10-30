@@ -74,8 +74,8 @@ export default function AdminFazendaPainelPage() {
     ano,
   }), [fazendaId, mes, ano]);
 
-  const { loading, error: painelError, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
-  const { painelMae, error: painelMaeError, refresh: refreshPainelMae } = usePainelMae(fazendaId, null, mes, ano);
+  const { loading, fazendaNome, metrics, retirosResumo, refresh } = usePainelData(filters, { useFormulasSistema: true });
+  const { painelMae, refresh: refreshPainelMae } = usePainelMae(fazendaId, null, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(fazendaId, mes, ano);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(fazendaId, ano);
 
@@ -101,15 +101,6 @@ export default function AdminFazendaPainelPage() {
 
   if (loading) {
     return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  }
-  if (painelError || painelMaeError) {
-    return (
-      <div role="alert" className="max-w-2xl mx-auto p-6 space-y-3">
-        <p className="font-medium text-destructive">Dados desta fazenda indisponíveis</p>
-        <p className="text-sm">{painelError || painelMaeError}</p>
-        <Button onClick={() => void handleRefresh()} disabled={refreshing}>Tentar novamente</Button>
-      </div>
-    );
   }
 
   return (

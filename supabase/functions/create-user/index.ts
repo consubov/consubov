@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
 
     const body = rawBody;
 
+    console.log("[create-user] Body recebido com chaves:", Object.keys(body).join(","));
+
     const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
     const nome = typeof body.nome === "string" ? body.nome.trim() : "";
     const telefone = typeof body.telefone === "string" && body.telefone.trim() ? body.telefone.trim() : null;

@@ -1,8 +1,6 @@
-import { withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import MentionTextarea from "@/components/consultor/MentionTextarea";
 import MentionablePhoto from "@/components/consultor/MentionablePhoto";
@@ -214,26 +212,6 @@ interface Pasto {
   fotos: Foto[];
   signed: Record<string, string>;
 }
-type FazendaCabecalho = Pick<Database["public"]["Tables"]["fazendas_consultor"]["Row"],
-  "nome_fazenda" | "municipio" | "uf" | "proprietario" | "responsavel">;
-type ConsultorCabecalho = Pick<Database["public"]["Tables"]["consultores"]["Row"],
-  "nome" | "logo_esquerda_url" | "logo_direita_url">;
-
-// Snapshots podem conter dados parciais; o contrato reflete apenas os campos lidos.
-type SnapshotScore = {
-  id?: string;
-  visita_pasto_id?: string | null;
-  tipo: string;
-  nota: number;
-};
-
-type SnapshotPasto = {
-  id: string;
-  fotos?: Foto[];
-  signed?: Record<string, string>;
-  samples?: Partial<Pasto["samples"]>;
-} & Record<string, unknown>;
-
 interface Visita {
   id: string; tipo: string; status: string; hora_inicio: string; hora_fim: string | null;
   observacoes_gerais: string | null; conclusao: string | null;
@@ -242,8 +220,6 @@ interface Visita {
   objetivo_visita: string | null;
   resumo_executivo: string | null;
   indicadores_gerais: string | null;
-  indicadores_tabela?: Record<string, string> | null;
-  area_total_alqueires?: number | null;
   fazenda_nome_override?: string | null;
   localizacao_override?: string | null;
   proprietario_override?: string | null;
@@ -271,8 +247,8 @@ export default function RevisaoVisitaPage() {
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
   const [tipoLoaded, setTipoLoaded] = useState<string | null>(null);
-  const [fazenda, setFazenda] = useState<FazendaCabecalho | null>(null);
-  const [consultor, setConsultor] = useState<ConsultorCabecalho | null>(null);
+  const [fazenda, setFazenda] = useState<any>(null);
+  const [consultor, setConsultor] = useState<any>(null);
   const [pastos, setPastos] = useState<Pasto[]>([]);
   const [obsGerais, setObsGerais] = useState("");
   const [conclusao, setConclusao] = useState("");
@@ -356,31 +332,30 @@ export default function RevisaoVisitaPage() {
       : { data: null };
     const visitaPatch = localMutations
       .filter((m) => m.table === "visitas_tecnicas" && m.rowId === visitaId && (m.operation ?? "update") !== "delete")
-      .reduce((acc, m) => ({ ...acc, ...m.patch }), {} as Partial<Visita>);
-    // Sem converter dados: mantém a prioridade atual (servidor + patch local, senão snapshot).
-    const visitaRow: Visita | null | undefined = v
-      ? ({ ...v, ...visitaPatch } as Visita)
-      : (snap?.visita as Visita | null | undefined);
-    if (isVisitaDeleted(visitaRow as unknown as Record<string, unknown> | null | undefined)) { setVisita(null); setLoading(false); return; }
+      .reduce((acc, m) => ({ ...acc, ...m.patch }), {} as Record<string, any>);
+    const visitaRow = (v as any)
+      ? { ...(v as any), ...visitaPatch }
+      : snap?.visita;
+    if (isVisitaDeleted(visitaRow as any)) { setVisita(null); setLoading(false); return; }
     if (!visitaRow) { setLoading(false); return; }
-    setVisita(visitaRow);
+    setVisita(visitaRow as any);
     setObsGerais(visitaRow.observacoes_gerais || "");
     setConclusao(visitaRow.conclusao || "");
-    setObjetivo(visitaRow.objetivo_visita || "");
-    setResumo(visitaRow.resumo_executivo || "");
-    setIndicadores(visitaRow.indicadores_gerais || "");
-    setIndicadoresTabela((visitaRow.indicadores_tabela as Record<string,string>) || {});
+    setObjetivo((visitaRow as any).objetivo_visita || "");
+    setResumo((visitaRow as any).resumo_executivo || "");
+    setIndicadores((visitaRow as any).indicadores_gerais || "");
+    setIndicadoresTabela(((visitaRow as any).indicadores_tabela as Record<string,string>) || {});
     setAreaAlqueires(
-      visitaRow.area_total_alqueires != null
-        ? String(visitaRow.area_total_alqueires).replace(".", ",")
+      (visitaRow as any).area_total_alqueires != null
+        ? String((visitaRow as any).area_total_alqueires).replace(".", ",")
         : ""
     );
     setOverrides({
-      fazenda_nome: visitaRow.fazenda_nome_override || "",
-      localizacao: visitaRow.localizacao_override || "",
-      proprietario: visitaRow.proprietario_override || "",
-      responsavel: visitaRow.responsavel_override || "",
-      consultor_nome: visitaRow.consultor_nome_override || "",
+      fazenda_nome: (visitaRow as any).fazenda_nome_override || "",
+      localizacao: (visitaRow as any).localizacao_override || "",
+      proprietario: (visitaRow as any).proprietario_override || "",
+      responsavel: (visitaRow as any).responsavel_override || "",
+      consultor_nome: (visitaRow as any).consultor_nome_override || "",
     });
 
     const [{ data: fz }, { data: cs }, { data: ps }] = online
@@ -395,22 +370,22 @@ export default function RevisaoVisitaPage() {
     setFazenda(fazendaRow); setConsultor(consultorRow);
 
     const pastoMutations = localMutations.filter((m) => m.table === "visita_pastos");
-    const pendingPastoPatch = new Map<string, Record<string, unknown>>();
+    const pendingPastoPatch = new Map<string, Record<string, any>>();
     pastoMutations.forEach((m) => {
       if ((m.operation ?? "update") === "delete") return;
       pendingPastoPatch.set(m.rowId, { ...(pendingPastoPatch.get(m.rowId) || {}), ...m.patch });
     });
-    let pastoRows: SnapshotPasto[] = (ps || []).map((p) => ({ ...p, ...(pendingPastoPatch.get(p.id) || {}) }));
-    if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as SnapshotPasto[];
+    let pastoRows = ((ps as any[]) || []).map((p: any) => ({ ...p, ...(pendingPastoPatch.get(p.id) || {}) }));
+    if (pastoRows.length === 0 && snap?.pastos?.length) pastoRows = snap.pastos as any[];
     // Pastos que ainda só existem localmente (criados off-line) precisam aparecer
     // mesmo quando o servidor já respondeu com outros pastos.
-    (snap?.pastos || []).forEach((sp: SnapshotPasto) => {
-      if (sp?.id && !pastoRows.some((p) => p.id === sp.id)) {
+    (snap?.pastos || []).forEach((sp: any) => {
+      if (sp?.id && !pastoRows.some((p: any) => p.id === sp.id)) {
         pastoRows = [...pastoRows, { ...sp, ...(pendingPastoPatch.get(sp.id) || {}) }];
       }
     });
     pendingPastoPatch.forEach((patch, rowId) => {
-      if (!pastoRows.some((p) => p.id === rowId)) pastoRows.push({ id: rowId, ...patch });
+      if (!pastoRows.some((p: any) => p.id === rowId)) pastoRows.push({ id: rowId, ...patch });
     });
     const ids = pastoRows.map(p => p.id);
     type Bucket = { fezes: ScoreSample[]; corporal: ScoreSample[]; bebedouro: ScoreSample[] };
@@ -434,55 +409,54 @@ export default function RevisaoVisitaPage() {
         supabase.from("avaliacoes_score").select("id, visita_pasto_id, tipo, nota").in("visita_pasto_id", ids),
         supabase.from("visita_fotos").select("*").in("visita_pasto_id", ids).order("ordem"),
       ]);
-      (sc || []).forEach((s) => pushSample(s.visita_pasto_id || "", s.tipo, { id: s.id, nota: s.nota }));
-      (ft || []).forEach((f) => {
-        const key = String(f.visita_pasto_id);
-        fotosByPasto[key] = [...(fotosByPasto[key] || []), f];
+      (sc || []).forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+      (ft || []).forEach((f: any) => {
+        fotosByPasto[f.visita_pasto_id] = [...(fotosByPasto[f.visita_pasto_id] || []), f];
       });
     }
     // União com as amostras locais (snapshot / fila off-line) — MESMA fonte da
     // tela de edição. Sem isso a Revisão aparecia vazia enquanto houvesse
     // qualquer avaliação ainda não sincronizada.
-    ((snap?.avaliacoes_score || []) as SnapshotScore[]).forEach((s) =>
-      pushSample(s.visita_pasto_id || "", s.tipo, { id: s.id, nota: s.nota }));
+    ((snap?.avaliacoes_score as any[]) || []).forEach((s: any) =>
+      pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
     localMutations
       .filter((m) => m.table === "avaliacoes_score" && (m.operation ?? "update") !== "delete")
       .forEach((m) => pushSample(String(m.patch.visita_pasto_id || ""), String(m.patch.tipo || ""), {
         id: m.rowId,
         nota: Number(m.patch.nota),
       }));
-    (snap?.pastos || []).forEach((sp: SnapshotPasto) => {
+    (snap?.pastos || []).forEach((sp: any) => {
       const local = sp?.samples;
       if (!local) return;
       (["fezes", "corporal", "bebedouro"] as const).forEach((tipo) => {
-        (local[tipo] || []).forEach((s) => pushSample(sp.id, tipo, { id: s.id, nota: s.nota }));
+        (local[tipo] || []).forEach((s: any) => pushSample(sp.id, tipo, { id: s.id, nota: s.nota }));
       });
     });
 
     const built: Pasto[] = await Promise.all(pastoRows.map(async p => {
-      const snapPasto = ((snap?.pastos || []) as SnapshotPasto[]).find((x) => x.id === p.id);
-      const fallbackFotos: Foto[] = Array.isArray(p.fotos) ? p.fotos : (snapPasto?.fotos || []);
+      const snapPasto = (snap?.pastos || []).find((x: any) => x.id === p.id) as any;
+      const fallbackFotos = Array.isArray((p as any).fotos) ? (p as any).fotos : (snapPasto?.fotos || []);
       const remoteFotos = fotosByPasto[p.id] || [];
-      const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...(p.signed || {}) };
+      const signed: Record<string, string> = { ...(snapPasto?.signed || {}), ...((p as any).signed || {}) };
       // Fotos ainda na fila local (IndexedDB) — garantem que a Revisão mostre
       // exatamente o que aparece na tela de edição do pasto.
       const queuedItems = await getQueuedPhotosForParent("pasto", p.id).catch(() => []);
-      const queuedFromQueue: Foto[] = queuedItems.map((it) => {
+      const queuedFromQueue: any[] = queuedItems.map((it: any) => {
         signed[it.localId] = URL.createObjectURL(it.blob);
         return { id: it.localId, visita_pasto_id: p.id, url: `queued:${it.localId}`, ordem: it.ordem };
       });
-      const queuedFromSnap = fallbackFotos.filter((f) =>
+      const queuedFromSnap = (fallbackFotos as any[]).filter((f: any) =>
         String(f.url || "").startsWith("queued:") && !queuedFromQueue.some((q) => q.id === f.id));
-       const localSyncedFotos = fallbackFotos.filter((f) => !String(f.url || "").startsWith("queued:"));
+       const localSyncedFotos = (fallbackFotos as any[]).filter((f: any) => !String(f.url || "").startsWith("queued:"));
        const fotos = [...remoteFotos, ...localSyncedFotos, ...queuedFromQueue, ...queuedFromSnap]
-        .filter((f, i, arr) => arr.findIndex((x) => x.id === f.id) === i)
-        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+        .filter((f: any, i: number, arr: any[]) => arr.findIndex((x) => x.id === f.id) === i)
+        .sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
       await Promise.all(fotos
-        .filter((f) => online && !String(f.url || "").startsWith("queued:"))
+        .filter((f: any) => online && !String(f.url || "").startsWith("queued:"))
         .map(async f => { signed[f.id] = await signPath(f.url); }));
       return {
         ...p,
-        samples: samplesByPasto[p.id] || p.samples || snapPasto?.samples || { fezes: [], corporal: [], bebedouro: [] },
+        samples: samplesByPasto[p.id] || (p as any).samples || snapPasto?.samples || { fezes: [], corporal: [], bebedouro: [] },
         fotos, signed,
       } as Pasto;
     }));
@@ -492,8 +466,8 @@ export default function RevisaoVisitaPage() {
     // IMPORTANTE: mesclar (nunca sobrescrever) para não apagar amostras/fotos locais.
     if (online) {
       void patchSnapshot(visitaId!, (current) => {
-        const mergedPastos = built.map((b) => {
-          const latest = ((current.pastos || []) as SnapshotPasto[]).find((x) => x.id === b.id);
+        const mergedPastos = built.map((b: any) => {
+          const latest = (current.pastos || []).find((x: any) => x.id === b.id) as any;
           return {
             ...(latest || {}),
             ...b,
@@ -523,9 +497,9 @@ export default function RevisaoVisitaPage() {
 
   async function autosavePasto(pastoId: string, patch: Partial<Pasto>) {
     await notifyEdit();
-    const dbPatch: Record<string, unknown> = {};
-    (["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"] as const).forEach(k => {
-      if (k in patch) dbPatch[k] = patch[k];
+    const dbPatch: any = {};
+    ["letra","num_pasto","qtd_animais","tipo_produto","percentual_pv","consumo_kg_dia","consumo_real_kg","consumo_esperado_kg","peso_medio_kg","categoria","area_alqueires","observacao"].forEach(k => {
+      if (k in patch) dbPatch[k] = (patch as any)[k];
     });
     if (Object.keys(dbPatch).length === 0) return;
     const res = await offlineUpdate({
@@ -535,7 +509,7 @@ export default function RevisaoVisitaPage() {
       patch: dbPatch,
       applyToSnapshot: (curr, p) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId ? { ...x, ...p } : x),
+        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, ...p } : x),
       }),
     });
     if (!res.ok && !res.queued) toast.error("Erro ao salvar");
@@ -555,7 +529,7 @@ export default function RevisaoVisitaPage() {
       payload: { visita_pasto_id: pastoId, tipo, nota },
       applyToSnapshot: (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((p: SnapshotPasto) => p.id === pastoId
+        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
           ? { ...p, samples: { ...(p.samples || {}), [tipo]: [...((p.samples || {})[tipo] || []), { id, nota }] } }
           : p),
       }),
@@ -576,8 +550,8 @@ export default function RevisaoVisitaPage() {
       rowId: s.id,
       applyToSnapshot: (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((p: SnapshotPasto) => p.id === pastoId
-          ? { ...p, samples: { ...(p.samples || {}), [tipo]: ((p.samples || {})[tipo] || []).filter((x: ScoreSample) => x.id !== s.id) } }
+        pastos: (curr.pastos || []).map((p: any) => p.id === pastoId
+          ? { ...p, samples: { ...(p.samples || {}), [tipo]: ((p.samples || {})[tipo] || []).filter((x: any) => x.id !== s.id) } }
           : p),
       }),
     });
@@ -592,7 +566,7 @@ export default function RevisaoVisitaPage() {
       visitaId: visitaId!,
       table: "visitas_tecnicas",
       rowId: visitaId!,
-      patch,
+      patch: patch as any,
     });
     if (!res.ok && !res.queued) toast.error("Erro ao salvar");
   }
@@ -614,7 +588,7 @@ export default function RevisaoVisitaPage() {
       });
       await patchSnapshot(visitaId!, (curr) => ({
         ...curr,
-        pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId
+        pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
           ? (() => {
               const current = (x.fotos || []) as Foto[];
               const alreadySyncedAtSlot = current.some((f) => f.ordem === ordem && !String(f.url || "").startsWith("queued:"));
@@ -625,11 +599,8 @@ export default function RevisaoVisitaPage() {
           : x),
       }));
       toast.info("Foto salva off-line. Sincronize quando houver internet.");
-    } catch (err: unknown) {
-      const detalhe = err !== null && typeof err === "object" && "message" in err
-        ? String(err.message || "")
-        : "";
-      toast.error("Erro ao preparar foto: " + detalhe);
+    } catch (err: any) {
+      toast.error("Erro ao preparar foto: " + (err?.message || ""));
     }
   }
 
@@ -645,7 +616,7 @@ export default function RevisaoVisitaPage() {
     updatePasto(pastoId, { fotos: p.fotos.filter(x => x.id !== f.id) });
     await patchSnapshot(visitaId!, (curr) => ({
       ...curr,
-      pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId
+      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId
         ? { ...x, fotos: (x.fotos || []).filter((foto: Foto) => foto.id !== f.id) }
         : x),
     }));
@@ -662,7 +633,7 @@ export default function RevisaoVisitaPage() {
     updatePasto(pastoId, { fotos: updates });
     await patchSnapshot(visitaId!, (curr) => ({
       ...curr,
-      pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId ? { ...x, fotos: updates } : x),
+      pastos: (curr.pastos || []).map((x: any) => x.id === pastoId ? { ...x, fotos: updates } : x),
     }));
     await Promise.all(updates
       .filter(u => String(u.url).startsWith("queued:"))
@@ -677,7 +648,7 @@ export default function RevisaoVisitaPage() {
   async function confirmarRevisao() {
     setConfirmando(true);
     try {
-      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" });
+      await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
       toast.success("Visita revisada. Pronta para gerar o PDF.");
       await load(true);
     } finally { setConfirmando(false); }
@@ -756,9 +727,9 @@ export default function RevisaoVisitaPage() {
           objetivo_visita: objetivo || null,
           resumo_executivo: resumo || null,
           indicadores_gerais: indicadores || null,
-          indicadores_tabela: indicadoresTabela,
+          indicadores_tabela: indicadoresTabela as any,
           area_total_alqueires: parseAlqueires(areaAlqueires),
-        },
+        } as any,
       });
       if (!saveRes.ok) throw new Error("Não foi possível confirmar as últimas edições antes do PDF");
 
@@ -771,16 +742,16 @@ export default function RevisaoVisitaPage() {
       // Refetch fresh fotos direct from Supabase — local state may still carry
       // queued: URLs from photos that just synced.
       const topicosForPdf = await Promise.all(topicos.map(async t => {
-        const { data: fresh } = await withConsultorTimeout(supabase.from("visita_topico_fotos")
+        const { data: fresh } = await withConsultorTimeout<any>((supabase as any).from("visita_topico_fotos")
           .select("*").eq("visita_topico_id", t.id).order("ordem"), "busca de fotos dos tópicos");
-        const fotos = (fresh ?? []).map((f) => ({ id: f.id, url: f.url, ordem: f.ordem }));
-        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: t.zona, fotos };
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        return { id: t.id, titulo: t.titulo, texto: t.texto, ordem: t.ordem, zona: (t as any).zona, fotos };
       }));
 
       const pastosForPdf = await Promise.all(pastos.map(async p => {
-        const { data: fresh } = await withConsultorTimeout(supabase.from("visita_fotos")
+        const { data: fresh } = await withConsultorTimeout<any>(supabase.from("visita_fotos")
           .select("*").eq("visita_pasto_id", p.id).order("ordem"), "busca de fotos dos pastos");
-        const fotos = (fresh ?? []).map((f) => ({ id: f.id, url: f.url, ordem: f.ordem }));
+        const fotos = ((fresh as any[]) || []).map(f => ({ id: f.id, url: f.url, ordem: f.ordem }));
         return {
           id: p.id, letra: p.letra, num_pasto: p.num_pasto, qtd_animais: p.qtd_animais,
           tipo_produto: p.tipo_produto, percentual_pv: p.percentual_pv,
@@ -789,28 +760,28 @@ export default function RevisaoVisitaPage() {
           peso_medio_kg: p.peso_medio_kg,
           consumo_esperado_kg: p.consumo_esperado_kg,
           consumo_real_kg: p.consumo_real_kg,
-          area_alqueires: p.area_alqueires ?? null,
+          area_alqueires: (p as any).area_alqueires ?? null,
           scores: {
             fezes: averageOf(p.samples.fezes),
             corporal: averageOf(p.samples.corporal),
             bebedouro: averageOf(p.samples.bebedouro),
           },
           samples: {
-            fezes: p.samples.fezes.map((s) => s.nota).filter((n) => Number.isFinite(n)),
-            corporal: p.samples.corporal.map((s) => s.nota).filter((n) => Number.isFinite(n)),
-            bebedouro: p.samples.bebedouro.map((s) => s.nota).filter((n) => Number.isFinite(n)),
+            fezes: p.samples.fezes.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+            corporal: p.samples.corporal.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
+            bebedouro: p.samples.bebedouro.map((s: any) => s.nota).filter((n: any) => Number.isFinite(n)),
           },
           fotos,
         };
       }));
 
       const numeroMap = computeRotinaPhotoNumbering(
-        topicosForPdf.map((t) => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
-        pastosForPdf.map((p) => ({ id: p.id, fotos: p.fotos })),
+        (topicosForPdf as any[]).map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+        (pastosForPdf as any[]).map(p => ({ id: p.id, fotos: p.fotos })),
       );
 
       const cab = cabecalhoEfetivo();
-      const { blob, fileName } = await withReportExportDeadline(generateVisitaPdf({
+      const { blob, fileName } = await generateVisitaPdf({
         visitaId: visita.id,
         fazenda: {
           nome_fazenda: cab.fazenda_nome,
@@ -834,8 +805,8 @@ export default function RevisaoVisitaPage() {
         topicos: topicosForPdf,
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
-          esquerdaPath: consultor?.logo_esquerda_url || null,
-          direitaPath: consultor?.logo_direita_url || null,
+          esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
+          direitaPath: (consultor as any)?.logo_direita_url || null,
         },
         pastos: pastosForPdf,
         numeroMap,
@@ -844,7 +815,7 @@ export default function RevisaoVisitaPage() {
           corporal: sampleChartCorporal,
           bebedouro: sampleChartBebedouro,
         },
-      }), "Geração PDF da visita técnica", Date.now() + 120_000, 120_000);
+      });
 
 
       const pdfUrl = await withConsultorTimeout(
@@ -862,7 +833,7 @@ export default function RevisaoVisitaPage() {
       toast.success("PDF gerado e visita finalizada!");
       setVisita(v => v ? { ...v, pdf_url: pdfUrl, status: "finalizada" } : v);
       setPdfVisualizar({ url: pdfUrl, nome: fazenda.nome_fazenda || "visita" });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
@@ -889,7 +860,7 @@ export default function RevisaoVisitaPage() {
       fazenda_nome: fazenda?.nome_fazenda || "",
       localizacao: [fazenda?.municipio, fazenda?.uf].filter(Boolean).join("/"),
       proprietario: fazenda?.proprietario || "",
-      responsavel: fazenda?.responsavel || "",
+      responsavel: (fazenda as any)?.responsavel || "",
       consultor_nome: consultor?.nome || "",
     };
   }
@@ -912,7 +883,7 @@ export default function RevisaoVisitaPage() {
     setOverrides(prev => ({ ...prev, [key]: final || "" }));
     const column = `${key}_override` as const;
     setVisita(prev => prev ? { ...prev, [column]: final } as Visita : prev);
-    await autosaveVisita({ [column]: final } as Partial<Visita>);
+    await autosaveVisita({ [column]: final } as any);
   }
 
 
@@ -1054,7 +1025,7 @@ export default function RevisaoVisitaPage() {
 
               {/* Resumo calculado (read-only) */}
               {(() => {
-                const n = normalizarConsumoPasto(p);
+                const n = normalizarConsumoPasto(p as any);
                 const real = n.realTotal;
                 const esp = n.espTotal;
                 const pvt = n.pesoVivoTotal;
@@ -1133,7 +1104,7 @@ export default function RevisaoVisitaPage() {
       {/* Consumo por Pasto — Real x Esperado */}
       <ConsumoPastoChart
         pontos={pastos.map(p => {
-          const n = normalizarConsumoPasto(p);
+          const n = normalizarConsumoPasto(p as any);
           return {
             letra: p.letra || "?",
             nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
@@ -1171,7 +1142,7 @@ export default function RevisaoVisitaPage() {
             onChange={e => setAreaAlqueires(e.target.value)}
             onBlur={() => {
               const n = parseAlqueires(areaAlqueires);
-              void autosaveVisita({ area_total_alqueires: n });
+              void autosaveVisita({ area_total_alqueires: n } as any);
             }}
             className="h-8 text-sm"
           />
@@ -1190,7 +1161,7 @@ export default function RevisaoVisitaPage() {
                   value={override}
                   placeholder={placeholder}
                   onChange={e => setIndicadoresTabela(prev => ({ ...prev, [key]: e.target.value }))}
-                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela })}
+                  onBlur={() => autosaveVisita({ indicadores_tabela: indicadoresTabela } as any)}
                   className="h-8 text-sm"
                 />
               </div>
@@ -1214,7 +1185,7 @@ export default function RevisaoVisitaPage() {
         horaFim={visita.hora_fim}
         onChange={async (patch) => {
           setVisita(prev => prev ? { ...prev, ...patch } as Visita : prev);
-          await autosaveVisita(patch);
+          await autosaveVisita(patch as any);
         }}
       />
 
@@ -1291,9 +1262,9 @@ export default function RevisaoVisitaPage() {
                     objetivo_visita: objetivo || null,
                     resumo_executivo: resumo || null,
                     indicadores_gerais: indicadores || null,
-                    indicadores_tabela: indicadoresTabela,
+                    indicadores_tabela: indicadoresTabela as any,
                     area_total_alqueires: parseAlqueires(areaAlqueires),
-                  });
+                  } as any);
                   toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
                   navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
