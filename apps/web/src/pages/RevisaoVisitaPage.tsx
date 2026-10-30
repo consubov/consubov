@@ -600,8 +600,11 @@ export default function RevisaoVisitaPage() {
           : x),
       }));
       toast.info("Foto salva off-line. Sincronize quando houver internet.");
-    } catch (err: any) {
-      toast.error("Erro ao preparar foto: " + (err?.message || ""));
+    } catch (err: unknown) {
+      const detalhe = err !== null && typeof err === "object" && "message" in err
+        ? String(err.message || "")
+        : "";
+      toast.error("Erro ao preparar foto: " + detalhe);
     }
   }
 
@@ -806,8 +809,8 @@ export default function RevisaoVisitaPage() {
         topicos: topicosForPdf,
         assinantes: (await fetchAssinantes(visita.id)).map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
         logoOverride: {
-          esquerdaPath: (consultor as any)?.logo_esquerda_url || null,
-          direitaPath: (consultor as any)?.logo_direita_url || null,
+          esquerdaPath: consultor?.logo_esquerda_url || null,
+          direitaPath: consultor?.logo_direita_url || null,
         },
         pastos: pastosForPdf,
         numeroMap,
@@ -834,7 +837,7 @@ export default function RevisaoVisitaPage() {
       toast.success("PDF gerado e visita finalizada!");
       setVisita(v => v ? { ...v, pdf_url: pdfUrl, status: "finalizada" } : v);
       setPdfVisualizar({ url: pdfUrl, nome: fazenda.nome_fazenda || "visita" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.dismiss(t);
       toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
@@ -861,7 +864,7 @@ export default function RevisaoVisitaPage() {
       fazenda_nome: fazenda?.nome_fazenda || "",
       localizacao: [fazenda?.municipio, fazenda?.uf].filter(Boolean).join("/"),
       proprietario: fazenda?.proprietario || "",
-      responsavel: (fazenda as any)?.responsavel || "",
+      responsavel: fazenda?.responsavel || "",
       consultor_nome: consultor?.nome || "",
     };
   }
@@ -1026,7 +1029,7 @@ export default function RevisaoVisitaPage() {
 
               {/* Resumo calculado (read-only) */}
               {(() => {
-                const n = normalizarConsumoPasto(p as any);
+                const n = normalizarConsumoPasto(p);
                 const real = n.realTotal;
                 const esp = n.espTotal;
                 const pvt = n.pesoVivoTotal;
@@ -1105,7 +1108,7 @@ export default function RevisaoVisitaPage() {
       {/* Consumo por Pasto — Real x Esperado */}
       <ConsumoPastoChart
         pontos={pastos.map(p => {
-          const n = normalizarConsumoPasto(p as any);
+          const n = normalizarConsumoPasto(p);
           return {
             letra: p.letra || "?",
             nomeCompleto: p.num_pasto ? `Pasto ${p.num_pasto}` : `Pasto ${p.letra || "?"}`,
