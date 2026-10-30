@@ -1,0 +1,32 @@
+[lint:changed] validando 1 arquivo(s):
+- src/components/relatorio/ExportarRelatorioModal.tsx
+
+/app/apps/web/src/components/relatorio/ExportarRelatorioModal.tsx
+  132:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  153:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  174:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:81  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  191:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  246:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  256:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  262:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  263:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  283:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  285:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  329:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  332:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  333:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  360:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  446:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  459:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  526:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  580:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  582:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  587:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  594:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  614:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 26 problems (26 errors, 0 warnings)
