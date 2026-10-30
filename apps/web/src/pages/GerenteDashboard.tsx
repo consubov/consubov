@@ -1,5 +1,5 @@
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
-import { Fragment, useEffect, useState, useMemo, useRef } from "react";
+import { Fragment, useEffect, useState, useMemo, useRef, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +63,7 @@ function LoadingScreen() {
 }
 
 function MetricCard({ icon: Icon, label, value, sub, iconColor = "text-primary" }: {
-  icon: any; label: string; value: string; sub?: string; iconColor?: string;
+  icon: ComponentType<{ className?: string }>; label: string; value: string; sub?: string; iconColor?: string;
 }) {
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -126,7 +126,7 @@ export default function GerenteDashboard() {
         .select("fazenda_id, fazendas(id, nome)")
         .eq("gerente_id", roleData.roleId);
       if (cancelled) return;
-      const opcoes = (data ?? []).flatMap((item: any) => {
+      const opcoes = (data ?? []).flatMap((item) => {
         const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
         return fazenda?.id ? [{ id: fazenda.id, nome: fazenda.nome }] : [];
       });
@@ -184,7 +184,7 @@ export default function GerenteDashboard() {
     loading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
-    alertasAtraso, intervaloDefinido,
+    alertasAtraso, intervaloDefinido, loadError, hasCurrentCache,
   } = useGerenteData(filters);
 
   const { painelMae } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
@@ -267,7 +267,7 @@ export default function GerenteDashboard() {
         downloadBlob(result.blob, result.fileName);
         toast.success("PDF baixado");
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       toast.error("Falha ao gerar PDF");
     } finally {
@@ -295,6 +295,14 @@ export default function GerenteDashboard() {
     navigate(`/dashboard/retiro/${retiroId}?mes=${mes}&ano=${ano}`);
   };
 
+  if (loadError && !hasCurrentCache) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6" role="alert">
+        <p className="text-sm text-destructive text-center">{loadError}</p>
+        <Button variant="outline" onClick={() => void refresh()}>Tentar novamente</Button>
+      </main>
+    );
+  }
   if (loading) return <LoadingScreen />;
 
   if (salgaReportOpen && roleData.fazendaId) {
@@ -309,6 +317,12 @@ export default function GerenteDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {loadError && (
+        <div role="alert" className="bg-muted px-4 py-2 flex items-center justify-between gap-3">
+          <span className="text-sm">Não foi possível atualizar os dados. Exibindo informações anteriores desta fazenda.</span>
+          <Button variant="outline" size="sm" onClick={() => void refresh()}>Tentar novamente</Button>
+        </div>
+      )}
       <UpdateBanner />
       <EnableNotificationsBanner />
       {/* Header */}
@@ -558,8 +572,8 @@ export default function GerenteDashboard() {
                   {painelDataView.statusDistribution.baixoPct > 0 && (
                     <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.baixoPct}%`, backgroundColor: "#E53935" }} />
                   )}
-                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
-                    <div className="transition-all" style={{ width: `${(painelDataView.statusDistribution as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />
+                  {("atencaoPct" in painelDataView.statusDistribution ? Number(painelDataView.statusDistribution.atencaoPct ?? 0) : 0) > 0 && (
+                    <div className="transition-all" style={{ width: `${("atencaoPct" in painelDataView.statusDistribution ? Number(painelDataView.statusDistribution.atencaoPct ?? 0) : 0)}%`, backgroundColor: "#FBC02D" }} />
                   )}
                   {painelDataView.statusDistribution.idealPct > 0 && (
                     <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.idealPct}%`, backgroundColor: "#43A047" }} />
@@ -571,8 +585,8 @@ export default function GerenteDashboard() {
                 {/* Labels */}
                 <div className="flex justify-between text-xs">
                   <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelDataView.statusDistribution.baixoPct, 0)}%</span>
-                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
-                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((painelDataView.statusDistribution as any).atencaoPct, 0)}%</span>
+                  {("atencaoPct" in painelDataView.statusDistribution ? Number(painelDataView.statusDistribution.atencaoPct ?? 0) : 0) > 0 && (
+                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum(("atencaoPct" in painelDataView.statusDistribution ? Number(painelDataView.statusDistribution.atencaoPct ?? 0) : 0), 0)}%</span>
                   )}
                   <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelDataView.statusDistribution.idealPct, 0)}%</span>
                   <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelDataView.statusDistribution.altoPct, 0)}%</span>

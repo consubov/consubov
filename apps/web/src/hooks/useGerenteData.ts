@@ -9,13 +9,15 @@ import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMi
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied } from "@/lib/observacoesGuard";
+import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
-import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; intervalo_padrao_dias?: number | null; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -118,8 +120,17 @@ export function useGerenteData(filters?: GerenteFilters) {
     consumoAno,
   );
 
+  const hasFilters = filters !== undefined;
+  const filterAno = filters?.ano;
+  const filterMes = filters?.mes;
+  const filterStatus = filters?.cicloStatus;
   const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
   const ic = getScreenCache<GerenteCache>(cacheKey);
+  const activeCacheKey = useRef("");
+  const loadSequence = useRef(0);
+  const resolvingIds = useRef(new Set<string>());
+  const [appliedCacheKey, setAppliedCacheKey] = useState(ic ? cacheKey : "");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!ic);
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
   const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
@@ -131,17 +142,27 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [produtos, setProdutos] = useState<Produto[]>(ic?.produtos ?? []);
   const [observacoes, setObservacoes] = useState<Observacao[]>(ic?.observacoes ?? []);
 
-  const applyCache = useCallback((c: GerenteCache) => {
+  const applyCache = useCallback((c: GerenteCache, forKey: string) => {
+    if (activeCacheKey.current !== forKey) return;
     setGerenteNome(c.gerenteNome); setFazendaData(c.fazendaData); setCiclo(c.ciclo);
     setCiclosDisponiveis(c.ciclosDisponiveis); setRetiros(c.retiros); setPastos(c.pastos);
     setLancamentos(c.lancamentos); setProdutos(c.produtos); setObservacoes(c.observacoes);
+    setAppliedCacheKey(forKey);
   }, []);
 
   const fazendaNome = fazendaData.nome;
 
   const loadData = useCallback(async () => {
-    if (!fazendaId) { setLoading(false); return; }
-    if (!getScreenCache(cacheKey)) setLoading(true);
+    const requestId = ++loadSequence.current;
+    const isCurrent = () => isObservationContextCurrent(
+      cacheKey, activeCacheKey.current, requestId, loadSequence.current,
+    );
+    if (!fazendaId) {
+      if (isCurrent()) { setLoading(false); setLoadError(null); }
+      return;
+    }
+    if (!getScreenCache(cacheKey) && isCurrent()) setLoading(true);
+    let observationsDenied = false;
     const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
     try {
       const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
@@ -149,26 +170,26 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       snap.gerenteNome = (gerenteRes.data?.nome ?? "");
-      const fData = fazendaRes.data as any;
+      const fData = fazendaRes.data;
       snap.fazendaData = ({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
 
       const allCiclos = (allCiclosRes.data ?? []) as Ciclo[];
       snap.ciclosDisponiveis = (allCiclos);
 
       let activeCiclo: Ciclo | null = null;
-      if (filters) {
+      if (hasFilters) {
         let filtered = allCiclos;
-        filtered = filtered.filter(c => c.ano === filters.ano);
-        if (filters.mes != null) {
-          filtered = filtered.filter(c => c.mes === filters.mes);
+        filtered = filtered.filter(c => c.ano === filterAno);
+        if (filterMes != null) {
+          filtered = filtered.filter(c => c.mes === filterMes);
         }
-        if (filters.cicloStatus === 'aberto') {
+        if (filterStatus === 'aberto') {
           filtered = filtered.filter(c => !c.fechado);
-        } else if (filters.cicloStatus === 'fechado') {
+        } else if (filterStatus === 'fechado') {
           filtered = filtered.filter(c => c.fechado);
         }
         activeCiclo = filtered[0] ?? null;
@@ -177,11 +198,12 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = (retirosRes.data ?? []).map((r: any) => ({
+      const retirosList = (retirosRes.data ?? []).map((r) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
         produto_id: r.produto_id ?? null,
+        intervalo_padrao_dias: r.intervalo_padrao_dias ?? null,
       })) as Retiro[];
       snap.retiros = (retirosList);
 
@@ -194,14 +216,14 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = (pastosRes.data ?? []) as Pasto[];
         snap.pastos = (pastosList);
 
-        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
+        let lancQuery = supabase.from("view_consumo_tempo_real")
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
-        if (filters) {
-          lancQuery = lancQuery.eq("ano_referencia", filters.ano);
-          if (filters.mes != null) {
-            lancQuery = lancQuery.eq("mes_referencia", filters.mes);
+        if (hasFilters) {
+          lancQuery = lancQuery.eq("ano_referencia", filterAno);
+          if (filterMes != null) {
+            lancQuery = lancQuery.eq("mes_referencia", filterMes);
           }
         } else if (activeCiclo) {
           lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
@@ -211,7 +233,6 @@ export function useGerenteData(filters?: GerenteFilters) {
         const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
         snap.lancamentos = (lancList);
 
-        console.log(`[useGerenteData] mes=${filters?.mes ?? activeCiclo?.mes} ano=${filters?.ano ?? activeCiclo?.ano} fazenda=${fazendaId} → pastos=${pastosList.length} lancamentos=${lancList.length}`);
       } else {
         snap.pastos = ([]);
         snap.lancamentos = ([]);
@@ -223,25 +244,45 @@ export function useGerenteData(filters?: GerenteFilters) {
       const produtosRes = await produtosQuery;
       snap.produtos = ((produtosRes.data ?? []) as Produto[]);
 
-      try {
-        const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
-        snap.observacoes = ((obsRes.data ?? []) as Observacao[]);
-      } catch {
-        snap.observacoes = ([]);
-      }
+      const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      observationsDenied = isObservationAccessDenied(obsRes.error);
+      snap.observacoes = confirmObservationRead(obsRes, fazendaId);
+      // Never publish an old tenant response or cache a failed SELECT as empty data.
+      if (!isCurrent()) return;
       setScreenCache(cacheKey, snap);
-      applyCache(snap);
+      applyCache(snap, cacheKey);
+      setLoadError(null);
     } catch (e) {
-      console.error("Error loading gerente data:", e);
+      if (isCurrent()) {
+        if (observationsDenied) {
+          // Revoked SELECT must not leave a previously valid manager cache readable.
+          dropScreenCacheScopes(["gerente"]);
+          setAppliedCacheKey("");
+          setObservacoes([]);
+        }
+        setLoadError(observationsDenied
+          ? "Acesso às observações não confirmado. Faça login novamente ou contate o suporte."
+          : "Não foi possível confirmar os dados da fazenda. Tente novamente.");
+        console.error("Error loading gerente data:", e);
+      }
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filterAno, filterMes, filterStatus, hasFilters, cacheKey, applyCache]);
 
   useEffect(() => {
+    activeCacheKey.current = cacheKey;
     const c = getScreenCache<GerenteCache>(cacheKey);
-    if (c) { applyCache(c); setLoading(false); }
+    if (c) { applyCache(c, cacheKey); setLoading(false); }
+    else { setAppliedCacheKey(""); setLoading(true); }
+    setLoadError(null);
     void loadData();
+    const sequence = loadSequence;
+    const activeKey = activeCacheKey;
+    return () => {
+      sequence.current++;
+      activeKey.current = "";
+    };
   }, [loadData, cacheKey, applyCache]);
 
   // Realtime: auto-refresh when key tables change
@@ -271,12 +312,12 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     if (!gmdPastoIds) { setGmdPastos({}); return; }
     let cancel = false;
-    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+    const dia = dataReferenciaGmd(hasFilters ? filterMes : consumoMes, consumoAno);
     fetchGmdPastos(gmdPastoIds.split(","), dia)
       .then((m) => { if (!cancel) setGmdPastos(m); })
       .catch((e) => console.error("GMD pastos error:", e));
     return () => { cancel = true; };
-  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
+  }, [gmdPastoIds, hasFilters, filterMes, consumoMes, consumoAno]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -329,7 +370,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number((r as any).intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDefinido = Number(r.intervalo_padrao_dias ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -381,7 +422,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     if (!fazendaId) { setCapatazScores([]); return; }
     let cancelled = false;
-    const anual = filters != null && filters.mes == null;
+    const anual = hasFilters && filterMes == null;
     const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
     const end = anual ? new Date(consumoAno, 11, 31, 23, 59, 59) : new Date(consumoAno, consumoMes, 0, 23, 59, 59);
     fetchScoresCapataz({
@@ -400,7 +441,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, hasFilters, filterMes, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -431,20 +472,54 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Removido o envio client-side para evitar duplicação e evitar
   // enviar alerta a gerentes de outras fazendas.
 
-  // Resolve observacao
+  // Frontend ACK is a UX safeguard, not authorization: the database must enforce RLS.
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
+    if (loadError || !id || !fazendaId || appliedCacheKey !== cacheKey ||
+        !observacoes.some(o => o.id === id && o.fazenda_id === fazendaId && !o.resolvido)) {
+      toast.error("Observação indisponível para esta fazenda.");
+      return;
+    }
+    if (resolvingIds.current.has(id)) return;
+    resolvingIds.current.add(id);
+    const contextAtStart = cacheKey;
+    const loadAtStart = loadSequence.current;
     try {
-      await (supabase as any).from("observacoes").update({
-        resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString(),
-      }).eq("id", id);
-      setObservacoes(prev => prev.map(o =>
-        o.id === id ? { ...o, resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() } : o
-      ));
-    } catch (e) { console.error("Error resolving observacao:", e); }
-  }, []);
+      const response = await supabase.from("observacoes")
+        .update({ resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() })
+        .eq("id", id).eq("fazenda_id", fazendaId)
+        .select("id, fazenda_id, resolvido, resolvido_em, resolvido_por");
+      if (isObservationAccessDenied(response.error)) {
+        if (activeCacheKey.current === contextAtStart) {
+          loadSequence.current++;
+          dropScreenCacheScopes(["gerente"]);
+          setAppliedCacheKey("");
+          setObservacoes([]);
+          setLoadError("Acesso às observações não confirmado. Faça login novamente ou contate o suporte.");
+        }
+        return;
+      }
+      const confirmed = confirmObservationResolved(response, id, fazendaId);
+      if (!isObservationContextCurrent(contextAtStart, activeCacheKey.current,
+          loadAtStart, loadSequence.current)) return;
+      const updateRows = (list: Observacao[]) => list.map(o =>
+        o.id === id && o.fazenda_id === fazendaId ? { ...o, ...confirmed } : o
+      );
+      setObservacoes(updateRows);
+      const cached = getScreenCache<GerenteCache>(contextAtStart);
+      if (cached) setScreenCache(contextAtStart, { ...cached, observacoes: updateRows(cached.observacoes) });
+      toast.success("Observação resolvida");
+    } catch {
+      if (activeCacheKey.current === contextAtStart) {
+        toast.error("Resolução não confirmada pelo banco. Atualize e tente novamente.");
+      }
+    } finally {
+      resolvingIds.current.delete(id);
+    }
+  }, [fazendaId, cacheKey, appliedCacheKey, observacoes, loadError]);
 
-  const obsPendentes = useMemo(() => observacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [observacoes]);
-  const obsResolvidas = useMemo(() => observacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [observacoes]);
+  const scopedObservacoes = useMemo(() => appliedCacheKey === cacheKey ? observacoes : [], [appliedCacheKey, cacheKey, observacoes]);
+  const obsPendentes = useMemo(() => scopedObservacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [scopedObservacoes]);
+  const obsResolvidas = useMemo(() => scopedObservacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [scopedObservacoes]);
 
   const refresh = useCallback(async () => {
     setScoresTick((t) => t + 1);
@@ -452,7 +527,9 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading || (!!fazendaId && appliedCacheKey !== cacheKey),
+    loadError, hasCurrentCache: appliedCacheKey === cacheKey,
+    gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,
