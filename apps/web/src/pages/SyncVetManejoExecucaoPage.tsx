@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, FileDown, CheckCircle2, Trash2 } from "lucide-react";
 import { gerarManejoPDF } from "@/lib/syncvetManejoPdf";
+import { readLegacyProtocoloId } from "@/lib/syncvetManejoProtocolo";
 
 type Resultado = "prenha" | "vazia" | "realizado";
 
@@ -68,14 +69,15 @@ export default function SyncVetManejoExecucaoPage() {
     (async () => {
       if (!manejoId) return;
       setLoading(true);
-      const { data: m, error } = await (supabase as any)
+      const { data: m, error } = await supabase
         .from("syncvet_manejos")
         .select("*")
         .eq("id", manejoId)
         .maybeSingle();
       if (error || !m) { toast.error(error?.message ?? "Manejo não encontrado"); setLoading(false); return; }
-      setManejo(m as Manejo);
-      setObsFinais((m as Manejo).observacoes ?? "");
+      const manejoRow: Manejo = { ...m, protocolo_id: readLegacyProtocoloId(m) };
+      setManejo(manejoRow);
+      setObsFinais(manejoRow.observacoes ?? "");
 
       const [{ data: f }, { data: l }, { data: r }] = await Promise.all([
         supabase.from("syncvet_fazendas").select("nome, empresa_id").eq("id", m.fazenda_id).maybeSingle(),
@@ -92,8 +94,8 @@ export default function SyncVetManejoExecucaoPage() {
         const { data: emp } = await supabase.from("syncvet_empresas").select("nome").eq("id", f.empresa_id).maybeSingle();
         setEmpresaNome(emp?.nome ?? "");
       }
-      if (m.protocolo_id) {
-        const { data: p } = await supabase.from("syncvet_protocolos").select("nome").eq("id", m.protocolo_id).maybeSingle();
+      if (manejoRow.protocolo_id) {
+        const { data: p } = await supabase.from("syncvet_protocolos").select("nome").eq("id", manejoRow.protocolo_id).maybeSingle();
         setProtocoloNome(p?.nome ?? "");
       }
       if (m.semen_id) {
