@@ -112,7 +112,7 @@ function loadMem() {
 }
 
 async function fetchAll(table: string) {
-  const out: any[] = [];
+  const out: Record<string, unknown>[] = [];
   const page = 1000;
   for (let from = 0; ; from += page) {
     const { data, error } = await (supabase as any).from(table).select("*").range(from, from + page - 1);
