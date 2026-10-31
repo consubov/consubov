@@ -94,7 +94,7 @@ export async function fetchGmdPastos(
       const id = ids[index];
       try {
         const response: { data: unknown; error?: unknown } = await withGmdSlot(async () => {
-          const query = (supabase as any).rpc("gmd_do_pasto", { p_pasto: id, p_dia: dia });
+          const query = supabase.rpc("gmd_do_pasto", { p_pasto: id, p_dia: dia });
           return query.abortSignal(batchSignal);
         }, batchSignal);
         if (response?.error) throw new Error("RPC GMD indisponivel");

@@ -34,6 +34,7 @@ import {
   Clock, MapPin, TreePine, RefreshCw, BarChart3, Eye, AlertTriangle, FileDown, Skull, Map, FileText, Download, Loader2, ScanLine, PackagePlus, Menu, Gauge, Scale,
   Camera,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import logoConsubov from "@/assets/logo-consubov.jpeg";
 import { UpdateBanner, RefreshButton } from "@/components/UpdateBanner";
 import { EnableNotificationsBanner } from "@/components/EnableNotificationsBanner";
@@ -63,7 +64,7 @@ function LoadingScreen() {
 }
 
 function MetricCard({ icon: Icon, label, value, sub, iconColor = "text-primary" }: {
-  icon: any; label: string; value: string; sub?: string; iconColor?: string;
+  icon: LucideIcon; label: string; value: string; sub?: string; iconColor?: string;
 }) {
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -132,7 +133,7 @@ export default function GerenteDashboard() {
         setFazendasError("Não foi possível carregar os vínculos das fazendas. Tente novamente.");
         return;
       }
-      const opcoes = data.flatMap((item: any) => {
+      const opcoes = data.flatMap((item) => {
         const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
         return fazenda?.id ? [{ id: fazenda.id, nome: fazenda.nome }] : [];
       });
@@ -216,6 +217,10 @@ export default function GerenteDashboard() {
   const painelDataView = produtoFiltro.filtroAtivo
     ? { ...painelData, ...produtoFiltro.agg }
     : painelData;
+  // Attention is optional in legacy status distributions, never invent a category.
+  const statusDistribution = painelDataView.statusDistribution;
+  const atencaoPct = "atencaoPct" in statusDistribution && typeof statusDistribution.atencaoPct === "number"
+    ? statusDistribution.atencaoPct : 0;
   const abatidosMesView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosMes : abatidosMes;
   const abatidosAnoView = produtoFiltro.filtroAtivo ? produtoFiltro.abatidosAno : abatidosAno;
   const {
@@ -280,7 +285,7 @@ export default function GerenteDashboard() {
         downloadBlob(result.blob, result.fileName);
         toast.success("PDF baixado");
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
       toast.error("Falha ao gerar PDF");
     } finally {
@@ -587,8 +592,8 @@ export default function GerenteDashboard() {
                   {painelDataView.statusDistribution.baixoPct > 0 && (
                     <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.baixoPct}%`, backgroundColor: "#E53935" }} />
                   )}
-                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
-                    <div className="transition-all" style={{ width: `${(painelDataView.statusDistribution as any).atencaoPct}%`, backgroundColor: "#FBC02D" }} />
+                  {atencaoPct > 0 && (
+                    <div className="transition-all" style={{ width: `${atencaoPct}%`, backgroundColor: "#FBC02D" }} />
                   )}
                   {painelDataView.statusDistribution.idealPct > 0 && (
                     <div className="transition-all" style={{ width: `${painelDataView.statusDistribution.idealPct}%`, backgroundColor: "#43A047" }} />
@@ -600,8 +605,8 @@ export default function GerenteDashboard() {
                 {/* Labels */}
                 <div className="flex justify-between text-xs">
                   <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelDataView.statusDistribution.baixoPct, 0)}%</span>
-                  {(painelDataView.statusDistribution as any).atencaoPct > 0 && (
-                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((painelDataView.statusDistribution as any).atencaoPct, 0)}%</span>
+                  {atencaoPct > 0 && (
+                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum(atencaoPct, 0)}%</span>
                   )}
                   <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelDataView.statusDistribution.idealPct, 0)}%</span>
                   <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelDataView.statusDistribution.altoPct, 0)}%</span>

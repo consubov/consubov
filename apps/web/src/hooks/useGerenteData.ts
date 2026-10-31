@@ -156,7 +156,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       snap.gerenteNome = requireReadValue(gerenteRes).nome;
@@ -184,7 +184,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = requireReadRows(retirosRes).map((r: any) => ({
+      const retirosList = requireReadRows(retirosRes).map((r) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
@@ -233,7 +233,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         snap.produtos = requireReadRows(produtosRes) as Produto[];
       } else snap.produtos = [];
 
-      const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
       snap.observacoes = requireReadRows(obsRes) as Observacao[];
       if (currentKey.current !== cacheKey) return;
       setScreenCache(cacheKey, snap);
@@ -245,7 +245,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       if (currentKey.current === cacheKey) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, filters, cacheKey, applyCache]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
@@ -290,7 +290,10 @@ export function useGerenteData(filters?: GerenteFilters) {
   const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
   const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
   const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
-  const gmdPastos = gmdState.scope === gmdScope ? gmdState.values : {};
+  const gmdPastos = useMemo<Record<string, number | null>>(
+    () => gmdState.scope === gmdScope ? gmdState.values : {},
+    [gmdState.scope, gmdState.values, gmdScope],
+  );
   const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
 
   useEffect(() => {
@@ -366,7 +369,8 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number((r as any).intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDoRetiro = "intervalo_padrao_dias" in r ? r.intervalo_padrao_dias : null;
+      const intervaloDefinido = Number(intervaloDoRetiro ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -437,7 +441,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, filters, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -471,7 +475,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Resolve observacao
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
     try {
-      await (supabase as any).from("observacoes").update({
+      await supabase.from("observacoes").update({
         resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString(),
       }).eq("id", id);
       setObservacoes(prev => prev.map(o =>
