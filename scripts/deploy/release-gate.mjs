@@ -61,7 +61,7 @@ export function decideDeployment(target, env = process.env, cwd = process.cwd())
 
   if (project.surface === 'app') {
     if (project.versionPolicy === 'semver') {
-      if (typeof project.versionSource !== 'string' || !/^apps\/[a-z0-9/_-]+\.ts$/.test(project.versionSource)) {
+      if (typeof project.versionSource !== 'string' || !/^apps\/[a-zA-Z0-9/_-]+\.ts$/.test(project.versionSource)) {
         return skip('invalid-version-source');
       }
       const oldVersion = parseVersion(previous.appVersion);
