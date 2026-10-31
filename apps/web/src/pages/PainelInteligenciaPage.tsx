@@ -130,7 +130,7 @@ export default function PainelInteligenciaPage() {
         supabase.from("retiros").select("id, nome, fazenda_id, produto_id").eq("ativo", true),
         supabase.from("pastos").select("id, nome, retiro_id, num_animais, peso_medio_kg, categoria, sexo, produto_id, gmd_kg_dia").eq("ativo", true),
         supabase.from("produtos").select("id, nome, peso_saco_kg, consumo_engorda, consumo_recria1, consumo_recria2, margem_engorda, margem_recria1, margem_recria2, preco_por_kg").eq("ativo", true),
-        supabase.from("view_consumo_tempo_real" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("view_consumo_tempo_real").select("*").order("created_at", { ascending: false }),
         fetchVinculosPorProduto(),
       ]);
       setVinculosProduto(vinculos);
@@ -606,14 +606,18 @@ export default function PainelInteligenciaPage() {
         supabase.from("pastos").select("retiro_id, num_animais, categoria").eq("ativo", true),
       ]), "Consulta de indicadores do painel", Date.now() + 30_000, 30_000);
       if (fFresh.error || rFresh.error || pFresh.error) throw (fFresh.error || rFresh.error || pFresh.error);
-      const fazFresh = new Map((fFresh.data ?? []).map((f: any) => [f.id, f]));
-      const retFresh = new Map((rFresh.data ?? []).map((r: any) => [r.id, r]));
+      const fazFresh = new Map(
+        ((fFresh.data ?? []) as Pick<Fazenda, "id" | "cidade" | "estado">[]).map((f) => [f.id, f] as const),
+      );
+      const retFresh = new Map(
+        ((rFresh.data ?? []) as Pick<Retiro, "id" | "fazenda_id">[]).map((r) => [r.id, r] as const),
+      );
       const animaisFresh: Record<string, number> = {};
-      (pFresh.data ?? []).forEach((p: any) => {
+      ((pFresh.data ?? []) as Pick<Pasto, "retiro_id" | "num_animais" | "categoria">[]).forEach((p) => {
         const n = Number(p.num_animais) || 0;
         if (n <= 0) return;
-        const ret: any = retFresh.get(p.retiro_id);
-        const faz: any = ret ? fazFresh.get(ret.fazenda_id) : null;
+        const ret = retFresh.get(p.retiro_id);
+        const faz = ret ? fazFresh.get(ret.fazenda_id) : null;
         if (!faz) return;
         if (filtroFazenda !== "all" && faz.id !== filtroFazenda) return;
         if (filtroEstado !== "all" && faz.estado !== filtroEstado) return;

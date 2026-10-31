@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function publicAsset(name: string): string {
+  // Vitest transforms import.meta.url; cwd is the web package under CI.
   return resolve(process.cwd(), "public", name);
 }
 function readPublic(name: string): string {

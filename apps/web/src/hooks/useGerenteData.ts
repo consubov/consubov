@@ -4,6 +4,7 @@ import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
@@ -16,7 +17,7 @@ import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useSc
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; intervalo_padrao_dias?: number | null; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -26,7 +27,7 @@ interface Lancamento {
   id: string; pasto_id: string; num_sacos: number;
   num_animais: number; peso_medio_kg: number | null;
   categoria: string | null; sexo: string | null;
-  dias_no_pasto: number; origem: string;
+  dias_no_pasto: number; origem: string | null;
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
@@ -67,7 +68,7 @@ export interface AlertaAtraso {
 
 export interface StatusDistribution {
   baixo: number; ideal: number; alto: number;
-  baixoPct: number; idealPct: number; altoPct: number; atencaoPct?: number;
+  baixoPct: number; idealPct: number; altoPct: number;
 }
 
 export interface PainelData {
@@ -183,7 +184,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = requireReadRows(retirosRes).map(r => ({
+      const retirosList = requireReadRows(retirosRes).map((r) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
@@ -201,7 +202,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         snap.pastos = (pastosList);
 
         let lancQuery = supabase.from("view_consumo_tempo_real")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
@@ -214,7 +215,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = requireReadRows(lancRes) as Lancamento[];
+        const lancList: Lancamento[] = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
         snap.lancamentos = (lancList);
 
 
@@ -244,7 +245,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       if (currentKey.current === cacheKey) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
@@ -289,7 +290,10 @@ export function useGerenteData(filters?: GerenteFilters) {
   const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
   const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
   const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
-  const gmdPastos = useMemo(() => gmdState.scope === gmdScope ? gmdState.values : {}, [gmdState, gmdScope]);
+  const gmdPastos = useMemo<Record<string, number | null>>(
+    () => gmdState.scope === gmdScope ? gmdState.values : {},
+    [gmdState.scope, gmdState.values, gmdScope],
+  );
   const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
 
   useEffect(() => {
@@ -365,7 +369,8 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number(r.intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDoRetiro = "intervalo_padrao_dias" in r ? r.intervalo_padrao_dias : null;
+      const intervaloDefinido = Number(intervaloDoRetiro ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -436,7 +441,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, filters, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados

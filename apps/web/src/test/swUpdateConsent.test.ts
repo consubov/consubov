@@ -42,7 +42,7 @@ describe("PWA update consent (runtime)", () => {
     await f.module.applyPendingUpdateNow("user-click");
     expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
     await vi.advanceTimersByTimeAsync(16000);
-    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: "test-build-b" } });
+    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: newBuild } });
     expect(controls.reload).not.toHaveBeenCalled();
   });
 

@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
+const api = vi.hoisted(() => ({ from: vi.fn(), getUser: vi.fn() }));
 const fixtures = vi.hoisted(() => ({
   authValid: true, adminPresent: true, rlsDenied: false, offline: false,
-  from: vi.fn(), getUser: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -20,7 +20,7 @@ vi.mock("@/hooks/useAuth", () => ({
 vi.mock("@/integrations/supabase/client", () => {
   const counts: Record<string, number> = { fazendas: 5, retiros: 5, pastos: 5,
     produtos: 5, ciclos: 5, lancamentos: 5, fabricas: 5 };
-  fixtures.from.mockImplementation((table: string) => ({
+  const from = vi.fn((table: string) => ({
     select: (cols: string, opts: { head?: boolean } = {}) => {
       const response = table === "administradores"
         ? { data: fixtures.adminPresent ? { id: "active-id" } : null, error: null, status: 200 }
@@ -41,9 +41,11 @@ vi.mock("@/integrations/supabase/client", () => {
       return q;
     },
   }));
+  api.from = from;
+  api.getUser = vi.fn(async () => { throw new Error("auth offline"); });
   return { supabase: {
-    auth: { getUser: fixtures.getUser.mockImplementation(async () => { throw new Error("auth offline"); }) },
-    from: fixtures.from, channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
+    auth: { getUser: api.getUser },
+    from: api.from, channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
     removeChannel: vi.fn(),
   }};
 });
@@ -64,8 +66,8 @@ describe("AdminDashboard production auth regression", () => {
     renderDashboard();
     expect(await screen.findByText("50")).toBeInTheDocument();
     expect(screen.getAllByText("5")).toHaveLength(7);
-    expect(fixtures.getUser).not.toHaveBeenCalled();
-    expect(fixtures.from).toHaveBeenCalledWith("administradores");
+    expect(api.getUser).not.toHaveBeenCalled();
+    expect(api.from).toHaveBeenCalledWith("administradores");
   });
   it("rejects missing admin membership even when browser role is cached", async () => {
     fixtures.adminPresent = false;
@@ -77,7 +79,7 @@ describe("AdminDashboard production auth regression", () => {
     fixtures.authValid = false;
     renderDashboard();
     expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
-    expect(fixtures.from).not.toHaveBeenCalled();
+    expect(api.from).not.toHaveBeenCalled();
   });
   it("does not render false zeros on a server-side RLS denial", async () => {
     fixtures.rlsDenied = true;

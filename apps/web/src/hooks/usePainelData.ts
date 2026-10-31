@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, assertReadSuccess, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -149,7 +150,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
             .eq("ativo", true),
           (() => {
             let q = supabase.from("view_consumo_tempo_real")
-              .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
+              .select("id, pasto_id, retiro_id, fazenda_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
               .eq("fazenda_id", fazendaId)
               .eq("ano_referencia", ano)
               .eq("mes_referencia", mes);
@@ -158,7 +159,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
           })(),
         ]);
         snap.pastos = requireReadRows(pastosRes) as Pasto[];
-        snap.lancamentos = requireReadRows(lancRes) as Lancamento[];
+        snap.lancamentos = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
 
         // Consumo canônico por retiro: RPC get_painel_mae (ponderado por cab-dias)
         const entries = await Promise.all(retiroIds.map(async (rid) => {
