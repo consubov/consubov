@@ -4,8 +4,29 @@ import { SecurityContractValidationError } from "./errors";
 import {
   createAuthenticatedRequestContext,
   createPermissionScope,
+  createPrincipalId,
   createTenantId,
 } from "./identity";
+
+describe("createPrincipalId", () => {
+  test("creates a valid principal id", () => {
+    expect(createPrincipalId("user-1")).toBe("user-1");
+  });
+
+  test("trims whitespace from principal id", () => {
+    expect(createPrincipalId("  user-2  ")).toBe("user-2");
+  });
+
+  test("throws on empty or whitespace-only principal id", () => {
+    expect(() => createPrincipalId("")).toThrow(SecurityContractValidationError);
+    expect(() => createPrincipalId("   ")).toThrow(SecurityContractValidationError);
+  });
+
+  test("throws when principal id exceeds max length", () => {
+    const longId = "a".repeat(129);
+    expect(() => createPrincipalId(longId)).toThrow(SecurityContractValidationError);
+  });
+});
 
 describe("security contracts", () => {
   test("builds a user context and normalizes/deduplicates scopes", () => {
