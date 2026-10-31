@@ -62,6 +62,56 @@ describe("security contracts", () => {
     );
   });
 
+  describe("hasScope", () => {
+    test("returns true when the required scope is present", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: ["fazendas:read", "pesagens:read"],
+      });
+
+      expect(hasScope(context, createPermissionScope("fazendas:read"))).toBe(
+        true,
+      );
+    });
+
+    test("returns false when the required scope is missing", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: ["fazendas:read"],
+      });
+
+      expect(hasScope(context, createPermissionScope("pesagens:read"))).toBe(
+        false,
+      );
+    });
+
+    test("returns false when context has no scopes", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: [],
+      });
+
+      expect(hasScope(context, createPermissionScope("fazendas:read"))).toBe(
+        false,
+      );
+    });
+  });
+
   test("allows same-tenant access when every required scope is granted", () => {
     const context = createAuthenticatedRequestContext({
       requestId: "req-1",
