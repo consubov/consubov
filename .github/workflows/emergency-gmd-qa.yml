@@ -1,0 +1,86 @@
+name: Emergency GMD QA (release branch)
+on:
+  push:
+    branches:
+      - hotfix/consubov-app/gmd-release-640de4-qa-20261030
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: emergency-gmd-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    name: Web Typecheck Build Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exactly this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen
+        run: bun install --frozen-lockfile
+      - name: GMD unit tests against actual Vite/Vitest configuration
+        working-directory: apps/web
+        run: bunx vitest run
+      - name: Web TypeScript
+        working-directory: apps/web
+        run: bun run typecheck
+      - name: Production web build
+        working-directory: apps/web
+        run: bun run build
+      - name: Built bundle secret guard
+        working-directory: apps/web
+        run: bun run check:dist-secrets
+      - name: Web changed files lint
+        working-directory: apps/web
+        run: bunx eslint src/lib/gmdConfigurado.ts src/lib/gmdConfigurado.test.ts src/hooks/useGerenteData.ts src/pages/GerenteDashboard.tsx --max-warnings=0
+  security:
+    name: Dependency audit HIGH+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exactly this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen
+        run: bun install --frozen-lockfile
+      - name: Dependency audit
+        run: bun audit --audit-level=high
+  e2e:
+    name: Playwright public and mocked-role smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen
+        run: bun install --frozen-lockfile
+      - name: Install isolated test browser
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - name: Playwright responsive, auth-mock and public smoke
+        working-directory: apps/web
+        run: bun run test:e2e:smoke
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-local-test-key
