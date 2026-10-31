@@ -1,4 +1,3 @@
-import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -141,13 +140,13 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         return;
       }
 
-      const { data: lancData, error } = await withReportExportDeadline(supabase
+      const { data: lancData, error } = await supabase
         .from("lancamentos")
         .select("pasto_id, num_sacos, cocho_cheio")
         .eq("retiro_id", selectedRetiroId)
         .eq("fazenda_id", fazendaId)
         .gte("created_at", range.start.toISOString())
-        .lte("created_at", range.end.toISOString()), "Lançamentos da salga", Date.now() + 25_000);
+        .lte("created_at", range.end.toISOString());
 
       if (error) throw error;
       if (!lancData || lancData.length === 0) {
@@ -158,16 +157,16 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
       const pastoMap: Record<string, number> = {};
       const cochoMap: Record<string, number> = {};
-      lancData.forEach((l) => {
+      lancData.forEach((l: any) => {
         pastoMap[l.pasto_id] = (pastoMap[l.pasto_id] || 0) + (l.num_sacos || 0);
         if (l.cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
       });
 
       const pastoIds = Object.keys(pastoMap);
-      const { data: pastosData } = await withReportExportDeadline(supabase
+      const { data: pastosData } = await supabase
         .from("pastos")
         .select("id, nome, num_animais, peso_medio_kg")
-        .in("id", pastoIds), "Pastos da salga", Date.now() + 25_000);
+        .in("id", pastoIds);
 
       const rows: PastoSalgaRow[] = (pastosData || []).map((p) => ({
         nome: p.nome,
@@ -191,15 +190,9 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       fileNameRef.current = fileName;
 
       const storagePath = `salgas/${fazendaId}/${fileName}`;
-      try {
-        const { error: uploadError } = await withReportExportDeadline(supabase.storage
-          .from("relatorios").upload(storagePath, blob, { upsert: true, contentType: "application/pdf" }),
-          "Backup do PDF", Date.now() + 25_000);
-        if (uploadError) throw uploadError;
-      } catch (uploadError) {
-        console.warn("[PDF] Backup remoto não confirmado:", uploadError);
-        toast.warning("PDF gerado localmente; cópia no servidor não confirmada.");
-      }
+      await supabase.storage
+        .from("relatorios")
+        .upload(storagePath, blob, { upsert: true, contentType: "application/pdf" });
 
       const totalSacosReais = rows.reduce((s, r) => s + r.sacosUtilizados, 0);
       const totalCocho = rows.reduce((s, r) => s + (r.cochoCheio ?? 0), 0);
@@ -212,7 +205,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       const localUrl = URL.createObjectURL(blob);
       setPdfUrl(localUrl);
       toast.success("PDF gerado com sucesso!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao gerar PDF de salga:", err);
       toast.error("Erro ao gerar PDF. Tente novamente.");
     } finally {
@@ -234,7 +227,14 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       } catch { /* cancelled */ }
     }
 
-    downloadGeneratedPdf(blob, shareFileName);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = shareFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     toast.success("PDF baixado!");
   }
 

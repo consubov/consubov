@@ -505,7 +505,7 @@ test.describe("@phase5-ui-contract @web-ready FASE 5 — upload, acessibilidade 
         await page.goto("/admin/fazendas");
         const alert = page.getByRole("alert");
         // The installed SDK retries503 after1s+2s+4s before returning its error.
-        await expect(alert).toContainText(status === 503 ? "Erro ao carregar fazendas. Verifique a conexão e tente novamente." : "Acesso não autorizado para carregar fazendas.", { timeout: status === 503 ? 10_000 : 5_000 });
+        await expect(alert).toContainText(status === 503 ? "Erro ao carregar fazendas. Tente novamente." : "Acesso não autorizado para carregar fazendas.", { timeout: status === 503 ? 10_000 : 5_000 });
         await expect(page.getByText("PRIVATE-TENANT")).toHaveCount(0);
         await expect(page.getByText("Nenhuma fazenda cadastrada.", { exact: true })).toHaveCount(0);
         await page.evaluate(enabled => document.documentElement.classList.toggle("dark", enabled), dark);

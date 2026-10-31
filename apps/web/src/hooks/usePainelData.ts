@@ -1,8 +1,6 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { supabase } from "@/integrations/supabase/client";
-import { requireReadValue, requireReadRows, assertReadSuccess, dataReadErrorMessage } from "@/lib/dataReadGuard";
-import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useConsumoMineral, aggregateConsumoMineral, type ConsumoMineralRetiro } from "@/hooks/useConsumoMineral";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -102,12 +100,9 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(initialCache?.lancamentos ?? []);
   const [extraLoading, setExtraLoading] = useState(!initialCache);
   const [consumoRealByRetiro, setConsumoRealByRetiro] = useState<Record<string, number>>(initialCache?.consumoRealByRetiro ?? {});
-  const [extraError, setExtraError] = useState<string | null>(null);
-  const currentKey = useRef(cacheKey);
-  currentKey.current = cacheKey;
 
   // ---------- Centralized RPC for consumption metrics ----------
-  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } = useConsumoMineral({
+  const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
     fazendaId,
     mes,
     ano,
@@ -133,14 +128,15 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
           .eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
-      snap.fazendaNome = requireReadValue(fazRes).nome;
-      const allRetiros = requireReadRows(retirosRes) as Retiro[];
+      snap.fazendaNome = fazRes.data?.nome ?? "";
+      setFazendaNome(snap.fazendaNome);
+      const allRetiros = (retirosRes.data ?? []) as Retiro[];
       const retList = retiroId ? allRetiros.filter((r) => r.id === retiroId) : allRetiros;
       snap.retiros = retList;
+      setRetiros(retList);
 
       let retiroIds = retList.map(r => r.id);
-      // Never query a retiro outside the authorized farm scope.
-      if (retiroId && !retList.length) retiroIds = [];
+      if (retiroId) retiroIds = [retiroId];
 
       if (retiroIds.length > 0) {
         const [pastosRes, lancRes] = await Promise.all([
@@ -149,8 +145,8 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
             .in("retiro_id", retiroIds)
             .eq("ativo", true),
           (() => {
-            let q = supabase.from("view_consumo_tempo_real")
-              .select("id, pasto_id, retiro_id, fazenda_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
+            let q = supabase.from("view_consumo_tempo_real" as any)
+              .select("id, pasto_id, retiro_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, created_at, mes_referencia, ano_referencia, consumo_g_cab_dia, status_consumo, indice_consumo, categoria, sexo")
               .eq("fazenda_id", fazendaId)
               .eq("ano_referencia", ano)
               .eq("mes_referencia", mes);
@@ -158,44 +154,43 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
             return q;
           })(),
         ]);
-        snap.pastos = requireReadRows(pastosRes) as Pasto[];
-        snap.lancamentos = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
+        snap.pastos = (pastosRes.data ?? []) as Pasto[];
+        snap.lancamentos = ((lancRes.data as unknown) ?? []) as Lancamento[];
+        setPastos(snap.pastos);
+        setLancamentos(snap.lancamentos);
 
         // Consumo canônico por retiro: RPC get_painel_mae (ponderado por cab-dias)
         const entries = await Promise.all(retiroIds.map(async (rid) => {
-          const { data: rows, error: rpcError } = await (supabase as any).rpc("get_painel_mae", {
+          const { data: rows } = await (supabase as any).rpc("get_painel_mae", {
             p_fazenda_id: fazendaId,
             p_retiro_id: rid,
             p_mes: mes,
             p_ano: ano,
           });
-          assertReadSuccess({ error: rpcError });
           const row = Array.isArray(rows) ? rows[0] : rows;
           return [rid, Number(row?.consumo_real_g_cab_dia) || 0] as const;
         }));
         snap.consumoRealByRetiro = Object.fromEntries(entries);
-
+        setConsumoRealByRetiro(snap.consumoRealByRetiro);
+      } else {
+        setPastos([]);
+        setLancamentos([]);
+        setConsumoRealByRetiro({});
       }
-      if (currentKey.current !== cacheKey) return;
       setScreenCache(cacheKey, snap);
-      setFazendaNome(snap.fazendaNome);
-      setRetiros(snap.retiros);
-      setPastos(snap.pastos);
-      setLancamentos(snap.lancamentos);
-      setConsumoRealByRetiro(snap.consumoRealByRetiro);
-      setExtraError(null);
     } catch (e) {
-      if (currentKey.current === cacheKey) setExtraError(dataReadErrorMessage(e));
+      console.error("usePainelData error:", e);
     } finally {
-      if (currentKey.current === cacheKey) setExtraLoading(false);
+      setExtraLoading(false);
     }
   }, [fazendaId, retiroId, mes, ano, cacheKey]);
 
   useEffect(() => {
     const c = getScreenCache<PainelExtraCache>(cacheKey);
-    setFazendaNome(c?.fazendaNome ?? ""); setRetiros(c?.retiros ?? []); setPastos(c?.pastos ?? []);
-    setLancamentos(c?.lancamentos ?? []); setConsumoRealByRetiro(c?.consumoRealByRetiro ?? {});
-    setExtraError(null); setExtraLoading(!c);
+    if (c) {
+      setFazendaNome(c.fazendaNome); setRetiros(c.retiros); setPastos(c.pastos);
+      setLancamentos(c.lancamentos); setConsumoRealByRetiro(c.consumoRealByRetiro); setExtraLoading(false);
+    }
     void loadExtraData();
   }, [loadExtraData, cacheKey]);
 
@@ -212,9 +207,7 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
 
   // ---------- Metrics: from centralized RPC ----------
   const metrics = useMemo<PainelMetrics>(() => {
-    // Real occupancy comes from pastos and must not be set to zero just
-    // because a period has no consumption records.
-    if (consumoData.length === 0) return { ...emptyMetrics, totalAnimais: pastos.reduce((sum, p) => sum + (p.num_animais || 0), 0) };
+    if (consumoData.length === 0) return emptyMetrics;
     const agg = aggregateConsumoMineral(consumoData, applyFormulas ? formulas : undefined);
     // Total Animais = rebanho REAL (fonte única = pastos.num_animais ativos),
     // mesma contagem do mapa do Capataz. Não deriva de lançamentos.
@@ -299,6 +292,6 @@ export function usePainelData(filters: PainelFilters, options?: { useFormulasSis
   }, [loadExtraData, refreshConsumo]);
 
   return {
-    loading, error: extraError || consumoError, fazendaNome, metrics, retirosResumo, lancamentos, refresh,
+    loading, fazendaNome, metrics, retirosResumo, lancamentos, refresh,
   };
 }

@@ -3,16 +3,15 @@ import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { APP_VERSION } from "@/lib/appVersion";
-import { classifyPublishedRelease } from "@/lib/publishedUpdate";
 import { useHasCriticalOperations } from "@/lib/criticalOperations";
 
 declare const __APP_BUILD_VERSION__: string;
 
 /**
  * Banner fixo no topo. Mostra quando:
- *  - /version.json comprova um build NOVO e uma versão do produto igual ou maior.
- *  Um SW waiting, ou um version.json diferente, não garante upgrade válido.
- *  Nunca anunciar/ativar versões mais antigas do que o app carregado.
+ *  - existe um SW em waiting (updateAvailable do SW), OU
+ *  - /version.json publicado é diferente do build atualmente carregado
+ *    (cobre o caso de o SW ter aplicado a atualização sem o usuário perceber).
  */
 export function UpdateBanner() {
   const { updateAvailable, applyUpdate } = useSWUpdate();
@@ -24,17 +23,17 @@ export function UpdateBanner() {
     const check = async () => {
       try {
         const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
-        if (!res.ok) {
-          if (!cancelled) setRemoteMismatch(null);
-          return;
-        }
+        if (!res.ok) return;
         const data = (await res.json()) as { version?: string; appVersion?: string };
         if (cancelled) return;
-        const status = classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, data);
-        setRemoteMismatch(status === "newer" && typeof data.appVersion === "string" ? data.appVersion : null);
+        const remoteBuild = data.version ?? null;
+        const remoteApp = data.appVersion ?? null;
+        const mismatch =
+          (remoteBuild && remoteBuild !== __APP_BUILD_VERSION__) ||
+          (remoteApp && remoteApp !== APP_VERSION);
+        setRemoteMismatch(mismatch ? (remoteApp ?? remoteBuild) : null);
       } catch {
-        // Offline ou metadata inconsistente: nunca sugerir downgrade.
-        if (!cancelled) setRemoteMismatch(null);
+        /* offline — ignore */
       }
     };
     void check();
@@ -51,7 +50,7 @@ export function UpdateBanner() {
   }, []);
 
   // Não interrompe o usuário no meio de uma operação crítica (visita aberta).
-  const show = updateAvailable && remoteMismatch !== null && !busy;
+  const show = (updateAvailable || remoteMismatch !== null) && !busy;
   if (!show) return null;
 
   const handleClick = () => {
