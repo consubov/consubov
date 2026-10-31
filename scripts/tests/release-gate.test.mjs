@@ -22,6 +22,7 @@ function repoFixture() {
   git(cwd, 'init', '-q', '-b', 'main');
   git(cwd, 'config', 'user.name', 'F23 QA');
   git(cwd, 'config', 'user.email', 'qa@example.test');
+  write('releases/catalog.json', JSON.stringify({"schemaVersion":1,"description":"F23: registry of real Vercel projects; only declared products can be released. Sites use SHA/deployment, not SemVer.","projects":{"consubov-app":{"productId":"consubov","surface":"app","appId":"consubov-fazendas-app","sourceDirectory":"apps/web","artifactDirectory":"apps/web/dist","versionPolicy":"semver","versionSource":"apps/web/src/lib/appVersion.ts","minVersion":"2.0.0"},"consubov-site":{"productId":"consubov","surface":"site","siteId":"consubov-site","sourceDirectory":"apps/web","artifactDirectory":"apps/web/dist-site","versionPolicy":"none"},"relatto-app":{"productId":"relatto","surface":"app","appId":"relatto-app","sourceDirectory":"apps/web","artifactDirectory":"apps/web/dist","versionPolicy":"revision-only"},"relatto-site":{"productId":"relatto","surface":"site","siteId":"relatto-site","sourceDirectory":"apps/web","artifactDirectory":"apps/web/dist-site","versionPolicy":"none"}}}));
   for (const target of baseMarkers) write('releases/' + target + '.json', JSON.stringify({
     target, revision: 0, ...(target === 'consubov-app' ? { appVersion: '2.0.0' } : {}),
   }));
@@ -136,4 +137,44 @@ test('Vercel wrapper builds on explicit release and skips unrelated product', ()
   assert.equal(run('consubov-app').status, 0);
   fs.writeFileSync(path.join(f.cwd, 'scripts/deploy/release-gate.mjs'), 'syntax error');
   assert.equal(run('relatto-app').status, 0, 'A runtime error must never trigger a production build');
+}));
+
+test('Registered future site can release independently of existing products', () => withFixture(f => {
+  const registryPath = path.join(f.cwd, 'releases/catalog.json');
+  const registry = JSON.parse(fs.readFileSync(registryPath,'utf8'));
+  registry.projects['novo-site'] = { productId:'novo', surface:'site', siteId:'novo-site',
+    sourceDirectory:'apps/novo-site', artifactDirectory:'apps/novo-site/dist', versionPolicy:'none' };
+  f.write('releases/catalog.json', JSON.stringify(registry));
+  updateMarker(f, 'novo-site', 0); f.commit();
+  updateMarker(f, 'novo-site', 1); f.commit();
+  assert.equal(decideDeployment('novo-site', env(), f.cwd).build, true);
+  assert.equal(decideDeployment('relatto-site', env(), f.cwd).build, false);
+  assert.equal(decideDeployment('consubov-app', env(), f.cwd).build, false);
+}));
+
+test('An unregistered project remains blocked despite its own marker', () => withFixture(f => {
+  updateMarker(f, 'unknown-app', 1); f.commit();
+  assert.equal(decideDeployment('unknown-app', env(), f.cwd).build, false);
+}));
+
+test('Missing catalog always blocks production and preview', () => withFixture(f => {
+  fs.rmSync(path.join(f.cwd,'releases/catalog.json'));
+  git(f.cwd,'add','-A');git(f.cwd,'commit','-qm','remove registry');
+  assert.equal(decideDeployment('relatto-app',env(),f.cwd).reason,'missing-product-catalog');
+  assert.equal(decideDeployment('relatto-app',env({VERCEL_ENV:'preview'}),f.cwd).reason,'missing-product-catalog');
+}));
+
+test('A future app with SemVer policy checks its own version file', () => withFixture(f => {
+  const registryPath=path.join(f.cwd,'releases/catalog.json');
+  const registry=JSON.parse(fs.readFileSync(registryPath,'utf8'));
+  registry.projects['future-app']={productId:'future',surface:'app',appId:'future-app',
+    sourceDirectory:'apps/future-app',artifactDirectory:'apps/future-app/dist',
+    versionPolicy:'semver',versionSource:'apps/future-app/src/lib/appVersion.ts',minVersion:'1.0.0'};
+  f.write('releases/catalog.json',JSON.stringify(registry));
+  updateMarker(f,'future-app',0,'1.0.0');
+  f.write('apps/future-app/src/lib/appVersion.ts','export const APP_VERSION = "1.0.0";\n'); f.commit();
+  updateMarker(f,'future-app',1,'1.0.1');
+  f.write('apps/future-app/src/lib/appVersion.ts','export const APP_VERSION = "1.0.1";\n'); f.commit();
+  assert.equal(decideDeployment('future-app',env(),f.cwd).build,true);
+  assert.equal(decideDeployment('consubov-app',env(),f.cwd).build,false);
 }));

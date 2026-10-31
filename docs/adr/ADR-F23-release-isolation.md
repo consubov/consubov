@@ -24,3 +24,13 @@ For `consubov-app`, the code's literal `APP_VERSION` must match the candidate `a
 ## Verification / rollback
 
 Local test: `node --test scripts/tests/release-gate.test.mjs`. CI workflow: `.github/workflows/f23-release-isolation.yml`. Confirm positive (requested app releases), negative (other products skipped) and downgrade/invalid-history cases. Once the Vercel settings are changed under separate authorization, log old and new `commandForIgnoringBuildStep`, use preview and verify outcome. To revert the guard, restore the prior project setting and observe the deployment behavior; never reset PWA storage to roll back a deploy.
+
+## Registry / future products (F23)
+
+`releases/catalog.json` contains the real deployment projects, their `productId`, surface (`app` or `site`), artifact paths and version policy. This **does not create** Vercel projects or register invented domains; a new product is onboarded only when its real workspace, owner, Vercel project and isolated build exist.
+
+To onboard a future app: create its dedicated `apps/<product>-app` workspace, register one entry with independent `appId`, SemVer source and minimum approved version; create `releases/<deployment-project>.json` at revision **0**, test preview, CI and offline/auth isolation, then configure that project's Ignored Build Step using its own target. Sites have `versionPolicy:none` and no SemVer; never increment their app version. Shared packages must have consumer impact checks.
+
+Legacy exception: Relatto App uses `revision-only` until its independent version file/entrypoint are confirmed in F23. This tracks explicit releases but **does not claim** a SemVer installed on devices. CONSUBOV App retains semver and the 2.0.0 floor. A future app should use `semver` rather than `revision-only`.
+
+The current four entries still have `sourceDirectory:apps/web`. This is deliberate documentation of the **temporary shared workspace**; do not mistake per-project release gates for source-code or origin isolation.

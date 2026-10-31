@@ -1,13 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-const TARGETS = new Set([
-  'consubov-app',
-  'consubov-site',
-  'relatto-app',
-  'relatto-site',
-]);
-
 function git(cwd, ...args) {
   const res = spawnSync('git', ['-C', cwd, ...args], {
     encoding: 'utf8', timeout: 8000, maxBuffer: 1024 * 1024,
@@ -35,17 +28,23 @@ function greaterThan(a, b) {
 
 export function decideDeployment(target, env = process.env, cwd = process.cwd()) {
   const skip = (reason) => ({ build: false, reason });
-  if (!TARGETS.has(target)) return skip('unknown-project');
+  if (typeof target !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(target)) return skip('invalid-project');
+  const root = git(cwd, 'rev-parse', '--show-toplevel');
+  if (!root) return skip('missing-git-checkout');
+  const catalog = loadJson(root, 'HEAD', 'releases/catalog.json');
+  if (!catalog || catalog.schemaVersion !== 1 || !catalog.projects || typeof catalog.projects !== 'object') {
+    return skip('missing-product-catalog');
+  }
+  const project = Object.hasOwn(catalog.projects, target) ? catalog.projects[target] : null;
+  if (!project || !['app','site'].includes(project.surface) || !project.productId ||
+      !project.sourceDirectory || !project.artifactDirectory) return skip('unknown-or-invalid-project');
   if (env.VERCEL_ENV === 'preview') return { build: true, reason: 'preview' };
   if (env.VERCEL_ENV !== 'production' || env.VERCEL_GIT_COMMIT_REF !== 'main') {
     return skip('unrecognized-production-ref');
   }
-
-  const root = git(cwd, 'rev-parse', '--show-toplevel');
-  if (!root) return skip('missing-git-checkout');
   const markerPath = 'releases/' + target + '.json';
   const current = loadJson(root, 'HEAD', markerPath);
-  if (!current || current.target !== target || !Number.isSafeInteger(current.revision)) {
+  if (!current || current.target !== target || !Number.isSafeInteger(current.revision) || current.revision < 0) {
     return skip('missing-or-invalid-release-marker');
   }
 
@@ -54,24 +53,33 @@ export function decideDeployment(target, env = process.env, cwd = process.cwd())
   // The last successful deployment may predate introduction of the markers.
   const published = previousReachable ? loadJson(root, previousSha, markerPath) : null;
   const previous = published ?? loadJson(root, 'HEAD^', markerPath);
-  if (!previous || previous.target !== target || !Number.isSafeInteger(previous.revision)) {
+  if (!previous || previous.target !== target || !Number.isSafeInteger(previous.revision) || previous.revision < 0) {
     return skip('no-trusted-release-baseline');
   }
   if (current.revision <= previous.revision) return skip('release-revision-not-increased');
   if (current.revision !== previous.revision + 1) return skip('release-revision-jump');
 
-  if (target === 'consubov-app') {
-    const oldVersion = parseVersion(previous.appVersion);
-    const newVersion = parseVersion(current.appVersion);
-    const floor = [2, 0, 0];
-    const code = git(root, 'show', 'HEAD:apps/web/src/lib/appVersion.ts') ?? '';
-    const fromCode = code.match(/export\s+const\s+APP_VERSION\s*=\s*"([^"]+)"/);
-    if (!oldVersion || !newVersion || !fromCode || fromCode[1] !== current.appVersion) {
-      return skip('app-version-mismatch');
+  if (project.surface === 'app') {
+    if (project.versionPolicy === 'semver') {
+      if (typeof project.versionSource !== 'string' || !/^apps\/[a-z0-9/_-]+\.ts$/.test(project.versionSource)) {
+        return skip('invalid-version-source');
+      }
+      const oldVersion = parseVersion(previous.appVersion);
+      const newVersion = parseVersion(current.appVersion);
+      const floor = parseVersion(project.minVersion);
+      const code = git(root, 'show', 'HEAD:' + project.versionSource) ?? '';
+      const fromCode = code.match(/export\s+const\s+APP_VERSION\s*=\s*"([^"]+)"/);
+      if (!oldVersion || !newVersion || !floor || !fromCode || fromCode[1] !== current.appVersion) {
+        return skip('app-version-mismatch');
+      }
+      if (!greaterThan(newVersion, oldVersion) || greaterThan(floor, newVersion)) {
+        return skip('non-increasing-or-legacy-app-version');
+      }
+    } else if (project.versionPolicy !== 'revision-only') {
+      return skip('invalid-app-version-policy');
     }
-    if (!greaterThan(newVersion, oldVersion) || newVersion[0] < floor[0]) {
-      return skip('non-increasing-or-legacy-app-version');
-    }
+  } else if (project.versionPolicy !== 'none') {
+    return skip('site-must-not-have-semver');
   }
   return { build: true, reason: 'explicit-product-release' };
 }
