@@ -205,39 +205,76 @@ export async function fetchNotaCochoConsultor(
       .order("hora_inicio", { ascending: false });
     if (!visitas || visitas.length === 0) return null;
 
-    for (const v of visitas as any[]) {
-      // pega notas de todas avaliacoes_score dessa visita (via visita_pastos ou visita_currais)
-      const { data: vps } = await supabase
-        .from("visita_pastos")
-        .select("id")
-        .eq("visita_id", v.id);
-      const { data: vcs } = await supabase
-        .from("visita_currais")
-        .select("id")
-        .eq("visita_id", v.id);
+    const visitasArr = visitas as any[];
+    const chunkSize = 5;
+
+    for (let i = 0; i < visitasArr.length; i += chunkSize) {
+      const chunk = visitasArr.slice(i, i + chunkSize);
+      const chunkIds = chunk.map((v) => v.id);
+
+      // Batch fetch visita_pastos e visita_currais for this chunk
+      const [ { data: vps }, { data: vcs } ] = await Promise.all([
+        supabase.from("visita_pastos").select("id, visita_id").in("visita_id", chunkIds),
+        supabase.from("visita_currais").select("id, visita_id").in("visita_id", chunkIds)
+      ]);
+
       const vpIds = (vps ?? []).map((r: any) => r.id);
       const vcIds = (vcs ?? []).map((r: any) => r.id);
-      if (vpIds.length === 0 && vcIds.length === 0) continue;
 
-      let notas: number[] = [];
+      let notasPasto: any[] = [];
+      let notasCurral: any[] = [];
+
+      // Batch fetch avaliacoes_score
+      const promises = [];
       if (vpIds.length > 0) {
-        const { data } = await supabase
-          .from("avaliacoes_score")
-          .select("nota")
-          .in("visita_pasto_id", vpIds);
-        notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+        promises.push(
+          supabase.from("avaliacoes_score").select("nota, visita_pasto_id").in("visita_pasto_id", vpIds).then(res => notasPasto = res.data ?? [])
+        );
       }
       if (vcIds.length > 0) {
-        const { data } = await supabase
-          .from("avaliacoes_score")
-          .select("nota")
-          .in("visita_curral_id", vcIds);
-        notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+        promises.push(
+          supabase.from("avaliacoes_score").select("nota, visita_curral_id").in("visita_curral_id", vcIds).then(res => notasCurral = res.data ?? [])
+        );
       }
-      notas = notas.filter((n) => Number.isFinite(n) && n > 0);
-      if (notas.length === 0) continue;
-      const media = notas.reduce((a, b) => a + b, 0) / notas.length;
-      return { nota: media, dataVisita: v.hora_inicio ?? v.created_at };
+      await Promise.all(promises);
+
+      const notasPorVisita = new Map<string, number[]>();
+
+      // Agrupar notas por visita_id (pasto)
+      if (vps && notasPasto.length > 0) {
+        const pastoVisitaMap = new Map((vps as any[]).map(r => [r.id, r.visita_id]));
+        for (const n of notasPasto) {
+          const visitaId = pastoVisitaMap.get(n.visita_pasto_id);
+          if (visitaId) {
+            const notas = notasPorVisita.get(visitaId) ?? [];
+            notas.push(Number(n.nota));
+            notasPorVisita.set(visitaId, notas);
+          }
+        }
+      }
+
+      // Agrupar notas por visita_id (curral)
+      if (vcs && notasCurral.length > 0) {
+        const curralVisitaMap = new Map((vcs as any[]).map(r => [r.id, r.visita_id]));
+        for (const n of notasCurral) {
+          const visitaId = curralVisitaMap.get(n.visita_curral_id);
+          if (visitaId) {
+            const notas = notasPorVisita.get(visitaId) ?? [];
+            notas.push(Number(n.nota));
+            notasPorVisita.set(visitaId, notas);
+          }
+        }
+      }
+
+      // Processar visitas no chunk na ordem original (mais recente primeiro)
+      for (const v of chunk) {
+        let notas = notasPorVisita.get(v.id) ?? [];
+        notas = notas.filter((n) => Number.isFinite(n) && n > 0);
+        if (notas.length === 0) continue;
+
+        const media = notas.reduce((a, b) => a + b, 0) / notas.length;
+        return { nota: media, dataVisita: v.hora_inicio ?? v.created_at };
+      }
     }
     return null;
   } catch {
