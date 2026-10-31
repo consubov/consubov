@@ -1,0 +1,56 @@
+name: PR131 bundle A-B diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/pr131-bundle-ab.yml
+permissions:
+  contents: read
+concurrency:
+  group: pr131-bundle-ab-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    name: Measure main vs PR on same runner (not release gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout (read-only)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Compare bundles
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          for side in base head; do
+            if [ "$side" = base ]; then sha="$BASE_SHA"; else sha="$HEAD_SHA"; fi
+            git worktree add --detach "$RUNNER_TEMP/pr131-$side" "$sha"
+            (
+              cd "$RUNNER_TEMP/pr131-$side"
+              bun install --frozen-lockfile
+              cd apps/web
+              bun run build
+              bun run report:bundle
+            )
+          done
+          node <<'NODE'
+          const fs=require('node:fs');
+          const path=require('node:path');
+          const root=process.env.RUNNER_TEMP;
+          const get=side=>JSON.parse(fs.readFileSync(path.join(root,'pr131-'+side+'/apps/web/dist/bundle-report.json'),'utf8'));
+          const base=get('base');
+          const head=get('head');
+          const delta={bytes:head.totals.bytes-base.totals.bytes,gzipBytes:head.totals.gzipBytes-base.totals.gzipBytes,files:head.totals.files-base.totals.files};
+          const budget=JSON.parse(fs.readFileSync('scripts/web-bundle-budget.json','utf8'));
+          console.log('[PR131 bundle A/B - DIAGNOSTIC ONLY]', JSON.stringify({base:base.totals,head:head.totals,delta,budget,baseTop:base.largest.slice(0,4),headTop:head.largest.slice(0,4)}));
+          NODE
