@@ -19,3 +19,9 @@
 
 ## Rollback
 - O commit de resolução conserva os dois pais: HEAD original de #133 e `main` verificada. Revert localizado é preferível; nunca usar `reset --hard` ou `force push`.
+
+## 31/10/2026 — rebaseline controlado de bundle apenas nesta PR
+- Falha verificada no GitHub Actions job `124424709166` (SHA `10d6b3c8`): build/typecheck/305+ testes/lint/cobertura PASS; `check:bundle-budget` FAIL porque teto datado de 05/10 já reprovava a própria `main` atual. Run da PR133: 8.752.371 bytes raw, 2.753.819 gzip, maior asset 2.092.192.
+- Referência técnica reutilizada **sem alterar o ramo da PR131**: A/B no mesmo runner, Bun 1.4.0, `bun install --frozen-lockfile`, job `124424679855`. `main f80d0ae`: 8.752.007 raw / 2.753.292 gzip; PR131: 8.752.390 raw / 2.753.289 gzip. O baseline anterior 8.731.423/2.736.624 não representava a `main` atual.
+- Copiado **literalmente** o arquivo `scripts/web-bundle-budget.json` validado como candidato no ramo da PR131: limites 8.752.890 raw / 2.753.792 gzip / 2.849.003 maior asset, sem alterar o script de verificação ou relaxar validações. Assim evitamos divergência/config conflitante entre as duas PRs.
+- **Atenção:** a PR133 tinha medição gzip de 2.753.819 bytes, 27 acima do teto copiado da PR131. Portanto esta correção pode não passar: novo CI no SHA resultante é OBRIGATÓRIO. Se não passar, medir A/B específico da PR133 ou otimizar a diferença; NÃO elevar teto arbitrariamente. Gates posteriores do workflow ainda pendentes e QA tenant/PWA físico não homologado. Sem merges, deploy, SQL, secrets ou modificações no PR131/PR76.
