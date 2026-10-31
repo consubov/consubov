@@ -4,6 +4,7 @@ import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
@@ -26,7 +27,7 @@ interface Lancamento {
   id: string; pasto_id: string; num_sacos: number;
   num_animais: number; peso_medio_kg: number | null;
   categoria: string | null; sexo: string | null;
-  dias_no_pasto: number; origem: string;
+  dias_no_pasto: number; origem: string | null;
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
@@ -200,8 +201,8 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
-        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+        let lancQuery = supabase.from("view_consumo_tempo_real")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
@@ -214,7 +215,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = requireReadRows(lancRes) as Lancamento[];
+        const lancList: Lancamento[] = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
         snap.lancamentos = (lancList);
 
 

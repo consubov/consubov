@@ -27,13 +27,16 @@ jobs:
         run: bun install --frozen-lockfile
       - name: GMD unit tests against actual Vite/Vitest configuration
         working-directory: apps/web
-        run: bunx vitest run src/lib/gmdConfigurado.test.ts
+        run: bunx vitest run
       - name: Web TypeScript
         working-directory: apps/web
         run: bun run typecheck
       - name: Production web build
         working-directory: apps/web
         run: bun run build
+      - name: Built bundle secret guard
+        working-directory: apps/web
+        run: bun run check:dist-secrets
       - name: Web changed files lint
         working-directory: apps/web
         run: bunx eslint src/lib/gmdConfigurado.ts src/lib/gmdConfigurado.test.ts src/hooks/useGerenteData.ts src/pages/GerenteDashboard.tsx --max-warnings=0
