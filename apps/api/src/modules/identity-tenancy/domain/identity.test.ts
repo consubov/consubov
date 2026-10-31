@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createPermissionScope } from "./identity";
+import { createPermissionScope, createPrincipal } from "./identity";
 import { SecurityContractValidationError } from "./errors";
 
 describe("createPermissionScope", () => {
@@ -51,5 +51,19 @@ describe("createPermissionScope", () => {
     expect(() => createPermissionScope("resource!:action")).toThrow(SecurityContractValidationError);
     expect(() => createPermissionScope("resource:action@")).toThrow(SecurityContractValidationError);
     expect(() => createPermissionScope("resource:action#")).toThrow(SecurityContractValidationError);
+  });
+});
+
+describe("createPrincipal", () => {
+  test("creates user and integration principals", () => {
+    expect(createPrincipal("user", "user-123")).toEqual({kind: "user", id: "user-123"});
+    expect(createPrincipal("integration", "service-account")).toEqual({kind: "integration", id: "service-account"});
+  });
+  test("normalizes principal id whitespace", () => {
+    expect(createPrincipal("user", "  user-with-spaces  ")).toEqual({kind: "user", id: "user-with-spaces"});
+  });
+  test("rejects empty and oversized principal IDs", () => {
+    expect(() => createPrincipal("user", "   ")).toThrow(SecurityContractValidationError);
+    expect(() => createPrincipal("user", "a".repeat(129))).toThrow(SecurityContractValidationError);
   });
 });
