@@ -35,6 +35,8 @@ let userRequestedUpdate = false;
 let pendingUpdateToken: string | undefined;
 let controllerBeforeUpdate: ServiceWorker | null = null;
 const activationRequested = new WeakSet<ServiceWorker>();
+// Keep a separate pending guard across the async release verification.
+const activationInFlight = new WeakSet<ServiceWorker>();
 
 function cancelExplicitUpdateTimer() {
   if (explicitUpdateFallbackTimer !== null) {
@@ -262,9 +264,11 @@ async function showUpdateNotificationOnce(registration: ServiceWorkerRegistratio
 
 function notifyWaiting(registration: ServiceWorkerRegistration) {
   if (!registration.waiting || !navigator.serviceWorker.controller) return false;
+  // Snapshot before the async check so test cleanup cannot invalidate the build identity.
+  const expectedBuildVersion = __APP_BUILD_VERSION__;
   void (async () => {
     const release = await fetchPublishedRelease();
-    if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer" ||
+    if (!release || classifyPublishedRelease(APP_VERSION, expectedBuildVersion, release) !== "newer" ||
       !isWaitingWorkerForPublishedRelease(registration.waiting?.scriptURL, release.version as string, window.location.origin)) {
       logSw("Worker waiting antigo/incompatível ignorado");
       notifyListeners(false);
@@ -274,34 +278,47 @@ function notifyWaiting(registration: ServiceWorkerRegistration) {
     notifyListeners(true);
     // Avisar somente após confirmar versão e integridade da origem do worker.
     void showUpdateNotificationOnce(registration);
-  })();
+  })().catch(() => {
+    logSw("Falha ao verificar o worker waiting; atualização não disponibilizada");
+    notifyListeners(false);
+  });
   return true;
 }
 
 async function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
   const worker = registration.waiting;
-  if (!worker || !userRequestedUpdate || activationRequested.has(worker)) return false;
-  const release = await fetchPublishedRelease();
-  if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer" ||
-    !isWaitingWorkerForPublishedRelease(worker.scriptURL, release.version as string, window.location.origin)) {
-    logSw("SKIP_WAITING bloqueado: worker e publicação não correspondem ou são antigos");
-    userRequestedUpdate = false;
-    cancelExplicitUpdateTimer();
-    notifyListeners(false);
-    return false;
+  if (!worker || !userRequestedUpdate || activationRequested.has(worker) || activationInFlight.has(worker)) return false;
+  // Two caller paths (update().then and immediate waiting) can race across await.
+  // Claim this worker BEFORE the network preflight, without marking it activated.
+  activationInFlight.add(worker);
+  try {
+    const release = await fetchPublishedRelease();
+    if (!release || classifyPublishedRelease(APP_VERSION, __APP_BUILD_VERSION__, release) !== "newer" ||
+      !isWaitingWorkerForPublishedRelease(worker.scriptURL, release.version as string, window.location.origin)) {
+      logSw("SKIP_WAITING bloqueado: worker e publicação não correspondem ou são antigos");
+      userRequestedUpdate = false;
+      cancelExplicitUpdateTimer();
+      notifyListeners(false);
+      return false;
+    }
+    // Recheck after the async preflight: a field operation could start meanwhile.
+    if (hasCriticalOperations()) {
+      schedulePostDrainAction(() => {
+        if (userRequestedUpdate) void activateWaitingServiceWorker(registration);
+      });
+      return false;
+    }
+    // Do not let an obsolete worker activate if the waiting reference changed.
+    if (!userRequestedUpdate || registration.waiting !== worker || activationRequested.has(worker)) return false;
+    activationRequested.add(worker);
+    logSw("Aplicando atualização (SKIP_WAITING)");
+    worker.postMessage({ type: "SKIP_WAITING" });
+    return true;
+  } finally {
+    activationInFlight.delete(worker);
   }
-  // Recheck after the async preflight: a field operation could start meanwhile.
-  if (hasCriticalOperations()) {
-    schedulePostDrainAction(() => {
-      if (userRequestedUpdate) void activateWaitingServiceWorker(registration);
-    });
-    return false;
-  }
-  activationRequested.add(worker);
-  logSw("Aplicando atualização (SKIP_WAITING)");
-  worker.postMessage({ type: "SKIP_WAITING" });
-  return true;
 }
+
 
 function attachRegistrationListeners(registration: ServiceWorkerRegistration) {
   if (observedRegistrations.has(registration)) return;

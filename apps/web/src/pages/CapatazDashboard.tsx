@@ -228,7 +228,7 @@ function computeFormSuggestion(
   if (!pasto || !produtoAtivo || !fazendaCache) return null;
 
   const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
-  const peso = pesoAtual ?? Number(pasto.peso_medio_kg) ?? 0;
+  const peso = pesoAtual;
   const categoria = pasto.categoria || 'Engorda';
   const consumo_por_100kg = getConsumoPorCategoria(categoria, produtoAtivo);
   const intervaloDias = fazendaCache.intervalo_padrao_dias || 4;
@@ -1259,7 +1259,7 @@ export default function CapatazDashboard() {
 
           // Use dynamic peso_atual for consumption calculation
           const { pesoAtual: pesoAtualCalc } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
-          const pesoParaConsumo = pesoAtualCalc ?? Number(pasto.peso_medio_kg) ?? 0;
+          const pesoParaConsumo = pesoAtualCalc;
 
           if (produto_id_final && pasto.num_animais > 0 && pesoParaConsumo > 0) {
             const { data: produto } = await supabase.from("produtos")
@@ -1480,7 +1480,9 @@ export default function CapatazDashboard() {
     setScreen('home');
     await refreshLancamentosState();
     await refreshObservacoes();
-    try { await loadFromSupabase(); } catch {}
+    try { await loadFromSupabase(); } catch {
+      // A falha de recarga nao deve ocultar o resultado da sincronizacao.
+    }
     if (syncFailureMessage) throw new Error(syncFailureMessage);
   };
 

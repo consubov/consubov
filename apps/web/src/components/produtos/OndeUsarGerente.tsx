@@ -245,7 +245,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
             <div key={r.id} className={`rounded-lg border bg-card ${retirosMudados.includes(r) ? "border-secondary" : ""}`}>
               <div className="p-3 space-y-2">
                 <button type="button" className="w-full flex items-center gap-2 text-left"
-                  onClick={() => setAbertos((prev) => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}>
+                  onClick={() => setAbertos((prev) => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}>
                   <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? "" : "-rotate-90"}`} />
                   <span className="font-semibold text-sm">{r.nome}</span>
                   {nProd > 1 && <Badge variant="outline" className="text-[10px]">Usa {nProd} produtos</Badge>}
@@ -274,7 +274,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                     return (
                       <div key={p.id} className={`flex items-center gap-2 px-3 py-2 ${pend ? "bg-secondary/15" : ""}`}>
                         <Checkbox checked={sel.has(p.id)}
-                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />
+                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{p.nome}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{p.num_animais} cab · {p.categoria || "sem categoria"}</p>
