@@ -1,6 +1,6 @@
 {
-  "source": "FASE 5 baseline re-medido em 2026-10-05 no HEAD final da branch quality/fase5-web-ready-20261005. Delta de +95 bytes raw vs baseline original (8730802) justificado pelo commit dfa3833f (nome acessivel do botao Sair, gate E2E/a11y) posterior a medicao original. Builds da mesma fonte em 2026-10-06 totaram 8730897, 8730897 e 8730923: raw NAO e deterministico (chunk index variou 13B; sw.js/version.json e __APP_BUILD_VERSION__ embutem timestamp de build), entao raw le folga de +500B sobre o maximo observado (8730923), mesma politica do gzip (folga de +500B sobre o maximo historico 2736124; observado em 2026-10-06: 2735995-2736190). maxLargestAssetBytes permanece no tamanho estavel do LandingPage (2849003, identico em todos os builds).",
-  "maxTotalBytes": 8731423,
-  "maxTotalGzipBytes": 2736624,
+  "source": "REL-080 PR131: baseline atual da main f80d0ae medido no MESMO runner com Bun 1.4.0, frozen lock e Vite em 2026-10-31, comparado a PR131 3c8f4ea. main 8752007 raw / 2753292 gzip / 338 arquivos; PR 8752390 raw / 2753289 gzip / 338 arquivos. Delta PR vs main +383 raw e -3 gzip; o teto de 2026-10-05 estava reprovando a propria main. Rebaseline controlado: 500 bytes acima do maior build comparado, conforme politica de folga historica por hash/timestamp; manter regressao ativa e maxLargestAssetBytes inalterado. Evidencia GitHub Actions job 124424679855. Nao e liberacao de deploy nem prova de QA tenant/offline. Revalidacao F23 PR135: job 124439063307 mediu gzip 2753819 no mesmo SHA com variacao de bytes em funcao de timestamp; teto anterior excedido em 27B sem mudanca no codigo web. Novo teto maximo observado +500 bytes para manter limite de regressao, sem alterar maior asset.",
+  "maxTotalBytes": 8752890,
+  "maxTotalGzipBytes": 2754319,
   "maxLargestAssetBytes": 2849003
 }
