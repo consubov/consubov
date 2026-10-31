@@ -123,6 +123,8 @@ export function useGerenteData(filters?: GerenteFilters) {
   const ic = getScreenCache<GerenteCache>(cacheKey);
   const [loading, setLoading] = useState(!ic);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Tag the loaded snapshot so old farm data never drives a new farm\u0027s GMD requests.
+  const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
   const currentKey = useRef(cacheKey);
   currentKey.current = cacheKey;
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
@@ -235,6 +237,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       if (currentKey.current !== cacheKey) return;
       setScreenCache(cacheKey, snap);
       applyCache(snap);
+      setLoadedCacheKey(cacheKey);
       setLoadError(null);
     } catch (e) {
       if (currentKey.current === cacheKey) setLoadError(dataReadErrorMessage(e));
@@ -245,8 +248,9 @@ export function useGerenteData(filters?: GerenteFilters) {
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
-    if (c) { applyCache(c); setLoading(false); }
+    if (c) { applyCache(c); setLoadedCacheKey(cacheKey); setLoading(false); }
     else {
+      setLoadedCacheKey("");
       applyCache({ gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] });
       setLoading(true);
     }
@@ -275,18 +279,40 @@ export function useGerenteData(filters?: GerenteFilters) {
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
 
-  // GMD de cada pasto via gmd_do_pasto (hoje no mês em andamento; último dia em meses passados).
-  const [gmdPastos, setGmdPastos] = useState<Record<string, number | null>>({});
-  const gmdPastoIds = pastos.map(p => p.id).join(",");
+  // GMD is independent from other farm metrics: isolate scope, cancel obsolete
+  // requests and surface failures instead of silently treating them as no GMD.
+  const [gmdState, setGmdState] = useState<{
+    scope: string; values: Record<string, number | null>; error: string | null;
+  }>({ scope: "", values: {}, error: null });
+  const [gmdRetryTick, setGmdRetryTick] = useState(0);
+  const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
+  const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
+  const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
+  const gmdPastos = gmdState.scope === gmdScope ? gmdState.values : {};
+  const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
+
   useEffect(() => {
-    if (!gmdPastoIds) { setGmdPastos({}); return; }
-    let cancel = false;
-    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
-    fetchGmdPastos(gmdPastoIds.split(","), dia)
-      .then((m) => { if (!cancel) setGmdPastos(m); })
-      .catch((e) => console.error("GMD pastos error:", e));
-    return () => { cancel = true; };
-  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
+    const controller = new AbortController();
+    setGmdState({ scope: gmdScope, values: {}, error: null });
+    if (!fazendaId || !gmdPastoIds) return () => controller.abort();
+
+    fetchGmdPastos(gmdPastoIds.split(","), gmdDia, controller.signal)
+      .then(values => {
+        if (!controller.signal.aborted) {
+          setGmdState({ scope: gmdScope, values, error: null });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setGmdState({
+            scope: gmdScope, values: {},
+            error: "Não foi possível confirmar o GMD. Tente novamente.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [gmdScope, gmdPastoIds, gmdDia, fazendaId, gmdRetryTick]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -462,7 +488,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading, error: loadError || consumoError, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading, error: loadError || consumoError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

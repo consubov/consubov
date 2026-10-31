@@ -194,7 +194,7 @@ export default function GerenteDashboard() {
   }), [ano, mes, activeFazendaId, activeRetiroId]);
 
   const {
-    loading, error: painelError, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading, error: painelError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
@@ -334,6 +334,12 @@ export default function GerenteDashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
       <EnableNotificationsBanner />
+      {gmdError && (
+        <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm flex-1">{gmdError} Os demais indicadores não foram zerados.</p>
+          <Button variant="outline" size="sm" onClick={retryGmd}>Tentar GMD novamente</Button>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0 space-y-2">
         {/* Linha 1: identidade + ações principais */}

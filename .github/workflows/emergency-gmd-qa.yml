@@ -1,0 +1,56 @@
+name: Emergency GMD QA (release branch)
+on:
+  push:
+    branches:
+      - hotfix/consubov-app/gmd-release-640de4-qa-20261030
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: emergency-gmd-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    name: Web Typecheck Build Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exactly this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen
+        run: bun install --frozen-lockfile
+      - name: GMD unit tests against actual Vite/Vitest configuration
+        working-directory: apps/web
+        run: bunx vitest run src/lib/gmdConfigurado.test.ts
+      - name: Web TypeScript
+        working-directory: apps/web
+        run: bun run typecheck
+      - name: Production web build
+        working-directory: apps/web
+        run: bun run build
+      - name: Web changed files lint
+        working-directory: apps/web
+        run: bunx eslint src/lib/gmdConfigurado.ts src/lib/gmdConfigurado.test.ts src/hooks/useGerenteData.ts src/pages/GerenteDashboard.tsx --max-warnings=0
+  security:
+    name: Dependency audit HIGH+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exactly this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.0
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Install frozen
+        run: bun install --frozen-lockfile
+      - name: Dependency audit
+        run: bun audit --audit-level=high
