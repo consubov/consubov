@@ -112,3 +112,11 @@ test('Works inside apps/web cwd and compares against available previous deployme
   f.write('apps/web/src/pages/RelattoLandingPage.tsx','changed after release mark\n'); f.commit();
   assert.equal(decideDeployment('relatto-app', env({VERCEL_GIT_PREVIOUS_SHA:f.first}), path.join(f.cwd,'apps/web')).build, true);
 }));
+
+test('Previous successful SHA without release markers falls back to parent baseline', () => withFixture(f => {
+  fs.rmSync(path.join(f.cwd, 'releases/relatto-app.json'));
+  const oldProduction = f.commit();
+  updateMarker(f, 'relatto-app', 0); f.commit();
+  updateMarker(f, 'relatto-app', 1); f.commit();
+  assert.equal(decideDeployment('relatto-app', env({VERCEL_GIT_PREVIOUS_SHA:oldProduction}), f.cwd).build, true);
+}));

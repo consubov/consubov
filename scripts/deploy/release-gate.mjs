@@ -51,8 +51,9 @@ export function decideDeployment(target, env = process.env, cwd = process.cwd())
 
   const previousSha = env.VERCEL_GIT_PREVIOUS_SHA;
   const previousReachable = previousSha && git(root, 'rev-parse', '--verify', previousSha + '^{commit}');
-  const baseline = previousReachable ? previousSha : 'HEAD^';
-  const previous = loadJson(root, baseline, markerPath);
+  // The last successful deployment may predate introduction of the markers.
+  const published = previousReachable ? loadJson(root, previousSha, markerPath) : null;
+  const previous = published ?? loadJson(root, 'HEAD^', markerPath);
   if (!previous || previous.target !== target || !Number.isSafeInteger(previous.revision)) {
     return skip('no-trusted-release-baseline');
   }
