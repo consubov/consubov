@@ -374,7 +374,7 @@ export const maFrom = ((table: string) => {
 
 // ---------- Modo Offline só desliga pelo botão "Sincronizar" ----------
 let manualSync = false;
-let autoRunning = false;
+const autoRunning = false;
 let lastPending = 0;
 // Alvos de GMD vistos na fila enquanto o modo está ativo (os itens somem ao serem enviados).
 const alvosVistos = { pesoIds: new Set<string>(), pesagemIds: new Set<string>() };

@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,27 @@ type NavState = {
   dataFim?: string | null;
   horaFim?: string | null;
   horaInicio?: string | null;
+};
+
+type ApartacaoRegistro = {
+  pdf_url?: string | null;
+  data_apartacao?: string | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+};
+
+type PesagemApartacaoRegistro = {
+  lote_id: string;
+  quantidade_animais: number | null;
+  peso_total: number | null;
+  peso_medio: number | null;
+  gmd: number | null;
+};
+
+type LoteRegistro = {
+  nome_lote?: string | null;
+  codigo?: string | null;
+  identificado?: boolean | null;
 };
 
 const fmt = (n: number, d = 2) =>
@@ -52,19 +74,21 @@ export default function PecuaristaApartacaoResumoPage() {
       if (!apartacaoId) return;
       const { data: ap } = await maFrom("apartacoes_pecuarista")
         .select("pdf_url, data_apartacao, hora_inicio, hora_fim").eq("id", apartacaoId).maybeSingle();
-      setPdfUrl((ap as any)?.pdf_url ?? null);
+      const apRegistro = ap as unknown as ApartacaoRegistro | null;
+      setPdfUrl(apRegistro?.pdf_url ?? null);
       const { data: pesagens } = await maFrom("pesagens_lote_pecuarista")
         .select("lote_id, quantidade_animais, peso_total, peso_medio, gmd")
         .eq("apartacao_id", apartacaoId);
       const destinos: ApartacaoDestinoSection[] = [];
       let totQ = 0, totP = 0;
-      for (const p of (pesagens ?? []) as any[]) {
+      for (const p of (pesagens ?? []) as unknown as PesagemApartacaoRegistro[]) {
         const { data: lote } = await maFrom("lotes_pecuarista")
           .select("nome_lote, codigo, identificado").eq("id", p.lote_id).maybeSingle();
+        const loteRegistro = lote as unknown as LoteRegistro | null;
         destinos.push({
-          nome_lote: (lote as any)?.nome_lote ?? "—",
-          codigo: (lote as any)?.codigo ?? null,
-          identificado: !!(lote as any)?.identificado,
+          nome_lote: loteRegistro?.nome_lote ?? "—",
+          codigo: loteRegistro?.codigo ?? null,
+          identificado: !!loteRegistro?.identificado,
           quantidade: Number(p.quantidade_animais),
           peso_total: Number(p.peso_total),
           peso_medio: Number(p.peso_medio),
@@ -73,7 +97,7 @@ export default function PecuaristaApartacaoResumoPage() {
         totQ += Number(p.quantidade_animais);
         totP += Number(p.peso_total);
       }
-      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: (ap as any)?.pdf_url ?? undefined, dataFim: (ap as any)?.data_apartacao ?? null, horaInicio: (ap as any)?.hora_inicio ?? null, horaFim: (ap as any)?.hora_fim ?? null });
+      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: apRegistro?.pdf_url ?? undefined, dataFim: apRegistro?.data_apartacao ?? null, horaInicio: apRegistro?.hora_inicio ?? null, horaFim: apRegistro?.hora_fim ?? null });
       setLoading(false);
     })();
   }, [apartacaoId, data]);
@@ -82,10 +106,9 @@ export default function PecuaristaApartacaoResumoPage() {
     if (!pdfUrl) return;
     setSharing(true);
     try {
-      const resp = await fetch(pdfUrl);
-      const blob = await resp.blob();
+      const blob = await fetchPdfBinaryWithTimeout(pdfUrl);
       const file = new File([blob], `apartacao-${apartacaoId}.pdf`, { type: "application/pdf" });
-      const nav: any = navigator;
+      const nav = navigator;
       if (nav.canShare?.({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title: "Relatório de Apartação" });
       } else if (nav.share) {

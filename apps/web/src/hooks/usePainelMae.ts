@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { dataReadErrorMessage } from "@/lib/dataReadGuard";
 import {
   fetchPainelMae,
   type PainelMaeRpcRow,
@@ -34,10 +35,12 @@ export function usePainelMae(
 ) {
   const [data, setData] = useState<PainelMaeData>(empty);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!fazendaId) {
       setData(empty);
+      setError(null);
       return;
     }
 
@@ -57,6 +60,7 @@ export function usePainelMae(
         ? (rows[0] ?? null)
         : rows;
 
+      setError(null);
       setData(
         row
           ? {
@@ -72,7 +76,7 @@ export function usePainelMae(
           : empty,
       );
     } catch (error) {
-      console.error("usePainelMae error:", error);
+      setError(dataReadErrorMessage(error));
       setData(empty);
     } finally {
       setLoading(false);
@@ -83,5 +87,5 @@ export function usePainelMae(
     void load();
   }, [load]);
 
-  return { painelMae: data, loading, refresh: load };
+  return { painelMae: data, loading, error, refresh: load };
 }

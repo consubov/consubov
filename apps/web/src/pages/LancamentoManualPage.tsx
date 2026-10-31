@@ -142,7 +142,7 @@ export default function LancamentoManualPage() {
       const pastos = pastosData ?? [];
       const pastoIds = pastos.map(p => p.id);
 
-      let existingMap: Record<string, any> = {};
+      const existingMap: Record<string, any> = {};
       if (pastoIds.length > 0) {
         const { data: existing } = await supabase.from("lancamentos")
           .select("*")
