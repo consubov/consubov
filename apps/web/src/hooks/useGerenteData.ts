@@ -245,7 +245,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     } finally {
       if (currentKey.current === cacheKey) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, filters, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
