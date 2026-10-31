@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { decideDeployment } from '../deploy/release-gate.mjs';
 
 function git(cwd, ...args) {
@@ -119,4 +120,20 @@ test('Previous successful SHA without release markers falls back to parent basel
   updateMarker(f, 'relatto-app', 0); f.commit();
   updateMarker(f, 'relatto-app', 1); f.commit();
   assert.equal(decideDeployment('relatto-app', env({VERCEL_GIT_PREVIOUS_SHA:oldProduction}), f.cwd).build, true);
+}));
+
+test('Vercel wrapper builds on explicit release and skips unrelated product', () => withFixture(f => {
+  const deployDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../deploy');
+  fs.mkdirSync(path.join(f.cwd, 'scripts/deploy'), { recursive: true });
+  for (const file of ['release-gate.mjs', 'vercel-ignore.sh']) {
+    fs.copyFileSync(path.join(deployDir, file), path.join(f.cwd, 'scripts/deploy', file));
+  }
+  updateMarker(f, 'relatto-app', 1); f.commit();
+  const run = target => spawnSync('sh', [path.join(f.cwd, 'scripts/deploy/vercel-ignore.sh'), target], {
+    cwd: path.join(f.cwd, 'apps/web'), encoding: 'utf8', env: { ...process.env, ...env() },
+  });
+  assert.equal(run('relatto-app').status, 1);
+  assert.equal(run('consubov-app').status, 0);
+  fs.writeFileSync(path.join(f.cwd, 'scripts/deploy/release-gate.mjs'), 'syntax error');
+  assert.equal(run('relatto-app').status, 0, 'A runtime error must never trigger a production build');
 }));

@@ -79,5 +79,5 @@ export function decideDeployment(target, env = process.env, cwd = process.cwd())
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { build, reason } = decideDeployment(process.argv[2]);
   console.log('[F23 deployment gate] ' + (process.argv[2] ?? '?') + ': ' + (build ? 'BUILD' : 'SKIP') + ' (' + reason + ')');
-  process.exit(build ? 1 : 0); // Vercel convention: 0=SKIP, 1=BUILD.
+  process.exit(build ? 42 : 0); // Wrapper maps 42 to Vercel BUILD (1); other errors skip.
 }
