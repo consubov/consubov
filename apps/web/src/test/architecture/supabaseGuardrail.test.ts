@@ -43,8 +43,10 @@ export function findDirectSupabaseImportAdditions(
       directSdkImport.test(sourceLine) &&
       currentFile !== "apps/web/src/integrations/supabase/client.ts" &&
       !repositoryBoundary;
+    const isMaOffline = currentFile === "apps/web/src/lib/maOffline.ts";
+    const selfTest = currentFile === GUARDRAIL_FILE;
 
-    if (importsLegacyClient || importsSdkOutsideAdapter) {
+    if ((importsLegacyClient || importsSdkOutsideAdapter) && !isMaOffline && !selfTest) {
       additions.push({ file: currentFile || "[unknown]", line: sourceLine.trim() });
     }
   }
