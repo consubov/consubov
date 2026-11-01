@@ -47,8 +47,16 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace('Bearer ', '');
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) {
+    // Supabase getClaims can throw for malformed JWTs. Always deny a bad
+    // credential (401), rather than leaking it into the generic 500 handler.
+    let isAuthenticated = false;
+    try {
+      const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
+      isAuthenticated = !claimsErr && Boolean(claims?.claims);
+    } catch {
+      isAuthenticated = false;
+    }
+    if (!isAuthenticated) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
