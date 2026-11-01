@@ -177,6 +177,183 @@ describe("send-push-notification edge function", () => {
     handler = await loadHandler();
   });
 
+  describe("modern machine apikey (opt-in only)", () => {
+    const modernKey = "sb_secret_synthetic_machine_key";
+
+    const request = (apikey: string) => new Request(
+      "http://localhost/functions/send-push-notification",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey },
+        body: JSON.stringify({ user_ids: [MEMBER_ID] }),
+      },
+    );
+
+    it("does not enable machine access just because a modern API key exists", async () => {
+      const response = await handler(request(modernKey));
+      expect(response.status).toBe(401);
+      expect(hoisted.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("denies wrong apikey with opt-in enabled", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: "sb_secret_generic_admin_synthetic", push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request("sb_secret_incorrect"));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("never accepts the shared default admin secret as a push credential", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      const adminKey = "sb_secret_generic_admin_synthetic";
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: adminKey, push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(adminKey));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("rejects a default-only key set even when the caller has that key", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("rejects a named push key when it reuses the admin default value", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: modernKey, push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
+        expect(response.status).toBe(401);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+
+    it("authenticates a matching machine apikey, preserving forbidden user targets", async () => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: "sb_secret_generic_admin_synthetic", push: modernKey }) :
+        original(name);
+      try {
+        const response = await handler(request(modernKey));
+        expect(response.status).toBe(403); // Machine cannot select arbitrary users.
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(lastAudit(warnSpy)).toMatchObject({
+          event: "push.request.denied",
+          caller: "machine",
+          reason: "selecao_proibida",
+        });
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    });
+  });
+
+  describe("named push apikey end-to-end authorization (mocked delivery only)", () => {
+    const namedPushKey = "sb_secret_synthetic_machine_key";
+    const adminKey = "sb_secret_generic_admin_synthetic";
+
+    const withNamedKey = async (run: () => Promise<void>) => {
+      const original = (globalThis as any).Deno.env.get;
+      (globalThis as any).Deno.env.get = (name: string) =>
+        name === "CONSUBOV_PUSH_MODERN_MACHINE_KEY_ENABLED" ? "true" :
+        name === "SUPABASE_SECRET_KEYS" ? JSON.stringify({ default: adminKey, push: namedPushKey }) :
+        original(name);
+      try {
+        await run();
+      } finally {
+        (globalThis as any).Deno.env.get = original;
+      }
+    };
+
+    const namedRequest = (body: unknown, authorization?: string) => new Request(
+      "http://localhost/functions/send-push-notification",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          apikey: namedPushKey,
+          ...(authorization === undefined ? {} : { authorization }),
+        },
+        body: JSON.stringify(body),
+      },
+    );
+
+    it("allows the dedicated push key for a scoped farm notification, without JWT", async () => {
+      await withNamedKey(async () => {
+        queueMachineFazenda(["sub-1"]);
+        const response = await handler(namedRequest({ fazenda_id: "faz-1" }));
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        expect(data.total).toBe(1);
+        expect(data.sent).toBe(1);
+        expect(hoisted.sendNotification).toHaveBeenCalledTimes(1);
+        expect(mockClient.auth.getUser).not.toHaveBeenCalled();
+        expect(lastAudit(logSpy)).toMatchObject({
+          event: "push.request.completed",
+          caller: "machine",
+          selections: ["fazenda"],
+        });
+      });
+    });
+
+    it("denies global broadcast despite a valid named machine apikey", async () => {
+      await withNamedKey(async () => {
+        const response = await handler(namedRequest({ all: true }));
+        expect(response.status).toBe(403);
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+        expect(lastAudit(warnSpy)).toMatchObject({
+          event: "push.request.denied",
+          caller: "machine",
+          reason: "broadcast_proibido",
+        });
+      });
+    });
+
+    it("never upgrades an invalid Bearer JWT into machine access using apikey", async () => {
+      await withNamedKey(async () => {
+        setupAuth(null, new Error("invalid test JWT"));
+        const response = await handler(
+          namedRequest({ fazenda_id: "faz-1" }, "Bearer invalid-test-jwt"),
+        );
+        expect(response.status).toBe(401);
+        expect(mockClient.auth.getUser).toHaveBeenCalledWith("invalid-test-jwt");
+        expect(hoisted.sendNotification).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("HTTP semantics", () => {
     it("OPTIONS preflight responds 200 with allow-methods and allow-origin", async () => {
       const res = await handler(createRequest({}, { method: "OPTIONS" }));
