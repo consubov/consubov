@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { RequestCancelledError, RequestTimeoutError, runWithDeadline } from "@/lib/requestDeadline";
+import { DashboardQueryError, requireDashboardCount, requireAnimalTotal } from "@/lib/adminDashboardMetrics";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, Factory, ScanLine, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,61 +22,117 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ fazendas: 0, retiros: 0, pastos: 0, produtos: 0, ciclosAbertos: 0, lancamentos: 0, animais: 0, fabricas: 0 });
+  // Null means no verified count. A failed request must never become a fake zero.
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { user: sessionUser } = useAuth();
+  const sessionUserId = sessionUser?.id;
+  const [refreshKey, setRefreshKey] = useState(0);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const showCriarAdmin = searchParams.get("criar-admin") === "1";
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const deadline = <T,>(fn: (signal: AbortSignal) => PromiseLike<T>): Promise<T> =>
+      runWithDeadline(fn, { signal: controller.signal, timeoutMs: 12000 });
+
     async function load() {
-      const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animaisData, fabricas] = await Promise.all([
-        supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true),
-        supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true),
-        supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true),
-        supabase.from("produtos").select("id", { count: "exact", head: true }).eq("ativo", true),
-        supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false),
-        supabase.from("lancamentos").select("id", { count: "exact", head: true }),
-        supabase.from("pastos").select("num_animais").eq("ativo", true),
-        supabase.from("fabricas").select("id", { count: "exact", head: true }).eq("ativo", true),
-      ]);
+      setLoading(true);
+      setLoadError(null);
+      setStats(null);
+      try {
+        // AuthProvider already established the session before entering /admin.
+        // The user id is only a selector: PostgREST JWT + RLS verifies membership.
+        // Do not require an extra /auth/v1/user request to render this page.
+        if (!sessionUserId) throw new DashboardQueryError("permission");
+        const admin = await deadline(signal =>
+          supabase.from("administradores").select("id")
+            .eq("user_id", sessionUserId).eq("ativo", true)
+            .abortSignal(signal).maybeSingle(),
+        );
+        if (admin.error) {
+          throw new DashboardQueryError(
+            admin.status === 401 || admin.status === 403 || admin.error.code === "42501"
+              ? "permission" : "network",
+          );
+        }
+        if (!admin.data) throw new DashboardQueryError("permission");
 
-      const totalAnimais = (animaisData.data ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
+        const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animais, fabricas] = await Promise.all([
+          deadline(signal => supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("produtos").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false).abortSignal(signal)),
+          deadline(signal => supabase.from("lancamentos").select("id", { count: "exact", head: true }).abortSignal(signal)),
+          deadline(signal => supabase.from("pastos").select("num_animais").eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("fabricas").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+        ]);
 
-      setStats({
-        fazendas: fazendas.count ?? 0,
-        retiros: retiros.count ?? 0,
-        pastos: pastos.count ?? 0,
-        produtos: produtos.count ?? 0,
-        ciclosAbertos: ciclos.count ?? 0,
-        lancamentos: lancamentos.count ?? 0,
-        animais: totalAnimais,
-        fabricas: fabricas.count ?? 0,
-      });
-      setLoading(false);
+        const verified: Stats = {
+          fazendas: requireDashboardCount(fazendas),
+          retiros: requireDashboardCount(retiros),
+          pastos: requireDashboardCount(pastos),
+          produtos: requireDashboardCount(produtos),
+          ciclosAbertos: requireDashboardCount(ciclos),
+          lancamentos: requireDashboardCount(lancamentos),
+          animais: requireAnimalTotal(animais),
+          fabricas: requireDashboardCount(fabricas),
+        };
+        if (active) setStats(verified);
+      } catch (err) {
+        if (!active || err instanceof RequestCancelledError) return;
+        const message = err instanceof RequestTimeoutError
+          ? "A consulta demorou demais. Verifique a conexão e tente novamente."
+          : err instanceof DashboardQueryError && err.kind === "permission"
+          ? "Sessão ou acesso de administrador não validado. Verifique seu login e tente novamente."
+          : "Não foi possível consultar o banco. Nenhum indicador foi confirmado. Tente novamente.";
+        setStats(null);
+        setLoadError(message);
+      } finally {
+        if (active) setLoading(false);
+      }
     }
-    load();
 
+    void load();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [refreshKey, sessionUserId]);
+
+  // Realtime notifications do not start concurrent requests or write stale data.
+  useEffect(() => {
+    let queued: ReturnType<typeof setTimeout> | undefined;
+    const scheduleReload = () => {
+      if (queued !== undefined) clearTimeout(queued);
+      queued = setTimeout(() => setRefreshKey((n) => n + 1), 400);
+    };
     const channel = supabase.channel("admin-dashboard-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, scheduleReload)
       .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (queued !== undefined) clearTimeout(queued);
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   const cards = [
-    { label: "Fazendas", value: stats.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Retiros", value: stats.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
-    { label: "Pastos Ativos", value: stats.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Produtos", value: stats.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
-    { label: "Animais", value: stats.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Ciclos Abertos", value: stats.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
-    { label: "Lançamentos", value: stats.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
-    { label: "Fábricas", value: stats.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
+    { label: "Fazendas", value: stats?.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Retiros", value: stats?.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
+    { label: "Pastos Ativos", value: stats?.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Produtos", value: stats?.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
+    { label: "Animais", value: stats?.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
+    { label: "Ciclos Abertos", value: stats?.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
+    { label: "Lançamentos", value: stats?.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
+    { label: "Fábricas", value: stats?.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
   ];
 
   const actionCards = [
@@ -135,6 +194,7 @@ export default function AdminDashboard() {
                 size="sm"
                 className={`w-full h-auto py-1 px-2 text-xs font-semibold justify-between ${c.buttonClass}`}
                 onClick={() => navigate(c.to)}
+                disabled={loading || !!loadError || !stats}
               >
                 Acessar
                 <ArrowRight className="w-3 h-3" />
@@ -144,13 +204,23 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <Card role="alert">
+          <CardContent className="p-6 space-y-3">
+            <p className="text-destructive font-medium">Dados do painel indisponíveis</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <Button onClick={() => setRefreshKey((n) => n + 1)} variant="outline">
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse"><CardContent className="p-6 h-24" /></Card>
           ))}
         </div>
-      ) : (
+      ) : stats ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {cards.map((c) => (
             <Card
@@ -170,12 +240,12 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </div>
-      )}
+      ) : null}
 
-      <AdminListSection refreshKey={adminRefreshKey} />
+      {!loading && !loadError && stats && <AdminListSection refreshKey={adminRefreshKey} />}
 
       <CriarAdminModal
-        open={showCriarAdmin}
+        open={!!stats && !loadError && !loading && showCriarAdmin}
         onOpenChange={(open) => { if (!open) navigate("/admin", { replace: true }); }}
         onCreated={() => setAdminRefreshKey((k) => k + 1)}
       />

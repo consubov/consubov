@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,9 +39,7 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
     setLoading(true); setError(null);
     (async () => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const b = await res.blob();
+        const b = await fetchPdfBinaryWithTimeout(url);
         if (cancelled) return;
         const u = URL.createObjectURL(b);
         currentUrlRef.current = u;
@@ -65,7 +64,7 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
       const u = URL.createObjectURL(blob);
       a.href = u; a.download = name; a.rel = "noopener";
       document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(u), 2000);
+      setTimeout(() => URL.revokeObjectURL(u), 120_000);
     } else if (url) {
       await downloadPdfFromUrl(url, name);
     }

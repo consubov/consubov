@@ -1,8 +1,8 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 // Abre um PDF do Consultor via blob URL, escondendo a URL técnica do Supabase.
 export async function openPdfBlobUrl(url: string) {
   try {
-    const res = await fetch(url);
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     const blobUrl = URL.createObjectURL(blob);
     window.open(blobUrl, "_blank", "noopener");
     // Revoga depois de alguns minutos para liberar memória.
