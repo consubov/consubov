@@ -1,0 +1,33 @@
+name: INC012 Temporary Isolated QA
+on:
+  # Every update to this isolated integration branch must be tested, including
+  # merges from main that do not change dependency manifests.
+  push:
+    branches:
+      - reconcile/main-consubov-v2-release-floor-20261029
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-verification:
+    name: Frozen install, audit and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - name: Frozen lockfile check
+        run: bun install --frozen-lockfile
+      - name: Audit high and critical dependencies
+        run: bun audit --audit-level=high
+      - name: Typecheck, build and tests
+        run: bun run check
+      - name: Lint changed files
+        working-directory: apps/web
+        run: bun run lint:changed

@@ -193,7 +193,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
 
   // Filename
   const safeFazenda = data.fazendaNome.replace(/\s+/g, "_").toUpperCase().replace(/[^A-Z0-9_]/g, "");
-  const safePeriodo = data.periodoLabel.replace(/[^a-zA-Z0-9\-]/g, "_");
+  const safePeriodo = data.periodoLabel.replace(/[^a-zA-Z0-9-]/g, "_");
   const fileName = `SALGA_${safeFazenda}_${safePeriodo}.pdf`;
 
   const blob = doc.output("blob");

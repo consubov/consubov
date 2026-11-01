@@ -1,3 +1,4 @@
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import jsPDF from "jspdf";
 
 const GREEN_DARK = "#14432B";
@@ -43,9 +44,7 @@ function fmtDate(iso: string) {
 async function loadLogo(): Promise<string | null> {
   try {
     const url = "/lovable-uploads/consubov-logo.png";
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
+    const blob = await fetchPdfBinaryWithTimeout(url);
     return await new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);

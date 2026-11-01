@@ -1,3 +1,4 @@
+import { downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarPdfSalga, type PastoSalgaRow, type SalgaPdfData } from "@/utils/gerarPdfSalga";
 import { saveLastPdf, type LastPdfEntry } from "@/lib/offlineDb";
@@ -79,8 +80,8 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
   const qrMap: Record<string, boolean> = {};
   for (const l of lancData) {
     sacosMap[l.pasto_id] = (sacosMap[l.pasto_id] || 0) + (l.num_sacos || 0);
-    if ((l as any).origem === "qr") qrMap[l.pasto_id] = true;
-    if ((l as any).cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
+    if (l.origem === "qr") qrMap[l.pasto_id] = true;
+    if (l.cocho_cheio) cochoMap[l.pasto_id] = (cochoMap[l.pasto_id] || 0) + 1;
     if (l.indice_consumo != null) {
       (indiceMap[l.pasto_id] ||= []).push(Number(l.indice_consumo));
     }
@@ -157,12 +158,5 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
 
 /** Trigger a browser download of a Blob. */
 export function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  downloadGeneratedPdf(blob, fileName);
 }

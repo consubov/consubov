@@ -8,7 +8,7 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
-import { getAllLancamentos } from "@/lib/offlineDb";
+import { getLancamentosFotoPage } from "@/lib/offlineDb";
 
 const DB_NAME = "consubov-fotos-salga";
 const STORE = "fotos";
@@ -65,24 +65,37 @@ async function comprimir(dataUrl: string): Promise<Blob> {
   return blob;
 }
 
-/** Copia para a fila as fotos de auditoria ainda não copiadas (só leitura do store lancamentos). */
+// Scan a bounded number of records per cycle and keep the cursor in memory.
+// A browser restart restarts at the beginning; it never erases existing photo jobs.
+let photoScanCursor: string | null = null;
+const MAX_SCANNED_PER_CYCLE = 128;
+const MAX_NEW_PHOTOS_PER_CYCLE = 4;
+
+/** Copy a small photo batch; avoid getAllLancamentos() copying every base64 image. */
 async function copiarNovas() {
-  const lancs = await getAllLancamentos();
   const d = await db();
-  for (const l of lancs) {
-    const foto = l?.foto_auditoria_url;
-    if (!l?.id || !foto || !foto.startsWith("data:image/")) continue;
-    if (await d.get(STORE, l.id)) continue;
-    if (await d.get("feitos", l.id)) continue;
-    try {
-      const blob = await comprimir(foto);
-      await d.put(STORE, {
-        lancamento_id: l.id, pasto_id: l.pasto_id, tirada_em: l.data,
-        blob, tries: 0, next_at: 0,
-      } satisfies FotoFila);
-    } catch (e) {
-      console.warn("[fotoSalga] falha ao copiar foto", l.id, e);
+  let scanned = 0;
+  let copied = 0;
+  while (scanned < MAX_SCANNED_PER_CYCLE && copied < MAX_NEW_PHOTOS_PER_CYCLE) {
+    const page = await getLancamentosFotoPage(photoScanCursor, 8);
+    scanned += 8;
+    photoScanCursor = page.hasMore ? page.cursor : null;
+    for (const l of page.records) {
+      const foto = l.foto_auditoria_url;
+      if (!foto || !l.id) continue;
+      if (await d.get(STORE, l.id) || await d.get("feitos", l.id)) continue;
+      try {
+        const blob = await comprimir(foto);
+        await d.put(STORE, {
+          lancamento_id: l.id, pasto_id: l.pasto_id, tirada_em: l.data,
+          blob, tries: 0, next_at: 0,
+        } satisfies FotoFila);
+        copied += 1;
+      } catch (error) {
+        console.warn("[fotoSalga] falha ao copiar foto", l.id, error);
+      }
     }
+    if (!page.hasMore) break;
   }
 }
 
@@ -120,13 +133,23 @@ export async function processarFilaFotosSalga() {
   if (rodando) return;
   rodando = true;
   try {
+    // Do not decode images when hidden; mobile systems may suspend us mid-canvas.
+    if (typeof document !== 'undefined' && document.hidden) return;
     await copiarNovas();
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     const { data: sess } = await supabase.auth.getSession();
     if (!sess?.session) return;
     const d = await db();
-    const itens = (await d.getAll(STORE)) as FotoFila[];
     const agora = Date.now();
+    // Cursor scans only a few upload candidates; getAll(STORE) materialized all blobs.
+    const read = d.transaction(STORE, 'readonly');
+    let cursor = await read.store.openCursor();
+    const itens: FotoFila[] = [];
+    while (cursor && itens.length < 3) {
+      if (cursor.value.next_at <= agora) itens.push(cursor.value);
+      cursor = await cursor.continue();
+    }
+    await read.done;
     for (const f of itens) {
       if (f.next_at > agora) continue;
       try {
