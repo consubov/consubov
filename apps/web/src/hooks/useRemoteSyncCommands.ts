@@ -36,7 +36,6 @@ export function useRemoteSyncCommands(
           .update({ acknowledged_at: new Date().toISOString() })
           .eq("id", rowId);
         if (ackErr) console.warn("[useRemoteSyncCommands] ack failed:", ackErr);
-        else console.log("[useRemoteSyncCommands] acknowledged:", rowId);
       } catch (err) {
         console.error("[useRemoteSyncCommands] error handling command:", err);
       } finally {
