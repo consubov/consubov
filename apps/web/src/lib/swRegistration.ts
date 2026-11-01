@@ -85,7 +85,7 @@ function scheduleExplicitUpdateTimeout() {
 }
 
 function logSw(message: string, ...args: unknown[]) {
-  console.log(`[SW] ${message}`, ...args);
+  if (import.meta.env.DEV) console.debug(`[SW] ${message}`, ...args);
 }
 
 function notifyListeners(waiting: boolean) {

@@ -81,7 +81,7 @@ describe("PWA update consent (runtime)", () => {
       })
       .mockImplementationOnce(() => delayedResponse);
     vi.stubGlobal("fetch", fetchStub);
-    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const log = vi.spyOn(console, "debug").mockImplementation(() => undefined);
     try {
       const f = await fixture();
       await f.module.applyPendingUpdateNow("user-click");
