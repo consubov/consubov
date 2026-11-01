@@ -1,6 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
+import { getSupabasePublishableKey } from '../_shared/apiKeys.ts';
 
 const BodySchema = z.object({
   origem_lat: z.number().min(-90).max(90),
@@ -42,12 +43,20 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      getSupabasePublishableKey((name) => Deno.env.get(name)),
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace('Bearer ', '');
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) {
+    // Supabase getClaims can throw for malformed JWTs. Always deny a bad
+    // credential (401), rather than leaking it into the generic 500 handler.
+    let isAuthenticated = false;
+    try {
+      const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
+      isAuthenticated = !claimsErr && Boolean(claims?.claims);
+    } catch {
+      isAuthenticated = false;
+    }
+    if (!isAuthenticated) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
