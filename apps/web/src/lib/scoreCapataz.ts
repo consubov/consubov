@@ -205,35 +205,131 @@ export async function fetchNotaCochoConsultor(
       .order("hora_inicio", { ascending: false });
     if (!visitas || visitas.length === 0) return null;
 
+    // Fallback original para lotes cujo tamanho possa omitir notas.
+    const fetchPerVisit = async (): Promise<{ nota: number; dataVisita: string } | null> => {
+      for (const v of visitas as any[]) {
+        // pega notas de todas avaliacoes_score dessa visita (via visita_pastos ou visita_currais)
+        const { data: vps } = await supabase
+          .from("visita_pastos")
+          .select("id")
+          .eq("visita_id", v.id);
+        const { data: vcs } = await supabase
+          .from("visita_currais")
+          .select("id")
+          .eq("visita_id", v.id);
+        const vpIds = (vps ?? []).map((r: any) => r.id);
+        const vcIds = (vcs ?? []).map((r: any) => r.id);
+        if (vpIds.length === 0 && vcIds.length === 0) continue;
+
+        let notas: number[] = [];
+        if (vpIds.length > 0) {
+          const { data } = await supabase
+            .from("avaliacoes_score")
+            .select("nota")
+            .in("visita_pasto_id", vpIds);
+          notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+        }
+        if (vcIds.length > 0) {
+          const { data } = await supabase
+            .from("avaliacoes_score")
+            .select("nota")
+            .in("visita_curral_id", vcIds);
+          notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+        }
+        notas = notas.filter((n) => Number.isFinite(n) && n > 0);
+        if (notas.length === 0) continue;
+        const media = notas.reduce((a, b) => a + b, 0) / notas.length;
+        return { nota: media, dataVisita: v.hora_inicio ?? v.created_at };
+      }
+      return null;
+    };
+
+    // Evitar filtros de visita excessivamente longos.
+    if (visitas.length > 50) return fetchPerVisit();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const visitaIds = visitas.map((v: any) => v.id);
+    if (visitaIds.length === 0) return null;
+
+    // Busca os ids de pastos e currais para todas as visitas em batch
+    const { data: vps, error: vpError } = await supabase
+      .from("visita_pastos")
+      .select("id, visita_id")
+      .in("visita_id", visitaIds);
+    const { data: vcs, error: vcError } = await supabase
+      .from("visita_currais")
+      .select("id, visita_id")
+      .in("visita_id", visitaIds);
+
+    // Lote no limite pode ter sido truncado pelo servidor.
+    if (vpError || vcError || (vps?.length ?? 0) >= 1000 || (vcs?.length ?? 0) >= 1000) return fetchPerVisit();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vpIds = (vps ?? []).map((r: any) => r.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vcIds = (vcs ?? []).map((r: any) => r.id);
+    if (vpIds.length > 100 || vcIds.length > 100) return fetchPerVisit();
+
+    // Busca as notas para todos os pastos e currais encontrados
+    const notasPastoMap = new Map<string, number[]>();
+    if (vpIds.length > 0) {
+      const { data, error } = await supabase
+        .from("avaliacoes_score")
+        .select("nota, visita_pasto_id")
+        .in("visita_pasto_id", vpIds);
+      if (error || (data?.length ?? 0) >= 1000) return fetchPerVisit();
+      for (const r of data ?? []) {
+        if (!r.visita_pasto_id) continue;
+        const notas = notasPastoMap.get(r.visita_pasto_id) ?? [];
+        notas.push(Number(r.nota));
+        notasPastoMap.set(r.visita_pasto_id, notas);
+      }
+    }
+
+    const notasCurralMap = new Map<string, number[]>();
+    if (vcIds.length > 0) {
+      const { data, error } = await supabase
+        .from("avaliacoes_score")
+        .select("nota, visita_curral_id")
+        .in("visita_curral_id", vcIds);
+      if (error || (data?.length ?? 0) >= 1000) return fetchPerVisit();
+      for (const r of data ?? []) {
+        if (!r.visita_curral_id) continue;
+        const notas = notasCurralMap.get(r.visita_curral_id) ?? [];
+        notas.push(Number(r.nota));
+        notasCurralMap.set(r.visita_curral_id, notas);
+      }
+    }
+
+    // Organiza os ids de pasto/curral por visita
+    const vpsPorVisita = new Map<string, string[]>();
+    for (const r of vps ?? []) {
+      const ids = vpsPorVisita.get(r.visita_id) ?? [];
+      ids.push(r.id);
+      vpsPorVisita.set(r.visita_id, ids);
+    }
+    const vcsPorVisita = new Map<string, string[]>();
+    for (const r of vcs ?? []) {
+      const ids = vcsPorVisita.get(r.visita_id) ?? [];
+      ids.push(r.id);
+      vcsPorVisita.set(r.visita_id, ids);
+    }
+
+    // Encontra a primeira visita (mais recente) que tem notas
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const v of visitas as any[]) {
-      // pega notas de todas avaliacoes_score dessa visita (via visita_pastos ou visita_currais)
-      const { data: vps } = await supabase
-        .from("visita_pastos")
-        .select("id")
-        .eq("visita_id", v.id);
-      const { data: vcs } = await supabase
-        .from("visita_currais")
-        .select("id")
-        .eq("visita_id", v.id);
-      const vpIds = (vps ?? []).map((r: any) => r.id);
-      const vcIds = (vcs ?? []).map((r: any) => r.id);
-      if (vpIds.length === 0 && vcIds.length === 0) continue;
+      const vvpIds = vpsPorVisita.get(v.id) ?? [];
+      const vvcIds = vcsPorVisita.get(v.id) ?? [];
+      if (vvpIds.length === 0 && vvcIds.length === 0) continue;
 
       let notas: number[] = [];
-      if (vpIds.length > 0) {
-        const { data } = await supabase
-          .from("avaliacoes_score")
-          .select("nota")
-          .in("visita_pasto_id", vpIds);
-        notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+      for (const id of vvpIds) {
+        notas = notas.concat(notasPastoMap.get(id) ?? []);
       }
-      if (vcIds.length > 0) {
-        const { data } = await supabase
-          .from("avaliacoes_score")
-          .select("nota")
-          .in("visita_curral_id", vcIds);
-        notas = notas.concat((data ?? []).map((r: any) => Number(r.nota)));
+      for (const id of vvcIds) {
+        notas = notas.concat(notasCurralMap.get(id) ?? []);
       }
+
       notas = notas.filter((n) => Number.isFinite(n) && n > 0);
       if (notas.length === 0) continue;
       const media = notas.reduce((a, b) => a + b, 0) / notas.length;

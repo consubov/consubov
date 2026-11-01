@@ -1,3 +1,4 @@
+import { forEachLimited, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,13 @@ function extractRelatorioPath(url: string | null): string | null {
   const idx = url.indexOf(marker);
   return idx >= 0 ? url.slice(idx + marker.length).split("?")[0] : null;
 }
+function errorMessage(error: unknown, fallback: string): string {
+  if (error !== null && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return fallback;
+}
+
 const WEEK_COLORS = ["#1F7A4D", "#C9A84C", "#B91C1C", "#0EA5E9", "#7C3AED", "#F97316"];
 
 export default function ConsultorDespesasPage() {
@@ -79,7 +87,7 @@ export default function ConsultorDespesasPage() {
     const { data } = await supabase.from("consultores").select("id, nome").eq("user_id", user.id).maybeSingle();
     if (!data) { setLoading(false); return; }
     setConsultorId(data.id);
-    setConsultorNome((data as any).nome ?? "");
+    setConsultorNome(data.nome ?? "");
     await Promise.all([loadDespesas(data.id), loadRelatorios(data.id)]);
     setLoading(false);
   }
@@ -136,8 +144,8 @@ export default function ConsultorDespesasPage() {
       setAddOpen(false);
       setAddFile(null); setAddValor(""); setAddData(format(new Date(), "yyyy-MM-dd"));
       await loadDespesas(consultorId);
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao adicionar");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao adicionar"));
     } finally {
       setUploading(false);
     }
@@ -170,8 +178,8 @@ export default function ConsultorDespesasPage() {
       toast.success("Relatório excluído");
       setToDeleteRel(null);
       await loadRelatorios(consultorId);
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao excluir relatório");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao excluir relatório"));
     }
   }
 
@@ -201,20 +209,25 @@ export default function ConsultorDespesasPage() {
       const valor_total = pendentes.reduce((s, d) => s + Number(d.valor), 0);
 
       // Public URLs for the PDF (create signed URLs then fetch)
-      const items = await Promise.all(pendentes.map(async (d) => {
-        const path = extractPath(d.foto_cupom_url) || d.foto_cupom_url;
-        const { data: signed } = await supabase.storage.from("despesas-consultor-fotos").createSignedUrl(path, 3600);
-        return { data_despesa: d.data_despesa, valor: Number(d.valor), foto_cupom_url: signed?.signedUrl ?? "" };
-      }));
+      const items: { data_despesa: string; valor: number; foto_cupom_url: string }[] = new Array(pendentes.length);
+      const deadline = Date.now() + 120_000;
+      await forEachLimited(pendentes.map((d, index) => ({ d, index })), 4, async ({ d, index }) => {
+        const filePath = extractPath(d.foto_cupom_url) || d.foto_cupom_url;
+        const { data: signed } = await withReportExportDeadline(
+          supabase.storage.from("despesas-consultor-fotos").createSignedUrl(filePath, 3600),
+          "Assinatura da imagem do cupom", deadline,
+        );
+        items[index] = { data_despesa: d.data_despesa, valor: Number(d.valor), foto_cupom_url: signed?.signedUrl ?? "" };
+      });
 
-      const blob = await gerarDespesasPdf({
+      const blob = await withReportExportDeadline(gerarDespesasPdf({
         consultor_nome: consultorNome,
         data_inicio: genIni,
         data_fim: genFim,
         tipo_periodo: genTipo,
         despesas: items,
         valor_total,
-      });
+      }), "Geração do PDF de despesas", deadline, 60_000);
 
       const pdfPath = `${consultorId}/relatorios/${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from("relatorios").upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
@@ -237,8 +250,8 @@ export default function ConsultorDespesasPage() {
       setGenOpen(false);
       await Promise.all([loadDespesas(consultorId), loadRelatorios(consultorId)]);
       window.open(pub.publicUrl, "_blank");
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao gerar relatório");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao gerar relatório"));
     } finally {
       setGenerating(false);
     }
@@ -302,7 +315,7 @@ export default function ConsultorDespesasPage() {
                 <Pie data={donutData} dataKey="value" innerRadius={40} outerRadius={70} strokeWidth={0}>
                   {donutData.map((_, i) => <Cell key={i} fill={WEEK_COLORS[i % WEEK_COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: any) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-1 text-xs">

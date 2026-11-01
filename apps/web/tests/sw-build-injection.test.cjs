@@ -37,6 +37,9 @@ function withDist(cb) {
     fs.mkdirSync(path.join(dir, 'dist', 'assets'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'src', 'lib'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'src', 'lib', 'appVersion.ts'), 'export const APP_VERSION = "0.1.0";');
+    // The real SW plugin requires the inline boot-repair placeholder and source.
+    fs.copyFileSync(path.resolve(__dirname, '../src/lib/pwaBootRepair.inline.js'), path.join(dir, 'src', 'lib', 'pwaBootRepair.inline.js'));
+    fs.writeFileSync(path.join(dir, 'dist', 'index.html'), '<!doctype html><html><body><!-- CONSUBOV_BOOT_REPAIR_INLINE --></body></html>');
     fs.writeFileSync(path.join(dir, 'dist', 'sw.js'), swSource);
     return cb(dir, path.join(dir, 'dist', 'assets'));
   } finally {
@@ -63,6 +66,9 @@ test('Vite SW build plugin injects every route bundle, CSS, and font into precac
   ]);
   assert.doesNotMatch(result, /__BUILD_TIMESTAMP__/);
   assert.ok(fs.existsSync(path.join(dir, 'dist', 'version.json')));
+  const html = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+  assert.match(html, /<script data-consubov-boot-repair>/);
+  assert.doesNotMatch(html, /<!-- CONSUBOV_BOOT_REPAIR_INLINE -->/);
 }));
 
 test('Vite SW build plugin rejects an incomplete build with no executable assets', () => withDist((dir, assets) => {

@@ -22,7 +22,7 @@ export default function ImageUploadField({ label, folder, multiple = false, urls
     const newUrls: string[] = [];
     for (const file of Array.from(files)) {
       const ext = file.name.split(".").pop();
-      const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("landing").upload(path, file, { upsert: true });
       if (error) {
         toast.error(`Erro ao enviar ${file.name}`);

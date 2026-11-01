@@ -157,8 +157,7 @@ export function useEstoqueData(fazendaId: string | null | undefined, mes: number
           schema: 'public',
           table: 'transferencias_estoque',
         },
-        (payload) => {
-          console.log('[Estoque Realtime] Nova transferência:', payload.new);
+        () => {
           refresh();
         }
       )
