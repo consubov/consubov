@@ -48,6 +48,27 @@ import PainelOperacoes from "@/components/gerente/PainelOperacoes";
 import LancamentosManuaisPendentes from "@/components/gerente/LancamentosManuaisPendentes";
 import GerenteNotificacoesBell from "@/components/gerente/GerenteNotificacoesBell";
 
+// Shared static class names: deduplicated without changing Tailwind classes or JSX behavior.
+const GERENTE_NAV_ITEM = "w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground";
+const GERENTE_PANEL_HEADING = "text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2";
+const GERENTE_TAB_TEXT = "text-xs data-[state=active]:text-primary";
+const GERENTE_MUTED_TINY = "text-[10px] text-muted-foreground";
+const GERENTE_MUTED_SMALL = "text-xs text-muted-foreground";
+const GERENTE_NOTICE_BADGE = "absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground";
+const GERENTE_CAPTION_HEADING = "text-sm font-semibold text-muted-foreground uppercase tracking-wide";
+const GERENTE_MUTED_LABEL = "text-sm text-muted-foreground";
+const GERENTE_TAB_BADGE = "text-xs data-[state=active]:text-primary relative";
+const GERENTE_EMPTY_HEADING = "text-center font-semibold text-muted-foreground";
+const GERENTE_EMPTY_TEXT = "text-muted-foreground text-sm text-center py-4";
+const GERENTE_EMPTY_PADDED = "py-8 text-center text-muted-foreground text-sm";
+const GERENTE_CARD_TITLE = "text-primary-foreground hover:bg-primary/80";
+const GERENTE_ROW_HEADER = "flex items-center justify-between gap-2";
+const GERENTE_CONTENT_STACK = "flex-1 overflow-auto p-4 space-y-6 mt-0";
+const GERENTE_ROW_NUMBER = "text-sm font-bold text-foreground";
+const GERENTE_FILTER_BOX = "h-9 w-full max-w-[190px] flex-1";
+const GERENTE_MUTED_ICON = "w-4 h-4 text-muted-foreground";
+const GERENTE_CONTENT_SCROLLED = "flex-1 overflow-auto p-4 mt-0";
+
 const fmtNum = (n: number, d = 0) => n.toFixed(d).replace(".", ",");
 const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 const CURRENT_YEAR = new Date().getFullYear();
@@ -348,7 +369,7 @@ export default function GerenteDashboard() {
       {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex-shrink-0 space-y-2">
         {/* Linha 1: identidade + ações principais */}
-        <div className="flex items-center justify-between gap-2">
+        <div className={GERENTE_ROW_HEADER}>
           <div className="flex min-w-0 items-center gap-3">
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
@@ -375,7 +396,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/materias-primas"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <Package className="w-5 h-5 text-primary" />
                         Matérias-Primas
@@ -384,7 +405,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/entrada-materias-primas"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <PackagePlus className="w-5 h-5 text-primary" />
                         Entrada Matéria-Prima
@@ -394,7 +415,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/produtos"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <Package className="w-5 h-5 text-primary" />
                         Produtos
@@ -403,7 +424,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/auditoria-fotos"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <Camera className="w-5 h-5 text-primary" />
                         Intervalo e Auditoria
@@ -412,7 +433,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/gmd"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <TrendingUp className="w-5 h-5 text-primary" />
                         GMD
@@ -421,7 +442,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/gerente/previsao-abate"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <CalendarClock className="w-5 h-5 text-primary" />
                         Previsão de Abate
@@ -430,7 +451,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => navigate("/conferencia"), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <ScanLine className="w-5 h-5 text-primary" />
                         Conferência
@@ -440,7 +461,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => setSalgaReportOpen(true), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <FileText className="w-5 h-5 text-primary" />
                         Relatório de Salga
@@ -449,7 +470,7 @@ export default function GerenteDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => setRelatorioOpen(true), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={GERENTE_NAV_ITEM}
                       >
                         <FileDown className="w-5 h-5 text-primary" />
                         Relatório de Consumo
@@ -466,17 +487,17 @@ export default function GerenteDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title="Atualizar">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className={GERENTE_CARD_TITLE} disabled={refreshing} title="Atualizar">
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80" title="Sair">
+            <Button variant="ghost" size="icon" onClick={signOut} className={GERENTE_CARD_TITLE} title="Sair">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
 
         {/* Linha 2: fazenda + sino e versão (sem sobrepor) */}
-        <div className="flex items-center justify-between gap-2">
+        <div className={GERENTE_ROW_HEADER}>
           <div className="flex items-center gap-2 text-xs opacity-90 min-w-0">
             <MapPin className="w-3 h-3 shrink-0" />
             <span className="truncate">{fazendaNome}</span>
@@ -497,26 +518,26 @@ export default function GerenteDashboard() {
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-6 rounded-none border-b bg-card h-10 flex-shrink-0">
-          <TabsTrigger value="painel" className="text-xs data-[state=active]:text-primary">Painel</TabsTrigger>
-          <TabsTrigger value="retiros" className="text-xs data-[state=active]:text-primary">Retiros</TabsTrigger>
-          <TabsTrigger value="estoque" className="text-xs data-[state=active]:text-primary relative">
+          <TabsTrigger value="painel" className={GERENTE_TAB_TEXT}>Painel</TabsTrigger>
+          <TabsTrigger value="retiros" className={GERENTE_TAB_TEXT}>Retiros</TabsTrigger>
+          <TabsTrigger value="estoque" className={GERENTE_TAB_BADGE}>
             Estoque
             {transferencias.filter(t => t.status === 'pendente').length > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
+              <Badge className={GERENTE_NOTICE_BADGE}>
                 {transferencias.filter(t => t.status === 'pendente').length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="ranking" className="text-xs data-[state=active]:text-primary">Ranking</TabsTrigger>
-          <TabsTrigger value="alertas" className="text-xs data-[state=active]:text-primary relative">
+          <TabsTrigger value="ranking" className={GERENTE_TAB_TEXT}>Ranking</TabsTrigger>
+          <TabsTrigger value="alertas" className={GERENTE_TAB_BADGE}>
             Alertas
             {(obsPendentes.length + alertasAtraso.length) > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
+              <Badge className={GERENTE_NOTICE_BADGE}>
                 {obsPendentes.length + alertasAtraso.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="auditoria" className="text-xs data-[state=active]:text-primary">Auditoria</TabsTrigger>
+          <TabsTrigger value="auditoria" className={GERENTE_TAB_TEXT}>Auditoria</TabsTrigger>
         </TabsList>
 
         {/* ===== PAINEL ===== */}
@@ -538,7 +559,7 @@ export default function GerenteDashboard() {
             </div>
             {retirosComDados.length > 1 && (
               <Select value={painelRetiroId} onValueChange={setPainelRetiroId}>
-                <SelectTrigger className="h-9 w-full max-w-[190px] flex-1" aria-label="Selecionar retiro">
+                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label="Selecionar retiro">
                   <SelectValue placeholder="Retiro" />
                 </SelectTrigger>
                 <SelectContent>
@@ -551,7 +572,7 @@ export default function GerenteDashboard() {
             )}
             {produtoFiltro.produtos.length > 0 && (
               <Select value={painelProdutoId} onValueChange={setPainelProdutoId}>
-                <SelectTrigger className="h-9 w-full max-w-[190px] flex-1" aria-label="Selecionar produto">
+                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label="Selecionar produto">
                   <SelectValue placeholder="Produto" />
                 </SelectTrigger>
                 <SelectContent>
@@ -563,7 +584,7 @@ export default function GerenteDashboard() {
               </Select>
             )}
           </div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Painel da Fazenda</h2>
+          <h2 className={GERENTE_CAPTION_HEADING}>Painel da Fazenda</h2>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelDataView.totalAnimais)} />
             <MetricCard icon={Droplets} label="Consumo Real" value={`${fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-primary" />
@@ -627,7 +648,7 @@ export default function GerenteDashboard() {
 
         {/* ===== RETIROS ===== */}
         <TabsContent value="retiros" className="flex-1 overflow-auto p-4 space-y-3 mt-0">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Retiros</h2>
+          <h2 className={GERENTE_CAPTION_HEADING}>Retiros</h2>
           {retirosComDados.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
           ) : (
@@ -637,28 +658,28 @@ export default function GerenteDashboard() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-semibold text-sm text-foreground">{r.nome}</p>
-                      <p className="text-xs text-muted-foreground">{r.capataz}</p>
+                      <p className={GERENTE_MUTED_SMALL}>{r.capataz}</p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {r.alertaAtraso && <AlertTriangle className="w-4 h-4 text-destructive" />}
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      <ChevronRight className={GERENTE_MUTED_ICON} />
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
-                      <p className="text-xs text-muted-foreground">Animais</p>
-                      <p className="text-sm font-bold text-foreground">{r.totalAnimais}</p>
+                      <p className={GERENTE_MUTED_SMALL}>Animais</p>
+                      <p className={GERENTE_ROW_NUMBER}>{r.totalAnimais}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Sacos</p>
-                      <p className="text-sm font-bold text-foreground">{r.sacosUtilizados}</p>
+                      <p className={GERENTE_MUTED_SMALL}>Sacos</p>
+                      <p className={GERENTE_ROW_NUMBER}>{r.sacosUtilizados}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Consumo</p>
+                      <p className={GERENTE_MUTED_SMALL}>Consumo</p>
                       <p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">GMD</p>
+                      <p className={GERENTE_MUTED_SMALL}>GMD</p>
                       <p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p>
                     </div>
                   </div>
@@ -698,7 +719,7 @@ export default function GerenteDashboard() {
         </TabsContent>
 
         {/* ===== ESTOQUE ===== */}
-        <TabsContent value="estoque" className="flex-1 overflow-auto p-4 mt-0">
+        <TabsContent value="estoque" className={GERENTE_CONTENT_SCROLLED}>
           <EstoqueDashboard
             estoques={estoques}
             transferencias={transferencias}
@@ -711,14 +732,14 @@ export default function GerenteDashboard() {
         </TabsContent>
 
         {/* ===== RANKING ===== */}
-        <TabsContent value="ranking" className="flex-1 overflow-auto p-4 space-y-6 mt-0">
+        <TabsContent value="ranking" className={GERENTE_CONTENT_STACK}>
           {/* Score de Eficiência */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <h2 className={GERENTE_PANEL_HEADING}>
               <Award className="w-4 h-4" /> Score de Eficiência
             </h2>
             {capatazScores.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-4">Sem dados suficientes.</p>
+              <p className={GERENTE_EMPTY_TEXT}>Sem dados suficientes.</p>
             ) : (
               <Card>
                 <Table>
@@ -736,9 +757,9 @@ export default function GerenteDashboard() {
                       return (
                         <Fragment key={s.retiroId}>
                           <TableRow className="cursor-pointer" onClick={() => setScoreAberto(aberto ? null : s.retiroId)}>
-                            <TableCell className="text-center font-semibold text-muted-foreground">{i + 1}</TableCell>
+                            <TableCell className={GERENTE_EMPTY_HEADING}>{i + 1}</TableCell>
                             <TableCell className="text-sm">{s.retiro}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{s.capataz}</TableCell>
+                            <TableCell className={GERENTE_MUTED_LABEL}>{s.capataz}</TableCell>
                             <TableCell className={`text-right ${scoreColor(s.score)}`}>{fmtNum(s.score, 1)}/10</TableCell>
                           </TableRow>
                           {aberto && (
@@ -766,11 +787,11 @@ export default function GerenteDashboard() {
 
           {/* GMD Ranking */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <h2 className={GERENTE_PANEL_HEADING}>
               <TrendingUp className="w-4 h-4" /> Ranking GMD por Retiro
             </h2>
             {gmdRanking.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-4">Sem dados suficientes.</p>
+              <p className={GERENTE_EMPTY_TEXT}>Sem dados suficientes.</p>
             ) : (
               <Card>
                 <Table>
@@ -785,9 +806,9 @@ export default function GerenteDashboard() {
                   <TableBody>
                     {gmdRanking.map((r, i) => (
                       <TableRow key={r.retiro}>
-                        <TableCell className="text-center font-semibold text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className={GERENTE_EMPTY_HEADING}>{i + 1}</TableCell>
                         <TableCell className="text-sm">{r.retiro}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{r.capataz}</TableCell>
+                        <TableCell className={GERENTE_MUTED_LABEL}>{r.capataz}</TableCell>
                         <TableCell className="text-right font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</TableCell>
                       </TableRow>
                     ))}
@@ -800,7 +821,7 @@ export default function GerenteDashboard() {
         </TabsContent>
 
         {/* ===== ALERTAS ===== */}
-        <TabsContent value="alertas" className="flex-1 overflow-auto p-4 space-y-6 mt-0">
+        <TabsContent value="alertas" className={GERENTE_CONTENT_STACK}>
           {/* Alertas de salga atrasada */}
           {alertasAtraso.length > 0 && (
             <div>
@@ -824,7 +845,7 @@ export default function GerenteDashboard() {
                         <p className="text-xs"><span className="text-muted-foreground">Última salga:</span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
                         <p className="text-xs"><span className="text-muted-foreground">Intervalo definido:</span> {a.intervaloDefinido} dias</p>
                         <p className="text-xs font-semibold text-destructive">Dias sem salga: {a.diasSemSalga}</p>
-                        <p className="text-xs text-muted-foreground">👉 Verificar responsável pela salga</p>
+                        <p className={GERENTE_MUTED_SMALL}>👉 Verificar responsável pela salga</p>
                         <Badge variant="destructive" className="text-[10px] mt-1">
                           {a.gravidade === 'critico' ? '🔴 Crítico' : a.gravidade === 'moderado' ? '🟠 Moderado' : '🟡 Leve'}
                         </Badge>
@@ -841,14 +862,14 @@ export default function GerenteDashboard() {
 
           {/* Pendentes */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <h2 className={GERENTE_PANEL_HEADING}>
               <Bell className="w-4 h-4" /> Observações Pendentes
               {obsPendentes.length > 0 && (
                 <Badge variant="destructive" className="text-[10px] h-5">{obsPendentes.length}</Badge>
               )}
             </h2>
             {obsPendentes.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhuma observação pendente.</CardContent></Card>
+              <Card><CardContent className={GERENTE_EMPTY_PADDED}>Nenhuma observação pendente.</CardContent></Card>
             ) : (
               <div className="space-y-2">
                 {obsPendentes.map(obs => (
@@ -865,11 +886,11 @@ export default function GerenteDashboard() {
 
           {/* Histórico */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <h2 className={GERENTE_PANEL_HEADING}>
               <Clock className="w-4 h-4" /> Histórico de Observações
             </h2>
             {obsResolvidas.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhuma observação resolvida.</CardContent></Card>
+              <Card><CardContent className={GERENTE_EMPTY_PADDED}>Nenhuma observação resolvida.</CardContent></Card>
             ) : (
               <div className="space-y-2">
                 {obsResolvidas.map(obs => (
@@ -881,7 +902,7 @@ export default function GerenteDashboard() {
         </TabsContent>
 
         {/* ===== AUDITORIA (fotos dos capatazes, carregadas só ao tocar) ===== */}
-        <TabsContent value="auditoria" className="flex-1 overflow-auto p-4 mt-0">
+        <TabsContent value="auditoria" className={GERENTE_CONTENT_SCROLLED}>
           {activeFazendaId ? (
             <div className="space-y-3">
               <PainelOperacoes fazendaId={activeFazendaId} retiros={retirosList} />
@@ -926,12 +947,12 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
     <>
       <SheetHeader className="mb-4">
         <SheetTitle className="text-foreground">{retiro.nome}</SheetTitle>
-        <p className="text-sm text-muted-foreground">Capataz: {retiro.capataz}</p>
+        <p className={GERENTE_MUTED_LABEL}>Capataz: {retiro.capataz}</p>
         <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-          <div><p className="text-[10px] text-muted-foreground">Animais</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
-          <div><p className="text-[10px] text-muted-foreground">Sacos</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
-          <div><p className="text-[10px] text-muted-foreground">Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
-          <div><p className="text-[10px] text-muted-foreground">GMD</p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>Animais</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>Sacos</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>GMD</p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
         </div>
         <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
           <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
@@ -978,7 +999,7 @@ function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
           />
         ) : (
           <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
-            <Eye className="w-4 h-4 text-muted-foreground" />
+            <Eye className={GERENTE_MUTED_ICON} />
           </div>
         )}
 
@@ -990,7 +1011,7 @@ function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
             {retiro && <span> · {retiro.nome}</span>}
             {pasto && <span> · {pasto.nome}</span>}
           </span>
-          <span className="text-[10px] text-muted-foreground">{dataStr}</span>
+          <span className={GERENTE_MUTED_TINY}>{dataStr}</span>
           {resolved && obs.resolvido_por && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
               <CheckCircle2 className="w-3 h-3 text-primary" /> {obs.resolvido_por}

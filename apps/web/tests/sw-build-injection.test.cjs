@@ -17,10 +17,15 @@ function buildPluginAt(dir) {
   const imports = {
     vite: { defineConfig: (config) => config },
     '@vitejs/plugin-react-swc': () => ({ name: 'react' }),
+    'node:child_process': {
+      execFileSync: () => { throw new Error('unexpected Git operation in SW plugin fixture'); },
+    },
     path, fs,
   };
   vm.runInNewContext('(function (require, module, exports, __dirname) {\n' + code + '\n})', {
     Date, JSON, RegExp, Object, String,
+    // The plugin itself is tested without Actions; CI provenance has separate tests.
+    process: { env: { GITHUB_ACTIONS: 'false' } },
   })(name => {
     assert.ok(Object.hasOwn(imports, name), 'unexpected import: ' + name);
     return imports[name];
@@ -67,6 +72,9 @@ test('Vite SW build plugin injects every route bundle, CSS, and font into precac
   assert.doesNotMatch(result, /__BUILD_TIMESTAMP__/);
   assert.ok(fs.existsSync(path.join(dir, 'dist', 'version.json')));
   const html = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+  assert.match(html, /<script data-consubov-build-version>globalThis\.__CONSUBOV_RUNTIME_BUILD_VERSION__="\d{13}";<\/script>/);
+  assert.ok(html.indexOf("data-consubov-build-version") < html.indexOf("data-consubov-boot-repair"),
+    "build version script must run before boot repair");
   assert.match(html, /<script data-consubov-boot-repair>/);
   assert.doesNotMatch(html, /<!-- CONSUBOV_BOOT_REPAIR_INLINE -->/);
 }));
