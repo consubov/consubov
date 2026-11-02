@@ -28,3 +28,8 @@ Todo novo texto **da interface** ou dos **PDFs** deve ter representação revisa
 ### QA e orçamento
 
 A nova interface cria um pequeno acréscimo legítimo ao bundle. O rebaseline do `scripts/web-bundle-budget.json` foi medido na mesma VPS com a `main` 9acf4e57 (8.753.242 raw/2.753.897 gzip bytes) e candidato PR163 (8.756.008 raw/2.755.542 gzip bytes). Limites ajustados ao tamanho observado +500 bytes; maior asset inalterado. CI deve revalidar no HEAD exato. Nenhuma alteração em Service Worker, filas ou migração.
+
+
+### 2026-11-02 — Reconciliacao da main v2.0.38
+
+A base `main` avancou durante o QA para `566816aa` (APP_VERSION `2.0.38`). Medicao VPS CI-mode da nova base: **8.754.577 raw / 2.753.891 gzip**. A PR #163 sobre essa base (CI SHA `f2df3803`) mediu **8.757.343 raw / 2.755.397 gzip**. A funcionalidade aumentou **2.766 raw / 1.506 gzip** sobre a base. O teto **apenas raw** passa a `8.757.843` (candidato + 500); gzip `2.756.042` e maior asset `2.849.003` permanecem iguais. Reexecutar CI no novo SHA; este rebaseline nao autoriza release. A traducao interna/PDF e o gate universal de textos ainda estao pendentes.
