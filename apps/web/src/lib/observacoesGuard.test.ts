@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied } from "./observacoesGuard";
+import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied, confirmObservationSynced, observationInScope } from "./observacoesGuard";
 
 const row = { id: "obs-a", fazenda_id: "farm-a", resolvido: true,
   resolvido_em: "2026-10-29T12:00:00Z", resolvido_por: "gerente-a" };
@@ -46,5 +46,39 @@ describe("F12-L34 observation client guard", () => {
     expect(isObservationContextCurrent("A","B",3,3)).toBe(false);
     expect(isObservationContextCurrent("A","A",2,3)).toBe(false);
     expect(isObservationContextCurrent("A","A",3,3)).toBe(true);
+  });
+});
+
+describe("F12-L34 offline sync acknowledgment", () => {
+  const persisted = { id: "obs-1", fazenda_id: "farm-a", retiro_id: "ret-a",
+    pasto_id: "pasto-a", capataz_nome: "cap-a", tipo: "geral",
+    descricao: "cocho", foto_url: "data:image/jpeg;base64,abc" };
+  it("accepts a confirmed new row or an already resolved retry", () => {
+    expect(() => confirmObservationSynced(ok([{ ...persisted, resolvido: false }]), persisted)).not.toThrow();
+    expect(() => confirmObservationSynced(ok([{ ...persisted, resolvido: true }]), persisted)).not.toThrow();
+  });
+  it("keeps command pending on missing ACK, duplicate or RLS rejection", () => {
+    expect(() => confirmObservationSynced(ok([]), persisted)).toThrow();
+    expect(() => confirmObservationSynced(ok([persisted, persisted]), persisted)).toThrow();
+    expect(() => confirmObservationSynced(denied, persisted)).toThrow(/confirmar/);
+  });
+  it("rejects a cross-farm record and mismatched immutable fields", () => {
+    for (const [field, value] of [["fazenda_id", "farm-b"], ["retiro_id", "ret-b"],
+      ["pasto_id", "pasto-b"], ["descricao", "different"], ["tipo", "other"],
+      ["foto_url", "other"], ["capataz_nome", "another"], ["id", "obs-2"]] as const) {
+      expect(() => confirmObservationSynced(ok([{...persisted,[field]:value}]),persisted)).toThrow();
+    }
+  });
+});
+
+
+describe("F12-L34 scoped offline observations", () => {
+  const row = { fazenda_id: "farm-a", retiro_id: "ret-a" };
+  it("denies a different tenant, retiro or missing scope", () => {
+    expect(observationInScope(row, "farm-a", "ret-a")).toBe(true);
+    expect(observationInScope(row, "farm-b", "ret-a")).toBe(false);
+    expect(observationInScope(row, "farm-a", "ret-b")).toBe(false);
+    expect(observationInScope(row, "", "ret-a")).toBe(false);
+    expect(observationInScope(row, "farm-a", null)).toBe(false);
   });
 });

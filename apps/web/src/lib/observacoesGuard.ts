@@ -53,3 +53,30 @@ export function isObservationContextCurrent(
   return !!expectedContext && expectedContext === activeContext &&
     requestId === latestRequestId;
 }
+
+// Confirm an offline retry by immutable identity/content, even if already resolved.
+export interface ObservationUploadAck extends ObservationIdentity {
+  retiro_id: string | null;
+  pasto_id: string | null;
+  capataz_nome: string | null;
+  tipo: string | null;
+  descricao: string | null;
+  foto_url: string | null;
+}
+export function confirmObservationSynced<T extends ObservationUploadAck>(
+  result: ObservationResult<T>, expected: ObservationUploadAck,
+): void {
+  const rows = rowsOrThrow(result);
+  const fields = ["id", "fazenda_id", "retiro_id", "pasto_id", "capataz_nome",
+    "tipo", "descricao", "foto_url"] as const;
+  if (rows.length !== 1 || fields.some(field => rows[0]?.[field] !== expected[field])) {
+    throw new Error(INVALID_OBSERVATION);
+  }
+}
+
+
+// Fail closed when the active farm/retiro is missing or differs from the local row.
+export const observationInScope = (
+  row: { fazenda_id: string; retiro_id: string | null },
+  farm?: string | null, retiro?: string | null,
+): boolean => !!farm && !!retiro && row?.fazenda_id === farm && row.retiro_id === retiro;
