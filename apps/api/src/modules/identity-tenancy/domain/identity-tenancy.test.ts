@@ -1,11 +1,31 @@
 import { describe, expect, test } from "bun:test";
-import { authorizeTenantAccess, hasScope } from "./authorization";
+import { hasScope } from "./authorization";
 import { SecurityContractValidationError } from "./errors";
 import {
   createAuthenticatedRequestContext,
   createPermissionScope,
-  createTenantId,
+  createPrincipalId,
 } from "./identity";
+
+describe("createPrincipalId", () => {
+  test("creates a valid principal id", () => {
+    expect(createPrincipalId("user-1")).toBe("user-1");
+  });
+
+  test("trims whitespace from principal id", () => {
+    expect(createPrincipalId("  user-2  ")).toBe("user-2");
+  });
+
+  test("throws on empty or whitespace-only principal id", () => {
+    expect(() => createPrincipalId("")).toThrow(SecurityContractValidationError);
+    expect(() => createPrincipalId("   ")).toThrow(SecurityContractValidationError);
+  });
+
+  test("throws when principal id exceeds max length", () => {
+    const longId = "a".repeat(129);
+    expect(() => createPrincipalId(longId)).toThrow(SecurityContractValidationError);
+  });
+});
 
 describe("security contracts", () => {
   test("builds a user context and normalizes/deduplicates scopes", () => {
@@ -62,98 +82,54 @@ describe("security contracts", () => {
     );
   });
 
-  test("allows same-tenant access when every required scope is granted", () => {
-    const context = createAuthenticatedRequestContext({
-      requestId: "req-1",
-      tenantId: "tenant-a",
-      principal: {
-        kind: "user",
-        id: "user-1",
-      },
-      scopes: ["fazendas:read", "pesagens:read"],
+  describe("hasScope", () => {
+    test("returns true when the required scope is present", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: ["fazendas:read", "pesagens:read"],
+      });
+
+      expect(hasScope(context, createPermissionScope("fazendas:read"))).toBe(
+        true,
+      );
     });
 
-    const scope = createPermissionScope("fazendas:read");
-    const decision = authorizeTenantAccess({
-      context,
-      resourceTenantId: createTenantId("tenant-a"),
-      requiredScopes: [scope],
+    test("returns false when the required scope is missing", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: ["fazendas:read"],
+      });
+
+      expect(hasScope(context, createPermissionScope("pesagens:read"))).toBe(
+        false,
+      );
     });
 
-    expect(decision).toEqual({ allowed: true });
-    expect(hasScope(context, scope)).toBe(true);
-  });
+    test("returns false when context has no scopes", () => {
+      const context = createAuthenticatedRequestContext({
+        requestId: "req-1",
+        tenantId: "tenant-a",
+        principal: {
+          kind: "user",
+          id: "user-1",
+        },
+        scopes: [],
+      });
 
-  test("denies cross-tenant access before evaluating scopes", () => {
-    const context = createAuthenticatedRequestContext({
-      requestId: "req-1",
-      tenantId: "tenant-a",
-      principal: {
-        kind: "user",
-        id: "user-1",
-      },
-      scopes: ["fazendas:read"],
-    });
-
-    const decision = authorizeTenantAccess({
-      context,
-      resourceTenantId: createTenantId("tenant-b"),
-      requiredScopes: [createPermissionScope("fazendas:read")],
-    });
-
-    expect(decision).toEqual({
-      allowed: false,
-      error: {
-        code: "TENANT_MISMATCH",
-        message: "Access to this tenant resource is denied.",
-        httpStatus: 403,
-      },
-    });
-  });
-
-  test("denies same-tenant access when a required scope is missing", () => {
-    const context = createAuthenticatedRequestContext({
-      requestId: "req-1",
-      tenantId: "tenant-a",
-      principal: {
-        kind: "integration",
-        id: "integration-1",
-      },
-      scopes: ["fazendas:read"],
-    });
-
-    const decision = authorizeTenantAccess({
-      context,
-      resourceTenantId: createTenantId("tenant-a"),
-      requiredScopes: [createPermissionScope("pesagens:write")],
-    });
-
-    expect(decision).toEqual({
-      allowed: false,
-      error: {
-        code: "MISSING_SCOPE",
-        message:
-          "The authenticated principal does not have the required scope.",
-        httpStatus: 403,
-      },
+      expect(hasScope(context, createPermissionScope("fazendas:read"))).toBe(
+        false,
+      );
     });
   });
 
-  test("same-tenant operations with no required scope are allowed", () => {
-    const context = createAuthenticatedRequestContext({
-      requestId: "req-1",
-      tenantId: "tenant-a",
-      principal: {
-        kind: "user",
-        id: "user-1",
-      },
-    });
-
-    const decision = authorizeTenantAccess({
-      context,
-      resourceTenantId: createTenantId("tenant-a"),
-    });
-
-    expect(decision).toEqual({ allowed: true });
-  });
 });

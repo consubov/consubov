@@ -1,7 +1,20 @@
 import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { calcConsumoGCabDia, calcConsumoEsperadoGCabDia, classificarCategoria, calcularCategoriaViva, classificarConsumo4, getConsumoPorCategoria, getMargemPorCategoria } from "@/lib/consumoCalc";
+
+type PainelPastoRow = Pick<Database["public"]["Views"]["view_painel_mae_pasto"]["Row"],
+  "pasto_id" | "retiro_id" | "peso_medio_kg" | "consumo_real_g_cab_dia" |
+  "indice_real" | "status_real" | "kg_fornecido" | "cab_dias_global" | "eficiencia_pasto">;
+type LancamentoRow = Pick<Database["public"]["Views"]["view_consumo_tempo_real"]["Row"],
+  "id" | "pasto_id" | "num_sacos" | "num_animais" | "peso_medio_kg" |
+  "dias_no_pasto" | "categoria" | "sexo" | "created_at" | "mes_referencia" |
+  "ano_referencia" | "fazenda_id" | "retiro_id" | "status_consumo" |
+  "indice_consumo" | "consumo_g_cab_dia" | "ciclo_id" | "origem">;
+type LancamentoCategoriaRow = Pick<LancamentoRow,
+  "id" | "pasto_id" | "num_sacos" | "num_animais" | "dias_no_pasto" |
+  "categoria" | "created_at" | "retiro_id" | "mes_referencia" | "ano_referencia">;
 
 type MargensPct = {
   margem_mais_recria1_pct?: number | null; margem_menos_recria1_pct?: number | null;
@@ -163,7 +176,7 @@ export default function ExportarRelatorioModal({
       const painelMaeByRetiro: Record<string, { eficiencia: number; peso_medio_kg: number; consumo_real_g_cab_dia: number }> = {};
       if (periodoSelecionado === "mensal") {
         await forEachLimited(retiroIds, 4, async (rid) => {
-          const { data: rows } = await bounded((supabase as any).rpc("get_painel_mae", {
+          const { data: rows } = await bounded(supabase.rpc("get_painel_mae", {
             p_fazenda_id: fazendaId,
             p_retiro_id: rid,
             p_mes: mes,
@@ -181,17 +194,19 @@ export default function ExportarRelatorioModal({
       }
 
       // Métricas por pasto (consumo real x global) — view_painel_mae_pasto
-      const painelPastoByPastoId: Record<string, any> = {};
-      let painelPastoRows: any[] = [];
+      const painelPastoByPastoId: Record<string, PainelPastoRow> = {};
+      let painelPastoRows: PainelPastoRow[] = [];
       if (periodoSelecionado === "mensal" && retiroIds.length > 0) {
-        const { data: vpRows } = await bounded((supabase as any)
+        const { data: vpRows } = await bounded(supabase
           .from("view_painel_mae_pasto")
           .select("pasto_id, retiro_id, peso_medio_kg, consumo_real_g_cab_dia, indice_real, status_real, kg_fornecido, cab_dias_global, eficiencia_pasto")
           .in("retiro_id", retiroIds)
           .eq("mes_referencia", mes)
           .eq("ano_referencia", ano), "Métricas por pasto");
         painelPastoRows = vpRows ?? [];
-        for (const row of painelPastoRows) painelPastoByPastoId[row.pasto_id] = row;
+        for (const row of painelPastoRows) {
+          if (row.pasto_id !== null) painelPastoByPastoId[row.pasto_id] = row;
+        }
       }
 
 
@@ -205,12 +220,12 @@ export default function ExportarRelatorioModal({
       const gmdDia = periodoSelecionado === "mensal" ? dataReferenciaGmd(mes, ano)
         : periodoSelecionado === "anual" ? dataReferenciaGmd(null, ano)
         : (() => { const hoje = dataReferenciaGmd(null, 9999); const fim = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`; return fim < hoje ? fim : hoje; })();
-      const gmdPastos = await bounded(fetchGmdPastos(pastos.map((p: any) => p.id), gmdDia), "GMD dos pastos", 45_000);
+      const gmdPastos = await bounded(fetchGmdPastos(pastos.map((p) => p.id), gmdDia), "GMD dos pastos", 45_000);
       const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
 
       // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
       // O escopo de retiro é aplicado pelos IDs antes do filtro de produto do relatório.
-      const { data: abateConfigRows, error: abateConfigError } = await bounded((supabase as any)
+      const { data: abateConfigRows, error: abateConfigError } = await bounded(supabase
         .from("abate_config")
         .select("id")
         .eq("fazenda_id", fazendaId)
@@ -219,10 +234,10 @@ export default function ExportarRelatorioModal({
 
       let previsaoAbate: PrevisaoAbatePDFData | null = null;
       if ((abateConfigRows ?? []).length > 0) {
-        const { data: previsaoRows, error: previsaoError } = await bounded((supabase as any)
+        const { data: previsaoRows, error: previsaoError } = await bounded(supabase
           .rpc("previsao_abate", { p_fazenda: fazendaId }), "Previsão de abate");
         if (previsaoError) throw previsaoError;
-        const rows = ((previsaoRows ?? []) as any[])
+        const rows = (previsaoRows ?? [])
           .filter(row => pastoIdsEscopoRelatorio.has(row.pasto_id))
           .map(row => ({
             pastoId: String(row.pasto_id),
@@ -276,7 +291,7 @@ export default function ExportarRelatorioModal({
 
         // Recalcula os mesmos agregados mensais sobre o conjunto filtrado.
         if (periodoSelecionado === "mensal") {
-          const { data: realRows } = await bounded((supabase as any)
+          const { data: realRows } = await bounded(supabase
             .from("view_lancamento_consumo_real")
             .select("pasto_id, kg_fornecido, cab_dias_assumidos")
             .in("pasto_id", pastoIds)
@@ -285,15 +300,15 @@ export default function ExportarRelatorioModal({
           for (const ret of retirosData) {
             const rPastos = pastos.filter(p => p.retiro_id === ret.id);
             const rIds = new Set(rPastos.map(p => p.id));
-            const rView = painelPastoRows.filter(row => rIds.has(row.pasto_id));
-            const rReal = (realRows ?? []).filter((row: any) => rIds.has(row.pasto_id));
+            const rView = painelPastoRows.filter(row => row.pasto_id !== null && rIds.has(row.pasto_id));
+            const rReal = (realRows ?? []).filter((row) => row.pasto_id !== null && rIds.has(row.pasto_id));
             const cabDiasGlobal = rView.reduce((sum, row) => sum + (Number(row.cab_dias_global) || 0), 0);
             const eficienciaPonderada = rView.reduce(
               (sum, row) => sum + (Number(row.eficiencia_pasto) || 0) * (Number(row.cab_dias_global) || 0),
               0,
             );
-            const kgReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.kg_fornecido) || 0), 0);
-            const cabDiasReal = rReal.reduce((sum: number, row: any) => sum + (Number(row.cab_dias_assumidos) || 0), 0);
+            const kgReal = rReal.reduce((sum, row) => sum + (Number(row.kg_fornecido) || 0), 0);
+            const cabDiasReal = rReal.reduce((sum, row) => sum + (Number(row.cab_dias_assumidos) || 0), 0);
             let pesoSum = 0;
             let animaisPeso = 0;
             for (const p of rPastos) {
@@ -313,9 +328,9 @@ export default function ExportarRelatorioModal({
       }
 
 
-      let lancamentos: any[] = [];
+      let lancamentos: LancamentoRow[] = [];
       if (pastoIds.length > 0) {
-        let lQuery = supabase.from("view_consumo_tempo_real" as any)
+        let lQuery = supabase.from("view_consumo_tempo_real")
           .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, dias_no_pasto, categoria, sexo, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, status_consumo, indice_consumo, consumo_g_cab_dia, ciclo_id, origem")
           .in("pasto_id", pastoIds);
 
@@ -359,11 +374,11 @@ export default function ExportarRelatorioModal({
         amarelo_buffer_g: number;
       }> = {};
       if (produtoIds.length > 0) {
-        const { data: prodData } = await bounded((supabase as any).from("produtos")
+        const { data: prodData } = await bounded(supabase.from("produtos")
           .select("id, nome, peso_saco_kg, preco_por_kg, consumo_recria1, consumo_recria2, consumo_engorda, margem_recria1, margem_recria2, margem_engorda, margem_mais_recria1_pct, margem_menos_recria1_pct, margem_mais_recria2_pct, margem_menos_recria2_pct, margem_mais_engorda_pct, margem_menos_engorda_pct, amarelo_buffer_g")
           .in("id", produtoIds), "Produtos");
-        const num = (v: any) => (v == null ? null : Number(v));
-        for (const p of ((prodData ?? []) as any[])) {
+        const num = (v: number | null | undefined) => (v == null ? null : Number(v));
+        for (const p of (prodData ?? [])) {
           produtosMap[p.id] = {
             nome: p.nome,
             peso_saco_kg: Number(p.peso_saco_kg),
@@ -390,7 +405,7 @@ export default function ExportarRelatorioModal({
       if (periodoSelecionado === "mensal" && pastoIds.length > 0) {
         await forEachLimited(
           pastos, 4, async (p) => {
-            const { data: rows } = await bounded((supabase as any).rpc("get_consumo_real_v2", {
+            const { data: rows } = await bounded(supabase.rpc("get_consumo_real_v2", {
               p_retiro_id: p.retiro_id,
               p_pasto_id: p.id,
               p_mes: mes,
@@ -425,7 +440,7 @@ export default function ExportarRelatorioModal({
         const rPastoIds = new Set(rPastos.map(p => p.id));
         // Filtro por retiro_id da view (mesma regra do Painel do Retiro), para
         // garantir que ambos operem sobre o mesmo conjunto de lançamentos.
-        const rLanc = lancamentos.filter(l => l.retiro_id === ret.id && rPastoIds.has(l.pasto_id));
+        const rLanc = lancamentos.filter(l => l.retiro_id === ret.id && l.pasto_id !== null && rPastoIds.has(l.pasto_id));
         const pastosNoPeriodo = rPastos.filter(p => rLanc.some(l => l.pasto_id === p.id));
         // Total Animais = rebanho REAL do retiro (fonte única = pastos.num_animais
         // ativos), mesma contagem que aparece no mapa do Capataz. Não filtra por
@@ -477,7 +492,7 @@ export default function ExportarRelatorioModal({
           const lastP = sortedPLanc[0];
           const pesoMedio = Number(p.peso_medio_kg ?? 0);
           // Categoria calculada ao vivo (peso + sexo), nunca o campo salvo.
-          const cat = calcularCategoriaViva(pesoMedio, (p as any).sexo);
+          const cat = calcularCategoriaViva(pesoMedio, p.sexo);
           const lastCiclo = lastP?.ciclo_id ? ciclosById[lastP.ciclo_id] : null;
           let diasConsiderados = 0;
           if (lastCiclo) {
@@ -490,7 +505,7 @@ export default function ExportarRelatorioModal({
           }
 
           // Produto usado no pasto: ocupação ativa → produto do pasto → produto do retiro
-          const pProdId = ocupacaoProdutoByPasto[p.id] || (p as any).produto_id || ret.produto_id || "";
+          const pProdId = ocupacaoProdutoByPasto[p.id] || p.produto_id || ret.produto_id || "";
           const pProd = produtosMap[pProdId] ?? prod;
           const consumoPor100kg = pProd ? getConsumoPorCategoria(cat, pProd) : 0;
           const pesoSacoPasto = pProd?.peso_saco_kg ?? pesoSacoKg;
@@ -557,7 +572,7 @@ export default function ExportarRelatorioModal({
             consumoPor100kg,
             pesoSacoKg: pesoSacoPasto,
 
-            origemQr: pLanc.some(l => (l as any).origem === "qr"),
+            origemQr: pLanc.some(l => l.origem === "qr"),
           };
         });
 
@@ -611,23 +626,23 @@ export default function ExportarRelatorioModal({
 
       // ===== SEÇÃO 5 — Métricas por categoria =====
       // Período sempre por mes_referencia/ano_referencia (nunca created_at).
-      let lancCat: any[] = lancamentos;
+      let lancCat: LancamentoCategoriaRow[] = lancamentos;
       if (periodoSelecionado !== "mensal" && periodoSelecionado !== "anual" && pastoIds.length > 0) {
-        const { data: lc } = await bounded(supabase.from("view_consumo_tempo_real" as any)
+        const { data: lc } = await bounded(supabase.from("view_consumo_tempo_real")
           .select("id, pasto_id, num_sacos, num_animais, dias_no_pasto, categoria, created_at, retiro_id, mes_referencia, ano_referencia")
           .in("pasto_id", pastoIds)
           .eq("mes_referencia", mes)
           .eq("ano_referencia", ano), "Métricas por categoria");
-        lancCat = (lc as any[]) ?? [];
+        lancCat = lc ?? [];
       }
       // Categoria e num_animais sempre da tabela lancamentos (a view inflava a contagem).
-      const catIds = lancCat.map(l => l.id).filter(Boolean);
+      const catIds = lancCat.map(l => l.id).filter((id): id is string => id !== null && id.length > 0);
       const lancById: Record<string, { categoria: string | null; num_animais: number | null }> = {};
       for (let i = 0; i < catIds.length; i += 200) {
         const { data: cr } = await bounded(supabase.from("lancamentos").select("id, categoria, num_animais").in("id", catIds.slice(i, i + 200)), "Categorias dos lançamentos");
-        (cr ?? []).forEach((r: any) => { lancById[r.id] = { categoria: r.categoria, num_animais: r.num_animais }; });
+        (cr ?? []).forEach((r) => { lancById[r.id] = { categoria: r.categoria, num_animais: r.num_animais }; });
       }
-      lancCat = lancCat.map(l => ({ ...l, categoria: l.id in lancById ? lancById[l.id].categoria : l.categoria }));
+      lancCat = lancCat.map(l => ({ ...l, categoria: l.id !== null && l.id in lancById ? lancById[l.id].categoria : l.categoria }));
       const SEM_CAT = "Sem categoria";
       const CATS = ["Recria 1", "Recria 2", "Engorda"];
       type CatAcc = { sacos: number; custoTotal: number; kgTotal: number; animalDias: number; gmds: number[]; diasTotal: number };
@@ -645,7 +660,7 @@ export default function ExportarRelatorioModal({
           .select("id, num_animais, categoria")
           .in("retiro_id", retiroIds)
           .eq("ativo", true), "Rebanho por categoria");
-        (pastosAnimais ?? []).forEach((p: any) => {
+        (pastosAnimais ?? []).forEach((p) => {
           const n = Number(p.num_animais) || 0;
           if (n <= 0) return;
           const cat = (p.categoria && String(p.categoria).trim()) || SEM_CAT;
@@ -660,7 +675,7 @@ export default function ExportarRelatorioModal({
         const cat = (l.categoria && String(l.categoria).trim()) || SEM_CAT;
         if (!catMap[cat]) catMap[cat] = novoAcc();
         const entry = catMap[cat];
-        const animais = l.id in lancById && lancById[l.id].num_animais != null
+        const animais = l.id !== null && l.id in lancById && lancById[l.id].num_animais != null
           ? Number(lancById[l.id].num_animais)
           : Number(l.num_animais ?? 0);
         const sacos = Number(l.num_sacos ?? 0);

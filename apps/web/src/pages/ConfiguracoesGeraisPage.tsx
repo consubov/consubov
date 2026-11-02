@@ -191,11 +191,12 @@ export default function ConfiguracoesGeraisPage() {
   }, []);
 
   const fetchConfigs = useCallback(async () => {
-    let { data, error } = await supabase
+    const { data: initialData, error } = await supabase
       .from("configuracoes_gerais")
       .select("*")
       .eq("ativo", true)
       .order("criado_em");
+    let data = initialData;
     if (error) {
       toast.error("Erro ao carregar configurações");
       return;

@@ -113,9 +113,9 @@ export default function ExportarPesagemModal({
       const blob = await ensurePdf();
       if (!blob) return;
       const file = new File([blob], `pesagem-${pesagemId}.pdf`, { type: "application/pdf" });
-      if ((navigator as any).share && (navigator as any).canShare?.({ files: [file] })) {
+      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
         try {
-          await (navigator as any).share({ files: [file], title: "Pesagem Consubov" });
+          await navigator.share({ files: [file], title: "Pesagem Consubov" });
           return;
         } catch {
           // fallback

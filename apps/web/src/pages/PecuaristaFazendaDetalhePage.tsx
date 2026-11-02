@@ -121,7 +121,7 @@ export default function PecuaristaFazendaDetalhePage() {
       .filter((lote: any) => lote.fazenda_id === fazendaId);
     // fetch last pesagem por lote
     const ids = base.map((l) => l.id);
-    let mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
+    const mapa: Record<string, { data: string; gmd: number | null; qtd: number | null }> = {};
     if (ids.length > 0) {
       const { data: ps } = await maFrom("pesagens_lote_pecuarista")
         .select("lote_id, data_pesagem, gmd, quantidade_animais")

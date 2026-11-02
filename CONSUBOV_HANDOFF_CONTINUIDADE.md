@@ -1,3 +1,12 @@
+## Gate CI PWA INC-011 — continuacao de 29/10/2026
+
+- PR #79 concentra hotfix anti-downgrade/antiloop publicado em `cd793297` e novo job CI `PWA Release Safety Gate` (workflow e script de validacao build/HTTP). O job roda Vitest de versoes, verifica arquivos de rewrite Vercel, SW/version.json/chunks e Playwright de PWA instalada em perfil Chromium persistente e offline — sem credenciais remotas.
+- Evidencia real do GitHub Actions em `ef82234ee77f0efa7250a9920d5ef25836ed989a`: dois jobs PASS, Vitest 19/19, Playwright Chromium instalado persistente 3/3, build/manifest/SW/precache/HTTP PASS (runs 40925246608, 40925254853). Vitest de manifesto falhou no primeiro commit por caminho incorreto em runner Linux e foi corrigido em `ef82234`, com rerun integral verde. Nao confundir com QA em aparelho do cliente.
+- QA so e PASS quando houver checks no SHA exato; compilacao e HTTP 200 nao homologam PWA instalada em dispositivo fisico. Nao desabilitar RLS, limpar IndexedDB, fotos, caches ou filas. Reconciliar PR #77/PR #79 e GOV-001 com os owners; F12 NO-GO permanece.
+- ATENCAO: Vercel nao foi configurado para exigir o job como regra bloqueante; a ativacao do required status e reconciliacao `main` x producao continuam PENDENTES. O handoff na Fonte do Projeto ChatGPT exige sincronizacao com esta copia Git e o Handoff Vivo do Obsidian.
+
+---
+
 ## 2026-10-23 — Compatibilidade das marcas e conexao dos novos Apps
 
 - Pedido atual do responsavel: preparar migracao dos usuarios de teste do legado para a versao 1.155.0, sem desligar Supabase ou alterar registros/schema. Falhas de seguranca conhecidas serao tratadas em etapa posterior; registrar risco e nao confundir a migracao do frontend com resolucao de RLS.

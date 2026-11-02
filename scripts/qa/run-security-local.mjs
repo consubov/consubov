@@ -19,7 +19,7 @@ const scannerHashes = Object.freeze({
   linux: '88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509',
 });
 const rules = ['detect-eval-with-expression', 'detect-non-literal-fs-filename', 'detect-possible-timing-attacks'];
-const roots = new Set(['apps', 'scripts', 'docs', 'instructions', 'supabase', '.github', '.vscode', '.devcontainer', '.superpowers', 'src', 'public', 'packages', 'qa']);
+const roots = new Set(['apps', 'scripts', 'docs', 'instructions', 'supabase', 'releases', '.github', '.vscode', '.devcontainer', '.superpowers', 'src', 'public', 'packages', 'qa']);
 const text = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.yml', '.yaml', '.toml', '.tmpl', '.sh', '.ps1', '.sql', '.css', '.scss', '.html', '.svg', '.txt', '.xml', '.lock', '.gitkeep']);
 const privateParts = new Set(privateSourceParts);
 const privateExtensions = new Set(privateSourceExtensions);
@@ -34,7 +34,7 @@ export function classifySource(name) {
   if (parts.some(part => part === '..' || part === '')) return 'unknown';
   if (isPrivateSource(name)) return 'excluded';
   const basename = parts.at(-1);
-  if (parts.length === 1 && ['.gitignore', '.gitattributes', '.gitleaksignore'].includes(basename)) return 'selected';
+  if (parts.length === 1 && ['.gitignore', '.gitattributes', '.gitleaksignore', 'delta-pwa.txt', 'run_qa.sh'].includes(basename)) return 'selected';
   if (parts.length === 1 && (['package.json', 'turbo.json', 'bun.lock', 'Taskfile.yml', 'index.html', 'package-lock.json', 'playwright.config.ts', 'tailwind.config.ts', 'tsconfig.app.json', 'tsconfig.json', 'vite.config.ts', 'vitest.config.ts', 'components.json', 'eslint.config.js', 'playwright-fixture.ts', 'postcss.config.js', 'tsconfig.node.json'].includes(basename) || path.extname(basename) === '.md')) return 'selected';
   if (['apps/web/src/test/pages/PastoDetailPage.test.tsx`', 'qa/setup-and-test.bat'].includes(name)) return 'selected';
   if (parts.length > 1 && text.has(path.extname(basename).toLowerCase()) && roots.has(parts[0])) return 'selected';

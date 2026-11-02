@@ -120,7 +120,7 @@ export const docsHtml = `<!doctype html>
         raw.textContent = JSON.stringify(spec, null, 2);
       })
       .catch((error) => {
-        endpoints.innerHTML = "";
+        endpoints.textContent = "";
         const message = document.createElement("p");
         message.className = "error";
         message.textContent = error instanceof Error ? error.message : "Erro inesperado";

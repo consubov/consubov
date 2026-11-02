@@ -169,7 +169,7 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
     startY: 158,
     head: [["#", "Data", "Valor"]],
     body: data.despesas.map((d, i) => [String(i + 1), fmtDate(d.data_despesa), fmtBRL(d.valor)]),
-    headStyles: { fillColor: [20, 67, 43] as any, textColor: 255 },
+    headStyles: { fillColor: [20, 67, 43] as [number, number, number], textColor: 255 },
     styles: { fontSize: 9 },
     margin: { left: 15, right: 15 },
   });
@@ -193,9 +193,9 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
       const areaH = areaBottom - areaTop;
       // Get natural size to fit inside area
       try {
-        const props = (doc as any).getImageProperties?.(jpeg);
-        let iw = props?.width ?? areaW;
-        let ih = props?.height ?? areaH;
+        const props = (doc as typeof doc & { getImageProperties?: (data: string) => { width: number; height: number } }).getImageProperties?.(jpeg);
+        const iw = props?.width ?? areaW;
+        const ih = props?.height ?? areaH;
         const scale = Math.min(areaW / iw, areaH / ih);
         const drawW = iw * scale;
         const drawH = ih * scale;

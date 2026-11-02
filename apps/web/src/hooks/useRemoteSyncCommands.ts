@@ -36,7 +36,6 @@ export function useRemoteSyncCommands(
           .update({ acknowledged_at: new Date().toISOString() })
           .eq("id", rowId);
         if (ackErr) console.warn("[useRemoteSyncCommands] ack failed:", ackErr);
-        else console.log("[useRemoteSyncCommands] acknowledged:", rowId);
       } catch (err) {
         console.error("[useRemoteSyncCommands] error handling command:", err);
       } finally {
@@ -82,7 +81,6 @@ export function useRemoteSyncCommands(
           return;
         }
         if (data && data.length > 0) {
-          console.log(`[useRemoteSyncCommands] poll found ${data.length} pending command(s)`);
           // Run sync once and acknowledge all pending rows
           await handleCommand(data[0].id);
           if (data.length > 1) {

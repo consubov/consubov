@@ -45,10 +45,11 @@ test('actual local Playwright rejects focused tests before running a subset', as
   assert.equal(existsSync(probe.marker), false);
 });
 
-test('actual Playwright refuses an owned existing8080 listener and preserves it', async t => {
+test('actual Playwright refuses an owned listener on the configured local port and preserves it', async t => {
   let requests = 0;
   const server = createServer((_req, res) => { requests++; res.end('owned stale fixture'); });
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(8080, '127.0.0.1', resolve); });
+  const port = Number(process.env.CONSUBOV_E2E_PORT ?? 8080);
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   t.after(() => new Promise(resolve => server.close(resolve)));
   const probe = await fixture();
   const result = await run(process.execPath, [playwrightCLI, 'test', '--config', probe.config]);
@@ -56,7 +57,7 @@ test('actual Playwright refuses an owned existing8080 listener and preserves it'
   assert.match(result.output, /already used|reuseExistingServer/i);
   assert.equal(existsSync(probe.marker), false, 'no test may run against the stale server');
   assert.ok(requests > 0);
-  assert.equal(await (await fetch('http://127.0.0.1:8080/login')).text(), 'owned stale fixture');
+  assert.equal(await (await fetch(`http://127.0.0.1:${port}/login`)).text(), 'owned stale fixture');
   assert.equal(server.listening, true);
 });
 

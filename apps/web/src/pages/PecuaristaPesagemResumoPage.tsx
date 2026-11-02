@@ -28,6 +28,30 @@ type NavState = {
   horaInicio?: string | null;
 };
 
+type LeituraBalancaoRegistro = {
+  ordem: number;
+  peso_total: number;
+  quantidade_animais: number;
+  peso_individual: number;
+};
+
+type PesagemRegistro = {
+  lote_id: string;
+  quantidade_animais: number | null;
+  peso_total: number | null;
+  peso_medio: number | null;
+  gmd: number | null;
+  pdf_url: string | null;
+  data_pesagem: string | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+};
+
+type LoteRegistro = {
+  nome_lote?: string | null;
+  identificado?: boolean | null;
+};
+
 const fmt = (n: number, d = 2) =>
   n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtHora = (iso: string) => {
@@ -64,7 +88,7 @@ export default function PecuaristaPesagemResumoPage() {
         .select("ordem, peso_total, quantidade_animais, peso_individual")
         .eq("pesagem_lote_id", pesagemId)
         .order("ordem", { ascending: true });
-      setLeiturasBalancao(((ls as any[]) ?? []).map((l) => ({
+      setLeiturasBalancao(((ls ?? []) as unknown as LeituraBalancaoRegistro[]).map((l) => ({
         ordem: Number(l.ordem), peso_total: Number(l.peso_total),
         quantidade_animais: Number(l.quantidade_animais), peso_individual: Number(l.peso_individual),
       })));
@@ -80,19 +104,21 @@ export default function PecuaristaPesagemResumoPage() {
         .eq("id", pesagemId)
         .maybeSingle();
       if (!p) { setLoading(false); return; }
-      const { data: lote } = await maFrom("lotes_pecuarista").select("nome_lote, identificado").eq("id", (p as any).lote_id).maybeSingle();
-      setPdfUrl((p as any).pdf_url ?? null);
+      const pesagemRegistro = p as unknown as PesagemRegistro;
+      const { data: lote } = await maFrom("lotes_pecuarista").select("nome_lote, identificado").eq("id", pesagemRegistro.lote_id).maybeSingle();
+      const loteRegistro = lote as unknown as LoteRegistro | null;
+      setPdfUrl(pesagemRegistro.pdf_url ?? null);
       setData({
-        identificado: !!(lote as any)?.identificado,
-        loteNome: (lote as any)?.nome_lote,
-        quantidade: Number((p as any).quantidade_animais ?? 0),
-        peso_total: Number((p as any).peso_total ?? 0),
-        peso_medio: Number((p as any).peso_medio ?? 0),
-        gmd: (p as any).gmd != null ? Number((p as any).gmd) : null,
-        pdfUrl: (p as any).pdf_url ?? undefined,
-        dataFim: (p as any).data_pesagem ?? null,
-        horaFim: (p as any).hora_fim ?? null,
-        horaInicio: (p as any).hora_inicio ?? null,
+        identificado: !!loteRegistro?.identificado,
+        loteNome: loteRegistro?.nome_lote ?? undefined,
+        quantidade: Number(pesagemRegistro.quantidade_animais ?? 0),
+        peso_total: Number(pesagemRegistro.peso_total ?? 0),
+        peso_medio: Number(pesagemRegistro.peso_medio ?? 0),
+        gmd: pesagemRegistro.gmd != null ? Number(pesagemRegistro.gmd) : null,
+        pdfUrl: pesagemRegistro.pdf_url ?? undefined,
+        dataFim: pesagemRegistro.data_pesagem ?? null,
+        horaFim: pesagemRegistro.hora_fim ?? null,
+        horaInicio: pesagemRegistro.hora_inicio ?? null,
       });
       setLoading(false);
     })();
@@ -104,7 +130,7 @@ export default function PecuaristaPesagemResumoPage() {
     try {
       const blob = await fetchPdfBinaryWithTimeout(pdfUrl);
       const file = new File([blob], `pesagem-${pesagemId}.pdf`, { type: "application/pdf" });
-      const nav: any = navigator;
+      const nav = navigator;
       if (nav.canShare?.({ files: [file] }) && nav.share) {
         await nav.share({ files: [file], title: "Relatório de Pesagem" });
       } else if (nav.share) {

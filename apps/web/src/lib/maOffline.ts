@@ -12,12 +12,15 @@
  */
 import { openDB, type IDBPDatabase } from "idb";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { clearMaAcknowledgedRows, enqueueMa, flushMaAndCount, getMaAcknowledgedRows, getMaQueueItems, getMaSnapshot, subscribeMa, type MaQueueItem } from "@/lib/maisArrobasQueue";
 import { coletarAlvosGmd, recalcularGmdServidor } from "@/lib/maGmdResync";
 
 export type MaPerfil = "pesador" | "pecuarista";
 
-export const MA_OFFLINE_TABLES: Record<MaPerfil, string[]> = {
+type SchemaTable = keyof Database["public"]["Tables"];
+
+export const MA_OFFLINE_TABLES = {
   pesador: [
     "pesadores",
     "clientes_pesador",
@@ -38,7 +41,7 @@ export const MA_OFFLINE_TABLES: Record<MaPerfil, string[]> = {
     "apartacoes_pecuarista",
     "apartacao_destinos_pecuarista",
   ],
-};
+} as const satisfies Record<MaPerfil, readonly SchemaTable[]>;
 
 /** Relações embutidas usadas nos selects (nome da relação → coluna FK). */
 const EMBED_FK: Record<string, string> = {
@@ -94,7 +97,7 @@ function getDb() {
   }
   return dbPromise;
 }
-const mem = new Map<string, Record<string, any>[]>();
+const mem = new Map<string, Record<string, unknown>[]>();
 let memLoaded: Promise<void> | null = null;
 function loadMem() {
   if (!memLoaded) {
@@ -102,7 +105,7 @@ function loadMem() {
       try {
         const db = await getDb();
         const keys = (await db.getAllKeys(STORE)) as string[];
-        for (const k of keys) mem.set(k, ((await db.get(STORE, k)) as any[]) ?? []);
+        for (const k of keys) mem.set(k, ((await db.get(STORE, k)) as Record<string, unknown>[]) ?? []);
       } catch (e) {
         console.error("[maOffline] load failed", e);
       }
@@ -111,11 +114,26 @@ function loadMem() {
   return memLoaded;
 }
 
-async function fetchAll(table: string) {
-  const out: any[] = [];
+// Supabase expands a large union of table schemas when calling .from(table),
+// causing TS2589. This narrow view constrains offline table names and the
+// paginated read result without modifying the Supabase call at runtime.
+type OfflineTable = (typeof MA_OFFLINE_TABLES)[MaPerfil][number];
+type OfflineReadClient = {
+  from(table: OfflineTable): {
+    select(columns: "*"): {
+      range(from: number, to: number): PromiseLike<{
+        data: Record<string, unknown>[] | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+};
+
+async function fetchAll(table: OfflineTable) {
+  const out: Record<string, unknown>[] = [];
   const page = 1000;
   for (let from = 0; ; from += page) {
-    const { data, error } = await (supabase as any).from(table).select("*").range(from, from + page - 1);
+    const { data, error } = await (supabase as unknown as OfflineReadClient).from(table).select("*").range(from, from + page - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < page) break;
@@ -374,7 +392,7 @@ export const maFrom = ((table: string) => {
 
 // ---------- Modo Offline só desliga pelo botão "Sincronizar" ----------
 let manualSync = false;
-let autoRunning = false;
+const autoRunning = false;
 let lastPending = 0;
 // Alvos de GMD vistos na fila enquanto o modo está ativo (os itens somem ao serem enviados).
 const alvosVistos = { pesoIds: new Set<string>(), pesagemIds: new Set<string>() };

@@ -6,24 +6,37 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 const modulePath = path.resolve(__dirname, '../src/lib/swRegistration.ts');
+const localAppVersionSource = fs.readFileSync(path.resolve(__dirname, '../src/lib/appVersion.ts'), 'utf8');
+const localAppVersion = localAppVersionSource.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
+assert.match(localAppVersion, /^\d+\.\d+\.\d+$/);
+const buildA = '1700000000000';
+const buildB = '1700000000001';
+
+// The fixture uses real pure version/worker identity functions, not permissive mocks.
+const publishedExports = {};
+const publishedSource = ts.transpileModule(
+  fs.readFileSync(path.resolve(__dirname, '../src/lib/publishedUpdate.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
+).outputText;
+vm.runInNewContext(publishedSource, { exports: publishedExports, URL });
 
 function loadRegistration({ busy }) {
   const calls = { waitingMessages: [], reloads: [], pendingDrain: null, timeouts: new Map(), handlers: new Map() };
   let timerId = 0;
   let isBusy = busy;
   const registration = {
-    waiting: { scriptURL: 'https://consubov.test/sw.js?v=build-b', state: 'installed', postMessage(message) { calls.waitingMessages.push(message); } },
+    waiting: { scriptURL: 'https://consubov.test/sw.js?v=' + buildB, state: 'installed', postMessage(message) { calls.waitingMessages.push(message); } },
     installing: null, active: null,
     update: async () => {},
     addEventListener(type, cb) { calls.handlers.set('registration:' + type, cb); },
   };
   const navSw = {
-    controller: { scriptURL: 'https://consubov.test/sw.js?v=build-a' },
+    controller: { scriptURL: 'https://consubov.test/sw.js?v=' + buildA },
     async getRegistration() { return registration; },
     addEventListener(type, cb) { calls.handlers.set('sw:' + type, cb); },
   };
   const windowMock = {
-    location: { href: 'https://consubov.test/', search: '', hostname: 'consubov.test', replace(url) { calls.reloads.push(url); }, reload() { calls.reloads.push('reload'); } },
+    location: { href: 'https://consubov.test/', origin: 'https://consubov.test', search: '', hostname: 'consubov.test', replace(url) { calls.reloads.push(url); }, reload() { calls.reloads.push('reload'); } },
     sessionStorage: { getItem() { return null; }, setItem() {} },
     clearTimeout(id) { calls.timeouts.delete(id); },
     setTimeout(cb) { const id = ++timerId; calls.timeouts.set(id, cb); return id; },
@@ -35,6 +48,8 @@ function loadRegistration({ busy }) {
   const modules = {
     react: { useEffect() {}, useState(v) { return [v, () => {}]; }, useCallback(fn) { return fn; } },
     '@/lib/authIdle': { reloadWhenAuthIdle(fn) { fn(); } },
+    '@/lib/appVersion': { APP_VERSION: localAppVersion },
+    '@/lib/publishedUpdate': publishedExports,
     './criticalOperations': {
       hasCriticalOperations() { return isBusy; },
       onCriticalOperationsDrained(cb) { calls.pendingDrain = cb; return () => { calls.pendingDrain = null; }; },
@@ -47,7 +62,8 @@ function loadRegistration({ busy }) {
     exports,
     require(spec) { assert.ok(spec in modules, 'unexpected module: ' + spec); return modules[spec]; },
     navigator: navigatorMock, window: windowMock, document: documentMock,
-    URL, URLSearchParams, Date, Set, WeakSet, Promise, __APP_BUILD_VERSION__: 'build-a',
+    URL, URLSearchParams, Date, Set, WeakSet, Promise, __APP_BUILD_VERSION__: buildA,
+    fetch: async () => ({ ok: true, json: async () => ({ version: buildB, appVersion: localAppVersion }) }),
     setTimeout(cb) { queueMicrotask(cb); },
     console: { log() {}, warn() {} },
   };
@@ -55,7 +71,7 @@ function loadRegistration({ busy }) {
   return { calls, mod: exports, registration, navSw, setBusy(value) { isBusy = value; },
     expireTimeout() { const callbacks = [...calls.timeouts.values()]; calls.timeouts.clear(); for(const fn of callbacks) fn(); },
     emitControllerChange() { calls.handlers.get('sw:controllerchange')?.(); },
-    emitActivated(version = 'build-b') { calls.handlers.get('sw:message')?.({ data: { type: 'CONSUBOV_SW_ACTIVATED', version } }); },
+    emitActivated(version = buildB) { calls.handlers.get('sw:message')?.({ data: { type: 'CONSUBOV_SW_ACTIVATED', version } }); },
     emitInstalled() { calls.handlers.get('registration:updatefound')?.(); },
   };
 }
@@ -89,7 +105,7 @@ test('explicit update without an activated worker never reloads the installed PW
 test('verified controllerchange after explicit click reloads at most once', async () => {
   const app = loadRegistration({ busy: false });
   await app.mod.applyPendingUpdateNow('token-a');
-  app.navSw.controller = { scriptURL: 'https://consubov.test/sw.js?v=build-b' };
+  app.navSw.controller = { scriptURL: 'https://consubov.test/sw.js?v=' + buildB };
   app.emitControllerChange();
   app.emitActivated();
   app.expireTimeout();
@@ -112,10 +128,12 @@ test('waiting update applied after installation only while user requested it', a
   app.registration.installing = installing;
   await app.mod.applyPendingUpdateNow('token-b');
   app.emitInstalled();
-  const worker = { scriptURL: 'https://consubov.test/sw.js?v=build-b', state: 'installed', postMessage(message) { app.calls.waitingMessages.push(message); } };
+  const worker = { scriptURL: 'https://consubov.test/sw.js?v=' + buildB, state: 'installed', postMessage(message) { app.calls.waitingMessages.push(message); } };
   app.registration.waiting = worker;
   installing.state = 'installed';
   listeners.get('statechange')?.();
+  // statechange intentionally schedules asynchronous authenticated preflight.
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(app.calls.waitingMessages.length, 1);
   assert.equal(app.calls.waitingMessages[0].type, 'SKIP_WAITING');
   assert.equal(app.calls.reloads.length, 0, 'worker must take control first');

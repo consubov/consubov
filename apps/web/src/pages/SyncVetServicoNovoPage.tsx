@@ -21,6 +21,26 @@ type Fazenda = {
 type Estacao = { id: string; nome: string; fazenda_id: string; data_inicio: string | null; data_fim: string | null };
 type Item = { descricao: string; tipo_item: string; quantidade: number; valor_unitario: number };
 
+type ManejoServicoRow = {
+  id: string;
+  data_execucao: string | null;
+  responsavel_id: string | null;
+  fazenda_id: string | null;
+  syncvet_lotes: { fazenda_id: string | null } | null;
+  codigo_preco: string | null;
+  tipo_manejo: string | null;
+};
+
+function mensagemErro(error: unknown, fallback: string): string {
+  return error !== null &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message
+    ? error.message
+    : fallback;
+}
+
 export default function SyncVetServicoNovoPage() {
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
@@ -59,7 +79,7 @@ export default function SyncVetServicoNovoPage() {
     const e = eq as { id: string; nome: string } | null;
     setVetId(e?.id ?? null);
     setVetNome(e?.nome ?? "");
-    setEmpresaNome((emp as any)?.nome ?? "");
+    setEmpresaNome(emp?.nome ?? "");
     setFazendas((faz as Fazenda[]) ?? []);
     setLoading(false);
   }, [user?.id, empresaId]);
@@ -98,7 +118,7 @@ export default function SyncVetServicoNovoPage() {
         .eq("status", "concluido")
         .gte("data_execucao", dataInicio)
         .lte("data_execucao", dataFim + "T23:59:59");
-      const meusManejos = ((manejosRaw as any[]) ?? []).filter(m => {
+      const meusManejos = ((manejosRaw ?? []) as unknown as ManejoServicoRow[]).filter(m => {
         if (m.responsavel_id && m.responsavel_id !== vetId) return false;
         const fid = m.fazenda_id || m.syncvet_lotes?.fazenda_id;
         return fid === fazenda.id;
@@ -116,7 +136,7 @@ export default function SyncVetServicoNovoPage() {
           .from("syncvet_manejo_resultados")
           .select("manejo_id")
           .in("manejo_id", manejoIdsList);
-        for (const r of ((resultados as any[]) ?? [])) {
+        for (const r of (resultados ?? [])) {
           animaisPorManejo[r.manejo_id] = (animaisPorManejo[r.manejo_id] ?? 0) + 1;
         }
       }
@@ -125,13 +145,13 @@ export default function SyncVetServicoNovoPage() {
       const { data: trajetos } = await supabase.from("syncvet_trajetos")
         .select("distancia_km, data").eq("veterinario_id", vetId).eq("fazenda_id", fazenda.id)
         .gte("data", dataInicio).lte("data", dataFim);
-      const km = ((trajetos as any[]) ?? []).reduce((s, t) => s + (t.distancia_km ?? 0), 0);
+      const km = (trajetos ?? []).reduce((s, t) => s + (t.distancia_km ?? 0), 0);
       setKmTotal(km);
 
       // Tabela de preços do vet — mapa por tipo_servico
       const { data: precosRaw } = await supabase.from("syncvet_tabela_precos")
         .select("tipo_servico, descricao, valor, unidade").eq("veterinario_id", vetId);
-      const P = (precosRaw as any[]) ?? [];
+      const P = precosRaw ?? [];
       const precoMap = new Map<string, { descricao: string | null; valor: number }>();
       for (const p of P) precoMap.set(p.tipo_servico, { descricao: p.descricao, valor: p.valor });
       const pKm = P.find(p => p.tipo_servico === "km" || p.unidade === "por_km");
@@ -177,8 +197,8 @@ export default function SyncVetServicoNovoPage() {
       } else {
         toast.success(`${suggested.length} item(ns) sugerido(s)`);
       }
-    } catch (e: any) {
-      console.error(e); toast.error(e.message || "Erro ao sugerir itens");
+    } catch (e: unknown) {
+      console.error(e); toast.error(mensagemErro(e, "Erro ao sugerir itens"));
     } finally { setSuggesting(false); }
   }
 
@@ -216,7 +236,7 @@ export default function SyncVetServicoNovoPage() {
         status: "pendente",
       }).select("id").single();
       if (eSrv) throw eSrv;
-      const servicoId = (srv as any).id;
+      const servicoId = srv.id;
 
       const itemsRows = items.map(it => ({
         servico_id: servicoId,
@@ -271,8 +291,8 @@ export default function SyncVetServicoNovoPage() {
 
       toast.success("Serviço gerado com sucesso");
       navigate("/syncvet/contas");
-    } catch (e: any) {
-      console.error(e); toast.error(e.message || "Erro ao salvar");
+    } catch (e: unknown) {
+      console.error(e); toast.error(mensagemErro(e, "Erro ao salvar"));
     } finally { setSaving(false); }
   }
 

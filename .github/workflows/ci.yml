@@ -36,6 +36,9 @@ jobs:
       - name: Check
         run: bun run check
 
+      - name: Verify deterministic PR build provenance
+        run: node --test scripts/tests/ci-build-timestamp.test.mjs
+
       - name: Web lint debt baseline
         working-directory: apps/web
         run: bun run lint:baseline

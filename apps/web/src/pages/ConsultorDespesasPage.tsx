@@ -44,6 +44,13 @@ function extractRelatorioPath(url: string | null): string | null {
   const idx = url.indexOf(marker);
   return idx >= 0 ? url.slice(idx + marker.length).split("?")[0] : null;
 }
+function errorMessage(error: unknown, fallback: string): string {
+  if (error !== null && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return fallback;
+}
+
 const WEEK_COLORS = ["#1F7A4D", "#C9A84C", "#B91C1C", "#0EA5E9", "#7C3AED", "#F97316"];
 
 export default function ConsultorDespesasPage() {
@@ -80,7 +87,7 @@ export default function ConsultorDespesasPage() {
     const { data } = await supabase.from("consultores").select("id, nome").eq("user_id", user.id).maybeSingle();
     if (!data) { setLoading(false); return; }
     setConsultorId(data.id);
-    setConsultorNome((data as any).nome ?? "");
+    setConsultorNome(data.nome ?? "");
     await Promise.all([loadDespesas(data.id), loadRelatorios(data.id)]);
     setLoading(false);
   }
@@ -137,8 +144,8 @@ export default function ConsultorDespesasPage() {
       setAddOpen(false);
       setAddFile(null); setAddValor(""); setAddData(format(new Date(), "yyyy-MM-dd"));
       await loadDespesas(consultorId);
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao adicionar");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao adicionar"));
     } finally {
       setUploading(false);
     }
@@ -171,8 +178,8 @@ export default function ConsultorDespesasPage() {
       toast.success("Relatório excluído");
       setToDeleteRel(null);
       await loadRelatorios(consultorId);
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao excluir relatório");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao excluir relatório"));
     }
   }
 
@@ -243,8 +250,8 @@ export default function ConsultorDespesasPage() {
       setGenOpen(false);
       await Promise.all([loadDespesas(consultorId), loadRelatorios(consultorId)]);
       window.open(pub.publicUrl, "_blank");
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao gerar relatório");
+    } catch (e) {
+      toast.error(errorMessage(e, "Erro ao gerar relatório"));
     } finally {
       setGenerating(false);
     }
@@ -308,7 +315,7 @@ export default function ConsultorDespesasPage() {
                 <Pie data={donutData} dataKey="value" innerRadius={40} outerRadius={70} strokeWidth={0}>
                   {donutData.map((_, i) => <Cell key={i} fill={WEEK_COLORS[i % WEEK_COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: any) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-1 text-xs">

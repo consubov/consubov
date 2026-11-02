@@ -188,7 +188,7 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
 
   function toggle(set: Set<string>, id: string, setter: (s: Set<string>) => void) {
     const ns = new Set(set);
-    ns.has(id) ? ns.delete(id) : ns.add(id);
+    if (ns.has(id)) ns.delete(id); else ns.add(id);
     setter(ns);
   }
 

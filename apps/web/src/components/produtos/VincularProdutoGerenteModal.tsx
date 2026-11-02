@@ -102,7 +102,7 @@ export default function VincularProdutoGerenteModal({ open, onClose, produto, fa
                   <div key={f.id} className="rounded-md border p-3 space-y-1">
                     <div className="flex items-center gap-2">
                       <Checkbox id={`f-${f.id}`} checked={marcada} disabled={travada}
-                        onCheckedChange={() => { const n = new Set(fazSel); n.has(f.id) ? n.delete(f.id) : n.add(f.id); setFazSel(n); }} />
+                        onCheckedChange={() => { const n = new Set(fazSel); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); setFazSel(n); }} />
                       <Label htmlFor={`f-${f.id}`} className="font-semibold cursor-pointer">{f.nome}</Label>
                       <span className="text-xs text-muted-foreground ml-auto">{marcada ? "disponível" : "indisponível"}</span>
                     </div>

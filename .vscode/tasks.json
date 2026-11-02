@@ -167,6 +167,27 @@
       ],
       "group": "test",
       "problemMatcher": []
+    },
+    {
+      "label": "CONSUBOV: CI local (porta Playwright isolada)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "scripts/qa/run-ci-vscode-local.sh"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ]
 }

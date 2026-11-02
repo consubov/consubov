@@ -1,5 +1,6 @@
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { isAuthorizedModernPushMachine } from "./pushMachineAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,6 +112,15 @@ function constantTimeEquals(a: string, b: string): boolean {
 async function authenticate(
   req: Request,
 ): Promise<{ caller: Caller } | { status: number; error: string; reason: string }> {
+  // Opt-in only: the pg_net caller can use an API key without a Bearer JWT.
+  // Do not promote requests carrying a user Authorization header to machine.
+  if (!req.headers.has("authorization") && isAuthorizedModernPushMachine(
+    req.headers.get("apikey"),
+    (name) => Deno.env.get(name),
+  )) {
+    return { caller: { type: "machine" } };
+  }
+
   const header = req.headers.get("authorization");
   if (!header) {
     return { status: 401, error: "Token de autorização ausente", reason: "auth_ausente" };
