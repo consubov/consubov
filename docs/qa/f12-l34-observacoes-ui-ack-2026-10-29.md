@@ -54,3 +54,12 @@ Risco residual: RLS efetiva de public.observacoes no alvo, grants e ACL, reenvio
 ## 02/11/2026 - Isolamento da fila por contexto
 
 Foi constatado que handleSync lia todas as observacoes pendentes sem filtrar o contexto atual. O caminho de observacoes do capataz agora filtra leitura e envio por usuario autenticado, fazenda e retiro ativo. A ausencia de um dos IDs nega exibicao e envio; observacoes de outros retiros/fazendas permanecem na fila local sem marca de sincronizacao. Ao mudar de retiro durante o lote, o processo interrompe novos envios de observacoes e conserva os itens restantes. A autorizacao backend/RLS continua obrigatoria; isto e uma barreira de integridade do cliente, nao substitui policy no banco.
+
+
+## 02/11/2026 - Builds CI reprodutiveis sem mudar versao publicada
+
+No mesmo SHA da PR #76, a medicao gzip mudou de 2.755.592 (FAIL) para 2.755.299 (FAIL) e 2.755.052 (PASS), sem alterar bytes de codigo-fonte. O workflow original usa Date.now() no vite.config.ts para versionar service worker e ativos. Em CI do GitHub Actions, a build passa a usar o horario de commit HEAD (epoch em milissegundos, 13 digitos) para manter o mesmo version.json e bytes construidos ao reexecutar a mesma revisao. Ausencia de git ou timestamp invalido faz falhar o CI, nao cair silenciosamente em Date.now(). Fora do GitHub Actions, Date.now() permanece identico ao original para preservar atualizacao/invalidacao real do PWA em builds publicados. Teto raw, gzip e asset maior permanecem inalterados.
+
+A edicao do vite.config.ts, compartilhado por outras frentes, exige revisao independente do owner PWA/CI antes de liberar merge. Validacoes obrigatorias: duas builds CI simuladas do mesmo SHA com igualdade de bytes/tamanhos, PWA gate, version.json, SW e anti-downgrade; build fora de GITHUB_ACTIONS deve continuar com timestamp dinamico. Nenhuma configuracao de deploy/Vercel ou workflow de producao foi modificada.
+
+Nota de CI: mensagens de erro/escopo das observacoes foram condensadas sem perder a informacao; testes de ACK e estados de pendencia permanecem obrigatorios.

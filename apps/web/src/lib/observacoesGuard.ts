@@ -17,7 +17,7 @@ export function isObservationAccessDenied(
   return error?.code === "42501" || error?.status === 401 || error?.status === 403 ||
     httpStatus === 401 || httpStatus === 403;
 }
-const INVALID_OBSERVATION = "Não foi possível confirmar os dados de observações.";
+const INVALID_OBSERVATION = "Falha ao confirmar observação.";
 
 function rowsOrThrow<T>(result: ObservationResult<T>): T[] {
   if (result.error || !Array.isArray(result.data)) throw new Error(INVALID_OBSERVATION);

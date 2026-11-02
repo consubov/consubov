@@ -1387,7 +1387,7 @@ export default function CapatazDashboard() {
       const obs = obsPend[i];
       if (activeRetiroIdRef.current !== obs.retiro_id) {
         failedCount++;
-        failedMessages.push("Retiro alterado; observações preservadas no dispositivo.");
+        failedMessages.push("Retiro alterado; fila preservada.");
         break;
       }
       idx++;
@@ -1424,7 +1424,7 @@ export default function CapatazDashboard() {
         failedCount++;
         failedMessages.push(`Observação ${i + 1}: ${errorMsg}`);
         await logSyncError({ id: obs.id, recordType: 'observacao', errorMessage: errorMsg });
-        console.warn(`[sync] Falha observação ${i + 1}, continuando:`, errorMsg);
+        console.warn(`[sync] Observação ${i + 1}, continuando:`, errorMsg);
       }
     }
 

@@ -2,8 +2,18 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import fs from "fs";
+import { execFileSync } from "node:child_process";
 
-const buildTimestamp = Date.now().toString();
+// GitHub Actions only tests artifacts; re-running the same SHA must not change
+// bundle gzip sizes. Shipped builds keep their time-based PWA cache version.
+const buildTimestamp = (() => {
+  if (process.env.GITHUB_ACTIONS !== "true") return Date.now().toString();
+  const seconds = execFileSync("git", ["log", "-1", "--format=%ct", "HEAD"], {
+    cwd: path.resolve(__dirname, "../.."), encoding: "utf8",
+  }).trim();
+  if (!/^\d{10}$/.test(seconds)) throw new Error("Invalid CI commit timestamp");
+  return seconds + "000";
+})();
 
 function readAppVersion(): string {
   try {
