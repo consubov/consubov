@@ -54,9 +54,16 @@ import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
 import { requestPersistentStorage } from "@/lib/storageProtection";
 import { compressImageDataUrl } from "@/lib/imageCompression";
+import { confirmObservationSynced, observationInScope } from "@/lib/observacoesGuard";
 import { iniciarFilaFotosSalga } from "@/lib/fotoSalgaQueue";
 import { iniciarFilaOperacoes, reportOperacao } from "@/lib/operacaoReporter";
 import { getTotalPendingCount } from "@/lib/offlineDb";
+
+const CAPATAZ_CLASS_1 = "w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground";
+const CAPATAZ_CLASS_2 = "min-h-screen bg-background flex flex-col overflow-auto";
+const CAPATAZ_CLASS_3 = "min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4";
+const CAPATAZ_CLASS_4 = "bg-destructive text-destructive-foreground hover:bg-destructive/90";
+const CAPATAZ_CLASS_5 = "min-h-screen bg-background flex items-center justify-center px-6";
 
 type Screen = 'home' | 'prep' | 'salga' | 'scanner' | 'form' | 'manual-select' | 'syncing' | 'transferencia-retiro' | 'relatorio-salga';
 type RestorableScreen = 'home' | 'salga' | 'scanner' | 'form' | 'manual-select';
@@ -436,11 +443,10 @@ export default function CapatazDashboard() {
     const currentRetiroId = activeRetiroId || "";
     const currentFazendaId = fazendaId || "";
     const filterByScope = (o: ObservacaoOffline) =>
-      (!currentRetiroId || o.retiro_id === currentRetiroId) &&
-      (!currentFazendaId || o.fazenda_id === currentFazendaId);
+      !!user?.id && observationInScope(o, currentFazendaId, currentRetiroId);
     setObsPendentes(pend.filter(filterByScope));
     setObsHistorico(hist.filter(filterByScope));
-  }, [activeRetiroId, fazendaId]);
+  }, [activeRetiroId, fazendaId, user?.id]);
 
   const applyLancamentosState = useCallback((allLancamentos: LancamentoOffline[] | undefined | null, pendingCountValue: number, cicloId?: string) => {
     const list = Array.isArray(allLancamentos) ? allLancamentos.filter(Boolean) : [];
@@ -1214,7 +1220,8 @@ export default function CapatazDashboard() {
     setSyncError(null);
     await maybeUpdateActiveServiceWorker();
     const pendentes = (await getLancamentosPendentes()).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
-    const obsPend = await getObservacoesPendentes();
+    const obsPend = (await getObservacoesPendentes()).filter(o =>
+      !!user?.id && observationInScope(o, fazendaId, activeRetiroId));
     const fecharPend = await getFecharMesPendente();
     const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
     if (totalPending === 0) {
@@ -1378,12 +1385,17 @@ export default function CapatazDashboard() {
     // Sync observações
     for (let i = 0; i < obsPend.length; i++) {
       const obs = obsPend[i];
+      if (activeRetiroIdRef.current !== obs.retiro_id) {
+        failedCount++;
+        failedMessages.push("Retiro alterado; observações preservadas no dispositivo.");
+        break;
+      }
       idx++;
       setSyncProgress({ current: idx, total: totalPending });
       try {
         await withSyncRetry(async () => {
           const fotoObservacao = obs.foto_url ? await compressImageDataUrl(obs.foto_url) : "";
-          const { error } = await supabase.from("observacoes").upsert({
+          const payload = {
             id: obs.id,
             pasto_id: obs.pasto_id || null,
             retiro_id: obs.retiro_id,
@@ -1393,8 +1405,16 @@ export default function CapatazDashboard() {
             descricao: obs.descricao,
             foto_url: fotoObservacao || obs.foto_url,
             resolvido: false,
-          }, { onConflict: 'id' });
+          };
+          // Duplicate offline retries never update an existing resolved observation.
+          const { error } = await supabase.from("observacoes").upsert(payload,
+            { onConflict: "id", ignoreDuplicates: true });
           if (error) throw error;
+          const receipt = await supabase.from("observacoes")
+            .select("id, fazenda_id, retiro_id, pasto_id, capataz_nome, tipo, descricao, foto_url")
+            .eq("id", obs.id).eq("fazenda_id", obs.fazenda_id);
+          // No ACK for forbidden, hidden, or mismatched rows. Leave queue pending.
+          confirmObservationSynced(receipt, payload);
           await markObservacaoSincronizada(obs.id);
           await clearSyncError(obs.id);
           // Push é disparado pelo trigger notificar_observacao no banco (evita duplicação)
@@ -1536,7 +1556,7 @@ export default function CapatazDashboard() {
 
   if (startupError) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className={CAPATAZ_CLASS_5}>
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center space-y-3">
           <h1 className="text-lg font-semibold text-foreground">Falha ao abrir o painel</h1>
           <p className="text-sm text-muted-foreground">{startupError}</p>
@@ -1550,7 +1570,7 @@ export default function CapatazDashboard() {
 
   if (!bootReady) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className={CAPATAZ_CLASS_5}>
         <div className="text-center space-y-2">
           <p className="text-base font-medium text-foreground">Preparando painel do capataz…</p>
           <p className="text-sm text-muted-foreground">Carregando a interface antes dos dados offline.</p>
@@ -1570,7 +1590,7 @@ export default function CapatazDashboard() {
 
   if (screen === 'prep') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4">
+      <div className={CAPATAZ_CLASS_3}>
         {prepStatus === 'loading' ? (
           <>
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
@@ -1624,7 +1644,7 @@ export default function CapatazDashboard() {
 
   if (screen === 'manual-select') {
     return (
-      <div className="min-h-screen bg-background flex flex-col overflow-auto">
+      <div className={CAPATAZ_CLASS_2}>
         {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
           <Button variant="ghost" size="icon" onClick={() => setScreen('scanner')} className="text-primary-foreground hover:bg-primary/80">
@@ -1700,7 +1720,7 @@ export default function CapatazDashboard() {
   if (screen === 'salga') {
     const salgasHoje = lancamentosHoje;
     return (
-      <div className="min-h-screen bg-background flex flex-col overflow-auto">
+      <div className={CAPATAZ_CLASS_2}>
         {duplicadoDialog}
         <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -1753,7 +1773,7 @@ export default function CapatazDashboard() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteLancamento(l.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              <AlertDialogAction onClick={() => handleDeleteLancamento(l.id)} className={CAPATAZ_CLASS_4}>
                                 Excluir
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -1773,7 +1793,7 @@ export default function CapatazDashboard() {
 
   if (screen === 'syncing') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4">
+      <div className={CAPATAZ_CLASS_3}>
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
         <p className="text-foreground font-semibold text-lg">Sincronizando dados...</p>
         <p className="text-muted-foreground text-sm">
@@ -1815,7 +1835,7 @@ export default function CapatazDashboard() {
   const mesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesOperacional - 1];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-auto">
+    <div className={CAPATAZ_CLASS_2}>
       <UpdateBanner />
       <EnableNotificationsBanner />
       <div className="px-4 pt-2">
@@ -1864,7 +1884,7 @@ export default function CapatazDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => setLancManualOpen(true), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={CAPATAZ_CLASS_1}
                       >
                         <ClipboardList className="w-5 h-5 text-primary" />
                         Lançamento Manual
@@ -1874,7 +1894,7 @@ export default function CapatazDashboard() {
                       <li>
                         <button
                           onClick={() => { const id = activeRetiroId; setMenuOpen(false); setTimeout(() => navigate(`/mapa/retiro/${id}`), 220); }}
-                          className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                          className={CAPATAZ_CLASS_1}
                         >
                           <MapIcon className="w-5 h-5 text-primary" />
                           Ver Mapa
@@ -1885,7 +1905,7 @@ export default function CapatazDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => setScreen('transferencia-retiro'), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={CAPATAZ_CLASS_1}
                       >
                         <ArrowRightLeft className="w-5 h-5 text-primary" />
                         Transferência entre Retiros
@@ -1894,7 +1914,7 @@ export default function CapatazDashboard() {
                     <li>
                       <button
                         onClick={() => { setMenuOpen(false); setTimeout(() => setScreen('relatorio-salga'), 220); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium hover:bg-muted text-foreground"
+                        className={CAPATAZ_CLASS_1}
                       >
                         <FileText className="w-5 h-5 text-primary" />
                         Relatório de Salga
@@ -2180,7 +2200,7 @@ export default function CapatazDashboard() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
+                            <AlertDialogAction className={CAPATAZ_CLASS_4} onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
                               Excluir
                             </AlertDialogAction>
                           </AlertDialogFooter>

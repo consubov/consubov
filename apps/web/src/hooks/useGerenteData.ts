@@ -6,13 +6,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
 import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
+import { confirmObservationRead, confirmObservationResolved, isObservationAccessDenied, isObservationContextCurrent } from "@/lib/observacoesGuard";
+import { toast } from "sonner";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
-import { getScreenCache, setScreenCache, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+const OBSERVATION_ACCESS_ERROR = "Acesso às observações não confirmado. Faça login novamente ou contate o suporte.";
+
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
@@ -128,6 +132,8 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
   const currentKey = useRef(cacheKey);
   currentKey.current = cacheKey;
+  const loadSequence = useRef(0);
+  const resolvingIds = useRef(new Set<string>());
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
   const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
   const [ciclo, setCiclo] = useState<Ciclo | null>(ic?.ciclo ?? null);
@@ -144,11 +150,20 @@ export function useGerenteData(filters?: GerenteFilters) {
     setLancamentos(c.lancamentos); setProdutos(c.produtos); setObservacoes(c.observacoes);
   }, []);
 
+  const revokeObservations = useCallback(() => {
+    dropScreenCacheScopes(["gerente"]);
+    setLoadedCacheKey("");
+    setObservacoes([]);
+  }, []);
+
   const fazendaNome = fazendaData.nome;
 
   const loadData = useCallback(async () => {
-    if (!fazendaId) { setLoading(false); return; }
-    if (!getScreenCache(cacheKey)) setLoading(true);
+    const requestId = ++loadSequence.current;
+    const isCurrent = () => isObservationContextCurrent(cacheKey, currentKey.current, requestId, loadSequence.current);
+    if (!fazendaId) { if (isCurrent()) setLoading(false); return; }
+    if (!getScreenCache(cacheKey) && isCurrent()) setLoading(true);
+    let observationsDenied = false;
     const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
     try {
       const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
@@ -234,18 +249,28 @@ export function useGerenteData(filters?: GerenteFilters) {
       } else snap.produtos = [];
 
       const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
-      snap.observacoes = requireReadRows(obsRes) as Observacao[];
-      if (currentKey.current !== cacheKey) return;
+      observationsDenied = isObservationAccessDenied(obsRes.error, obsRes.status);
+      if (observationsDenied) throw new Error("Observation access denied");
+      snap.observacoes = confirmObservationRead(obsRes, fazendaId);
+      if (!isCurrent()) return;
       setScreenCache(cacheKey, snap);
       applyCache(snap);
       setLoadedCacheKey(cacheKey);
       setLoadError(null);
     } catch (e) {
-      if (currentKey.current === cacheKey) setLoadError(dataReadErrorMessage(e));
+      if (isCurrent()) {
+        if (observationsDenied) {
+          // An authorization rejection must not expose stale observation cache.
+          revokeObservations();
+        }
+        setLoadError(observationsDenied
+          ? OBSERVATION_ACCESS_ERROR
+          : dataReadErrorMessage(e));
+      }
     } finally {
-      if (currentKey.current === cacheKey) setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache, revokeObservations]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
@@ -472,20 +497,55 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Removido o envio client-side para evitar duplicação e evitar
   // enviar alerta a gerentes de outras fazendas.
 
-  // Resolve observacao
+  // Frontend ACK prevents false success; it is not a substitute for database RLS.
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
+    if (!fazendaId || !id.trim() || !resolvidoPor.trim() || loadError ||
+        loadedCacheKey !== cacheKey ||
+        !observacoes.some(o => o.id === id && o.fazenda_id === fazendaId && !o.resolvido)) {
+      toast.error("Observação indisponível para esta fazenda.");
+      return;
+    }
+    if (resolvingIds.current.has(id)) return;
+    resolvingIds.current.add(id);
+    const contextAtStart = cacheKey;
+    const sequenceAtStart = loadSequence.current;
     try {
-      await supabase.from("observacoes").update({
-        resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString(),
-      }).eq("id", id);
-      setObservacoes(prev => prev.map(o =>
-        o.id === id ? { ...o, resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() } : o
-      ));
-    } catch (e) { console.error("Error resolving observacao:", e); }
-  }, []);
+      const response = await supabase.from("observacoes")
+        .update({ resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() })
+        .eq("id", id).eq("fazenda_id", fazendaId)
+        .select("id, fazenda_id, resolvido, resolvido_em, resolvido_por");
+      if (isObservationAccessDenied(response.error, response.status)) {
+        if (currentKey.current === contextAtStart) {
+          loadSequence.current++;
+          revokeObservations();
+          setLoadError(OBSERVATION_ACCESS_ERROR);
+        }
+        toast.error("Acesso às observações não confirmado.");
+        return;
+      }
+      const acknowledged = confirmObservationResolved(response, id, fazendaId);
+      if (!isObservationContextCurrent(contextAtStart, currentKey.current, sequenceAtStart, loadSequence.current)) return;
+      const applyAcknowledged = (rows: Observacao[]) => rows.map(o =>
+        o.id === id && o.fazenda_id === fazendaId ? { ...o, ...acknowledged } : o
+      );
+      setObservacoes(applyAcknowledged);
+      const cached = getScreenCache<GerenteCache>(contextAtStart);
+      if (cached) setScreenCache(contextAtStart, { ...cached, observacoes: applyAcknowledged(cached.observacoes) });
+      toast.success("Observação resolvida");
+    } catch {
+      if (currentKey.current === contextAtStart) toast.error("Não foi possível confirmar a resolução da observação.");
+    } finally {
+      resolvingIds.current.delete(id);
+    }
+  }, [fazendaId, cacheKey, loadError, loadedCacheKey, observacoes, revokeObservations]);
 
-  const obsPendentes = useMemo(() => observacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [observacoes]);
-  const obsResolvidas = useMemo(() => observacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [observacoes]);
+  // Never show a previous farm's observations while the new scope is loading.
+  const visibleObservacoes = useMemo(() => loadedCacheKey === cacheKey ? observacoes : [],
+    [loadedCacheKey, cacheKey, observacoes]);
+  const obsPendentes = useMemo(() => visibleObservacoes.filter(o => !o.resolvido)
+    .sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [visibleObservacoes]);
+  const obsResolvidas = useMemo(() => visibleObservacoes.filter(o => o.resolvido)
+    .sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [visibleObservacoes]);
 
   const refresh = useCallback(async () => {
     setScoresTick((t) => t + 1);
