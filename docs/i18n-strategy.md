@@ -17,3 +17,14 @@ Local de Referência do Vault: `D:\MATEUS\Documentos\GitHub\Obsidian\Vault\02-PR
 - Sem alterações em IndexedDB, RLS, autenticação do servidor, sincronização ou serviço de atualização.
 - Gate local realizado no candidato: typecheck e 70 arquivos Vitest aprovados, Vite build e orçamento bruto/gzip aprovados. QA E2E/PWA em dispositivos reais e regressões Node/Task pendentes por `node` indisponível no runner VPS; não liberar release até concluir.
 - A constante `APP_VERSION` continua sob o gate de release do Catálogo 17; não incrementá-la ao preparar/mergear o candidato sem verificação de versão publicada.
+
+
+## 2026-11-02 — Regras para novas interfaces e relatórios
+
+Todo novo texto **da interface** ou dos **PDFs** deve ter representação revisada em `pt-BR` e `en-US` antes de aprovação. Prefira `t()` com chave semântica para React; os geradores de PDF devem receber `locale` explicitamente e traduzir títulos/colunas/legendas sem traduzir dados do produtor, identificadores de animais, campos de payload nem códigos técnicos. A suíte `AppLanguage.test.tsx` exige chaves e valores correspondentes nos dois idiomas.
+
+**Escopo atual da PR #163:** somente a infraestrutura i18n, a troca de idioma e cópia de login/autorização. **Ainda não existe gate de cobertura para todas as telas/PDFs**; novas entregas devem adotar i18n até que um gate universal seja implementado e validado. Não declarar 100% de cobertura em inglês com este patch. O Site mantém estado separado.
+
+### QA e orçamento
+
+A nova interface cria um pequeno acréscimo legítimo ao bundle. O rebaseline do `scripts/web-bundle-budget.json` foi medido na mesma VPS com a `main` 9acf4e57 (8.753.242 raw/2.753.897 gzip bytes) e candidato PR163 (8.756.008 raw/2.755.542 gzip bytes). Limites ajustados ao tamanho observado +500 bytes; maior asset inalterado. CI deve revalidar no HEAD exato. Nenhuma alteração em Service Worker, filas ou migração.

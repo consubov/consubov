@@ -19,9 +19,12 @@ describe("App language preference", () => {
     localStorage.setItem("consubov:app-language", "pt-BR");
     localStorage.setItem("consubov:site-language", "pt-BR");
     render(<MemoryRouter initialEntries={["/login"]}><AppLanguageProvider><Probe /><AppLanguageSwitch /></AppLanguageProvider></MemoryRouter>);
+    expect(screen.getByTestId("app-language-switch")).toHaveAttribute("aria-label", "Idioma / Language");
+    expect(screen.getByTestId("app-language-switch").tagName).toBe("ASIDE");
     expect(screen.getByTestId("copy")).toHaveTextContent("Entrar");
-    fireEvent.click(screen.getByRole("button", { name: "English (United States)" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Idioma / Language" }), { target: { value: "en-US" } });
     expect(screen.getByTestId("locale")).toHaveTextContent("en-US");
+    expect(document.documentElement.lang).toBe("en-US");
     expect(screen.getByTestId("copy")).toHaveTextContent("Sign in");
     expect(localStorage.getItem("consubov:site-language")).toBe("pt-BR");
     expect(localStorage.getItem("consubov:app-language")).toBe("en-US");
