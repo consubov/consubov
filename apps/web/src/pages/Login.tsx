@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -25,6 +26,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
+  const { t } = useTranslation();
   const location = useLocation();
   const isRelatto = isRelattoActiveProfile(location.search);
   const brandName = isRelatto ? "Relatto" : "Consubov";
@@ -37,7 +39,7 @@ export default function Login() {
 
     const { error } = await signIn(email, password);
     if (error) {
-      setError("Email ou senha inválidos.");
+      setError(t("auth.invalid"));
       setLoading(false);
       return;
     }
@@ -58,14 +60,14 @@ export default function Login() {
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">{brandName}</h1>
             <p className="text-sm text-muted-foreground">
-              {isRelatto ? "Relatórios Técnicos de Campo" : "Sistema de Gestão Pecuária"}
+              {isRelatto ? t("auth.relatto") : t("auth.subtitle")}
             </p>
           </div>
         </CardHeader>
         <CardContent className="pt-4 pb-8 px-8">
           {passwordReset && (
             <p className="mb-4 rounded-md bg-muted px-3 py-2 text-sm text-foreground" role="status">
-              Senha atualizada. Entre novamente com a nova senha.
+              {t("auth.reset")}
             </p>
           )}
           <form onSubmit={handleSubmit} className="space-y-5" method="post" action="#" autoComplete="on">
@@ -87,7 +89,7 @@ export default function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <PasswordInput
                 id="password"
                 name="password"
@@ -105,7 +107,7 @@ export default function Login() {
                 onCheckedChange={(v) => setLembrarEmail(v === true)}
               />
               <Label htmlFor="lembrar-email" className="text-sm font-normal cursor-pointer">
-                Lembrar meu e-mail
+                {t("auth.remember")}
               </Label>
             </div>
             <div className="text-right">
@@ -113,14 +115,14 @@ export default function Login() {
                 to="/recuperar-senha"
                 className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
-                Esqueci minha senha
+                {t("auth.forgot")}
               </Link>
             </div>
             {error && (
               <p className="text-sm text-destructive font-medium">{error}</p>
             )}
             <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : "Entrar"}
+              {loading ? <Loader2 className="animate-spin" /> : t("auth.login")}
             </Button>
           </form>
         </CardContent>

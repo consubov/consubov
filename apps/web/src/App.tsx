@@ -1,3 +1,5 @@
+import { AppLanguageProvider, useTranslation } from "@/hooks/useTranslation";
+import { AppLanguageSwitch } from "@/components/AppLanguageSwitch";
 import { GerenteFabricaGuard } from "@/hooks/useGerenteTemFabrica";
 import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -230,6 +232,7 @@ function LegacyRetiroPainelRedirect() {
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
   const { user, role, loading, roleResolved, signOut } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
@@ -243,8 +246,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center space-y-3">
-          <p className="text-destructive font-semibold text-lg">Acesso não autorizado</p>
-          <p className="text-muted-foreground text-sm">Seu perfil não possui permissão para acessar esta área.</p>
+          <p className="text-destructive font-semibold text-lg">{t("auth.denied")}</p>
+          <p className="text-muted-foreground text-sm">{t("auth.deniedDetail")}</p>
           <Button variant="outline" onClick={() => navigate("/app", { replace: true })}>
             Voltar ao painel
           </Button>
@@ -261,8 +264,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center space-y-3">
-          <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
-          <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+          <p className="text-destructive font-semibold text-lg">{t("auth.noProfile")}</p>
+          <p className="text-muted-foreground text-sm">{t("auth.contact")}</p>
           <Button variant="outline" onClick={() => void signOut()}>
             Sair
           </Button>
@@ -276,6 +279,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 function RoleRedirect() {
   const { role, loading, roleResolved, signOut } = useAuth();
+  const { t } = useTranslation();
   if (loading || !roleResolved) return <LoadingScreen />;
 
   const target = getRoleHomePath(role);
@@ -288,8 +292,8 @@ function RoleRedirect() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6">
       <div className="text-center space-y-3">
-        <p className="text-destructive font-semibold text-lg">Usuário sem perfil configurado</p>
-        <p className="text-muted-foreground text-sm">Contate o administrador para vincular seu acesso.</p>
+        <p className="text-destructive font-semibold text-lg">{t("auth.noProfile")}</p>
+        <p className="text-muted-foreground text-sm">{t("auth.contact")}</p>
         <Button variant="outline" onClick={() => void signOut()}>
           Sair
         </Button>
@@ -311,9 +315,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AppLanguageProvider>
         <PainelPeriodoProvider>
           <AuthProvider>
             <PwaProfileSync />
+            <AppLanguageSwitch />
             <RouteMemory />
             <PushNotificationsBootstrap />
             <PesagemEmAndamentoPrompt />
@@ -449,6 +455,7 @@ const App = () => (
             </Suspense>
           </AuthProvider>
         </PainelPeriodoProvider>
+        </AppLanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
