@@ -72,6 +72,9 @@ test('Vite SW build plugin injects every route bundle, CSS, and font into precac
   assert.doesNotMatch(result, /__BUILD_TIMESTAMP__/);
   assert.ok(fs.existsSync(path.join(dir, 'dist', 'version.json')));
   const html = fs.readFileSync(path.join(dir, 'dist', 'index.html'), 'utf8');
+  assert.match(html, /<script data-consubov-build-version>globalThis\.__CONSUBOV_RUNTIME_BUILD_VERSION__="\d{13}";<\/script>/);
+  assert.ok(html.indexOf("data-consubov-build-version") < html.indexOf("data-consubov-boot-repair"),
+    "build version script must run before boot repair");
   assert.match(html, /<script data-consubov-boot-repair>/);
   assert.doesNotMatch(html, /<!-- CONSUBOV_BOOT_REPAIR_INLINE -->/);
 }));

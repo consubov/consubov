@@ -1,3 +1,5 @@
+> **Atualização 02/11/2026:** o procedimento de budget normalizado descrito abaixo é histórico e foi substituído. A configuração atual mede o **build real** do artefato. O conjunto final no VS Code (sem normalização) mediu gzip **2.752.928 B** contra limite **2.755.282 B**, margem **2.354 B**. A remoção de metadados não consumidos em br-states.json gerou a margem, preservando os 27 estados e geometrias. Evidências: docs/qa/2026-11-02-pr76-br-states-budget.md e /tmp/consubov-pr76-map-finalqa-20261102. O CI no SHA final e os gates Q4/Q5 ainda não estavam aprovados nesta atualização.
+
 # PR #76 — pacote local de correção e QA no VS Code da VPS
 
 **Estado de origem:** `main=0de7260278551194d170b297495bbe4de5e3a667`; PR #76 `51b540e23fe453f54bdb7ec183c084fec0eb506c`. Checkout de QA autônomo: `/home/coder/workspace/consubov-pr76-head51-localqa-20261102`. Nenhum merge no `main`, banco remoto ou deploy.
@@ -32,3 +34,14 @@
 - **Numeração:** seq033 / 2.0.33 apenas CANDIDATA após primeiro merge elegível; não criar release/version bump antes.
 
 **Rollback local:** reverter somente o commit com este diff se reprovado; não apagar dados, IndexedDB, filas, branches de outros agentes, políticas de produção ou stashes. O Handoff Vivo/Checklist Mestre devem registrar este checkpoint; Handoff estático do Projeto precisa reconciliação posterior.
+
+## Diagnóstico adicional: entropia entre SHAs e correção da medição
+
+Um commit novo **sem mudança adicional de código de runtime** alterou o timestamp CI e os hashes de assets: no commit QA local `429ec474`, o gzip voltou a **2.755.505 > 2.755.282**, embora raw seguisse **8.754.367**. Isso demonstra a instabilidade intrínseca do orçamento por timestamp do commit, não uma regressão de tamanho do código.
+
+A correção local implementa um **build de comparação de tamanho exclusivo do GitHub Actions**, com `CONSUBOV_CI_BUNDLE_BUDGET=true` e timestamp `1793504983000` (data do baseline Git `4f723867`). A validação do evento PR continua obrigatória e falha fechado. A workflow compila o mesmo código uma vez com timestamp normalizado somente para `report:bundle` e `check:bundle-budget`, depois **restaura o build real** antes de `check:dist-secrets`, Playwright, axe e Lighthouse. O budget em `scripts/web-bundle-budget.json` permaneceu inalterado. Fora do GitHub Actions, `Date.now()` continua responsável pela versão PWA monotônica.
+
+- Build real do SHA `429ec474`: raw **8.754.367**, gzip **2.755.505**, o que reproduz a variação.
+- Build de tamanho normalizado, mesmo código: raw **8.754.367**, gzip **2.755.086**, teto gzip **2.755.282**; PASS com 196 B de margem **estável entre mudanças de commit que não alteram código**.
+- `node --test scripts/tests/ci-build-timestamp.test.mjs`: **8/8 PASS**, incluindo modo PR normal, push normal, SHA inválido, evento ausente, normalização, fail closed do evento, build não-CI com relógio real e push normalizado.
+- A futura execução CI no SHA final e as revisões de segurança continuam obrigatórias antes de qualquer merge; não declarar PASS remoto antecipado.

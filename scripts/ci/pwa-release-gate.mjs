@@ -37,6 +37,10 @@ const v2 = json("/manifest-consubov-v2.json");
 const installer = asset("/instalar-consubov-v2.html");
 ok(typeof version.version === "string" && build.test(version.version) && Number.isSafeInteger(Number(version.version)), "invalid build timestamp");
 ok(compareVersion(version.appVersion, "2.0.0") >= 0, "PWA product downgrade");
+const localBuildTag = index.match(/<script data-consubov-build-version>globalThis\.__CONSUBOV_RUNTIME_BUILD_VERSION__=["\x27](\d{12,15})["\x27];<\/script>/);
+ok(localBuildTag && localBuildTag[1] === version.version, "runtime HTML build version mismatch");
+const moduleEntryIndex = index.search(/<script\s+type=["\x27]module["\x27]/);
+ok(moduleEntryIndex > index.indexOf("data-consubov-build-version"), "PWA runtime version must be set before the module entry");
 if (previous) {
   const prev = JSON.parse(readFileSync(resolve(previous), "utf8"));
   ok(compareVersion(version.appVersion, prev.appVersion) >= 0, "product downgrade vs production");

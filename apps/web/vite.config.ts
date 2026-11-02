@@ -28,6 +28,9 @@ const buildTimestamp = (() => {
   return seconds + "000";
 })();
 
+// Exposed for hermetic CI provenance tests; no timestamp is embedded in hashed JS.
+export const resolvedBuildTimestamp = buildTimestamp;
+
 function readAppVersion(): string {
   try {
     const src = fs.readFileSync(path.resolve(__dirname, "src/lib/appVersion.ts"), "utf-8");
@@ -59,8 +62,13 @@ function injectSwBuildTimestamp(): Plugin {
       const repairScript = repairSource
         .replace(/__CONSUBOV_BUILD_TIMESTAMP__/g, buildTimestamp)
         .replace(/__CONSUBOV_APP_VERSION__/g, readAppVersion());
-      fs.writeFileSync(indexPath, indexHtml.replace(marker,
-        `<script data-consubov-boot-repair>\n${repairScript}\n</script>`));
+      // Keep the dynamic version in HTML, outside content-hashed JS chunks.
+      // This preserves a unique PWA version without randomizing gzip budgets.
+      // Inline scripts execute before the HTML module entry is evaluated.
+      const injectedScripts =
+        `<script data-consubov-build-version>globalThis.__CONSUBOV_RUNTIME_BUILD_VERSION__=${JSON.stringify(buildTimestamp)};</script>\n` +
+        `<script data-consubov-boot-repair>\n${repairScript}\n</script>`;
+      fs.writeFileSync(indexPath, indexHtml.replace(marker, injectedScripts));
 
       // Route-level lazy chunks must also be present before offline update.
       // All built assets are included instead of guessing import graphs.
@@ -99,12 +107,27 @@ function injectSwBuildTimestamp(): Plugin {
   };
 }
 
+// Dev pages do not run closeBundle: seed the same global before app modules.
+function injectDevBuildTimestamp(): Plugin {
+  return {
+    name: "inject-dev-build-timestamp",
+    apply: "serve",
+    transformIndexHtml(html) {
+      const marker = "<!-- CONSUBOV_BOOT_REPAIR_INLINE -->";
+      if (!html.includes(marker)) throw new Error("PWA dev build marker missing");
+      return html.replace(marker,
+        `<script data-consubov-build-version>globalThis.__CONSUBOV_RUNTIME_BUILD_VERSION__=${JSON.stringify(buildTimestamp)};</script>\n${marker}`);
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   // Environment files live at the monorepo root so web/API tooling shares one source.
   envDir: path.resolve(__dirname, "../.."),
   define: {
-    __APP_BUILD_VERSION__: JSON.stringify(buildTimestamp),
+    // Same runtime global is used by Vitest stubs and the generated HTML.
+    __APP_BUILD_VERSION__: 'globalThis.__CONSUBOV_RUNTIME_BUILD_VERSION__',
   },
   server: {
     host: "::",
@@ -116,6 +139,7 @@ export default defineConfig(() => ({
   plugins: [
     react(),
     injectSwBuildTimestamp(),
+    injectDevBuildTimestamp(),
   ].filter(Boolean),
   resolve: {
     alias: {
