@@ -17,10 +17,15 @@ function buildPluginAt(dir) {
   const imports = {
     vite: { defineConfig: (config) => config },
     '@vitejs/plugin-react-swc': () => ({ name: 'react' }),
+    'node:child_process': {
+      execFileSync: () => { throw new Error('unexpected Git operation in SW plugin fixture'); },
+    },
     path, fs,
   };
   vm.runInNewContext('(function (require, module, exports, __dirname) {\n' + code + '\n})', {
     Date, JSON, RegExp, Object, String,
+    // The plugin itself is tested without Actions; CI provenance has separate tests.
+    process: { env: { GITHUB_ACTIONS: 'false' } },
   })(name => {
     assert.ok(Object.hasOwn(imports, name), 'unexpected import: ' + name);
     return imports[name];

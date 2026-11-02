@@ -540,12 +540,15 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [fazendaId, cacheKey, loadError, loadedCacheKey, observacoes, revokeObservations]);
 
   // Never show a previous farm's observations while the new scope is loading.
-  const visibleObservacoes = useMemo(() => loadedCacheKey === cacheKey ? observacoes : [],
-    [loadedCacheKey, cacheKey, observacoes]);
-  const obsPendentes = useMemo(() => visibleObservacoes.filter(o => !o.resolvido)
-    .sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [visibleObservacoes]);
-  const obsResolvidas = useMemo(() => visibleObservacoes.filter(o => o.resolvido)
-    .sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [visibleObservacoes]);
+  const [obsPendentes, obsResolvidas] = useMemo(() => {
+    const visible = loadedCacheKey === cacheKey ? observacoes : [];
+    const newestFirst = (field: "criado_em" | "resolvido_em") =>
+      (a: Observacao, b: Observacao) => new Date(b[field] ?? 0).getTime() - new Date(a[field] ?? 0).getTime();
+    return [
+      visible.filter(o => !o.resolvido).sort(newestFirst("criado_em")),
+      visible.filter(o => o.resolvido).sort(newestFirst("resolvido_em")),
+    ];
+  }, [loadedCacheKey, cacheKey, observacoes]);
 
   const refresh = useCallback(async () => {
     setScoresTick((t) => t + 1);
