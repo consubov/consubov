@@ -8,7 +8,20 @@ import { execFileSync } from "node:child_process";
 // bundle gzip sizes. Shipped builds keep their time-based PWA cache version.
 const buildTimestamp = (() => {
   if (process.env.GITHUB_ACTIONS !== "true") return Date.now().toString();
-  const seconds = execFileSync("git", ["log", "-1", "--format=%ct", "HEAD"], {
+  // Pull requests are checked out at a synthetic merge commit on GitHub Actions.
+  // Its timestamp changes on reruns; use the actual reviewed PR HEAD instead.
+  let sourceCommit = "HEAD";
+  if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+    const eventPath = process.env.GITHUB_EVENT_PATH;
+    if (!eventPath) throw new Error("Missing GitHub pull request event file");
+    const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+    const headSha = event?.pull_request?.head?.sha;
+    if (typeof headSha !== "string" || !/^[a-f0-9]{40}$/.test(headSha)) {
+      throw new Error("Invalid GitHub pull request head SHA");
+    }
+    sourceCommit = headSha;
+  }
+  const seconds = execFileSync("git", ["log", "-1", "--format=%ct", sourceCommit], {
     cwd: path.resolve(__dirname, "../.."), encoding: "utf8",
   }).trim();
   if (!/^\d{10}$/.test(seconds)) throw new Error("Invalid CI commit timestamp");
