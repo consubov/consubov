@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getAdminApiKey } from "./adminApiKeys.ts";
 
 export interface AuthenticatedAdmin {
   id: string;
@@ -63,7 +64,13 @@ async function findAdminByUserId(
 
 export async function requireAdmin(req: Request): Promise<AuthResult> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  let serviceRoleKey: string | null = null;
+  try {
+    serviceRoleKey = getAdminApiKey((name) => Deno.env.get(name));
+  } catch {
+    // Invalid modern configuration fails closed instead of using the legacy key.
+    serviceRoleKey = null;
+  }
 
   if (!supabaseUrl || !serviceRoleKey) {
     return {
@@ -113,7 +120,7 @@ export async function requireAdmin(req: Request): Promise<AuthResult> {
 
 export function getAdminClient() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceRoleKey = getAdminApiKey((name) => Deno.env.get(name));
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Configuração do servidor incompleta");
