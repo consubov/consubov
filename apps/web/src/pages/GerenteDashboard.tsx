@@ -154,15 +154,28 @@ export default function GerenteDashboard() {
         .select("fazenda_id")
         .eq("gerente_id", roleData.roleId);
       if (cancelled) return;
-      const fazendaIds = [...new Set([
-        ...(vinculos ?? []).map((item) => item.fazenda_id).filter(Boolean),
-        ...(roleData.fazendaId ? [roleData.fazendaId] : []),
-      ])];
-      if (vinculosError && !roleData.fazendaId) {
-        setFazendasVerificadasParaRole(null);
-        setFazendasError("Não foi possível confirmar os vínculos das fazendas. Tente novamente.");
-        return;
+      // Confirm the principal farm through the managers table if auth role
+      // hydration did not provide it. This remains an RLS-protected read.
+      let principalId = roleData.fazendaId;
+      if (!principalId) {
+        const { data: gerente, error: gerenteError } = await supabase
+          .from("gerentes")
+          .select("fazenda_id")
+          .eq("id", roleData.roleId)
+          .eq("ativo", true)
+          .maybeSingle();
+        if (cancelled) return;
+        if (gerenteError || !gerente?.fazenda_id) {
+          setFazendasVerificadasParaRole(null);
+          setFazendasError("Não foi possível confirmar a fazenda principal. Tente novamente.");
+          return;
+        }
+        principalId = gerente.fazenda_id;
       }
+      const fazendaIds = [...new Set([
+        ...(vinculosError ? [] : (vinculos ?? []).map((item) => item.fazenda_id).filter(Boolean)),
+        principalId,
+      ])];
       if (fazendaIds.length === 0) {
         setFazendasVinculadas([]);
         setFazendasVerificadasParaRole(roleData.roleId);
@@ -181,7 +194,7 @@ export default function GerenteDashboard() {
       }
       // In a partial failure, never treat secondary memberships as verified.
       const opcoes = vinculosError
-        ? fazendas.filter(f => f.id === roleData.fazendaId)
+        ? fazendas.filter(f => f.id === principalId)
         : fazendas.filter(f => fazendaIds.includes(f.id));
       if (vinculosError) {
         setFazendasError("Fazendas adicionais indisponíveis. Exibindo apenas a principal; tente atualizar.");
