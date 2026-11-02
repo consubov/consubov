@@ -3,21 +3,25 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
+import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
+import { confirmObservationRead, confirmObservationResolved, isObservationAccessDenied, isObservationContextCurrent } from "@/lib/observacoesGuard";
+import { toast } from "sonner";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import { useFormulasSistema } from "@/lib/formulasSistema";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { confirmObservationRead, confirmObservationResolved, isObservationContextCurrent, isObservationAccessDenied } from "@/lib/observacoesGuard";
-import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+const OBSERVATION_ACCESS_ERROR = "Acesso às observações não confirmado. Faça login novamente ou contate o suporte.";
+
 // Push de salga atrasada agora é disparado pelo cron server-side
 // (verificar_salgas_atrasadas), escopado à fazenda do gerente.
 
 // ---------- Types ----------
-interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; intervalo_padrao_dias?: number | null; }
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
@@ -27,7 +31,7 @@ interface Lancamento {
   id: string; pasto_id: string; num_sacos: number;
   num_animais: number; peso_medio_kg: number | null;
   categoria: string | null; sexo: string | null;
-  dias_no_pasto: number; origem: string;
+  dias_no_pasto: number; origem: string | null;
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
@@ -106,7 +110,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   const fazendaId = filters?.fazendaId ?? roleData.fazendaId;
   const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
   const consumoAno = filters?.ano ?? new Date().getFullYear();
-  const { data: consumoData, loading: consumoLoading, refresh: refreshConsumo } = useConsumoMineral({
+  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } = useConsumoMineral({
     fazendaId: fazendaId ?? "",
     mes: consumoMes,
     ano: consumoAno,
@@ -120,18 +124,16 @@ export function useGerenteData(filters?: GerenteFilters) {
     consumoAno,
   );
 
-  const hasFilters = filters !== undefined;
-  const filterAno = filters?.ano;
-  const filterMes = filters?.mes;
-  const filterStatus = filters?.cicloStatus;
   const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
   const ic = getScreenCache<GerenteCache>(cacheKey);
-  const activeCacheKey = useRef("");
+  const [loading, setLoading] = useState(!ic);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Tag the loaded snapshot so old farm data never drives a new farm\u0027s GMD requests.
+  const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
+  const currentKey = useRef(cacheKey);
+  currentKey.current = cacheKey;
   const loadSequence = useRef(0);
   const resolvingIds = useRef(new Set<string>());
-  const [appliedCacheKey, setAppliedCacheKey] = useState(ic ? cacheKey : "");
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!ic);
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
   const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
   const [ciclo, setCiclo] = useState<Ciclo | null>(ic?.ciclo ?? null);
@@ -142,25 +144,24 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [produtos, setProdutos] = useState<Produto[]>(ic?.produtos ?? []);
   const [observacoes, setObservacoes] = useState<Observacao[]>(ic?.observacoes ?? []);
 
-  const applyCache = useCallback((c: GerenteCache, forKey: string) => {
-    if (activeCacheKey.current !== forKey) return;
+  const applyCache = useCallback((c: GerenteCache) => {
     setGerenteNome(c.gerenteNome); setFazendaData(c.fazendaData); setCiclo(c.ciclo);
     setCiclosDisponiveis(c.ciclosDisponiveis); setRetiros(c.retiros); setPastos(c.pastos);
     setLancamentos(c.lancamentos); setProdutos(c.produtos); setObservacoes(c.observacoes);
-    setAppliedCacheKey(forKey);
+  }, []);
+
+  const revokeObservations = useCallback(() => {
+    dropScreenCacheScopes(["gerente"]);
+    setLoadedCacheKey("");
+    setObservacoes([]);
   }, []);
 
   const fazendaNome = fazendaData.nome;
 
   const loadData = useCallback(async () => {
     const requestId = ++loadSequence.current;
-    const isCurrent = () => isObservationContextCurrent(
-      cacheKey, activeCacheKey.current, requestId, loadSequence.current,
-    );
-    if (!fazendaId) {
-      if (isCurrent()) { setLoading(false); setLoadError(null); }
-      return;
-    }
+    const isCurrent = () => isObservationContextCurrent(cacheKey, currentKey.current, requestId, loadSequence.current);
+    if (!fazendaId) { if (isCurrent()) setLoading(false); return; }
     if (!getScreenCache(cacheKey) && isCurrent()) setLoading(true);
     let observationsDenied = false;
     const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
@@ -173,23 +174,23 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
-      snap.gerenteNome = (gerenteRes.data?.nome ?? "");
-      const fData = fazendaRes.data;
-      snap.fazendaData = ({ nome: fData?.nome ?? '', intervalo_padrao_dias: fData?.intervalo_padrao_dias ?? 3 });
+      snap.gerenteNome = requireReadValue(gerenteRes).nome;
+      const fData = requireReadValue(fazendaRes);
+      snap.fazendaData = ({ nome: fData.nome, intervalo_padrao_dias: fData.intervalo_padrao_dias ?? 3 });
 
-      const allCiclos = (allCiclosRes.data ?? []) as Ciclo[];
+      const allCiclos = requireReadRows(allCiclosRes) as Ciclo[];
       snap.ciclosDisponiveis = (allCiclos);
 
       let activeCiclo: Ciclo | null = null;
-      if (hasFilters) {
+      if (filters) {
         let filtered = allCiclos;
-        filtered = filtered.filter(c => c.ano === filterAno);
-        if (filterMes != null) {
-          filtered = filtered.filter(c => c.mes === filterMes);
+        filtered = filtered.filter(c => c.ano === filters.ano);
+        if (filters.mes != null) {
+          filtered = filtered.filter(c => c.mes === filters.mes);
         }
-        if (filterStatus === 'aberto') {
+        if (filters.cicloStatus === 'aberto') {
           filtered = filtered.filter(c => !c.fechado);
-        } else if (filterStatus === 'fechado') {
+        } else if (filters.cicloStatus === 'fechado') {
           filtered = filtered.filter(c => c.fechado);
         }
         activeCiclo = filtered[0] ?? null;
@@ -198,12 +199,11 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = (retirosRes.data ?? []).map((r) => ({
+      const retirosList = requireReadRows(retirosRes).map((r) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
         produto_id: r.produto_id ?? null,
-        intervalo_padrao_dias: r.intervalo_padrao_dias ?? null,
       })) as Retiro[];
       snap.retiros = (retirosList);
 
@@ -213,25 +213,26 @@ export function useGerenteData(filters?: GerenteFilters) {
           .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
-        const pastosList = (pastosRes.data ?? []) as Pasto[];
+        const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
         let lancQuery = supabase.from("view_consumo_tempo_real")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
-        if (hasFilters) {
-          lancQuery = lancQuery.eq("ano_referencia", filterAno);
-          if (filterMes != null) {
-            lancQuery = lancQuery.eq("mes_referencia", filterMes);
+        if (filters) {
+          lancQuery = lancQuery.eq("ano_referencia", filters.ano);
+          if (filters.mes != null) {
+            lancQuery = lancQuery.eq("mes_referencia", filters.mes);
           }
         } else if (activeCiclo) {
           lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
         }
 
         const lancRes = await lancQuery;
-        const lancList = ((lancRes.data as unknown) ?? []) as Lancamento[];
+        const lancList: Lancamento[] = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
         snap.lancamentos = (lancList);
+
 
       } else {
         snap.pastos = ([]);
@@ -239,50 +240,48 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
 
       const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
-      let produtosQuery = supabase.from("produtos").select("id, peso_saco_kg, preco_por_kg");
-      if (produtoIdsFazenda) produtosQuery = produtosQuery.in("id", produtoIdsFazenda);
-      const produtosRes = await produtosQuery;
-      snap.produtos = ((produtosRes.data ?? []) as Produto[]);
+      // A failed link read must NEVER turn into an unscoped products query.
+      if (produtoIdsFazenda === null) throw new DataReadFailure("unavailable");
+      if (produtoIdsFazenda.length) {
+        const produtosRes = await supabase.from("produtos")
+          .select("id, peso_saco_kg, preco_por_kg").in("id", produtoIdsFazenda);
+        snap.produtos = requireReadRows(produtosRes) as Produto[];
+      } else snap.produtos = [];
 
       const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
-      observationsDenied = isObservationAccessDenied(obsRes.error);
+      observationsDenied = isObservationAccessDenied(obsRes.error, obsRes.status);
+      if (observationsDenied) throw new Error("Observation access denied");
       snap.observacoes = confirmObservationRead(obsRes, fazendaId);
-      // Never publish an old tenant response or cache a failed SELECT as empty data.
       if (!isCurrent()) return;
       setScreenCache(cacheKey, snap);
-      applyCache(snap, cacheKey);
+      applyCache(snap);
+      setLoadedCacheKey(cacheKey);
       setLoadError(null);
     } catch (e) {
       if (isCurrent()) {
         if (observationsDenied) {
-          // Revoked SELECT must not leave a previously valid manager cache readable.
-          dropScreenCacheScopes(["gerente"]);
-          setAppliedCacheKey("");
-          setObservacoes([]);
+          // An authorization rejection must not expose stale observation cache.
+          revokeObservations();
         }
         setLoadError(observationsDenied
-          ? "Acesso às observações não confirmado. Faça login novamente ou contate o suporte."
-          : "Não foi possível confirmar os dados da fazenda. Tente novamente.");
-        console.error("Error loading gerente data:", e);
+          ? OBSERVATION_ACCESS_ERROR
+          : dataReadErrorMessage(e));
       }
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filterAno, filterMes, filterStatus, hasFilters, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache, revokeObservations]);
 
   useEffect(() => {
-    activeCacheKey.current = cacheKey;
     const c = getScreenCache<GerenteCache>(cacheKey);
-    if (c) { applyCache(c, cacheKey); setLoading(false); }
-    else { setAppliedCacheKey(""); setLoading(true); }
+    if (c) { applyCache(c); setLoadedCacheKey(cacheKey); setLoading(false); }
+    else {
+      setLoadedCacheKey("");
+      applyCache({ gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] });
+      setLoading(true);
+    }
     setLoadError(null);
     void loadData();
-    const sequence = loadSequence;
-    const activeKey = activeCacheKey;
-    return () => {
-      sequence.current++;
-      activeKey.current = "";
-    };
   }, [loadData, cacheKey, applyCache]);
 
   // Realtime: auto-refresh when key tables change
@@ -306,18 +305,43 @@ export function useGerenteData(filters?: GerenteFilters) {
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
 
-  // GMD de cada pasto via gmd_do_pasto (hoje no mês em andamento; último dia em meses passados).
-  const [gmdPastos, setGmdPastos] = useState<Record<string, number | null>>({});
-  const gmdPastoIds = pastos.map(p => p.id).join(",");
+  // GMD is independent from other farm metrics: isolate scope, cancel obsolete
+  // requests and surface failures instead of silently treating them as no GMD.
+  const [gmdState, setGmdState] = useState<{
+    scope: string; values: Record<string, number | null>; error: string | null;
+  }>({ scope: "", values: {}, error: null });
+  const [gmdRetryTick, setGmdRetryTick] = useState(0);
+  const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
+  const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
+  const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
+  const gmdPastos = useMemo<Record<string, number | null>>(
+    () => gmdState.scope === gmdScope ? gmdState.values : {},
+    [gmdState.scope, gmdState.values, gmdScope],
+  );
+  const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
+
   useEffect(() => {
-    if (!gmdPastoIds) { setGmdPastos({}); return; }
-    let cancel = false;
-    const dia = dataReferenciaGmd(hasFilters ? filterMes : consumoMes, consumoAno);
-    fetchGmdPastos(gmdPastoIds.split(","), dia)
-      .then((m) => { if (!cancel) setGmdPastos(m); })
-      .catch((e) => console.error("GMD pastos error:", e));
-    return () => { cancel = true; };
-  }, [gmdPastoIds, hasFilters, filterMes, consumoMes, consumoAno]);
+    const controller = new AbortController();
+    setGmdState({ scope: gmdScope, values: {}, error: null });
+    if (!fazendaId || !gmdPastoIds) return () => controller.abort();
+
+    fetchGmdPastos(gmdPastoIds.split(","), gmdDia, controller.signal)
+      .then(values => {
+        if (!controller.signal.aborted) {
+          setGmdState({ scope: gmdScope, values, error: null });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setGmdState({
+            scope: gmdScope, values: {},
+            error: "Não foi possível confirmar o GMD. Tente novamente.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [gmdScope, gmdPastoIds, gmdDia, fazendaId, gmdRetryTick]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -370,7 +394,8 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number(r.intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDoRetiro = "intervalo_padrao_dias" in r ? r.intervalo_padrao_dias : null;
+      const intervaloDefinido = Number(intervaloDoRetiro ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -422,7 +447,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     if (!fazendaId) { setCapatazScores([]); return; }
     let cancelled = false;
-    const anual = hasFilters && filterMes == null;
+    const anual = filters != null && filters.mes == null;
     const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
     const end = anual ? new Date(consumoAno, 11, 31, 23, 59, 59) : new Date(consumoAno, consumoMes, 0, 23, 59, 59);
     fetchScoresCapataz({
@@ -441,7 +466,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, hasFilters, filterMes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, filters, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -472,9 +497,10 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Removido o envio client-side para evitar duplicação e evitar
   // enviar alerta a gerentes de outras fazendas.
 
-  // Frontend ACK is a UX safeguard, not authorization: the database must enforce RLS.
+  // Frontend ACK prevents false success; it is not a substitute for database RLS.
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
-    if (loadError || !id || !fazendaId || appliedCacheKey !== cacheKey ||
+    if (!fazendaId || !id.trim() || !resolvidoPor.trim() || loadError ||
+        loadedCacheKey !== cacheKey ||
         !observacoes.some(o => o.id === id && o.fazenda_id === fazendaId && !o.resolvido)) {
       toast.error("Observação indisponível para esta fazenda.");
       return;
@@ -482,44 +508,44 @@ export function useGerenteData(filters?: GerenteFilters) {
     if (resolvingIds.current.has(id)) return;
     resolvingIds.current.add(id);
     const contextAtStart = cacheKey;
-    const loadAtStart = loadSequence.current;
+    const sequenceAtStart = loadSequence.current;
     try {
       const response = await supabase.from("observacoes")
         .update({ resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() })
         .eq("id", id).eq("fazenda_id", fazendaId)
         .select("id, fazenda_id, resolvido, resolvido_em, resolvido_por");
-      if (isObservationAccessDenied(response.error)) {
-        if (activeCacheKey.current === contextAtStart) {
+      if (isObservationAccessDenied(response.error, response.status)) {
+        if (currentKey.current === contextAtStart) {
           loadSequence.current++;
-          dropScreenCacheScopes(["gerente"]);
-          setAppliedCacheKey("");
-          setObservacoes([]);
-          setLoadError("Acesso às observações não confirmado. Faça login novamente ou contate o suporte.");
+          revokeObservations();
+          setLoadError(OBSERVATION_ACCESS_ERROR);
         }
+        toast.error("Acesso às observações não confirmado.");
         return;
       }
-      const confirmed = confirmObservationResolved(response, id, fazendaId);
-      if (!isObservationContextCurrent(contextAtStart, activeCacheKey.current,
-          loadAtStart, loadSequence.current)) return;
-      const updateRows = (list: Observacao[]) => list.map(o =>
-        o.id === id && o.fazenda_id === fazendaId ? { ...o, ...confirmed } : o
+      const acknowledged = confirmObservationResolved(response, id, fazendaId);
+      if (!isObservationContextCurrent(contextAtStart, currentKey.current, sequenceAtStart, loadSequence.current)) return;
+      const applyAcknowledged = (rows: Observacao[]) => rows.map(o =>
+        o.id === id && o.fazenda_id === fazendaId ? { ...o, ...acknowledged } : o
       );
-      setObservacoes(updateRows);
+      setObservacoes(applyAcknowledged);
       const cached = getScreenCache<GerenteCache>(contextAtStart);
-      if (cached) setScreenCache(contextAtStart, { ...cached, observacoes: updateRows(cached.observacoes) });
+      if (cached) setScreenCache(contextAtStart, { ...cached, observacoes: applyAcknowledged(cached.observacoes) });
       toast.success("Observação resolvida");
     } catch {
-      if (activeCacheKey.current === contextAtStart) {
-        toast.error("Resolução não confirmada pelo banco. Atualize e tente novamente.");
-      }
+      if (currentKey.current === contextAtStart) toast.error("Não foi possível confirmar a resolução da observação.");
     } finally {
       resolvingIds.current.delete(id);
     }
-  }, [fazendaId, cacheKey, appliedCacheKey, observacoes, loadError]);
+  }, [fazendaId, cacheKey, loadError, loadedCacheKey, observacoes, revokeObservations]);
 
-  const scopedObservacoes = useMemo(() => appliedCacheKey === cacheKey ? observacoes : [], [appliedCacheKey, cacheKey, observacoes]);
-  const obsPendentes = useMemo(() => scopedObservacoes.filter(o => !o.resolvido).sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [scopedObservacoes]);
-  const obsResolvidas = useMemo(() => scopedObservacoes.filter(o => o.resolvido).sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [scopedObservacoes]);
+  // Never show a previous farm's observations while the new scope is loading.
+  const visibleObservacoes = useMemo(() => loadedCacheKey === cacheKey ? observacoes : [],
+    [loadedCacheKey, cacheKey, observacoes]);
+  const obsPendentes = useMemo(() => visibleObservacoes.filter(o => !o.resolvido)
+    .sort((a, b) => new Date(b.criado_em ?? 0).getTime() - new Date(a.criado_em ?? 0).getTime()), [visibleObservacoes]);
+  const obsResolvidas = useMemo(() => visibleObservacoes.filter(o => o.resolvido)
+    .sort((a, b) => new Date(b.resolvido_em ?? 0).getTime() - new Date(a.resolvido_em ?? 0).getTime()), [visibleObservacoes]);
 
   const refresh = useCallback(async () => {
     setScoresTick((t) => t + 1);
@@ -527,9 +553,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading || (!!fazendaId && appliedCacheKey !== cacheKey),
-    loadError, hasCurrentCache: appliedCacheKey === cacheKey,
-    gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading, error: loadError || consumoError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

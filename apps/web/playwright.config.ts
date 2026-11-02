@@ -1,5 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Keep the default CI port, but let isolated local runners reserve a free port.
+const selectedPort = process.env.CONSUBOV_E2E_PORT === undefined ? 8080 : Number(process.env.CONSUBOV_E2E_PORT);
+if (!Number.isSafeInteger(selectedPort) || selectedPort < 1024 || selectedPort > 65535) {
+  throw new Error('CONSUBOV_E2E_PORT must be a valid nonprivileged TCP port');
+}
+const localOrigin = `http://127.0.0.1:${selectedPort}`;
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -10,7 +17,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 2,
   reporter: process.env.CI ? "line" : "list",
   use: {
-    baseURL: "http://127.0.0.1:8080",
+    baseURL: localOrigin,
     // Align the full Chromium suite with the installed Chromium channel.
     channel: "chromium",
     trace: "on-first-retry",
@@ -18,8 +25,8 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1 --port 8080 --strictPort",
-    url: "http://127.0.0.1:8080/login",
+    command: `bun run dev -- --host 127.0.0.1 --port ${selectedPort} --strictPort`,
+    url: `${localOrigin}/login`,
     reuseExistingServer: false,
     timeout: 120_000,
   },

@@ -14,6 +14,7 @@ import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { fetchProdutoIdsDaFazenda, MSG_FAZENDA_SEM_PRODUTO } from "@/lib/produtosFazenda";
 import { camposProdutoParaRetiro, type ProdutoParaRetiro } from "@/lib/retiroProduto";
+import { executarEmLotes } from "@/lib/execucaoEmLotes";
 
 interface Produto extends ProdutoParaRetiro { id: string; nome: string; marca: string | null }
 interface RetiroRow { id: string; nome: string; produto_id: string | null }
@@ -145,7 +146,9 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
   async function executar() {
     setSaving(true);
     try {
-      for (const r of retirosMudados) {
+      // Gravações independentes em lotes limitados; só avançar depois que
+      // todas as gravações iniciadas terminarem, inclusive em caso de erro.
+      await executarEmLotes(retirosMudados, async (r) => {
         const pid = retPend[r.id];
         const campos = camposProdutoParaRetiro(prodById[pid], pid, {
           peso_saco_kg: null, preco_por_kg: null,
@@ -154,14 +157,13 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         });
         const { error } = await supabase.from("retiros").update(campos as any).eq("id", r.id).eq("fazenda_id", fazendaId);
         if (error) throw new Error(`retiro ${r.nome}: ${error.message}`);
-      }
+      });
       const conf = new Set(conflitosALimpar.map((p) => p.id));
       // Pastos: mesma gravação da PastoDetailPage (produto_id ou null).
-      for (const p of pastosMudados) {
-        if (conf.has(p.id)) continue;
+      await executarEmLotes(pastosMudados.filter((p) => !conf.has(p.id)), async (p) => {
         const { error } = await supabase.from("pastos").update({ produto_id: pastoPend[p.id] ?? null }).eq("id", p.id).eq("retiro_id", p.retiro_id);
         if (error) throw new Error(`pasto ${p.nome}: ${error.message}`);
-      }
+      });
       if (conf.size > 0) {
         const { error } = await supabase.from("pastos").update({ produto_id: null }).in("id", Array.from(conf)).in("retiro_id", retiros.map((r) => r.id));
         if (error) throw new Error(`pastos seguindo o retiro: ${error.message}`);
@@ -245,7 +247,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
             <div key={r.id} className={`rounded-lg border bg-card ${retirosMudados.includes(r) ? "border-secondary" : ""}`}>
               <div className="p-3 space-y-2">
                 <button type="button" className="w-full flex items-center gap-2 text-left"
-                  onClick={() => setAbertos((prev) => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}>
+                  onClick={() => setAbertos((prev) => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}>
                   <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? "" : "-rotate-90"}`} />
                   <span className="font-semibold text-sm">{r.nome}</span>
                   {nProd > 1 && <Badge variant="outline" className="text-[10px]">Usa {nProd} produtos</Badge>}
@@ -274,7 +276,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                     return (
                       <div key={p.id} className={`flex items-center gap-2 px-3 py-2 ${pend ? "bg-secondary/15" : ""}`}>
                         <Checkbox checked={sel.has(p.id)}
-                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />
+                          onCheckedChange={() => setSel((prev) => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{p.nome}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{p.num_animais} cab · {p.categoria || "sem categoria"}</p>

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B4332">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Consubov 2.0">
+<meta name="description" content="CONSUBOV 2.0: experiência renovada, endereço oficial e segurança em evolução.">
+<link rel="manifest" href="/manifest-consubov-v2.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Baixar e instalar CONSUBOV 2.0</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#070d0b;color:#eaf6f0}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% 0%,#173e2c 0%,#0a1712 50%,#070d0b 85%);display:grid;place-items:center;padding:24px}
+main{width:min(100%,460px);background:#10221a;border:1px solid #315f44;border-radius:24px;padding:30px 24px;box-shadow:0 20px 70px #0008}
+.logo{width:86px;height:86px;display:block;margin:0 auto 18px;border-radius:21px;border:2px solid #5aeaa4;object-fit:contain;background:#060a08}
+.tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#81e6b4;font-weight:700;text-align:center}
+h1{text-align:center;font-size:30px;line-height:1.1;margin:12px 0 10px}p{line-height:1.55;color:#b8d5c6;font-size:15px;text-align:center}.version{font-weight:650;color:#e4fff1}
+.cta{display:block;width:100%;background:#30e891;border:0;color:#06160e;border-radius:13px;margin:24px 0 8px;padding:18px 14px;font-size:17px;font-weight:850;cursor:pointer}
+.cta:focus-visible,.secondary:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.cta:active{transform:translateY(1px)}
+.notice{background:#17382a;border:1px solid #376f50;padding:13px;border-radius:12px;font-size:13px;line-height:1.55;color:#dcf5e5;margin-top:18px}
+.instructions{margin-top:18px;padding:16px;border-radius:12px;border:1px solid #385746;background:#0b1a12}
+.instructions h2{font-size:16px;margin:0 0 12px}.instructions p{text-align:left;margin:10px 0;font-size:14px}
+.instructions[hidden],.success[hidden],.chrome-link[hidden]{display:none}
+.secondary{display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid #54836a;border-radius:10px;padding:12px;color:#dbf5e5;cursor:pointer;width:100%;font-size:14px;font-weight:650;margin-top:10px}
+.chrome-link{background:#204f37;border-color:#70e2a6;color:#eafff3}
+.status{min-height:20px;font-size:13px;margin:10px 0 0;color:#acd9c1}
+.ios-fast{background:#17382a;border:1px solid #60b989;border-radius:16px;padding:18px 15px;margin:16px 0;color:#f0fff5}
+.ios-fast[hidden],.ios-fast a[hidden],button[hidden]{display:none}
+.ios-fast h2{margin:0 0 11px;font-size:19px;text-align:center;color:#e5ffe9}
+.ios-fast ol{margin:0;padding:0;list-style:none;display:grid;gap:12px}
+.ios-fast li{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.35}
+.ios-fast .num{min-width:28px;height:28px;display:inline-grid;place-items:center;border-radius:100%;background:#30e891;color:#062318;font-size:14px;font-weight:800}
+.ios-fast .safari-open{display:block;padding:14px;border-radius:12px;text-decoration:none;text-align:center;background:#30e891;color:#062318;font-weight:850;margin:14px 0}
+.ios-fast .safari-open[hidden]{display:none}
+.ios-fast .ios-small{font-size:13px;color:#c2e4d0;text-align:left;margin:12px 0 0}
+.ios-overlay{position:fixed;inset:0;z-index:49;background:#000a}
+.ios-overlay[hidden],.ios-fast[hidden],.ios-context[hidden],.ios-close[hidden]{display:none!important}
+.ios-fast.is-active{position:fixed;z-index:50;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom, 0px));margin:0 auto;max-width:460px;background:#112e20;box-shadow:0 15px 60px #000d;padding:24px 18px;max-height:calc(100dvh - 20px);overflow:auto}
+.ios-close{position:absolute;top:7px;right:7px;color:#ebfff2;background:transparent;border:0;cursor:pointer;padding:8px;font-size:25px;line-height:1}
+.ios-fast .share{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid #7ff1b5;border-radius:8px;color:#a5ffd1;font-size:24px;line-height:1}
+.ios-fast .ios-context{background:#264b36;border-radius:11px;padding:12px;color:#f0fff5}
+body.ios-modal-open{overflow:hidden}
+small{display:block;text-align:center;font-size:12px;color:#a6c7b6;margin-top:16px;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+<img class="logo" src="/icon-192.png" alt="Ícone CONSUBOV">
+<div class="tag">Nova aplicação · versão 2.0.0</div>
+<h1>CONSUBOV 2.0</h1>
+<p>Conheça o <span class="version">CONSUBOV 2.0</span>: nova experiência de gestão, com foco em proteção de acesso e estabilidade.</p>
+<div class="ios-overlay" id="ios-overlay" hidden></div>
+<section class="ios-fast" id="ios-fast" aria-label="Como instalar CONSUBOV 2.0 no iPhone" tabindex="-1">
+<button class="ios-close" type="button" id="ios-close" aria-label="Fechar instruções" hidden>×</button>
+<h2>Instalar CONSUBOV 2.0</h2>
+<p class="ios-context" id="ios-context" hidden>Abra o <strong>Safari</strong> e cole o endereço copiado para continuar a instalação.</p>
+<ol>
+<li><span class="num">1</span><span>No <strong>Safari</strong>, toque em <strong>Compartilhar</strong> <span class="share" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V2M7 7l5-5 5 5M5 12v9h14v-9"/></svg></span> (na barra ou no menu ⋯).</span></li>
+<li><span class="num">2</span><span>Escolha <strong>Adicionar à Tela de Início</strong>.</span></li>
+<li><span class="num">3</span><span>Ative <strong>Abrir como App da Web</strong>, quando aparecer, e toque em <strong>Adicionar</strong>.</span></li>
+</ol>
+<p class="ios-small">Depois, abra o ícone <strong>CONSUBOV 2.0</strong>.</p>
+<details class="ios-small"><summary>Não aparece “Adicionar à Tela de Início”?</summary>
+<p>No Safari, role até o fim de Compartilhar, escolha <strong>Editar Ações</strong> e habilite <strong>Adicionar à Tela de Início</strong>.</p>
+<p>Se estiver dentro de outro aplicativo, abra este endereço no Safari:</p>
+<code>https://app.consubov.com.br/baixar</code>
+<button class="secondary" id="ios-copy" type="button">Copiar link para o Safari</button>
+</details>
+</section>
+<button class="cta" id="install" type="button">Instalar App CONSUBOV 2.0</button>
+<p class="status" id="status" role="status" aria-live="polite"></p>
+<div class="notice"><strong>Segurança em evolução.</strong> Nova versão com endereço próprio e melhorias contínuas na experiência de acesso à plataforma.</div>
+<section class="instructions" id="manual" hidden aria-label="Instruções de instalação">
+<h2 id="manual-title">Instalar pelo navegador</h2>
+<p id="manual-body">Abra o menu do navegador e escolha Instalar aplicativo ou Adicionar à tela inicial.</p>
+<p id="existing-app" hidden>Para instalar, abra este endereço no Safari ou Chrome e siga as instruções do navegador.</p>
+<a class="secondary chrome-link" id="open-chrome" hidden href="#">Abrir no Chrome para instalar</a>
+<p>Se já usa este endereço como aplicativo, feche e reabra o ícone para receber a versão atualizada.</p>
+<button class="secondary" type="button" id="copy">Copiar endereço de instalação</button>
+</section>
+<div id="success" class="success" hidden><p>O navegador confirmou a instalação. Abra o ícone <strong>Consubov 2.0</strong> na tela inicial.</p></div>
+<small>A instalação do CONSUBOV 2.0.0 é confirmada pelo celular.</small>
+</main>
+<script>
+(function(){
+'use strict';
+var install=document.getElementById('install'),manual=document.getElementById('manual'),title=document.getElementById('manual-title'),body=document.getElementById('manual-body'),status=document.getElementById('status'),existing=document.getElementById('existing-app'),success=document.getElementById('success'),chromeLink=document.getElementById('open-chrome');
+var ua=navigator.userAgent||'',ios=/iPad|iPhone|iPod/i.test(ua),android=/Android/i.test(ua);
+var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+var promptEvent=null;
+var iosGuide=document.getElementById('ios-fast');
+var iosOverlay=document.getElementById('ios-overlay');
+var iosClose=document.getElementById('ios-close');
+var iosContext=document.getElementById('ios-context');
+var isSafari=ios && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+// Preserve readable installation steps if JavaScript does not start.
+iosGuide.hidden=true;
+if(ios){
+  install.hidden=false;
+  install.textContent='Instalar App CONSUBOV 2.0';
+  status.textContent='Toque em Instalar para ver como adicionar o aplicativo ao iPhone.';
+}
+function closeIosGuide(){
+  iosGuide.classList.remove('is-active');
+  iosGuide.hidden=true;
+  iosOverlay.hidden=true;
+  iosClose.hidden=true;
+  document.body.classList.remove('ios-modal-open');
+  install.focus();
+}
+function showIosGuide(){
+  iosGuide.hidden=false;
+  iosGuide.classList.add('is-active');
+  iosOverlay.hidden=false;
+  iosClose.hidden=false;
+  document.body.classList.add('ios-modal-open');
+  iosGuide.focus();
+}
+iosClose.addEventListener('click',closeIosGuide);
+iosOverlay.addEventListener('click',closeIosGuide);
+document.getElementById('ios-copy').addEventListener('click',async function(){
+  try {
+    await navigator.clipboard.writeText('https://app.consubov.com.br/baixar');
+    this.textContent='Link copiado. Abra o Safari.';
+  } catch(e) {
+    this.textContent='Copie este endereço: app.consubov.com.br/baixar';
+  }
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape' && !iosGuide.hidden)closeIosGuide();
+});
+var chromeUrl='intent://app.consubov.com.br/baixar?via=chrome#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent('https://app.consubov.com.br/baixar?via=chrome')+';end';
+chromeLink.href=chromeUrl;
+chromeLink.hidden=!android;
+if(standalone && !ios){
+  status.textContent='Abra no Chrome para instalar ou atualizar o CONSUBOV 2.0.';
+}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){});
+window.addEventListener('beforeinstallprompt',function(event){event.preventDefault();promptEvent=event;status.textContent='Instalação disponível. Toque no botão verde.';});
+window.addEventListener('appinstalled',function(){success.hidden=false;manual.hidden=true;status.textContent='Consubov 2.0 instalado.';promptEvent=null;});
+function help(){
+manual.hidden=false;existing.hidden=!standalone;chromeLink.hidden=!android;
+if(ios){title.textContent='Instalar no iPhone';body.textContent='No Safari, toque em Compartilhar e selecione Adicionar à Tela de Início, ative Abrir como App da Web e toque em Adicionar.';}
+else if(android){title.textContent='Instalar ou atualizar no Android';body.textContent='Toque em Abrir no Chrome. No Chrome, use o menu ⋮ e escolha Instalar app ou Adicionar à tela inicial. Se aparecer Abrir aplicativo, a instalação deste endereço já existe e será atualizada para 2.0.';}
+else{title.textContent='Instalar no navegador';body.textContent='Abra o menu do navegador e use Instalar aplicativo ou Adicionar à tela inicial.';}
+status.textContent='O navegador precisa confirmar a instalação. Veja as opções abaixo.';
+}
+install.addEventListener('click',async function(){
+if(ios){
+  // Safari may use the *current page* rather than the manifest start_url for
+  // Add to Home Screen. Keep this installer UI visible but save the actual
+  // app entry point as the Home Screen URL, never the installer itself.
+  if(!standalone && isSafari){
+    try { history.replaceState(history.state,'','/'); } catch(e) {}
+  }
+  // iOS has no programmatic Add to Home Screen API. The user's click
+  // reveals the native steps; in an installed app, copy the URL for Safari.
+  iosContext.hidden=!(standalone || !isSafari);
+  if(standalone || !isSafari){
+    try {
+      await navigator.clipboard.writeText('https://app.consubov.com.br/baixar');
+      iosContext.innerHTML='Endereço copiado. Abra o <strong>Safari</strong> e cole o link para instalar.';
+    } catch(e) {
+      iosContext.textContent='Abra no Safari: https://app.consubov.com.br/baixar';
+    }
+  }
+  showIosGuide();
+  return;
+}
+if(standalone){
+  // Never jump to login from an installation request in an embedded/old PWA.
+  // A standalone window can belong to the legacy application on another origin.
+  help();
+  if(android)window.location.assign(chromeUrl);
+  return;
+}
+if(!promptEvent){help();return;}
+try{var current=promptEvent;promptEvent=null;await current.prompt();var choice=await current.userChoice;
+status.textContent=choice&&choice.outcome==='accepted'?'Solicitação aceita. Verifique o novo ícone.':'Instalação não confirmada.';
+if(!choice||choice.outcome!=='accepted')help();
+}catch(e){help();}
+});
+document.getElementById('copy').addEventListener('click',async function(){
+var url='https://app.consubov.com.br/baixar';
+try{await navigator.clipboard.writeText(url);status.textContent='Endereço copiado. Abra no navegador para instalar.';}
+catch(e){status.textContent='Digite no navegador: '+url;}
+});
+})();
+</script>
+</body></html>

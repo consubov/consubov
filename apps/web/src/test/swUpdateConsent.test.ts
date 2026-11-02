@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { APP_VERSION } from "@/lib/appVersion";
+
+const oldBuild = "1793370000000";
+const newBuild = "1793370000001";
 
 const controls = vi.hoisted(() => ({ busy: false, reload: vi.fn(), drain: vi.fn() }));
 vi.mock("@/lib/authIdle", () => ({ reloadWhenAuthIdle: controls.reload }));
@@ -11,16 +15,21 @@ describe("PWA update consent (runtime)", () => {
   beforeEach(() => {
     vi.resetModules(); vi.useFakeTimers();
     controls.busy = false; controls.reload.mockReset(); controls.drain.mockReset();
-    vi.stubGlobal("__APP_BUILD_VERSION__", "test-build-a");
+    vi.stubGlobal("__APP_BUILD_VERSION__", oldBuild);
+    // A real SW upgrade requires verified newer metadata, not merely a waiting worker.
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ version: newBuild, appVersion: APP_VERSION }),
+    })));
   });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   async function fixture() {
     const events = new Map<string, (event?: unknown) => void>();
-    const waiting = { postMessage: vi.fn(), scriptURL: "https://example.test/sw.js?v=b" };
+    const waiting = { postMessage: vi.fn(), scriptURL: `${window.location.origin}/sw.js?v=${newBuild}` };
     const registration = { waiting, update: vi.fn(async () => undefined), addEventListener: vi.fn() };
     const sw = {
-      controller: { scriptURL: "https://example.test/sw.js?v=a" },
+      controller: { scriptURL: `${window.location.origin}/sw.js?v=${oldBuild}` },
       getRegistration: vi.fn(async () => registration),
       addEventListener: (name: string, handler: (event?: unknown) => void) => events.set(name, handler),
     };
@@ -33,7 +42,7 @@ describe("PWA update consent (runtime)", () => {
     await f.module.applyPendingUpdateNow("user-click");
     expect(f.waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
     await vi.advanceTimersByTimeAsync(16000);
-    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: "test-build-b" } });
+    f.events.get("message")?.({ data: { type: "CONSUBOV_SW_ACTIVATED", version: newBuild } });
     expect(controls.reload).not.toHaveBeenCalled();
   });
 
@@ -52,10 +61,55 @@ describe("PWA update consent (runtime)", () => {
     await f.module.applyPendingUpdateNow("user-click");
     f.events.get("controllerchange")?.();
     expect(controls.reload).not.toHaveBeenCalled();
-    f.sw.controller = { scriptURL: "https://example.test/sw.js?v=b" };
+    f.sw.controller = { scriptURL: `${window.location.origin}/sw.js?v=${newBuild}` };
     f.events.get("controllerchange")?.();
     expect(controls.reload).toHaveBeenCalledOnce();
     f.events.get("controllerchange")?.();
     expect(controls.reload).toHaveBeenCalledOnce();
   });
+  it("keeps the original build version for a delayed waiting-worker verification", async () => {
+    let resolveWaiting: (value: { ok: boolean; json: () => Promise<unknown> }) => void = () => {
+      throw new Error("Missing waiting-worker response");
+    };
+    const delayedResponse = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveWaiting = resolve;
+    });
+    const fetchStub = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ version: newBuild, appVersion: APP_VERSION }),
+      })
+      .mockImplementationOnce(() => delayedResponse);
+    vi.stubGlobal("fetch", fetchStub);
+    const log = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    try {
+      const f = await fixture();
+      await f.module.applyPendingUpdateNow("user-click");
+      expect(fetchStub.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      // The async fetch may finish after a test or page context has cleaned up globals.
+      vi.stubGlobal("__APP_BUILD_VERSION__", undefined);
+      resolveWaiting({
+        ok: true,
+        json: async () => ({ version: newBuild, appVersion: APP_VERSION }),
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(log).toHaveBeenCalledWith("[SW] Nova versão verificada, aguardando confirmação do usuário", newBuild);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("rejects an unverified or stale published release without activating an SW", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ version: oldBuild, appVersion: APP_VERSION }),
+    })));
+    const f = await fixture();
+    await f.module.applyPendingUpdateNow("user-click");
+    expect(f.waiting.postMessage).not.toHaveBeenCalled();
+    expect(controls.reload).not.toHaveBeenCalled();
+  });
+
 });

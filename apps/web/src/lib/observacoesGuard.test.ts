@@ -38,6 +38,9 @@ describe("F12-L34 observation client guard", () => {
     expect(isObservationAccessDenied({code:"PGRST116"})).toBe(false);
     expect(isObservationAccessDenied({code:"NETWORK_ERROR"})).toBe(false);
     expect(isObservationAccessDenied(null)).toBe(false);
+    expect(isObservationAccessDenied({ code: "PGRST_GENERIC" }, 403)).toBe(true);
+    expect(isObservationAccessDenied(null, 401)).toBe(true);
+    expect(isObservationAccessDenied(null, 503)).toBe(false);
   });
   it("discards stale tenant/sequence responses", () => {
     expect(isObservationContextCurrent("A","B",3,3)).toBe(false);

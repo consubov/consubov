@@ -1,3 +1,4 @@
+import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState, useCallback, useRef } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -220,7 +221,7 @@ export default function QrCodesPage() {
     try {
       // Espera o React renderizar e as imagens carregarem
       await new Promise((r) => requestAnimationFrame(() => r(null)));
-      await Promise.all(
+      await withReportExportDeadline(Promise.all(
         Array.from(document.querySelectorAll<HTMLImageElement>('[aria-label^="Pré-visualização da página"] img')).map(
           (img) =>
             img.complete && img.naturalWidth > 0
@@ -230,7 +231,7 @@ export default function QrCodesPage() {
                   img.addEventListener("error", () => resolve(), { once: true });
                 }),
         ),
-      );
+      ), "Imagens dos QR Codes", Date.now() + 20_000, 20_000);
 
       const pdfDoc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageWidthMm = 210;
@@ -245,13 +246,13 @@ export default function QrCodesPage() {
       for (let i = 0; i < pageNodes.length; i++) {
         const node = pageNodes[i];
         // Scale 4 → ~4K de resolução por página A4 (suficiente para zoom sem perda).
-        const canvas = await html2canvas(node, {
+        const canvas = await withReportExportDeadline(html2canvas(node, {
           scale: 4,
           useCORS: true,
           backgroundColor: "#FFFFFF",
           logging: false,
-          imageTimeout: 0,
-        });
+          imageTimeout: 15_000,
+        }), "Renderização dos QR Codes", Date.now() + 45_000, 45_000);
         // PNG preserva a nitidez do QR Code e da tipografia ao dar zoom no PDF.
         const imgData = canvas.toDataURL("image/png");
         if (i > 0) pdfDoc.addPage();
@@ -263,7 +264,7 @@ export default function QrCodesPage() {
         await new Promise((r) => setTimeout(r, 0));
       }
 
-      pdfDoc.save(`qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
+      downloadGeneratedPdf(pdfDoc.output("blob"), `qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao gerar o PDF dos QR Codes.");

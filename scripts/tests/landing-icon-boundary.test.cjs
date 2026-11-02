@@ -13,9 +13,9 @@ test('landing defers below-fold Brazil geometry', () => {
   assert.equal(entry().statements.filter(ts.isImportDeclaration).some((n) => n.moduleSpecifier.text.endsWith('/BrasilMap')), false, 'Map needs an async boundary');
 });
 
-test('manual refresh retains its static icon binding after splitting the catalog', () => {
+test('public landing retains statically imported icons without eager catalog binding', () => {
   const source = entry();
   const imported = source.statements.filter(ts.isImportDeclaration).filter((n) => n.moduleSpecifier.text === 'lucide-react').flatMap((n) => n.importClause?.namedBindings?.elements || []);
-  assert.ok(imported.some((n) => (n.propertyName || n.name).text === 'RefreshCw'), 'RefreshCw must remain statically imported');
+  assert.ok(imported.some((n) => (n.propertyName || n.name).text === 'ArrowRight'), 'Visible public navigation icon must remain statically imported');
   assert.doesNotMatch(source.text, /<Lucide\./, 'Removed namespace must have no remaining JSX reference');
 });

@@ -1,7 +1,10 @@
+import { isValidVapidPublicKey } from "@/lib/pushCapability";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+/** Only client configuration; the server's matching public/private VAPID pair must also be checked separately. */
+export function isVapidConfigured(): boolean { return isValidVapidPublicKey(VAPID_PUBLIC_KEY); }
 
 const PUSH_ENABLED_PREF_KEY = "consubov:push-enabled";
 
@@ -56,7 +59,7 @@ export function setStoredPushEnabledPreference(enabled: boolean) {
 }
 
 export function sameApplicationServerKey(subscription: PushSubscription) {
-  if (!VAPID_PUBLIC_KEY) return true;
+  if (!isVapidConfigured()) return true; // Preserve existing subscriptions when client is misconfigured.
   const current = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
   const existing = subscription.options.applicationServerKey;
   if (!existing) return false;
@@ -126,13 +129,15 @@ export async function getCurrentPushSubscription(registration: ServiceWorkerRegi
 }
 
 export async function getFreshSubscription(registration: ServiceWorkerRegistration) {
+  // Fail before touching an existing subscription: invalid/missing keys must never unsubscribe it.
+  if (!isVapidConfigured()) throw new Error("Notificações temporariamente indisponíveis");
   let subscription = await registration.pushManager.getSubscription();
   if (subscription && !sameApplicationServerKey(subscription)) {
     await subscription.unsubscribe().catch(() => undefined);
     subscription = null;
   }
   if (!subscription) {
-    if (!VAPID_PUBLIC_KEY) throw new Error("Chave VAPID ausente no servidor");
+    if (!isVapidConfigured()) throw new Error("Notificações temporariamente indisponíveis");
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
@@ -168,7 +173,7 @@ export async function savePushSubscription(userId: string, subscription: PushSub
 }
 
 export async function activatePushNotifications(userId: string) {
-  if (!VAPID_PUBLIC_KEY) throw new Error("Chave VAPID ausente no servidor");
+  if (!isVapidConfigured()) throw new Error("Notificações temporariamente indisponíveis");
   if (!isPushSupported()) throw new Error("Este aparelho ou navegador não permite notificações push neste modo");
   if (Notification.permission !== "granted") throw new Error("Permissão de notificação não concedida");
 
