@@ -17,3 +17,13 @@ export function resolveGerenteAccessScope(
     : fazendasAutorizadas[0]?.id ?? "";
   return { fazendasAutorizadas, activeFazendaId };
 }
+
+/** Optional source failures cannot block a confirmed manager farm. */
+export function gerenteBlockingReadError(
+  painelError: string | null,
+  fazendasError: string | null,
+  verifiedRoleId: string | null,
+  activeRoleId: string | null,
+): string | null {
+  return painelError || (fazendasError && verifiedRoleId !== activeRoleId ? fazendasError : null);
+}
