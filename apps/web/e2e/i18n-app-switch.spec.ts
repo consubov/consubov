@@ -89,8 +89,16 @@ test("switching to English updates the real authenticated admin UI", async ({ pa
   await expect(page.getByRole("navigation", { name: "Administration navigation" })
     .getByText("Ranches", { exact: true })).toBeVisible();
 
+  // On mobile, the off-canvas sidebar is a modal dialog. Close it before
+  // interacting with controls outside the dialog (focus/ARIA isolation).
+  const mobileDrawer = await page.getByRole("dialog").count() > 0;
+  if (mobileDrawer) {
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
   await lang.selectOption("pt-BR");
   await expect(page.getByText("Visualizar como:")).toBeVisible();
+  if (mobileDrawer) await page.locator('[data-sidebar="trigger"]').click();
   await expect(page.getByRole("navigation", { name: "Navegação administrativa" })
     .getByText("Fazendas", { exact: true })).toBeVisible();
 });
