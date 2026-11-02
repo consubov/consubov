@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
 import { supabase } from "@/integrations/supabase/client";
+import { assertReadSuccess, DataReadFailure, dataReadErrorMessage, requireReadRows } from "@/lib/dataReadGuard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -271,6 +272,7 @@ export default function CapatazDashboard() {
   activeRetiroIdRef.current = activeRetiroId;
   // Reject responses from older remote loads after switching retiro.
   const remoteLoadEpochRef = useRef(0);
+  const onlineLoadIdRef = useRef(0);
   const [backgroundBootReady, setBackgroundBootReady] = useState(false);
 
   // Restaura o retiro ativo persistido e carrega a lista de vínculos
@@ -330,6 +332,7 @@ export default function CapatazDashboard() {
   useKeepAlive(Boolean(user?.id) && backgroundBootReady);
   const [bootReady, setBootReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [onlineReadError, setOnlineReadError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [pastos, setPastos] = useState<PastoCache[]>([]);
   // Evita que a carga do cache local sobrescreva pastos já atualizados pelo
@@ -748,23 +751,30 @@ export default function CapatazDashboard() {
     const requestedRetiro = activeRetiroId;
     if (!requestedRetiro) return;
     const epoch = remoteLoadEpochRef.current;
-    const obsolete = () => epoch !== remoteLoadEpochRef.current || activeRetiroIdRef.current !== requestedRetiro;
+    const loadId = ++onlineLoadIdRef.current;
+    const obsolete = () => loadId !== onlineLoadIdRef.current || epoch !== remoteLoadEpochRef.current || activeRetiroIdRef.current !== requestedRetiro;
     try {
       // Get retiro + fazenda
-      const { data: retiroData } = await supabase
+      const retiroResponse = await supabase
         .from("retiros")
         .select("id, nome, fazenda_id, gmd_recria1, gmd_recria2, gmd_engorda, produto_id, auditoria_fotos_por_bloco, exigir_foto_cocho")
         .eq("id", requestedRetiro)
         .maybeSingle();
 
       if (obsolete()) return;
-      if (retiroData) {
-        const { data: fazenda } = await supabase
+      assertReadSuccess(retiroResponse);
+      if (!retiroResponse.data) throw new DataReadFailure("permission");
+      const retiroData = retiroResponse.data;
+      {
+        const fazendaResponse = await supabase
           .from("fazendas")
           .select("nome, intervalo_padrao_dias, auditoria_fotos_por_bloco, exigir_foto_cocho")
           .eq("id", retiroData.fazenda_id)
           .maybeSingle();
         if (obsolete()) return;
+        assertReadSuccess(fazendaResponse);
+        const fazenda = fazendaResponse.data;
+        if (!fazenda) throw new DataReadFailure("permission");
 
         const retiroCache: RetiroCache = {
           id: retiroData.id,
@@ -795,12 +805,14 @@ export default function CapatazDashboard() {
         // Cache produto ativo do retiro
         const retiroProdutoId = (retiroData as any).produto_id;
         if (retiroProdutoId) {
-          const { data: prodData } = await supabase
+          const produtoResponse = await supabase
             .from("produtos")
             .select("id, nome, peso_saco_kg, consumo_por_100kg, consumo_recria1, consumo_recria2, consumo_engorda")
             .eq("id", retiroProdutoId)
             .maybeSingle();
           if (obsolete()) return;
+          assertReadSuccess(produtoResponse);
+          const prodData = produtoResponse.data;
           if (prodData) {
             const pCache: ProdutoCache = {
               id: prodData.id,
@@ -813,11 +825,16 @@ export default function CapatazDashboard() {
             };
             await cacheProdutoAtivo(pCache);
             setProdutoAtivo(pCache);
+          } else {
+            // A confirmed absence must not keep the previous retreat's product.
+            setProdutoAtivo(undefined);
           }
+        } else {
+          setProdutoAtivo(undefined);
         }
 
         // Get pastos
-        const { data: pastosData } = await supabase
+        const pastosResponse = await supabase
           .from("pastos")
           .select("id, nome, num_animais, peso_medio_kg, dias_no_pasto, qr_uuid, produto_id, sexo, categoria, data_entrada, peso_entrada, gmd_kg_dia, data_fim_carencia, data_movimentacao")
           .eq("retiro_id", retiroData.id)
@@ -825,14 +842,15 @@ export default function CapatazDashboard() {
           .order("nome", { ascending: true });
         if (obsolete()) return;
 
-        if (pastosData) {
+        const pastosData = requireReadRows(pastosResponse);
+        {
           const pastosOrdenados = sortPastos(pastosData);
           await cachePastos(pastosOrdenados);
           serverPastosLoadedRef.current = true;
           setPastos(pastosOrdenados);
 
           if (pastosData.length > 0) {
-            const { data: lancamentosData } = await supabase
+            const lancamentosResponse = await supabase
               .from("lancamentos")
               .select("id, pasto_id, num_sacos, created_at, mes_referencia, ano_referencia, origem")
               .in("pasto_id", pastosData.map((p) => p.id))
@@ -842,7 +860,8 @@ export default function CapatazDashboard() {
               .limit(350);
             if (obsolete()) return;
 
-            if (lancamentosData && lancamentosData.length > 0) {
+            const lancamentosData = requireReadRows(lancamentosResponse);
+            if (lancamentosData.length > 0) {
               const pastosById = new Map(pastosData.map((p) => [p.id, p.nome]));
               const existingIds = new Set(await getLancamentoIds());
 
@@ -872,7 +891,7 @@ export default function CapatazDashboard() {
         }
 
         // Get ciclos
-        let { data: ciclosData } = await supabase
+        const ciclosResponse = await supabase
           .from("ciclos")
           .select("id, mes, ano, fechado, num_dias, data_inicio, data_fim, duracao_dias")
           .eq("fazenda_id", retiroData.fazenda_id)
@@ -881,20 +900,23 @@ export default function CapatazDashboard() {
         if (obsolete()) return;
 
         // If no ciclos exist, auto-create the current month's ciclo
-        if (!ciclosData || ciclosData.length === 0) {
-          const { data: newCicloId } = await supabase.rpc("ensure_ciclo_atual", {
+        let ciclosData = requireReadRows(ciclosResponse);
+        if (ciclosData.length === 0) {
+          const ensured = await supabase.rpc("ensure_ciclo_atual", {
             p_fazenda_id: retiroData.fazenda_id,
           });
-          if (newCicloId) {
+          if (obsolete()) return;
+          assertReadSuccess(ensured);
+          if (ensured.data) {
             // Re-fetch after creation
-            const { data: refreshed } = await supabase
+            const refreshed = await supabase
               .from("ciclos")
               .select("id, mes, ano, fechado, num_dias, data_inicio, data_fim, duracao_dias")
               .eq("fazenda_id", retiroData.fazenda_id)
               .order("ano", { ascending: false })
               .order("mes", { ascending: false });
             if (obsolete()) return;
-            ciclosData = refreshed;
+            ciclosData = requireReadRows(refreshed);
           }
         }
 
@@ -912,8 +934,22 @@ export default function CapatazDashboard() {
           await refreshLancamentosState(selectedCicloIdRef.current);
         }
       }
-    } catch {
-      // Offline — use cached data
+      if (!obsolete()) setOnlineReadError(null);
+    } catch (error) {
+      if (obsolete()) return;
+      if (error instanceof DataReadFailure && error.kind === "permission") {
+        serverPastosLoadedRef.current = true;
+        serverCiclosLoadedRef.current = true;
+        // Remove denied projections from the visible screen; do not erase
+        // persisted pending work or offline queues.
+        setPastos([]);
+        setCiclos([]);
+        setRetiro(null);
+        setFazendaCache(undefined);
+        setProdutoAtivo(undefined);
+        setFazendaId("");
+      }
+      setOnlineReadError(dataReadErrorMessage(error));
     }
   }, [refreshLancamentosState, activeRetiroId]);
 
@@ -1838,6 +1874,7 @@ export default function CapatazDashboard() {
     <div className={CAPATAZ_CLASS_2}>
       <UpdateBanner />
       <EnableNotificationsBanner />
+      {onlineReadError && <div role="alert" className="mx-4 my-2 rounded border border-destructive/50 p-3 flex items-center gap-3"><span className="text-sm">{onlineReadError} Dados locais podem estar desatualizados.</span><Button variant="outline" size="sm" onClick={() => void loadFromSupabase()}>Tentar novamente</Button></div>}
       <div className="px-4 pt-2">
         <SyncStatusBanner
           status={sync.status}

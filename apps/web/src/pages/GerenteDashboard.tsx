@@ -1,3 +1,4 @@
+import { resolveGerenteAccessScope } from "@/lib/gerenteAccessScope";
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
 import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -131,6 +132,7 @@ export default function GerenteDashboard() {
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [scoreAberto, setScoreAberto] = useState<string | null>(null);
   const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [fazendasVerificadasParaRole, setFazendasVerificadasParaRole] = useState<string | null>(null);
   const [fazendasError, setFazendasError] = useState<string | null>(null);
   const [fazendasRetry, setFazendasRetry] = useState(0);
   // Filtros guardados na sessão: ao voltar para a tela (ou se o iPhone
@@ -151,6 +153,7 @@ export default function GerenteDashboard() {
         .eq("gerente_id", roleData.roleId);
       if (cancelled) return;
       if (error || !data) {
+        setFazendasVerificadasParaRole(null);
         setFazendasError("Não foi possível carregar os vínculos das fazendas. Tente novamente.");
         return;
       }
@@ -164,12 +167,14 @@ export default function GerenteDashboard() {
           .select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
         if (cancelled) return;
         if (principalError || !principal) {
+          setFazendasVerificadasParaRole(null);
           setFazendasError("Não foi possível validar a fazenda principal. Tente novamente.");
           return;
         }
         opcoes.unshift(principal);
       }
       setFazendasVinculadas(opcoes);
+      setFazendasVerificadasParaRole(roleData.roleId);
       setFazendasError(null);
       if (opcoes.length > 0 && !opcoes.some(f => f.id === fazendaSelecionadaId)) {
         setFazendaSelecionadaId(opcoes[0].id);
@@ -179,7 +184,12 @@ export default function GerenteDashboard() {
     return () => { cancelled = true; };
   }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId, fazendasRetry]);
 
-  const activeFazendaId = fazendaSelecionadaId || roleData.fazendaId || "";
+  const { fazendasAutorizadas, activeFazendaId } = resolveGerenteAccessScope(
+    roleData.roleId,
+    fazendasVerificadasParaRole,
+    fazendasVinculadas,
+    fazendaSelecionadaId,
+  );
 
   // Ao trocar de fazenda, o retiro selecionado volta para "Todos os retiros"
   // (nunca pode ficar um retiro da fazenda anterior).
@@ -334,7 +344,17 @@ export default function GerenteDashboard() {
     navigate(`/dashboard/retiro/${retiroId}?mes=${mes}&ano=${ano}`);
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading || (roleData.roleId && fazendasVerificadasParaRole !== roleData.roleId && !fazendasError)) return <LoadingScreen />;
+
+  if (fazendasVerificadasParaRole === roleData.roleId && fazendasAutorizadas.length === 0) {
+    return (
+      <div role="status" className="p-6 max-w-xl mx-auto space-y-4">
+        <h1 className="font-semibold">Nenhuma fazenda autorizada</h1>
+        <p className="text-sm">Não foi encontrada uma fazenda vinculada ao seu perfil. Contate o administrador.</p>
+        <Button variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>Atualizar vínculos</Button>
+      </div>
+    );
+  }
 
   if (painelError || painelMaeError || fazendasError) {
     return (
@@ -346,11 +366,11 @@ export default function GerenteDashboard() {
     );
   }
 
-  if (salgaReportOpen && roleData.fazendaId) {
+  if (salgaReportOpen && activeFazendaId) {
     return (
       <RelatorioSalgaPage
         onBack={() => setSalgaReportOpen(false)}
-        fazendaId={roleData.fazendaId}
+        fazendaId={activeFazendaId}
         fazendaNome={fazendaNome}
       />
     );
@@ -858,7 +878,7 @@ export default function GerenteDashboard() {
           )}
 
           {/* Lançamentos Manuais Pendentes */}
-          {roleData.fazendaId && <LancamentosManuaisPendentes fazendaId={roleData.fazendaId} />}
+          {activeFazendaId && <LancamentosManuaisPendentes fazendaId={activeFazendaId} />}
 
           {/* Pendentes */}
           <div>
