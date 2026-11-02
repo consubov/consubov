@@ -852,4 +852,38 @@ test.describe("@web-ready FASE 5 — responsividade (5.8)", () => {
       await expectHealthySurface(page);
     } finally { await context.close(); }
   });
+
+  test("gerente: timeout 57014 do consumo nao bloqueia fazenda confirmada", async ({ browser }) => {
+    const fixtures = {
+      ...fieldFixtures(),
+      gerentes: [{ id: "role-1", nome: "Gerente de teste", fazenda_id: "fazenda-1", ativo: true }],
+      view_consumo_tempo_real: [],
+      observacoes: [],
+    };
+    const { context, page } = await openAs(browser, "gerentes", undefined, fixtures);
+    try {
+      await page.route("**/rest/v1/rpc/get_consumo_mineral", route => route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "57014", message: "canceling statement due to statement timeout" }),
+      }));
+      await page.route("**/rest/v1/rpc/get_painel_mae", route => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([{
+          consumo_real_g_cab_dia: 85, consumo_global_g_cab_dia: 85,
+          eficiencia: 92, pastos_na_meta_num: 1, pastos_na_meta_den: 1,
+          peso_medio_kg: 200,
+        }]),
+      }));
+      await page.goto("/gerente");
+      await expect(page.getByRole("heading", { name: "Painel da Fazenda" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Não foi possível confirmar os dados das fazendas" })).toHaveCount(0);
+      await expect(page.getByRole("alert").filter({ hasText: "cálculo de custos" })).toBeVisible();
+      await expect(page.getByText("Total Animais")).toBeVisible();
+      await expect(page.getByText("Custo Mensal")).toBeVisible();
+      await expectHealthySurface(page);
+    } finally { await context.close(); }
+  });
+
 });

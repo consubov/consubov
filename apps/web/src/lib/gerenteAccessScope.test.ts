@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveGerenteAccessScope } from "./gerenteAccessScope";
+import { resolveGerenteAccessScope, gerenteBlockingReadError } from "./gerenteAccessScope";
 
 const farmA = { id: "fazenda-a", nome: "Fazenda A" };
 const farmB = { id: "fazenda-b", nome: "Fazenda B" };
@@ -24,5 +24,20 @@ describe("confirmed gerente farm scope", () => {
   });
   it("does not authorize a farm without an active role", () => {
     expect(resolveGerenteAccessScope(null, null, [farmA], farmA.id).activeFazendaId).toBe("");
+  });
+});
+
+describe("manager independent loading error isolation", () => {
+  it("keeps a confirmed farm visible without an optional source failure", () => {
+    expect(gerenteBlockingReadError(null, null, "a", "a")).toBeNull();
+  });
+  it("does not block a confirmed primary farm for a secondary-link failure", () => {
+    expect(gerenteBlockingReadError(null, "secondary error", "a", "a")).toBeNull();
+  });
+  it("still blocks when links have not been confirmed", () => {
+    expect(gerenteBlockingReadError(null, "link error", null, "a")).toBe("link error");
+  });
+  it("still blocks a required primary farm snapshot failure", () => {
+    expect(gerenteBlockingReadError("snapshot error", null, "a", "a")).toBe("snapshot error");
   });
 });

@@ -372,14 +372,18 @@ export function useGerenteData(filters?: GerenteFilters) {
       consumoMedio,
       pastosNaMeta: consumoAgg.pastosNaMeta,
       totalPastos: consumoAgg.totalPastos,
-      sacosUtilizados: consumoAgg.sacosUtilizados,
+      // A failed independent RPC does not invalidate totals from the
+      // already confirmed realtime consumption view.
+      sacosUtilizados: consumoError || consumoLoading
+        ? painelLancamentos.reduce((total, item) => total + (item.num_sacos || 0), 0)
+        : consumoAgg.sacosUtilizados,
       custoDiario: consumoAgg.custoDiario,
       custoMensal: consumoAgg.custoMensal,
       eficiencia,
       gmdMedio,
       statusDistribution: consumoAgg.statusDist,
     };
-  }, [consumoData, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, gmdPastos]);
+  }, [consumoData, consumoError, consumoLoading, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, gmdPastos]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloFazenda = fazendaData.intervalo_padrao_dias;
@@ -556,7 +560,9 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading, error: loadError || consumoError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    // Independent RPC timeouts must not hide other verified farm data.
+    loading, error: loadError, consumoError, consumoLoading, retryConsumo: refreshConsumo,
+    gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

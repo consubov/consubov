@@ -1,4 +1,4 @@
-import { resolveGerenteAccessScope } from "@/lib/gerenteAccessScope";
+import { resolveGerenteAccessScope, gerenteBlockingReadError } from "@/lib/gerenteAccessScope";
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
 import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -147,42 +147,56 @@ export default function GerenteDashboard() {
     if (!roleData.roleId) return;
     let cancelled = false;
     const carregarFazendas = async () => {
-      const { data, error } = await supabase
+      // Separate the membership lookup from the farms lookup. Embedded joins
+      // can fail under RLS even if the manager's primary farm is visible.
+      const { data: vinculos, error: vinculosError } = await supabase
         .from("gerentes_fazendas")
-        .select("fazenda_id, fazendas(id, nome)")
+        .select("fazenda_id")
         .eq("gerente_id", roleData.roleId);
       if (cancelled) return;
-      if (error || !data) {
+      const fazendaIds = [...new Set([
+        ...(vinculos ?? []).map((item) => item.fazenda_id).filter(Boolean),
+        ...(roleData.fazendaId ? [roleData.fazendaId] : []),
+      ])];
+      if (vinculosError && !roleData.fazendaId) {
         setFazendasVerificadasParaRole(null);
-        setFazendasError("Não foi possível carregar os vínculos das fazendas. Tente novamente.");
+        setFazendasError("Não foi possível confirmar os vínculos das fazendas. Tente novamente.");
         return;
       }
-      const opcoes = data.flatMap((item) => {
-        const fazenda = Array.isArray(item.fazendas) ? item.fazendas[0] : item.fazendas;
-        return fazenda?.id ? [{ id: fazenda.id, nome: fazenda.nome }] : [];
-      });
-      // Principal is part of the authorized scope even if the join is incomplete.
-      if (roleData.fazendaId && !opcoes.some(f => f.id === roleData.fazendaId)) {
-        const { data: principal, error: principalError } = await supabase.from("fazendas")
-          .select("id, nome").eq("id", roleData.fazendaId).maybeSingle();
-        if (cancelled) return;
-        if (principalError || !principal) {
-          setFazendasVerificadasParaRole(null);
-          setFazendasError("Não foi possível validar a fazenda principal. Tente novamente.");
-          return;
-        }
-        opcoes.unshift(principal);
+      if (fazendaIds.length === 0) {
+        setFazendasVinculadas([]);
+        setFazendasVerificadasParaRole(roleData.roleId);
+        setFazendasError(null);
+        return;
+      }
+      const { data: fazendas, error: fazendasError } = await supabase
+        .from("fazendas")
+        .select("id, nome")
+        .in("id", fazendaIds);
+      if (cancelled) return;
+      if (fazendasError || !fazendas) {
+        setFazendasVerificadasParaRole(null);
+        setFazendasError("Não foi possível consultar as fazendas autorizadas. Tente novamente.");
+        return;
+      }
+      // In a partial failure, never treat secondary memberships as verified.
+      const opcoes = vinculosError
+        ? fazendas.filter(f => f.id === roleData.fazendaId)
+        : fazendas.filter(f => fazendaIds.includes(f.id));
+      if (vinculosError) {
+        setFazendasError("Fazendas adicionais indisponíveis. Exibindo apenas a principal; tente atualizar.");
+      } else {
+        setFazendasError(null);
       }
       setFazendasVinculadas(opcoes);
       setFazendasVerificadasParaRole(roleData.roleId);
-      setFazendasError(null);
       if (opcoes.length > 0 && !opcoes.some(f => f.id === fazendaSelecionadaId)) {
         setFazendaSelecionadaId(opcoes[0].id);
       }
     };
     void carregarFazendas();
     return () => { cancelled = true; };
-  }, [roleData.roleId, roleData.fazendaId, fazendaSelecionadaId, fazendasRetry]);
+  }, [roleData.roleId, roleData.fazendaId, fazendasRetry]);
 
   const { fazendasAutorizadas, activeFazendaId } = resolveGerenteAccessScope(
     roleData.roleId,
@@ -226,7 +240,7 @@ export default function GerenteDashboard() {
   }), [ano, mes, activeFazendaId, activeRetiroId]);
 
   const {
-    loading, error: painelError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading, error: painelError, consumoError, consumoLoading, retryConsumo, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
@@ -356,11 +370,14 @@ export default function GerenteDashboard() {
     );
   }
 
-  if (painelError || painelMaeError || fazendasError) {
+  const blockingPanelError = gerenteBlockingReadError(
+    painelError, fazendasError, fazendasVerificadasParaRole, roleData.roleId,
+  );
+  if (blockingPanelError) {
     return (
       <div role="alert" className="p-6 max-w-xl mx-auto space-y-4">
         <h1 className="font-semibold text-destructive">Não foi possível confirmar os dados das fazendas</h1>
-        <p className="text-sm">{painelError || painelMaeError || fazendasError}</p>
+        <p className="text-sm">{blockingPanelError}</p>
         <Button variant="outline" onClick={() => { setFazendasRetry(n => n + 1); void handleRefresh(); }} disabled={refreshing}>Tentar novamente</Button>
       </div>
     );
@@ -380,6 +397,23 @@ export default function GerenteDashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       <UpdateBanner />
       <EnableNotificationsBanner />
+      {fazendasError && fazendasVerificadasParaRole === roleData.roleId && (
+        <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex items-center gap-3">
+          <p className="text-sm flex-1">{fazendasError}</p>
+          <Button size="sm" variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>Atualizar</Button>
+        </div>
+      )}
+      {consumoError && (
+        <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
+          <p className="text-sm flex-1">O cálculo de custos e consumo agregado está indisponível. Os demais dados confirmados continuam visíveis.</p>
+          <Button variant="outline" size="sm" onClick={() => void retryConsumo()}>Recalcular consumo</Button>
+        </div>
+      )}
+      {painelMaeError && (
+        <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3">
+          <p className="text-sm">Indicadores de consumo real, consumo global, meta, peso e eficiência temporariamente indisponíveis.</p>
+        </div>
+      )}
       {gmdError && (
         <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
           <p className="text-sm flex-1">{gmdError} Os demais indicadores não foram zerados.</p>
@@ -607,14 +641,14 @@ export default function GerenteDashboard() {
           <h2 className={GERENTE_CAPTION_HEADING}>Painel da Fazenda</h2>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelDataView.totalAnimais)} />
-            <MetricCard icon={Droplets} label="Consumo Real" value={`${fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-primary" />
-            <MetricCard icon={Gauge} label="Consumo Global" value={`${fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)}`} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMaeView.pastos_na_meta_num}/${painelMaeView.pastos_na_meta_den}`} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
-            <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
+            <MetricCard icon={Droplets} label="Consumo Real" value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+            <MetricCard icon={Gauge} label="Consumo Global" value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={Target} label="Pastos na Meta" value={painelMaeError ? "—" : String(painelMaeView.pastos_na_meta_num) + "/" + String(painelMaeView.pastos_na_meta_den)} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Scale} label="Peso Médio" value={painelMaeError ? "—" : fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
             <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelDataView.sacosUtilizados)} />
-            <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(painelDataView.custoMensal)} />
-            <MetricCard icon={BarChart3} label="Eficiência Geral" value={`${fmtNum(painelMaeView.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+            <MetricCard icon={DollarSign} label="Custo Diário" value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={DollarSign} label="Custo Mensal" value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoMensal)} />
+            <MetricCard icon={BarChart3} label="Eficiência Geral" value={painelMaeError ? "—" : fmtNum(painelMaeView.eficiencia, 0) + "%"} sub="índice médio" iconColor="text-secondary" />
             <MetricCard icon={TrendingUp} label="GMD Médio" value={painelData.gmdMedio == null ? "—" : fmtNum(painelData.gmdMedio, 3)} sub={painelData.gmdMedio == null ? "GMD não configurado" : "kg/dia · GMD configurado (projeção)"} />
             <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
             <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />
