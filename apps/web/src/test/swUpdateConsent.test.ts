@@ -108,4 +108,8 @@ describe("PWA update consent (runtime)", () => {
     })));
     const f = await fixture();
     await f.module.applyPendingUpdateNow("user-click");
-    expect(f.waiting.postMessage).not.toHaveBeenCalled
+    expect(f.waiting.postMessage).not.toHaveBeenCalled();
+    expect(controls.reload).not.toHaveBeenCalled();
+  });
+
+});
