@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, Users, Landmark, Pill, Snowflake, Workflow, Calendar, Settings, Route as RouteIcon } from "lucide-react";
 import { CalfIcon } from "@/components/icons/CalfIcon";
@@ -10,6 +11,7 @@ import { isSyncvetFullAccess, isSyncvetRestrictedPathAllowed } from "@/lib/syncv
 
 export default function SyncVetLayout() {
   const { signOut, roleData } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,21 +24,21 @@ export default function SyncVetLayout() {
 
   const navItems = fullAccess
     ? [
-        { to: "/syncvet", end: true, icon: LayoutDashboard, label: "Painel" },
-        { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
-        { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
-        { to: "/syncvet/partos", icon: CalfIcon, label: "Partos" },
-        { to: "/syncvet/equipe", icon: Users, label: "Equipe" },
-        { to: "/syncvet/medicamentos", icon: Pill, label: "Medic." },
-        { to: "/syncvet/semen", icon: Snowflake, label: "Sêmen" },
-        { to: "/syncvet/protocolos", icon: Workflow, label: "Protoc." },
+        { to: "/syncvet", end: true, icon: LayoutDashboard, label: "nav.panel" },
+        { to: "/syncvet/fazendas", icon: Landmark, label: "nav.farms" },
+        { to: "/syncvet/agenda", icon: Calendar, label: "syncvet.schedule" },
+        { to: "/syncvet/partos", icon: CalfIcon, label: "syncvet.births" },
+        { to: "/syncvet/equipe", icon: Users, label: "syncvet.team" },
+        { to: "/syncvet/medicamentos", icon: Pill, label: "syncvet.meds" },
+        { to: "/syncvet/semen", icon: Snowflake, label: "syncvet.semen" },
+        { to: "/syncvet/protocolos", icon: Workflow, label: "syncvet.protocol" },
       ]
     : [
-        { to: "/syncvet/meu-painel", icon: LayoutDashboard, label: "Painel" },
-        { to: "/syncvet/fazendas", icon: Landmark, label: "Fazendas" },
-        { to: "/syncvet/agenda", icon: Calendar, label: "Agenda" },
-        { to: "/syncvet/partos", icon: CalfIcon, label: "Partos" },
-        { to: "/syncvet/trajetos", icon: RouteIcon, label: "Trajetos" },
+        { to: "/syncvet/meu-painel", icon: LayoutDashboard, label: "nav.panel" },
+        { to: "/syncvet/fazendas", icon: Landmark, label: "nav.farms" },
+        { to: "/syncvet/agenda", icon: Calendar, label: "syncvet.schedule" },
+        { to: "/syncvet/partos", icon: CalfIcon, label: "syncvet.births" },
+        { to: "/syncvet/trajetos", icon: RouteIcon, label: "syncvet.routes" },
       ];
 
   return (
@@ -49,7 +51,7 @@ export default function SyncVetLayout() {
             </div>
             <div className="text-left leading-tight">
               <div className="text-xl font-extrabold tracking-tight lowercase">syncvet</div>
-              <div className="text-[10px] uppercase tracking-wider opacity-80">Módulo Veterinário</div>
+              <div className="text-[10px] uppercase tracking-wider opacity-80">{t("role.veterinary")}</div>
             </div>
           </button>
           <div className="flex items-center gap-1">
@@ -82,7 +84,7 @@ export default function SyncVetLayout() {
                   isActive ? "text-primary" : "text-muted-foreground")
               }
             >
-              <it.icon className="w-5 h-5" /> {it.label}
+              <it.icon className="w-5 h-5" /> {t(it.label)}
             </NavLink>
           ))}
         </div>

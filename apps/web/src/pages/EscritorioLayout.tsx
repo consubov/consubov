@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,7 @@ function LoadingScreen() {
    ════════════════════════════════════════════════════════════════════ */
 export default function EscritorioLayout() {
   const { signOut, roleData } = useAuth();
+  const { t } = useTranslation();
   const fazendaId = roleData.fazendaId ?? "";
 
   const { data: escritorioData } = useQuery({
@@ -174,7 +176,7 @@ export default function EscritorioLayout() {
           <div className="flex items-center gap-3">
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
             <div>
-              <h1 className="text-base font-bold leading-tight">Escritório</h1>
+              <h1 className="text-base font-bold leading-tight">{t("role.office")}</h1>
               <p className="text-xs opacity-80 truncate max-w-[180px]">{escritorioData?.nome ?? ""}</p>
             </div>
           </div>
@@ -182,7 +184,7 @@ export default function EscritorioLayout() {
             <Button variant="ghost" size="icon" onClick={() => {
               queryClient.invalidateQueries();
               window.location.reload();
-            }} className="text-primary-foreground hover:bg-primary/80" title="Atualizar dados">
+            }} className="text-primary-foreground hover:bg-primary/80" title={t("office.update")}>
               <RefreshCw className="w-4 h-4" />
             </Button>
             <UserNotificationToggle />
@@ -202,16 +204,16 @@ export default function EscritorioLayout() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="relatorios" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
-            <BarChart3 className="w-3.5 h-3.5" /> Relatórios
+            <BarChart3 className="w-3.5 h-3.5" /> {t("nav.reports")}
           </TabsTrigger>
           <TabsTrigger value="qrcodes" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
-            <QrCode className="w-3.5 h-3.5" /> QR Codes
+            <QrCode className="w-3.5 h-3.5" /> {t("nav.qr")}
           </TabsTrigger>
           <TabsTrigger value="estoque" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1">
-            <Package className="w-3.5 h-3.5" /> Estoque
+            <Package className="w-3.5 h-3.5" /> {t("nav.inventory")}
           </TabsTrigger>
           <TabsTrigger value="mortalidade" className="text-[10px] sm:text-xs data-[state=active]:text-primary gap-1 relative">
-            <Skull className="w-3.5 h-3.5" /> Alertas
+            <Skull className="w-3.5 h-3.5" /> {t("nav.alerts")}
             {mortalidadeCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 min-w-4 text-[9px] px-1 bg-destructive text-destructive-foreground">
                 {mortalidadeCount}
@@ -241,6 +243,7 @@ export default function EscritorioLayout() {
    RELATÓRIOS SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { fazendaId: string; fazendaNome: string; escritorioNome: string }) {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [salgaOpen, setSalgaOpen] = useState(false);
 
@@ -257,15 +260,15 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
   return (
     <div className="space-y-4">
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-        <BarChart3 className="w-4 h-4" /> Relatórios da Fazenda
+        <BarChart3 className="w-4 h-4" /> {t("office.farmReports")}
       </h2>
 
       <Button className="w-full gap-2" onClick={() => setModalOpen(true)}>
-        <FileDown className="w-4 h-4" /> Gerar Relatório de Consumo
+        <FileDown className="w-4 h-4" /> {t("office.makeConsumption")}
       </Button>
 
       <Button className="w-full gap-2" variant="outline" onClick={() => setSalgaOpen(true)}>
-        <FileDown className="w-4 h-4" /> Relatório de Salga
+        <FileDown className="w-4 h-4" /> {t("office.saltReport")}
       </Button>
 
       <ExportarRelatorioModal

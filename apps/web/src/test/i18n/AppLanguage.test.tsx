@@ -7,7 +7,7 @@ import { APP_TRANSLATIONS } from "@/lib/translations";
 
 function Probe() {
   const { language, t } = useTranslation();
-  return <><span data-testid="locale">{language}</span><span data-testid="copy">{t("auth.login")}</span></>;
+  return <><span data-testid="locale">{language}</span><span data-testid="copy">{t("auth.login")}</span><span data-testid="ranches">{t("nav.farms")}</span><span data-testid="manager">{t("role.manager")}</span></>;
 }
 afterEach(() => localStorage.removeItem("consubov:app-language"));
 describe("App language preference", () => {
@@ -22,12 +22,26 @@ describe("App language preference", () => {
     expect(screen.getByTestId("app-language-switch")).toHaveAttribute("aria-label", "Idioma / Language");
     expect(screen.getByTestId("app-language-switch").tagName).toBe("ASIDE");
     expect(screen.getByTestId("copy")).toHaveTextContent("Entrar");
+    expect(screen.getByTestId("ranches")).toHaveTextContent("Fazendas");
+    expect(screen.getByTestId("manager")).toHaveTextContent("Gerente");
+    expect(screen.getByTestId("app-language-switch")).toHaveClass("top-0");
+    expect(screen.getByTestId("app-language-switch")).not.toHaveClass("bottom-20");
     fireEvent.change(screen.getByRole("combobox", { name: "Idioma / Language" }), { target: { value: "en-US" } });
     expect(screen.getByTestId("locale")).toHaveTextContent("en-US");
     expect(document.documentElement.lang).toBe("en-US");
     expect(screen.getByTestId("copy")).toHaveTextContent("Sign in");
+    expect(screen.getByTestId("ranches")).toHaveTextContent("Ranches");
+    expect(screen.getByTestId("manager")).toHaveTextContent("Manager");
     expect(localStorage.getItem("consubov:site-language")).toBe("pt-BR");
     expect(localStorage.getItem("consubov:app-language")).toBe("en-US");
+    fireEvent.change(screen.getByRole("combobox", { name: "Idioma / Language" }), { target: { value: "pt-BR" } });
+    expect(screen.getByTestId("ranches")).toHaveTextContent("Fazendas");
+    expect(localStorage.getItem("consubov:app-language")).toBe("pt-BR");
+  });
+  it("leaves operational values untouched for missing keys", () => {
+    function DynamicProbe() { const { t } = useTranslation(); return <span>{t("Fazenda Águas Claras")}</span>; }
+    render(<MemoryRouter><AppLanguageProvider><DynamicProbe /></AppLanguageProvider></MemoryRouter>);
+    expect(screen.getByText("Fazenda Águas Claras")).toBeInTheDocument();
   });
   it("hides its controls on public pages", () => {
     render(<MemoryRouter initialEntries={["/"]}><AppLanguageProvider><AppLanguageSwitch /></AppLanguageProvider></MemoryRouter>);

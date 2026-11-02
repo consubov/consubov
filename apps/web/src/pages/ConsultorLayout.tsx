@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Navigate } from "react-route
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, Landmark, History, BarChart3, Receipt, Settings } from "lucide-react";
 import relattoLogo from "@/assets/relatto-logo.png.asset.json";
@@ -16,6 +17,7 @@ import { useState } from "react";
 
 export default function ConsultorLayout() {
   const { signOut, user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
@@ -66,14 +68,14 @@ export default function ConsultorLayout() {
             <div className="text-left">
               <div className="text-sm font-bold leading-tight">Relatto</div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">
-                Consultor
+                {t("role.consultant")}
               </div>
             </div>
           </button>
           <div className="flex items-center gap-1">
             <UserNotificationToggle />
             <SyncHeaderIndicator />
-            <Button variant="ghost" size="icon" onClick={() => navigate("/consultor/configuracoes")} className="text-primary-foreground hover:bg-white/10" aria-label="Configurações">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/consultor/configuracoes")} className="text-primary-foreground hover:bg-white/10" aria-label={t("common.settings")}>
               <Settings className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-white/10">
@@ -112,7 +114,7 @@ export default function ConsultorLayout() {
               )
             }
           >
-            <BarChart3 className="w-5 h-5" /> Painel
+            <BarChart3 className="w-5 h-5" /> {t("nav.panel")}
           </NavLink>
           <NavLink
             to="/consultor"
@@ -124,7 +126,7 @@ export default function ConsultorLayout() {
               )
             }
           >
-            <Landmark className="w-5 h-5" /> Fazendas
+            <Landmark className="w-5 h-5" /> {t("nav.farms")}
           </NavLink>
           {despesasAtivo && (
             <NavLink
@@ -136,7 +138,7 @@ export default function ConsultorLayout() {
                 )
               }
             >
-              <Receipt className="w-5 h-5" /> Despesas
+              <Receipt className="w-5 h-5" /> {t("nav.expenses")}
             </NavLink>
           )}
           <NavLink
@@ -148,7 +150,7 @@ export default function ConsultorLayout() {
               )
             }
           >
-            <History className="w-5 h-5" /> Histórico
+            <History className="w-5 h-5" /> {t("nav.history")}
           </NavLink>
         </div>
 

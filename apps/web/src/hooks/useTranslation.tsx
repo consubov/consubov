@@ -4,7 +4,7 @@ import { APP_TRANSLATIONS } from "@/lib/translations";
 const KEY = "consubov:app-language";
 const normalizeAppLanguage = (value: string | null): SiteLanguage => value === "en-US" ? "en-US" : "pt-BR";
 type I18nValue = { language: SiteLanguage; setLanguage: (next: SiteLanguage) => void; t: (key: string) => string };
-export const I18nContext = createContext<I18nValue>({language:"pt-BR",setLanguage:()=>{},t:key=>key});
+export const I18nContext = createContext<I18nValue>({ language: "pt-BR", setLanguage: () => {}, t: key => APP_TRANSLATIONS["pt-BR"][key] ?? key });
 function initial(): SiteLanguage { try {return normalizeAppLanguage(localStorage.getItem(KEY));} catch {return "pt-BR";} }
 export function AppLanguageProvider({children}:{children:ReactNode}) {
  const [language,setLocale]=useState<SiteLanguage>(initial);

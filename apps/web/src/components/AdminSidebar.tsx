@@ -4,6 +4,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   Sidebar,
   SidebarContent,
@@ -17,32 +18,33 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-  { title: "Fazendas", url: "/admin/fazendas", icon: Landmark },
-  { title: "Gerentes", url: "/admin/gerentes", icon: UserCog },
-  { title: "Capatazes", url: "/admin/capatazes", icon: HardHat },
-  { title: "Escritórios", url: "/admin/escritorios", icon: Building2 },
-  { title: "Produtos", url: "/admin/produtos", icon: Package },
-  { title: "QR Codes", url: "/admin/qrcodes", icon: QrCode },
-  { title: "Conferência", url: "/conferencia", icon: ScanLine },
-  { title: "Lançamento Manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },
-  { title: "Configurações Gerais", url: "/admin/configuracoes", icon: Settings },
-  { title: "Notificações", url: "/admin/notificacoes", icon: Bell },
-  { title: "Landing Page", url: "/admin/landing-page", icon: Globe },
-  { title: "Ciclos", url: "/admin/ciclos", icon: CalendarDays },
-  { title: "Inteligência Nutricional", url: "/admin/inteligencia", icon: Brain },
-  { title: "Intervalo / Auditoria", url: "/admin/auditoria", icon: Camera },
-  { title: "Recuperar Dados", url: "/admin/recuperar", icon: ShieldAlert },
-  { title: "Fábrica", url: "/admin/fabricas", icon: Factory },
-  { title: "Consultores", url: "/admin/consultores", icon: Stethoscope },
-  { title: "Pesadores", url: "/admin/pesadores", icon: Scale },
-  { title: "Fórmulas do Sistema", url: "/admin/formulas-sistema", icon: FunctionSquare },
-  { title: "Premiação", url: "/admin/premiacao", icon: Trophy },
+  { title: "nav.dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "nav.farms", url: "/admin/fazendas", icon: Landmark },
+  { title: "nav.managers", url: "/admin/gerentes", icon: UserCog },
+  { title: "nav.foremen", url: "/admin/capatazes", icon: HardHat },
+  { title: "nav.offices", url: "/admin/escritorios", icon: Building2 },
+  { title: "nav.products", url: "/admin/produtos", icon: Package },
+  { title: "nav.qr", url: "/admin/qrcodes", icon: QrCode },
+  { title: "nav.inspection", url: "/conferencia", icon: ScanLine },
+  { title: "nav.manual", url: "/admin/lancamento-manual", icon: ClipboardEdit },
+  { title: "nav.generalSettings", url: "/admin/configuracoes", icon: Settings },
+  { title: "nav.notifications", url: "/admin/notificacoes", icon: Bell },
+  { title: "nav.landing", url: "/admin/landing-page", icon: Globe },
+  { title: "nav.cycles", url: "/admin/ciclos", icon: CalendarDays },
+  { title: "nav.nutrition", url: "/admin/inteligencia", icon: Brain },
+  { title: "nav.auditInterval", url: "/admin/auditoria", icon: Camera },
+  { title: "nav.recovery", url: "/admin/recuperar", icon: ShieldAlert },
+  { title: "nav.factory", url: "/admin/fabricas", icon: Factory },
+  { title: "nav.consultants", url: "/admin/consultores", icon: Stethoscope },
+  { title: "nav.weighers", url: "/admin/pesadores", icon: Scale },
+  { title: "nav.formulas", url: "/admin/formulas-sistema", icon: FunctionSquare },
+  { title: "nav.awards", url: "/admin/premiacao", icon: Trophy },
 ];
 
 export function AdminSidebar() {
   const { state, setOpenMobile, setOpen } = useSidebar();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
@@ -64,7 +66,7 @@ export function AdminSidebar() {
   }, [user]);
 
   const items = showSyncvetOnboarding
-    ? [...menuItems, { title: "syncvet — Criar Empresa", url: "/admin/syncvet-onboarding", icon: Sparkles }]
+    ? [...menuItems, { title: "nav.onboarding", url: "/admin/syncvet-onboarding", icon: Sparkles }]
     : menuItems;
 
   const handleNavClick = () => {
@@ -79,11 +81,11 @@ export function AdminSidebar() {
 
   return (
     <Sidebar collapsible="offcanvas" className="border-r border-border">
-      <SidebarContent role="navigation" aria-label="Navegação administrativa" className="bg-sidebar pt-2">
+      <SidebarContent role="navigation" aria-label={t("nav.adminAria")} className="bg-sidebar pt-2">
         <SidebarGroup>
           {!collapsed && (
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider mb-1">
-              Gestão
+              {t("nav.management")}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
@@ -103,7 +105,7 @@ export function AdminSidebar() {
                         onClick={handleNavClick}
                       >
                         <item.icon className="w-5 h-5 shrink-0" />
-                        <span>{item.title}</span>
+                        <span>{t(item.title)}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -115,7 +117,7 @@ export function AdminSidebar() {
                   className="justify-start gap-3 px-3 py-2 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                 >
                   <UserPlus className="w-5 h-5 shrink-0" />
-                  <span>Criar Administrador</span>
+                  <span>{t("nav.createAdmin")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
