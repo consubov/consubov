@@ -28,7 +28,6 @@ BEGIN
           FROM public.pastos AS p
           JOIN public.retiros AS pr ON pr.id = p.retiro_id
           WHERE p.id = o.pasto_id
-            AND p.fazenda_id = o.fazenda_id
             AND pr.fazenda_id = o.fazenda_id
             AND o.retiro_id IS NOT NULL
             AND p.retiro_id = o.retiro_id
@@ -67,15 +66,12 @@ ON public.pastos
 FOR SELECT TO authenticated
 USING (
   EXISTS (
-    SELECT 1 FROM public.gerentes g
+    SELECT 1
+    FROM public.gerentes g
+    JOIN public.retiros r ON r.id = pastos.retiro_id
     WHERE g.user_id = auth.uid()
       AND g.ativo = true
-      AND g.fazenda_id = pastos.fazenda_id
-  )
-  AND EXISTS (
-    SELECT 1 FROM public.retiros r
-    WHERE r.id = pastos.retiro_id
-      AND r.fazenda_id = pastos.fazenda_id
+      AND g.fazenda_id = r.fazenda_id
   )
 );
 
@@ -103,7 +99,6 @@ WITH CHECK (
       FROM public.pastos AS p
       JOIN public.retiros AS pr ON pr.id = p.retiro_id
       WHERE p.id = observacoes.pasto_id
-        AND p.fazenda_id = observacoes.fazenda_id
         AND pr.fazenda_id = observacoes.fazenda_id
         AND observacoes.retiro_id IS NOT NULL
         AND p.retiro_id = observacoes.retiro_id
@@ -136,7 +131,6 @@ WITH CHECK (
       FROM public.pastos AS p
       JOIN public.retiros AS pr ON pr.id = p.retiro_id
       WHERE p.id = observacoes.pasto_id
-        AND p.fazenda_id = observacoes.fazenda_id
         AND pr.fazenda_id = observacoes.fazenda_id
         AND observacoes.retiro_id IS NOT NULL
         AND p.retiro_id = observacoes.retiro_id

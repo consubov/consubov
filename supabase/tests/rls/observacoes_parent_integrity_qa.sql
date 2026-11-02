@@ -139,7 +139,6 @@ BEGIN
                (SELECT 1 FROM public.pastos p
                 JOIN public.retiros pr ON pr.id=p.retiro_id
                 WHERE p.id=o.pasto_id AND p.retiro_id=o.retiro_id
-                  AND p.fazenda_id=o.fazenda_id
                   AND pr.fazenda_id=o.fazenda_id))
   ) THEN RAISE EXCEPTION 'FAIL: database has inconsistent references';
   END IF;

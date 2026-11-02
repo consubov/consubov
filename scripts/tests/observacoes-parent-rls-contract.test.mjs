@@ -16,7 +16,7 @@ test("both observation write policies are RESTRICTIVE", () => {
     assert.match(part,/AS RESTRICTIVE/);
     assert.ok(part.includes("FOR "+cmd+"\nTO authenticated"));
     assert.match(part,/p\.retiro_id = observacoes\.retiro_id/);
-    assert.match(part,/p\.fazenda_id = observacoes\.fazenda_id/);
+    assert.match(part,/pr\.fazenda_id = observacoes\.fazenda_id/);
   }
 });
 test("manager parent reads are SELECT-only and farm-scoped", () => {
@@ -30,6 +30,12 @@ test("manager parent reads are SELECT-only and farm-scoped", () => {
     assert.match(part,/g\.fazenda_id = /);
   }
 });
+test("do not assume pastos.fazenda_id, which is absent from actual target schema", () => {
+  assert.doesNotMatch(sql, /(?:\bp\.|\bpastos\.)fazenda_id\b/);
+  assert.match(sql, /JOIN public\.retiros r ON r\.id = pastos\.retiro_id/);
+  assert.match(sql, /pr\.fazenda_id = o\.fazenda_id/);
+});
+
 test("no RLS disable, all grants, or security definer bypass",()=>{
   assert.doesNotMatch(sql,/DISABLE ROW LEVEL SECURITY|SECURITY DEFINER|GRANT\s+ALL/i);
   assert.match(sql,/ENABLE ROW LEVEL SECURITY/);

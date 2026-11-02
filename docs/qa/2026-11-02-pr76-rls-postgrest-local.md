@@ -19,3 +19,12 @@
 **Rollout:** migration é apenas código em PR. Para aplicá-la em banco real será necessária autorização específica, conferência prévia dos dados históricos e grants de tabelas pais. O preflight falha fechado se já houver associação inválida, sem correção automática. Rollback controlado: DROP POLICY das quatro policies novas, mantendo RLS habilitada. Nenhuma migration remota/deploy foi executada.
 
 **Resultado:** SQL+HTTP LOCAL PASS; REMOTE RLS/GoTrue NOT VALIDATED; INDEPENDENT REVIEW PENDING; MERGE NO-GO.
+
+## 02/11/2026 — Compatibilidade estrutural e nova bateria de QA
+
+- Uma comparacao **somente leitura de metadados** identificou que `public.pastos` no esquema de referencia possui `retiro_id` e nao possui `fazenda_id`. A validacao de fazenda foi corrigida para seguir o vinculo `pastos.retiro_id -> retiros.fazenda_id`, tanto no preflight quanto nas policies de INSERT/UPDATE e na leitura dos pais pelo gerente. O teste de contrato agora **rejeita** qualquer referencia a `pastos.fazenda_id`.
+- Fixture adicional `qa_pr76_target_compat_20261102`: clone local sem `pastos.fazenda_id`; migration aplicada sem erros, matriz SQL transacional com `ROLLBACK` PASS e RLS de observacoes habilitada. Cenário RED equivalente abortou antes de criar policies; cenário SUPPORT com RLS dos pais passou após completar somente o administrador sintético faltante na fixture.
+- PostgREST v16.5 isolado sobre o clone compativel: **17/17 HTTP PASS** (tenants, rejeicoes, replay, UPDATE) + **7/7 JWT negativos PASS**, com HMAC de teste local (NAO equivale a Auth GoTrue).
+- Regressao de codigo no VS Code, sem cache: `TURBO_FORCE=true bun run check` PASS (**API 626/626, Web 337/337, typecheck/build**); `CONSUBOV_E2E_PORT=18089 task qa:regressions` **484/484 PASS**; `bun audit --audit-level=high` PASS; contrato RLS **5/5 PASS**. Nenhum limite de bundle, guard ou comportamento UI alterado.
+- O estado de autorizacao do ambiente alvo, contagens operacionais e evidencias de seguranca sensiveis ficam no Handoff Vivo/Checklist Mestre internos, **nao** neste arquivo versionado. Nao foi executada migration remota, DML, deploy ou alteracao de secrets.
+- Q4 de paridade total e Auth real A/B permanece pendente; Q5 exige reviewer independente. O merge da PR requer ambos os gates e CI verde no SHA final.
