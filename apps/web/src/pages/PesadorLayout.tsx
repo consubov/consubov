@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { AtualizarAppButton } from "@/components/maisarrobas/AtualizarAppButton";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { LogOut, RefreshCw, BarChart3, Users, History, Settings } from "lucide-react";
 import maisArrobasAsset from "@/assets/mais-arrobas-logo.png.asset.json";
@@ -14,6 +15,7 @@ import { maFrom, maGetUser } from "@/lib/maOffline";
 
 export default function PesadorLayout() {
   const { signOut, user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -52,15 +54,15 @@ export default function PesadorLayout() {
             <img src={displayLogo} alt={displayName} className="w-9 h-9 rounded-md object-cover bg-white" />
             <div className="text-left">
               <div className="text-sm font-bold leading-tight">{displayName}</div>
-              <div className="text-[10px] uppercase tracking-wider opacity-80">Pesador</div>
+              <div className="text-[10px] uppercase tracking-wider opacity-80">{t("role.weigher")}</div>
             </div>
           </button>
           <div className="flex items-center gap-1">
-            <Button aria-label="Configurações" variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
+            <Button aria-label={t("common.settings")} variant="ghost" size="icon" onClick={() => setConfigOpen(true)} className="text-primary-foreground hover:bg-white/10">
               <Settings className="w-4 h-4" />
             </Button>
             <AtualizarAppButton className="text-primary-foreground hover:bg-white/10" />
-            <Button aria-label="Sair" variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
+            <Button aria-label={t("logout")} variant="ghost" size="icon" onClick={() => void signOut()} className="text-primary-foreground hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -85,7 +87,7 @@ export default function PesadorLayout() {
               )
             }
           >
-            <BarChart3 className="w-5 h-5" /> Painel
+            <BarChart3 className="w-5 h-5" /> {t("nav.panel")}
           </NavLink>
           <NavLink
             to="/pesador/clientes"
@@ -96,7 +98,7 @@ export default function PesadorLayout() {
               )
             }
           >
-            <Users className="w-5 h-5" /> Clientes
+            <Users className="w-5 h-5" /> {t("nav.clients")}
           </NavLink>
           <NavLink
             to="/pesador/pesagem"
@@ -107,7 +109,7 @@ export default function PesadorLayout() {
               )
             }
           >
-            <History className="w-5 h-5" /> Histórico
+            <History className="w-5 h-5" /> {t("nav.history")}
           </NavLink>
         </div>
         <div className="text-center pb-1">

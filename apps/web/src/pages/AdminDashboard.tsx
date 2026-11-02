@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { RequestCancelledError, RequestTimeoutError, runWithDeadline } from "@/lib/requestDeadline";
 import { DashboardQueryError, requireDashboardCount, requireAnimalTotal } from "@/lib/adminDashboardMetrics";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { user: sessionUser } = useAuth();
+  const { t } = useTranslation();
   const sessionUserId = sessionUser?.id;
   const [refreshKey, setRefreshKey] = useState(0);
   const [adminRefreshKey, setAdminRefreshKey] = useState(0);
@@ -87,10 +89,10 @@ export default function AdminDashboard() {
       } catch (err) {
         if (!active || err instanceof RequestCancelledError) return;
         const message = err instanceof RequestTimeoutError
-          ? "A consulta demorou demais. Verifique a conexão e tente novamente."
+          ? "admin.timeout"
           : err instanceof DashboardQueryError && err.kind === "permission"
-          ? "Sessão ou acesso de administrador não validado. Verifique seu login e tente novamente."
-          : "Não foi possível consultar o banco. Nenhum indicador foi confirmado. Tente novamente.";
+          ? "admin.permission"
+          : "admin.dbError";
         setStats(null);
         setLoadError(message);
       } finally {
@@ -125,20 +127,20 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { label: "Fazendas", value: stats?.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Retiros", value: stats?.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
-    { label: "Pastos Ativos", value: stats?.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Produtos", value: stats?.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
-    { label: "Animais", value: stats?.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
-    { label: "Ciclos Abertos", value: stats?.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
-    { label: "Lançamentos", value: stats?.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
-    { label: "Fábricas", value: stats?.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
+    { label: "nav.farms", value: stats?.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
+    { label: "manager.ranches", value: stats?.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
+    { label: "admin.activePastures", value: stats?.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
+    { label: "nav.products", value: stats?.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
+    { label: "manager.animals", value: stats?.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
+    { label: "admin.openCycles", value: stats?.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
+    { label: "admin.entries", value: stats?.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
+    { label: "admin.factories", value: stats?.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
   ];
 
   const actionCards = [
     {
-      title: "Inteligência Nutricional",
-      description: "Acompanhe o consumo e desempenho do seu rebanho.",
+      title: "nav.nutrition",
+      description: "admin.nutritionDesc",
       icon: Brain,
       to: "/admin/inteligencia",
       iconBg: "bg-primary",
@@ -146,8 +148,8 @@ export default function AdminDashboard() {
       buttonClass: "text-primary hover:bg-primary/10",
     },
     {
-      title: "Conferência",
-      description: "Escaneie QR Codes e valide informações em campo.",
+      title: "nav.inspection",
+      description: "admin.inspectionDesc",
       icon: ScanLine,
       to: "/conferencia",
       iconBg: "bg-primary/20",
@@ -155,8 +157,8 @@ export default function AdminDashboard() {
       buttonClass: "text-primary hover:bg-primary/10",
     },
     {
-      title: "Gerar QR Codes",
-      description: "Gere QR Codes para pastos, retiros e locais.",
+      title: "admin.scanQR",
+      description: "admin.qrDesc",
       icon: QrCode,
       to: "/admin/qrcodes",
       iconBg: "bg-secondary",
@@ -168,7 +170,7 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Visão Geral</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("admin.overview")}</h1>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -182,11 +184,11 @@ export default function AdminDashboard() {
                 <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
                   <c.icon className="w-3.5 h-3.5" />
                 </div>
-                <CardTitle className="text-xs font-semibold text-foreground leading-tight">{c.title}</CardTitle>
+                <CardTitle className="text-xs font-semibold text-foreground leading-tight">{t(c.title)}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="px-3 pb-1">
-              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{c.description}</p>
+              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{t(c.description)}</p>
             </CardContent>
             <CardFooter className="pt-0 pb-3 px-3 mt-auto">
               <Button
@@ -196,7 +198,7 @@ export default function AdminDashboard() {
                 onClick={() => navigate(c.to)}
                 disabled={loading || !!loadError || !stats}
               >
-                Acessar
+                {t("admin.open")}
                 <ArrowRight className="w-3 h-3" />
               </Button>
             </CardFooter>
@@ -207,10 +209,10 @@ export default function AdminDashboard() {
       {loadError ? (
         <Card role="alert">
           <CardContent className="p-6 space-y-3">
-            <p className="text-destructive font-medium">Dados do painel indisponíveis</p>
-            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <p className="text-destructive font-medium">{t("admin.unavailable")}</p>
+            <p className="text-sm text-muted-foreground">{t(loadError)}</p>
             <Button onClick={() => setRefreshKey((n) => n + 1)} variant="outline">
-              Tentar novamente
+              {t("manager.retry")}
             </Button>
           </CardContent>
         </Card>
@@ -230,7 +232,7 @@ export default function AdminDashboard() {
             >
               <CardHeader className="pb-2 pt-4 px-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{c.label}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t(c.label)}</CardTitle>
                   <c.icon className={`w-5 h-5 ${c.color}`} />
                 </div>
               </CardHeader>

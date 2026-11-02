@@ -2,8 +2,10 @@ import { useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const MES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTH_ABBREV_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface MonthScrollerProps {
   selectedMonth: number; // 1-12
@@ -25,6 +27,7 @@ export default function MonthScroller({
   minYear = 2024, maxYear = new Date().getFullYear() + 1,
 }: MonthScrollerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { language } = useTranslation();
 
   const items = useMemo<MonthItem[]>(() => {
     const result: MonthItem[] = [];
@@ -32,13 +35,13 @@ export default function MonthScroller({
       for (let m = 1; m <= 12; m++) {
         result.push({
           month: m, year: y,
-          label: `${MES_ABREV[m - 1]}/${y}`,
+          label: `${(language === "en-US" ? MONTH_ABBREV_EN : MES_ABREV)[m - 1]}/${y}`,
           key: `${y}-${m}`,
         });
       }
     }
     return result;
-  }, [minYear, maxYear]);
+  }, [minYear, maxYear, language]);
 
   const selectedKey = `${selectedYear}-${selectedMonth}`;
 

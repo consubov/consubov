@@ -33,3 +33,14 @@ A nova interface cria um pequeno acréscimo legítimo ao bundle. O rebaseline do
 ### 2026-11-02 — Reconciliacao da main v2.0.38
 
 A base `main` avancou durante o QA para `566816aa` (APP_VERSION `2.0.38`). Medicao VPS CI-mode da nova base: **8.754.577 raw / 2.753.891 gzip**. A PR #163 sobre essa base (CI SHA `f2df3803`) mediu **8.757.343 raw / 2.755.397 gzip**. A funcionalidade aumentou **2.766 raw / 1.506 gzip** sobre a base. O teto **apenas raw** passa a `8.757.843` (candidato + 500); gzip `2.756.042` e maior asset `2.849.003` permanecem iguais. Reexecutar CI no novo SHA; este rebaseline nao autoriza release. A traducao interna/PDF e o gate universal de textos ainda estao pendentes.
+
+## 2026-11-02 — I18N-002: troca de idioma em telas operacionais e seletor no topo
+
+- O seletor do App passou a integrar uma barra **sticky no topo**, acima dos cabeçalhos e sem obstruir ações de sair/atualizar; mantém separação de `consubov:site-language` e `consubov:app-language` e suporte a safe-area.
+- React `useTranslation()` foi conectado às rotas comuns de admin (sidebar e dashboard), consultor, escritório, pesador, pecuarista, SyncVet e GerenteDashboard; os meses do `MonthScroller` respeitam a preferência do App. Dados da API, nomes de fazendas, usuários, identificadores e valores financeiros não são traduzidos.
+- As chaves adicionais são pares `pt-BR/en-US` e o teste específico verifica correspondência, mudança imediata, reversão e persistência da preferência. Há prova E2E local em navegador para login, barra no topo mobile e tela administrativa autenticada.
+- **Cobertura ainda parcial**: páginas internas que não consomem `useTranslation`, formulários detalhados, modais e todos os geradores de PDF continuam aguardando i18n. **Não anunciar a aplicação integralmente traduzida.** Não usar tradução implícita de dados operacionais, nem criar serviços externos de tradução.
+- Novo código de interface e PDF deve incluir as duas traduções revisadas antes do aceite; o gate universal que exige i18n de todos os arquivos ainda não existe e deve ser implementado em tarefa própria.
+- Medições controladas na VPS (mesmo runner e `GITHUB_ACTIONS=true`, 339 arquivos): main `c175efed` raw **8.757.492** / gzip **2.755.347**; candidato I18N-002 raw **8.767.165** / gzip **2.758.114**; delta final **+9.673/+2.767**. Tetos raw/gzip = **8.767.665 / 2.759.084** (raw final +500; gzip maior medida observada +500); maior asset continua **2.849.003**. Repetir CI na árvore/commit definitivo. Isso não autoriza release, deploy, migrações ou mudanças no SW.
+
+QA de regressão adicional: componentes administrativos renderizados fora do Provider mantêm cópia pt-BR por fallback (sem expor chaves de tradução). E2E simula sessão local sem rede remota e comprova que o menu administrativo e a tela Overview alternam dinamicamente.

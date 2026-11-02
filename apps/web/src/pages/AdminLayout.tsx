@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth, SimulationContext } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ function clearPersistedViewMode() {
 
 export default function AdminLayout() {
   const { signOut } = useAuth();
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>(loadPersistedViewMode);
   const [gerentes, setGerentes] = useState<GerenteOption[]>([]);
   const [capatazes, setCapatazes] = useState<CapatazOption[]>([]);
@@ -141,9 +143,9 @@ export default function AdminLayout() {
     viewMode === "escritorio" ? selectedEscritorio?.nome : "";
 
   const viewModeLabel =
-    viewMode === "gerente" ? "Gerente" :
-    viewMode === "capataz" ? "Capataz" :
-    viewMode === "escritorio" ? "Escritório" : "Admin";
+    viewMode === "gerente" ? t("role.manager") :
+    viewMode === "capataz" ? t("role.foreman") :
+    viewMode === "escritorio" ? t("role.office") : t("role.admin");
 
   const simulationOverride = isSimulating ? {
     roleData: viewMode === "gerente"
@@ -167,7 +169,7 @@ export default function AdminLayout() {
               <div className="flex items-center gap-2">
                 {!isSimulating && <SidebarTrigger className="text-primary-foreground hover:bg-primary/80" />}
                 {isSimulating && (
-                  <Button aria-label="Voltar ao Admin" variant="ghost" size="icon" onClick={backToAdmin} className="text-primary-foreground hover:bg-primary/80">
+                  <Button aria-label={t("role.backAdmin")} variant="ghost" size="icon" onClick={backToAdmin} className="text-primary-foreground hover:bg-primary/80">
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                 )}
@@ -182,13 +184,13 @@ export default function AdminLayout() {
                 {isSimulating && (
                   <Button variant="secondary" size="sm" onClick={backToAdmin} className="gap-1 text-xs font-semibold">
                     <ArrowLeft className="w-3 h-3" />
-                    Voltar ao Admin
+                    {t("role.backAdmin")}
                   </Button>
                 )}
                 <RefreshButton />
                 <UserNotificationToggle />
                 <AppVersionBadge />
-                <Button aria-label="Sair" variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
+                <Button aria-label={t("logout")} variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80">
                   <LogOut className="w-5 h-5" />
                 </Button>
               </div>
@@ -198,30 +200,30 @@ export default function AdminLayout() {
             {isSimulating && (
               <div className="bg-secondary/20 text-secondary-foreground rounded-md px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" />
-                👁 Visualizando como {viewModeLabel}: <strong>{simulatedName}</strong>
+                👁 {t("role.viewingAs")} {viewModeLabel}: <strong>{simulatedName}</strong>
               </div>
             )}
 
             {/* View mode selector */}
             {!isSimulating && (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs opacity-80 shrink-0">Visualizar como:</span>
+                <span className="text-xs opacity-80 shrink-0">{t("role.viewAs")}:</span>
                 <Select value={viewMode} onValueChange={(v) => handleViewModeChange(v as ViewMode)}>
-                  <SelectTrigger aria-label="Visualizar como" className="h-7 w-[140px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
+                  <SelectTrigger aria-label={t("role.viewAs")} className="h-7 w-[140px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="administrador">Administrador</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
-                    <SelectItem value="capataz">Capataz</SelectItem>
-                    <SelectItem value="escritorio">Escritório</SelectItem>
+                    <SelectItem value="administrador">{t("role.admin")}</SelectItem>
+                    <SelectItem value="gerente">{t("role.manager")}</SelectItem>
+                    <SelectItem value="capataz">{t("role.foreman")}</SelectItem>
+                    <SelectItem value="escritorio">{t("role.office")}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 {viewMode === "gerente" && (
                   <Select value={selectedGerenteId} onValueChange={handleSelectGerente}>
                     <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
-                      <SelectValue placeholder="Selecione o gerente" />
+                      <SelectValue placeholder={t("role.pickManager")} />
                     </SelectTrigger>
                     <SelectContent>
                       {gerentes.map(g => (
@@ -234,7 +236,7 @@ export default function AdminLayout() {
                 {viewMode === "capataz" && (
                   <Select value={selectedCapatazId} onValueChange={handleSelectCapataz}>
                     <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
-                      <SelectValue placeholder="Selecione o capataz" />
+                      <SelectValue placeholder={t("role.pickForeman")} />
                     </SelectTrigger>
                     <SelectContent>
                       {capatazes.map(c => (
@@ -247,7 +249,7 @@ export default function AdminLayout() {
                 {viewMode === "escritorio" && (
                   <Select value={selectedEscritorioId} onValueChange={handleSelectEscritorio}>
                     <SelectTrigger className="h-7 w-[180px] text-xs bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
-                      <SelectValue placeholder="Selecione o escritório" />
+                      <SelectValue placeholder={t("role.pickOffice")} />
                     </SelectTrigger>
                     <SelectContent>
                       {escritorios.map(e => (

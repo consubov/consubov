@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentPainelPeriodo, usePainelPeriodo } from "@/hooks/usePainelPeriodo";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
@@ -126,6 +127,7 @@ function writeGerenteFiltros(v: GerenteFiltrosSalvos) {
 
 export default function GerenteDashboard() {
   const { signOut, user, roleData } = useAuth();
+  const { t } = useTranslation();
   const temFabrica = useGerenteTemFabrica() === true;
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
@@ -376,9 +378,9 @@ export default function GerenteDashboard() {
   if (fazendasVerificadasParaRole === roleData.roleId && fazendasAutorizadas.length === 0) {
     return (
       <div role="status" className="p-6 max-w-xl mx-auto space-y-4">
-        <h1 className="font-semibold">Nenhuma fazenda autorizada</h1>
-        <p className="text-sm">Não foi encontrada uma fazenda vinculada ao seu perfil. Contate o administrador.</p>
-        <Button variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>Atualizar vínculos</Button>
+        <h1 className="font-semibold">{t("manager.noFarms")}</h1>
+        <p className="text-sm">{t("manager.noFarmsDetail")}</p>
+        <Button variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>{t("manager.reloadRelations")}</Button>
       </div>
     );
   }
@@ -389,9 +391,9 @@ export default function GerenteDashboard() {
   if (blockingPanelError) {
     return (
       <div role="alert" className="p-6 max-w-xl mx-auto space-y-4">
-        <h1 className="font-semibold text-destructive">Não foi possível confirmar os dados das fazendas</h1>
+        <h1 className="font-semibold text-destructive">{t("manager.farmLoadFailed")}</h1>
         <p className="text-sm">{blockingPanelError}</p>
-        <Button variant="outline" onClick={() => { setFazendasRetry(n => n + 1); void handleRefresh(); }} disabled={refreshing}>Tentar novamente</Button>
+        <Button variant="outline" onClick={() => { setFazendasRetry(n => n + 1); void handleRefresh(); }} disabled={refreshing}>{t("manager.retry")}</Button>
       </div>
     );
   }
@@ -444,14 +446,14 @@ export default function GerenteDashboard() {
                   variant="ghost"
                   size="icon"
                   className="text-primary-foreground hover:bg-primary/80 -ml-2"
-                  aria-label="Abrir menu"
+                  aria-label={t("manager.menu")}
                 >
                   <Menu className="w-6 h-6" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[80vw] max-w-sm p-0 flex flex-col">
                 <SheetHeader className="bg-primary text-primary-foreground p-4 text-left space-y-1">
-                  <SheetTitle className="text-primary-foreground text-base font-bold">Gerente</SheetTitle>
+                  <SheetTitle className="text-primary-foreground text-base font-bold">{t("role.manager")}</SheetTitle>
                   <SheetDescription className="text-primary-foreground/80 text-xs">
                     {gerenteNome}
                   </SheetDescription>
@@ -466,7 +468,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <Package className="w-5 h-5 text-primary" />
-                        Matérias-Primas
+                        {t("manager.rawMaterials")}
                       </button>
                     </li>
                     <li>
@@ -475,7 +477,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <PackagePlus className="w-5 h-5 text-primary" />
-                        Entrada Matéria-Prima
+                        {t("manager.rawEntry")}
                       </button>
                     </li>
                     </>)}
@@ -485,7 +487,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <Package className="w-5 h-5 text-primary" />
-                        Produtos
+                        {t("nav.products")}
                       </button>
                     </li>
                     <li>
@@ -494,7 +496,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <Camera className="w-5 h-5 text-primary" />
-                        Intervalo e Auditoria
+                        {t("manager.auditPhoto")}
                       </button>
                     </li>
                     <li>
@@ -503,7 +505,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <TrendingUp className="w-5 h-5 text-primary" />
-                        GMD
+                        {t("manager.gmd")}
                       </button>
                     </li>
                     <li>
@@ -512,7 +514,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <CalendarClock className="w-5 h-5 text-primary" />
-                        Previsão de Abate
+                        {t("manager.slaughterForecast")}
                       </button>
                     </li>
                     <li>
@@ -521,7 +523,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <ScanLine className="w-5 h-5 text-primary" />
-                        Conferência
+                        {t("nav.inspection")}
                       </button>
                     </li>
                     <li><Separator className="my-1" /></li>
@@ -531,7 +533,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <FileText className="w-5 h-5 text-primary" />
-                        Relatório de Salga
+                        {t("office.saltReport")}
                       </button>
                     </li>
                     <li>
@@ -540,7 +542,7 @@ export default function GerenteDashboard() {
                         className={GERENTE_NAV_ITEM}
                       >
                         <FileDown className="w-5 h-5 text-primary" />
-                        Relatório de Consumo
+                        {t("manager.consumptionReport")}
                       </button>
                     </li>
                   </ul>
@@ -549,15 +551,15 @@ export default function GerenteDashboard() {
             </Sheet>
             <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
             <div className="min-w-0">
-              <h1 className="text-base font-bold leading-tight">Gerente</h1>
+              <h1 className="text-base font-bold leading-tight">{t("role.manager")}</h1>
               <p className="max-w-[160px] truncate text-xs opacity-80 sm:max-w-[220px]">{gerenteNome}</p>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className={GERENTE_CARD_TITLE} disabled={refreshing} title="Atualizar">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className={GERENTE_CARD_TITLE} disabled={refreshing} title={t("manager.refresh")}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} className={GERENTE_CARD_TITLE} title="Sair">
+            <Button variant="ghost" size="icon" onClick={signOut} className={GERENTE_CARD_TITLE} title={t("logout")}>
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
@@ -585,26 +587,26 @@ export default function GerenteDashboard() {
       {/* Tabs */}
       <Tabs defaultValue="painel" className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-6 rounded-none border-b bg-card h-10 flex-shrink-0">
-          <TabsTrigger value="painel" className={GERENTE_TAB_TEXT}>Painel</TabsTrigger>
-          <TabsTrigger value="retiros" className={GERENTE_TAB_TEXT}>Retiros</TabsTrigger>
+          <TabsTrigger value="painel" className={GERENTE_TAB_TEXT}>{t("nav.panel")}</TabsTrigger>
+          <TabsTrigger value="retiros" className={GERENTE_TAB_TEXT}>{t("manager.ranches")}</TabsTrigger>
           <TabsTrigger value="estoque" className={GERENTE_TAB_BADGE}>
-            Estoque
+            {t("nav.inventory")}
             {transferencias.filter(t => t.status === 'pendente').length > 0 && (
               <Badge className={GERENTE_NOTICE_BADGE}>
                 {transferencias.filter(t => t.status === 'pendente').length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="ranking" className={GERENTE_TAB_TEXT}>Ranking</TabsTrigger>
+          <TabsTrigger value="ranking" className={GERENTE_TAB_TEXT}>{t("manager.rank")}</TabsTrigger>
           <TabsTrigger value="alertas" className={GERENTE_TAB_BADGE}>
-            Alertas
+            {t("nav.alerts")}
             {(obsPendentes.length + alertasAtraso.length) > 0 && (
               <Badge className={GERENTE_NOTICE_BADGE}>
                 {obsPendentes.length + alertasAtraso.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="auditoria" className={GERENTE_TAB_TEXT}>Auditoria</TabsTrigger>
+          <TabsTrigger value="auditoria" className={GERENTE_TAB_TEXT}>{t("manager.audit")}</TabsTrigger>
         </TabsList>
 
         {/* ===== PAINEL ===== */}
@@ -651,20 +653,20 @@ export default function GerenteDashboard() {
               </Select>
             )}
           </div>
-          <h2 className={GERENTE_CAPTION_HEADING}>Painel da Fazenda</h2>
+          <h2 className={GERENTE_CAPTION_HEADING}>{t("manager.farmDashboard")}</h2>
           <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon={Beef} label="Total Animais" value={fmtNum(painelDataView.totalAnimais)} />
-            <MetricCard icon={Droplets} label="Consumo Real" value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
-            <MetricCard icon={Gauge} label="Consumo Global" value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label="Pastos na Meta" value={painelMaeError ? "—" : String(painelMaeView.pastos_na_meta_num) + "/" + String(painelMaeView.pastos_na_meta_den)} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
-            <MetricCard icon={Scale} label="Peso Médio" value={painelMaeError ? "—" : fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
-            <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(painelDataView.sacosUtilizados)} />
-            <MetricCard icon={DollarSign} label="Custo Diário" value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={DollarSign} label="Custo Mensal" value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoMensal)} />
-            <MetricCard icon={BarChart3} label="Eficiência Geral" value={painelMaeError ? "—" : fmtNum(painelMaeView.eficiencia, 0) + "%"} sub="índice médio" iconColor="text-secondary" />
-            <MetricCard icon={TrendingUp} label="GMD Médio" value={painelData.gmdMedio == null ? "—" : fmtNum(painelData.gmdMedio, 3)} sub={painelData.gmdMedio == null ? "GMD não configurado" : "kg/dia · GMD configurado (projeção)"} />
-            <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
-            <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />
+            <MetricCard icon={Beef} label={t("manager.totalAnimals")} value={fmtNum(painelDataView.totalAnimais)} />
+            <MetricCard icon={Droplets} label={t("manager.actualConsumption")} value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+            <MetricCard icon={Gauge} label={t("manager.globalConsumption")} value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={Target} label={t("manager.pasturesOnTarget")} value={painelMaeError ? "—" : String(painelMaeView.pastos_na_meta_num) + "/" + String(painelMaeView.pastos_na_meta_den)} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Scale} label={t("manager.avgWeight")} value={painelMaeError ? "—" : fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
+            <MetricCard icon={Package} label={t("manager.bagsUsed")} value={fmtNum(painelDataView.sacosUtilizados)} />
+            <MetricCard icon={DollarSign} label={t("manager.dailyCost")} value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={DollarSign} label={t("manager.monthlyCost")} value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoMensal)} />
+            <MetricCard icon={BarChart3} label={t("manager.efficiency")} value={painelMaeError ? "—" : fmtNum(painelMaeView.eficiencia, 0) + "%"} sub="índice médio" iconColor="text-secondary" />
+            <MetricCard icon={TrendingUp} label={t("manager.avgGain")} value={painelData.gmdMedio == null ? "—" : fmtNum(painelData.gmdMedio, 3)} sub={painelData.gmdMedio == null ? "GMD não configurado" : "kg/dia · GMD configurado (projeção)"} />
+            <MetricCard icon={Skull} label={t("manager.slaughterMonth")} value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
+            <MetricCard icon={Skull} label={t("manager.slaughterYear")} value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />
             <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
           </div>
 
@@ -672,7 +674,7 @@ export default function GerenteDashboard() {
           {(painelDataView.statusDistribution.baixo + painelDataView.statusDistribution.ideal + painelDataView.statusDistribution.alto) > 0 && (
             <Card>
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase">{t("manager.statusDistribution")}</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-2">
                 {/* Bar */}
@@ -715,9 +717,9 @@ export default function GerenteDashboard() {
 
         {/* ===== RETIROS ===== */}
         <TabsContent value="retiros" className="flex-1 overflow-auto p-4 space-y-3 mt-0">
-          <h2 className={GERENTE_CAPTION_HEADING}>Retiros</h2>
+          <h2 className={GERENTE_CAPTION_HEADING}>{t("manager.ranches")}</h2>
           {retirosComDados.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
+            <p className="text-muted-foreground text-sm text-center py-8">{t("manager.noUnits")}</p>
           ) : (
             retirosComDados.map(r => (
               <Card key={r.id} className={`cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98] ${r.alertaAtraso ? 'border-destructive/50' : ''}`} onClick={() => handleOpenRetiro(r.id)}>
@@ -734,15 +736,15 @@ export default function GerenteDashboard() {
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
-                      <p className={GERENTE_MUTED_SMALL}>Animais</p>
+                      <p className={GERENTE_MUTED_SMALL}>{t("manager.animals")}</p>
                       <p className={GERENTE_ROW_NUMBER}>{r.totalAnimais}</p>
                     </div>
                     <div>
-                      <p className={GERENTE_MUTED_SMALL}>Sacos</p>
+                      <p className={GERENTE_MUTED_SMALL}>{t("manager.bags")}</p>
                       <p className={GERENTE_ROW_NUMBER}>{r.sacosUtilizados}</p>
                     </div>
                     <div>
-                      <p className={GERENTE_MUTED_SMALL}>Consumo</p>
+                      <p className={GERENTE_MUTED_SMALL}>{t("manager.consumption")}</p>
                       <p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p>
                     </div>
                     <div>
@@ -803,18 +805,18 @@ export default function GerenteDashboard() {
           {/* Score de Eficiência */}
           <div>
             <h2 className={GERENTE_PANEL_HEADING}>
-              <Award className="w-4 h-4" /> Score de Eficiência
+              <Award className="w-4 h-4" /> {t("manager.scoreEfficiency")}
             </h2>
             {capatazScores.length === 0 ? (
-              <p className={GERENTE_EMPTY_TEXT}>Sem dados suficientes.</p>
+              <p className={GERENTE_EMPTY_TEXT}>{t("manager.noData")}</p>
             ) : (
               <Card>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8 text-center">#</TableHead>
-                      <TableHead>Retiro</TableHead>
-                      <TableHead>Capataz</TableHead>
+                      <TableHead>{t("manager.unit")}</TableHead>
+                      <TableHead>{t("manager.ranchSupervisor")}</TableHead>
                       <TableHead className="text-right">Score</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -855,18 +857,18 @@ export default function GerenteDashboard() {
           {/* GMD Ranking */}
           <div>
             <h2 className={GERENTE_PANEL_HEADING}>
-              <TrendingUp className="w-4 h-4" /> Ranking GMD por Retiro
+              <TrendingUp className="w-4 h-4" /> {t("manager.avgGmdRank")}
             </h2>
             {gmdRanking.length === 0 ? (
-              <p className={GERENTE_EMPTY_TEXT}>Sem dados suficientes.</p>
+              <p className={GERENTE_EMPTY_TEXT}>{t("manager.noData")}</p>
             ) : (
               <Card>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8 text-center">#</TableHead>
-                      <TableHead>Retiro</TableHead>
-                      <TableHead>Capataz</TableHead>
+                      <TableHead>{t("manager.unit")}</TableHead>
+                      <TableHead>{t("manager.ranchSupervisor")}</TableHead>
                       <TableHead className="text-right">GMD</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -907,7 +909,7 @@ export default function GerenteDashboard() {
                   return (
                     <Card key={a.retiroNome} className={`${cfg.border} ${cfg.bg}`}>
                       <CardContent className="p-3 space-y-1">
-                        <p className="text-sm font-bold text-destructive">⚠️ ALERTA DE SALGA ATRASADA</p>
+                        <p className="text-sm font-bold text-destructive">{t("manager.outdatedSalt")}</p>
                         <p className="text-xs"><span className="text-muted-foreground">Retiro:</span> {a.retiroNome}</p>
                         <p className="text-xs"><span className="text-muted-foreground">Última salga:</span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
                         <p className="text-xs"><span className="text-muted-foreground">Intervalo definido:</span> {a.intervaloDefinido} dias</p>
@@ -1007,6 +1009,7 @@ export default function GerenteDashboard() {
 
 // ---- Retiro Detail ----
 function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId: string | null }) {
+  const { t } = useTranslation();
   const navRetiro = useNavigate();
   const { mes, ano } = usePainelPeriodo();
   const { pastos: pastosLista, loading: pastosListaLoading } = usePastosRetiro(retiro.id ?? null, mes, ano);
@@ -1016,9 +1019,9 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
         <SheetTitle className="text-foreground">{retiro.nome}</SheetTitle>
         <p className={GERENTE_MUTED_LABEL}>Capataz: {retiro.capataz}</p>
         <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-          <div><p className={GERENTE_MUTED_TINY}>Animais</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
-          <div><p className={GERENTE_MUTED_TINY}>Sacos</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
-          <div><p className={GERENTE_MUTED_TINY}>Consumo</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>{t("manager.animals")}</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>{t("manager.bags")}</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}>{t("manager.consumption")}</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
           <div><p className={GERENTE_MUTED_TINY}>GMD</p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
         </div>
         <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
