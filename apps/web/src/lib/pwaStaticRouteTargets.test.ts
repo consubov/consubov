@@ -1,8 +1,10 @@
 import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function publicAsset(name: string): string {
-  return new URL(`../../public/${name}`, import.meta.url).pathname;
+  // Vitest transforms import.meta.url; cwd is the web package under CI.
+  return resolve(process.cwd(), "public", name);
 }
 function readPublic(name: string): string {
   return readFileSync(publicAsset(name), "utf8");

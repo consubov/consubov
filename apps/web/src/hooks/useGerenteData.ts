@@ -4,6 +4,7 @@ import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
 import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
@@ -26,7 +27,7 @@ interface Lancamento {
   id: string; pasto_id: string; num_sacos: number;
   num_animais: number; peso_medio_kg: number | null;
   categoria: string | null; sexo: string | null;
-  dias_no_pasto: number; origem: string;
+  dias_no_pasto: number; origem: string | null;
   created_at: string | null;
   mes_referencia: number; ano_referencia: number;
   fazenda_id: string; retiro_id: string;
@@ -123,6 +124,8 @@ export function useGerenteData(filters?: GerenteFilters) {
   const ic = getScreenCache<GerenteCache>(cacheKey);
   const [loading, setLoading] = useState(!ic);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Tag the loaded snapshot so old farm data never drives a new farm\u0027s GMD requests.
+  const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
   const currentKey = useRef(cacheKey);
   currentKey.current = cacheKey;
   const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
@@ -153,7 +156,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
-        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias" as any).eq("fazenda_id", fazendaId).eq("ativo", true),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
 
       snap.gerenteNome = requireReadValue(gerenteRes).nome;
@@ -181,7 +184,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       }
       snap.ciclo = (activeCiclo);
 
-      const retirosList = requireReadRows(retirosRes).map((r: any) => ({
+      const retirosList = requireReadRows(retirosRes).map((r) => ({
         id: r.id, nome: r.nome, capataz: r.capataz,
         ultima_salga_em: r.ultima_salga_em ?? null,
         alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
@@ -198,8 +201,8 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
-        let lancQuery = supabase.from("view_consumo_tempo_real" as any)
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+        let lancQuery = supabase.from("view_consumo_tempo_real")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
@@ -212,7 +215,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList = requireReadRows(lancRes) as Lancamento[];
+        const lancList: Lancamento[] = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
         snap.lancamentos = (lancList);
 
 
@@ -230,23 +233,25 @@ export function useGerenteData(filters?: GerenteFilters) {
         snap.produtos = requireReadRows(produtosRes) as Produto[];
       } else snap.produtos = [];
 
-      const obsRes = await (supabase as any).from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
       snap.observacoes = requireReadRows(obsRes) as Observacao[];
       if (currentKey.current !== cacheKey) return;
       setScreenCache(cacheKey, snap);
       applyCache(snap);
+      setLoadedCacheKey(cacheKey);
       setLoadError(null);
     } catch (e) {
       if (currentKey.current === cacheKey) setLoadError(dataReadErrorMessage(e));
     } finally {
       if (currentKey.current === cacheKey) setLoading(false);
     }
-  }, [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus, cacheKey, applyCache]);
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache]);
 
   useEffect(() => {
     const c = getScreenCache<GerenteCache>(cacheKey);
-    if (c) { applyCache(c); setLoading(false); }
+    if (c) { applyCache(c); setLoadedCacheKey(cacheKey); setLoading(false); }
     else {
+      setLoadedCacheKey("");
       applyCache({ gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] });
       setLoading(true);
     }
@@ -275,18 +280,43 @@ export function useGerenteData(filters?: GerenteFilters) {
     return () => { supabase.removeChannel(channel); };
   }, [loadData]);
 
-  // GMD de cada pasto via gmd_do_pasto (hoje no mês em andamento; último dia em meses passados).
-  const [gmdPastos, setGmdPastos] = useState<Record<string, number | null>>({});
-  const gmdPastoIds = pastos.map(p => p.id).join(",");
+  // GMD is independent from other farm metrics: isolate scope, cancel obsolete
+  // requests and surface failures instead of silently treating them as no GMD.
+  const [gmdState, setGmdState] = useState<{
+    scope: string; values: Record<string, number | null>; error: string | null;
+  }>({ scope: "", values: {}, error: null });
+  const [gmdRetryTick, setGmdRetryTick] = useState(0);
+  const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
+  const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
+  const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
+  const gmdPastos = useMemo<Record<string, number | null>>(
+    () => gmdState.scope === gmdScope ? gmdState.values : {},
+    [gmdState.scope, gmdState.values, gmdScope],
+  );
+  const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
+
   useEffect(() => {
-    if (!gmdPastoIds) { setGmdPastos({}); return; }
-    let cancel = false;
-    const dia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
-    fetchGmdPastos(gmdPastoIds.split(","), dia)
-      .then((m) => { if (!cancel) setGmdPastos(m); })
-      .catch((e) => console.error("GMD pastos error:", e));
-    return () => { cancel = true; };
-  }, [gmdPastoIds, filters?.mes, consumoMes, consumoAno]);
+    const controller = new AbortController();
+    setGmdState({ scope: gmdScope, values: {}, error: null });
+    if (!fazendaId || !gmdPastoIds) return () => controller.abort();
+
+    fetchGmdPastos(gmdPastoIds.split(","), gmdDia, controller.signal)
+      .then(values => {
+        if (!controller.signal.aborted) {
+          setGmdState({ scope: gmdScope, values, error: null });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setGmdState({
+            scope: gmdScope, values: {},
+            error: "Não foi possível confirmar o GMD. Tente novamente.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [gmdScope, gmdPastoIds, gmdDia, fazendaId, gmdRetryTick]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -339,7 +369,8 @@ export function useGerenteData(filters?: GerenteFilters) {
       const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
       const rpcRow = consumoData.find(c => c.retiro_id === r.id);
       // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
-      const intervaloDefinido = Number((r as any).intervalo_padrao_dias ?? intervaloFazenda);
+      const intervaloDoRetiro = "intervalo_padrao_dias" in r ? r.intervalo_padrao_dias : null;
+      const intervaloDefinido = Number(intervaloDoRetiro ?? intervaloFazenda);
 
       const consumoMedio = computeConsumoMedioPonderado(
         rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
@@ -410,7 +441,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, filters, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados
@@ -444,7 +475,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   // Resolve observacao
   const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
     try {
-      await (supabase as any).from("observacoes").update({
+      await supabase.from("observacoes").update({
         resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString(),
       }).eq("id", id);
       setObservacoes(prev => prev.map(o =>
@@ -462,7 +493,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   }, [loadData, refreshConsumo]);
 
   return {
-    loading: loading || consumoLoading, error: loadError || consumoError, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading: loading || consumoLoading, error: loadError || consumoError, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

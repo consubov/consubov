@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
+const api = vi.hoisted(() => ({ from: vi.fn(), getUser: vi.fn() }));
 const fixtures = vi.hoisted(() => ({
   authValid: true, adminPresent: true, rlsDenied: false, offline: false,
 }));
@@ -40,15 +41,16 @@ vi.mock("@/integrations/supabase/client", () => {
       return q;
     },
   }));
+  api.from = from;
+  api.getUser = vi.fn(async () => { throw new Error("auth offline"); });
   return { supabase: {
-    auth: { getUser: vi.fn(async () => { throw new Error("auth offline"); }) },
-    from, channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
+    auth: { getUser: api.getUser },
+    from: api.from, channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn() })),
     removeChannel: vi.fn(),
   }};
 });
 vi.mock("@/components/admin/AdminListSection", () => ({ default: () => null }));
 
-import { supabase } from "@/integrations/supabase/client";
 import AdminDashboard from "@/pages/AdminDashboard";
 
 function renderDashboard() {
@@ -64,8 +66,8 @@ describe("AdminDashboard production auth regression", () => {
     renderDashboard();
     expect(await screen.findByText("50")).toBeInTheDocument();
     expect(screen.getAllByText("5")).toHaveLength(7);
-    expect(supabase.auth.getUser).not.toHaveBeenCalled();
-    expect(supabase.from).toHaveBeenCalledWith("administradores");
+    expect(api.getUser).not.toHaveBeenCalled();
+    expect(api.from).toHaveBeenCalledWith("administradores");
   });
   it("rejects missing admin membership even when browser role is cached", async () => {
     fixtures.adminPresent = false;
@@ -77,7 +79,7 @@ describe("AdminDashboard production auth regression", () => {
     fixtures.authValid = false;
     renderDashboard();
     expect(await screen.findByRole("alert")).toHaveTextContent(/Sessão ou acesso/);
-    expect(supabase.from).not.toHaveBeenCalled();
+    expect(api.from).not.toHaveBeenCalled();
   });
   it("does not render false zeros on a server-side RLS denial", async () => {
     fixtures.rlsDenied = true;
