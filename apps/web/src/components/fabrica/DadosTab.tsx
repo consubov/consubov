@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,16 +72,16 @@ export default function DadosTab({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Warehouse className="w-4 h-4 text-secondary" /> Estoque Atual</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Warehouse className="w-4 h-4 text-secondary" /> <LocalizedText source={"Estoque Atual"} /></CardTitle></CardHeader>
         <CardContent className="p-0">
           {estoques.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Nenhum produto em estoque.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum produto em estoque."} /></div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-right">Sacos</TableHead>
+                  <TableHead><LocalizedText source={"Produto"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Sacos"} /></TableHead>
                   <TableHead className="text-right">Kg</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -99,19 +100,19 @@ export default function DadosTab({ fabricaId }: { fabricaId: string }) {
       </Card>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Package2 className="w-4 h-4 text-secondary" /> Matérias-Primas</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Package2 className="w-4 h-4 text-secondary" /> <LocalizedText source={"Matérias-Primas"} /></CardTitle></CardHeader>
         <CardContent className="p-0">
           {materias.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma matéria-prima cadastrada.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma matéria-prima cadastrada."} /></div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Nome</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
                   <TableHead>Un.</TableHead>
-                  <TableHead className="text-right">Peso/Saco</TableHead>
-                  <TableHead className="text-right">Estoque</TableHead>
-                  <TableHead className="text-right">Mínimo</TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Peso/Saco"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Estoque"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Mínimo"} /></TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -128,7 +129,7 @@ export default function DadosTab({ fabricaId }: { fabricaId: string }) {
                         <TableCell className="text-right">{min || "—"}</TableCell>
                         <TableCell>
                           {alerta ? (
-                            <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> Alerta</Badge>
+                            <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> <LocalizedText source={"Alerta"} /></Badge>
                           ) : (
                             <Badge variant="secondary">OK</Badge>
                           )}
@@ -144,18 +145,18 @@ export default function DadosTab({ fabricaId }: { fabricaId: string }) {
       </Card>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FlaskConical className="w-4 h-4 text-secondary" /> Fórmulas</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><FlaskConical className="w-4 h-4 text-secondary" /> <LocalizedText source={"Fórmulas"} /></CardTitle></CardHeader>
         <CardContent className="p-0">
           {formulas.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma fórmula cadastrada.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fórmula cadastrada."} /></div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-right">Peso Batida</TableHead>
-                  <TableHead className="text-right">Prod. Esperada</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                  <TableHead><LocalizedText source={"Produto"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Peso Batida"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Prod. Esperada"} /></TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -180,20 +181,20 @@ export default function DadosTab({ fabricaId }: { fabricaId: string }) {
           <DialogHeader>
             <DialogTitle>{detFormula?.nome}</DialogTitle>
             <DialogDescription>
-              Produto: <b>{detFormula?.produto_id ? (prodMap[detFormula.produto_id]?.nome || "—") : "—"}</b>
-              {" • "}Peso batida: <b>{detFormula?.peso_batida ?? "—"}</b>
-              {" • "}Produção esperada: <b>{detFormula?.producao_esperada ?? "—"} sc</b>
+              <LocalizedText source={"Produto:"} />{" "}<b>{detFormula?.produto_id ? (prodMap[detFormula.produto_id]?.nome || "—") : "—"}</b>
+              {" • "}<LocalizedText source={"Peso batida:"} />{" "}<b>{detFormula?.peso_batida ?? "—"}</b>
+              {" • "}<LocalizedText source={"Produção esperada:"} />{" "}<b>{detFormula?.producao_esperada ?? "—"} sc</b>
             </DialogDescription>
           </DialogHeader>
           <div>
-            <h4 className="text-sm font-semibold mb-2">Ingredientes</h4>
+            <h4 className="text-sm font-semibold mb-2"><LocalizedText source={"Ingredientes"} /></h4>
             {ingsDaFormula.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem ingredientes cadastrados.</p>
+              <p className="text-sm text-muted-foreground"><LocalizedText source={"Sem ingredientes cadastrados."} /></p>
             ) : (
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Matéria-Prima</TableHead>
-                  <TableHead className="text-right">Quantidade</TableHead>
+                  <TableHead><LocalizedText source={"Matéria-Prima"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Quantidade"} /></TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {ingsDaFormula.map((i, idx) => {

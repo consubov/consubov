@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -155,38 +156,37 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base flex items-center gap-2"><FlaskConical className="w-4 h-4" /> Fórmulas</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2"><FlaskConical className="w-4 h-4" /> <LocalizedText source={"Fórmulas"} /></CardTitle>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={materias.length === 0 || produtos.length === 0}>
-          <Plus className="w-4 h-4" /> Nova
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova"} /></Button>
       </CardHeader>
       <CardContent className="p-0">
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : materias.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">Cadastre matérias-primas antes de criar fórmulas.</div>
+          <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Cadastre matérias-primas antes de criar fórmulas."} /></div>
         ) : produtos.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">Cadastre produtos no catálogo global antes de criar fórmulas.</div>
+          <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Cadastre produtos no catálogo global antes de criar fórmulas."} /></div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Peso batida (kg)</TableHead>
-                  <TableHead>Produção esperada (sc)</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                  <TableHead><LocalizedText source={"Produto"} /></TableHead>
+                  <TableHead><LocalizedText source={"Peso batida (kg)"} /></TableHead>
+                  <TableHead><LocalizedText source={"Produção esperada (sc)"} /></TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Nenhuma fórmula cadastrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma fórmula cadastrada."} /></TableCell></TableRow>
                 ) : items.map(f => (
                   <TableRow key={f.id}>
                     <TableCell className="font-medium">{f.nome}</TableCell>
-                    <TableCell className="text-sm">{f.produto_id ? (prodMap[f.produto_id]?.nome ?? "—") : <span className="text-destructive text-xs">sem produto</span>}</TableCell>
+                    <TableCell className="text-sm">{f.produto_id ? (prodMap[f.produto_id]?.nome ?? "—") : <span className="text-destructive text-xs"><LocalizedText source={"sem produto"} /></span>}</TableCell>
                     <TableCell>{f.peso_batida ?? "—"}</TableCell>
                     <TableCell>{f.producao_esperada ?? "—"}</TableCell>
                     <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
@@ -208,37 +208,36 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Fórmula" : "Nova Fórmula"}</DialogTitle>
-            <DialogDescription>Defina o produto produzido, os ingredientes e a produção esperada.</DialogDescription>
+            <DialogDescription><LocalizedText source={"Defina o produto produzido, os ingredientes e a produção esperada."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
 
             <div>
-              <Label>Produto Produzido *</Label>
+              <Label><LocalizedText source={"Produto Produzido *"} /></Label>
               <Select value={form.produto_id} onValueChange={v => setForm(f => ({ ...f, produto_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecione o produto que esta fórmula fabrica" /></SelectTrigger>
                 <SelectContent>
                   {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">Cada batida desta fórmula gerará estoque deste produto.</p>
+              <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Cada batida desta fórmula gerará estoque deste produto."} /></p>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>Peso batida (kg)</Label><Input type="number" step="0.01" value={form.peso_batida} onChange={e => setForm(f => ({ ...f, peso_batida: e.target.value }))} /></div>
-              <div><Label>Peso/saco (kg)</Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
-              <div><Label>Produção esp. (sc)</Label><Input type="number" step="0.01" value={form.producao_esperada} onChange={e => setForm(f => ({ ...f, producao_esperada: e.target.value }))} /></div>
+              <div><Label><LocalizedText source={"Peso batida (kg)"} /></Label><Input type="number" step="0.01" value={form.peso_batida} onChange={e => setForm(f => ({ ...f, peso_batida: e.target.value }))} /></div>
+              <div><Label><LocalizedText source={"Peso/saco (kg)"} /></Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
+              <div><Label><LocalizedText source={"Produção esp. (sc)"} /></Label><Input type="number" step="0.01" value={form.producao_esperada} onChange={e => setForm(f => ({ ...f, producao_esperada: e.target.value }))} /></div>
             </div>
 
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-semibold">Ingredientes</Label>
+                <Label className="text-sm font-semibold"><LocalizedText source={"Ingredientes"} /></Label>
                 <Button type="button" size="sm" variant="outline" onClick={addIngrediente}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
-                </Button>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> <LocalizedText source={"Adicionar"} /></Button>
               </div>
               {ingredientes.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">Nenhum ingrediente. Clique em Adicionar.</p>
+                <p className="text-xs text-muted-foreground py-2"><LocalizedText source={"Nenhum ingrediente. Clique em Adicionar."} /></p>
               ) : (
                 <div className="space-y-2">
                   {ingredientes.map((ing, idx) => (
@@ -263,10 +262,10 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
               )}
               {ingredientes.length > 0 && (
                 <div className="mt-3 p-3 bg-muted/50 rounded text-sm space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Soma ingredientes:</span> <span className="font-semibold">{totalIng.toFixed(2)} kg</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground"><LocalizedText source={"Soma ingredientes:"} /></span> <span className="font-semibold">{totalIng.toFixed(2)} kg</span></div>
                   {pesoBatida > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Diferença vs. peso batida:</span>
+                      <span className="text-muted-foreground"><LocalizedText source={"Diferença vs. peso batida:"} /></span>
                       <span className={`font-semibold ${Math.abs(diff) > 5 ? "text-destructive" : "text-primary"}`}>
                         {diff > 0 ? "+" : ""}{diff.toFixed(1)}%
                       </span>
@@ -276,13 +275,12 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
               )}
             </div>
 
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

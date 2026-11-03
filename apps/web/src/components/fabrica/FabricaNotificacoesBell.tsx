@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { modulosVisiveis } from "@/lib/avisosModulo";
@@ -70,12 +71,12 @@ export default function FabricaNotificacoesBell({ fabricaId }: { fabricaId: stri
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="p-3 border-b flex items-center justify-between">
-          <h4 className="font-semibold text-sm">Notificações</h4>
+          <h4 className="font-semibold text-sm"><LocalizedText source={"Notificações"} /></h4>
           {items.length > 0 && <Badge variant="secondary" className="text-xs">{items.length}</Badge>}
         </div>
         <div className="max-h-96 overflow-y-auto">
           {items.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma notificação</div>
+            <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma notificação"} /></div>
           ) : items.map(n => (
             <div key={n.id} className="p-3 border-b last:border-0 hover:bg-muted/40">
               <div className="flex items-start justify-between gap-2">
