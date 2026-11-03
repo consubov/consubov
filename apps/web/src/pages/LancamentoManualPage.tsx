@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -217,9 +218,9 @@ export default function LancamentoManualPage() {
 
   function statusBadge(status: string | undefined) {
     if (!status) return null;
-    if (status === 'ABAIXO') return <Badge variant="destructive" className="text-[10px]">🔴 Abaixo</Badge>;
+    if (status === 'ABAIXO') return <Badge variant="destructive" className="text-[10px]"><LocalizedText source={"🔴 Abaixo"} /></Badge>;
     if (status === 'IDEAL') return <Badge className="bg-yellow-500 text-white text-[10px]">🟡 Ideal</Badge>;
-    if (status === 'ACIMA') return <Badge className="bg-green-600 text-white text-[10px]">🟢 Acima</Badge>;
+    if (status === 'ACIMA') return <Badge className="bg-green-600 text-white text-[10px]"><LocalizedText source={"🟢 Acima"} /></Badge>;
     return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
   }
 
@@ -313,16 +314,16 @@ export default function LancamentoManualPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-primary">Lançamento Manual</h1>
+      <h1 className="text-2xl font-bold text-primary"><LocalizedText source={"Lançamento Manual"} /></h1>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Seleção do Período</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Seleção do Período"} /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Fazenda</Label>
+              <Label><LocalizedText source={"Fazenda"} /></Label>
               <Select value={fazendaId} onValueChange={setFazendaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -331,7 +332,7 @@ export default function LancamentoManualPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Retiro</Label>
+              <Label><LocalizedText source={"Retiro"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId} disabled={!fazendaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -340,7 +341,7 @@ export default function LancamentoManualPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Mês</Label>
+              <Label><LocalizedText source={"Mês"} /></Label>
               <Select value={String(mes)} onValueChange={v => setMes(Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -349,7 +350,7 @@ export default function LancamentoManualPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ano</Label>
+              <Label><LocalizedText source={"Ano"} /></Label>
               <Select value={String(ano)} onValueChange={v => setAno(Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -365,35 +366,34 @@ export default function LancamentoManualPage() {
       {retiroId && rows.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Configurações Globais</CardTitle>
+            <CardTitle className="text-base"><LocalizedText source={"Configurações Globais"} /></CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Intervalo entre salgas (dias)</Label>
+                <Label><LocalizedText source={"Intervalo entre salgas (dias)"} /></Label>
                 <Input
                   type="number" min={1} value={diasNoPastoGlobal}
                   onChange={e => applyGlobalDias(Math.max(1, parseInt(e.target.value) || 1))}
                   disabled={cicloFechado} className="w-32"
                 />
-                <p className="text-[11px] text-muted-foreground">Aplicado a todos os pastos</p>
+                <p className="text-[11px] text-muted-foreground"><LocalizedText source={"Aplicado a todos os pastos"} /></p>
               </div>
               <div className="space-y-2">
-                <Label>Produto padrão</Label>
+                <Label><LocalizedText source={"Produto padrão"} /></Label>
                 <Select value={produtoPadraoId} onValueChange={applyGlobalProduct} disabled={cicloFechado}>
                   <SelectTrigger><SelectValue placeholder="Selecione produto..." /></SelectTrigger>
                   <SelectContent>
                     {produtos.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.nome} ({p.peso_saco_kg}kg/saco)
-                      </SelectItem>
+                        {p.nome} ({p.peso_saco_kg}<LocalizedText source={"kg/saco)"} /></SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {fazendaId && produtos.length === 0 && (
                   <p className="text-[11px] text-amber-700">{MSG_FAZENDA_SEM_PRODUTO}</p>
                 )}
-                <p className="text-[11px] text-muted-foreground">Peso do saco obtido automaticamente</p>
+                <p className="text-[11px] text-muted-foreground"><LocalizedText source={"Peso do saco obtido automaticamente"} /></p>
               </div>
             </div>
           </CardContent>
@@ -402,8 +402,7 @@ export default function LancamentoManualPage() {
 
       {cicloFechado && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 text-sm text-destructive font-medium">
-          ⚠️ O ciclo de {MESES[mes - 1]}/{ano} está fechado. Edição bloqueada.
-        </div>
+          <LocalizedText source={"⚠️ O ciclo de"} />{" "}{MESES[mes - 1]}/{ano} <LocalizedText source={"está fechado. Edição bloqueada."} /></div>
       )}
 
       {loading ? (
@@ -414,15 +413,15 @@ export default function LancamentoManualPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px]">Pasto</TableHead>
-                  <TableHead className="min-w-[80px]">Animais</TableHead>
-                  <TableHead className="min-w-[100px]">Peso médio (kg)</TableHead>
-                  <TableHead className="min-w-[100px]">Sexo</TableHead>
-                  <TableHead className="min-w-[110px]">Categoria</TableHead>
-                  <TableHead className="min-w-[140px]">Produto</TableHead>
-                  <TableHead className="min-w-[120px]">Sacos (mês)</TableHead>
-                  <TableHead className="min-w-[100px]">Dias no pasto</TableHead>
-                  <TableHead className="min-w-[150px]">Consumo (g/cab/dia)</TableHead>
+                  <TableHead className="min-w-[120px]"><LocalizedText source={"Pasto"} /></TableHead>
+                  <TableHead className="min-w-[80px]"><LocalizedText source={"Animais"} /></TableHead>
+                  <TableHead className="min-w-[100px]"><LocalizedText source={"Peso médio (kg)"} /></TableHead>
+                  <TableHead className="min-w-[100px]"><LocalizedText source={"Sexo"} /></TableHead>
+                  <TableHead className="min-w-[110px]"><LocalizedText source={"Categoria"} /></TableHead>
+                  <TableHead className="min-w-[140px]"><LocalizedText source={"Produto"} /></TableHead>
+                  <TableHead className="min-w-[120px]"><LocalizedText source={"Sacos (mês)"} /></TableHead>
+                  <TableHead className="min-w-[100px]"><LocalizedText source={"Dias no pasto"} /></TableHead>
+                  <TableHead className="min-w-[150px]"><LocalizedText source={"Consumo (g/cab/dia)"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -450,9 +449,9 @@ export default function LancamentoManualPage() {
                         <Select value={r.sexo} onValueChange={v => updateRow(idx, "sexo", v)} disabled={cicloFechado}>
                           <SelectTrigger className="w-24"><SelectValue placeholder="—" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Macho">Macho</SelectItem>
-                            <SelectItem value="Fêmea">Fêmea</SelectItem>
-                            <SelectItem value="Misto">Misto</SelectItem>
+                            <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
+                            <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
+                            <SelectItem value="Misto"><LocalizedText source={"Misto"} /></SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -460,9 +459,9 @@ export default function LancamentoManualPage() {
                         <Select value={r.categoria} onValueChange={v => updateRow(idx, "categoria", v)} disabled={cicloFechado}>
                           <SelectTrigger className="w-28"><SelectValue placeholder="—" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Recria 1">Recria 1</SelectItem>
-                            <SelectItem value="Recria 2">Recria 2</SelectItem>
-                            <SelectItem value="Engorda">Engorda</SelectItem>
+                            <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
+                            <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
+                            <SelectItem value="Engorda"><LocalizedText source={"Engorda"} /></SelectItem>
                           </SelectContent>
                         </Select>
                         {r.peso_medio_kg > 0 && (
@@ -479,7 +478,7 @@ export default function LancamentoManualPage() {
                           </SelectContent>
                         </Select>
                         {prod && (
-                          <span className="text-[10px] text-muted-foreground">{prod.peso_saco_kg}kg/saco</span>
+                          <span className="text-[10px] text-muted-foreground">{prod.peso_saco_kg}<LocalizedText source={"kg/saco"} /></span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -544,18 +543,17 @@ export default function LancamentoManualPage() {
           <div className="flex justify-end">
             <Button onClick={handleSalvar} disabled={saving || cicloFechado} className="gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar e Enviar
-            </Button>
+              <LocalizedText source={"Salvar e Enviar"} /></Button>
           </div>
         </>
       ) : retiroId ? (
-        <p className="text-muted-foreground text-sm text-center py-8">Nenhum pasto cadastrado neste retiro.</p>
+        <p className="text-muted-foreground text-sm text-center py-8"><LocalizedText source={"Nenhum pasto cadastrado neste retiro."} /></p>
       ) : null}
 
       <AlertDialog open={!!duplicadoInfo} onOpenChange={(open) => { if (!open) setDuplicadoInfo(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Pasto já lançado hoje</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Pasto já lançado hoje"} /></AlertDialogTitle>
             <AlertDialogDescription>
               {duplicadoInfo
                 ? `${duplicadoInfo.nomes.length > 1 ? "Esses pastos já foram salgados" : "Esse pasto já foi salgado"} hoje${duplicadoInfo.hora ? ` às ${duplicadoInfo.hora}` : ""} (${duplicadoInfo.nomes.join(", ")}). Confirma registrar mais um lançamento?`
@@ -563,8 +561,8 @@ export default function LancamentoManualPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { void salvarLancamentos(); }}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={() => { void salvarLancamentos(); }}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

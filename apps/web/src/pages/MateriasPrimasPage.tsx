@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -104,11 +105,9 @@ export default function MateriasPrimasPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Package2 className="w-5 h-5" /> Matérias-Primas
-        </h1>
+          <Package2 className="w-5 h-5" /> <LocalizedText source={"Matérias-Primas"} /></h1>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova Matéria-Prima
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova Matéria-Prima"} /></Button>
       </div>
 
       <Card>
@@ -116,18 +115,18 @@ export default function MateriasPrimasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Unidade</TableHead>
-                <TableHead>Peso/saco</TableHead>
-                <TableHead>Estoque Atual</TableHead>
-                <TableHead>Estoque Mínimo</TableHead>
+                <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                <TableHead><LocalizedText source={"Unidade"} /></TableHead>
+                <TableHead><LocalizedText source={"Peso/saco"} /></TableHead>
+                <TableHead><LocalizedText source={"Estoque Atual"} /></TableHead>
+                <TableHead><LocalizedText source={"Estoque Mínimo"} /></TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-24 text-right">Ações</TableHead>
+                <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma matéria-prima cadastrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8"><LocalizedText source={"Nenhuma matéria-prima cadastrada"} /></TableCell></TableRow>
               ) : items.map(m => {
                 const baixo = (m.estoque_minimo ?? 0) > 0 && (m.estoque_atual ?? 0) < (m.estoque_minimo ?? 0);
                 return (
@@ -161,12 +160,12 @@ export default function MateriasPrimasPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima"}</DialogTitle>
-            <DialogDescription>Estoque atual é atualizado automaticamente pelas entradas.</DialogDescription>
+            <DialogDescription><LocalizedText source={"Estoque atual é atualizado automaticamente pelas entradas."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div>
-              <Label>Unidade *</Label>
+              <Label><LocalizedText source={"Unidade *"} /></Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {UNIDADES.map(u => (
                   <button key={u} type="button" onClick={() => setForm(f => ({ ...f, unidade: u }))}
@@ -176,15 +175,14 @@ export default function MateriasPrimasPage() {
                 ))}
               </div>
             </div>
-            <div><Label>Peso por saco (kg)</Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
-            <div><Label>Estoque mínimo</Label><Input type="number" step="0.01" value={form.estoque_minimo} onChange={e => setForm(f => ({ ...f, estoque_minimo: e.target.value }))} /></div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+            <div><Label><LocalizedText source={"Peso por saco (kg)"} /></Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Estoque mínimo"} /></Label><Input type="number" step="0.01" value={form.estoque_minimo} onChange={e => setForm(f => ({ ...f, estoque_minimo: e.target.value }))} /></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
