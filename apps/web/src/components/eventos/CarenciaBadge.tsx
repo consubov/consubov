@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Badge } from "@/components/ui/badge";
 import { calcCarenciaDias } from "@/hooks/useEventosLote";
 
@@ -12,7 +13,7 @@ export default function CarenciaBadge({ dataFimCarencia, className }: Props) {
 
   return (
     <Badge variant="destructive" className={className}>
-      Em carência — {dias} dia{dias !== 1 ? "s" : ""} restante{dias !== 1 ? "s" : ""}
+      <LocalizedText source={"Em carência —"} />{" "}{dias} <LocalizedText source={"dia"} />{dias !== 1 ? "s" : ""} <LocalizedText source={"restante"} />{dias !== 1 ? "s" : ""}
     </Badge>
   );
 }

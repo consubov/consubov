@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,23 +44,20 @@ export default function EstoqueDashboard({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-          <Package className="w-4 h-4" /> Estoque de Sal
-        </h2>
+          <Package className="w-4 h-4" /> <LocalizedText source={"Estoque de Sal"} /></h2>
         <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
-          <Plus className="w-3 h-3" /> Adicionar
-        </Button>
+          <Plus className="w-3 h-3" /> <LocalizedText source={"Adicionar"} /></Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+        <p className="text-sm text-muted-foreground text-center py-4"><LocalizedText source={"Carregando..."} /></p>
       ) : (
         <>
           {/* Transferências pendentes — sempre no topo */}
           {pendentes.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
-                <ArrowRightLeft className="w-4 h-4" /> Transferências Pendentes
-                <Badge variant="destructive" className="text-[10px] h-5">{pendentes.length}</Badge>
+                <ArrowRightLeft className="w-4 h-4" /> <LocalizedText source={"Transferências Pendentes"} /><Badge variant="destructive" className="text-[10px] h-5">{pendentes.length}</Badge>
               </h3>
               <div className="space-y-2">
                 {pendentes.map(t => (
@@ -110,15 +108,15 @@ export default function EstoqueDashboard({
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div>
-                        <p className="text-muted-foreground">Estoque</p>
-                        <p className="font-bold text-foreground">{e.quantidade_atual} sacos</p>
+                        <p className="text-muted-foreground"><LocalizedText source={"Estoque"} /></p>
+                        <p className="font-bold text-foreground">{e.quantidade_atual} <LocalizedText source={"sacos"} /></p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Consumo/dia</p>
+                        <p className="text-muted-foreground"><LocalizedText source={"Consumo/dia"} /></p>
                         <p className="font-bold text-secondary">{e.consumo_medio_diario.toFixed(1)}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Dias rest.</p>
+                        <p className="text-muted-foreground"><LocalizedText source={"Dias rest."} /></p>
                         <p className={`font-bold ${diasColor(e.dias_restantes)}`}>
                           {e.dias_restantes !== null ? e.dias_restantes : '—'}
                         </p>
@@ -134,8 +132,7 @@ export default function EstoqueDashboard({
           {historico.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Histórico de Transferências
-              </h3>
+                <LocalizedText source={"Histórico de Transferências"} /></h3>
               <div className="space-y-1">
                 {historico.map(t => (
                   <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
@@ -143,8 +140,7 @@ export default function EstoqueDashboard({
                       {t.status === 'aprovado' ? '✅' : '❌'} {t.status}
                     </Badge>
                     <span className="truncate text-muted-foreground">
-                      {t.retiro_origem_nome} → {t.retiro_destino_nome} ({t.quantidade} sacos)
-                    </span>
+                      {t.retiro_origem_nome} → {t.retiro_destino_nome} ({t.quantidade} <LocalizedText source={"sacos)"} /></span>
                   </div>
                 ))}
               </div>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -438,11 +439,9 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitFork className="w-5 h-5 text-primary" />
-            Pesagem + Apartação
-          </DialogTitle>
+            <LocalizedText source={"Pesagem + Apartação"} /></DialogTitle>
           <DialogDescription>
-            {pastoNome} — Etapa {step} de 4
-          </DialogDescription>
+            {pastoNome} <LocalizedText source={"— Etapa"} />{" "}{step} <LocalizedText source={"de 4"} /></DialogDescription>
         </DialogHeader>
 
         {/* Stepper */}
@@ -459,7 +458,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         {step === 1 && (
           <div className="space-y-4">
             <div>
-              <Label className="text-sm mb-2 block">Quantidade de lotes</Label>
+              <Label className="text-sm mb-2 block"><LocalizedText source={"Quantidade de lotes"} /></Label>
               <div className="grid grid-cols-3 gap-2">
                 {([2, 3, 4] as LoteCount[]).map((n) => (
                   <Button
@@ -493,11 +492,10 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                     </div>
                     {isLast ? (
                       <div className="text-sm text-muted-foreground">
-                        Acima de <strong>{prev} kg</strong> (automático)
-                      </div>
+                        <LocalizedText source={"Acima de"} />{" "}<strong>{prev} kg</strong> <LocalizedText source={"(automático)"} /></div>
                     ) : (
                       <div>
-                        <Label className="text-xs">{lote.nome}: até ___ kg</Label>
+                        <Label className="text-xs">{lote.nome}<LocalizedText source={": até ___ kg"} /></Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -519,10 +517,9 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={handleVoltar} className="flex-1">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
+                <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
               <Button disabled={!step1Valid} onClick={() => setStep(2)} className="flex-1">
-                Avançar <ArrowRight className="w-4 h-4 ml-1" />
+                <LocalizedText source={"Avançar"} />{" "}<ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -536,13 +533,13 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                 <p className="text-lg font-bold text-primary">
                   {totalPesado} / {numAnimais}
                 </p>
-                <p className="text-xs text-muted-foreground">total pesado</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"total pesado"} /></p>
               </div>
               <div className="p-2 rounded-lg bg-muted">
                 <p className="text-lg font-bold text-primary">
                   {mediaGeral > 0 ? mediaGeral.toFixed(1).replace(".", ",") : "—"}
                 </p>
-                <p className="text-xs text-muted-foreground">média geral (kg)</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"média geral (kg)"} /></p>
               </div>
             </div>
 
@@ -561,10 +558,10 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                     </div>
                     <div className="flex justify-between text-xs">
                       <span>
-                        Qtd: <strong>{s.qtd}</strong>
+                        <LocalizedText source={"Qtd:"} />{" "}<strong>{s.qtd}</strong>
                       </span>
                       <span>
-                        Média: <strong>{s.qtd > 0 ? media.toFixed(1).replace(".", ",") : "—"} kg</strong>
+                        <LocalizedText source={"Média:"} />{" "}<strong>{s.qtd > 0 ? media.toFixed(1).replace(".", ",") : "—"} kg</strong>
                       </span>
                     </div>
                     {s.ultimos.length > 0 && (
@@ -604,20 +601,17 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                   disabled={pesosLancados.length === 0}
                   size="sm"
                 >
-                  <Undo2 className="w-4 h-4 mr-1" /> Desfazer última
-                </Button>
+                  <Undo2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Desfazer última"} /></Button>
                 <Button onClick={lancarPeso} className="flex-1" disabled={!currentPeso}>
-                  Lançar
-                </Button>
+                  <LocalizedText source={"Lançar"} /></Button>
               </div>
             </div>
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={handleVoltar} className="flex-1">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
+                <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
               <Button onClick={() => setStep(3)} disabled={totalPesado === 0} className="flex-1">
-                Finalizar Pesagem <ArrowRight className="w-4 h-4 ml-1" />
+                <LocalizedText source={"Finalizar Pesagem"} />{" "}<ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -628,24 +622,24 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
           <div className="space-y-3">
             <Card>
               <CardHeader className="p-3">
-                <CardTitle className="text-base">Resumo</CardTitle>
+                <CardTitle className="text-base"><LocalizedText source={"Resumo"} /></CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0 space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pasto origem:</span>
+                  <span className="text-muted-foreground"><LocalizedText source={"Pasto origem:"} /></span>
                   <strong>{pastoNome}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Data:</span>
+                  <span className="text-muted-foreground"><LocalizedText source={"Data:"} /></span>
                   <strong>{new Date().toLocaleDateString("pt-BR")}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Usuário:</span>
+                  <span className="text-muted-foreground"><LocalizedText source={"Usuário:"} /></span>
                   <strong>{userName}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total pesado:</span>
-                  <strong>{totalPesado} animais</strong>
+                  <span className="text-muted-foreground"><LocalizedText source={"Total pesado:"} /></span>
+                  <strong>{totalPesado} <LocalizedText source={"animais"} /></strong>
                 </div>
               </CardContent>
             </Card>
@@ -654,10 +648,10 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="text-left p-2">Lote</th>
-                    <th className="text-right p-2">Qtd</th>
-                    <th className="text-right p-2">Média</th>
-                    <th className="text-right p-2">Faixa</th>
+                    <th className="text-left p-2"><LocalizedText source={"Lote"} /></th>
+                    <th className="text-right p-2"><LocalizedText source={"Qtd"} /></th>
+                    <th className="text-right p-2"><LocalizedText source={"Média"} /></th>
+                    <th className="text-right p-2"><LocalizedText source={"Faixa"} /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -680,10 +674,9 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={handleVoltar} className="flex-1">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
+                <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
               <Button onClick={() => setStep(4)} className="flex-1">
-                Confirmar e Definir Destinos <ArrowRight className="w-4 h-4 ml-1" />
+                <LocalizedText source={"Confirmar e Definir Destinos"} />{" "}<ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -699,7 +692,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                   <strong>{loteAtualDestino.nome}</strong>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Quantidade: <strong>{stats[loteAtualDestino.ordem].qtd}</strong> · Média:{" "}
+                  <LocalizedText source={"Quantidade:"} />{" "}<strong>{stats[loteAtualDestino.ordem].qtd}</strong> <LocalizedText source={"· Média:"} />{" "}
                   <strong>
                     {(stats[loteAtualDestino.ordem].total / stats[loteAtualDestino.ordem].qtd)
                       .toFixed(1)
@@ -708,15 +701,15 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                   </strong>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Destino {destinoIndex + 1} de {lotesComAnimais.length}
+                  <LocalizedText source={"Destino"} />{" "}{destinoIndex + 1} <LocalizedText source={"de"} />{" "}{lotesComAnimais.length}
                 </div>
               </CardContent>
             </Card>
 
             <div className="space-y-1 max-h-64 overflow-y-auto">
-              <Label className="text-sm">Selecione o pasto destino:</Label>
+              <Label className="text-sm"><LocalizedText source={"Selecione o pasto destino:"} /></Label>
               {pastosDisponiveis.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum pasto disponível.</p>
+                <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto disponível."} /></p>
               )}
               {pastosDisponiveis.map((p) => (
                 <Button
@@ -726,22 +719,21 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                   onClick={() => setDestinos((prev) => ({ ...prev, [loteAtualDestino.ordem]: p.id }))}
                 >
                   <span>{p.nome}</span>
-                  <span className="text-xs opacity-70">{p.num_animais} animais</span>
+                  <span className="text-xs opacity-70">{p.num_animais} <LocalizedText source={"animais"} /></span>
                 </Button>
               ))}
             </div>
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={handleVoltar} className="flex-1">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
+                <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
               {destinoIndex < lotesComAnimais.length - 1 ? (
                 <Button
                   disabled={!destinos[loteAtualDestino.ordem]}
                   onClick={() => setDestinoIndex((i) => i + 1)}
                   className="flex-1"
                 >
-                  Confirmar Destino <ArrowRight className="w-4 h-4 ml-1" />
+                  <LocalizedText source={"Confirmar Destino"} />{" "}<ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               ) : (
                 <Button
@@ -750,8 +742,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                   className="flex-1"
                 >
                   {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-                  Finalizar Apartação
-                </Button>
+                  <LocalizedText source={"Finalizar Apartação"} /></Button>
               )}
             </div>
           </div>
