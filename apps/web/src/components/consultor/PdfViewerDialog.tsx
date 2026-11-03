@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -90,16 +91,14 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent showCloseButton={false} className="max-w-5xl w-[95vw] h-[92vh] p-0 gap-0 flex flex-col">
-        <DialogDescription className="sr-only">Visualizar, baixar ou compartilhar o relatorio PDF.</DialogDescription>
+        <DialogDescription className="sr-only"><LocalizedText source={"Visualizar, baixar ou compartilhar o relatorio PDF."} /></DialogDescription>
         <DialogHeader className="p-3 border-b flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-sm truncate pr-2">{title || "Relatório PDF"}</DialogTitle>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={baixar} disabled={!blob && !url}>
-              <Download className="w-4 h-4" /> Baixar
-            </Button>
+              <Download className="w-4 h-4" /> <LocalizedText source={"Baixar"} /></Button>
             <Button size="sm" className="gap-1.5" style={{ background: "#1F7A4D", color: "white" }} onClick={enviar} disabled={!blob}>
-              <Share2 className="w-4 h-4" /> Enviar
-            </Button>
+              <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} /></Button>
             <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar">
               <X className="w-4 h-4" />
             </Button>
@@ -108,13 +107,12 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
         <div className="flex-1 min-h-0 bg-muted/30">
           {loading && (
             <div className="h-full flex items-center justify-center text-muted-foreground gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Carregando PDF…
-            </div>
+              <Loader2 className="w-4 h-4 animate-spin" /> <LocalizedText source={"Carregando PDF…"} /></div>
           )}
           {error && !loading && (
             <div className="h-full flex flex-col items-center justify-center gap-3 p-4 text-center">
-              <div className="text-sm text-destructive">Não foi possível carregar o PDF no visualizador.</div>
-              <Button size="sm" variant="outline" onClick={baixar}>Baixar PDF</Button>
+              <div className="text-sm text-destructive"><LocalizedText source={"Não foi possível carregar o PDF no visualizador."} /></div>
+              <Button size="sm" variant="outline" onClick={baixar}><LocalizedText source={"Baixar PDF"} /></Button>
             </div>
           )}
           {blobUrl && !loading && !error && (
