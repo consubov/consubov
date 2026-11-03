@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -172,14 +173,14 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
               <Beef className="w-4 h-4" />
               {pasto.nome}
             </DialogTitle>
-            <DialogDescription>Detalhes do lote</DialogDescription>
+            <DialogDescription><LocalizedText source={"Detalhes do lote"} /></DialogDescription>
           </DialogHeader>
 
           <CarenciaBadge dataFimCarencia={pasto.data_fim_carencia} className="mb-2" />
 
           {/* Seção 1 — Informações Gerais */}
           <div className="space-y-1">
-            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Informações Gerais</h4>
+            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider"><LocalizedText source={"Informações Gerais"} /></h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Item label="Animais" value={String(pasto.num_animais)} />
               <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
@@ -188,7 +189,7 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
                 value={
                   consumoGlobal != null ? (
                     <span className="flex items-center gap-1.5 flex-wrap">
-                      <span>{consumoGlobal.toFixed(1).replace(".", ",")} g/cab/dia</span>
+                      <span>{consumoGlobal.toFixed(1).replace(".", ",")} <LocalizedText source={"g/cab/dia"} /></span>
                       {statusGlobal && (
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusClasses[statusGlobal] || "bg-muted text-muted-foreground border-muted"}`}>
                           {statusGlobal}
@@ -217,12 +218,11 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
           {/* Seção 2 — Pesagem */}
           <div className="space-y-1 border-t pt-3">
             <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-              <Scale className="w-3 h-3" /> Pesagem
-            </h4>
+              <Scale className="w-3 h-3" /> <LocalizedText source={"Pesagem"} /></h4>
             {pesagem ? (
               <div className="text-sm space-y-0.5">
                 <p className="flex items-center gap-2 flex-wrap">
-                  <span>Última pesagem: <strong>{fmtDate(pesagem.data_pesagem)}</strong></span>
+                  <span><LocalizedText source={"Última pesagem:"} />{" "}<strong>{fmtDate(pesagem.data_pesagem)}</strong></span>
                   <button
                     type="button"
                     onClick={handleShareClick}
@@ -230,42 +230,38 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
                     aria-label="Compartilhar resultado"
                   >
                     <Camera className="w-4 h-4" />
-                    Compartilhar
-                  </button>
+                    <LocalizedText source={"Compartilhar"} /></button>
                 </p>
-                <p>Animais pesados: <strong>{pesagem.total_pesado}</strong></p>
-                <p>Peso médio calculado: <strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
+                <p><LocalizedText source={"Animais pesados:"} />{" "}<strong>{pesagem.total_pesado}</strong></p>
+                <p><LocalizedText source={"Peso médio calculado:"} />{" "}<strong>{pesagem.media_calculada != null ? `${pesagem.media_calculada} kg` : "—"}</strong></p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma pesagem registrada</p>
+              <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma pesagem registrada"} /></p>
             )}
           </div>
 
           {/* Seção 3 — Sanidade */}
           <div className="space-y-1 border-t pt-3">
             <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
-              <Syringe className="w-3 h-3" /> Sanidade
-            </h4>
+              <Syringe className="w-3 h-3" /> <LocalizedText source={"Sanidade"} /></h4>
             {sanitario ? (
               <div className="text-sm space-y-0.5">
                 <p><strong>{catLabels[sanitario.categoria] || sanitario.categoria}</strong>: {sanitario.medicamento}</p>
                 <p className="text-muted-foreground">Dose: {sanitario.dose}</p>
-                <p className="text-muted-foreground">Data: {fmtDate(sanitario.data_aplicacao)}</p>
+                <p className="text-muted-foreground"><LocalizedText source={"Data:"} />{" "}{fmtDate(sanitario.data_aplicacao)}</p>
                 {carenciaDias > 0 && (
                   <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30">
-                    Carência restante: {carenciaDias} dias
-                  </span>
+                    <LocalizedText source={"Carência restante:"} />{" "}{carenciaDias} <LocalizedText source={"dias"} /></span>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhum evento sanitário registrado</p>
+              <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum evento sanitário registrado"} /></p>
             )}
           </div>
 
           <Button variant="outline" className="w-full mt-2" onClick={onVerHistorico}>
             <History className="w-4 h-4 mr-2" />
-            Ver histórico completo
-          </Button>
+            <LocalizedText source={"Ver histórico completo"} /></Button>
         </DialogContent>
       </Dialog>
 

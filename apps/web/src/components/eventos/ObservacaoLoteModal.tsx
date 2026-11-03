@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,19 +48,18 @@ export default function ObservacaoLoteModal({ open, onClose, pastoId, pastoNome,
     <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); setTexto(""); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Observação do Lote</DialogTitle>
+          <DialogTitle><LocalizedText source={"Observação do Lote"} /></DialogTitle>
           <DialogDescription>{pastoNome}</DialogDescription>
         </DialogHeader>
         <div className="py-2">
-          <Label>Descrição</Label>
+          <Label><LocalizedText source={"Descrição"} /></Label>
           <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} placeholder="Descreva a observação..." />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { onClose(); setTexto(""); }}>Cancelar</Button>
+          <Button variant="outline" onClick={() => { onClose(); setTexto(""); }}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleSave} disabled={!texto.trim() || saving}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar
-          </Button>
+            <LocalizedText source={"Salvar"} /></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

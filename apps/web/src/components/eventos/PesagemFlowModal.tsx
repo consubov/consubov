@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -226,38 +227,35 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Scale className="w-5 h-5" />
-            Pesagem
-            {!isOnline && (
+            <LocalizedText source={"Pesagem"} />{!isOnline && (
               <Badge variant="destructive" className="ml-auto text-xs flex items-center gap-1">
                 <WifiOff className="w-3 h-3" /> Offline
               </Badge>
             )}
           </DialogTitle>
-          <DialogDescription>{pastoNome} — {numAnimais} animais</DialogDescription>
+          <DialogDescription>{pastoNome} — {numAnimais} <LocalizedText source={"animais"} /></DialogDescription>
         </DialogHeader>
 
         {!isOnline && step === "inicio" && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs text-yellow-700 dark:text-yellow-300">
-            Você está offline. Os dados serão salvos localmente e sincronizados quando a conexão for restaurada.
-          </div>
+            <LocalizedText source={"Você está offline. Os dados serão salvos localmente e sincronizados quando a conexão for restaurada."} /></div>
         )}
 
         {step === "inicio" && (
           <div className="space-y-4 py-4">
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Peso médio atual: <strong>{pesoMedioAtual != null ? `${pesoMedioAtual} kg` : "—"}</strong>
+                <LocalizedText source={"Peso médio atual:"} />{" "}<strong>{pesoMedioAtual != null ? `${pesoMedioAtual} kg` : "—"}</strong>
               </p>
               {sanitarioData && (
                 <Badge variant="secondary">
-                  + Sanitário: {sanitarioData.categoria} — {sanitarioData.medicamento}
+                  <LocalizedText source={"+ Sanitário:"} />{" "}{sanitarioData.categoria} — {sanitarioData.medicamento}
                 </Badge>
               )}
             </div>
             <Button className="w-full h-12" onClick={() => setStep("digitacao")}>
               <Scale className="w-5 h-5 mr-2" />
-              Iniciar Pesagem
-            </Button>
+              <LocalizedText source={"Iniciar Pesagem"} /></Button>
             {retiroId && !sanitarioData && (
               <Button
                 variant="outline"
@@ -265,8 +263,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                 onClick={() => setApartacaoOpen(true)}
               >
                 <GitFork className="w-5 h-5 mr-2" />
-                Pesagem + Apartação
-              </Button>
+                <LocalizedText source={"Pesagem + Apartação"} /></Button>
             )}
           </div>
         )}
@@ -278,20 +275,19 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3 rounded-lg bg-muted">
                 <p className="text-2xl font-bold text-primary">{pesos.length}/{numAnimais}</p>
-                <p className="text-xs text-muted-foreground">pesados</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"pesados"} /></p>
               </div>
               <div className="p-3 rounded-lg bg-muted">
                 <p className="text-2xl font-bold text-primary">
                   {mediaParcial > 0 ? mediaParcial.toFixed(1).replace(".", ",") : "—"}
                 </p>
-                <p className="text-xs text-muted-foreground">média (kg)</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"média (kg)"} /></p>
               </div>
             </div>
 
             {todospesados && (
               <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-300 text-center font-medium">
-                ✅ Todos os animais foram pesados. Clique em Finalizar.
-              </div>
+                <LocalizedText source={"✅ Todos os animais foram pesados. Clique em Finalizar."} /></div>
             )}
 
             <div className="space-y-2">
@@ -320,8 +316,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                   setTimeout(() => inputRef.current?.focus(), 50);
                 }}
               >
-                Próximo ➜
-              </Button>
+                <LocalizedText source={"Próximo ➜"} /></Button>
             </div>
 
             {pesos.length > 0 && (
@@ -337,12 +332,11 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
             <div className="flex gap-2">
               {pesos.length > 0 && (
                 <Button variant="outline" size="sm" onClick={removerUltimo}>
-                  Desfazer último
-                </Button>
+                  <LocalizedText source={"Desfazer último"} /></Button>
               )}
               <Button className={`flex-1 ${todospesados ? "animate-pulse" : ""}`} onClick={() => setStep("finalizando")} disabled={pesos.length === 0}>
                 <Check className="w-4 h-4 mr-2" />
-                Finalizar ({pesos.length})
+                <LocalizedText source={"Finalizar ("} />{pesos.length})
               </Button>
             </div>
           </div>
@@ -352,23 +346,21 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
         {step === "finalizando" && (
           <div className="space-y-4 py-4">
             <div className="text-center space-y-2">
-              <p className="text-lg font-bold">{pesos.length} animais pesados</p>
-              <p className="text-sm">Média: <strong>{mediaParcial.toFixed(1).replace(".", ",")} kg</strong></p>
+              <p className="text-lg font-bold">{pesos.length} <LocalizedText source={"animais pesados"} /></p>
+              <p className="text-sm"><LocalizedText source={"Média:"} />{" "}<strong>{mediaParcial.toFixed(1).replace(".", ",")} kg</strong></p>
               <p className="text-sm">
-                Novo peso médio do lote: <strong>{calcNovoPesoMedio()?.toFixed(1).replace(".", ",")} kg</strong>
+                <LocalizedText source={"Novo peso médio do lote:"} />{" "}<strong>{calcNovoPesoMedio()?.toFixed(1).replace(".", ",")} kg</strong>
               </p>
               {!isOnline && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  📴 Será salvo localmente (offline)
-                </p>
+                  <LocalizedText source={"📴 Será salvo localmente (offline)"} /></p>
               )}
             </div>
             <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("digitacao")}>Voltar</Button>
+              <Button variant="outline" onClick={() => setStep("digitacao")}><LocalizedText source={"Voltar"} /></Button>
               <Button onClick={finalizar} disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Confirmar
-              </Button>
+                <LocalizedText source={"Confirmar"} /></Button>
             </DialogFooter>
           </div>
         )}
