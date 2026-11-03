@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,7 +45,7 @@ export default function ScoreSamplesInput({ label, samples, onAdd, onRemove, dis
       <div className="flex items-center justify-between gap-2">
         <Label className="text-xs font-semibold">{label}</Label>
         <span className="text-[11px] text-muted-foreground">
-          {samples.length} amostra{samples.length !== 1 ? "s" : ""} · média {formatAvg(avg)}
+          {samples.length} <LocalizedText source={"amostra"} />{samples.length !== 1 ? "s" : ""} <LocalizedText source={"· média"} />{" "}{formatAvg(avg)}
         </span>
       </div>
       <div className="flex gap-1.5 items-center flex-wrap">
@@ -72,8 +73,7 @@ export default function ScoreSamplesInput({ label, samples, onAdd, onRemove, dis
           disabled={disabled || current === undefined}
           className="h-9 gap-1 bg-primary hover:bg-primary/90 ml-auto"
         >
-          <ArrowRight className="w-4 h-4" /> Próximo
-        </Button>
+          <ArrowRight className="w-4 h-4" /> <LocalizedText source={"Próximo"} /></Button>
       </div>
       {samples.length > 0 && (
         <div className="flex gap-1 flex-wrap">
