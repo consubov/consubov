@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -189,13 +190,12 @@ export default function ConsultorFazendaDetalhePage() {
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!fazenda) return <div className="text-center text-muted-foreground py-12">Fazenda não encontrada</div>;
+  if (!fazenda) return <div className="text-center text-muted-foreground py-12"><LocalizedText source={"Fazenda não encontrada"} /></div>;
 
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate("/consultor")} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       <Card className="p-4 space-y-2">
         <div className="flex items-start gap-3">
@@ -205,7 +205,7 @@ export default function ConsultorFazendaDetalhePage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground">{fazenda.nome_fazenda}</h1>
             {fazenda.proprietario && <div className="text-sm text-muted-foreground">{fazenda.proprietario}</div>}
-            {fazenda.responsavel && <div className="text-xs text-muted-foreground">Responsável: {fazenda.responsavel}</div>}
+            {fazenda.responsavel && <div className="text-xs text-muted-foreground"><LocalizedText source={"Responsável:"} />{" "}{fazenda.responsavel}</div>}
             {(fazenda.municipio || fazenda.uf) && (
               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3" />
@@ -216,8 +216,7 @@ export default function ConsultorFazendaDetalhePage() {
         </div>
         <Button onClick={prepararOffline} disabled={preparing || offlineReady} className="w-full gap-2 bg-primary hover:bg-primary/90 mt-2">
           <Play className="w-4 h-4" />
-          Iniciar Visita
-        </Button>
+          <LocalizedText source={"Iniciar Visita"} /></Button>
       </Card>
 
       {/* Modal Preparando → Pronto */}
@@ -247,17 +246,16 @@ export default function ConsultorFazendaDetalhePage() {
               onClick={() => { setOfflineReady(false); setTipoModal(true); }}
               className="w-full bg-primary hover:bg-primary/90"
             >
-              Começar
-            </Button>
+              <LocalizedText source={"Começar"} /></Button>
           )}
         </DialogContent>
       </Dialog>
 
 
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-2">Visitas anteriores</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-2"><LocalizedText source={"Visitas anteriores"} /></h2>
         {visitas.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma visita registrada.</Card>
+          <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma visita registrada."} /></Card>
         ) : (
           <div className="space-y-2">
             {visitas.map(v => (
@@ -285,8 +283,8 @@ export default function ConsultorFazendaDetalhePage() {
       <Dialog open={tipoModal} onOpenChange={setTipoModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tipo de Visita</DialogTitle>
-            <DialogDescription>Escolha o tipo de visita que deseja iniciar.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Tipo de Visita"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Escolha o tipo de visita que deseja iniciar."} /></DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <Button
@@ -295,8 +293,8 @@ export default function ConsultorFazendaDetalhePage() {
               onClick={() => iniciarVisita("rotina")}
               disabled={creating}
             >
-              <div className="font-semibold text-base">Rotina</div>
-              <div className="text-xs text-muted-foreground font-normal">Avaliação de pastos, cocho, escore corporal</div>
+              <div className="font-semibold text-base"><LocalizedText source={"Rotina"} /></div>
+              <div className="text-xs text-muted-foreground font-normal"><LocalizedText source={"Avaliação de pastos, cocho, escore corporal"} /></div>
             </Button>
             <Button
               variant="outline"
@@ -304,8 +302,8 @@ export default function ConsultorFazendaDetalhePage() {
               onClick={() => iniciarVisita("confinamento")}
               disabled={creating}
             >
-              <div className="font-semibold text-base">Confinamento</div>
-              <div className="text-xs text-muted-foreground font-normal">Avaliação sequencial de currais</div>
+              <div className="font-semibold text-base"><LocalizedText source={"Confinamento"} /></div>
+              <div className="text-xs text-muted-foreground font-normal"><LocalizedText source={"Avaliação sequencial de currais"} /></div>
             </Button>
             <Button
               variant="outline"
@@ -313,8 +311,8 @@ export default function ConsultorFazendaDetalhePage() {
               onClick={() => iniciarVisita("fabrica")}
               disabled={creating}
             >
-              <div className="font-semibold text-base">Fábrica</div>
-              <div className="text-xs text-muted-foreground font-normal">Avaliação da fábrica/insumos com tópicos livres</div>
+              <div className="font-semibold text-base"><LocalizedText source={"Fábrica"} /></div>
+              <div className="text-xs text-muted-foreground font-normal"><LocalizedText source={"Avaliação da fábrica/insumos com tópicos livres"} /></div>
             </Button>
           </div>
         </DialogContent>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { forEachLimited, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -287,27 +288,27 @@ export default function ConsultorDespesasPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2"><Fuel className="w-5 h-5" /> Despesas de Combustível</h1>
-          <p className="text-sm text-muted-foreground">Cupons e relatórios</p>
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2"><Fuel className="w-5 h-5" /> <LocalizedText source={"Despesas de Combustível"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Cupons e relatórios"} /></p>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" /> Cupom</Button>
+        <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Cupom"} /></Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Card className="p-3">
-          <div className="text-xs text-muted-foreground">Cupons pendentes</div>
+          <div className="text-xs text-muted-foreground"><LocalizedText source={"Cupons pendentes"} /></div>
           <div className="text-2xl font-bold">{pendentes.length}</div>
         </Card>
         <Card className="p-3">
-          <div className="text-xs text-muted-foreground">Valor pendente</div>
+          <div className="text-xs text-muted-foreground"><LocalizedText source={"Valor pendente"} /></div>
           <div className="text-2xl font-bold text-primary">{totalPendente.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
         </Card>
       </div>
 
       <Card className="p-3">
-        <div className="text-sm font-semibold mb-2">Gastos do mês por semana</div>
+        <div className="text-sm font-semibold mb-2"><LocalizedText source={"Gastos do mês por semana"} /></div>
         {donutData.length === 0 ? (
-          <div className="text-xs text-muted-foreground py-6 text-center">Sem despesas no mês atual.</div>
+          <div className="text-xs text-muted-foreground py-6 text-center"><LocalizedText source={"Sem despesas no mês atual."} /></div>
         ) : (
           <div className="flex items-center gap-3">
             <ResponsiveContainer width={160} height={160}>
@@ -335,16 +336,15 @@ export default function ConsultorDespesasPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Cupons pendentes</h2>
+        <h2 className="text-sm font-semibold"><LocalizedText source={"Cupons pendentes"} /></h2>
         <Button size="sm" variant="outline" onClick={() => setGenOpen(true)} disabled={!pendentes.length}>
-          <FileText className="w-4 h-4 mr-1" /> Gerar relatório
-        </Button>
+          <FileText className="w-4 h-4 mr-1" /> <LocalizedText source={"Gerar relatório"} /></Button>
       </div>
 
       {loading ? (
-        <div className="text-center py-6 text-muted-foreground">Carregando…</div>
+        <div className="text-center py-6 text-muted-foreground"><LocalizedText source={"Carregando…"} /></div>
       ) : pendentes.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum cupom pendente.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum cupom pendente."} /></Card>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           {pendentes.map(d => (
@@ -355,8 +355,7 @@ export default function ConsultorDespesasPage() {
                 <div className="text-muted-foreground">{format(new Date(d.data_despesa + "T00:00:00"), "dd/MM/yyyy")}</div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setToDelete(d)} className="w-full text-destructive">
-                <Trash2 className="w-3 h-3 mr-1" /> Excluir
-              </Button>
+                <Trash2 className="w-3 h-3 mr-1" /> <LocalizedText source={"Excluir"} /></Button>
             </Card>
           ))}
         </div>
@@ -364,7 +363,7 @@ export default function ConsultorDespesasPage() {
 
       {relatorios.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold mt-4">Relatórios anteriores</h2>
+          <h2 className="text-sm font-semibold mt-4"><LocalizedText source={"Relatórios anteriores"} /></h2>
           <div className="space-y-2">
             {relatorios.map(r => (
               <Card key={r.id} className="p-3 flex items-center justify-between">
@@ -394,23 +393,22 @@ export default function ConsultorDespesasPage() {
       {/* Add cupom modal */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Novo cupom</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Novo cupom"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Foto do cupom</Label>
+              <Label><LocalizedText source={"Foto do cupom"} /></Label>
               <Input type="file" accept="image/*" onChange={(e) => setAddFile(e.target.files?.[0] ?? null)} />
             </div>
             <div>
-              <Label>Valor (R$)</Label>
+              <Label><LocalizedText source={"Valor (R$)"} /></Label>
               <Input type="number" step="0.01" inputMode="decimal" value={addValor} onChange={(e) => setAddValor(e.target.value)} />
             </div>
             <div>
-              <Label>Data</Label>
+              <Label><LocalizedText source={"Data"} /></Label>
               <Input type="date" value={addData} onChange={(e) => setAddData(e.target.value)} />
             </div>
             <Button onClick={handleAdd} disabled={uploading} className="w-full">
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Salvar
-            </Button>
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} <LocalizedText source={"Salvar"} /></Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -418,7 +416,7 @@ export default function ConsultorDespesasPage() {
       {/* Generate modal */}
       <Dialog open={genOpen} onOpenChange={setGenOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Gerar relatório</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Gerar relatório"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               {(["semanal","quinzenal","mensal","personalizado"] as TipoPeriodo[]).map(t => (
@@ -428,19 +426,18 @@ export default function ConsultorDespesasPage() {
               ))}
             </div>
             <div>
-              <Label>Início</Label>
+              <Label><LocalizedText source={"Início"} /></Label>
               <Input type="date" value={genIni} onChange={(e) => setGenIni(e.target.value)} disabled={genTipo !== "personalizado"} />
             </div>
             <div>
-              <Label>Fim</Label>
+              <Label><LocalizedText source={"Fim"} /></Label>
               <Input type="date" value={genFim} onChange={(e) => setGenFim(e.target.value)} disabled={genTipo !== "personalizado"} />
             </div>
             <div className="text-xs text-muted-foreground">
-              Cupons no período: <strong>{despesas.filter(d => !d.relatorio_despesa_id && d.data_despesa >= genIni && d.data_despesa <= genFim).length}</strong>
+              <LocalizedText source={"Cupons no período:"} />{" "}<strong>{despesas.filter(d => !d.relatorio_despesa_id && d.data_despesa >= genIni && d.data_despesa <= genFim).length}</strong>
             </div>
             <Button onClick={handleGerar} disabled={generating} className="w-full">
-              {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />} Gerar PDF
-            </Button>
+              {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />} <LocalizedText source={"Gerar PDF"} /></Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -448,12 +445,12 @@ export default function ConsultorDespesasPage() {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cupom?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle><LocalizedText source={"Excluir cupom?"} /></AlertDialogTitle>
+            <AlertDialogDescription><LocalizedText source={"Esta ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}><LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -461,14 +458,13 @@ export default function ConsultorDespesasPage() {
       <AlertDialog open={!!toDeleteRel} onOpenChange={(o) => !o && setToDeleteRel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir relatório?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir relatório?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Essa ação não pode ser desfeita. Os cupons vinculados continuarão marcados como já reportados.
-            </AlertDialogDescription>
+              <LocalizedText source={"Tem certeza? Essa ação não pode ser desfeita. Os cupons vinculados continuarão marcados como já reportados."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRelatorio}>Excluir</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRelatorio}><LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

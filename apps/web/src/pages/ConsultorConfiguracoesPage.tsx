@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDietaCategorias } from "@/hooks/useDietaCategorias";
@@ -52,15 +53,15 @@ export default function ConsultorConfiguracoesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold text-foreground">Configurações</h1>
+      <h1 className="text-lg font-bold text-foreground"><LocalizedText source={"Configurações"} /></h1>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Categorias de Dieta</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Categorias de Dieta"} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-2">Categorias fixas do sistema</p>
+            <p className="text-xs text-muted-foreground mb-2"><LocalizedText source={"Categorias fixas do sistema"} /></p>
             <div className="flex flex-wrap gap-2">
               {DIETA_CATEGORIAS_FIXAS.map(nome => (
                 <Badge key={nome} variant="secondary">{nome}</Badge>
@@ -70,12 +71,11 @@ export default function ConsultorConfiguracoesPage() {
 
           <div className="pt-2 border-t">
             <p className="text-xs text-muted-foreground mb-2">
-              Suas categorias personalizadas (válidas em todas as fazendas e visitas)
-            </p>
+              <LocalizedText source={"Suas categorias personalizadas (válidas em todas as fazendas e visitas)"} /></p>
             {loading && categorias.length === 0 ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : categorias.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma categoria personalizada.</p>
+              <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma categoria personalizada."} /></p>
             ) : (
               <ul className="space-y-2">
                 {categorias.map(cat => (
@@ -134,16 +134,14 @@ export default function ConsultorConfiguracoesPage() {
       <AlertDialog open={!!excluirAlvo} onOpenChange={o => !o && setExcluirAlvo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria {excluirAlvo?.nome}?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir categoria"} />{" "}{excluirAlvo?.nome}?</AlertDialogTitle>
             <AlertDialogDescription>
-              A categoria deixará de aparecer em novas visitas. Currais já salvos mantêm o texto registrado.
-            </AlertDialogDescription>
+              <LocalizedText source={"A categoria deixará de aparecer em novas visitas. Currais já salvos mantêm o texto registrado."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => void handleExcluir()}>
-              Excluir
-            </AlertDialogAction>
+              <LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

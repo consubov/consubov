@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -206,8 +207,7 @@ export default function ConsultorFazendasPage() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Landmark className="w-5 h-5" /> Minhas Fazendas
-          </h1>
+            <Landmark className="w-5 h-5" /> <LocalizedText source={"Minhas Fazendas"} /></h1>
           <div className="flex items-center gap-2">
             <Button
               onClick={() => setLogoDialogOpen(true)}
@@ -219,8 +219,7 @@ export default function ConsultorFazendasPage() {
               <ImageIcon className="w-4 h-4" />
             </Button>
             <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4" /> Nova
-            </Button>
+              <Plus className="w-4 h-4" /> <LocalizedText source={"Nova"} /></Button>
           </div>
         </div>
 
@@ -249,12 +248,10 @@ export default function ConsultorFazendasPage() {
 
       {fazendas.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">
-          Nenhuma fazenda cadastrada ainda.<br />Toque em "Nova" para começar.
-        </Card>
+          <LocalizedText source={"Nenhuma fazenda cadastrada ainda."} /><br /><LocalizedText source={"Toque em \"Nova\" para começar."} /></Card>
       ) : filtered.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground text-sm">
-          Nenhuma fazenda encontrada.
-        </Card>
+          <LocalizedText source={"Nenhuma fazenda encontrada."} /></Card>
       ) : (
         <div className="space-y-2">
           {filtered.map(f => (
@@ -319,11 +316,11 @@ export default function ConsultorFazendasPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Nome da fazenda *</Label><Input value={form.nome_fazenda} onChange={e => setForm(f => ({ ...f, nome_fazenda: e.target.value }))} /></div>
-            <div><Label>Proprietário</Label><Input value={form.proprietario} onChange={e => setForm(f => ({ ...f, proprietario: e.target.value }))} /></div>
-            <div><Label>Responsável</Label><Input placeholder="Nome do gerente ou responsável" value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome da fazenda *"} /></Label><Input value={form.nome_fazenda} onChange={e => setForm(f => ({ ...f, nome_fazenda: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Proprietário"} /></Label><Input value={form.proprietario} onChange={e => setForm(f => ({ ...f, proprietario: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Responsável"} /></Label><Input placeholder="Nome do gerente ou responsável" value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="col-span-2"><Label>Município</Label><Input value={form.municipio} onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))} /></div>
+              <div className="col-span-2"><Label><LocalizedText source={"Município"} /></Label><Input value={form.municipio} onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))} /></div>
               <div><Label>UF</Label><Input maxLength={2} value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -332,10 +329,9 @@ export default function ConsultorFazendasPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -343,20 +339,18 @@ export default function ConsultorFazendasPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir fazenda?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir fazenda?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Isso também afetará o histórico de visitas desta fazenda. Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
+              <LocalizedText source={"Tem certeza? Isso também afetará o histórico de visitas desta fazenda. Essa ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); handleDelete(); }}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
-            </AlertDialogAction>
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -428,8 +422,7 @@ function LogoSlot({
               <img src={previewUrl} alt="Prévia" className="h-14 w-auto object-contain bg-muted rounded border p-1" />
               {showRemove && (
                 <Button variant="ghost" size="sm" onClick={onRemove} disabled={saving} className="text-destructive gap-1">
-                  <Trash2 className="w-4 h-4" /> Remover
-                </Button>
+                  <Trash2 className="w-4 h-4" /> <LocalizedText source={"Remover"} /></Button>
               )}
             </div>
           )}
@@ -437,10 +430,10 @@ function LogoSlot({
       )}
 
       {!toggleOn && isDefaultConsubov && (
-        <div className="text-xs text-muted-foreground">Usando a logo Consubov padrão.</div>
+        <div className="text-xs text-muted-foreground"><LocalizedText source={"Usando a logo Consubov padrão."} /></div>
       )}
       {!toggleOn && !isDefaultConsubov && (
-        <div className="text-xs text-muted-foreground">Nenhuma logo será exibida nessa posição.</div>
+        <div className="text-xs text-muted-foreground"><LocalizedText source={"Nenhuma logo será exibida nessa posição."} /></div>
       )}
     </div>
   );
@@ -580,10 +573,9 @@ function PersonalizarLogoModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Personalizar Logo do Relatório</DialogTitle>
+          <DialogTitle><LocalizedText source={"Personalizar Logo do Relatório"} /></DialogTitle>
           <DialogDescription>
-            Configure as duas posições de logo do cabeçalho dos PDFs de visita de forma independente.
-          </DialogDescription>
+            <LocalizedText source={"Configure as duas posições de logo do cabeçalho dos PDFs de visita de forma independente."} /></DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -623,16 +615,14 @@ function PersonalizarLogoModal({
             />
 
             <p className="text-xs text-muted-foreground pt-1">
-              Envie a logo com fundo branco, ou em PNG transparente (sem fundo), para melhor encaixe no cabeçalho do relatório.
-            </p>
+              <LocalizedText source={"Envie a logo com fundo branco, ou em PNG transparente (sem fundo), para melhor encaixe no cabeçalho do relatório."} /></p>
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleSave} disabled={saving || loading} className="bg-primary hover:bg-primary/90">
-            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-          </Button>
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
