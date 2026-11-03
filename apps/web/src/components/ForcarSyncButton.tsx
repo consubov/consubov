@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -87,7 +88,6 @@ export function ForcarSyncButton({
   return (
     <Button size={size} variant={variant} onClick={handleClick} disabled={sending || !targetUserId}>
       {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-      Forçar Sync
-    </Button>
+      <LocalizedText source={"Forçar Sync"} /></Button>
   );
 }
