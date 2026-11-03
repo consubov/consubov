@@ -217,8 +217,11 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
-        let lancQuery = supabase.from("view_consumo_tempo_real")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+        // Prefer the invoker/RLS-scoped consolidated view for the basic
+        // snapshot. The real-time view may exhaust statement_timeout and
+        // must not hold the entire manager dashboard hostage.
+        let lancQuery = supabase.from("view_consumo_consolidado")
+          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
           .eq("fazenda_id", fazendaId);
 
         if (filters) {
@@ -233,11 +236,10 @@ export function useGerenteData(filters?: GerenteFilters) {
         const lancRes = await lancQuery;
         let lancList: Lancamento[];
         if (canRecoverConsolidatedSnapshot(lancRes)) {
-          // Transport/timeouts in the heavy real-time view must not blank a
-          // verified manager's entire farm. The backup is a security-invoker,
-          // JWT-scoped view of the same launches, not an unscoped table read.
-          let backupQuery = supabase.from("view_consumo_consolidado")
-            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+          // Fallback to real-time only if the scoped consolidated view fails.
+          // A permission denial is always final.
+          let backupQuery = supabase.from("view_consumo_tempo_real")
+            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
             .eq("fazenda_id", fazendaId);
           if (filters) {
             backupQuery = backupQuery.eq("ano_referencia", filters.ano);
@@ -247,12 +249,12 @@ export function useGerenteData(filters?: GerenteFilters) {
               .eq("ano_referencia", activeCiclo.ano);
           }
           const backupRows = requireReadRows(await backupQuery);
+          lancList = requireConsumoRows(backupRows, fazendaId, retiroIds) as Lancamento[];
+        } else {
           lancList = requireConsumoRows(
-            backupRows.map(row => ({ ...row, origem: null })),
+            requireReadRows(lancRes).map(row => ({ ...row, origem: null })),
             fazendaId, retiroIds,
           ) as Lancamento[];
-        } else {
-          lancList = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds) as Lancamento[];
         }
         snap.lancamentos = lancList;
 
