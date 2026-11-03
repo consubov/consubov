@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { Bell, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -200,14 +201,13 @@ export function EnableNotificationsBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">Notificações só funcionam no app publicado</p>
+              <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Notificações só funcionam no app publicado"} /></p>
               <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Abra <strong>consubov.com.br</strong> no celular para ativar as notificações push do sistema.
-            </p>
+              <LocalizedText source={"Abra"} />{" "}<strong>consubov.com.br</strong> <LocalizedText source={"no celular para ativar as notificações push do sistema."} /></p>
           </div>
         </div>
       </div>
@@ -223,14 +223,13 @@ export function EnableNotificationsBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">Navegador sem suporte a push</p>
+              <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Navegador sem suporte a push"} /></p>
               <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Use Chrome, Edge ou Samsung Internet em Android para receber notificações.
-            </p>
+              <LocalizedText source={"Use Chrome, Edge ou Samsung Internet em Android para receber notificações."} /></p>
           </div>
         </div>
       </div>
@@ -246,18 +245,18 @@ export function EnableNotificationsBanner() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">Notificações bloqueadas</p>
+              <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Notificações bloqueadas"} /></p>
               <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Você bloqueou as notificações. Para reativar no <strong>Android Chrome</strong>:
+              <LocalizedText source={"Você bloqueou as notificações. Para reativar no"} />{" "}<strong>Android Chrome</strong>:
             </p>
             <ol className="text-xs text-muted-foreground mt-1 list-decimal pl-4 space-y-0.5">
-              <li>Toque no <strong>cadeado</strong> ao lado da URL</li>
-              <li>Toque em <strong>Permissões</strong> → <strong>Notificações</strong></li>
-              <li>Selecione <strong>Permitir</strong> e recarregue a página</li>
+              <li><LocalizedText source={"Toque no"} />{" "}<strong><LocalizedText source={"cadeado"} /></strong> <LocalizedText source={"ao lado da URL"} /></li>
+              <li><LocalizedText source={"Toque em"} />{" "}<strong><LocalizedText source={"Permissões"} /></strong> → <strong><LocalizedText source={"Notificações"} /></strong></li>
+              <li><LocalizedText source={"Selecione"} />{" "}<strong><LocalizedText source={"Permitir"} /></strong> <LocalizedText source={"e recarregue a página"} /></li>
             </ol>
           </div>
         </div>
@@ -274,14 +273,13 @@ export function EnableNotificationsBanner() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-foreground">Ative as notificações</p>
+            <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Ative as notificações"} /></p>
             <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Receba alertas em tempo real, mesmo com o app fechado ou celular bloqueado.
-          </p>
+            <LocalizedText source={"Receba alertas em tempo real, mesmo com o app fechado ou celular bloqueado."} /></p>
           {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
           {okMsg && <p className="text-xs text-emerald-600 mt-1.5">{okMsg}</p>}
           <div className="mt-2 flex gap-2">
@@ -295,8 +293,7 @@ export function EnableNotificationsBanner() {
               {busy ? "Ativando..." : "Ativar notificações"}
             </Button>
             <Button size="sm" variant="ghost" onClick={dismissLater}>
-              Agora não
-            </Button>
+              <LocalizedText source={"Agora não"} /></Button>
           </div>
         </div>
       </div>
