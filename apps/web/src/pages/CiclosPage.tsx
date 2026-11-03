@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,12 +106,12 @@ export default function CiclosPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <CalendarDays className="w-7 h-7 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Ciclos</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Ciclos"} /></h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Todos os Ciclos</CardTitle>
+          <CardTitle className="text-lg"><LocalizedText source={"Todos os Ciclos"} /></CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -120,19 +121,19 @@ export default function CiclosPage() {
               ))}
             </div>
           ) : ciclos.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum ciclo encontrado.</p>
+            <p className="text-muted-foreground text-center py-8"><LocalizedText source={"Nenhum ciclo encontrado."} /></p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fazenda</TableHead>
-                     <TableHead>Período</TableHead>
+                    <TableHead><LocalizedText source={"Fazenda"} /></TableHead>
+                     <TableHead><LocalizedText source={"Período"} /></TableHead>
                      <TableHead>Status</TableHead>
-                     <TableHead>Início</TableHead>
-                     <TableHead>Fechamento</TableHead>
-                     <TableHead>Duração</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                     <TableHead><LocalizedText source={"Início"} /></TableHead>
+                     <TableHead><LocalizedText source={"Fechamento"} /></TableHead>
+                     <TableHead><LocalizedText source={"Duração"} /></TableHead>
+                    <TableHead className="text-right"><LocalizedText source={"Ações"} /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -142,9 +143,9 @@ export default function CiclosPage() {
                       <TableCell>{meses[c.mes - 1]}/{c.ano}</TableCell>
                       <TableCell>
                         {c.fechado ? (
-                          <Badge variant="secondary">Fechado</Badge>
+                          <Badge variant="secondary"><LocalizedText source={"Fechado"} /></Badge>
                         ) : (
-                          <Badge className="bg-primary/20 text-primary border-primary/30">Aberto</Badge>
+                          <Badge className="bg-primary/20 text-primary border-primary/30"><LocalizedText source={"Aberto"} /></Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -165,8 +166,7 @@ export default function CiclosPage() {
                               onClick={() => setConfirmAction({ type: "reabrir", ciclo: c })}
                             >
                               <RotateCcw className="w-4 h-4 mr-1" />
-                              Reabrir
-                            </Button>
+                              <LocalizedText source={"Reabrir"} /></Button>
                           )}
                           <Button
                             size="sm"
@@ -174,8 +174,7 @@ export default function CiclosPage() {
                             onClick={() => setConfirmAction({ type: "excluir", ciclo: c })}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
-                            Excluir
-                          </Button>
+                            <LocalizedText source={"Excluir"} /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -200,7 +199,7 @@ export default function CiclosPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={actionLoading}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               disabled={actionLoading}
               className={confirmAction?.type === "excluir" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}
