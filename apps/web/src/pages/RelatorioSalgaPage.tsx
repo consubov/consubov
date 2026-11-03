@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -250,8 +251,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         <div>
           <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
-            Relatório de Salga
-          </h1>
+            <LocalizedText source={"Relatório de Salga"} /></h1>
           <p className="text-xs text-muted-foreground">{fazendaNome}{selectedRetiroNome ? ` — ${selectedRetiroNome}` : ""}</p>
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           {/* Retiro selector for gerente/escritorio */}
           {!fixedRetiroId && retirosList.length > 0 && (
             <div className="space-y-2">
-              <Label>Retiro</Label>
+              <Label><LocalizedText source={"Retiro"} /></Label>
               <Select
                 value={selectedRetiroId}
                 onValueChange={(v) => {
@@ -282,13 +282,13 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           )}
 
           <div className="space-y-2">
-            <Label>Período</Label>
+            <Label><LocalizedText source={"Período"} /></Label>
             <Select value={periodoTipo} onValueChange={(v) => { setPeriodoTipo(v as PeriodoTipo); setPdfUrl(null); setNoData(false); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ultima_salga">Última Salga</SelectItem>
-                <SelectItem value="semanal">Última Semana</SelectItem>
-                <SelectItem value="mensal">Mensal</SelectItem>
+                <SelectItem value="ultima_salga"><LocalizedText source={"Última Salga"} /></SelectItem>
+                <SelectItem value="semanal"><LocalizedText source={"Última Semana"} /></SelectItem>
+                <SelectItem value="mensal"><LocalizedText source={"Mensal"} /></SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -296,11 +296,11 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           {periodoTipo === "ultima_salga" && (
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
               {loadingUltima ? (
-                <span className="text-muted-foreground">Buscando última salga…</span>
+                <span className="text-muted-foreground"><LocalizedText source={"Buscando última salga…"} /></span>
               ) : ultimaSalgaDate ? (
                 `Última salga: ${new Date(ultimaSalgaDate).toLocaleDateString("pt-BR")}`
               ) : (
-                <span className="text-muted-foreground">Nenhuma salga encontrada</span>
+                <span className="text-muted-foreground"><LocalizedText source={"Nenhuma salga encontrada"} /></span>
               )}
             </div>
           )}
@@ -308,7 +308,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           {periodoTipo === "mensal" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Mês</Label>
+                <Label><LocalizedText source={"Mês"} /></Label>
                 <Select value={String(mesSel)} onValueChange={(v) => { setMesSel(Number(v)); setPdfUrl(null); setNoData(false); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -319,7 +319,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Ano</Label>
+                <Label><LocalizedText source={"Ano"} /></Label>
                 <Select value={String(anoSel)} onValueChange={(v) => { setAnoSel(Number(v)); setPdfUrl(null); setNoData(false); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -335,15 +335,14 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
           {noData && (
             <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              Nenhuma salga registrada no período selecionado.
-            </div>
+              <LocalizedText source={"Nenhuma salga registrada no período selecionado."} /></div>
           )}
         </CardContent>
       </Card>
 
       {resumo && (
         <p className="text-sm text-center text-muted-foreground">
-          Total do período: <span className="font-semibold text-foreground">{resumo}</span>
+          <LocalizedText source={"Total do período:"} />{" "}<span className="font-semibold text-foreground">{resumo}</span>
         </p>
       )}
 
@@ -351,8 +350,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         {!pdfUrl ? (
           <>
             <Button variant="outline" className="flex-1" onClick={onBack}>
-              Voltar
-            </Button>
+              <LocalizedText source={"Voltar"} /></Button>
             <Button
               className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleGerarPdf}
@@ -363,8 +361,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
               ) : (
                 <Download className="w-4 h-4 mr-2" />
               )}
-              Gerar PDF
-            </Button>
+              <LocalizedText source={"Gerar PDF"} /></Button>
           </>
         ) : (
           <>
@@ -374,15 +371,13 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
               onClick={() => window.open(pdfUrl, "_blank")}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Abrir PDF
-            </Button>
+              <LocalizedText source={"Abrir PDF"} /></Button>
             <Button
               className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleShare}
             >
               <Share2 className="w-4 h-4 mr-2" />
-              Compartilhar
-            </Button>
+              <LocalizedText source={"Compartilhar"} /></Button>
           </>
         )}
       </div>

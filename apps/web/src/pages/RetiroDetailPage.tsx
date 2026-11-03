@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -232,7 +233,7 @@ export default function RetiroDetailPage() {
     <div className="max-w-5xl mx-auto">
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazenda.nome}</Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -241,8 +242,7 @@ export default function RetiroDetailPage() {
       </Breadcrumb>
 
       <Button variant="ghost" size="sm" className="mb-4 gap-1.5" onClick={() => navigate(`/admin/fazendas/${fazendaId}`)}>
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       <Card className="mb-6">
         <CardHeader>
@@ -253,15 +253,15 @@ export default function RetiroDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-muted-foreground">Fazenda:</span> {fazenda.nome}</div>
-            <div><span className="text-muted-foreground">Capataz:</span> {retiro.capataz}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Fazenda:"} /></span> {fazenda.nome}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Capataz:"} /></span> {retiro.capataz}</div>
           </div>
         </CardContent>
       </Card>
 
       <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Pastos deste Retiro</h2>
+          <h2 className="text-lg font-semibold text-foreground"><LocalizedText source={"Pastos deste Retiro"} /></h2>
           <div className="flex gap-2">
             <Button onClick={() => {
               if (!retiroId) {
@@ -271,18 +271,15 @@ export default function RetiroDetailPage() {
 
               navigate(`/dashboard/retiro/${retiroId}`);
             }} size="sm" variant="default" className="gap-1.5">
-              <BarChart3 className="w-4 h-4" /> Ver Painel
-            </Button>
+              <BarChart3 className="w-4 h-4" /> <LocalizedText source={"Ver Painel"} /></Button>
             <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}/mapa`)} size="sm" variant="outline" className="gap-1.5">
-              <Map className="w-4 h-4" /> Ver Mapa
-            </Button>
+              <Map className="w-4 h-4" /> <LocalizedText source={"Ver Mapa"} /></Button>
             <CollapsibleTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5">
-                <Settings className="w-4 h-4" /> Configurações
-              </Button>
+                <Settings className="w-4 h-4" /> <LocalizedText source={"Configurações"} /></Button>
             </CollapsibleTrigger>
-            <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> Vários</Button>
-            <Button onClick={openNew} size="sm" variant="outline" className="gap-1.5"><Plus className="w-4 h-4" /> Novo Pasto</Button>
+            <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> <LocalizedText source={"Vários"} /></Button>
+            <Button onClick={openNew} size="sm" variant="outline" className="gap-1.5"><Plus className="w-4 h-4" /> <LocalizedText source={"Novo Pasto"} /></Button>
           </div>
         </div>
 
@@ -301,7 +298,7 @@ export default function RetiroDetailPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <TreePine className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-            <p className="text-muted-foreground text-sm">Nenhum pasto cadastrado neste retiro.</p>
+            <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum pasto cadastrado neste retiro."} /></p>
           </CardContent>
         </Card>
       ) : (
@@ -310,12 +307,12 @@ export default function RetiroDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Animais</TableHead>
-                  <TableHead>Peso Médio</TableHead>
-                  <TableHead>Categoria</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                  <TableHead><LocalizedText source={"Animais"} /></TableHead>
+                  <TableHead><LocalizedText source={"Peso Médio"} /></TableHead>
+                  <TableHead><LocalizedText source={"Categoria"} /></TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -359,45 +356,44 @@ export default function RetiroDetailPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Pasto" : "Novo Pasto"}</DialogTitle>
             <DialogDescription id="pasto-dialog-desc">
-              Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo.
-            </DialogDescription>
+              <LocalizedText source={"Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome *</Label>
+              <Label htmlFor="nome"><LocalizedText source={"Nome *"} /></Label>
               <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Pasto A1" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="num_animais">Nº Animais</Label>
+                <Label htmlFor="num_animais"><LocalizedText source={"Nº Animais"} /></Label>
                 <Input id="num_animais" type="number" value={form.num_animais} onChange={(e) => setForm({ ...form, num_animais: parseInt(e.target.value) || 0 })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="peso_medio">Peso Médio (kg)</Label>
+                <Label htmlFor="peso_medio"><LocalizedText source={"Peso Médio (kg)"} /></Label>
                 <Input id="peso_medio" type="number" value={form.peso_medio_kg ?? ""} onChange={(e) => handlePesoChange(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Sexo</Label>
+                <Label><LocalizedText source={"Sexo"} /></Label>
                 <Select value={form.sexo} onValueChange={handleSexoChange}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Macho">Macho</SelectItem>
-                    <SelectItem value="Fêmea">Fêmea</SelectItem>
-                    <SelectItem value="Misto">Misto</SelectItem>
+                    <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
+                    <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
+                    <SelectItem value="Misto"><LocalizedText source={"Misto"} /></SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label><LocalizedText source={"Categoria"} /></Label>
                 <Select value={form.categoria} onValueChange={handleCategoriaChange}>
                   <SelectTrigger><SelectValue placeholder="Automática" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Recria 1">Recria 1</SelectItem>
-                    <SelectItem value="Recria 2">Recria 2</SelectItem>
-                    <SelectItem value="Engorda">Engorda</SelectItem>
-                    <SelectItem value="Cria">Cria</SelectItem>
+                    <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
+                    <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
+                    <SelectItem value="Engorda"><LocalizedText source={"Engorda"} /></SelectItem>
+                    <SelectItem value="Cria"><LocalizedText source={"Cria"} /></SelectItem>
                     
                   </SelectContent>
                 </Select>
@@ -409,12 +405,12 @@ export default function RetiroDetailPage() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="ativo">Ativo</Label>
+              <Label htmlFor="ativo"><LocalizedText source={"Ativo"} /></Label>
               <Switch id="ativo" checked={form.ativo} onCheckedChange={(checked) => setForm({ ...form, ativo: checked })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}</Button>
           </DialogFooter>
         </DialogContent>

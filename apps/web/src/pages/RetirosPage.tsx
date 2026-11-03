@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, Map } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useSearchParams } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -46,6 +47,7 @@ interface RetiroForm {
 const emptyForm: RetiroForm = { nome: "", fazenda_id: "", capataz: "", ativo: true };
 
 export default function RetirosPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const filterFazendaId = searchParams.get("fazenda");
   const [retiros, setRetiros] = useState<(Retiro & { fazenda_nome?: string })[]>([]);
@@ -63,7 +65,7 @@ export default function RetirosPage() {
     ]);
 
     if (retirosRes.error) {
-      toast.error("Erro ao carregar retiros.");
+      toast.error(t("farm.loadUnits"));
       return;
     }
 
@@ -106,15 +108,15 @@ export default function RetirosPage() {
 
   async function handleSave() {
     if (!form.nome.trim()) {
-      toast.error("O nome é obrigatório.");
+      toast.error(t("farm.nameRequired"));
       return;
     }
     if (!form.fazenda_id) {
-      toast.error("Selecione uma fazenda.");
+      toast.error(t("farm.selectFarm"));
       return;
     }
     if (!form.capataz.trim()) {
-      toast.error("O nome do capataz é obrigatório.");
+      toast.error(t("farm.foremanRequired"));
       return;
     }
 
@@ -132,11 +134,11 @@ export default function RetirosPage() {
         .eq("id", editingId);
 
       if (error) {
-        toast.error("Erro ao atualizar retiro.");
+        toast.error(t("farm.unitUpdateFailed"));
         setSaving(false);
         return;
       }
-      toast.success("Retiro atualizado com sucesso!");
+      toast.success(t("farm.unitUpdatedLong"));
     } else {
       const { error } = await supabase.from("retiros").insert({
         nome: form.nome.trim(),
@@ -146,11 +148,11 @@ export default function RetirosPage() {
       });
 
       if (error) {
-        toast.error("Erro ao criar retiro.");
+        toast.error(t("farm.unitCreateFailed"));
         setSaving(false);
         return;
       }
-      toast.success("Retiro criado com sucesso!");
+      toast.success(t("farm.unitCreatedLong"));
     }
 
     setSaving(false);
@@ -159,14 +161,14 @@ export default function RetirosPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Deseja realmente excluir este retiro?")) return;
+    if (!confirm(t("farm.unitDeleteConfirm"))) return;
 
     const { error } = await supabase.from("retiros").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir retiro. Verifique se não há pastos vinculados.");
+      toast.error(t("farm.unitDeleteLinked"));
       return;
     }
-    toast.success("Retiro excluído.");
+    toast.success(t("farm.unitDeleted"));
     loadData();
   }
 
@@ -174,16 +176,16 @@ export default function RetirosPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Retiros</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("farm.units")}</h1>
           {filterFazendaId && fazendas.find(f => f.id === filterFazendaId) && (
             <p className="text-sm text-muted-foreground">
-              Filtrado por: {fazendas.find(f => f.id === filterFazendaId)?.nome}
+              {t("farm.filteredBy")} {fazendas.find(f => f.id === filterFazendaId)?.nome}
             </p>
           )}
         </div>
         <Button onClick={openNew} className="gap-1.5">
           <Plus className="w-4 h-4" />
-          Novo Retiro
+          {t("farm.newUnit")}
         </Button>
       </div>
 
@@ -197,7 +199,7 @@ export default function RetirosPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <Map className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Nenhum retiro cadastrado.</p>
+            <p className="text-muted-foreground">{t("farm.unitListEmpty")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -206,11 +208,11 @@ export default function RetirosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Fazenda</TableHead>
-                  <TableHead>Capataz</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead>{t("farm.name")}</TableHead>
+                  <TableHead>{t("farm.farmLabel")}</TableHead>
+                  <TableHead>{t("farm.foreman")}</TableHead>
+                  <TableHead>{t("farm.status")}</TableHead>
+                  <TableHead className="w-24 text-right">{t("farm.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -221,7 +223,7 @@ export default function RetirosPage() {
                     <TableCell>{r.capataz}</TableCell>
                     <TableCell>
                       <Badge variant={r.ativo ? "default" : "secondary"}>
-                        {r.ativo ? "Ativo" : "Inativo"}
+                        {r.ativo ? t("farm.active") : t("farm.inactive")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -245,23 +247,23 @@ export default function RetirosPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Retiro" : "Novo Retiro"}</DialogTitle>
+            <DialogTitle>{editingId ? t("farm.editUnit") : t("farm.newUnit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome *</Label>
+              <Label htmlFor="nome">{t("farm.name")} *</Label>
               <Input
                 id="nome"
                 value={form.nome}
                 onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Ex: Retiro Norte"
+                placeholder={t("farm.unitNamePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Fazenda *</Label>
+              <Label>{t("farm.farmLabel")} *</Label>
               <Select value={form.fazenda_id} onValueChange={(val) => setForm({ ...form, fazenda_id: val })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma fazenda" />
+                  <SelectValue placeholder={t("farm.chooseFarm")} />
                 </SelectTrigger>
                 <SelectContent>
                   {fazendas.map((f) => (
@@ -271,16 +273,16 @@ export default function RetirosPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="capataz">Capataz *</Label>
+              <Label htmlFor="capataz">{t("farm.foreman")} *</Label>
               <Input
                 id="capataz"
                 value={form.capataz}
                 onChange={(e) => setForm({ ...form, capataz: e.target.value })}
-                placeholder="Nome do capataz responsável"
+                placeholder={t("farm.supervisorPlaceholder")}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="ativo">Ativo</Label>
+              <Label htmlFor="ativo">{t("farm.active")}</Label>
               <Switch
                 id="ativo"
                 checked={form.ativo}
@@ -289,9 +291,9 @@ export default function RetirosPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("farm.cancel")}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("farm.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
