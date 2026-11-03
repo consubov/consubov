@@ -1,4 +1,4 @@
-import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
+import { dataReferenciaGmd, fetchGmdPastosAgrupados, gmdPonderado } from "@/lib/gmdConfigurado";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
@@ -25,7 +25,7 @@ interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: s
 interface Pasto {
   id: string; nome: string; retiro_id: string; num_animais: number;
   peso_medio_kg: number | null; gmd_kg_dia: number | null;
-  peso_abate_meta_kg: number | null; produto_id: string | null;
+  peso_abate_meta_kg: number | null; produto_id: string | null; categoria: string | null;
 }
 interface Lancamento {
   id: string; pasto_id: string; num_sacos: number;
@@ -40,7 +40,7 @@ interface Lancamento {
 }
 interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
 interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; duracao_dias: number | null; }
-interface FazendaRow { nome: string; intervalo_padrao_dias: number; }
+interface FazendaRow { nome: string; intervalo_padrao_dias: number; gmd_modo?: string | null; }
 
 export interface Observacao {
   id: string; fazenda_id: string; retiro_id: string | null; pasto_id: string | null;
@@ -117,7 +117,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   });
   const formulas = useFormulasSistema();
   // Eficiência: fonte única get_painel_mae (mesma do Painel do Retiro/Fazenda).
-  const { painelMae } = usePainelMae(
+  const { painelMae, error: painelMaeError, loading: painelMaeLoading } = usePainelMae(
     fazendaId ?? null,
     filters?.painelRetiroId ?? null,
     consumoMes,
@@ -168,7 +168,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     try {
       const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
         supabase.from("gerentes").select("nome").eq("id", roleData.roleId!).single(),
-        supabase.from("fazendas").select("nome, intervalo_padrao_dias").eq("id", fazendaId).single(),
+        supabase.from("fazendas").select("nome, intervalo_padrao_dias, gmd_modo").eq("id", fazendaId).single(),
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
@@ -176,7 +176,7 @@ export function useGerenteData(filters?: GerenteFilters) {
 
       snap.gerenteNome = requireReadValue(gerenteRes).nome;
       const fData = requireReadValue(fazendaRes);
-      snap.fazendaData = ({ nome: fData.nome, intervalo_padrao_dias: fData.intervalo_padrao_dias ?? 3 });
+      snap.fazendaData = ({ nome: fData.nome, intervalo_padrao_dias: fData.intervalo_padrao_dias ?? 3, gmd_modo: fData.gmd_modo });
 
       const allCiclos = requireReadRows(allCiclosRes) as Ciclo[];
       snap.ciclosDisponiveis = (allCiclos);
@@ -210,7 +210,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       const retiroIds = retirosList.map(r => r.id);
       if (retiroIds.length > 0) {
         const pastosRes = await supabase.from("pastos")
-          .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id")
+          .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
           .in("retiro_id", retiroIds)
           .eq("ativo", true);
         const pastosList = requireReadRows(pastosRes) as Pasto[];
@@ -239,19 +239,24 @@ export function useGerenteData(filters?: GerenteFilters) {
         snap.lancamentos = ([]);
       }
 
+      // Optional products/observations must not suppress confirmed totals.
+      // A failed products link read is never replaced by an unscoped query.
       const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
-      // A failed link read must NEVER turn into an unscoped products query.
-      if (produtoIdsFazenda === null) throw new DataReadFailure("unavailable");
-      if (produtoIdsFazenda.length) {
+      if (produtoIdsFazenda !== null && produtoIdsFazenda.length) {
         const produtosRes = await supabase.from("produtos")
           .select("id, peso_saco_kg, preco_por_kg").in("id", produtoIdsFazenda);
-        snap.produtos = requireReadRows(produtosRes) as Produto[];
-      } else snap.produtos = [];
+        if (!produtosRes.error) snap.produtos = requireReadRows(produtosRes) as Produto[];
+      }
 
       const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
       observationsDenied = isObservationAccessDenied(obsRes.error, obsRes.status);
-      if (observationsDenied) throw new Error("Observation access denied");
-      snap.observacoes = confirmObservationRead(obsRes, fazendaId);
+      // Never display cached observations when a permission check fails.
+      if (!obsRes.error && !observationsDenied) {
+        snap.observacoes = confirmObservationRead(obsRes, fazendaId);
+      } else {
+        snap.observacoes = [];
+        if (observationsDenied) revokeObservations();
+      }
       if (!isCurrent()) return;
       setScreenCache(cacheKey, snap);
       applyCache(snap);
@@ -312,9 +317,15 @@ export function useGerenteData(filters?: GerenteFilters) {
   }>({ scope: "", values: {}, error: null });
   const [gmdRetryTick, setGmdRetryTick] = useState(0);
   const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
-  const gmdPastoIds = loadedCacheKey === cacheKey ? pastos.map(p => p.id).join(",") : "";
+  const gmdPastoScopes = useMemo(
+    () => loadedCacheKey === cacheKey && pastos.every(p => Object.prototype.hasOwnProperty.call(p, "categoria"))
+      ? pastos.map(p => ({ id: p.id, retiro_id: p.retiro_id, categoria: p.categoria }))
+      : [],
+    [loadedCacheKey, cacheKey, pastos],
+  );
   const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
-  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoIds, gmdDia]);
+  const gmdModo = loadedCacheKey === cacheKey ? fazendaData.gmd_modo : null;
+  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoScopes, gmdDia, gmdModo]);
   const gmdPastos = useMemo<Record<string, number | null>>(
     () => gmdState.scope === gmdScope ? gmdState.values : {},
     [gmdState.scope, gmdState.values, gmdScope],
@@ -324,9 +335,9 @@ export function useGerenteData(filters?: GerenteFilters) {
   useEffect(() => {
     const controller = new AbortController();
     setGmdState({ scope: gmdScope, values: {}, error: null });
-    if (!fazendaId || !gmdPastoIds) return () => controller.abort();
+    if (!fazendaId || gmdPastoScopes.length === 0) return () => controller.abort();
 
-    fetchGmdPastos(gmdPastoIds.split(","), gmdDia, controller.signal)
+    fetchGmdPastosAgrupados(gmdPastoScopes, gmdDia, controller.signal, gmdModo)
       .then(values => {
         if (!controller.signal.aborted) {
           setGmdState({ scope: gmdScope, values, error: null });
@@ -341,7 +352,7 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
       });
     return () => controller.abort();
-  }, [gmdScope, gmdPastoIds, gmdDia, fazendaId, gmdRetryTick]);
+  }, [gmdScope, gmdPastoScopes, gmdDia, gmdModo, fazendaId, gmdRetryTick]);
 
   const painelData = useMemo<PainelData>(() => {
     // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
@@ -562,7 +573,7 @@ export function useGerenteData(filters?: GerenteFilters) {
   return {
     // Independent RPC timeouts must not hide other verified farm data.
     loading, error: loadError, consumoError, consumoLoading, retryConsumo: refreshConsumo,
-    gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    gmdError, retryGmd, painelMae, painelMaeError, painelMaeLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,

@@ -9,7 +9,6 @@ import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import MonthScroller from "@/components/MonthScroller";
-import { usePainelMae } from "@/hooks/usePainelMae";
 import { usePainelProduto } from "@/hooks/usePainelProduto";
 import CurvaConsumoCard from "@/components/gerente/CurvaConsumoCard";
 import { useGerenteData, type RetiroComDados, type Observacao, type AlertaAtraso, type GerenteFilters } from "@/hooks/useGerenteData";
@@ -255,13 +254,12 @@ export default function GerenteDashboard() {
   }), [ano, mes, activeFazendaId, activeRetiroId]);
 
   const {
-    loading, error: painelError, consumoError, consumoLoading, retryConsumo, gmdError, retryGmd, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    loading, error: painelError, consumoError, consumoLoading, retryConsumo, gmdError, retryGmd, painelMae, painelMaeError, painelMaeLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
   } = useGerenteData(filters);
 
-  const { painelMae, error: painelMaeError } = usePainelMae(activeFazendaId || null, activeRetiroId, mes, ano);
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
 
@@ -656,14 +654,14 @@ export default function GerenteDashboard() {
           <h2 className={GERENTE_CAPTION_HEADING}>{t("manager.farmDashboard")}</h2>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard icon={Beef} label={t("manager.totalAnimals")} value={fmtNum(painelDataView.totalAnimais)} />
-            <MetricCard icon={Droplets} label={t("manager.actualConsumption")} value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
-            <MetricCard icon={Gauge} label={t("manager.globalConsumption")} value={painelMaeError ? "—" : fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-            <MetricCard icon={Target} label={t("manager.pasturesOnTarget")} value={painelMaeError ? "—" : String(painelMaeView.pastos_na_meta_num) + "/" + String(painelMaeView.pastos_na_meta_den)} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
-            <MetricCard icon={Scale} label={t("manager.avgWeight")} value={painelMaeError ? "—" : fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
+            <MetricCard icon={Droplets} label={t("manager.actualConsumption")} value={(painelMaeError || painelMaeLoading) ? "—" : fmtNum(painelMaeView.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+            <MetricCard icon={Gauge} label={t("manager.globalConsumption")} value={(painelMaeError || painelMaeLoading) ? "—" : fmtNum(painelMaeView.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+            <MetricCard icon={Target} label={t("manager.pasturesOnTarget")} value={(painelMaeError || painelMaeLoading) ? "—" : String(painelMaeView.pastos_na_meta_num) + "/" + String(painelMaeView.pastos_na_meta_den)} sub={painelMaeView.pastos_na_meta_den > 0 ? `${fmtNum((painelMaeView.pastos_na_meta_num / painelMaeView.pastos_na_meta_den) * 100, 0)}%` : ''} iconColor="text-secondary" />
+            <MetricCard icon={Scale} label={t("manager.avgWeight")} value={(painelMaeError || painelMaeLoading) ? "—" : fmtNum(painelMaeView.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
             <MetricCard icon={Package} label={t("manager.bagsUsed")} value={fmtNum(painelDataView.sacosUtilizados)} />
             <MetricCard icon={DollarSign} label={t("manager.dailyCost")} value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
             <MetricCard icon={DollarSign} label={t("manager.monthlyCost")} value={consumoError || consumoLoading ? "—" : fmtBRL(painelDataView.custoMensal)} />
-            <MetricCard icon={BarChart3} label={t("manager.efficiency")} value={painelMaeError ? "—" : fmtNum(painelMaeView.eficiencia, 0) + "%"} sub="índice médio" iconColor="text-secondary" />
+            <MetricCard icon={BarChart3} label={t("manager.efficiency")} value={(painelMaeError || painelMaeLoading) ? "—" : fmtNum(painelMaeView.eficiencia, 0) + "%"} sub="índice médio" iconColor="text-secondary" />
             <MetricCard icon={TrendingUp} label={t("manager.avgGain")} value={painelData.gmdMedio == null ? "—" : fmtNum(painelData.gmdMedio, 3)} sub={painelData.gmdMedio == null ? "GMD não configurado" : "kg/dia · GMD configurado (projeção)"} />
             <MetricCard icon={Skull} label={t("manager.slaughterMonth")} value={fmtNum(abatidosMesView)} iconColor="text-destructive" />
             <MetricCard icon={Skull} label={t("manager.slaughterYear")} value={fmtNum(abatidosAnoView)} iconColor="text-destructive" />

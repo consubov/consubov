@@ -129,6 +129,46 @@ export async function fetchGmdPastos(
 }
 
 /** Média ponderada por animais dos pastos com animais e GMD definido; null se nenhum. */
+/** Same RPC inputs for pastures with the same retreat and category always
+ * produce the same configured GMD. Grouping avoids one HTTP RPC per pasture.
+ * The backend remains the only authority for the numerical value.
+ */
+export interface GmdPastoAgrupavel {
+  id: string;
+  retiro_id: string;
+  categoria: string | null;
+}
+
+export async function fetchGmdPastosAgrupados(
+  pastos: readonly GmdPastoAgrupavel[],
+  dia: string,
+  signal?: AbortSignal,
+  modo?: string | null,
+): Promise<Record<string, number | null>> {
+  const grupos = new Map<string, string[]>();
+  for (const pasto of pastos) {
+    // Verified in gmd_do_pasto: geral depends only on farm/season,
+    // categoria on farm/category, retiro on farm/retreat/category.
+    const chave = modo === "geral" ? "geral" :
+      modo === "categoria" ? JSON.stringify(["categoria", pasto.categoria]) :
+      JSON.stringify(["retiro", pasto.retiro_id, pasto.categoria]);
+    const ids = grupos.get(chave);
+    if (ids) ids.push(pasto.id);
+    else grupos.set(chave, [pasto.id]);
+  }
+  const representantes = Array.from(grupos.values(), ids => ids[0]);
+  const gmdPorRepresentante = await fetchGmdPastos(representantes, dia, signal);
+  const todos: Record<string, number | null> = {};
+  for (const ids of grupos.values()) {
+    const representante = ids[0];
+    if (!Object.prototype.hasOwnProperty.call(gmdPorRepresentante, representante)) {
+      throw new Error("Resultado GMD incompleto");
+    }
+    for (const id of ids) todos[id] = gmdPorRepresentante[representante];
+  }
+  return todos;
+}
+
 export function gmdPonderado(
   pastos: { id: string; num_animais: number | null }[],
   gmd: Record<string, number | null>,

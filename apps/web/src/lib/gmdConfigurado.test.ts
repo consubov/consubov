@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocked = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocked.rpc } }));
 
-import { fetchGmdPastos, gmdPonderado } from "./gmdConfigurado";
+import { fetchGmdPastos, fetchGmdPastosAgrupados, gmdPonderado } from "./gmdConfigurado";
 
 describe("GMD: bounded RPC access and fail-closed semantics", () => {
   beforeEach(() => mocked.rpc.mockReset());
@@ -19,6 +19,65 @@ describe("GMD: bounded RPC access and fail-closed semantics", () => {
       .resolves.toEqual({ zero: 0, neg: -0.5, absent: null });
     expect(mocked.rpc).toHaveBeenCalledTimes(3);
     expect(gmdPonderado([{ id: "zero", num_animais: 10 }, { id: "neg", num_animais: 10 }], { zero: 0, neg: -0.5 })).toBe(-0.25);
+  });
+
+  it("reads one representative per retreat/category, preserving all pasture results", async () => {
+    mocked.rpc.mockImplementation((_name: string, args: { p_pasto: string }) => ({
+      abortSignal: async () => ({
+        data: args.p_pasto === "a" ? 0.12 : args.p_pasto === "c" ? null : 0.22,
+        error: null,
+      }),
+    }));
+    const result = await fetchGmdPastosAgrupados([
+      { id: "a", retiro_id: "r1", categoria: "Recria" },
+      { id: "b", retiro_id: "r1", categoria: "Recria" },
+      { id: "c", retiro_id: "r1", categoria: "Engorda" },
+      { id: "d", retiro_id: "r2", categoria: "Recria" },
+      { id: "e", retiro_id: "r2", categoria: "Recria" },
+    ], "2026-10-30");
+    expect(result).toEqual({ a: 0.12, b: 0.12, c: null, d: 0.22, e: 0.22 });
+    expect(mocked.rpc.mock.calls.map((call) => call[1].p_pasto)).toEqual(["a", "c", "d"]);
+  });
+
+  it("one backend RPC covers an entire farm configured in geral mode", async () => {
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ({ data: 0.9, error: null }),
+    }));
+    const pastos = Array.from({ length: 140 }, (_, i) => ({
+      id: String(i), retiro_id: "r" + (i % 5), categoria: i % 2 ? "Engorda" : "Recria",
+    }));
+    const result = await fetchGmdPastosAgrupados(pastos, "2026-10-30", undefined, "geral");
+    expect(Object.keys(result)).toHaveLength(140);
+    expect(Object.values(result)).toEqual(Array(140).fill(0.9));
+    expect(mocked.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("categoria mode shares values across retreats without mixing different categories", async () => {
+    mocked.rpc.mockImplementation((_name: string, args: { p_pasto: string }) => ({
+      abortSignal: async () => ({ data: args.p_pasto === "a" ? 0.4 : 0.7, error: null }),
+    }));
+    const rows = [
+      { id: "a", retiro_id: "r1", categoria: "Engorda" },
+      { id: "b", retiro_id: "r2", categoria: "Engorda" },
+      { id: "c", retiro_id: "r2", categoria: "Recria" },
+    ];
+    await expect(fetchGmdPastosAgrupados(rows, "2026-10-30", undefined, "categoria"))
+      .resolves.toEqual({ a: 0.4, b: 0.4, c: 0.7 });
+    expect(mocked.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("never publishes grouped values when one representative fails", async () => {
+    mocked.rpc.mockImplementation((_name: string, args: { p_pasto: string }) => ({
+      abortSignal: async () => ({
+        data: args.p_pasto === "failure" ? null : 0.1,
+        error: args.p_pasto === "failure" ? { code: "57014" } : null,
+      }),
+    }));
+    await expect(fetchGmdPastosAgrupados([
+      { id: "a", retiro_id: "r1", categoria: null },
+      { id: "b", retiro_id: "r1", categoria: null },
+      { id: "failure", retiro_id: "r2", categoria: null },
+    ], "2026-10-30")).rejects.toThrow(/nao confirmado/i);
   });
 
   it("never starts more than 4 requests concurrently", async () => {

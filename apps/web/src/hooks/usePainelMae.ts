@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { dataReadErrorMessage, DataReadFailure } from "@/lib/dataReadGuard";
 import {
   fetchPainelMae,
+  fetchPainelMaeFallback,
   type PainelMaeRpcRow,
 } from "@/features/painel/repositories/painelMaeRepository";
 
@@ -36,26 +37,42 @@ export function usePainelMae(
   const [data, setData] = useState<PainelMaeData>(empty);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++requestSequence.current;
+    const current = () => requestSequence.current === request;
     if (!fazendaId) {
       setData(empty);
       setError(null);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     try {
-      const { data: rows, error } = await fetchPainelMae({
-        fazendaId,
-        retiroId: retiroId ?? null,
-        mes,
-        ano,
-      });
+      const params = { fazendaId, retiroId: retiroId ?? null, mes, ano };
+      const primary = await fetchPainelMae(params);
+      let rows: PainelMaeRpcRow[] | PainelMaeRpcRow | null = primary.data;
 
-      if (error) throw error;
+      if (primary.error) {
+        const rpcError = primary.error;
+        const code = typeof rpcError === "object" && rpcError !== null &&
+          "code" in rpcError ? String(rpcError.code) : "";
+        const status = typeof rpcError === "object" && rpcError !== null &&
+          "status" in rpcError ? Number(rpcError.status) : 0;
+        // Never recover a permission error using an alternative data path.
+        if (code === "42501" || status === 401 || status === 403) {
+          throw new DataReadFailure("permission");
+        }
+        // The two views used by the RPC are security_invoker and selected
+        // only for the same farm, retreat and month/year. No invented values.
+        rows = await fetchPainelMaeFallback(params);
+      }
 
+      if (!current()) return;
       const row: PainelMaeRpcRow | null = Array.isArray(rows)
         ? (rows[0] ?? null)
         : rows;
@@ -76,15 +93,17 @@ export function usePainelMae(
           : empty,
       );
     } catch (error) {
+      if (!current()) return;
       setError(dataReadErrorMessage(error));
       setData(empty);
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
   }, [fazendaId, retiroId, mes, ano]);
 
   useEffect(() => {
     void load();
+    return () => { requestSequence.current++; };
   }, [load]);
 
   return { painelMae: data, loading, error, refresh: load };
