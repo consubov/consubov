@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,38 +94,38 @@ export default function GerenteAuditoriaFotosPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/gerente")} className="text-primary-foreground hover:bg-primary-foreground/10">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-base font-bold">Intervalo e Auditoria</h1>
+        <h1 className="text-base font-bold"><LocalizedText source={"Intervalo e Auditoria"} /></h1>
       </header>
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
         <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={setFazendaId} dirty={editing || editInt} />
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : !fazendaId ? (
-          <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fazenda vinculada."} /></p>
         ) : (
           <>
             <IntervaloSalgasCard fazendaId={fazendaId} onEditingChange={setEditInt} />
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Padrão da fazenda</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Padrão da fazenda"} /></CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {!editing ? (
                   <p className="text-sm text-foreground">{descreverAuditoria(fazEf.fotosPorBloco, fazEf.exigirFotoCocho)}</p>
                 ) : (
                   <>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium">Fotos de auditoria da salga</label>
+                      <label className="text-xs font-medium"><LocalizedText source={"Fotos de auditoria da salga"} /></label>
                       <Select value={String(draftFazEf.fotosPorBloco)} onValueChange={(v) => setDraftFaz((d) => ({ ...d, auditoria_fotos_por_bloco: Number(v) }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>{fotosOpts.map((n) => <SelectItem key={n} value={String(n)}>{fotosLabel(n)}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium">Foto do Cocho Cheio</label>
+                      <label className="text-xs font-medium"><LocalizedText source={"Foto do Cocho Cheio"} /></label>
                       <Select value={draftFazEf.exigirFotoCocho ? "sim" : "nao"} onValueChange={(v) => setDraftFaz((d) => ({ ...d, exigir_foto_cocho: v === "sim" }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sim">Obrigatória</SelectItem>
-                          <SelectItem value="nao">Opcional</SelectItem>
+                          <SelectItem value="sim"><LocalizedText source={"Obrigatória"} /></SelectItem>
+                          <SelectItem value="nao"><LocalizedText source={"Opcional"} /></SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -134,7 +135,7 @@ export default function GerenteAuditoriaFotosPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Por retiro</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Por retiro"} /></CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {(editing ? draftRet : retiros).map((r) => {
                   const base = editing ? draftFaz : faz;
@@ -155,34 +156,34 @@ export default function GerenteAuditoriaFotosPage() {
                       <Select value={r.auditoria_fotos_por_bloco == null ? SEGUIR : String(r.auditoria_fotos_por_bloco)} onValueChange={(v) => upd({ auditoria_fotos_por_bloco: v === SEGUIR ? null : Number(v) })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={SEGUIR}>Fotos: seguir a fazenda</SelectItem>
+                          <SelectItem value={SEGUIR}><LocalizedText source={"Fotos: seguir a fazenda"} /></SelectItem>
                           {fotosOpts.map((n) => <SelectItem key={n} value={String(n)}>{fotosLabel(n)}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Select value={r.exigir_foto_cocho == null ? SEGUIR : r.exigir_foto_cocho ? "sim" : "nao"} onValueChange={(v) => upd({ exigir_foto_cocho: v === SEGUIR ? null : v === "sim" })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={SEGUIR}>Cocho: seguir a fazenda</SelectItem>
-                          <SelectItem value="sim">Cocho: foto obrigatória</SelectItem>
-                          <SelectItem value="nao">Cocho: foto opcional</SelectItem>
+                          <SelectItem value={SEGUIR}><LocalizedText source={"Cocho: seguir a fazenda"} /></SelectItem>
+                          <SelectItem value="sim"><LocalizedText source={"Cocho: foto obrigatória"} /></SelectItem>
+                          <SelectItem value="nao"><LocalizedText source={"Cocho: foto opcional"} /></SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   );
                 })}
-                {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                {retiros.length === 0 && <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum retiro nesta fazenda."} /></p>}
               </CardContent>
             </Card>
 
             {!editing ? (
-              <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
+              <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
-                <Button className="flex-1" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+                <Button className="flex-1" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Salvar"} /></Button>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">O Capataz recebe a nova configuração quando abrir o retiro com internet.</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"O Capataz recebe a nova configuração quando abrir o retiro com internet."} /></p>
           </>
         )}
       </main>

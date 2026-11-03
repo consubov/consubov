@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { findFazendaIdByRetiro } from "@/features/gerente-produtos/repositories/gerenteProdutosRepository";
@@ -36,7 +37,7 @@ export default function GerenteProdutosPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-base font-bold">Produtos</h1>
+        <h1 className="text-base font-bold"><LocalizedText source={"Produtos"} /></h1>
       </header>
       <main className="p-4 max-w-4xl mx-auto">
         {fazendas.length > 1 && (
@@ -46,10 +47,10 @@ export default function GerenteProdutosPage() {
         )}
         <Tabs value={aba} onValueChange={(v) => setParams(v === "onde-usar" ? { aba: v } : {}, { replace: true })}>
           <TabsList className="grid grid-cols-2 w-full mb-4">
-            <TabsTrigger value="produtos">Produtos</TabsTrigger>
-            <TabsTrigger value="onde-usar">Onde usar</TabsTrigger>
+            <TabsTrigger value="produtos"><LocalizedText source={"Produtos"} /></TabsTrigger>
+            <TabsTrigger value="onde-usar"><LocalizedText source={"Onde usar"} /></TabsTrigger>
           </TabsList>
-          <TabsContent value="produtos">{carregado && fazendaId ? <ProdutosPage modo="gerente" fazendaAtivaId={fazendaId} /> : carregado ? <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p> : null}</TabsContent>
+          <TabsContent value="produtos">{carregado && fazendaId ? <ProdutosPage modo="gerente" fazendaAtivaId={fazendaId} /> : carregado ? <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fazenda vinculada."} /></p> : null}</TabsContent>
           <TabsContent value="onde-usar">{fazendaId && <OndeUsarGerente key={fazendaId} fazendaId={fazendaId} retiroInicial={retiro} onDirtyChange={setOndeUsarDirty} />}</TabsContent>
         </Tabs>
       </main>

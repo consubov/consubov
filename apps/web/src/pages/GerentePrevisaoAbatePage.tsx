@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -137,25 +138,25 @@ export default function GerentePrevisaoAbatePage() {
       <div className="space-y-1">
         <div className="flex gap-2">
           <div className="flex-1 min-w-0 space-y-1">
-            <label className="block text-xs font-medium whitespace-nowrap leading-none">Peso-alvo (kg)</label>
+            <label className="block text-xs font-medium whitespace-nowrap leading-none"><LocalizedText source={"Peso-alvo (kg)"} /></label>
             <Input inputMode="decimal" placeholder="Ex.: 540" className="h-9 w-full" value={f.peso} onChange={(e) => set({ peso: e.target.value })} />
           </div>
           <div className="flex-1 min-w-0 space-y-1">
-            <label className="block text-xs font-medium whitespace-nowrap leading-none">Janela (dias)</label>
+            <label className="block text-xs font-medium whitespace-nowrap leading-none"><LocalizedText source={"Janela (dias)"} /></label>
             <Input inputMode="numeric" placeholder="Ex.: 60" className="h-9 w-full" value={f.dias} onChange={(e) => set({ dias: e.target.value })} />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground leading-snug">O lote aparece na previsão quando faltar até esse número de dias para atingir o peso-alvo.</p>
+        <p className="text-xs text-muted-foreground leading-snug"><LocalizedText source={"O lote aparece na previsão quando faltar até esse número de dias para atingir o peso-alvo."} /></p>
       </div>
     );
   };
 
   const leitura = (r?: CfgRow, vazio = "Não definido") =>
-    r ? <span>{nf(r.peso_alvo_kg, 0)} kg · até {r.janela_dias} dias</span> : <span className="text-muted-foreground italic">{vazio}</span>;
+    r ? <span>{nf(r.peso_alvo_kg, 0)} <LocalizedText source={"kg · até"} />{" "}{r.janela_dias} <LocalizedText source={"dias"} /></span> : <span className="text-muted-foreground italic">{vazio}</span>;
 
   const totalAnimais = prev.reduce((s, p) => s + (p.num_animais ?? 0), 0);
   const dias = (p: Prev) =>
-    p.dias_para_alvo === 0 ? <Badge className="bg-primary text-primary-foreground">Pronto</Badge> : <span>{nf(p.dias_para_alvo)}</span>;
+    p.dias_para_alvo === 0 ? <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Pronto"} /></Badge> : <span>{nf(p.dias_para_alvo)}</span>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -163,25 +164,25 @@ export default function GerentePrevisaoAbatePage() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/gerente")} className="text-primary-foreground hover:bg-primary-foreground/10">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-base font-bold">Previsão de Abate</h1>
+        <h1 className="text-base font-bold"><LocalizedText source={"Previsão de Abate"} /></h1>
       </header>
       <main className="p-4 space-y-4 max-w-4xl mx-auto">
         <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={setFazendaId} dirty={editing} />
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : !fazendaId ? (
-          <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fazenda vinculada."} /></p>
         ) : (
           <>
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Configuração</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Configuração"} /></CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Fazenda</p>
+                  <p className="text-sm font-medium"><LocalizedText source={"Fazenda"} /></p>
                   {editing ? campos("faz") : <p className="text-sm">{leitura(linha(null))}</p>}
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Por retiro</p>
+                  <p className="text-sm font-medium"><LocalizedText source={"Por retiro"} /></p>
                   {retiros.map((r) => {
                     const aberto = !!abertos[r.id];
                     return (
@@ -201,15 +202,15 @@ export default function GerentePrevisaoAbatePage() {
                       </div>
                     );
                   })}
-                  {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                  {retiros.length === 0 && <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum retiro nesta fazenda."} /></p>}
                 </div>
-                {editing && <p className="text-xs text-muted-foreground">Peso entre 100 e 1200 kg; dias entre 1 e 365. Retiro com campos vazios segue a fazenda.</p>}
+                {editing && <p className="text-xs text-muted-foreground"><LocalizedText source={"Peso entre 100 e 1200 kg; dias entre 1 e 365. Retiro com campos vazios segue a fazenda."} /></p>}
                 {!editing ? (
-                  <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
+                  <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
-                    <Button className="flex-1" onClick={() => void save()} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+                    <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+                    <Button className="flex-1" onClick={() => void save()} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Salvar"} /></Button>
                   </div>
                 )}
               </CardContent>
@@ -219,30 +220,29 @@ export default function GerentePrevisaoAbatePage() {
               <div className="flex items-start gap-2 rounded-md border border-secondary bg-secondary/10 p-3 text-sm">
                 <AlertTriangle className="w-4 h-4 mt-0.5 text-secondary shrink-0" />
                 <div className="flex-1">
-                  Esta fazenda não tem GMD configurado, então a previsão não pode ser calculada.
-                  <Button variant="link" className="h-auto p-0 ml-1" onClick={() => navigate("/gerente/gmd")}>Configurar GMD</Button>
+                  <LocalizedText source={"Esta fazenda não tem GMD configurado, então a previsão não pode ser calculada."} /><Button variant="link" className="h-auto p-0 ml-1" onClick={() => navigate("/gerente/gmd")}><LocalizedText source={"Configurar GMD"} /></Button>
                 </div>
               </div>
             )}
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Previsão</CardTitle>
-                <p className="text-xs text-muted-foreground">{prev.length} pasto(s) · {nf(totalAnimais)} animais</p>
+                <CardTitle className="text-sm"><LocalizedText source={"Previsão"} /></CardTitle>
+                <p className="text-xs text-muted-foreground">{prev.length} <LocalizedText source={"pasto(s) ·"} />{" "}{nf(totalAnimais)} <LocalizedText source={"animais"} /></p>
               </CardHeader>
               <CardContent>
                 {prev.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum lote atinge o peso-alvo dentro da janela configurada.</p>
+                  <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum lote atinge o peso-alvo dentro da janela configurada."} /></p>
                 ) : (
                   <>
                     <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="text-xs text-muted-foreground text-left">
                           <tr>
-                            <th className="py-2 pr-2">Pasto</th><th className="pr-2">Retiro</th><th className="pr-2">Categoria</th>
-                            <th className="pr-2 text-right">Animais</th><th className="pr-2 text-right">Peso atual</th>
-                            <th className="pr-2 text-right">Peso-alvo</th><th className="pr-2 text-right">GMD</th>
-                            <th className="pr-2 text-right">Dias restantes</th><th className="text-right">Data prevista</th>
+                            <th className="py-2 pr-2"><LocalizedText source={"Pasto"} /></th><th className="pr-2"><LocalizedText source={"Retiro"} /></th><th className="pr-2"><LocalizedText source={"Categoria"} /></th>
+                            <th className="pr-2 text-right"><LocalizedText source={"Animais"} /></th><th className="pr-2 text-right"><LocalizedText source={"Peso atual"} /></th>
+                            <th className="pr-2 text-right"><LocalizedText source={"Peso-alvo"} /></th><th className="pr-2 text-right"><LocalizedText source={"GMD"} /></th>
+                            <th className="pr-2 text-right"><LocalizedText source={"Dias restantes"} /></th><th className="text-right"><LocalizedText source={"Data prevista"} /></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -269,12 +269,12 @@ export default function GerentePrevisaoAbatePage() {
                             <span className="font-semibold">{p.pasto}</span>
                             {dias(p)}
                           </div>
-                          <p className="text-xs text-muted-foreground">{p.retiro} · {p.categoria ?? "—"} · {nf(p.num_animais)} animais</p>
+                          <p className="text-xs text-muted-foreground">{p.retiro} · {p.categoria ?? "—"} · {nf(p.num_animais)} <LocalizedText source={"animais"} /></p>
                           <div className="grid grid-cols-2 gap-x-3 text-xs">
-                            <span>Peso: {nf(p.peso_atual, 1)} → {nf(p.peso_alvo, 0)} kg</span>
-                            <span>GMD: {nf(p.gmd_hoje, 3)}</span>
-                            <span>Dias: {p.dias_para_alvo === 0 ? "0" : nf(p.dias_para_alvo)}</span>
-                            <span>Data: {fmtData(p.data_prevista)}</span>
+                            <span><LocalizedText source={"Peso:"} />{" "}{nf(p.peso_atual, 1)} → {nf(p.peso_alvo, 0)} kg</span>
+                            <span><LocalizedText source={"GMD:"} />{" "}{nf(p.gmd_hoje, 3)}</span>
+                            <span><LocalizedText source={"Dias:"} />{" "}{p.dias_para_alvo === 0 ? "0" : nf(p.dias_para_alvo)}</span>
+                            <span><LocalizedText source={"Data:"} />{" "}{fmtData(p.data_prevista)}</span>
                           </div>
                         </div>
                       ))}

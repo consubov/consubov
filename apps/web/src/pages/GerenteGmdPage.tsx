@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -311,7 +312,7 @@ export default function GerenteGmdPage() {
           {CATEGORIAS_PASTO.map((c) => (
             <div key={c}>
               <span className="text-muted-foreground">{c}:</span>{" "}
-              {f[c] ? `${f[c]} kg/dia` : <span className="text-muted-foreground italic">Sem GMD definido</span>}
+              {f[c] ? `${f[c]} kg/dia` : <span className="text-muted-foreground italic"><LocalizedText source={"Sem GMD definido"} /></span>}
             </div>
           ))}
         </div>
@@ -336,23 +337,23 @@ export default function GerenteGmdPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/gerente")} className="text-primary-foreground hover:bg-primary-foreground/10">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-base font-bold">GMD</h1>
+        <h1 className="text-base font-bold"><LocalizedText source={"GMD"} /></h1>
       </header>
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
         <GerenteFazendaSelect fazendas={fazendas} value={fazendaId} onChange={chooseFarm} dirty={editing || saving} />
         {loading ? (
           <div className="flex justify-center p-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : !fazendaId ? (
-          <p className="text-sm text-muted-foreground">Nenhuma fazenda vinculada.</p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fazenda vinculada."} /></p>
         ) : loadError || loadedFazendaId !== fazendaId ? (
           <div className="space-y-3" role="alert">
-            <p className="text-sm text-destructive">Não foi possível confirmar os dados de GMD desta fazenda. Nenhuma alteração pode ser feita.</p>
-            <Button variant="outline" onClick={() => void load(fazendaId).catch(() => {})}>Tentar novamente</Button>
+            <p className="text-sm text-destructive"><LocalizedText source={"Não foi possível confirmar os dados de GMD desta fazenda. Nenhuma alteração pode ser feita."} /></p>
+            <Button variant="outline" onClick={() => void load(fazendaId).catch(() => {})}><LocalizedText source={"Tentar novamente"} /></Button>
           </div>
         ) : (
           <>
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Modo de GMD</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Modo de GMD"} /></CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 <RadioGroup value={modoAtual ?? ""} onValueChange={onEscolherModo} className="flex flex-wrap gap-4">
                   {MODOS.map((m) => (
@@ -361,26 +362,26 @@ export default function GerenteGmdPage() {
                     </label>
                   ))}
                 </RadioGroup>
-                {!modoAtual && <p className="text-sm text-muted-foreground">Escolha como o GMD será definido nesta fazenda</p>}
+                {!modoAtual && <p className="text-sm text-muted-foreground"><LocalizedText source={"Escolha como o GMD será definido nesta fazenda"} /></p>}
               </CardContent>
             </Card>
 
             {modoAtual === "geral" && (
               <>
                 <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-sm">Estações</CardTitle></CardHeader>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Estações"} /></CardTitle></CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {!editing ? (
                       <p>{v.ini && v.fim ? `Verão: ${MESES[v.ini - 1]} a ${MESES[v.fim - 1]}` : "Verão: não definido"}</p>
                     ) : (
                       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 whitespace-nowrap">
-                        <span>Verão:</span>
+                        <span><LocalizedText source={"Verão:"} /></span>
                         <CircularMonthSelect
                           value={draftVerao.ini}
                           onChange={(ini: number | null) => setDraftVerao((d) => ({ ...d, ini }))}
                           ariaLabel="Mês de início do verão"
                         />
-                        <span>até</span>
+                        <span><LocalizedText source={"até"} /></span>
                         <CircularMonthSelect
                           value={draftVerao.fim}
                           onChange={(fim: number | null) => setDraftVerao((d) => ({ ...d, fim }))}
@@ -392,11 +393,11 @@ export default function GerenteGmdPage() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-sm">GMD Geral (kg/dia)</CardTitle></CardHeader>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"GMD Geral (kg/dia)"} /></CardTitle></CardHeader>
                   <CardContent className="space-y-2">
                     {!editing ? (
                       <p className="text-sm">
-                        {!gV && !gI ? <span className="text-muted-foreground italic">Sem GMD definido</span> : <>Verão {gV || "—"} · Inverno {gI || "—"} kg/dia</>}
+                        {!gV && !gI ? <span className="text-muted-foreground italic"><LocalizedText source={"Sem GMD definido"} /></span> : <><LocalizedText source={"Verão"} />{" "}{gV || "—"} <LocalizedText source={"· Inverno"} />{" "}{gI || "—"} <LocalizedText source={"kg/dia"} /></>}
                       </p>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
@@ -404,7 +405,7 @@ export default function GerenteGmdPage() {
                         {campo("i", draftGeral.inverno, (s) => setDraftGeral((d) => ({ ...d, inverno: s })), "Inverno")}
                       </div>
                     )}
-                    {umSo && <p className="text-xs text-muted-foreground">Usado o ano todo</p>}
+                    {umSo && <p className="text-xs text-muted-foreground"><LocalizedText source={"Usado o ano todo"} /></p>}
                   </CardContent>
                 </Card>
               </>
@@ -412,14 +413,14 @@ export default function GerenteGmdPage() {
 
             {modoAtual === "categoria" && (
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm">GMD por categoria (kg/dia)</CardTitle></CardHeader>
+                <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"GMD por categoria (kg/dia)"} /></CardTitle></CardHeader>
                 <CardContent>{renderCategorias("faz", null)}</CardContent>
               </Card>
             )}
 
             {modoAtual === "retiro" && (
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm">GMD por retiro (kg/dia, por categoria)</CardTitle></CardHeader>
+                <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"GMD por retiro (kg/dia, por categoria)"} /></CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   {retiros.map((r) => {
                     const aberto = !!abertos[r.id];
@@ -437,21 +438,21 @@ export default function GerenteGmdPage() {
                       </div>
                     );
                   })}
-                  {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                  {retiros.length === 0 && <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum retiro nesta fazenda."} /></p>}
                 </CardContent>
               </Card>
             )}
 
             {editing && modoAtual && modoAtual !== "geral" && (
-              <p className="text-xs text-muted-foreground">Valores entre -1,000 e 3,000. Campo vazio = sem regra.</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Valores entre -1,000 e 3,000. Campo vazio = sem regra."} /></p>
             )}
 
             {!editing ? (
-              modo && <Button onClick={() => startEdit()} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
+              modo && <Button onClick={() => startEdit()} className="w-full gap-2"><Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
-                <Button className="flex-1" onClick={pedirSalvar} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+                <Button className="flex-1" onClick={pedirSalvar} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Salvar"} /></Button>
               </div>
             )}
           </>
@@ -461,12 +462,12 @@ export default function GerenteGmdPage() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Trocar o modo de GMD?</AlertDialogTitle>
-            <AlertDialogDescription>As regras do modo anterior serão apagadas.</AlertDialogDescription>
+            <AlertDialogTitle><LocalizedText source={"Trocar o modo de GMD?"} /></AlertDialogTitle>
+            <AlertDialogDescription><LocalizedText source={"As regras do modo anterior serão apagadas."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void save()}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={() => void save()}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
