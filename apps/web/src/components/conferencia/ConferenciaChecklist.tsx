@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,7 +92,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold truncate">Registrar Conferência</h1>
+          <h1 className="text-lg font-bold truncate"><LocalizedText source={"Registrar Conferência"} /></h1>
           <p className="text-xs opacity-90 truncate">{dados.pasto.nome}</p>
         </div>
       </header>
@@ -113,7 +114,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
         </Card>
 
         <div className="space-y-2">
-          <Label htmlFor="obs" className="text-sm font-semibold">Observações</Label>
+          <Label htmlFor="obs" className="text-sm font-semibold"><LocalizedText source={"Observações"} /></Label>
           <Textarea
             id="obs"
             value={observacoes}
@@ -125,7 +126,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-semibold">Fotos ({fotos.length}/{MAX_FOTOS})</Label>
+          <Label className="text-sm font-semibold"><LocalizedText source={"Fotos ("} />{fotos.length}/{MAX_FOTOS})</Label>
           <div className="grid grid-cols-3 gap-2">
             {fotos.map((src, i) => (
               <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
@@ -147,7 +148,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
                 className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/40 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <Camera className="w-6 h-6" />
-                <span className="text-xs">Adicionar</span>
+                <span className="text-xs"><LocalizedText source={"Adicionar"} /></span>
               </button>
             )}
           </div>
@@ -164,8 +165,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
 
         <Button onClick={handleSave} disabled={saving} size="lg" className="w-full gap-2">
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          SALVAR CONFERÊNCIA
-        </Button>
+          <LocalizedText source={"SALVAR CONFERÊNCIA"} /></Button>
       </main>
     </div>
   );

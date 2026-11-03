@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -84,13 +85,12 @@ export default function ConferenciaAssinaturasSection({
     <div className="rounded-lg border bg-card p-3 space-y-3">
       <div className="flex items-center gap-2">
         <PenLine className="w-4 h-4 text-primary" />
-        <div className="text-[11px] uppercase tracking-wide font-bold text-primary">Assinaturas</div>
+        <div className="text-[11px] uppercase tracking-wide font-bold text-primary"><LocalizedText source={"Assinaturas"} /></div>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando…
-        </div>
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> <LocalizedText source={"Carregando…"} /></div>
       ) : (
         <div className="space-y-2">
           {list.map((a, idx) => (
@@ -107,8 +107,7 @@ export default function ConferenciaAssinaturasSection({
       )}
 
       <Button type="button" variant="outline" size="sm" onClick={() => void add()} className="gap-1.5">
-        <Plus className="w-4 h-4" /> Adicionar Consultor
-      </Button>
+        <Plus className="w-4 h-4" /> <LocalizedText source={"Adicionar Consultor"} /></Button>
     </div>
   );
 }
@@ -133,7 +132,7 @@ function AssinanteRow({
     <div className="rounded-md border p-2 space-y-1.5">
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-          Assinante {index + 1}
+          <LocalizedText source={"Assinante"} />{" "}{index + 1}
         </div>
         {canRemove && (
           <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="h-7 px-2 text-destructive">
@@ -143,7 +142,7 @@ function AssinanteRow({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5 text-muted-foreground">Nome</div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5 text-muted-foreground"><LocalizedText source={"Nome"} /></div>
           <Input
             value={nome}
             onChange={e => setNome(e.target.value)}
@@ -153,7 +152,7 @@ function AssinanteRow({
           />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5 text-muted-foreground">Cargo / Função</div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5 text-muted-foreground"><LocalizedText source={"Cargo / Função"} /></div>
           <Input
             value={cargo}
             onChange={e => setCargo(e.target.value)}
