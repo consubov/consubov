@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,24 +149,24 @@ export default function SyncVetContasPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-primary flex items-center gap-2"><Wallet className="w-5 h-5" /> Contas a Receber</h1>
-        <Button size="sm" onClick={() => navigate("/syncvet/servicos/novo")}><Plus className="w-4 h-4 mr-1" /> Novo</Button>
+        <h1 className="text-lg font-bold text-primary flex items-center gap-2"><Wallet className="w-5 h-5" /> <LocalizedText source={"Contas a Receber"} /></h1>
+        <Button size="sm" onClick={() => navigate("/syncvet/servicos/novo")}><Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Novo"} /></Button>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground">Pendente</div><div className="text-sm font-bold">{fmtBRL(totais.pendente)}</div></Card>
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground">Pago</div><div className="text-sm font-bold text-primary">{fmtBRL(totais.pago)}</div></Card>
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground">Vencido</div><div className="text-sm font-bold text-destructive">{fmtBRL(totais.vencido)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pendente"} /></div><div className="text-sm font-bold">{fmtBRL(totais.pendente)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pago"} /></div><div className="text-sm font-bold text-primary">{fmtBRL(totais.pago)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Vencido"} /></div><div className="text-sm font-bold text-destructive">{fmtBRL(totais.vencido)}</div></Card>
       </div>
 
       <Card className="p-3 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-xs">Fazenda</Label>
+            <Label className="text-xs"><LocalizedText source={"Fazenda"} /></Label>
             <Select value={fFazenda} onValueChange={setFFazenda}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todas"} /></SelectItem>
                 {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -175,19 +176,19 @@ export default function SyncVetContasPage() {
             <Select value={fStatus} onValueChange={setFStatus}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="pago">Pago</SelectItem>
-                <SelectItem value="vencido">Vencido</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
+                <SelectItem value="pendente"><LocalizedText source={"Pendente"} /></SelectItem>
+                <SelectItem value="pago"><LocalizedText source={"Pago"} /></SelectItem>
+                <SelectItem value="vencido"><LocalizedText source={"Vencido"} /></SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-xs">De</Label>
+            <Label className="text-xs"><LocalizedText source={"De"} /></Label>
             <Input type="date" value={fInicio} onChange={e => setFInicio(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">Até</Label>
+            <Label className="text-xs"><LocalizedText source={"Até"} /></Label>
             <Input type="date" value={fFim} onChange={e => setFFim(e.target.value)} />
           </div>
         </div>
@@ -196,7 +197,7 @@ export default function SyncVetContasPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum serviço encontrado</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum serviço encontrado"} /></Card>
       ) : (
         <div className="space-y-2">
           {filtered.map(s => (
@@ -205,8 +206,8 @@ export default function SyncVetContasPage() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold truncate">{fazById.get(s.fazenda_id)?.nome ?? "Fazenda"}</div>
                   <div className="text-xs text-muted-foreground">
-                    Emissão: {fmtDate(s.data_referencia)}
-                    {s.data_vencimento && <> · Vence: {fmtDate(s.data_vencimento)}</>}
+                    <LocalizedText source={"Emissão:"} />{" "}{fmtDate(s.data_referencia)}
+                    {s.data_vencimento && <> <LocalizedText source={"· Vence:"} />{" "}{fmtDate(s.data_vencimento)}</>}
                   </div>
                   <span className={cn("inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold", badgeCls[s.status])}>
                     {s.status}
@@ -222,8 +223,7 @@ export default function SyncVetContasPage() {
                 </Button>
                 {s.status !== "pago" && (
                   <Button size="sm" onClick={() => marcarPago(s.id)}>
-                    <Check className="w-3 h-3 mr-1" /> Marcar pago
-                  </Button>
+                    <Check className="w-3 h-3 mr-1" /> <LocalizedText source={"Marcar pago"} /></Button>
                 )}
               </div>
             </Card>

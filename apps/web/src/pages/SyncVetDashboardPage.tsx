@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -204,7 +205,7 @@ export default function SyncVetDashboardPage() {
     return <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   }
   if (!empresaId) {
-    return <Card className="p-6 text-sm text-muted-foreground">Cadastre uma empresa em <b>Empresa</b> para começar.</Card>;
+    return <Card className="p-6 text-sm text-muted-foreground"><LocalizedText source={"Cadastre uma empresa em"} />{" "}<b><LocalizedText source={"Empresa"} /></b> <LocalizedText source={"para começar."} /></Card>;
   }
 
   const cards = [
@@ -218,7 +219,7 @@ export default function SyncVetDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold text-primary">Painel</h1>
+      <h1 className="text-lg font-bold text-primary"><LocalizedText source={"Painel"} /></h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {cards.map((c) => (
@@ -231,53 +232,49 @@ export default function SyncVetDashboardPage() {
         ))}
         <Card className="p-3 col-span-2 sm:col-span-3 bg-primary/5 border-primary/30">
           <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
-            <TrendingUp className="w-3.5 h-3.5" /> Receita do mês (serviços pagos)
-          </div>
+            <TrendingUp className="w-3.5 h-3.5" /> <LocalizedText source={"Receita do mês (serviços pagos)"} /></div>
           <div className="text-2xl font-bold text-primary mt-1">{fmtBRL(kpis?.receitaMes ?? 0)}</div>
         </Card>
       </div>
 
       <div>
         <h2 className="text-base font-bold text-primary flex items-center gap-2 mb-2">
-          <Percent className="w-4 h-4" /> Taxa de Prenhez
-        </h2>
+          <Percent className="w-4 h-4" /> <LocalizedText source={"Taxa de Prenhez"} /></h2>
         <Card className="p-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Select value={fFaz} onValueChange={setFFaz}>
               <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as fazendas</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todas as fazendas"} /></SelectItem>
                 {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={fVet} onValueChange={setFVet}>
               <SelectTrigger><SelectValue placeholder="Veterinário" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os veterinários</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todos os veterinários"} /></SelectItem>
                 {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={fProt} onValueChange={setFProt}>
               <SelectTrigger><SelectValue placeholder="Protocolo" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os protocolos</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todos os protocolos"} /></SelectItem>
                 {protocolos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           <div className="rounded-md bg-primary/5 border border-primary/20 p-4 text-center">
-            <div className="text-xs text-muted-foreground">Taxa média</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Taxa média"} /></div>
             <div className="text-4xl font-bold text-primary">{taxaAgregada.pct.toFixed(2)}%</div>
             <div className="text-xs text-muted-foreground mt-1">
-              {taxaAgregada.prenhas} prenhas / {taxaAgregada.total} diagnosticadas
-            </div>
+              {taxaAgregada.prenhas} <LocalizedText source={"prenhas /"} />{" "}{taxaAgregada.total} <LocalizedText source={"diagnosticadas"} /></div>
           </div>
 
           {taxaFiltered.length === 0 ? (
             <div className="text-xs text-muted-foreground text-center italic py-2">
-              Sem diagnósticos registrados neste filtro.
-            </div>
+              <LocalizedText source={"Sem diagnósticos registrados neste filtro."} /></div>
           ) : (
             <div className="space-y-1">
               {taxaFiltered.slice(0, 12).map((t, i) => {
