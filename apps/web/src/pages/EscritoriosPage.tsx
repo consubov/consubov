@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -54,17 +55,15 @@ export default function EscritoriosPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Building2 className="w-5 h-5 text-primary" />
-          Escritórios
-        </h1>
+          <LocalizedText source={"Escritórios"} /></h1>
         <Button onClick={() => setModalOpen(true)} size="sm" className="gap-1">
-          <Plus className="w-4 h-4" /> Criar Escritório
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Criar Escritório"} /></Button>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>
+        <p className="text-muted-foreground text-sm text-center py-8"><LocalizedText source={"Carregando..."} /></p>
       ) : escritorios.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center py-8">Nenhum escritório cadastrado.</p>
+        <p className="text-muted-foreground text-sm text-center py-8"><LocalizedText source={"Nenhum escritório cadastrado."} /></p>
       ) : (
         <div className="space-y-3">
           {escritorios.map(e => (
@@ -81,7 +80,7 @@ export default function EscritoriosPage() {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Fazenda: <strong>{e.fazenda_nome}</strong>
+                  <LocalizedText source={"Fazenda:"} />{" "}<strong>{e.fazenda_nome}</strong>
                 </p>
               </CardContent>
             </Card>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -142,7 +143,7 @@ export default function ConsultorPainelPage() {
         <h1 className="text-xl font-bold text-foreground">
           {saudacao}{nomeConsultor ? `, ${nomeConsultor.trim().split(/\s+/)[0]}` : ""}!
         </h1>
-        <p className="text-sm text-muted-foreground">Visão geral do período selecionado</p>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Visão geral do período selecionado"} /></p>
       </div>
 
       <Card className="p-3 flex flex-wrap gap-2 items-center">
@@ -165,7 +166,7 @@ export default function ConsultorPainelPage() {
       </Card>
 
       {loading ? (
-        <div className="text-center py-10 text-muted-foreground">Carregando…</div>
+        <div className="text-center py-10 text-muted-foreground"><LocalizedText source={"Carregando…"} /></div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <MetricCard icon={<Landmark className="w-4 h-4" />} label="Fazendas" value={String(fazendas.length)} />
@@ -176,7 +177,7 @@ export default function ConsultorPainelPage() {
           <Card className="p-3 col-span-2">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-destructive" />
-              <div className="text-sm font-semibold">Fazendas sem visita no período</div>
+              <div className="text-sm font-semibold"><LocalizedText source={"Fazendas sem visita no período"} /></div>
             </div>
             <div className="flex items-center gap-4">
               <ResponsiveContainer width={140} height={140}>
@@ -188,8 +189,8 @@ export default function ConsultorPainelPage() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="text-sm space-y-1">
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: GREEN }} /> Visitadas: {fazendasVisitadas.size}</div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: RED }} /> Sem visita: {semVisita}</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: GREEN }} /> <LocalizedText source={"Visitadas:"} />{" "}{fazendasVisitadas.size}</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: RED }} /> <LocalizedText source={"Sem visita:"} />{" "}{semVisita}</div>
               </div>
             </div>
           </Card>
@@ -197,10 +198,10 @@ export default function ConsultorPainelPage() {
           <Card className="p-3 col-span-2">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <div className="text-sm font-semibold">Evolução do Score</div>
+              <div className="text-sm font-semibold"><LocalizedText source={"Evolução do Score"} /></div>
             </div>
             {evolucaoScore.length === 0 ? (
-              <div className="text-xs text-muted-foreground py-4 text-center">Sem dados no período.</div>
+              <div className="text-xs text-muted-foreground py-4 text-center"><LocalizedText source={"Sem dados no período."} /></div>
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={evolucaoScore}>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -117,15 +118,14 @@ export default function EntradaMateriasPrimasPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-        <PackagePlus className="w-5 h-5" /> Entrada de Matérias-Primas
-      </h1>
+        <PackagePlus className="w-5 h-5" /> <LocalizedText source={"Entrada de Matérias-Primas"} /></h1>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Nova entrada</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base"><LocalizedText source={"Nova entrada"} /></CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label>Matéria-Prima *</Label>
+              <Label><LocalizedText source={"Matéria-Prima *"} /></Label>
               <Select value={materiaId} onValueChange={setMateriaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -134,7 +134,7 @@ export default function EntradaMateriasPrimasPage() {
               </Select>
             </div>
             <div>
-              <Label>Fábrica *</Label>
+              <Label><LocalizedText source={"Fábrica *"} /></Label>
               <Select value={fabricaId} onValueChange={setFabricaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -143,20 +143,20 @@ export default function EntradaMateriasPrimasPage() {
               </Select>
             </div>
             <div>
-              <Label>Quantidade *</Label>
+              <Label><LocalizedText source={"Quantidade *"} /></Label>
               <Input type="number" step="0.01" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
             </div>
             <div>
-              <Label>Data *</Label>
+              <Label><LocalizedText source={"Data *"} /></Label>
               <Input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} />
             </div>
           </div>
           <div>
-            <Label>Observação</Label>
+            <Label><LocalizedText source={"Observação"} /></Label>
             <Textarea value={observacao} onChange={e => setObservacao(e.target.value)} rows={2} />
           </div>
           <div>
-            <Label>Foto (opcional)</Label>
+            <Label><LocalizedText source={"Foto (opcional)"} /></Label>
             <div className="mt-2 flex items-center gap-3">
               <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                 <Camera className="w-4 h-4" />
@@ -176,29 +176,28 @@ export default function EntradaMateriasPrimasPage() {
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Salvar entrada
-            </Button>
+              <LocalizedText source={"Salvar entrada"} /></Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Últimas entradas</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base"><LocalizedText source={"Últimas entradas"} /></CardTitle></CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Matéria-Prima</TableHead>
-                  <TableHead>Fábrica</TableHead>
-                  <TableHead className="text-right">Quantidade</TableHead>
-                  <TableHead>Observação</TableHead>
+                  <TableHead><LocalizedText source={"Data"} /></TableHead>
+                  <TableHead><LocalizedText source={"Matéria-Prima"} /></TableHead>
+                  <TableHead><LocalizedText source={"Fábrica"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Quantidade"} /></TableHead>
+                  <TableHead><LocalizedText source={"Observação"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entradas.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma entrada registrada"} /></TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>

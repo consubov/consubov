@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -116,11 +117,9 @@ export default function ConsultoresPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Stethoscope className="w-5 h-5" /> Consultores
-        </h1>
+          <Stethoscope className="w-5 h-5" /> <LocalizedText source={"Consultores"} /></h1>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Novo Consultor
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Novo Consultor"} /></Button>
       </div>
 
       <Card>
@@ -128,14 +127,14 @@ export default function ConsultoresPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead><LocalizedText source={"Nome"} /></TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-24 text-right">Ações</TableHead>
+                <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {consultores.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhum consultor cadastrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8"><LocalizedText source={"Nenhum consultor cadastrado"} /></TableCell></TableRow>
               ) : consultores.map(c => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
@@ -160,15 +159,15 @@ export default function ConsultoresPage() {
             <DialogDescription>{editingId ? "Atualize os dados do consultor." : "O consultor terá acesso ao painel de visitas técnicas."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             {!editingId && (
               <>
                 <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-                <div><Label>Senha *</Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
               </>
             )}
             <div className="space-y-2">
-              <Label>Profissão</Label>
+              <Label><LocalizedText source={"Profissão"} /></Label>
               <div className="flex flex-wrap gap-2">
                 {[...PROFISSOES, "Outro"].map(op => (
                   <Button
@@ -192,15 +191,14 @@ export default function ConsultoresPage() {
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.despesasAtivo} onCheckedChange={v => setForm(f => ({ ...f, despesasAtivo: v }))} />
-              <Label>Ativar módulo de Despesas de Combustível</Label>
+              <Label><LocalizedText source={"Ativar módulo de Despesas de Combustível"} /></Label>
             </div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
