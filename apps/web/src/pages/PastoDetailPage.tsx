@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,7 +221,7 @@ export default function PastoDetailPage() {
     <div className="max-w-5xl mx-auto">
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazenda.nome}</Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -231,34 +232,33 @@ export default function PastoDetailPage() {
       </Breadcrumb>
 
       <Button variant="ghost" size="sm" className="mb-4 gap-1.5" onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}`)}>
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2"><TreePine className="w-5 h-5" /> {pasto.nome}</CardTitle>
             <div className="flex gap-2">
-              {hasOverride && <Badge variant="outline" className="border-amber-500 text-amber-600">Produto personalizado</Badge>}
+              {hasOverride && <Badge variant="outline" className="border-amber-500 text-amber-600"><LocalizedText source={"Produto personalizado"} /></Badge>}
               <Badge variant={pasto.ativo ? "default" : "secondary"}>{pasto.ativo ? "Ativo" : "Inativo"}</Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-            <div><span className="text-muted-foreground">Retiro:</span> {retiro.nome}</div>
-            <div><span className="text-muted-foreground">Fazenda:</span> {fazenda.nome}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Retiro:"} /></span> {retiro.nome}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Fazenda:"} /></span> {fazenda.nome}</div>
             <div
               className="cursor-pointer hover:text-primary transition-colors"
               onClick={openTransfer}
             >
-              <span className="text-muted-foreground">Animais:</span>{" "}
+              <span className="text-muted-foreground"><LocalizedText source={"Animais:"} /></span>{" "}
               <span className="underline decoration-dashed">{pasto.num_animais}</span>
               <ArrowRightLeft className="w-3 h-3 inline ml-1 text-muted-foreground" />
             </div>
-            <div><span className="text-muted-foreground">Peso Médio:</span> {pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg` : "—"}</div>
-            <div><span className="text-muted-foreground">Categoria:</span> {pasto.categoria ?? "—"}</div>
-            <div><span className="text-muted-foreground">Sexo:</span> {pasto.sexo ?? "—"}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Peso Médio:"} /></span> {pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg` : "—"}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Categoria:"} /></span> {pasto.categoria ?? "—"}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Sexo:"} /></span> {pasto.sexo ?? "—"}</div>
           </div>
         </CardContent>
       </Card>
@@ -266,26 +266,24 @@ export default function PastoDetailPage() {
       {/* Produto do Pasto */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Package className="w-4 h-4" /> Produto</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><Package className="w-4 h-4" /> <LocalizedText source={"Produto"} /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-sm">
-              <span className="text-muted-foreground">Produto atual: </span>
+              <span className="text-muted-foreground"><LocalizedText source={"Produto atual:"} />{" "}</span>
               <span className="font-medium">
                 {produtoAtivo ? produtoAtivo.nome : "Nenhum definido"}
-                {!hasOverride && produtoRetiro && <span className="text-muted-foreground ml-1">(padrão do retiro)</span>}
+                {!hasOverride && produtoRetiro && <span className="text-muted-foreground ml-1"><LocalizedText source={"(padrão do retiro)"} /></span>}
               </span>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={openProdutoDialog} className="gap-1.5">
                 <Package className="w-3 h-3" />
-                Definir produto específico
-              </Button>
+                <LocalizedText source={"Definir produto específico"} /></Button>
               {hasOverride && (
                 <Button size="sm" variant="ghost" onClick={resetProduto} className="text-muted-foreground">
-                  Usar produto do retiro
-                </Button>
+                  <LocalizedText source={"Usar produto do retiro"} /></Button>
               )}
             </div>
           </div>
@@ -293,13 +291,13 @@ export default function PastoDetailPage() {
       </Card>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Lançamentos</h2>
+        <h2 className="text-lg font-semibold text-foreground"><LocalizedText source={"Lançamentos"} /></h2>
       </div>
 
       <Card>
         <CardContent className="p-8 text-center">
           <ClipboardList className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">Módulo de lançamentos em breve.</p>
+          <p className="text-muted-foreground text-sm"><LocalizedText source={"Módulo de lançamentos em breve."} /></p>
         </CardContent>
       </Card>
 
@@ -307,14 +305,13 @@ export default function PastoDetailPage() {
       <Dialog open={produtoDialogOpen} onOpenChange={setProdutoDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Definir Produto do Pasto</DialogTitle>
+            <DialogTitle><LocalizedText source={"Definir Produto do Pasto"} /></DialogTitle>
             <DialogDescription>
-              Selecione um produto específico para este pasto. Se não definido, será usado o produto do retiro.
-            </DialogDescription>
+              <LocalizedText source={"Selecione um produto específico para este pasto. Se não definido, será usado o produto do retiro."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Produto</Label>
+              <Label><LocalizedText source={"Produto"} /></Label>
               <Select value={selectedProdutoId} onValueChange={setSelectedProdutoId}>
                 <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
                 <SelectContent>
@@ -329,7 +326,7 @@ export default function PastoDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setProdutoDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setProdutoDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={saveProdutoOverride} disabled={savingProduto || !selectedProdutoId}>
               {savingProduto ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
             </Button>
@@ -341,14 +338,13 @@ export default function PastoDetailPage() {
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Transferir Animais</DialogTitle>
+            <DialogTitle><LocalizedText source={"Transferir Animais"} /></DialogTitle>
             <DialogDescription>
-              Transfira animais de <strong>{pasto.nome}</strong> para outro pasto do mesmo retiro.
-            </DialogDescription>
+              <LocalizedText source={"Transfira animais de"} />{" "}<strong>{pasto.nome}</strong> <LocalizedText source={"para outro pasto do mesmo retiro."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Quantidade a transferir (máx: {pasto.num_animais})</Label>
+              <Label><LocalizedText source={"Quantidade a transferir (máx:"} />{" "}{pasto.num_animais})</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -360,12 +356,12 @@ export default function PastoDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Pasto destino</Label>
+              <Label><LocalizedText source={"Pasto destino"} /></Label>
               <Select value={transferDestino} onValueChange={setTransferDestino}>
                 <SelectTrigger><SelectValue placeholder="Selecione o pasto" /></SelectTrigger>
                 <SelectContent>
                   {destinosDisponiveis.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} animais)</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} <LocalizedText source={"animais)"} /></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -375,15 +371,15 @@ export default function PastoDetailPage() {
             )}
             {qtdNum > 0 && destinoSelecionado && (
               <div className="bg-muted rounded-md p-3 text-sm">
-                <strong>{qtdNum}</strong> animais saem de <strong>{pasto.nome}</strong> → <strong>{destinoSelecionado.nome}</strong>
+                <strong>{qtdNum}</strong> <LocalizedText source={"animais saem de"} />{" "}<strong>{pasto.nome}</strong> → <strong>{destinoSelecionado.nome}</strong>
               </div>
             )}
             {qtdNum > pasto.num_animais && (
-              <p className="text-sm text-destructive font-medium">Quantidade maior que o total disponível.</p>
+              <p className="text-sm text-destructive font-medium"><LocalizedText source={"Quantidade maior que o total disponível."} /></p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setTransferOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button
               onClick={handleTransfer}
               disabled={savingTransfer || !transferDestino || qtdNum <= 0 || qtdNum > pasto.num_animais || (destinoPrecisaCat && !isCategoriaValida(categoriaDestino))}

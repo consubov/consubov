@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { dataEscolhidaParaIso, diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
@@ -554,33 +555,32 @@ export default function PecuaristaApartacaoPage() {
       <div className="max-w-2xl mx-auto space-y-4 pb-24">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}><ArrowLeft className="w-4 h-4" /></Button>
-          <h1 className="text-xl font-bold flex-1">Configurar apartação</h1>
+          <h1 className="text-xl font-bold flex-1"><LocalizedText source={"Configurar apartação"} /></h1>
         </div>
 
         <Card className="p-4 space-y-1">
-          <div className="text-xs uppercase text-muted-foreground">Lote de origem</div>
+          <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Lote de origem"} /></div>
           <div className="font-semibold flex items-center gap-2 flex-wrap">
             {lote.nome_lote} <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
             <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
           </div>
-          <div className="text-sm text-muted-foreground">Data da pesagem: <strong>{new Date(dataPesagem).toLocaleDateString("pt-BR")}</strong></div>
+          <div className="text-sm text-muted-foreground"><LocalizedText source={"Data da pesagem:"} />{" "}<strong>{new Date(dataPesagem).toLocaleDateString("pt-BR")}</strong></div>
         </Card>
 
         <Card className="p-4 space-y-2">
-          <Label>Quantos lotes de destino?</Label>
+          <Label><LocalizedText source={"Quantos lotes de destino?"} /></Label>
           <div className="flex gap-2">
             {[2, 3].map(n => (
               <button key={n} type="button" onClick={() => setQtdSafe(n as 2 | 3)}
                 className={`flex-1 h-14 rounded-lg border font-semibold ${qtd === n ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}>
-                {n} lotes
-              </button>
+                {n} <LocalizedText source={"lotes"} /></button>
             ))}
           </div>
         </Card>
 
         {confs.slice(0, qtd).map((c, i) => (
           <Card key={i} className="p-4 space-y-3">
-            <div className="font-semibold">Destino {i + 1}</div>
+            <div className="font-semibold"><LocalizedText source={"Destino"} />{" "}{i + 1}</div>
             <RadioGroup value={c.modo} onValueChange={(v) => setConfs(prev => {
               const next = [...prev];
               const keepMin = (next[i] as any).pesoMin ?? "";
@@ -590,17 +590,17 @@ export default function PecuaristaApartacaoPage() {
                 : { modo: "existente", loteExistenteId: "", pesoMin: keepMin, pesoMax: keepMax };
               return next;
             })}>
-              <div className="flex items-center gap-2"><RadioGroupItem value="novo" id={`m-novo-${i}`} /><Label htmlFor={`m-novo-${i}`} className="font-normal cursor-pointer">Criar novo lote</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="existente" id={`m-ex-${i}`} /><Label htmlFor={`m-ex-${i}`} className="font-normal cursor-pointer">Usar lote existente</Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="novo" id={`m-novo-${i}`} /><Label htmlFor={`m-novo-${i}`} className="font-normal cursor-pointer"><LocalizedText source={"Criar novo lote"} /></Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="existente" id={`m-ex-${i}`} /><Label htmlFor={`m-ex-${i}`} className="font-normal cursor-pointer"><LocalizedText source={"Usar lote existente"} /></Label></div>
             </RadioGroup>
 
             {c.modo === "novo" ? (
               <>
-                <div><Label>Nome do novo lote *</Label>
+                <div><Label><LocalizedText source={"Nome do novo lote *"} /></Label>
                   <Input value={c.nome} onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).nome = e.target.value; return n; })} />
                 </div>
                 <div>
-                  <Label className="mb-2 block">Categoria</Label>
+                  <Label className="mb-2 block"><LocalizedText source={"Categoria"} /></Label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIAS_PADRAO.map(cp => (
                       <button key={cp.slug} type="button"
@@ -619,8 +619,7 @@ export default function PecuaristaApartacaoPage() {
                     <button type="button"
                       onClick={() => setConfs(prev => { const n = [...prev]; (n[i] as any).criandoNova = true; return n; })}
                       className={`px-3 py-1.5 rounded-full text-xs border ${(c as any).criandoNova ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}>
-                      + Nova categoria
-                    </button>
+                      <LocalizedText source={"+ Nova categoria"} /></button>
                   </div>
                   {(c as any).criandoNova && (
                     <Input className="mt-2" placeholder="Nome da nova categoria"
@@ -628,44 +627,43 @@ export default function PecuaristaApartacaoPage() {
                       onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).novaCategoria = e.target.value; return n; })} />
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground">Novo lote será criado como <strong>{lote.identificado ? "Identificado" : "Sem identificação"}</strong> (mesmo do origem).</div>
+                <div className="text-xs text-muted-foreground"><LocalizedText source={"Novo lote será criado como"} />{" "}<strong>{lote.identificado ? "Identificado" : "Sem identificação"}</strong> <LocalizedText source={"(mesmo do origem)."} /></div>
               </>
             ) : (
               <div>
-                <Label>Selecione o lote</Label>
+                <Label><LocalizedText source={"Selecione o lote"} /></Label>
                 <select className="w-full h-10 rounded-md border bg-background px-3"
                   value={(c as any).loteExistenteId}
                   onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).loteExistenteId = e.target.value; return n; })}>
-                  <option value="">— selecionar —</option>
+                  <option value=""><LocalizedText source={"— selecionar —"} /></option>
                   {lotesFazenda.map(l => (
                     <option key={l.id} value={l.id}>{l.nome_lote} (#{l.codigo})</option>
                   ))}
                 </select>
                 {lotesFazenda.length === 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">Nenhum outro lote {lote.identificado ? "identificado" : "sem identificação"} ativo nesta fazenda.</div>
+                  <div className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Nenhum outro lote"} />{" "}{lote.identificado ? "identificado" : "sem identificação"} <LocalizedText source={"ativo nesta fazenda."} /></div>
                 )}
               </div>
             )}
 
             <div className="pt-2 border-t space-y-2">
-              <Label className="text-sm">Faixa de peso (kg) — opcional</Label>
+              <Label className="text-sm"><LocalizedText source={"Faixa de peso (kg) — opcional"} /></Label>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Peso mínimo</Label>
+                  <Label className="text-xs text-muted-foreground"><LocalizedText source={"Peso mínimo"} /></Label>
                   <Input type="number" inputMode="decimal" placeholder="ex: 401"
                     value={(c as any).pesoMin}
                     onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMin = e.target.value; return n; })} />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Peso máximo</Label>
+                  <Label className="text-xs text-muted-foreground"><LocalizedText source={"Peso máximo"} /></Label>
                   <Input type="number" inputMode="decimal" placeholder="ex: 500"
                     value={(c as any).pesoMax}
                     onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMax = e.target.value; return n; })} />
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
-                Deixe em branco para "sem limite". As faixas não podem se sobrepor entre os destinos.
-              </div>
+                <LocalizedText source={"Deixe em branco para \"sem limite\". As faixas não podem se sobrepor entre os destinos."} /></div>
             </div>
           </Card>
         ))}
@@ -699,8 +697,7 @@ export default function PecuaristaApartacaoPage() {
           return (
             <Button size="lg" className="w-full h-14 bg-primary hover:bg-primary/90" onClick={preparar} disabled={preparando || !canStart}>
               {preparando ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Split className="w-5 h-5 mr-2" />}
-              Começar apartação
-            </Button>
+              <LocalizedText source={"Começar apartação"} /></Button>
           );
         })()}
       </div>
@@ -712,7 +709,7 @@ export default function PecuaristaApartacaoPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-3 pb-44">
       <Card className="p-3">
-        <div className="text-xs uppercase text-muted-foreground">Apartação — origem</div>
+        <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Apartação — origem"} /></div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
           {lote.nome_lote}
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
@@ -739,10 +736,10 @@ export default function PecuaristaApartacaoPage() {
               </div>
               {step === "peso" && prev?.peso_anterior_kg != null && (
                 <Card className="p-3 bg-muted/50 text-sm">
-                  <div><strong>Pesagem anterior:</strong></div>
-                  <div>Peso: {prev.peso_anterior_kg.toFixed(1)} kg</div>
-                  {prev.lote_anterior && <div>Lote: {prev.lote_anterior}</div>}
-                  {prev.data_anterior && <div>Data: {new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
+                  <div><strong><LocalizedText source={"Pesagem anterior:"} /></strong></div>
+                  <div><LocalizedText source={"Peso:"} />{" "}{prev.peso_anterior_kg.toFixed(1)} kg</div>
+                  {prev.lote_anterior && <div><LocalizedText source={"Lote:"} />{" "}{prev.lote_anterior}</div>}
+                  {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
                 </Card>
               )}
               <Input
@@ -793,17 +790,17 @@ export default function PecuaristaApartacaoPage() {
             const sugerido = destinoParaPeso(destinos, peso);
             return (
               <>
-                <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
-                <div className="text-xs text-muted-foreground">Nº {prev?.numero} · {peso.toFixed(1)} kg</div>
+                <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Destino"} /></div>
+                <div className="text-xs text-muted-foreground"><LocalizedText source={"Nº"} />{" "}{prev?.numero} · {peso.toFixed(1)} kg</div>
                 {sugerido ? (
                   <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
                     onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
                     onClick={() => escolherDestinoId(sugerido.lote_id)}>
                     <Check className="w-5 h-5 mr-2" />
-                    Confirmar {sugerido.nome_lote}
+                    <LocalizedText source={"Confirmar"} />{" "}{sugerido.nome_lote}
                   </Button>
                 ) : (
-                  <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
+                  <div className="text-xs text-amber-600"><LocalizedText source={"Peso não se encaixa em nenhuma faixa — escolha manualmente:"} /></div>
                 )}
                 <div className="text-xs text-muted-foreground text-center">
                   {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
@@ -821,7 +818,7 @@ export default function PecuaristaApartacaoPage() {
                             : "border-muted-foreground/30 bg-background text-foreground hover:bg-muted"
                         }`}>
                         {d.nome_lote}
-                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} <LocalizedText source={"animais"} /></div>
                       </button>
                     );
                   })}
@@ -835,7 +832,7 @@ export default function PecuaristaApartacaoPage() {
         <div className="space-y-3">
           {step === "peso" && (
             <>
-              <div className="text-sm font-medium">Animal {animalNum} — Peso (kg)</div>
+              <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
               <Input ref={inputRef} type="number" inputMode="decimal" placeholder="Peso (kg)"
                 value={pesoAtual} onChange={e => setPesoAtual(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleConfirmarPesoSem(); } }}
@@ -844,8 +841,7 @@ export default function PecuaristaApartacaoPage() {
                 onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
                 onClick={handleConfirmarPesoSem}
                 disabled={!pesoAtual || parseFloat(pesoAtual.replace(",", ".")) <= 0}>
-                <Scale className="w-4 h-4 mr-2" /> Escolher destino ➜
-              </Button>
+                <Scale className="w-4 h-4 mr-2" /> <LocalizedText source={"Escolher destino ➜"} /></Button>
             </>
           )}
           {step === "destino" && (() => {
@@ -853,17 +849,17 @@ export default function PecuaristaApartacaoPage() {
             const sugerido = destinoParaPeso(destinos, peso);
             return (
               <>
-                <div className="text-sm font-medium">Animal {animalNum} — Destino</div>
+                <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Destino"} /></div>
                 <div className="text-xs text-muted-foreground">{peso.toFixed(1)} kg</div>
                 {sugerido ? (
                   <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
                     onMouseDown={e => e.preventDefault()} onPointerDown={e => e.preventDefault()}
                     onClick={() => escolherDestinoSem(sugerido.lote_id)}>
                     <Check className="w-5 h-5 mr-2" />
-                    Confirmar {sugerido.nome_lote}
+                    <LocalizedText source={"Confirmar"} />{" "}{sugerido.nome_lote}
                   </Button>
                 ) : (
-                  <div className="text-xs text-amber-600">Peso não se encaixa em nenhuma faixa — escolha manualmente:</div>
+                  <div className="text-xs text-amber-600"><LocalizedText source={"Peso não se encaixa em nenhuma faixa — escolha manualmente:"} /></div>
                 )}
                 <div className="text-xs text-muted-foreground text-center">
                   {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
@@ -881,7 +877,7 @@ export default function PecuaristaApartacaoPage() {
                             : "border-muted-foreground/30 bg-background text-foreground hover:bg-muted"
                         }`}>
                         {d.nome_lote}
-                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} animais</div>
+                        <div className="text-xs opacity-70">{contagemPorDestino[d.lote_id] || 0} <LocalizedText source={"animais"} /></div>
                       </button>
                     );
                   })}
@@ -898,11 +894,10 @@ export default function PecuaristaApartacaoPage() {
         style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
       >
         <Button variant="outline" onClick={desfazer} disabled={total === 0 && step === (lote.identificado ? "numero" : "peso")}>
-          <Undo2 className="w-4 h-4 mr-1" /> Desfazer
-        </Button>
+          <Undo2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Desfazer"} /></Button>
         <Button className="flex-1" onClick={() => void finalizar()} disabled={total === 0 || finalizando}>
           {finalizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-          Finalizar ({total})
+          <LocalizedText source={"Finalizar ("} />{total})
         </Button>
       </div>
     </div>
@@ -932,7 +927,7 @@ function RecentesList({ lote, linhasId, linhasSem, destinos }: {
   if (items.length === 0) return null;
   return (
     <Card className="p-3">
-      <div className="text-xs text-muted-foreground mb-2">Últimos pesados nesta sessão</div>
+      <div className="text-xs text-muted-foreground mb-2"><LocalizedText source={"Últimos pesados nesta sessão"} /></div>
       <div className="text-xs space-y-1">
         {items.map((it) => (
           <div key={it.key} className="flex justify-between gap-2 border-b border-border/40 py-1 last:border-0">
