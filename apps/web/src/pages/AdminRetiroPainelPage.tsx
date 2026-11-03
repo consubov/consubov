@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -239,8 +240,7 @@ export default function AdminRetiroPainelPage() {
         <p className="text-destructive font-semibold text-lg">{title}</p>
         <p className="text-muted-foreground text-sm">{description}</p>
         <Button variant="outline" onClick={handleBack}>
-          Voltar
-        </Button>
+          <LocalizedText source={"Voltar"} /></Button>
       </div>
     </div>
   );
@@ -275,11 +275,11 @@ export default function AdminRetiroPainelPage() {
       {!isGerente && (
         <Breadcrumb>
           <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${activeFazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${activeFazendaId}/painel?mes=${mes}&ano=${ano}`}>Painel</Link></BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${activeFazendaId}/painel?mes=${mes}&ano=${ano}`}><LocalizedText source={"Painel"} /></Link></BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>{retiroNome}</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
@@ -296,19 +296,17 @@ export default function AdminRetiroPainelPage() {
               navigate(`/mapa/retiro/${retiroId}`);
             }
           }}>
-            <Map className="w-4 h-4" /> Ver Mapa
-          </Button>
+            <Map className="w-4 h-4" /> <LocalizedText source={"Ver Mapa"} /></Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRelatorioOpen(true)}>
-            <FileDown className="w-4 h-4" /> Relatório
-          </Button>
+            <FileDown className="w-4 h-4" /> <LocalizedText source={"Relatório"} /></Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
-      <h1 className="text-xl font-bold text-foreground">{retiroNome} — Painel</h1>
-      {retiroData && <p className="text-sm text-muted-foreground">Capataz: {retiroData.capataz}</p>}
+      <h1 className="text-xl font-bold text-foreground">{retiroNome} <LocalizedText source={"— Painel"} /></h1>
+      {retiroData && <p className="text-sm text-muted-foreground"><LocalizedText source={"Capataz:"} />{" "}{retiroData.capataz}</p>}
 
       <Card className="p-2">
         <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(month, year) => setPeriodo(month, year)} />
@@ -332,7 +330,7 @@ export default function AdminRetiroPainelPage() {
       {(metricsPeriodo.statusDist.baixo + metricsPeriodo.statusDist.ideal + metricsPeriodo.statusDist.alto) > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase"><LocalizedText source={"Distribuição de Status"} /></CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             <div className="flex h-3 rounded-full overflow-hidden bg-muted">
@@ -341,9 +339,9 @@ export default function AdminRetiroPainelPage() {
               {metricsPeriodo.statusDist.altoPct > 0 && <div className="bg-secondary transition-all" style={{ width: `${metricsPeriodo.statusDist.altoPct}%` }} />}
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-destructive font-medium">Baixo {fmtNum(metricsPeriodo.statusDist.baixoPct, 0)}%</span>
+              <span className="text-destructive font-medium"><LocalizedText source={"Baixo"} />{" "}{fmtNum(metricsPeriodo.statusDist.baixoPct, 0)}%</span>
               <span className="text-primary font-medium">Ideal {fmtNum(metricsPeriodo.statusDist.idealPct, 0)}%</span>
-              <span className="text-secondary font-medium">Alto {fmtNum(metricsPeriodo.statusDist.altoPct, 0)}%</span>
+              <span className="text-secondary font-medium"><LocalizedText source={"Alto"} />{" "}{fmtNum(metricsPeriodo.statusDist.altoPct, 0)}%</span>
             </div>
           </CardContent>
         </Card>
@@ -371,7 +369,7 @@ export default function AdminRetiroPainelPage() {
       {retiroData && retiroData.diasSemSalga != null && (
         <Card className="border-secondary/50">
           <CardContent className="p-3 text-sm">
-            <p className="text-muted-foreground">Dias sem salga: <strong className="text-foreground">{retiroData.diasSemSalga}</strong></p>
+            <p className="text-muted-foreground"><LocalizedText source={"Dias sem salga:"} />{" "}<strong className="text-foreground">{retiroData.diasSemSalga}</strong></p>
           </CardContent>
         </Card>
       )}

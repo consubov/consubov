@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, type ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -16,8 +17,7 @@ function CapatazFallback({
         <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>
         <Button onClick={() => window.location.reload()} className="w-full">
-          Tentar novamente
-        </Button>
+          <LocalizedText source={"Tentar novamente"} /></Button>
       </div>
     </div>
   );
@@ -80,8 +80,8 @@ export default function CapatazRoute() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center space-y-2">
-          <p className="text-base font-medium text-foreground">Abrindo painel do capataz…</p>
-          <p className="text-sm text-muted-foreground">Inicializando a tela com segurança.</p>
+          <p className="text-base font-medium text-foreground"><LocalizedText source={"Abrindo painel do capataz…"} /></p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Inicializando a tela com segurança."} /></p>
         </div>
       </div>
     );
