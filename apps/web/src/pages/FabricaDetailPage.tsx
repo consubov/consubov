@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,15 +74,15 @@ export default function FabricaDetailPage() {
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!fabrica) return (
     <div className="max-w-5xl mx-auto p-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/admin/fabricas")}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
-      <Card className="mt-4"><CardContent className="p-6 text-center text-muted-foreground">Fábrica não encontrada.</CardContent></Card>
+      <Button variant="ghost" size="sm" onClick={() => navigate("/admin/fabricas")}><ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
+      <Card className="mt-4"><CardContent className="p-6 text-center text-muted-foreground"><LocalizedText source={"Fábrica não encontrada."} /></CardContent></Card>
     </div>
   );
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/fabricas")}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/fabricas")}><ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -98,12 +99,12 @@ export default function FabricaDetailPage() {
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="grid grid-cols-7 w-full">
           <TabsTrigger value="info"><Factory className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Info</span></TabsTrigger>
-          <TabsTrigger value="operadores"><Users className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Operadores</span></TabsTrigger>
-          <TabsTrigger value="materias"><Package2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Matérias</span></TabsTrigger>
-          <TabsTrigger value="entradas"><PackagePlus className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Entradas</span></TabsTrigger>
-          <TabsTrigger value="formulas"><FlaskConical className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Fórmulas</span></TabsTrigger>
-          <TabsTrigger value="producao"><Play className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Produção</span></TabsTrigger>
-          <TabsTrigger value="transferencias"><Truck className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Transf.</span></TabsTrigger>
+          <TabsTrigger value="operadores"><Users className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Operadores"} /></span></TabsTrigger>
+          <TabsTrigger value="materias"><Package2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Matérias"} /></span></TabsTrigger>
+          <TabsTrigger value="entradas"><PackagePlus className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Entradas"} /></span></TabsTrigger>
+          <TabsTrigger value="formulas"><FlaskConical className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Fórmulas"} /></span></TabsTrigger>
+          <TabsTrigger value="producao"><Play className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Produção"} /></span></TabsTrigger>
+          <TabsTrigger value="transferencias"><Truck className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Transf."} /></span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -248,36 +249,35 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Informações da Fábrica</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Informações da Fábrica"} /></CardTitle>
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}><Pencil className="w-4 h-4" /></Button>
             <Button variant="ghost" size="icon" onClick={handleDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <div><span className="text-muted-foreground">Código:</span> <span className="font-mono">{fabrica.codigo || "—"}</span></div>
-          <div><span className="text-muted-foreground">Nome:</span> <span className="font-medium">{fabrica.nome}</span></div>
-          <div><span className="text-muted-foreground">Descrição:</span> {fabrica.descricao || "—"}</div>
+          <div><span className="text-muted-foreground"><LocalizedText source={"Código:"} /></span> <span className="font-mono">{fabrica.codigo || "—"}</span></div>
+          <div><span className="text-muted-foreground"><LocalizedText source={"Nome:"} /></span> <span className="font-medium">{fabrica.nome}</span></div>
+          <div><span className="text-muted-foreground"><LocalizedText source={"Descrição:"} /></span> {fabrica.descricao || "—"}</div>
           <div className="pt-2 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => setQrOpen(true)}><QrCode className="w-4 h-4 mr-1.5" /> QR Code</Button>
-            <Button size="sm" variant="outline" onClick={openDestinos}><MapPin className="w-4 h-4 mr-1.5" /> Destinos autorizados</Button>
+            <Button size="sm" variant="outline" onClick={openDestinos}><MapPin className="w-4 h-4 mr-1.5" /> <LocalizedText source={"Destinos autorizados"} /></Button>
           </div>
         </CardContent>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Editar Fábrica</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Editar Fábrica"} /></DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
-            <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+            <div><Label><LocalizedText source={"Descrição"} /></Label><Textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm({ ...form, ativo: v })} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -286,7 +286,7 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>QR Code — {fabrica.nome}</DialogTitle>
-            <DialogDescription>Código: <span className="font-mono">{fabrica.codigo}</span></DialogDescription>
+            <DialogDescription><LocalizedText source={"Código:"} />{" "}<span className="font-mono">{fabrica.codigo}</span></DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-3 py-4">
             <div className="bg-white p-4 rounded border">
@@ -303,14 +303,14 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
       <Dialog open={destOpen} onOpenChange={setDestOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Destinos autorizados</DialogTitle>
-            <DialogDescription>Fazendas e/ou retiros alimentados por <b>{fabrica.nome}</b>.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Destinos autorizados"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Fazendas e/ou retiros alimentados por"} />{" "}<b>{fabrica.nome}</b>.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-semibold">Fazendas</Label>
+              <Label className="text-sm font-semibold"><LocalizedText source={"Fazendas"} /></Label>
               <div className="mt-2 space-y-2 border rounded p-3 max-h-48 overflow-y-auto">
-                {fazendas.length === 0 ? <p className="text-xs text-muted-foreground">Nenhuma fazenda ativa.</p> : fazendas.map(f => (
+                {fazendas.length === 0 ? <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhuma fazenda ativa."} /></p> : fazendas.map(f => (
                   <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={selFaz.has(f.id)} onCheckedChange={() => toggle(selFaz, f.id, setSelFaz)} />
                     {f.nome}
@@ -319,9 +319,9 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
               </div>
             </div>
             <div>
-              <Label className="text-sm font-semibold">Retiros</Label>
+              <Label className="text-sm font-semibold"><LocalizedText source={"Retiros"} /></Label>
               <div className="mt-2 space-y-2 border rounded p-3 max-h-56 overflow-y-auto">
-                {retiros.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum retiro ativo.</p> : retiros.map(r => (
+                {retiros.length === 0 ? <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum retiro ativo."} /></p> : retiros.map(r => (
                   <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={selRet.has(r.id)} onCheckedChange={() => toggle(selRet, r.id, setSelRet)} />
                     {r.nome}
@@ -331,10 +331,9 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDestOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDestOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={saveDestinos} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -419,10 +418,9 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base flex items-center gap-2"><Users className="w-4 h-4" /> Operadores</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2"><Users className="w-4 h-4" /> <LocalizedText source={"Operadores"} /></CardTitle>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Novo
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Novo"} /></Button>
       </CardHeader>
       <CardContent className="p-0">
         {loading ? (
@@ -432,13 +430,13 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead>
-                  <TableHead>Status</TableHead><TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead><TableHead>Email</TableHead><TableHead><LocalizedText source={"Telefone"} /></TableHead>
+                  <TableHead>Status</TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum operador vinculado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhum operador vinculado."} /></TableCell></TableRow>
                 ) : items.map(o => (
                   <TableRow key={o.id}>
                     <TableCell className="font-medium">{o.nome}</TableCell>
@@ -463,22 +461,21 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Operador" : "Novo Operador"}</DialogTitle>
-            <DialogDescription>Vinculado automaticamente a esta fábrica.</DialogDescription>
+            <DialogDescription><LocalizedText source={"Vinculado automaticamente a esta fábrica."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div><Label>Email {editingId ? "" : "*"}</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} /></div>
             {!editingId && (
-              <div><Label>Senha *</Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+              <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
             )}
-            <div><Label>Telefone</Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+            <div><Label><LocalizedText source={"Telefone"} /></Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -559,10 +556,9 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base flex items-center gap-2"><Package2 className="w-4 h-4" /> Matérias-Primas</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2"><Package2 className="w-4 h-4" /> <LocalizedText source={"Matérias-Primas"} /></CardTitle>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova"} /></Button>
       </CardHeader>
       <CardContent className="p-0">
         {loading ? (
@@ -572,14 +568,14 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead><TableHead>Unidade</TableHead><TableHead>Peso/saco</TableHead>
-                  <TableHead>Estoque</TableHead><TableHead>Mín.</TableHead>
-                  <TableHead>Status</TableHead><TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead><TableHead><LocalizedText source={"Unidade"} /></TableHead><TableHead><LocalizedText source={"Peso/saco"} /></TableHead>
+                  <TableHead><LocalizedText source={"Estoque"} /></TableHead><TableHead><LocalizedText source={"Mín."} /></TableHead>
+                  <TableHead>Status</TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhuma matéria-prima cadastrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma matéria-prima cadastrada."} /></TableCell></TableRow>
                 ) : items.map(m => {
                   const baixo = (m.estoque_minimo ?? 0) > 0 && (m.estoque_atual ?? 0) < (m.estoque_minimo ?? 0);
                   return (
@@ -614,12 +610,12 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima"}</DialogTitle>
-            <DialogDescription>Vinculada automaticamente a esta fábrica. Estoque atualiza pelas entradas.</DialogDescription>
+            <DialogDescription><LocalizedText source={"Vinculada automaticamente a esta fábrica. Estoque atualiza pelas entradas."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div>
-              <Label>Unidade *</Label>
+              <Label><LocalizedText source={"Unidade *"} /></Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {UNIDADES.map(u => (
                   <button key={u} type="button" onClick={() => setForm(f => ({ ...f, unidade: u }))}
@@ -629,15 +625,14 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
                 ))}
               </div>
             </div>
-            <div><Label>Peso por saco (kg)</Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
-            <div><Label>Estoque mínimo</Label><Input type="number" step="0.01" value={form.estoque_minimo} onChange={e => setForm(f => ({ ...f, estoque_minimo: e.target.value }))} /></div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+            <div><Label><LocalizedText source={"Peso por saco (kg)"} /></Label><Input type="number" step="0.01" value={form.peso_por_saco} onChange={e => setForm(f => ({ ...f, peso_por_saco: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Estoque mínimo"} /></Label><Input type="number" step="0.01" value={form.estoque_minimo} onChange={e => setForm(f => ({ ...f, estoque_minimo: e.target.value }))} /></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -767,29 +762,28 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base flex items-center gap-2"><PackagePlus className="w-4 h-4" /> Entradas</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2"><PackagePlus className="w-4 h-4" /> <LocalizedText source={"Entradas"} /></CardTitle>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={materias.length === 0}>
-          <Plus className="w-4 h-4" /> Nova entrada
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova entrada"} /></Button>
       </CardHeader>
       <CardContent className="p-0">
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : materias.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">Cadastre uma matéria-prima antes de registrar entradas.</div>
+          <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Cadastre uma matéria-prima antes de registrar entradas."} /></div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead><TableHead>Matéria-Prima</TableHead>
-                  <TableHead className="text-right">Quantidade</TableHead><TableHead>Observação</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead><LocalizedText source={"Data"} /></TableHead><TableHead><LocalizedText source={"Matéria-Prima"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Quantidade"} /></TableHead><TableHead><LocalizedText source={"Observação"} /></TableHead>
+                  <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entradas.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma entrada registrada."} /></TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>
@@ -822,7 +816,7 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Matéria-Prima *</Label>
+              <Label><LocalizedText source={"Matéria-Prima *"} /></Label>
 
               <Select value={materiaId} onValueChange={setMateriaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -832,12 +826,12 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Quantidade *</Label><Input type="number" step="0.01" value={quantidade} onChange={e => setQuantidade(e.target.value)} /></div>
-              <div><Label>Data *</Label><Input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Quantidade *"} /></Label><Input type="number" step="0.01" value={quantidade} onChange={e => setQuantidade(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Data *"} /></Label><Input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} /></div>
             </div>
-            <div><Label>Observação</Label><Textarea value={observacao} onChange={e => setObservacao(e.target.value)} rows={2} /></div>
+            <div><Label><LocalizedText source={"Observação"} /></Label><Textarea value={observacao} onChange={e => setObservacao(e.target.value)} rows={2} /></div>
             <div>
-              <Label>Foto (opcional)</Label>
+              <Label><LocalizedText source={"Foto (opcional)"} /></Label>
               <div className="mt-2 flex items-center gap-3">
                 <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                   <Camera className="w-4 h-4" />
@@ -856,11 +850,10 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Salvar
-            </Button>
+              <LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
