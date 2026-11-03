@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -360,8 +361,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
           <ClipboardList className="w-4 h-4" />
-          Solicitações de Lançamento Manual
-          <Badge variant="destructive" className="text-[10px] h-5">{pendentes.length}</Badge>
+          <LocalizedText source={"Solicitações de Lançamento Manual"} /><Badge variant="destructive" className="text-[10px] h-5">{pendentes.length}</Badge>
         </h2>
         <div className="space-y-3">
           {pendentes.map((s) => {
@@ -376,18 +376,16 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                         {s.capataz_nome || "Capataz"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {s.retiro_nome} · Data geral: {dataGer}
+                        {s.retiro_nome} <LocalizedText source={"· Data geral:"} />{" "}{dataGer}
                       </p>
                     </div>
                     <Badge variant="outline" className="gap-1 shrink-0">
-                      <Clock className="w-3 h-3" />Pendente
-                    </Badge>
+                      <Clock className="w-3 h-3" /><LocalizedText source={"Pendente"} /></Badge>
                   </div>
 
                   <div className="rounded-md bg-muted/40 p-2 space-y-1">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      {s.itens.length} pasto{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} sacos
-                    </p>
+                      {s.itens.length} <LocalizedText source={"pasto"} />{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} <LocalizedText source={"sacos"} /></p>
                     {s.itens.map((it) => {
                       const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
                       const isCustom = dItem !== dataGer;
@@ -397,16 +395,16 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                             <span className="truncate flex items-center gap-1">
                               <strong className="text-foreground">{it.pasto_nome}</strong>
                               {it.cocho_cheio ? (
-                                <Badge variant="secondary" className="text-[10px] h-4 px-1">Cocho cheio</Badge>
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1"><LocalizedText source={"Cocho cheio"} /></Badge>
                               ) : (
-                                <span className="text-muted-foreground"> — {it.num_sacos} sacos</span>
+                                <span className="text-muted-foreground"> — {it.num_sacos} <LocalizedText source={"sacos"} /></span>
                               )}
                             </span>
                             <span className={isCustom ? "text-primary font-medium shrink-0 ml-2" : "text-muted-foreground shrink-0 ml-2"}>
                               {dItem}
                             </span>
                           </div>
-                          {it.motivo && <p className="text-[11px] text-muted-foreground italic">Motivo: {it.motivo}</p>}
+                          {it.motivo && <p className="text-[11px] text-muted-foreground italic"><LocalizedText source={"Motivo:"} />{" "}{it.motivo}</p>}
                         </div>
                       );
                     })}
@@ -420,8 +418,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                       className="flex-1 h-8 gap-1"
                     >
                       {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                      Aprovar
-                    </Button>
+                      <LocalizedText source={"Aprovar"} /></Button>
                     <Button
                       size="sm"
                       variant="destructive"
@@ -430,8 +427,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                       className="flex-1 h-8 gap-1"
                     >
                       <XCircle className="w-3 h-3" />
-                      Recusar
-                    </Button>
+                      <LocalizedText source={"Recusar"} /></Button>
                   </div>
                 </CardContent>
               </Card>
@@ -443,17 +439,17 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       <Dialog open={!!dupPrompt} onOpenChange={(o) => { if (!o) setDupPrompt(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirmar aprovação</DialogTitle>
+            <DialogTitle><LocalizedText source={"Confirmar aprovação"} /></DialogTitle>
           </DialogHeader>
           <div className="space-y-1">
             {dupPrompt?.msgs.map((m, i) => (
               <p key={i} className="text-xs text-muted-foreground">{m}</p>
             ))}
-            <p className="text-xs pt-1">Deseja aprovar mesmo assim?</p>
+            <p className="text-xs pt-1"><LocalizedText source={"Deseja aprovar mesmo assim?"} /></p>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDupPrompt(null)}>Cancelar</Button>
-            <Button onClick={() => dupPrompt && aprovarConfirmado(dupPrompt.s)}>Aprovar</Button>
+            <Button variant="outline" onClick={() => setDupPrompt(null)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={() => dupPrompt && aprovarConfirmado(dupPrompt.s)}><LocalizedText source={"Aprovar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -461,16 +457,16 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       <Dialog open={recusarOpen} onOpenChange={setRecusarOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Recusar solicitação</DialogTitle>
+            <DialogTitle><LocalizedText source={"Recusar solicitação"} /></DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <div className="flex items-start gap-2 p-2 rounded bg-muted/40">
               <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Toda a solicitação será recusada ({recusarTarget?.itens.length} pasto{(recusarTarget?.itens.length ?? 0) !== 1 ? "s" : ""}).
+                <LocalizedText source={"Toda a solicitação será recusada ("} />{recusarTarget?.itens.length} <LocalizedText source={"pasto"} />{(recusarTarget?.itens.length ?? 0) !== 1 ? "s" : ""}).
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">Motivo (opcional, visível ao capataz):</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Motivo (opcional, visível ao capataz):"} /></p>
             <Textarea
               value={motivoRecusa}
               onChange={(e) => setMotivoRecusa(e.target.value)}
@@ -479,7 +475,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
             />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setRecusarOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setRecusarOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button variant="destructive" onClick={handleRecusar} disabled={actionId !== null}>
               {actionId !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar recusa"}
             </Button>

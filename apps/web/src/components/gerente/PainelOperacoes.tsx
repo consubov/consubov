@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,8 +168,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
       <CardHeader className="p-3 pb-2">
         <button type="button" onClick={() => setAberto((v) => !v)} className="flex w-full items-center justify-between text-left">
           <CardTitle className="text-sm">
-            Painel de Operações
-            {emAndamento > 0 && <span className="ml-2 text-xs font-normal text-primary">{emAndamento} em andamento</span>}
+            <LocalizedText source={"Painel de Operações"} />{emAndamento > 0 && <span className="ml-2 text-xs font-normal text-primary">{emAndamento} <LocalizedText source={"em andamento"} /></span>}
           </CardTitle>
           {aberto ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </button>
@@ -178,7 +178,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
           {loading && !dados ? (
             <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : linhas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>
+            <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum retiro nesta fazenda."} /></p>
           ) : (
             linhas.map((l) => (
               <div key={l.id} className="rounded-md border p-2">
@@ -187,7 +187,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
                   <StatusTag st={l.geral} agora={agora} compacto />
                 </div>
                 {l.itens.length === 0 ? (
-                  l.semCaps ? <p className="mt-1 text-xs text-muted-foreground">Sem capataz vinculado</p> : null
+                  l.semCaps ? <p className="mt-1 text-xs text-muted-foreground"><LocalizedText source={"Sem capataz vinculado"} /></p> : null
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {l.itens.map((i) => (
@@ -208,7 +208,7 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
 }
 
 function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compacto?: boolean }) {
-  if (st.k === "nao") return <span className="text-xs text-muted-foreground">Não iniciado</span>;
+  if (st.k === "nao") return <span className="text-xs text-muted-foreground"><LocalizedText source={"Não iniciado"} /></span>;
   if (st.k === "fin") {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -223,7 +223,7 @@ function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compact
     <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", alerta ? "text-secondary-foreground" : "text-primary")}>
       <span className={cn("h-2.5 w-2.5 rounded-full animate-pulse", alerta ? "bg-secondary" : "bg-primary")} />
       {alerta ? `Em andamento há ${Math.floor(decorrido / 3600_000)}h` : `Em andamento desde ${fmtHora(st.desde)}`}
-      {st.pend != null && st.pend > 0 && <span className="text-muted-foreground">· {st.pend} pendente{st.pend > 1 ? "s" : ""}</span>}
+      {st.pend != null && st.pend > 0 && <span className="text-muted-foreground">· {st.pend} <LocalizedText source={"pendente"} />{st.pend > 1 ? "s" : ""}</span>}
     </span>
   );
 }
