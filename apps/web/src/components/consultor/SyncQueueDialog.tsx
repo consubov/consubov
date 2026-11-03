@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -73,13 +74,12 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Fila de sincronização</DialogTitle>
+          <DialogTitle><LocalizedText source={"Fila de sincronização"} /></DialogTitle>
           <DialogDescription>
-            Itens locais detectados no Consultor. Registros excluídos são mostrados para diagnóstico, mas não entram na contagem do badge.
-          </DialogDescription>
+            <LocalizedText source={"Itens locais detectados no Consultor. Registros excluídos são mostrados para diagnóstico, mas não entram na contagem do badge."} /></DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>{pending} visita(s) contada(s) · {mutPending} alteração(ões) · {photoPending} foto(s)</span>
+          <span>{pending} <LocalizedText source={"visita(s) contada(s) ·"} />{" "}{mutPending} <LocalizedText source={"alteração(ões) ·"} />{" "}{photoPending} <LocalizedText source={"foto(s)"} /></span>
           <div className="flex gap-2">
             <Button type="button" size="sm" onClick={() => void forcarSync()} disabled={syncing || loading}>
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Forçar sincronização"}
@@ -92,10 +92,9 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
         <div className="overflow-y-auto space-y-2 pr-1">
           {loading && items.length === 0 ? (
             <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Lendo fila local…
-            </div>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> <LocalizedText source={"Lendo fila local…"} /></div>
           ) : items.length === 0 ? (
-            <div className="rounded-md border p-4 text-sm text-muted-foreground">Nenhum item na fila local.</div>
+            <div className="rounded-md border p-4 text-sm text-muted-foreground"><LocalizedText source={"Nenhum item na fila local."} /></div>
           ) : items.map((item) => (
             <div key={item.visitaId} className="rounded-md border p-3 space-y-2 text-sm">
               <div className="flex items-start justify-between gap-2">
@@ -109,14 +108,14 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                   {item.deleted ? "Excluída · ignorada" : "Contada"}
                 </Badge>
               </div>
-              {item.deletedAt && <div className="text-xs text-destructive">deleted_at: {item.deletedAt}</div>}
+              {item.deletedAt && <div className="text-xs text-destructive"><LocalizedText source={"deleted_at:"} />{" "}{item.deletedAt}</div>}
               <div className="grid gap-1 text-xs text-muted-foreground">
                 <div>ID: <span className="font-mono break-all">{item.visitaId}</span></div>
-                <div>Alterações: {item.mutationTables.length ? item.mutationTables.join(", ") : "nenhuma"}</div>
-                <div>Fotos: {item.photoParents.length ? item.photoParents.join(", ") : "nenhuma"}</div>
-                {item.oldestCreatedAt && <div>Na fila desde: {new Date(item.oldestCreatedAt).toLocaleString("pt-BR")}</div>}
-                {item.mutationErrors.length > 0 && <div className="text-destructive">Motivo (dados): {item.mutationErrors.join("; ")}</div>}
-                {item.photoErrors.length > 0 && <div className="text-destructive">Motivo (fotos): {item.photoErrors.join("; ")}</div>}
+                <div><LocalizedText source={"Alterações:"} />{" "}{item.mutationTables.length ? item.mutationTables.join(", ") : "nenhuma"}</div>
+                <div><LocalizedText source={"Fotos:"} />{" "}{item.photoParents.length ? item.photoParents.join(", ") : "nenhuma"}</div>
+                {item.oldestCreatedAt && <div><LocalizedText source={"Na fila desde:"} />{" "}{new Date(item.oldestCreatedAt).toLocaleString("pt-BR")}</div>}
+                {item.mutationErrors.length > 0 && <div className="text-destructive"><LocalizedText source={"Motivo (dados):"} />{" "}{item.mutationErrors.join("; ")}</div>}
+                {item.photoErrors.length > 0 && <div className="text-destructive"><LocalizedText source={"Motivo (fotos):"} />{" "}{item.photoErrors.join("; ")}</div>}
               </div>
               <div className="flex justify-end">
                 <Button
@@ -126,8 +125,7 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                   disabled={syncing || loading}
                   onClick={() => void descartarIrrecuperaveis(item.visitaId)}
                 >
-                  Descartar itens irrecuperáveis
-                </Button>
+                  <LocalizedText source={"Descartar itens irrecuperáveis"} /></Button>
               </div>
             </div>
           ))}

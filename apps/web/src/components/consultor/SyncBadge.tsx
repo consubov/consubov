@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
@@ -130,8 +131,7 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
 
       {!compact && !hideWhenIdle && (
         <Button type="button" variant="ghost" size="sm" onClick={() => setDebugOpen(true)} className="w-full h-8 text-xs text-muted-foreground">
-          Ver fila de sincronização
-        </Button>
+          <LocalizedText source={"Ver fila de sincronização"} /></Button>
       )}
 
       <SyncQueueDialog

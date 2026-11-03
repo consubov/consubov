@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,11 +33,11 @@ export default function AdicionarEstoqueModal({ open, onOpenChange, retiros, onC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Adicionar Estoque</DialogTitle>
+          <DialogTitle><LocalizedText source={"Adicionar Estoque"} /></DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Retiro</Label>
+            <Label><LocalizedText source={"Retiro"} /></Label>
             <Select value={retiroId} onValueChange={setRetiroId}>
               <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
               <SelectContent>
@@ -47,12 +48,12 @@ export default function AdicionarEstoqueModal({ open, onOpenChange, retiros, onC
             </Select>
           </div>
           <div>
-            <Label>Quantidade (sacos)</Label>
+            <Label><LocalizedText source={"Quantidade (sacos)"} /></Label>
             <Input type="number" inputMode="numeric" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} placeholder="0" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleConfirm} disabled={saving || !retiroId || !quantidade || parseInt(quantidade) <= 0}>
             {saving ? "Salvando..." : "Confirmar"}
           </Button>

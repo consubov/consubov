@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -305,8 +306,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
           {g.items.length === 0 && (
             <div className="rounded-lg border-2 border-dashed p-3 text-center text-[11px] text-muted-foreground"
               style={{ borderColor: "#E7E3D6" }}>
-              Nenhum tópico nesta seção ainda.
-            </div>
+              <LocalizedText source={"Nenhum tópico nesta seção ainda."} /></div>
           )}
           {g.items.map((t, i) => (
             <TopicoCard key={t.id} topico={t} numeroMap={numeroMap}
@@ -321,14 +321,13 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
       ))}
 
       <Button type="button" onClick={() => setPickerOpen(true)} variant="outline" className="w-full gap-1.5">
-        <Plus className="w-4 h-4" /> Mais
-      </Button>
+        <Plus className="w-4 h-4" /> <LocalizedText source={"Mais"} /></Button>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Onde adicionar este tópico?</DialogTitle>
-            <DialogDescription>Escolha em qual parte do relatório o novo tópico deve aparecer.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Onde adicionar este tópico?"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Escolha em qual parte do relatório o novo tópico deve aparecer."} /></DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
             {allowedZonas.map(z => (
@@ -402,7 +401,7 @@ function TopicoCard({
         />
         <div>
           <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
-            Fotos ({topico.fotos.length}/{MAX_FOTOS})
+            <LocalizedText source={"Fotos ("} />{topico.fotos.length}/{MAX_FOTOS})
           </div>
           <div className="grid grid-cols-5 gap-1.5">
             {topico.fotos.map(f => (
