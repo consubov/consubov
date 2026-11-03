@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -118,12 +119,12 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>➕ Adicionar Animais — {pasto.pasto_nome}</DialogTitle>
+          <DialogTitle><LocalizedText source={"➕ Adicionar Animais —"} />{" "}{pasto.pasto_nome}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1 block">Origem *</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Origem *"} /></label>
             <Input
               value={origem}
               onChange={(e) => setOrigem(e.target.value)}
@@ -132,7 +133,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Quantidade de animais *</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Quantidade de animais *"} /></label>
             <Input
               type="number"
               min={1}
@@ -143,7 +144,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Peso médio (kg) *</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Peso médio (kg) *"} /></label>
             <Input
               type="number"
               min={1}
@@ -157,7 +158,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
           <CategoriaPastoSelect value={categoria} onChange={setCategoria} />
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Data da movimentação</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Data da movimentação"} /></label>
             <Input
               type="date"
               value={data}
@@ -167,7 +168,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
 
           {pasto.num_animais > 0 && qtd > 0 && peso > 0 && (
             <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-              Novo total: {pasto.num_animais + qtd} animais · Peso médio:{" "}
+              <LocalizedText source={"Novo total:"} />{" "}{pasto.num_animais + qtd} <LocalizedText source={"animais · Peso médio:"} />{" "}
               {(((pasto.num_animais * (pasto.peso_medio_kg ?? 0)) + (qtd * peso)) / (pasto.num_animais + qtd)).toFixed(1).replace(".", ",")} kg
             </p>
           )}
