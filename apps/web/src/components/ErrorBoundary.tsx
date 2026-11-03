@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -81,7 +82,7 @@ function DelayedErrorFallback({
         </p>
         {showErrorDetails !== false && error?.message && (
           <p className="text-xs text-muted-foreground/80 break-words">
-            Detalhe: {error.message}
+            <LocalizedText source={"Detalhe:"} />{" "}{error.message}
           </p>
         )}
         <div className="flex flex-col gap-2 pt-2">
