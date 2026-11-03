@@ -102,3 +102,25 @@ test("switching to English updates the real authenticated admin UI", async ({ pa
   await expect(page.getByRole("navigation", { name: "Navegação administrativa" })
     .getByText("Fazendas", { exact: true })).toBeVisible();
 });
+
+test('farm administration translates list and dialog without modifying stored language', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/login');
+  await page.getByLabel('E-mail', { exact: true }).fill('i18n@example.test');
+  await page.getByLabel('Senha', { exact: true }).fill('local-password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page).toHaveURL(/\/admin(?:\/|$)/);
+  await page.goto('/admin/fazendas');
+  const language = page.getByRole('combobox', { name: 'Idioma / Language' });
+  await expect(page.getByRole('heading', { name: 'Fazendas' })).toBeVisible();
+  await language.selectOption('en-US');
+  await expect(page.getByRole('heading', { name: 'Ranches' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New Ranch' })).toBeVisible();
+  await page.getByRole('button', { name: 'New Ranch' }).click();
+  await expect(page.getByRole('dialog', { name: 'New Ranch' })).toBeVisible();
+  await expect(page.getByLabel('Name *')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await language.selectOption('pt-BR');
+  await expect(page.getByRole('heading', { name: 'Fazendas' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nova Fazenda' })).toBeVisible();
+});
