@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowRightLeft, Scissors, Plus, ClipboardList, Eye, Scale } from "lucide-react";
@@ -24,7 +25,7 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
       <DialogContent className="max-w-xs">
         <DialogHeader>
           <DialogTitle>{pasto.pasto_nome}</DialogTitle>
-          <DialogDescription>Selecione uma ação</DialogDescription>
+          <DialogDescription><LocalizedText source={"Selecione uma ação"} /></DialogDescription>
         </DialogHeader>
 
         <CarenciaBadge dataFimCarencia={(pasto as any).data_fim_carencia} className="mb-1" />
@@ -33,44 +34,38 @@ export default function MapaActionSheet({ open, onClose, pasto, onTransferir, on
           {/* 1. Ver detalhes */}
           <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onVerDetalhes()}>
             <Eye className="w-5 h-5 text-primary" />
-            Ver detalhes
-          </Button>
+            <LocalizedText source={"Ver detalhes"} /></Button>
 
           {/* 2. Registrar evento */}
           {onRegistrarEvento && (
             <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => onRegistrarEvento()}>
               <ClipboardList className="w-5 h-5" />
-              Registrar evento
-            </Button>
+              <LocalizedText source={"Registrar evento"} /></Button>
           )}
 
           {/* 3. Transferir animais */}
           {pasto.num_animais > 0 && (
             <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onTransferir()}>
               <ArrowRightLeft className="w-5 h-5 text-primary" />
-              Transferir animais
-            </Button>
+              <LocalizedText source={"Transferir animais"} /></Button>
           )}
 
           {/* 4. Abater animais */}
           {pasto.num_animais > 0 && (
             <Button variant="outline" className="w-full justify-start gap-3 h-12 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => onAbater()}>
               <Scissors className="w-5 h-5" />
-              Abater animais
-            </Button>
+              <LocalizedText source={"Abater animais"} /></Button>
           )}
 
           {/* 5. Adicionar animais */}
           <Button variant="outline" className="w-full justify-start gap-3 h-12 border-primary/50 text-primary hover:bg-primary/10" onClick={() => onEntrada()}>
             <Plus className="w-5 h-5" />
-            Adicionar animais
-          </Button>
+            <LocalizedText source={"Adicionar animais"} /></Button>
 
           {/* 6. Editar peso médio */}
           <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => onEditarPeso()}>
             <Scale className="w-5 h-5 text-primary" />
-            Editar peso médio
-          </Button>
+            <LocalizedText source={"Editar peso médio"} /></Button>
         </div>
       </DialogContent>
     </Dialog>

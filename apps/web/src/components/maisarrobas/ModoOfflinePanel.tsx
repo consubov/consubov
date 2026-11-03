@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { CloudOff, Download, Loader2, RefreshCw, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,20 +62,17 @@ export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
         </div>
         {off.active && (
           <p className="text-xs text-muted-foreground">
-            Tudo funciona sem internet. O PDF fica disponível depois de sincronizar.
-          </p>
+            <LocalizedText source={"Tudo funciona sem internet. O PDF fica disponível depois de sincronizar."} /></p>
         )}
         <div className="flex gap-2">
           {!off.active && (
             <Button size="sm" variant="outline" className="flex-1" onClick={() => void ativar()} disabled={!!busy}>
               {busy === "baixar" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-              Modo Offline
-            </Button>
+              <LocalizedText source={"Modo Offline"} /></Button>
           )}
           <Button size="sm" className="flex-1" onClick={() => void sincronizar()} disabled={!!busy || (!off.active && pendingCount === 0)}>
             {busy === "sync" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            Sincronizar
-          </Button>
+            <LocalizedText source={"Sincronizar"} /></Button>
         </div>
       </CardContent>
     </Card>

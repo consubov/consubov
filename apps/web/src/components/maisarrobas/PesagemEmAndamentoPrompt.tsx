@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -30,10 +31,9 @@ export default function PesagemEmAndamentoPrompt() {
     <AlertDialog open onOpenChange={(o) => !o && setAtiva(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Pesagem em andamento</AlertDialogTitle>
+          <AlertDialogTitle><LocalizedText source={"Pesagem em andamento"} /></AlertDialogTitle>
           <AlertDialogDescription>
-            Você tem uma pesagem em andamento com {ativa.label}. Continuar ou iniciar nova?
-          </AlertDialogDescription>
+            <LocalizedText source={"Você tem uma pesagem em andamento com"} />{" "}{ativa.label}<LocalizedText source={". Continuar ou iniciar nova?"} /></AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
@@ -42,16 +42,14 @@ export default function PesagemEmAndamentoPrompt() {
               setAtiva(null);
             }}
           >
-            Iniciar nova
-          </AlertDialogCancel>
+            <LocalizedText source={"Iniciar nova"} /></AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
               setAtiva(null);
               navigate(ativa.path);
             }}
           >
-            Continuar
-          </AlertDialogAction>
+            <LocalizedText source={"Continuar"} /></AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
