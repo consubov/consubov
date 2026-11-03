@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -283,11 +284,11 @@ export default function CurralVisitaModal({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{curral ? `Curral ${curral.num_curral}` : "Adicionar Curral"}</DialogTitle>
-          <DialogDescription>Informe o número do curral e registre as amostras.</DialogDescription>
+          <DialogDescription><LocalizedText source={"Informe o número do curral e registre as amostras."} /></DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Número do Curral *</Label>
+            <Label><LocalizedText source={"Número do Curral *"} /></Label>
             <div className="relative">
               <Input
                 value={numCurral}
@@ -304,7 +305,7 @@ export default function CurralVisitaModal({
           </div>
 
           <div>
-            <Label>Categoria de Dieta</Label>
+            <Label><LocalizedText source={"Categoria de Dieta"} /></Label>
             <Select
               value={dietaCategoria || undefined}
               onValueChange={handleCategoriaChange}
@@ -317,7 +318,7 @@ export default function CurralVisitaModal({
                 {opcoesCategorias.map(nome => (
                   <SelectItem key={nome} value={nome}>{nome}</SelectItem>
                 ))}
-                <SelectItem value={OUTROS_VALUE}>Outros…</SelectItem>
+                <SelectItem value={OUTROS_VALUE}><LocalizedText source={"Outros…"} /></SelectItem>
               </SelectContent>
             </Select>
             {mostrarNovaCategoria && !readOnly && (
@@ -333,8 +334,7 @@ export default function CurralVisitaModal({
                   onClick={() => void confirmarNovaCategoria()}
                   disabled={salvandoCategoria || !novaCategoria.trim()}
                 >
-                  {salvandoCategoria && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Confirmar
-                </Button>
+                  {salvandoCategoria && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Confirmar"} /></Button>
               </div>
             )}
           </div>
@@ -342,7 +342,7 @@ export default function CurralVisitaModal({
 
 
           <div className="pt-2 border-t space-y-4">
-            <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
+            <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliações (1–5) — múltiplas amostras"} /></div>
             <ScoreSamplesInput
               label="Fezes"
               samples={samples.fezes}
@@ -370,8 +370,7 @@ export default function CurralVisitaModal({
             <PhotoGrid visitaId={visitaId} visitaCurralId={curralIdLocal} max={10} disabled={readOnly} />
             {!curralIdLocal && (
               <p className="text-[11px] text-muted-foreground mt-1">
-                Informe o número do curral para habilitar o envio de fotos.
-              </p>
+                <LocalizedText source={"Informe o número do curral para habilitar o envio de fotos."} /></p>
             )}
           </div>
         </div>
@@ -386,16 +385,14 @@ export default function CurralVisitaModal({
                 onClick={() => persist(false)}
                 disabled={saving || !numCurral.trim()}
               >
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-              </Button>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
               {isNew && (
                 <Button
                   onClick={() => persist(true)}
                   disabled={saving || !numCurral.trim()}
                   className="bg-primary hover:bg-primary/90"
                 >
-                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar e próximo
-                </Button>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar e próximo"} /></Button>
               )}
             </>
           )}
