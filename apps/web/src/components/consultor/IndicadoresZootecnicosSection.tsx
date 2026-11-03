@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -261,15 +262,13 @@ export default function IndicadoresZootecnicosSection({
   return (
     <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
       <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-        Indicadores Zootécnicos
-      </div>
+        <LocalizedText source={"Indicadores Zootécnicos"} /></div>
       <div className="text-[11px] text-muted-foreground -mt-1">
-        Preencha somente o que tiver dado. Campos vazios não aparecem no PDF.
-      </div>
+        <LocalizedText source={"Preencha somente o que tiver dado. Campos vazios não aparecem no PDF."} /></div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <Label className="text-xs">Currais Ocupados</Label>
+          <Label className="text-xs"><LocalizedText source={"Currais Ocupados"} /></Label>
           <Input
             key={`co-${ready}`}
             type="number"
@@ -283,7 +282,7 @@ export default function IndicadoresZootecnicosSection({
           />
         </div>
         <div>
-          <Label className="text-xs">Animais Ativos</Label>
+          <Label className="text-xs"><LocalizedText source={"Animais Ativos"} /></Label>
           <Input
             key={`aa-${ready}`}
             type="number"
@@ -302,9 +301,9 @@ export default function IndicadoresZootecnicosSection({
         <table className="w-full text-xs">
           <thead>
             <tr className="text-muted-foreground">
-              <th className="text-left py-1 pr-2 font-semibold">Dias</th>
-              <th className="text-left py-1 pr-2 font-semibold">Qtd. Animais</th>
-              <th className="text-left py-1 font-semibold">Consumo %PV</th>
+              <th className="text-left py-1 pr-2 font-semibold"><LocalizedText source={"Dias"} /></th>
+              <th className="text-left py-1 pr-2 font-semibold"><LocalizedText source={"Qtd. Animais"} /></th>
+              <th className="text-left py-1 font-semibold"><LocalizedText source={"Consumo %PV"} /></th>
             </tr>
           </thead>
           <tbody>
