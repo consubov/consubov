@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -76,16 +77,15 @@ export default function AbateModal({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-destructive">🔴 Abater Animais</DialogTitle>
+          <DialogTitle className="text-destructive"><LocalizedText source={"🔴 Abater Animais"} /></DialogTitle>
           <DialogDescription>
-            Pasto: <strong>{pasto.nome}</strong> — Total: <strong>{pasto.num_animais}</strong> animais
-          </DialogDescription>
+            <LocalizedText source={"Pasto:"} />{" "}<strong>{pasto.nome}</strong> — Total: <strong>{pasto.num_animais}</strong> <LocalizedText source={"animais"} /></DialogDescription>
         </DialogHeader>
 
         {step === 'input' && (
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Quantidade a abater (máx: {pasto.num_animais})</Label>
+              <Label><LocalizedText source={"Quantidade a abater (máx:"} />{" "}{pasto.num_animais})</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -98,33 +98,32 @@ export default function AbateModal({
             </div>
             {qtd > 0 && qtd <= pasto.num_animais && (
               <div className="bg-destructive/10 rounded-md p-3 text-sm text-destructive">
-                <strong>{qtd}</strong> animais serão abatidos. Restam <strong>{pasto.num_animais - qtd}</strong>.
-                {qtd === pasto.num_animais && <p className="mt-1 font-semibold">⚠ Abate total — pasto ficará zerado.</p>}
+                <strong>{qtd}</strong> <LocalizedText source={"animais serão abatidos. Restam"} />{" "}<strong>{pasto.num_animais - qtd}</strong>.
+                {qtd === pasto.num_animais && <p className="mt-1 font-semibold"><LocalizedText source={"⚠ Abate total — pasto ficará zerado."} /></p>}
               </div>
             )}
             {qtd > pasto.num_animais && (
-              <p className="text-sm text-destructive font-medium">Quantidade maior que o total disponível.</p>
+              <p className="text-sm text-destructive font-medium"><LocalizedText source={"Quantidade maior que o total disponível."} /></p>
             )}
           </div>
         )}
 
         {step === 'confirm' && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-md p-4 text-sm space-y-2">
-            <p className="font-bold text-destructive">Tem certeza que deseja abater {qtd} animais do pasto {pasto.nome}?</p>
-            <p className="text-muted-foreground">Esta ação não pode ser desfeita.</p>
+            <p className="font-bold text-destructive"><LocalizedText source={"Tem certeza que deseja abater"} />{" "}{qtd} <LocalizedText source={"animais do pasto"} />{" "}{pasto.nome}?</p>
+            <p className="text-muted-foreground"><LocalizedText source={"Esta ação não pode ser desfeita."} /></p>
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}><LocalizedText source={"Cancelar"} /></Button>
           {step === 'input' ? (
             <Button
               variant="destructive"
               onClick={() => setStep('confirm')}
               disabled={!isValid}
             >
-              Avançar
-            </Button>
+              <LocalizedText source={"Avançar"} /></Button>
           ) : (
             <Button
               variant="destructive"

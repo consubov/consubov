@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { AlertTriangle, HardDrive } from "lucide-react";
 import { getStorageState, formatBytes, type StorageState } from "@/lib/storageProtection";
@@ -48,10 +49,9 @@ export function StorageStatusBanner({ refreshMs = 60_000, alwaysShow = false, cl
       >
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold">Atenção: armazenamento não está protegido</p>
+          <p className="font-semibold"><LocalizedText source={"Atenção: armazenamento não está protegido"} /></p>
           <p className="opacity-80 mt-0.5">
-            Ative o armazenamento persistente nas configurações do navegador para proteger seus dados offline.
-          </p>
+            <LocalizedText source={"Ative o armazenamento persistente nas configurações do navegador para proteger seus dados offline."} /></p>
         </div>
       </div>
     );
@@ -66,11 +66,9 @@ export function StorageStatusBanner({ refreshMs = 60_000, alwaysShow = false, cl
         <HardDrive className="w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold">
-            Armazenamento {Math.round((state.usagePercent ?? 0) * 100)}% cheio
-          </p>
+            <LocalizedText source={"Armazenamento"} />{" "}{Math.round((state.usagePercent ?? 0) * 100)}<LocalizedText source={"% cheio"} /></p>
           <p className="opacity-80 mt-0.5">
-            {formatBytes(state.usageBytes)} de {formatBytes(state.quotaBytes)}. Sincronize logo para liberar espaço.
-          </p>
+            {formatBytes(state.usageBytes)} <LocalizedText source={"de"} />{" "}{formatBytes(state.quotaBytes)}<LocalizedText source={". Sincronize logo para liberar espaço."} /></p>
         </div>
       </div>
     );
@@ -81,8 +79,7 @@ export function StorageStatusBanner({ refreshMs = 60_000, alwaysShow = false, cl
     <div className={`bg-muted/40 border border-border text-muted-foreground rounded-lg px-3 py-2 flex items-center gap-2 text-xs ${className ?? ""}`}>
       <HardDrive className="w-4 h-4 shrink-0" />
       <span>
-        {formatBytes(state.usageBytes)} de {formatBytes(state.quotaBytes)} usados
-      </span>
+        {formatBytes(state.usageBytes)} <LocalizedText source={"de"} />{" "}{formatBytes(state.quotaBytes)} <LocalizedText source={"usados"} /></span>
     </div>
   );
 }

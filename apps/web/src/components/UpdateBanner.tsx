@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
@@ -70,7 +71,7 @@ export function UpdateBanner() {
         <div className="flex items-center gap-2 min-w-0">
           <RefreshCw className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
           <span className="text-sm font-medium text-foreground truncate">
-            Nova atualização disponível{remoteMismatch ? ` (v${remoteMismatch})` : ""}!
+            <LocalizedText source={"Nova atualização disponível"} />{remoteMismatch ? ` (v${remoteMismatch})` : ""}!
           </span>
         </div>
         <Button
@@ -78,8 +79,7 @@ export function UpdateBanner() {
           onClick={handleClick}
           className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
         >
-          Atualizar agora
-        </Button>
+          <LocalizedText source={"Atualizar agora"} /></Button>
       </div>
     </div>
   );
