@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,7 +163,7 @@ export default function SalgaForm({
         <Button variant="ghost" size="icon" onClick={onBack} className="text-primary-foreground hover:bg-primary/80">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-bold">Registrar Salga</h1>
+        <h1 className="text-lg font-bold"><LocalizedText source={"Registrar Salga"} /></h1>
       </header>
 
       {/* Hidden file inputs for camera */}
@@ -174,17 +175,17 @@ export default function SalgaForm({
         {/* Pasto name */}
         <Card>
           <CardContent className="p-3">
-            <label className="text-xs text-muted-foreground">Pasto</label>
+            <label className="text-xs text-muted-foreground"><LocalizedText source={"Pasto"} /></label>
             <p className="font-semibold text-foreground">{pastoNome}</p>
             {retiroNome && (
-              <p className="text-xs text-muted-foreground mt-0.5">Retiro: {retiroNome}</p>
+              <p className="text-xs text-muted-foreground mt-0.5"><LocalizedText source={"Retiro:"} />{" "}{retiroNome}</p>
             )}
             {fazendaNome && (
-              <p className="text-xs text-muted-foreground">Fazenda: {fazendaNome}</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Fazenda:"} />{" "}{fazendaNome}</p>
             )}
-            <p className="text-sm text-foreground mt-1 font-medium">Animais: {numAnimais} cab</p>
+            <p className="text-sm text-foreground mt-1 font-medium"><LocalizedText source={"Animais:"} />{" "}{numAnimais} cab</p>
             {tipo === 'falha_qr' && (
-              <p className="text-xs text-destructive mt-1">⚠ Seleção manual (falha QR)</p>
+              <p className="text-xs text-destructive mt-1"><LocalizedText source={"⚠ Seleção manual (falha QR)"} /></p>
             )}
           </CardContent>
         </Card>
@@ -203,9 +204,9 @@ export default function SalgaForm({
         {cochoChecked && (
           <Card className="border-blue-300 bg-blue-50">
             <CardContent className="p-3 space-y-2">
-              <label className="text-sm font-medium text-blue-800 block">📸 Foto do cocho ({exigirFotoCocho ? "obrigatória" : "opcional"})</label>
+              <label className="text-sm font-medium text-blue-800 block"><LocalizedText source={"📸 Foto do cocho ("} />{exigirFotoCocho ? "obrigatória" : "opcional"})</label>
               {!fotoCocho && exigirFotoCocho && (
-                <p className="text-xs text-blue-600 font-semibold">⚠ Tire a foto do cocho cheio antes de salvar</p>
+                <p className="text-xs text-blue-600 font-semibold"><LocalizedText source={"⚠ Tire a foto do cocho cheio antes de salvar"} /></p>
               )}
               {fotoCocho ? (
                 <div className="relative w-20 h-20">
@@ -221,8 +222,7 @@ export default function SalgaForm({
                   onClick={() => capturePhoto((url) => setFotoCocho(url), cochoFileRef)}
                 >
                   <Camera className="w-4 h-4" />
-                  📷 Tirar Foto do Cocho
-                </Button>
+                  <LocalizedText source={"📷 Tirar Foto do Cocho"} /></Button>
               )}
             </CardContent>
           </Card>
@@ -235,10 +235,10 @@ export default function SalgaForm({
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge className="bg-primary text-primary-foreground">Sugestão: {sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
+                    <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Sugestão:"} />{" "}{sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Base: {sugestao.numAnimais} animais × {sugestao.intervaloDias} dias × {sugestao.produtoNome}
+                    Base: {sugestao.numAnimais} <LocalizedText source={"animais ×"} />{" "}{sugestao.intervaloDias} <LocalizedText source={"dias ×"} />{" "}{sugestao.produtoNome}
                   </p>
 
                 </CardContent>
@@ -247,7 +247,7 @@ export default function SalgaForm({
               !produtoNaoConfigurado ? null : (
                 <Card className="border-destructive/30 bg-destructive/5">
                   <CardContent className="p-3">
-                    <p className="text-xs text-destructive font-medium">Produto não configurado</p>
+                    <p className="text-xs text-destructive font-medium"><LocalizedText source={"Produto não configurado"} /></p>
                   </CardContent>
                 </Card>
               )
@@ -258,7 +258,7 @@ export default function SalgaForm({
         {/* Sacos */}
         {!cochoChecked && (
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Quantidade de sacos *</label>
+            <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Quantidade de sacos *"} /></label>
             <Input
               type="number"
               inputMode="numeric"
@@ -280,7 +280,7 @@ export default function SalgaForm({
                 : 'Foto de auditoria (opcional)'}
             </label>
             {auditoriaExigida && !fotoAuditoria && (
-              <p className="text-xs text-destructive mb-2 font-semibold">⚠ Você deve tirar a foto antes de salvar</p>
+              <p className="text-xs text-destructive mb-2 font-semibold"><LocalizedText source={"⚠ Você deve tirar a foto antes de salvar"} /></p>
             )}
             {fotoAuditoria ? (
               <div className="relative w-20 h-20">
@@ -306,12 +306,11 @@ export default function SalgaForm({
         {/* Observações */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-foreground">Observações ({observacoes.length})</label>
+            <label className="text-sm font-medium text-foreground"><LocalizedText source={"Observações ("} />{observacoes.length})</label>
             {!addingObs && (
               <Button variant="outline" size="sm" className="gap-1" onClick={handleAddObs}>
                 <Plus className="w-3 h-3" />
-                Observação
-              </Button>
+                <LocalizedText source={"Observação"} /></Button>
             )}
           </div>
 
@@ -343,8 +342,7 @@ export default function SalgaForm({
                 ) : (
                   <Button variant="outline" className="w-full gap-2" onClick={() => capturePhoto((url) => setObsFoto(url), obsFileRef)}>
                     <Camera className="w-4 h-4" />
-                    Tirar foto
-                  </Button>
+                    <LocalizedText source={"Tirar foto"} /></Button>
                 )}
                 <Textarea
                   placeholder="Descrição (opcional)"
@@ -353,8 +351,8 @@ export default function SalgaForm({
                   rows={2}
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={saveObs} disabled={!obsFoto} className="flex-1">Salvar</Button>
-                  <Button size="sm" variant="outline" onClick={() => setAddingObs(false)} className="flex-1">Cancelar</Button>
+                  <Button size="sm" onClick={saveObs} disabled={!obsFoto} className="flex-1"><LocalizedText source={"Salvar"} /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setAddingObs(false)} className="flex-1"><LocalizedText source={"Cancelar"} /></Button>
                 </div>
               </CardContent>
             </Card>

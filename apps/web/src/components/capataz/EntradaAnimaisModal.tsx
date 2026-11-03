@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +88,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md mx-auto">
         <DialogHeader>
-          <DialogTitle>➕ Adicionar Animais — {pastoNome}</DialogTitle>
+          <DialogTitle><LocalizedText source={"➕ Adicionar Animais —"} />{" "}{pastoNome}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -95,7 +96,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Quantidade de animais *</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Quantidade de animais *"} /></label>
               <Input
                 type="number"
                 min={1}
@@ -106,7 +107,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">Peso médio (kg) *</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Peso médio (kg) *"} /></label>
               <Input
                 type="number"
                 min={1}
@@ -118,7 +119,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">Produto *</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Produto *"} /></label>
               {produtos.length === 0 ? (
                 <>
                   <Input value="Nenhum produto" disabled />

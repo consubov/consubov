@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -225,12 +226,12 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
 
   const renderStatus = (status: string) => {
     if (status === "aprovada") {
-      return <Badge className="bg-primary text-primary-foreground gap-1"><CheckCircle2 className="w-3 h-3" />Aprovada</Badge>;
+      return <Badge className="bg-primary text-primary-foreground gap-1"><CheckCircle2 className="w-3 h-3" /><LocalizedText source={"Aprovada"} /></Badge>;
     }
     if (status === "recusada") {
-      return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />Recusada</Badge>;
+      return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" /><LocalizedText source={"Recusada"} /></Badge>;
     }
-    return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" />Pendente</Badge>;
+    return <Badge variant="outline" className="gap-1"><Clock className="w-3 h-3" /><LocalizedText source={"Pendente"} /></Badge>;
   };
 
   const totalPreenchido = Object.values(entries).reduce((s, e) => s + (e.cocho ? 0 : parseInt(e.sacos, 10) || 0), 0);
@@ -240,7 +241,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden max-h-[92vh] flex flex-col">
         <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
-          <DialogTitle className="text-base">Lançamento Manual</DialogTitle>
+          <DialogTitle className="text-base"><LocalizedText source={"Lançamento Manual"} /></DialogTitle>
           <DialogDescription className="text-xs">
             {tab === "novo"
               ? "Preencha os pastos com salga e envie ao gerente"
@@ -256,8 +257,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
               tab === "novo" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             )}
           >
-            Nova solicitação
-          </button>
+            <LocalizedText source={"Nova solicitação"} /></button>
           <button
             onClick={() => setTab("historico")}
             className={cn(
@@ -265,8 +265,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
               tab === "historico" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             )}
           >
-            Histórico
-          </button>
+            <LocalizedText source={"Histórico"} /></button>
         </div>
 
         <div className="flex-1 overflow-auto px-4 py-3">
@@ -274,7 +273,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
             <div className="space-y-3">
               {/* Data geral */}
               <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                <Label className="text-xs font-semibold">Data da salga (geral)</Label>
+                <Label className="text-xs font-semibold"><LocalizedText source={"Data da salga (geral)"} /></Label>
                 <Popover open={generalDateOpen} onOpenChange={setGeneralDateOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -295,13 +294,12 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                   </PopoverContent>
                 </Popover>
                 <p className="text-[11px] text-muted-foreground">
-                  Aplicada por padrão a todos os pastos. Você pode alterar individualmente abaixo.
-                </p>
+                  <LocalizedText source={"Aplicada por padrão a todos os pastos. Você pode alterar individualmente abaixo."} /></p>
               </div>
 
               {/* Lista de pastos */}
               {pastos.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhum pasto disponível.</p>
+                <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Nenhum pasto disponível."} /></p>
               ) : (
                 <div className="space-y-2">
                   {pastos.map((p) => {
@@ -314,7 +312,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
                               <p className="font-semibold text-sm truncate">{p.nome}</p>
-                              <p className="text-[11px] text-muted-foreground">{p.num_animais} animais</p>
+                              <p className="text-[11px] text-muted-foreground">{p.num_animais} <LocalizedText source={"animais"} /></p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -365,7 +363,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                             </Popover>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor={`cc-${p.id}`} className="text-xs">Cocho cheio</Label>
+                            <Label htmlFor={`cc-${p.id}`} className="text-xs"><LocalizedText source={"Cocho cheio"} /></Label>
                             <Switch
                               id={`cc-${p.id}`}
                               checked={!!entry?.cocho}
@@ -374,7 +372,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                           </div>
                           {entry && (
                             <div className="space-y-1">
-                              <Label className="text-[11px]">Motivo do lançamento manual *</Label>
+                              <Label className="text-[11px]"><LocalizedText source={"Motivo do lançamento manual *"} /></Label>
                               <Input
                                 value={entry.motivo}
                                 onChange={(e) => patchEntry(p.id, { motivo: e.target.value })}
@@ -382,13 +380,13 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                                 className="h-9 text-sm"
                               />
                               {entry.motivo.trim().length < MOTIVO_MIN && (
-                                <p className="text-[10px] text-destructive">Obrigatório (mín. {MOTIVO_MIN} caracteres)</p>
+                                <p className="text-[10px] text-destructive"><LocalizedText source={"Obrigatório (mín."} />{" "}{MOTIVO_MIN} <LocalizedText source={"caracteres)"} /></p>
                               )}
                             </div>
                           )}
                           {isCustom && (
                             <p className="text-[11px] text-primary">
-                              Data específica: {format(dataPasto, "dd/MM/yyyy")}
+                              <LocalizedText source={"Data específica:"} />{" "}{format(dataPasto, "dd/MM/yyyy")}
                             </p>
                           )}
                         </CardContent>
@@ -405,7 +403,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
               {loadingHist ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : historico.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação ainda.</p>
+                <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Nenhuma solicitação ainda."} /></p>
               ) : (
                 historico.map((s) => {
                   const dataGer = new Date(s.data_salga_geral).toLocaleDateString("pt-BR");
@@ -414,10 +412,9 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold">Solicitação de {dataGer}</p>
+                            <p className="text-sm font-semibold"><LocalizedText source={"Solicitação de"} />{" "}{dataGer}</p>
                             <p className="text-[11px] text-muted-foreground">
-                              {s.itens.length} pasto{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} sacos
-                            </p>
+                              {s.itens.length} <LocalizedText source={"pasto"} />{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} <LocalizedText source={"sacos"} /></p>
                           </div>
                           {renderStatus(s.status)}
                         </div>
@@ -429,14 +426,14 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                               <p key={it.id} className="text-[11px] text-muted-foreground">
                                 <span className="text-foreground font-medium">{pasto?.nome ?? "Pasto"}</span>
                                 {" — "}{it.cocho_cheio ? "Cocho cheio" : `${it.num_sacos} sacos`} · {dItem}
-                                {it.motivo ? <span className="block italic">Motivo: {it.motivo}</span> : null}
+                                {it.motivo ? <span className="block italic"><LocalizedText source={"Motivo:"} />{" "}{it.motivo}</span> : null}
                               </p>
                             );
                           })}
                         </div>
                         {s.status === "recusada" && s.motivo_recusa && (
                           <div className="p-2 rounded bg-destructive/10 border border-destructive/20">
-                            <p className="text-[10px] font-semibold text-destructive uppercase">Motivo da recusa</p>
+                            <p className="text-[10px] font-semibold text-destructive uppercase"><LocalizedText source={"Motivo da recusa"} /></p>
                             <p className="text-xs text-destructive">{s.motivo_recusa}</p>
                           </div>
                         )}
@@ -453,9 +450,8 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
           <div className="border-t bg-background p-3 shrink-0 space-y-2">
             {countPreenchido > 0 && (
               <p className="text-xs text-center text-muted-foreground">
-                <span className="text-foreground font-semibold">{countPreenchido}</span> pasto{countPreenchido > 1 ? "s" : ""} ·{" "}
-                <span className="text-foreground font-semibold">{totalPreenchido}</span> sacos no total
-              </p>
+                <span className="text-foreground font-semibold">{countPreenchido}</span> <LocalizedText source={"pasto"} />{countPreenchido > 1 ? "s" : ""} ·{" "}
+                <span className="text-foreground font-semibold">{totalPreenchido}</span> <LocalizedText source={"sacos no total"} /></p>
             )}
             <Button
               onClick={handleSubmit}
@@ -464,8 +460,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
               size="lg"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Enviar Solicitação
-            </Button>
+              <LocalizedText source={"Enviar Solicitação"} /></Button>
           </div>
         )}
       </DialogContent>

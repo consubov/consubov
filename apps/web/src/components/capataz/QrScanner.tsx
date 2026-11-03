@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -325,7 +326,7 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-bold">Escanear QR Code</h1>
+        <h1 className="text-lg font-bold"><LocalizedText source={"Escanear QR Code"} /></h1>
       </header>
 
       {!scanning && !showManualFallback && (
@@ -335,16 +336,14 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           </div>
           <Button onClick={startScanner} className="w-full max-w-xs gap-2" size="lg">
             <ScanLine className="w-5 h-5" />
-            ESCANEAR QR CODE
-          </Button>
+            <LocalizedText source={"ESCANEAR QR CODE"} /></Button>
           {error && <p className="text-destructive text-sm text-center">{error}</p>}
           {failCount > 0 && failCount < 3 && (
-            <p className="text-muted-foreground text-xs">Tentativa {failCount}/3</p>
+            <p className="text-muted-foreground text-xs"><LocalizedText source={"Tentativa"} />{" "}{failCount}/3</p>
           )}
           {onManualSelect && (
             <Button variant="link" onClick={onManualSelect} className="text-muted-foreground text-xs">
-              Selecionar pasto manualmente
-            </Button>
+              <LocalizedText source={"Selecionar pasto manualmente"} /></Button>
           )}
         </main>
       )}
@@ -366,8 +365,7 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-auto px-4">
             <Button variant="secondary" onClick={stopScanner} className="w-full max-w-xs gap-2">
               <X className="w-4 h-4" />
-              Cancelar
-            </Button>
+              <LocalizedText source={"Cancelar"} /></Button>
           </div>
         </main>
       )}
@@ -377,20 +375,17 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           <Card className="w-full max-w-sm">
             <CardContent className="p-4 text-center space-y-3">
               <p className="text-destructive font-semibold text-sm">
-                🔴 QR Code não lido após {failCount} tentativas
-              </p>
+                <LocalizedText source={"🔴 QR Code não lido após"} />{" "}{failCount} <LocalizedText source={"tentativas"} /></p>
               {onManualSelect && (
                 <Button onClick={onManualSelect} className="w-full" variant="secondary">
-                  Selecionar pasto manualmente
-                </Button>
+                  <LocalizedText source={"Selecionar pasto manualmente"} /></Button>
               )}
               <Button
                 onClick={() => { setFailCount(0); setError(null); }}
                 variant="outline"
                 className="w-full"
               >
-                Tentar novamente
-              </Button>
+                <LocalizedText source={"Tentar novamente"} /></Button>
             </CardContent>
           </Card>
         </main>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -152,16 +153,15 @@ export default function TransferenciaModal({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>🔄 Transferir Animais</DialogTitle>
+          <DialogTitle><LocalizedText source={"🔄 Transferir Animais"} /></DialogTitle>
           <DialogDescription>
-            Pasto: <strong>{pasto.nome}</strong> — Total: <strong>{pasto.num_animais}</strong> animais
-          </DialogDescription>
+            <LocalizedText source={"Pasto:"} />{" "}<strong>{pasto.nome}</strong> — Total: <strong>{pasto.num_animais}</strong> <LocalizedText source={"animais"} /></DialogDescription>
         </DialogHeader>
 
         {step === 'input' && (
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Quantidade a transferir (máx: {pasto.num_animais})</Label>
+              <Label><LocalizedText source={"Quantidade a transferir (máx:"} />{" "}{pasto.num_animais})</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -173,12 +173,12 @@ export default function TransferenciaModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>Pasto destino</Label>
+              <Label><LocalizedText source={"Pasto destino"} /></Label>
               <Select value={destinoId} onValueChange={escolherDestino}>
                 <SelectTrigger><SelectValue placeholder="Selecione o pasto" /></SelectTrigger>
                 <SelectContent>
                   {destinosDisponiveis.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} animais)</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} <LocalizedText source={"animais)"} /></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -188,11 +188,11 @@ export default function TransferenciaModal({
             )}
             {qtd > 0 && destino && qtd <= pasto.num_animais && (
               <div className="bg-muted rounded-md p-3 text-sm">
-                <strong>{qtd}</strong> animais saem de <strong>{pasto.nome}</strong> → <strong>{destino.nome}</strong>
+                <strong>{qtd}</strong> <LocalizedText source={"animais saem de"} />{" "}<strong>{pasto.nome}</strong> → <strong>{destino.nome}</strong>
               </div>
             )}
             {qtd > pasto.num_animais && (
-              <p className="text-sm text-destructive font-medium">Quantidade maior que o total disponível.</p>
+              <p className="text-sm text-destructive font-medium"><LocalizedText source={"Quantidade maior que o total disponível."} /></p>
             )}
           </div>
         )}
@@ -200,17 +200,16 @@ export default function TransferenciaModal({
         {step === 'confirm' && destino && (
           <div className="bg-primary/10 border border-primary/30 rounded-md p-4 text-sm space-y-2">
             <p className="font-bold text-primary">
-              Tem certeza que deseja transferir {qtd} animais do pasto {pasto.nome} para {destino.nome}?
+              <LocalizedText source={"Tem certeza que deseja transferir"} />{" "}{qtd} <LocalizedText source={"animais do pasto"} />{" "}{pasto.nome} <LocalizedText source={"para"} />{" "}{destino.nome}?
             </p>
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}><LocalizedText source={"Cancelar"} /></Button>
           {step === 'input' ? (
             <Button onClick={() => setStep('confirm')} disabled={!isValid || !categoriaOk}>
-              Avançar
-            </Button>
+              <LocalizedText source={"Avançar"} /></Button>
           ) : (
             <Button onClick={handleConfirm} disabled={confirmando}>
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Transferência"}

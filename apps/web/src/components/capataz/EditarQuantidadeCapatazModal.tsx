@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -166,15 +167,14 @@ export default function EditarQuantidadeCapatazModal({
       <Dialog open={open} onOpenChange={(o) => { if (o) setForm(buildInitial()); if (!o) handleClose(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Pasto</DialogTitle>
+            <DialogTitle><LocalizedText source={"Editar Pasto"} /></DialogTitle>
             <DialogDescription>
-              Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo.
-            </DialogDescription>
+              <LocalizedText source={"Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo."} /></DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="capataz-nome">Nome</Label>
+              <Label htmlFor="capataz-nome"><LocalizedText source={"Nome"} /></Label>
               <Input
                 id="capataz-nome"
                 value={form.nome}
@@ -186,7 +186,7 @@ export default function EditarQuantidadeCapatazModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="capataz-num-animais">Nº Animais</Label>
+                <Label htmlFor="capataz-num-animais"><LocalizedText source={"Nº Animais"} /></Label>
                 <Input
                   id="capataz-num-animais"
                   type="number"
@@ -197,7 +197,7 @@ export default function EditarQuantidadeCapatazModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="capataz-peso">Peso Médio (kg)</Label>
+                <Label htmlFor="capataz-peso"><LocalizedText source={"Peso Médio (kg)"} /></Label>
                 <Input
                   id="capataz-peso"
                   type="number"
@@ -212,25 +212,25 @@ export default function EditarQuantidadeCapatazModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Sexo</Label>
+                <Label><LocalizedText source={"Sexo"} /></Label>
                 <Select value={form.sexo} onValueChange={handleSexoChange}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Macho">Macho</SelectItem>
-                    <SelectItem value="Fêmea">Fêmea</SelectItem>
-                    <SelectItem value="Misto">Misto</SelectItem>
+                    <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
+                    <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
+                    <SelectItem value="Misto"><LocalizedText source={"Misto"} /></SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label><LocalizedText source={"Categoria"} /></Label>
                 <Select value={form.categoria} onValueChange={handleCategoriaChange}>
                   <SelectTrigger><SelectValue placeholder="Automática" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Recria 1">Recria 1</SelectItem>
-                    <SelectItem value="Recria 2">Recria 2</SelectItem>
-                    <SelectItem value="Engorda">Engorda</SelectItem>
-                    <SelectItem value="Cria">Cria</SelectItem>
+                    <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
+                    <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
+                    <SelectItem value="Engorda"><LocalizedText source={"Engorda"} /></SelectItem>
+                    <SelectItem value="Cria"><LocalizedText source={"Cria"} /></SelectItem>
                   </SelectContent>
                 </Select>
                 {categoriaCalculada && (
@@ -242,7 +242,7 @@ export default function EditarQuantidadeCapatazModal({
             </div>
 
             <div className="flex items-center justify-between">
-              <Label htmlFor="capataz-ativo">Ativo</Label>
+              <Label htmlFor="capataz-ativo"><LocalizedText source={"Ativo"} /></Label>
               <Switch
                 id="capataz-ativo"
                 checked={form.ativo}
@@ -257,8 +257,7 @@ export default function EditarQuantidadeCapatazModal({
                 {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
               </Button>
               <Button variant="outline" className="w-full" onClick={handleClose} disabled={salvando || zerando}>
-                Cancelar
-              </Button>
+                <LocalizedText source={"Cancelar"} /></Button>
             </div>
 
             <div className="border-t border-destructive/20 pt-3">
@@ -269,8 +268,7 @@ export default function EditarQuantidadeCapatazModal({
                 disabled={salvando || zerando}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Zerar pasto
-              </Button>
+                <LocalizedText source={"Zerar pasto"} /></Button>
             </div>
           </div>
         </DialogContent>
@@ -279,23 +277,20 @@ export default function EditarQuantidadeCapatazModal({
       <AlertDialog open={showZerarConfirm} onOpenChange={setShowZerarConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Zerar pasto?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Zerar pasto?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Isso vai zerar a quantidade de animais e o peso médio deste pasto. A ação não pode ser desfeita.
-            </AlertDialogDescription>
+              <LocalizedText source={"Isso vai zerar a quantidade de animais e o peso médio deste pasto. A ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowZerarConfirm(false)} disabled={zerando}>
-              Cancelar
-            </AlertDialogCancel>
+              <LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={handleZerarPasto}
               disabled={zerando}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {zerando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Confirmar
-            </AlertDialogAction>
+              <LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
