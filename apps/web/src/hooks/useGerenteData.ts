@@ -4,6 +4,7 @@ import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
 import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { canRecoverConsolidatedSnapshot } from "@/lib/consumoViewReadGuard";
 import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { confirmObservationRead, confirmObservationResolved, isObservationAccessDenied, isObservationContextCurrent } from "@/lib/observacoesGuard";
@@ -230,8 +231,30 @@ export function useGerenteData(filters?: GerenteFilters) {
         }
 
         const lancRes = await lancQuery;
-        const lancList: Lancamento[] = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds);
-        snap.lancamentos = (lancList);
+        let lancList: Lancamento[];
+        if (canRecoverConsolidatedSnapshot(lancRes)) {
+          // Transport/timeouts in the heavy real-time view must not blank a
+          // verified manager's entire farm. The backup is a security-invoker,
+          // JWT-scoped view of the same launches, not an unscoped table read.
+          let backupQuery = supabase.from("view_consumo_consolidado")
+            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
+            .eq("fazenda_id", fazendaId);
+          if (filters) {
+            backupQuery = backupQuery.eq("ano_referencia", filters.ano);
+            if (filters.mes != null) backupQuery = backupQuery.eq("mes_referencia", filters.mes);
+          } else if (activeCiclo) {
+            backupQuery = backupQuery.eq("mes_referencia", activeCiclo.mes)
+              .eq("ano_referencia", activeCiclo.ano);
+          }
+          const backupRows = requireReadRows(await backupQuery);
+          lancList = requireConsumoRows(
+            backupRows.map(row => ({ ...row, origem: null })),
+            fazendaId, retiroIds,
+          ) as Lancamento[];
+        } else {
+          lancList = requireConsumoRows(requireReadRows(lancRes), fazendaId, retiroIds) as Lancamento[];
+        }
+        snap.lancamentos = lancList;
 
 
       } else {

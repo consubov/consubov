@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DataReadFailure } from "@/lib/dataReadGuard";
-import { requireConsumoRows, type ConsumoRowInput } from "@/lib/consumoViewReadGuard";
+import { canRecoverConsolidatedSnapshot, requireConsumoRows, type ConsumoRowInput } from "@/lib/consumoViewReadGuard";
 
 const fazenda = "fazenda-A";
 const retiro = "retiro-A";
@@ -53,5 +53,22 @@ describe("requireConsumoRows", () => {
 
   it("não altera filtros: aceita apenas retiros explicitamente autorizados", () => {
     expect(() => requireConsumoRows([row], fazenda, [])).toThrow(DataReadFailure);
+  });
+});
+
+describe("consolidated snapshot failover", () => {
+  it("does not fall back after an authorized empty view", () => {
+    expect(canRecoverConsolidatedSnapshot({ error: null, status: 200 })).toBe(false);
+  });
+  it("retries only after transport/statement timeout", () => {
+    expect(canRecoverConsolidatedSnapshot({ error: { code: "57014" }, status: 500 })).toBe(true);
+    expect(canRecoverConsolidatedSnapshot({ error: { code: "PGRST003" }, status: 504 })).toBe(true);
+  });
+  it("never bypasses an authentication or RLS denial", () => {
+    for (const value of [
+      { error: { code: "42501" }, status: 400 },
+      { error: { code: "PGRST116" }, status: 403 },
+      { error: { code: "unauthorized" }, status: 401 },
+    ]) expect(() => canRecoverConsolidatedSnapshot(value)).toThrow(DataReadFailure);
   });
 });

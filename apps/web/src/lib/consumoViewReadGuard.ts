@@ -57,3 +57,18 @@ export function requireConsumoRows<T extends ConsumoRowInput>(
     return row as ConsumoRowValid<T>;
   });
 }
+
+/**
+ * Fallback only for transport failures. A denied JWT/RLS read must never
+ * retry through an alternative source, and a valid empty result stays empty.
+ */
+export function canRecoverConsolidatedSnapshot(result: {
+  error: { code?: string } | null;
+  status?: number;
+}): boolean {
+  if (!result.error) return false;
+  if (result.status === 401 || result.status === 403 || result.error.code === "42501") {
+    throw new DataReadFailure("permission");
+  }
+  return true;
+}
