@@ -4,6 +4,7 @@ import { DataReadFailure } from "@/lib/dataReadGuard";
 
 const rpc = vi.hoisted(() => ({
   fetchPainelMae: vi.fn(),
+  fetchPainelMaeRapido: vi.fn(),
   fetchPainelMaeFallback: vi.fn(),
 }));
 vi.mock("@/features/painel/repositories/painelMaeRepository", () => rpc);
@@ -17,7 +18,39 @@ const data = {
 describe("usePainelMae uses lightweight secured data before timeout-prone RPC", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: null, error: { code: "PGRST202" } });
     rpc.fetchPainelMaeFallback.mockResolvedValue(data);
+  });
+  it("uses the fast authenticated RPC without touching timeout-prone views", async () => {
+    const actual = { consumo_real_g_cab_dia: "116.58", consumo_global_g_cab_dia: "111.62",
+      eficiencia: "39.9", pastos_na_meta_num: 16, pastos_na_meta_den: 108, peso_medio_kg: "282.0" };
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: [actual], error: null });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.painelMae).toEqual({
+      consumo_real_g_cab_dia: 116.58, consumo_global_g_cab_dia: 111.62,
+      eficiencia: 39.9, pastos_na_meta_num: 16, pastos_na_meta_den: 108,
+      peso_medio_kg: 282,
+    });
+    expect(result.current.error).toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
+  });
+  it("rejects a fast RPC permission denial without secondary reads", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: null, error: { code: "42501" } });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
+  });
+  it("does not overload the database after a fast SQL timeout", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: null, error: { code: "57014" } });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
   });
   it("prioritizes lightweight source to avoid the expensive nested view", async () => {
     const { result } = renderHook(() => usePainelMae(...params));
@@ -62,6 +95,10 @@ describe("usePainelMae uses lightweight secured data before timeout-prone RPC", 
       ({ farm }) => usePainelMae(farm, null, 10, 2026),
       { initialProps: { farm: "farm-a" } },
     );
+    // Let the missing-RPC compatibility check resolve before changing farms.
+    await waitFor(() => expect(rpc.fetchPainelMaeFallback).toHaveBeenCalledWith({
+      fazendaId: "farm-a", retiroId: null, mes: 10, ano: 2026,
+    }));
     rerender({ farm: "farm-b" });
     await waitFor(() => expect(result.current.painelMae).toEqual(data));
     await act(async () => { finishOld({ ...data, consumo_real_g_cab_dia: 999 }); });

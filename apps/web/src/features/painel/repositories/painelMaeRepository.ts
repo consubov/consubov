@@ -48,6 +48,24 @@ export async function fetchPainelMae({
 }
 
 /**
+ * Scoped, SECURITY INVOKER RPC for month-level manager indicators.
+ * This endpoint verifies the caller's farm/retreat membership before reading
+ * any underlying operational rows and avoids the nested security-barrier views.
+ * It is deployed only together with its reviewed SQL migration.
+ */
+export async function fetchPainelMaeRapido({
+  fazendaId, retiroId, mes, ano,
+}: PainelMaeRpcParams): Promise<PainelMaeRpcResult> {
+  const result = await (supabase as any).rpc("get_painel_mae_rapido", {
+    p_fazenda_id: fazendaId,
+    p_retiro_id: retiroId,
+    p_mes: mes,
+    p_ano: ano,
+  });
+  return result as PainelMaeRpcResult;
+}
+
+/**
  * Lightweight read-only source that avoids nested view_painel_mae_pasto.
  * The month/farm are filtered on both security_invoker, security_barrier views.
  * Products/occupations are fetched only by IDs returned from authorized views

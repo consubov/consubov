@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { dataReadErrorMessage, DataReadFailure } from "@/lib/dataReadGuard";
 import {
   fetchPainelMae,
+  fetchPainelMaeRapido,
   fetchPainelMaeFallback,
   type PainelMaeRpcRow,
 } from "@/features/painel/repositories/painelMaeRepository";
@@ -55,25 +56,39 @@ export function usePainelMae(
     try {
       const params = { fazendaId, retiroId: retiroId ?? null, mes, ano };
       let rows: PainelMaeRpcRow[] | PainelMaeRpcRow | null;
-      try {
-        // The light path uses two JWT-scoped security_invoker views and avoids
-        // the nested view whose scans are timing out on production dashboards.
-        rows = await fetchPainelMaeFallback(params);
-      } catch (fastError) {
-        // A permission rejection is final: never try a different data path.
-        if (fastError instanceof DataReadFailure && fastError.kind === "permission") throw fastError;
-        const primary = await fetchPainelMae(params);
-        if (primary.error) {
-          const rpcError = primary.error;
-          const code = typeof rpcError === "object" && rpcError !== null &&
-            "code" in rpcError ? String(rpcError.code) : "";
-          const status = typeof rpcError === "object" && rpcError !== null &&
-            "status" in rpcError ? Number(rpcError.status) : 0;
-          if (code === "42501" || status === 401 || status === 403)
-            throw new DataReadFailure("permission");
-          throw new DataReadFailure("unavailable");
+      const fast = await fetchPainelMaeRapido(params);
+      if (!current()) return;
+      if (!fast.error) {
+        rows = fast.data;
+      } else {
+        const code = typeof fast.error === "object" && fast.error !== null &&
+          "code" in fast.error ? String(fast.error.code) : "";
+        const status = typeof fast.error === "object" && fast.error !== null &&
+          "status" in fast.error ? Number(fast.error.status) : 0;
+        // Authorization failures must never try a less restrictive source.
+        if (code === "42501" || status === 401 || status === 403)
+          throw new DataReadFailure("permission");
+        // Compatibility with old deployments only: endpoint absent.
+        // For transport or SQL failure do not fan out heavy view requests.
+        if (code !== "PGRST202") throw new DataReadFailure("unavailable");
+        try {
+          rows = await fetchPainelMaeFallback(params);
+        } catch (fallbackError) {
+          if (fallbackError instanceof DataReadFailure && fallbackError.kind === "permission")
+            throw fallbackError;
+          const primary = await fetchPainelMae(params);
+          if (primary.error) {
+            const rpcError = primary.error;
+            const rpcCode = typeof rpcError === "object" && rpcError !== null &&
+              "code" in rpcError ? String(rpcError.code) : "";
+            const rpcStatus = typeof rpcError === "object" && rpcError !== null &&
+              "status" in rpcError ? Number(rpcError.status) : 0;
+            if (rpcCode === "42501" || rpcStatus === 401 || rpcStatus === 403)
+              throw new DataReadFailure("permission");
+            throw new DataReadFailure("unavailable");
+          }
+          rows = primary.data;
         }
-        rows = primary.data;
       }
 
       if (!current()) return;
