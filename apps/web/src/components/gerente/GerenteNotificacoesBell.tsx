@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { modulosVisiveis } from "@/lib/avisosModulo";
@@ -218,12 +219,12 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
         </PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-0">
           <div className="p-3 border-b flex items-center justify-between">
-            <h4 className="font-semibold text-sm">Notificações</h4>
+            <h4 className="font-semibold text-sm"><LocalizedText source={"Notificações"} /></h4>
             {items.length > 0 && <Badge variant="secondary" className="text-xs">{items.length}</Badge>}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma notificação</div>
+              <div className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma notificação"} /></div>
             ) : items.map(n => (
               <div key={n.id} className="p-3 border-b last:border-0">
                 <div className="flex items-start justify-between gap-2">
@@ -239,11 +240,9 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
                 {n.tipo === "transferencia_fabrica" && n.dados?.transferencia_id && (
                   <div className="flex gap-2 mt-2">
                     <Button size="sm" className="h-7 flex-1" onClick={() => abrirAprovar(n)}>
-                      <Check className="w-3 h-3 mr-1" /> Aprovar
-                    </Button>
+                      <Check className="w-3 h-3 mr-1" /> <LocalizedText source={"Aprovar"} /></Button>
                     <Button size="sm" variant="outline" className="h-7 flex-1" onClick={() => recusar(n)}>
-                      <X className="w-3 h-3 mr-1" /> Recusar
-                    </Button>
+                      <X className="w-3 h-3 mr-1" /> <LocalizedText source={"Recusar"} /></Button>
                   </div>
                 )}
               </div>
@@ -255,14 +254,14 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
       <Dialog open={!!aprovar} onOpenChange={o => !o && setAprovar(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Aprovar Recebimento</DialogTitle>
+            <DialogTitle><LocalizedText source={"Aprovar Recebimento"} /></DialogTitle>
             <DialogDescription>
-              {aprovar?.dados?.produto_nome} — enviados <strong>{aprovar?.dados?.quantidade_sacos} sacos</strong>
+              {aprovar?.dados?.produto_nome} <LocalizedText source={"— enviados"} />{" "}<strong>{aprovar?.dados?.quantidade_sacos} <LocalizedText source={"sacos"} /></strong>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Quantidade Recebida (sacos) *</Label>
+              <Label><LocalizedText source={"Quantidade Recebida (sacos) *"} /></Label>
               <Input type="number" step="1" min="1" value={qtdReceb} onChange={e => setQtdReceb(e.target.value)} />
               {qtdReceb && aprovar && (
                 (() => {
@@ -271,22 +270,21 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
                   const pct = enviado > 0 ? (d / enviado) * 100 : 0;
                   return (
                     <p className={`text-xs mt-1 ${Math.abs(pct) > 5 ? "text-destructive" : "text-muted-foreground"}`}>
-                      Divergência: {d >= 0 ? "-" : "+"}{Math.abs(d)} sc ({Math.abs(pct).toFixed(1)}%)
+                      <LocalizedText source={"Divergência:"} />{" "}{d >= 0 ? "-" : "+"}{Math.abs(d)} sc ({Math.abs(pct).toFixed(1)}%)
                     </p>
                   );
                 })()
               )}
             </div>
             <div>
-              <Label>Observação</Label>
+              <Label><LocalizedText source={"Observação"} /></Label>
               <Textarea value={obsReceb} onChange={e => setObsReceb(e.target.value)} rows={2} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAprovar(null)} disabled={saving}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAprovar(null)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={confirmarAprovacao} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} Confirmar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} <LocalizedText source={"Confirmar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
