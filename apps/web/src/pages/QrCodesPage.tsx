@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState, useCallback, useRef } from "react";
 import html2canvas from "html2canvas";
@@ -276,20 +277,20 @@ export default function QrCodesPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Gerar QR Codes</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Gerar QR Codes"} /></h1>
         {generatedPastos.length > 0 && (
           <Button onClick={handleExportPdf} disabled={exportingPdf} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {exportingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-            Baixar PDF ({generatedPastos.length})
+            <LocalizedText source={"Baixar PDF ("} />{generatedPastos.length})
           </Button>
         )}
       </div>
 
       <Tabs defaultValue="individual">
         <TabsList className="mb-4 grid w-full grid-cols-3">
-          <TabsTrigger value="individual">Pasto Individual</TabsTrigger>
-          <TabsTrigger value="retiro">Por Retiro</TabsTrigger>
-          <TabsTrigger value="fazenda">Por Fazenda</TabsTrigger>
+          <TabsTrigger value="individual"><LocalizedText source={"Pasto Individual"} /></TabsTrigger>
+          <TabsTrigger value="retiro"><LocalizedText source={"Por Retiro"} /></TabsTrigger>
+          <TabsTrigger value="fazenda"><LocalizedText source={"Por Fazenda"} /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="individual" className="space-y-3">
@@ -319,7 +320,7 @@ export default function QrCodesPage() {
             ))}
 
             {searchResults.length === 0 && !searching && (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pasto encontrado</p>
+              <p className="py-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto encontrado"} /></p>
             )}
 
             <div ref={loadMoreRef} className="h-1" />
@@ -364,8 +365,7 @@ export default function QrCodesPage() {
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-            Gerar QR Codes do Retiro
-          </Button>
+            <LocalizedText source={"Gerar QR Codes do Retiro"} /></Button>
         </TabsContent>
 
         <TabsContent value="fazenda" className="space-y-3">
@@ -384,15 +384,14 @@ export default function QrCodesPage() {
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-            Gerar QR Codes da Fazenda
-          </Button>
+            <LocalizedText source={"Gerar QR Codes da Fazenda"} /></Button>
         </TabsContent>
       </Tabs>
 
       {generatedPastos.length > 0 && (
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
-            {generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""} gerado{generatedPastos.length > 1 ? "s" : ""}
+            {generatedPastos.length} QR Code{generatedPastos.length > 1 ? "s" : ""} <LocalizedText source={"gerado"} />{generatedPastos.length > 1 ? "s" : ""}
           </h2>
 
           <div className="space-y-6">

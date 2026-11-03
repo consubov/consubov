@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -157,17 +158,16 @@ export default function PesadoresPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Users className="w-5 h-5" /> Usuários
-        </h1>
+          <Users className="w-5 h-5" /> <LocalizedText source={"Usuários"} /></h1>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4" /> Novo <ChevronDown className="w-4 h-4" />
+              <Plus className="w-4 h-4" /> <LocalizedText source={"Novo"} />{" "}<ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openNew("pesador")}><Scale className="w-4 h-4 mr-2" /> Pesador</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openNew("pecuarista")}><Beef className="w-4 h-4 mr-2" /> Pecuarista</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openNew("pesador")}><Scale className="w-4 h-4 mr-2" /> <LocalizedText source={"Pesador"} /></DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openNew("pecuarista")}><Beef className="w-4 h-4 mr-2" /> <LocalizedText source={"Pecuarista"} /></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -177,17 +177,17 @@ export default function PesadoresPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Telefone</TableHead>
+                <TableHead><LocalizedText source={"Tipo"} /></TableHead>
+                <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                <TableHead><LocalizedText source={"Empresa"} /></TableHead>
+                <TableHead><LocalizedText source={"Telefone"} /></TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead className="w-24 text-right">Ações</TableHead>
+                <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {usuarios.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum usuário cadastrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8"><LocalizedText source={"Nenhum usuário cadastrado"} /></TableCell></TableRow>
               ) : usuarios.map(u => (
                 <TableRow key={`${u.tipo}-${u.id}`}>
                   <TableCell>
@@ -227,25 +227,24 @@ export default function PesadoresPage() {
               <Label>{form.tipo === "pesador" ? "Nome da empresa *" : "Nome da empresa"}</Label>
               <Input value={form.nome_empresa} onChange={e => setForm(f => ({ ...f, nome_empresa: e.target.value }))} />
             </div>
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
-            <div><Label>Telefone</Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} inputMode="tel" /></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Telefone"} /></Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} inputMode="tel" /></div>
             {!editing ? (
               <>
                 <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-                <div><Label>Senha *</Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
               </>
             ) : (
               <div><Label>Email</Label><Input type="email" value={form.email} disabled /></div>
             )}
             {form.tipo === "pesador" && (
-              <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label>Ativo</Label></div>
+              <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

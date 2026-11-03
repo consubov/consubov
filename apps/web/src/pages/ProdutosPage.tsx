@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -294,18 +295,16 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Package className="w-5 h-5" /> Produtos
-        </h1>
+          <Package className="w-5 h-5" /> <LocalizedText source={"Produtos"} /></h1>
         <Button onClick={openNew} size="sm" className="gap-1.5">
-          <Plus className="w-4 h-4" /> Cadastrar Produto
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Cadastrar Produto"} /></Button>
       </div>
 
       {produtos.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
             <Package className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-            <p className="text-muted-foreground text-sm">Nenhum produto cadastrado.</p>
+            <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum produto cadastrado."} /></p>
           </CardContent>
         </Card>
       ) : (
@@ -314,12 +313,12 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Marca</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Peso Saco</TableHead>
-                  <TableHead>Custo/kg</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead><LocalizedText source={"Marca"} /></TableHead>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                  <TableHead><LocalizedText source={"Tipo"} /></TableHead>
+                  <TableHead><LocalizedText source={"Peso Saco"} /></TableHead>
+                  <TableHead><LocalizedText source={"Custo/kg"} /></TableHead>
+                  <TableHead className="text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -338,8 +337,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                       <div className="flex justify-end gap-1">
                         {modo === "gerente" && (
                           <Button variant="outline" size="sm" className="gap-1" onClick={() => setVincularProduto(p)}>
-                            <Link2 className="w-3.5 h-3.5" /> Vincular
-                          </Button>
+                            <Link2 className="w-3.5 h-3.5" /> <LocalizedText source={"Vincular"} /></Button>
                         )}
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
@@ -370,25 +368,23 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="gap-1 px-2">
-                ← Voltar
-              </Button>
+                <LocalizedText source={"← Voltar"} /></Button>
             </div>
             <DialogTitle>{editingId ? "Editar Produto" : "Cadastrar Produto"}</DialogTitle>
             <DialogDescription id="produto-dialog-desc">
-              Preencha os dados do produto.
-            </DialogDescription>
+              <LocalizedText source={"Preencha os dados do produto."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Marca *</Label>
+              <Label><LocalizedText source={"Marca *"} /></Label>
               <Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Ex: Vaccinar, Tortuga, Minerax" />
             </div>
             <div className="space-y-2">
-              <Label>Nome do Produto *</Label>
+              <Label><LocalizedText source={"Nome do Produto *"} /></Label>
               <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Tecnocorte Águas HD" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="produto-tipo">Tipo *</Label>
+              <Label htmlFor="produto-tipo"><LocalizedText source={"Tipo *"} /></Label>
               <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v, tipo_outro: v === "Outro" ? form.tipo_outro : "" })}>
                 <SelectTrigger id="produto-tipo"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                 <SelectContent>
@@ -399,13 +395,13 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
               </Select>
               {form.tipo === "Outro" && (
                 <div className="space-y-2 pt-1">
-                  <Label>Qual tipo? *</Label>
+                  <Label><LocalizedText source={"Qual tipo? *"} /></Label>
                   <Input value={form.tipo_outro} onChange={(e) => setForm({ ...form, tipo_outro: e.target.value })} placeholder="Descreva o tipo" />
                 </div>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Peso do Saco (kg) *</Label>
+              <Label><LocalizedText source={"Peso do Saco (kg) *"} /></Label>
               <div className="flex flex-wrap gap-2">
                 {PESO_SACO_OPTIONS.map((peso) => (
                   <button
@@ -424,13 +420,13 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Custo por kg (R$) *</Label>
+              <Label><LocalizedText source={"Custo por kg (R$) *"} /></Label>
               <Input type="number" step="0.01" value={form.preco_por_kg} onChange={(e) => setForm({ ...form, preco_por_kg: e.target.value })} placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <Label>Consumo por 100kg PV (g/cab/dia) *</Label>
+              <Label><LocalizedText source={"Consumo por 100kg PV (g/cab/dia) *"} /></Label>
               <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder="Ex: 100" />
-              <p className="text-xs text-muted-foreground">Parâmetro nutricional obrigatório para cálculos do sistema</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Parâmetro nutricional obrigatório para cálculos do sistema"} /></p>
             </div>
 
             <div className="border-t pt-3">
@@ -445,24 +441,23 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                 }
               />
               <p className="text-xs text-muted-foreground mt-1">
-                O produto só aparecerá nas fazendas selecionadas.
-              </p>
+                <LocalizedText source={"O produto só aparecerá nas fazendas selecionadas."} /></p>
             </div>
 
 
             {/* Consumo por Categoria */}
             <div className="space-y-3 border-t pt-3">
-              <Label className="text-xs text-muted-foreground font-semibold">Consumo por Categoria (kg/100kg PV)</Label>
+              <Label className="text-xs text-muted-foreground font-semibold"><LocalizedText source={"Consumo por Categoria (kg/100kg PV)"} /></Label>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Recria 1</Label>
+                  <Label className="text-xs font-medium"><LocalizedText source={"Recria 1"} /></Label>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
                       <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
                         <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
@@ -471,14 +466,14 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Recria 2</Label>
+                  <Label className="text-xs font-medium"><LocalizedText source={"Recria 2"} /></Label>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
                       <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
                         <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
@@ -487,14 +482,14 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Engorda</Label>
+                  <Label className="text-xs font-medium"><LocalizedText source={"Engorda"} /></Label>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Consumo (kg/100kg PV)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
                       <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Margem (%)</Label>
+                      <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
                         <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
@@ -506,7 +501,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
             </Button>

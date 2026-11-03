@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,7 +65,7 @@ export default function RecuperarDadosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-foreground">Recuperar Dados</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Recuperar Dados"} /></h1>
         <label className="inline-flex">
           <input
             type="file"
@@ -79,8 +80,7 @@ export default function RecuperarDadosPage() {
           <Button asChild variant="default" size="sm" disabled={importing}>
             <span>
               {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-              Importar JSON de emergência
-            </span>
+              <LocalizedText source={"Importar JSON de emergência"} /></span>
           </Button>
         </label>
       </div>
@@ -88,7 +88,7 @@ export default function RecuperarDadosPage() {
       <SyncCapatazPanel title="Sincronização dos Capatazes" />
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Como funciona</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base"><LocalizedText source={"Como funciona"} /></CardTitle></CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
             Os dados de cada capataz são reportados automaticamente após cada tentativa de sincronização.
