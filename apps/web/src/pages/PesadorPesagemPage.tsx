@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
@@ -143,16 +144,15 @@ export default function PesadorPesagemPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando histórico...
-      </div>
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando histórico..."} /></div>
     );
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Histórico</h1>
-        <p className="text-sm text-muted-foreground">Pesagens finalizadas.</p>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Histórico"} /></h1>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Pesagens finalizadas."} /></p>
       </div>
 
       <div className="relative">
@@ -186,14 +186,13 @@ export default function PesadorPesagemPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {!p.pdf_url && (off.active ? (
-                      <span className="text-[11px] text-muted-foreground">PDF após sincronizar</span>
+                      <span className="text-[11px] text-muted-foreground"><LocalizedText source={"PDF após sincronizar"} /></span>
                     ) : (
                       <Link
                         to={`/pesador/pesagem/${p.id}/resumo`}
                         className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                       >
-                        <FileDown className="w-3 h-3" /> Gerar PDF
-                      </Link>
+                        <FileDown className="w-3 h-3" /> <LocalizedText source={"Gerar PDF"} /></Link>
                     ))}
                     {p.pdf_url && (
                       <Button
@@ -203,8 +202,7 @@ export default function PesadorPesagemPage() {
                         onClick={() => void handleDownloadPdf(p.pdf_url, p.id)}
                         className="h-7 px-2 text-xs text-muted-foreground"
                       >
-                        <FileDown className="w-3.5 h-3.5 mr-1" /> Baixar PDF
-                      </Button>
+                        <FileDown className="w-3.5 h-3.5 mr-1" /> <LocalizedText source={"Baixar PDF"} /></Button>
                     )}
                     <button
                       type="button"
@@ -228,7 +226,7 @@ export default function PesadorPesagemPage() {
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
             className="text-sm text-primary font-medium py-2 px-4 rounded-md hover:bg-muted"
           >
-            Carregar mais ({filtered.length - visible})
+            <LocalizedText source={"Carregar mais ("} />{filtered.length - visible})
           </button>
         </div>
       )}
@@ -236,21 +234,18 @@ export default function PesadorPesagemPage() {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir pesagem?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir pesagem?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja apagar esta pesagem de <strong>{toDelete?.produtor ?? "—"}</strong>?
-              Essa ação não pode ser desfeita e vai afetar os totais do Painel.
-            </AlertDialogDescription>
+              <LocalizedText source={"Tem certeza que deseja apagar esta pesagem de"} />{" "}<strong>{toDelete?.produtor ?? "—"}</strong><LocalizedText source={"? Essa ação não pode ser desfeita e vai afetar os totais do Painel."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void handleDelete(); }}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
-            </AlertDialogAction>
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

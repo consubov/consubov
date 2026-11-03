@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
@@ -281,8 +282,7 @@ export default function PesadorDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando painel...
-      </div>
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando painel..."} /></div>
     );
   }
 
@@ -295,7 +295,7 @@ export default function PesadorDashboard() {
     <div className="space-y-5 pb-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          Bem-vindo, {nomePesador || "Pesador"}
+          <LocalizedText source={"Bem-vindo,"} />{" "}{nomePesador || "Pesador"}
         </h1>
         {nomeEmpresa && (
           <p className="text-sm text-muted-foreground">{nomeEmpresa}</p>
@@ -313,13 +313,13 @@ export default function PesadorDashboard() {
       {/* Seção Financeiro */}
       <div className="space-y-3 pt-2 border-t">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Financeiro</h2>
+          <h2 className="text-lg font-semibold text-foreground"><LocalizedText source={"Financeiro"} /></h2>
           <span className="text-xs text-muted-foreground">{periodoLabel}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-xs text-muted-foreground">Ano</label>
+            <label className="text-xs text-muted-foreground"><LocalizedText source={"Ano"} /></label>
             <Select value={String(selYear)} onValueChange={(v) => setSelYear(Number(v))}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -330,11 +330,11 @@ export default function PesadorDashboard() {
             </Select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Mês</label>
+            <label className="text-xs text-muted-foreground"><LocalizedText source={"Mês"} /></label>
             <Select value={String(selMonth)} onValueChange={(v) => setSelMonth(v === "all" ? "all" : Number(v))}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
                 {MESES.map((m) => (
                   <SelectItem key={m.v} value={String(m.v)}>{m.l}</SelectItem>
                 ))}
@@ -342,7 +342,7 @@ export default function PesadorDashboard() {
             </Select>
           </div>
         </div>
-        <Button className="w-full" onClick={aplicarFiltro}>Filtrar</Button>
+        <Button className="w-full" onClick={aplicarFiltro}><LocalizedText source={"Filtrar"} /></Button>
 
         <div className="grid grid-cols-3 gap-2">
           <ResumoCard label="Total (R$)" value={brl(financeiro.totalValor)} />
@@ -351,7 +351,7 @@ export default function PesadorDashboard() {
         </div>
 
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Valor por período ({appliedYear})</div>
+          <div className="text-xs font-medium text-muted-foreground mb-2"><LocalizedText source={"Valor por período ("} />{appliedYear})</div>
           <div style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <LineChart data={financeiro.lineData} margin={{ top: 8, right: 8, left: 8, bottom: 4 }}>
@@ -368,7 +368,7 @@ export default function PesadorDashboard() {
         {financeiro.catEntries.length > 0 ? (
           <>
             <div className="rounded-lg border bg-card p-3">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Valor por categoria</div>
+              <div className="text-xs font-medium text-muted-foreground mb-2"><LocalizedText source={"Valor por categoria"} /></div>
               <div style={{ width: "100%", height: Math.max(180, financeiro.catEntries.length * 34) }}>
                 <ResponsiveContainer>
                   <BarChart data={financeiro.catEntries} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
@@ -383,7 +383,7 @@ export default function PesadorDashboard() {
             </div>
 
             <div className="rounded-lg border bg-card p-3">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Distribuição por categoria</div>
+              <div className="text-xs font-medium text-muted-foreground mb-2"><LocalizedText source={"Distribuição por categoria"} /></div>
               <div style={{ width: "100%", height: 260 }}>
                 <ResponsiveContainer>
                   <PieChart>
@@ -413,13 +413,13 @@ export default function PesadorDashboard() {
             </div>
 
             <div className="rounded-lg border bg-card p-3">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Detalhes por categoria</div>
+              <div className="text-xs font-medium text-muted-foreground mb-2"><LocalizedText source={"Detalhes por categoria"} /></div>
               <div className="text-xs space-y-1">
                 <div className="grid grid-cols-4 gap-1 text-muted-foreground border-b pb-1 mb-1">
-                  <span>Categoria</span>
-                  <span className="text-right">Animais</span>
+                  <span><LocalizedText source={"Categoria"} /></span>
+                  <span className="text-right"><LocalizedText source={"Animais"} /></span>
                   <span className="text-right">@</span>
-                  <span className="text-right">Valor</span>
+                  <span className="text-right"><LocalizedText source={"Valor"} /></span>
                 </div>
                 {financeiro.catEntries.map((c) => (
                   <div key={c.cat} className="grid grid-cols-4 gap-1 py-1 border-b border-border/40">
@@ -434,8 +434,7 @@ export default function PesadorDashboard() {
           </>
         ) : (
           <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Sem pesagens no período selecionado.
-          </div>
+            <LocalizedText source={"Sem pesagens no período selecionado."} /></div>
         )}
       </div>
     </div>

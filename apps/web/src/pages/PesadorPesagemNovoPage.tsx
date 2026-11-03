@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -260,8 +261,7 @@ export default function PesadorPesagemNovoPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-      </div>
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando..."} /></div>
     );
   }
 
@@ -269,11 +269,9 @@ export default function PesadorPesagemNovoPage() {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" onClick={() => navigate("/pesador/clientes")}>
-          <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-        </Button>
+          <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
         <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Cliente não encontrado.
-        </div>
+          <LocalizedText source={"Cliente não encontrado."} /></div>
       </div>
     );
   }
@@ -281,11 +279,10 @@ export default function PesadorPesagemNovoPage() {
   return (
     <div className="space-y-4 pb-24">
       <Button variant="ghost" size="sm" onClick={() => navigate("/pesador/clientes")}>
-        <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} /></Button>
 
       <div className="rounded-lg border bg-card p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">Produtor</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Produtor"} /></div>
         <div className="text-lg font-semibold text-foreground">{cliente.nome}</div>
         <div className="text-xs text-muted-foreground">
           {[cliente.nome_fazenda, cliente.cidade].filter(Boolean).join(" • ") || "—"}
@@ -293,47 +290,46 @@ export default function PesadorPesagemNovoPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tipo-pesagem">Tipo de pesagem</Label>
+        <Label htmlFor="tipo-pesagem"><LocalizedText source={"Tipo de pesagem"} /></Label>
         <select
           id="tipo-pesagem"
           value={modo}
           onChange={(e) => setModo(e.target.value as ModoPesagem)}
           className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="comercial">Pesagem comercial</option>
-          <option value="rotina">Pesagem de rotina (sem valores)</option>
+          <option value="comercial"><LocalizedText source={"Pesagem comercial"} /></option>
+          <option value="rotina"><LocalizedText source={"Pesagem de rotina (sem valores)"} /></option>
         </select>
         {isRotina && (
           <p className="text-xs text-muted-foreground">
-            Uso para conferência (ex.: antes do frigorífico). Nenhum valor será calculado.
-          </p>
+            <LocalizedText source={"Uso para conferência (ex.: antes do frigorífico). Nenhum valor será calculado."} /></p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tipo-balanca">Tipo de balança</Label>
+        <Label htmlFor="tipo-balanca"><LocalizedText source={"Tipo de balança"} /></Label>
         <select
           id="tipo-balanca"
           value={tipoBalanca}
           onChange={(e) => setTipoBalanca(e.target.value as "individual" | "balancao")}
           className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="individual">Balança individual (1 animal por leitura)</option>
-          <option value="balancao">Balanção (vários animais por leitura)</option>
+          <option value="individual"><LocalizedText source={"Balança individual (1 animal por leitura)"} /></option>
+          <option value="balancao"><LocalizedText source={"Balanção (vários animais por leitura)"} /></option>
         </select>
         {isBalancao && (
           <>
-            <Label htmlFor="qtd-balancao" className="pt-2 block">Quantidade padrão por leitura</Label>
+            <Label htmlFor="qtd-balancao" className="pt-2 block"><LocalizedText source={"Quantidade padrão por leitura"} /></Label>
             <select
               id="qtd-balancao"
               value={qtdBalancao}
               onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
               className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value={2}>2 animais</option>
-              <option value={3}>3 animais</option>
-              <option value={4}>4 animais</option>
-              <option value={5}>5 animais</option>
+              <option value={2}><LocalizedText source={"2 animais"} /></option>
+              <option value={3}><LocalizedText source={"3 animais"} /></option>
+              <option value={4}><LocalizedText source={"4 animais"} /></option>
+              <option value={5}><LocalizedText source={"5 animais"} /></option>
             </select>
             <p className="text-xs text-muted-foreground">
               O peso digitado será o TOTAL da leitura, dividido pelo número de animais. Você poderá ajustar a quantidade a cada leitura.
@@ -344,7 +340,7 @@ export default function PesadorPesagemNovoPage() {
       </div>
 
       <div className="space-y-2">
-        <Label>Categoria</Label>
+        <Label><LocalizedText source={"Categoria"} /></Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((c) => (
             <Chip key={c.value} active={categoria === c.value} onClick={() => setCategoria(c.value)}>
@@ -356,7 +352,7 @@ export default function PesadorPesagemNovoPage() {
 
       {isRotina ? (
         <div className="space-y-2">
-          <Label htmlFor="rend-rotina">Rendimento estimado (%)</Label>
+          <Label htmlFor="rend-rotina"><LocalizedText source={"Rendimento estimado (%)"} /></Label>
           <Input
             id="rend-rotina"
             inputMode="decimal"
@@ -365,16 +361,14 @@ export default function PesadorPesagemNovoPage() {
             placeholder="Ex: 52"
           />
           <p className="text-xs text-muted-foreground">
-            Obrigatório. Usado para estimar @ e Média de @ por animal no resumo. Valor informativo, sem finalidade comercial.
-          </p>
+            <LocalizedText source={"Obrigatório. Usado para estimar @ e Média de @ por animal no resumo. Valor informativo, sem finalidade comercial."} /></p>
         </div>
       ) : isAleatoria ? (
         <div className="space-y-3">
           <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-            Selecione as categorias que aparecerão neste lote misto e configure a forma de pagamento de cada uma.
-          </div>
+            <LocalizedText source={"Selecione as categorias que aparecerão neste lote misto e configure a forma de pagamento de cada uma."} /></div>
           <div className="space-y-2">
-            <Label>Categorias do lote</Label>
+            <Label><LocalizedText source={"Categorias do lote"} /></Label>
             <div className="flex flex-wrap gap-2">
               {CATEGORIAS_PURAS.map((c) => (
                 <Chip
@@ -403,8 +397,7 @@ export default function PesadorPesagemNovoPage() {
                 <div className="text-sm font-semibold">{c.label}</div>
                 <div className="flex flex-wrap gap-2">
                   <Chip active={cfg.tipo_preco === "arroba"} onClick={() => setMistaTipo(c.value, "arroba")}>
-                    @ (arroba)
-                  </Chip>
+                    <LocalizedText source={"@ (arroba)"} /></Chip>
                   <Chip active={cfg.tipo_preco === "kg"} onClick={() => setMistaTipo(c.value, "kg")}>
                     kg
                   </Chip>
@@ -412,8 +405,7 @@ export default function PesadorPesagemNovoPage() {
                     active={cfg.tipo_preco === "fixo_animal"}
                     onClick={() => setMistaTipo(c.value, "fixo_animal")}
                   >
-                    Fixo por animal
-                  </Chip>
+                    <LocalizedText source={"Fixo por animal"} /></Chip>
                 </div>
                 {cfg.tipo_preco && (
                   <div className="space-y-2">
@@ -434,24 +426,22 @@ export default function PesadorPesagemNovoPage() {
       ) : (
         <>
           <div className="space-y-2">
-            <Label>Forma de pagamento</Label>
+            <Label><LocalizedText source={"Forma de pagamento"} /></Label>
             <div className="flex flex-wrap gap-2">
               <Chip active={tipoPreco === "arroba"} onClick={() => setTipoPreco("arroba")}>
-                @ (arroba)
-              </Chip>
+                <LocalizedText source={"@ (arroba)"} /></Chip>
               <Chip active={tipoPreco === "kg"} onClick={() => setTipoPreco("kg")}>
                 kg
               </Chip>
               <Chip active={tipoPreco === "fixo_animal"} onClick={() => setTipoPreco("fixo_animal")}>
-                Preço fixo por animal
-              </Chip>
+                <LocalizedText source={"Preço fixo por animal"} /></Chip>
             </div>
           </div>
 
           {tipoPreco === "arroba" && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="preco">Preço da @ (R$)</Label>
+                <Label htmlFor="preco"><LocalizedText source={"Preço da @ (R$)"} /></Label>
                 <Input
                   id="preco"
                   inputMode="decimal"
@@ -462,23 +452,21 @@ export default function PesadorPesagemNovoPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Rendimento</Label>
+                <Label><LocalizedText source={"Rendimento"} /></Label>
                 <div className="flex flex-wrap gap-2">
                   <Chip active={modoPercentual === "fixo"} onClick={() => setModoPercentual("fixo")}>
-                    Rendimento: Fixo
-                  </Chip>
+                    <LocalizedText source={"Rendimento: Fixo"} /></Chip>
                   <Chip
                     active={modoPercentual === "aleatorio"}
                     onClick={() => setModoPercentual("aleatorio")}
                   >
-                    Rendimento: Aleatório
-                  </Chip>
+                    <LocalizedText source={"Rendimento: Aleatório"} /></Chip>
                 </div>
               </div>
 
               {modoPercentual === "fixo" && (
                 <div className="space-y-2">
-                  <Label htmlFor="pct">Percentual (%)</Label>
+                  <Label htmlFor="pct"><LocalizedText source={"Percentual (%)"} /></Label>
                   <Input
                     id="pct"
                     inputMode="decimal"
@@ -493,7 +481,7 @@ export default function PesadorPesagemNovoPage() {
 
           {tipoPreco === "kg" && (
             <div className="space-y-2">
-              <Label htmlFor="preco">Preço por kg (R$)</Label>
+              <Label htmlFor="preco"><LocalizedText source={"Preço por kg (R$)"} /></Label>
               <Input
                 id="preco"
                 inputMode="decimal"
@@ -506,7 +494,7 @@ export default function PesadorPesagemNovoPage() {
 
           {tipoPreco === "fixo_animal" && (
             <div className="space-y-2">
-              <Label htmlFor="preco">Preço fixo (R$)</Label>
+              <Label htmlFor="preco"><LocalizedText source={"Preço fixo (R$)"} /></Label>
               <Input
                 id="preco"
                 inputMode="decimal"
@@ -530,8 +518,7 @@ export default function PesadorPesagemNovoPage() {
           ) : (
             <>
               <Scale className="w-5 h-5 mr-2" />
-              Iniciar Pesagem
-            </>
+              <LocalizedText source={"Iniciar Pesagem"} /></>
           )}
         </Button>
       </div>
