@@ -22,7 +22,9 @@ tasks:
 
   qa:check:
     desc: Local check, build and unit tests with evidence
-    cmds: [bash scripts/qa/record.sh check bun run check]
+    cmds:
+      - bash scripts/qa/record.sh check bun run check
+      - bash scripts/qa/record.sh gerente-rpc-contract node --test scripts/tests/gerente-rpc-release-contract.test.mjs
 
   qa:web:unit:
     desc: All Web unit tests with local source evidence
@@ -80,6 +82,7 @@ tasks:
   qa:pwa:build-preflight:
     desc: Build Web locally and verify install identity, SW precache and every lazy chunk
     cmds:
+      - bash scripts/qa/record.sh gerente-rpc-contract node --test scripts/tests/gerente-rpc-release-contract.test.mjs
       - bash scripts/qa/record.sh pwa-build bash -c 'bun run --cwd apps/web build && node scripts/qa/check-pwa-build.mjs'
 
   qa:offline:core:

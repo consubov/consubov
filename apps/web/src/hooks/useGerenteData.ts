@@ -3,16 +3,17 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
 import { supabase } from "@/integrations/supabase/client";
-import { requireReadValue, requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
-import { canRecoverConsolidatedSnapshot } from "@/lib/consumoViewReadGuard";
+import { requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { fetchGerenteLancamentos } from "@/features/painel/repositories/gerenteLancamentosRepository";
 import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { confirmObservationRead, confirmObservationResolved, isObservationAccessDenied, isObservationContextCurrent } from "@/lib/observacoesGuard";
 import { toast } from "sonner";
 import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
-import { aggregateConsumoMineral, useConsumoMineral } from "@/hooks/useConsumoMineral";
+import { useGerenteCustos } from "@/hooks/useGerenteCustos";
+import { aggregateGerenteCustos } from "@/lib/gerenteCustosAggregate";
 import { usePainelMae } from "@/hooks/usePainelMae";
-import { useFormulasSistema } from "@/lib/formulasSistema";
+import type { GerenteFazenda } from "@/lib/gerenteAccessScope";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
 import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
@@ -99,6 +100,7 @@ interface GerenteCache {
 const CONSUMO_META = 50; // g/cab/dia target
 
 export interface GerenteFilters {
+  fazendaConfirmada?: GerenteFazenda;
   ano: number;
   mes: number | null; // null = todos os meses
   cicloStatus: 'aberto' | 'fechado' | 'todos';
@@ -106,26 +108,24 @@ export interface GerenteFilters {
   painelRetiroId?: string | null;
 }
 
-export function useGerenteData(filters?: GerenteFilters) {
-  const { roleData } = useAuth();
+export function useGerenteData(filters?: GerenteFilters, rankingAtivo = false) {
+  const { roleData, user } = useAuth();
   const fazendaId = filters?.fazendaId ?? roleData.fazendaId;
   const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
   const consumoAno = filters?.ano ?? new Date().getFullYear();
-  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } = useConsumoMineral({
-    fazendaId: fazendaId ?? "",
-    mes: consumoMes,
-    ano: consumoAno,
-  });
-  const formulas = useFormulasSistema();
+  // Manager-only scoped costs. Other profiles retain the legacy RPC.
+  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } =
+    useGerenteCustos(fazendaId ?? null, consumoMes, consumoAno, user?.id);
   // Eficiência: fonte única get_painel_mae (mesma do Painel do Retiro/Fazenda).
   const { painelMae, error: painelMaeError, loading: painelMaeLoading } = usePainelMae(
     fazendaId ?? null,
     filters?.painelRetiroId ?? null,
     consumoMes,
     consumoAno,
+    false, // Manager never fans out to legacy views if RPC is unavailable.
   );
 
-  const cacheKey = screenCacheKey("gerente", [fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
+  const cacheKey = screenCacheKey("gerente", [user?.id, fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
   const ic = getScreenCache<GerenteCache>(cacheKey);
   const [loading, setLoading] = useState(!ic);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -167,17 +167,23 @@ export function useGerenteData(filters?: GerenteFilters) {
     let observationsDenied = false;
     const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
     try {
-      const [gerenteRes, fazendaRes, allCiclosRes, retirosRes] = await Promise.all([
-        supabase.from("gerentes").select("nome").eq("id", roleData.roleId!).single(),
-        supabase.from("fazendas").select("nome, intervalo_padrao_dias, gmd_modo").eq("id", fazendaId).single(),
+      if (!filters?.fazendaConfirmada || filters.fazendaConfirmada.id !== fazendaId ||
+          typeof filters.fazendaConfirmada.gerente_nome !== "string") {
+        throw new DataReadFailure("permission");
+      }
+      // The verified server-side farm roster replaces repeated fazendas/gerentes
+      // lookups that trigger is_admin() and time out for the manager profile.
+      snap.gerenteNome = filters.fazendaConfirmada.gerente_nome;
+      snap.fazendaData = {
+        nome: filters.fazendaConfirmada.nome,
+        intervalo_padrao_dias: filters.fazendaConfirmada.intervalo_padrao_dias ?? 3,
+        gmd_modo: filters.fazendaConfirmada.gmd_modo ?? null,
+      };
+      const [allCiclosRes, retirosRes] = await Promise.all([
         supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
           .order("ano", { ascending: false }).order("mes", { ascending: false }),
         supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
       ]);
-
-      snap.gerenteNome = requireReadValue(gerenteRes).nome;
-      const fData = requireReadValue(fazendaRes);
-      snap.fazendaData = ({ nome: fData.nome, intervalo_padrao_dias: fData.intervalo_padrao_dias ?? 3, gmd_modo: fData.gmd_modo });
 
       const allCiclos = requireReadRows(allCiclosRes) as Ciclo[];
       snap.ciclosDisponiveis = (allCiclos);
@@ -217,46 +223,15 @@ export function useGerenteData(filters?: GerenteFilters) {
         const pastosList = requireReadRows(pastosRes) as Pasto[];
         snap.pastos = (pastosList);
 
-        // Prefer the invoker/RLS-scoped consolidated view for the basic
-        // snapshot. The real-time view may exhaust statement_timeout and
-        // must not hold the entire manager dashboard hostage.
-        let lancQuery = supabase.from("view_consumo_consolidado")
-          .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
-          .eq("fazenda_id", fazendaId);
-
-        if (filters) {
-          lancQuery = lancQuery.eq("ano_referencia", filters.ano);
-          if (filters.mes != null) {
-            lancQuery = lancQuery.eq("mes_referencia", filters.mes);
-          }
-        } else if (activeCiclo) {
-          lancQuery = lancQuery.eq("mes_referencia", activeCiclo.mes).eq("ano_referencia", activeCiclo.ano);
-        }
-
-        const lancRes = await lancQuery;
-        let lancList: Lancamento[];
-        if (canRecoverConsolidatedSnapshot(lancRes)) {
-          // Fallback to real-time only if the scoped consolidated view fails.
-          // A permission denial is always final.
-          let backupQuery = supabase.from("view_consumo_tempo_real")
-            .select("id, pasto_id, num_sacos, num_animais, peso_medio_kg, categoria, sexo, origem, dias_no_pasto, created_at, mes_referencia, ano_referencia, fazenda_id, retiro_id, consumo_g_cab_dia, status_consumo, indice_consumo")
-            .eq("fazenda_id", fazendaId);
-          if (filters) {
-            backupQuery = backupQuery.eq("ano_referencia", filters.ano);
-            if (filters.mes != null) backupQuery = backupQuery.eq("mes_referencia", filters.mes);
-          } else if (activeCiclo) {
-            backupQuery = backupQuery.eq("mes_referencia", activeCiclo.mes)
-              .eq("ano_referencia", activeCiclo.ano);
-          }
-          const backupRows = requireReadRows(await backupQuery);
-          lancList = requireConsumoRows(backupRows, fazendaId, retiroIds) as Lancamento[];
-        } else {
-          lancList = requireConsumoRows(
-            requireReadRows(lancRes).map(row => ({ ...row, origem: null })),
-            fazendaId, retiroIds,
-          ) as Lancamento[];
-        }
-        snap.lancamentos = lancList;
+        // Monthly manager snapshot: one authorized RPC instead of expensive views.
+        // Fail closed on missing RPC, timeout and denied scope. Never fan out to a
+        // less restrictive or costly view, especially during month switches.
+        const lancRows = await fetchGerenteLancamentos({
+          fazendaId, mes: consumoMes, ano: consumoAno,
+        });
+        snap.lancamentos = requireConsumoRows(
+          lancRows, fazendaId, retiroIds,
+        ) as Lancamento[];
 
 
       } else {
@@ -387,7 +362,7 @@ export function useGerenteData(filters?: GerenteFilters) {
     const painelConsumoData = filters?.painelRetiroId
       ? consumoData.filter(r => r.retiro_id === filters.painelRetiroId)
       : consumoData;
-    const consumoAgg = aggregateConsumoMineral(painelConsumoData, formulas);
+    const custos = aggregateGerenteCustos(painelConsumoData);
     const painelLancamentos = filters?.painelRetiroId
       ? lancamentos.filter(l => l.retiro_id === filters.painelRetiroId)
       : lancamentos;
@@ -406,20 +381,21 @@ export function useGerenteData(filters?: GerenteFilters) {
     return {
       totalAnimais: painelPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
       consumoMedio,
-      pastosNaMeta: consumoAgg.pastosNaMeta,
-      totalPastos: consumoAgg.totalPastos,
+      pastosNaMeta: painelMae.pastos_na_meta_num,
+      totalPastos: painelMae.pastos_na_meta_den,
       // A failed independent RPC does not invalidate totals from the
       // already confirmed realtime consumption view.
       sacosUtilizados: consumoError || consumoLoading
         ? painelLancamentos.reduce((total, item) => total + (item.num_sacos || 0), 0)
-        : consumoAgg.sacosUtilizados,
-      custoDiario: consumoAgg.custoDiario,
-      custoMensal: consumoAgg.custoMensal,
+        : custos.sacosUtilizados,
+      custoDiario: custos.custoDiario,
+      custoMensal: custos.custoMensal,
       eficiencia,
       gmdMedio,
-      statusDistribution: consumoAgg.statusDist,
+      // The costs RPC has no global status classification; do not manufacture one.
+      statusDistribution: { baixo: 0, ideal: 0, alto: 0, baixoPct: 0, idealPct: 0, altoPct: 0 },
     };
-  }, [consumoData, consumoError, consumoLoading, formulas, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, gmdPastos]);
+  }, [consumoData, consumoError, consumoLoading, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, painelMae.pastos_na_meta_num, painelMae.pastos_na_meta_den, gmdPastos]);
 
   const retirosComDados = useMemo<RetiroComDados[]>(() => {
     const intervaloFazenda = fazendaData.intervalo_padrao_dias;
@@ -485,7 +461,8 @@ export function useGerenteData(filters?: GerenteFilters) {
   const [capatazScores, setCapatazScores] = useState<CapatazScore[]>([]);
   const [scoresTick, setScoresTick] = useState(0);
   useEffect(() => {
-    if (!fazendaId) { setCapatazScores([]); return; }
+    // Do not run expensive ranking SQL until the Ranking tab is visible.
+    if (!fazendaId || !rankingAtivo) { setCapatazScores([]); return; }
     let cancelled = false;
     const anual = filters != null && filters.mes == null;
     const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
@@ -506,7 +483,7 @@ export function useGerenteData(filters?: GerenteFilters) {
       })));
     }).catch((e) => console.error("Score capataz error:", e));
     return () => { cancelled = true; };
-  }, [fazendaId, consumoMes, consumoAno, filters?.mes, filters, scoresTick]);
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, rankingAtivo, scoresTick]);
 
   const gmdRanking = useMemo<GmdRankItem[]>(() => {
     return retirosComDados

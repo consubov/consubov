@@ -1,18 +1,19 @@
 import { LocalizedText } from "@/components/i18n/LocalizedText";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CartesianGrid, Customized, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchGerenteCurva } from "@/features/painel/repositories/gerenteCurvaRepository";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getScreenCache, screenCacheKey, setScreenCache, useScreenCacheInvalidation } from "@/lib/screenCache";
+import { screenCacheKey, useScreenCacheInvalidation } from "@/lib/screenCache";
 import { Loader2 } from "lucide-react";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const fmt1 = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 interface Props {
+  sessionId?: string | null;
   fazendaId: string | null;
   retiroId: string | null;
   produtoId: string | null; // "todos"/null = sem filtro
@@ -22,34 +23,43 @@ interface Props {
 
 interface Dados { anos: number[]; valores: (number | null)[] }
 
-export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, ano }: Props) {
+export default function CurvaConsumoCard({ sessionId, fazendaId, retiroId, produtoId, mes, ano }: Props) {
   const [anoSel, setAnoSel] = useState(ano);
   useEffect(() => { setAnoSel(ano); }, [ano]);
   const prod = produtoId && produtoId !== "todos" ? produtoId : null;
-  const key = screenCacheKey("curvaConsumo", [fazendaId, retiroId, prod, anoSel]);
-  const [dados, setDados] = useState<Dados | null>(() => getScreenCache<Dados>(key) ?? null);
+  const key = screenCacheKey("curvaConsumo", [sessionId, fazendaId, retiroId, anoSel]);
+  const [dados, setDados] = useState<Dados | null>(null);
+  const [dadosScope, setDadosScope] = useState(key);
+  const requestSequence = useRef(0);
+  const currentKey = useRef(key);
+  const activeRequest = useRef<AbortController | null>(null);
+  currentKey.current = key;
+  const visibleDados = dadosScope === key ? dados : null;
   const [loading, setLoading] = useState(false);
   const [largura, setLargura] = useState(0);
 
   const [erro, setErro] = useState(false);
 
   const carregar = useCallback(async () => {
-    if (!fazendaId) { setDados(null); return; }
+    const requestId = ++requestSequence.current;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const isCurrent = () => !controller.signal.aborted &&
+      currentKey.current === key && requestSequence.current === requestId;
+    if (!fazendaId) {
+      if (isCurrent()) { setDadosScope(key); setDados(null); setLoading(false); }
+      return;
+    }
     setLoading(true);
     try {
-      // Fonte única: view_lancamento_consumo_real agrupada por mês — mesma conta
-      // do card "Consumo Real" (SUM(kg)*1000 / SUM(cab_dias_assumidos)).
-      // Produto: a view não tem coluna de produto, então o filtro é ignorado
-      // (nota "Curva de todos os produtos" é exibida no rodapé do card).
-      let q = (supabase as any).from("view_lancamento_consumo_real")
-        .select("ano_referencia, mes_referencia, kg_fornecido, cab_dias_assumidos")
-        .eq("fazenda_id", fazendaId);
-      if (retiroId) q = q.eq("retiro_id", retiroId);
-      const { data, error } = await q.limit(10000);
-      if (error) throw error;
+      // Server aggregation preserves the historic SUM(kg)*1000/SUM(cab_dias).
+      // The source does not expose a product filter, as before.
+      const data = await fetchGerenteCurva({ fazendaId, retiroId, signal: controller.signal });
+      if (!isCurrent()) return;
       const kg = Array(12).fill(0), cab = Array(12).fill(0);
       const anosSet = new Set<number>();
-      for (const r of (data ?? []) as any[]) {
+      for (const r of data) {
         const a = Number(r.ano_referencia);
         if (a) anosSet.add(a);
         if (a !== anoSel) continue;
@@ -60,33 +70,37 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
       }
       const valores = kg.map((k: number, i: number) => (cab[i] > 0 ? Number(((k * 1000) / cab[i]).toFixed(2)) : null));
       const novo = { anos: Array.from(anosSet).sort((a, b) => b - a), valores };
-      setScreenCache(key, novo);
+      setDadosScope(key);
       setDados(novo);
       setErro(false);
-    } catch (e) {
-      console.error("CurvaConsumo", e);
-      setErro(true);
+    } catch {
+      if (isCurrent()) setErro(true);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [fazendaId, retiroId, prod, anoSel, key]);
+  }, [fazendaId, retiroId, anoSel, key]);
 
   useEffect(() => {
-    const c = getScreenCache<Dados>(key);
-    setDados(c ?? null);
+    setDadosScope(key);
+    setDados(null);
+    setErro(false);
     void carregar();
+    return () => {
+      requestSequence.current++;
+      activeRequest.current?.abort();
+    };
   }, [key, carregar]);
   useScreenCacheInvalidation(() => { void carregar(); });
 
   const pontos = useMemo(() => MESES.map((m, i) => ({
-    mes: m, idx: i + 1, valor: dados?.valores[i] ?? null,
-  })), [dados]);
+    mes: m, idx: i + 1, valor: visibleDados?.valores[i] ?? null,
+  })), [visibleDados]);
 
   const anos = useMemo(() => {
-    const s = new Set(dados?.anos ?? []);
+    const s = new Set(visibleDados?.anos ?? []);
     s.add(anoSel);
     return Array.from(s).sort((a, b) => b - a);
-  }, [dados, anoSel]);
+  }, [visibleDados, anoSel]);
 
   const mesDestaque = anoSel === ano ? mes : null;
   const mostrarRotulos = largura >= 320;
@@ -200,7 +214,7 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
         </div>
       </CardHeader>
       <CardContent className="px-2 pb-3">
-        {erro ? (
+        {dadosScope === key && erro ? (
           <div className="h-[220px] w-full flex items-center justify-center">
             <p className="text-xs text-muted-foreground"><LocalizedText source={"Não foi possível carregar a curva"} /></p>
           </div>

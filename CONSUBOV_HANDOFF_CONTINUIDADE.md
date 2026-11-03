@@ -505,3 +505,21 @@ Desempenho parcial liberado:6cold reports dentro dos budgets intactos, checker d
 ### Janela final FASE5 — 2026-10-14 05:56 UTC
 
 Dois casos iniciais passaram em1.7s/2.0s usando channelchromium (fullChrome), mesmos30s/2workers/0retry, fonte estavel: `.qa/runs/20261014T055603Z-initial-navigation-6cf987874a7c-1475/result.json`. O erro anterior era setup de page no headless-shell, antes da aplicacao. Executar gate integral atual sem edicoes concorrentes; FASE5 continua pendente ate seu PASS e revisao. Artefatos de browser agora isolados por rodada. Evidencias e mudancas do executor FASE6 preservadas.
+
+## 2026-11-03 — P0 gerente 2.0.45: integração local e pré-release remoto NO-GO
+
+- Checkout isolado: `/srv/workspaces/consubov-gerente-custos-p0-20261103`, base `5e18ca9d` com patches do agente de 2.0.45 reconciliados em cópia, sem alterar owner/main.
+- Correção candidata: custos, curva, lançamentos e lista de fazendas via RPCs segregadas/autorizadas; nunca fallback para visões lentas; ranking só sob demanda; snapshot e cache de custos protegidos contra troca de sessão. Contrato RPC em `task qa:check` e `task qa:pwa:build-preflight`.
+- Validações: 427/427 Web anteriores; 484/484 regressões; offline 61/61; segurança PASS; 343/343 precache; 18/18 gate de release; SQL 41/41 PG17 isolado + novo `task qa:check` PASS após ajuste de cache. Paridade remoto read-only de custo/curva/lançamentos documentada em `docs/qa/2026-11-03-gerente-v2045-custos-curva-snapshot-qa.md`.
+- Gate em Supabase produção **somente SELECT**: `get_painel_mae_rapido` PASS; outras quatro RPCs ainda não existem = quatro NO_GO. 2.0.45 **não** publicada, nenhuma migration remota aplicada nesta continuação, nem GitHub/Vercel/commit/merge. Proibido publicar até 5/5 PASS e JWT HTTP A/B real, revisão SQL SECURITY DEFINER + F12, autorização explícita de migration e deploy.
+- Handoff da Fonte do Projeto ChatGPT continua precisando sincronização desta cópia. `RELEASE_NO_GO`.
+
+- Hardening final de troca de sessão: chave de custo e curva agora inclui também `sessionId` do usuário autenticado, e teste de troca de identidade na mesma fazenda garante não reaproveitar valores antigos. Novo `task qa:check` **428/428 Web + typecheck/build/API + contrato RPC PASS**; o teste específico `useGerenteCustos.test.tsx` **6/6 PASS**. Sem publicação ou SQL remoto mutante. Gate de produção permanece 1/5 PASS, 4/5 NO-GO.
+
+## 03/11/2026 — instalação SQL autorizada e bloqueio de publicação (estado real)
+
+- **Supabase PRODUÇÃO atualizado** por quatro migrations aditivas da candidata 2.0.45: `p0_gerente_fazendas_rapido_v2045`, `p0_gerente_custos_rapido_v2045`, `p0_gerente_curva_rapida_v2045`, `p0_gerente_lancamentos_rapido_v2045`. `get_painel_mae_rapido` 2.0.44 preservada com timeout próprio de 30 s; nenhuma ALTER ROLE, alteração global de RLS, DML ou deleção.
+- Gate de produção `scripts/qa/gerente-rpc-predeploy-readonly.sql`: **5/5 PASS** (funções existentes, SECURITY INVOKER/DEFINER conforme contrato, authenticated autorizado, anon negado, timeout config). Consultas reais em transação com `SET LOCAL ROLE authenticated` e uid gerente, limite 8 s: fazendas=1, custos out/2026 retiros=4/sacos=653/R$52.109,40, curva=8 meses, lançamentos out=340/pastos=108. Não equivale a browser HTTP JWT real.
+- Base local de release conciliada com SHA 769dcef4, que é a produção 2.0.44. Preservada a tradução i18n da PR #165 e o SQL existente da PR #166. QA local dessa base: Web 428/428, regressões 484/484, segurança PASS, release gate 18/18, build PWA 343/343 e RPC contrato 8/8 PASS.
+- **Frontend 2.0.45 NÃO publicado**: `git push` via VPS SSH falhou `Permission denied (publickey)` e HTTPS falhou por ausência de autenticação. Vercel `consubov-app` ainda aponta para deployment `dpl_H84jbA5BoqVw24JPKXhYXvuaSNPi`, commit `769dcef4`, versão 2.0.44; `origin/main` permanece em 769dcef4. Não houve uso do conector GitHub conforme pedido anterior.
+- Próximo bloqueio é exclusivamente o canal de publicação autenticado (autorizar um método Vercel direto validado ou habilitar autenticação Git na VPS). Após publicar, confirmar Vercel READY, mesma aba Browser VPS, meses e perfil gerente real, readback, rollback, e Notion/Obsidian. **Status: DB_5_OF_5_PASS / FRONTEND_NOT_DEPLOYED / RELEASE_PARTIAL**.

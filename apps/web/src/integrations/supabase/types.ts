@@ -7012,6 +7012,10 @@ export type Database = {
       }
       get_escritorio_fazenda_id: { Args: { _user_id: string }; Returns: string }
       get_operador_fabrica_id: { Args: { _user_id: string }; Returns: string }
+      get_gerente_fazendas_rapido: {
+        Args: { p_gerente_id: string }
+        Returns: { id: string; nome: string; intervalo_padrao_dias: number | null; gmd_modo: string | null; gerente_nome: string }[]
+      }
       get_painel_mae: {
         Args: {
           p_ano?: number

@@ -36,6 +36,54 @@ describe("usePainelMae uses lightweight secured data before timeout-prone RPC", 
     expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
     expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
   });
+  it("fails closed when the optimized RPC returns no row", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: [], error: null });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
+  });
+  it("fails closed when the optimized RPC returns a partial row", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: [{ pastos_na_meta_num: 0 }], error: null });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
+  });
+  it("accepts a genuinely empty month with all six fields present", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: [{
+      consumo_real_g_cab_dia: null, consumo_global_g_cab_dia: null,
+      eficiencia: null, pastos_na_meta_num: 0, pastos_na_meta_den: 0,
+      peso_medio_kg: null,
+    }], error: null });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
+    expect(result.current.painelMae.pastos_na_meta_den).toBe(0);
+    expect(result.current.painelMae.consumo_real_g_cab_dia).toBe(0);
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+  });
+  it("rejects invalid numeric values without manufacturing zeros", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: [{
+      consumo_real_g_cab_dia: "not-a-number", consumo_global_g_cab_dia: "111.62",
+      eficiencia: "39.9", pastos_na_meta_num: 16, pastos_na_meta_den: 108,
+      peso_medio_kg: "282",
+    }], error: null });
+    const { result } = renderHook(() => usePainelMae(...params));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+  });
+  it("manager mode stops on missing optimized RPC without expensive fallback", async () => {
+    rpc.fetchPainelMaeRapido.mockResolvedValue({ data: null, error: { code: "PGRST202" } });
+    const { result } = renderHook(() => usePainelMae("farm-a", null, 11, 2026, false));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).not.toBeNull();
+    expect(rpc.fetchPainelMaeFallback).not.toHaveBeenCalled();
+    expect(rpc.fetchPainelMae).not.toHaveBeenCalled();
+  });
   it("rejects a fast RPC permission denial without secondary reads", async () => {
     rpc.fetchPainelMaeRapido.mockResolvedValue({ data: null, error: { code: "42501" } });
     const { result } = renderHook(() => usePainelMae(...params));

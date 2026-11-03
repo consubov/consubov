@@ -2,7 +2,7 @@
  * A saved farm filter never authorizes a new read. Only server-confirmed
  * memberships for the active role may select the farm used by dashboard hooks.
  */
-export type GerenteFazenda = { id: string; nome: string };
+export type GerenteFazenda = { id: string; nome: string; intervalo_padrao_dias?: number | null; gmd_modo?: string | null; gerente_nome?: string };
 
 export function resolveGerenteAccessScope(
   roleId: string | null,

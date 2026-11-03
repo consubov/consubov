@@ -34,6 +34,7 @@ export function usePainelMae(
   retiroId: string | null | undefined,
   mes: number,
   ano: number,
+  allowLegacyFallback = true,
 ) {
   const [data, setData] = useState<PainelMaeData>(empty);
   const [loading, setLoading] = useState(false);
@@ -59,7 +60,24 @@ export function usePainelMae(
       const fast = await fetchPainelMaeRapido(params);
       if (!current()) return;
       if (!fast.error) {
-        rows = fast.data;
+        // This SQL RPC always returns one aggregate row, even for an empty month.
+        // A missing/partial payload is a failed read, not evidence of zero consumption.
+        const row = Array.isArray(fast.data) ? fast.data[0] : fast.data;
+        const fields = [
+          "consumo_real_g_cab_dia", "consumo_global_g_cab_dia", "eficiencia",
+          "pastos_na_meta_num", "pastos_na_meta_den", "peso_medio_kg",
+        ] as const;
+        const valid = row && typeof row === "object" && fields.every((field) => {
+          const value = row[field];
+          return value === null || (typeof value === "number" && Number.isFinite(value)) ||
+            (typeof value === "string" && value.trim().length > 0 &&
+              Number.isFinite(Number(value)));
+        });
+        if (!valid || (Array.isArray(fast.data) && fast.data.length !== 1) ||
+          row.pastos_na_meta_num === null || row.pastos_na_meta_den === null) {
+          throw new DataReadFailure("invalid_response");
+        }
+        rows = row;
       } else {
         const code = typeof fast.error === "object" && fast.error !== null &&
           "code" in fast.error ? String(fast.error.code) : "";
@@ -70,7 +88,7 @@ export function usePainelMae(
           throw new DataReadFailure("permission");
         // Compatibility with old deployments only: endpoint absent.
         // For transport or SQL failure do not fan out heavy view requests.
-        if (code !== "PGRST202") throw new DataReadFailure("unavailable");
+        if (code !== "PGRST202" || !allowLegacyFallback) throw new DataReadFailure("unavailable");
         try {
           rows = await fetchPainelMaeFallback(params);
         } catch (fallbackError) {
@@ -118,7 +136,7 @@ export function usePainelMae(
     } finally {
       if (current()) setLoading(false);
     }
-  }, [fazendaId, retiroId, mes, ano]);
+  }, [fazendaId, retiroId, mes, ano, allowLegacyFallback]);
 
   useEffect(() => {
     void load();

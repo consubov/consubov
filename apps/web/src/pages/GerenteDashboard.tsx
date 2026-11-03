@@ -1,5 +1,6 @@
 import { LocalizedText } from "@/components/i18n/LocalizedText";
-import { resolveGerenteAccessScope, gerenteBlockingReadError } from "@/lib/gerenteAccessScope";
+import { resolveGerenteAccessScope, gerenteBlockingReadError, type GerenteFazenda } from "@/lib/gerenteAccessScope";
+import { fetchGerenteFazendas } from "@/features/painel/repositories/gerenteFazendasRepository";
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
 import { Fragment, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -133,7 +134,8 @@ export default function GerenteDashboard() {
   const navigate = useNavigate();
   const { mes, ano, setPeriodo } = usePainelPeriodo();
   const [scoreAberto, setScoreAberto] = useState<string | null>(null);
-  const [fazendasVinculadas, setFazendasVinculadas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [abaAtiva, setAbaAtiva] = useState("painel");
+  const [fazendasVinculadas, setFazendasVinculadas] = useState<GerenteFazenda[]>([]);
   const [fazendasVerificadasParaRole, setFazendasVerificadasParaRole] = useState<string | null>(null);
   const [fazendasError, setFazendasError] = useState<string | null>(null);
   const [fazendasRetry, setFazendasRetry] = useState(0);
@@ -149,64 +151,18 @@ export default function GerenteDashboard() {
     if (!roleData.roleId) return;
     let cancelled = false;
     const carregarFazendas = async () => {
-      // Separate the membership lookup from the farms lookup. Embedded joins
-      // can fail under RLS even if the manager's primary farm is visible.
-      const { data: vinculos, error: vinculosError } = await supabase
-        .from("gerentes_fazendas")
-        .select("fazenda_id")
-        .eq("gerente_id", roleData.roleId);
-      if (cancelled) return;
-      // Confirm the principal farm through the managers table if auth role
-      // hydration did not provide it. This remains an RLS-protected read.
-      let principalId = roleData.fazendaId;
-      if (!principalId) {
-        const { data: gerente, error: gerenteError } = await supabase
-          .from("gerentes")
-          .select("fazenda_id")
-          .eq("id", roleData.roleId)
-          .eq("ativo", true)
-          .maybeSingle();
+      try {
+        const opcoes = await fetchGerenteFazendas(roleData.roleId);
         if (cancelled) return;
-        if (gerenteError || !gerente?.fazenda_id) {
-          setFazendasVerificadasParaRole(null);
-          setFazendasError("Não foi possível confirmar a fazenda principal. Tente novamente.");
-          return;
-        }
-        principalId = gerente.fazenda_id;
-      }
-      const fazendaIds = [...new Set([
-        ...(vinculosError ? [] : (vinculos ?? []).map((item) => item.fazenda_id).filter(Boolean)),
-        principalId,
-      ])];
-      if (fazendaIds.length === 0) {
-        setFazendasVinculadas([]);
+        setFazendasVinculadas(opcoes);
         setFazendasVerificadasParaRole(roleData.roleId);
         setFazendasError(null);
-        return;
-      }
-      const { data: fazendas, error: fazendasError } = await supabase
-        .from("fazendas")
-        .select("id, nome")
-        .in("id", fazendaIds);
-      if (cancelled) return;
-      if (fazendasError || !fazendas) {
-        setFazendasVerificadasParaRole(null);
+        setFazendaSelecionadaId((current) =>
+          opcoes.some((f) => f.id === current) ? current : opcoes[0]?.id ?? "",
+        );
+      } catch {
+        if (cancelled) return;
         setFazendasError("Não foi possível consultar as fazendas autorizadas. Tente novamente.");
-        return;
-      }
-      // In a partial failure, never treat secondary memberships as verified.
-      const opcoes = vinculosError
-        ? fazendas.filter(f => f.id === principalId)
-        : fazendas.filter(f => fazendaIds.includes(f.id));
-      if (vinculosError) {
-        setFazendasError("Fazendas adicionais indisponíveis. Exibindo apenas a principal; tente atualizar.");
-      } else {
-        setFazendasError(null);
-      }
-      setFazendasVinculadas(opcoes);
-      setFazendasVerificadasParaRole(roleData.roleId);
-      if (opcoes.length > 0 && !opcoes.some(f => f.id === fazendaSelecionadaId)) {
-        setFazendaSelecionadaId(opcoes[0].id);
       }
     };
     void carregarFazendas();
@@ -246,20 +202,22 @@ export default function GerenteDashboard() {
     writeGerenteFiltros({ fazenda: fazendaSelecionadaId, retiro: painelRetiroId, produto: painelProdutoId, mes, ano });
   }, [fazendaSelecionadaId, painelRetiroId, painelProdutoId, mes, ano]);
 
+  const fazendaConfirmada = fazendasAutorizadas.find(({ id }) => id === activeFazendaId);
   const filters = useMemo<GerenteFilters>(() => ({
+    fazendaConfirmada,
     ano,
     mes,
     cicloStatus: 'todos',
     fazendaId: activeFazendaId,
     painelRetiroId: activeRetiroId,
-  }), [ano, mes, activeFazendaId, activeRetiroId]);
+  }), [ano, mes, activeFazendaId, activeRetiroId, fazendaConfirmada]);
 
   const {
     loading, error: painelError, consumoError, consumoLoading, retryConsumo, gmdError, retryGmd, painelMae, painelMaeError, painelMaeLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
     retirosComDados, lancamentos, capatazScores, gmdRanking,
     obsPendentes, obsResolvidas, resolverObservacao, refresh,
     alertasAtraso, intervaloDefinido,
-  } = useGerenteData(filters);
+  } = useGerenteData(filters, abaAtiva === "ranking");
 
   const { abatidosMes, abatidosAno, refresh: refreshAbates } = useAbatesData(activeFazendaId || undefined, mes, ano, activeRetiroId ?? undefined);
   const { mortalidadesAno, refresh: refreshMortalidades } = useMortalidadesData(activeFazendaId || undefined, ano, activeRetiroId ?? undefined);
@@ -392,7 +350,7 @@ export default function GerenteDashboard() {
       <div role="alert" className="p-6 max-w-xl mx-auto space-y-4">
         <h1 className="font-semibold text-destructive">{t("manager.farmLoadFailed")}</h1>
         <p className="text-sm">{blockingPanelError}</p>
-        <Button variant="outline" onClick={() => { setFazendasRetry(n => n + 1); void handleRefresh(); }} disabled={refreshing}>{t("manager.retry")}</Button>
+        <Button variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>{t("manager.retry")}</Button>
       </div>
     );
   }
@@ -584,7 +542,7 @@ export default function GerenteDashboard() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="painel" className="flex-1 flex flex-col">
+      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-6 rounded-none border-b bg-card h-10 flex-shrink-0">
           <TabsTrigger value="painel" className={GERENTE_TAB_TEXT}>{t("nav.panel")}</TabsTrigger>
           <TabsTrigger value="retiros" className={GERENTE_TAB_TEXT}>{t("manager.ranches")}</TabsTrigger>
@@ -706,6 +664,7 @@ export default function GerenteDashboard() {
           )}
 
           <CurvaConsumoCard
+            sessionId={user?.id}
             fazendaId={activeFazendaId || null}
             retiroId={activeRetiroId ?? null}
             produtoId={painelProdutoId}
