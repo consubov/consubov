@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -127,7 +128,7 @@ export default function PecuaristaApartacaoResumoPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-40 px-2">
       <Card className="p-4">
-        <div className="text-xs uppercase text-muted-foreground">Apartação finalizada</div>
+        <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Apartação finalizada"} /></div>
         {fmtDataLinha(data.dataFim) && (
           <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
         )}
@@ -136,11 +137,11 @@ export default function PecuaristaApartacaoResumoPage() {
         )}
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
-            <div className="text-xs text-muted-foreground">Total animais</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Total animais"} /></div>
             <div className="text-xl font-bold">{data.totalGeral.quantidade}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
             <div className="text-xl font-bold">{fmt(data.totalGeral.peso_total, 1)} kg</div>
           </div>
         </div>
@@ -154,25 +155,25 @@ export default function PecuaristaApartacaoResumoPage() {
               <div className="text-xs text-muted-foreground">{d.identificado ? "Identificado" : "Sem identificação"}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-muted-foreground">Animais</div>
+              <div className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></div>
               <div className="font-bold">{d.quantidade}</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-center text-xs">
             <div className="rounded bg-muted p-2">
-              <div className="text-muted-foreground">Peso total</div>
+              <div className="text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
               <div className="font-semibold">{fmt(d.peso_total, 1)} kg</div>
             </div>
             <div className="rounded bg-muted p-2">
-              <div className="text-muted-foreground">Peso médio (kg)</div>
+              <div className="text-muted-foreground"><LocalizedText source={"Peso médio (kg)"} /></div>
               <div className="font-semibold">{fmt(d.peso_medio, 1)} kg</div>
             </div>
             <div className="rounded bg-muted p-2">
-              <div className="text-muted-foreground">Peso médio (@)</div>
+              <div className="text-muted-foreground"><LocalizedText source={"Peso médio (@)"} /></div>
               <div className="font-semibold">{fmt(d.peso_medio / 30, 2)} @</div>
             </div>
             <div className="rounded bg-muted p-2">
-              <div className="text-muted-foreground">GMD</div>
+              <div className="text-muted-foreground"><LocalizedText source={"GMD"} /></div>
               <div className="font-semibold">{d.gmd != null ? `${fmt(d.gmd, 3)}` : "—"}</div>
             </div>
           </div>
@@ -180,7 +181,7 @@ export default function PecuaristaApartacaoResumoPage() {
           {d.identificado && d.identificados && d.identificados.length > 0 && (
             <div className="max-h-48 overflow-y-auto text-xs mt-2">
               <div className="grid grid-cols-[1fr_auto_auto] gap-2 font-semibold border-b py-1">
-                <span>Nº</span><span className="text-right">Peso</span><span className="text-right">GMD</span>
+                <span><LocalizedText source={"Nº"} /></span><span className="text-right"><LocalizedText source={"Peso"} /></span><span className="text-right"><LocalizedText source={"GMD"} /></span>
               </div>
               {d.identificados.map((r, j) => (
                 <div key={j} className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-border/40 py-1">
@@ -202,20 +203,17 @@ export default function PecuaristaApartacaoResumoPage() {
           <>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" className="h-11" onClick={() => void downloadPdfFromUrl(pdfUrl!, `apartacao-${apartacaoId}.pdf`)}>
-                <FileDown className="w-4 h-4 mr-2" /> Baixar
-              </Button>
+                <FileDown className="w-4 h-4 mr-2" /> <LocalizedText source={"Baixar"} /></Button>
               <Button variant="outline" className="h-11" onClick={handleShare} disabled={sharing}>
-                {sharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />} Compartilhar
-              </Button>
+                {sharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />} <LocalizedText source={"Compartilhar"} /></Button>
             </div>
             <Button className="w-full h-11" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>
-              Concluir <ArrowRight className="w-4 h-4 ml-2" />
+              <LocalizedText source={"Concluir"} />{" "}<ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </>
         ) : (
           <Button className="w-full h-11" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>
-            Voltar ao lote
-          </Button>
+            <LocalizedText source={"Voltar ao lote"} /></Button>
         )}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -264,7 +265,7 @@ export default function PecuaristaDashboard() {
   if (isLotes) {
     return (
       <div className="max-w-5xl mx-auto">
-        <Card><CardContent className="py-16 text-center text-muted-foreground">Em breve</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-muted-foreground"><LocalizedText source={"Em breve"} /></CardContent></Card>
       </div>
     );
   }
@@ -273,7 +274,7 @@ export default function PecuaristaDashboard() {
     <div className="max-w-6xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-foreground">{greeting}{nome ? `, ${nome}` : ""}!</h1>
-        <p className="text-sm text-muted-foreground">Bem-vindo ao Mais Arrobas.</p>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Bem-vindo ao Mais Arrobas."} /></p>
       </div>
       <ModoOfflinePanel perfil="pecuarista" />
 
@@ -296,17 +297,17 @@ export default function PecuaristaDashboard() {
             <CardContent className="py-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
                 <div>
-                  <label className="text-xs text-muted-foreground">Fazenda</label>
+                  <label className="text-xs text-muted-foreground"><LocalizedText source={"Fazenda"} /></label>
                   <Select value={fFazenda} onValueChange={setFFazenda}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="all"><LocalizedText source={"Todas"} /></SelectItem>
                       {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome_fazenda}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Ano</label>
+                  <label className="text-xs text-muted-foreground"><LocalizedText source={"Ano"} /></label>
                   <Select value={String(fAno)} onValueChange={(v) => setFAno(Number(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -315,23 +316,23 @@ export default function PecuaristaDashboard() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Mês</label>
+                  <label className="text-xs text-muted-foreground"><LocalizedText source={"Mês"} /></label>
                   <Select value={fMes} onValueChange={setFMes}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
                       {MESES.map(m => <SelectItem key={m.v} value={String(m.v)}>{m.l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={aplicarFiltros}>Filtrar</Button>
+                <Button onClick={aplicarFiltros}><LocalizedText source={"Filtrar"} /></Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Gráfico linha */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Evolução de GMD médio ({aAno})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base"><LocalizedText source={"Evolução de GMD médio ("} />{aAno})</CardTitle></CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer>
@@ -349,10 +350,10 @@ export default function PecuaristaDashboard() {
 
           {/* Barras */}
           <Card>
-            <CardHeader><CardTitle className="text-base">GMD médio por categoria</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base"><LocalizedText source={"GMD médio por categoria"} /></CardTitle></CardHeader>
             <CardContent>
               {porCategoria.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Sem dados no período.</p>
+                <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados no período."} /></p>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer>
@@ -371,10 +372,10 @@ export default function PecuaristaDashboard() {
 
           {/* Pizza */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Distribuição por categoria</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base"><LocalizedText source={"Distribuição por categoria"} /></CardTitle></CardHeader>
             <CardContent>
               {porCategoria.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Sem dados no período.</p>
+                <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados no período."} /></p>
               ) : (
                 <div className="h-[420px]">
                   <ResponsiveContainer>
@@ -411,17 +412,17 @@ export default function PecuaristaDashboard() {
 
           {/* Lista */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Detalhes por categoria</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base"><LocalizedText source={"Detalhes por categoria"} /></CardTitle></CardHeader>
             <CardContent>
               {porCategoria.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Sem dados no período.</p>
+                <p className="text-sm text-muted-foreground text-center py-4"><LocalizedText source={"Sem dados no período."} /></p>
               ) : (
                 <div className="divide-y">
                   {porCategoria.map((c) => (
                     <div key={c.nome} className="py-2 flex items-center justify-between text-sm">
                       <span className="font-medium">{c.nome}</span>
                       <span className="text-muted-foreground">
-                        {c.animais} anim. · {c.lotes} lote{c.lotes === 1 ? "" : "s"} · GMD {c.gmdMedio.toFixed(3)} kg/d
+                        {c.animais} <LocalizedText source={"anim. ·"} />{" "}{c.lotes} <LocalizedText source={"lote"} />{c.lotes === 1 ? "" : "s"} · GMD {c.gmdMedio.toFixed(3)} kg/d
                       </span>
                     </div>
                   ))}

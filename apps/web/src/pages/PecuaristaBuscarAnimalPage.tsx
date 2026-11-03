@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,7 +72,7 @@ export default function PecuaristaBuscarAnimalPage() {
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}><ArrowLeft className="w-4 h-4" /></Button>
-        <h1 className="text-xl font-bold flex-1">Buscar por animal</h1>
+        <h1 className="text-xl font-bold flex-1"><LocalizedText source={"Buscar por animal"} /></h1>
       </div>
 
       <div className="flex gap-2">
@@ -91,11 +92,11 @@ export default function PecuaristaBuscarAnimalPage() {
       </div>
 
       {animalFound === false && (
-        <Card className="p-6 text-center text-muted-foreground">Animal não encontrado.</Card>
+        <Card className="p-6 text-center text-muted-foreground"><LocalizedText source={"Animal não encontrado."} /></Card>
       )}
 
       {historico && historico.length === 0 && (
-        <Card className="p-6 text-center text-muted-foreground">Animal cadastrado, mas sem pesagens registradas.</Card>
+        <Card className="p-6 text-center text-muted-foreground"><LocalizedText source={"Animal cadastrado, mas sem pesagens registradas."} /></Card>
       )}
 
       {historico && historico.length > 0 && (
@@ -109,17 +110,17 @@ export default function PecuaristaBuscarAnimalPage() {
                     {new Date(h.data).toLocaleString("pt-BR")}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Lote: {h.lote_nome} {h.lote_codigo && `(#${h.lote_codigo})`}
+                    <LocalizedText source={"Lote:"} />{" "}{h.lote_nome} {h.lote_codigo && `(#${h.lote_codigo})`}
                   </div>
                 </div>
                 <div className="text-right">
                   {h.gmd_individual != null ? (
                     <div className="text-sm">
-                      <div className="text-xs text-muted-foreground">GMD</div>
-                      <div className="font-semibold text-primary">{h.gmd_individual.toFixed(3)} kg/dia</div>
+                      <div className="text-xs text-muted-foreground"><LocalizedText source={"GMD"} /></div>
+                      <div className="font-semibold text-primary">{h.gmd_individual.toFixed(3)} <LocalizedText source={"kg/dia"} /></div>
                     </div>
                   ) : (
-                    <div className="text-xs text-muted-foreground">1ª pesagem</div>
+                    <div className="text-xs text-muted-foreground"><LocalizedText source={"1ª pesagem"} /></div>
                   )}
                 </div>
               </div>

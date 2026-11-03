@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,11 +85,9 @@ export default function PecuaristaFazendasPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Landmark className="w-5 h-5" /> Fazendas
-        </h1>
+          <Landmark className="w-5 h-5" /> <LocalizedText source={"Fazendas"} /></h1>
         <Button onClick={() => setDialogOpen(true)} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova Fazenda
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova Fazenda"} /></Button>
       </div>
 
       <div className="relative">
@@ -97,7 +96,7 @@ export default function PecuaristaFazendasPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">Nenhuma fazenda cadastrada.</Card>
+        <Card className="p-8 text-center text-muted-foreground"><LocalizedText source={"Nenhuma fazenda cadastrada."} /></Card>
       ) : (
         <div className="space-y-2">
           {filtered.map(f => (
@@ -116,19 +115,18 @@ export default function PecuaristaFazendasPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Fazenda</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Nova Fazenda"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Nome da fazenda *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome da fazenda *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="col-span-2"><Label>Cidade</Label><Input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} /></div>
+              <div className="col-span-2"><Label><LocalizedText source={"Cidade"} /></Label><Input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} /></div>
               <div><Label>UF</Label><Input maxLength={2} value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value.toUpperCase() }))} /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
