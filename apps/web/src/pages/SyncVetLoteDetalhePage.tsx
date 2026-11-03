@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,26 +86,25 @@ export default function SyncVetLoteDetalhePage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-xl font-bold">{loteNome || "Lote"}</h1>
-          <p className="text-sm text-muted-foreground">Animais</p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Animais"} /></p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Novo animal</Button>
+            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo animal"} /></Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Novo animal</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle><LocalizedText source={"Novo animal"} /></DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Brinco</Label><Input value={brinco} onChange={(e) => setBrinco(e.target.value)} /></div>
-              <div><Label className="text-xs">Número</Label><Input value={numero} onChange={(e) => setNumero(e.target.value)} /></div>
-              <div><Label className="text-xs">Categoria</Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} /></div>
-              <div><Label className="text-xs">Raça</Label><Input value={raca} onChange={(e) => setRaca(e.target.value)} /></div>
-              <div><Label className="text-xs">Idade (meses)</Label><Input type="number" value={idade} onChange={(e) => setIdade(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Brinco"} /></Label><Input value={brinco} onChange={(e) => setBrinco(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Número"} /></Label><Input value={numero} onChange={(e) => setNumero(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Categoria"} /></Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Raça"} /></Label><Input value={raca} onChange={(e) => setRaca(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Idade (meses)"} /></Label><Input type="number" value={idade} onChange={(e) => setIdade(e.target.value)} /></div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-              </Button>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -113,7 +113,7 @@ export default function SyncVetLoteDetalhePage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum animal cadastrado neste lote.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum animal cadastrado neste lote."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((a) => (

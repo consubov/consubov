@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -113,25 +114,25 @@ export default function SyncVetFazendasPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Fazendas</h1>
-          <p className="text-sm text-muted-foreground">Clientes atendidos</p>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Fazendas"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Clientes atendidos"} /></p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nova fazenda</Button>
+            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Nova fazenda"} /></Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Nova fazenda</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle><LocalizedText source={"Nova fazenda"} /></DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><Label className="text-xs">Nome*</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
-                <div><Label className="text-xs">Proprietário</Label><Input value={proprietario} onChange={(e) => setProprietario(e.target.value)} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Proprietário"} /></Label><Input value={proprietario} onChange={(e) => setProprietario(e.target.value)} /></div>
                 <div>
-                  <Label className="text-xs">Fazenda matriz</Label>
+                  <Label className="text-xs"><LocalizedText source={"Fazenda matriz"} /></Label>
                   <Select value={fazendaMatrizId} onValueChange={setFazendaMatrizId}>
                     <SelectTrigger><SelectValue placeholder="Nenhuma (matriz)" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Nenhuma (matriz)</SelectItem>
+                      <SelectItem value="__none__"><LocalizedText source={"Nenhuma (matriz)"} /></SelectItem>
                       {matrizes.map((f) => (
                         <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                       ))}
@@ -139,31 +140,29 @@ export default function SyncVetFazendasPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Modelo de cobrança</Label>
+                  <Label className="text-xs"><LocalizedText source={"Modelo de cobrança"} /></Label>
                   <Select value={modelo} onValueChange={(v) => setModelo(v as Modelo)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="protocolo_completo">Protocolo Completo</SelectItem>
-                      <SelectItem value="mao_obra_km">Mão de Obra + KM</SelectItem>
+                      <SelectItem value="protocolo_completo"><LocalizedText source={"Protocolo Completo"} /></SelectItem>
+                      <SelectItem value="mao_obra_km"><LocalizedText source={"Mão de Obra + KM"} /></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label className="text-xs">Município</Label><Input value={municipio} onChange={(e) => setMunicipio(e.target.value)} /></div>
-                <div><Label className="text-xs">Estado (UF)</Label><Input maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Município"} /></Label><Input value={municipio} onChange={(e) => setMunicipio(e.target.value)} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Estado (UF)"} /></Label><Input maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></div>
                 <div><Label className="text-xs">Latitude</Label><Input value={latitude} onChange={(e) => setLatitude(e.target.value)} /></div>
                 <div><Label className="text-xs">Longitude</Label><Input value={longitude} onChange={(e) => setLongitude(e.target.value)} /></div>
               </div>
               <Button variant="outline" size="sm" onClick={useCurrentLocation}>
-                <MapPin className="w-4 h-4 mr-1" />Usar localização atual
-              </Button>
-              <div><Label className="text-xs">Telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
-              <div><Label className="text-xs">Observações</Label><Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} /></div>
+                <MapPin className="w-4 h-4 mr-1" /><LocalizedText source={"Usar localização atual"} /></Button>
+              <div><Label className="text-xs"><LocalizedText source={"Telefone"} /></Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} /></div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-              </Button>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -172,7 +171,7 @@ export default function SyncVetFazendasPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma fazenda cadastrada ainda.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma fazenda cadastrada ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((f) => (
