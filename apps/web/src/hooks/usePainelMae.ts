@@ -54,22 +54,26 @@ export function usePainelMae(
 
     try {
       const params = { fazendaId, retiroId: retiroId ?? null, mes, ano };
-      const primary = await fetchPainelMae(params);
-      let rows: PainelMaeRpcRow[] | PainelMaeRpcRow | null = primary.data;
-
-      if (primary.error) {
-        const rpcError = primary.error;
-        const code = typeof rpcError === "object" && rpcError !== null &&
-          "code" in rpcError ? String(rpcError.code) : "";
-        const status = typeof rpcError === "object" && rpcError !== null &&
-          "status" in rpcError ? Number(rpcError.status) : 0;
-        // Never recover a permission error using an alternative data path.
-        if (code === "42501" || status === 401 || status === 403) {
-          throw new DataReadFailure("permission");
-        }
-        // The two views used by the RPC are security_invoker and selected
-        // only for the same farm, retreat and month/year. No invented values.
+      let rows: PainelMaeRpcRow[] | PainelMaeRpcRow | null;
+      try {
+        // The light path uses two JWT-scoped security_invoker views and avoids
+        // the nested view whose scans are timing out on production dashboards.
         rows = await fetchPainelMaeFallback(params);
+      } catch (fastError) {
+        // A permission rejection is final: never try a different data path.
+        if (fastError instanceof DataReadFailure && fastError.kind === "permission") throw fastError;
+        const primary = await fetchPainelMae(params);
+        if (primary.error) {
+          const rpcError = primary.error;
+          const code = typeof rpcError === "object" && rpcError !== null &&
+            "code" in rpcError ? String(rpcError.code) : "";
+          const status = typeof rpcError === "object" && rpcError !== null &&
+            "status" in rpcError ? Number(rpcError.status) : 0;
+          if (code === "42501" || status === 401 || status === 403)
+            throw new DataReadFailure("permission");
+          throw new DataReadFailure("unavailable");
+        }
+        rows = primary.data;
       }
 
       if (!current()) return;
