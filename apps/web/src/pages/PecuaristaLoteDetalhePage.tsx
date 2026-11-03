@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,12 +116,12 @@ export default function PecuaristaLoteDetalhePage() {
           <Badge variant={lote.status === "ativo" ? "default" : "secondary"}>{lote.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
         </div>
-        <div className="text-sm text-muted-foreground">Categoria: {categoriaLabel}</div>
+        <div className="text-sm text-muted-foreground"><LocalizedText source={"Categoria:"} />{" "}{categoriaLabel}</div>
         {ultima && (
           <div className="mt-2 text-sm border-t pt-2">
-            <div>Última pesagem: <strong>{new Date(ultima.data_pesagem).toLocaleDateString("pt-BR")}</strong></div>
-            <div>Peso médio: <strong>{Number(ultima.peso_medio).toFixed(1)} kg</strong> — {ultima.quantidade_animais} animais</div>
-            {ultima.gmd != null && <div>GMD do lote: <strong>{Number(ultima.gmd).toFixed(3)} kg/dia</strong></div>}
+            <div><LocalizedText source={"Última pesagem:"} />{" "}<strong>{new Date(ultima.data_pesagem).toLocaleDateString("pt-BR")}</strong></div>
+            <div><LocalizedText source={"Peso médio:"} />{" "}<strong>{Number(ultima.peso_medio).toFixed(1)} kg</strong> — {ultima.quantidade_animais} <LocalizedText source={"animais"} /></div>
+            {ultima.gmd != null && <div><LocalizedText source={"GMD do lote:"} />{" "}<strong>{Number(ultima.gmd).toFixed(3)} <LocalizedText source={"kg/dia"} /></strong></div>}
           </div>
         )}
       </Card>
@@ -128,23 +129,21 @@ export default function PecuaristaLoteDetalhePage() {
       <div className="grid gap-2">
         <Button size="lg" className="h-14 bg-primary hover:bg-primary/90" disabled={iniciando || lote.status !== "ativo"} onClick={() => setChoiceOpen(true)}>
           <Scale className="w-5 h-5 mr-2" />
-          Iniciar Pesagem
-        </Button>
+          <LocalizedText source={"Iniciar Pesagem"} /></Button>
         {lote.identificado && (
           <Button size="lg" variant="outline" className="h-14" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/buscar`)}>
-            <Search className="w-5 h-5 mr-2" /> Buscar por animal
-          </Button>
+            <Search className="w-5 h-5 mr-2" /> <LocalizedText source={"Buscar por animal"} /></Button>
         )}
       </div>
 
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 gap-0 max-h-[90vh] flex flex-col">
           <DialogHeader className="sticky top-0 z-10 bg-background px-4 py-3 border-b">
-            <DialogTitle>Tipo de pesagem</DialogTitle>
+            <DialogTitle><LocalizedText source={"Tipo de pesagem"} /></DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 overflow-y-auto p-4">
             <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
-              <label className="text-xs font-medium text-muted-foreground">Data da pesagem</label>
+              <label className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Data da pesagem"} /></label>
               <input
                 type="date"
                 value={dataEscolhida}
@@ -154,24 +153,24 @@ export default function PecuaristaLoteDetalhePage() {
               />
             </div>
             <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
-              <label className="text-xs font-medium text-muted-foreground">Tipo de balança</label>
+              <label className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Tipo de balança"} /></label>
               <select
                 value={tipoBalanca}
                 onChange={(e) => setTipoBalanca(e.target.value as any)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
               >
-                <option value="individual">Balança individual</option>
-                <option value="balancao">Balanção (vários animais por leitura)</option>
+                <option value="individual"><LocalizedText source={"Balança individual"} /></option>
+                <option value="balancao"><LocalizedText source={"Balanção (vários animais por leitura)"} /></option>
               </select>
               {tipoBalanca === "balancao" && (
                 <>
-                  <label className="text-xs font-medium text-muted-foreground mt-1">Quantidade padrão por leitura</label>
+                  <label className="text-xs font-medium text-muted-foreground mt-1"><LocalizedText source={"Quantidade padrão por leitura"} /></label>
                   <select
                     value={qtdBalancao}
                     onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
                   >
-                    {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
+                    {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} <LocalizedText source={"animais"} /></option>)}
                   </select>
                 </>
               )}
@@ -184,8 +183,8 @@ export default function PecuaristaLoteDetalhePage() {
             >
               {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin shrink-0" /> : <Scale className="w-5 h-5 mr-2 shrink-0" />}
               <div className="text-left min-w-0">
-                <div className="font-semibold">Pesagem simples</div>
-                <div className="text-xs opacity-90 font-normal">Só pesa o lote atual.</div>
+                <div className="font-semibold"><LocalizedText source={"Pesagem simples"} /></div>
+                <div className="text-xs opacity-90 font-normal"><LocalizedText source={"Só pesa o lote atual."} /></div>
               </div>
             </Button>
             <Button
@@ -196,8 +195,8 @@ export default function PecuaristaLoteDetalhePage() {
             >
               <Split className="w-5 h-5 mr-2 shrink-0" />
               <div className="text-left min-w-0">
-                <div className="font-semibold">Pesagem + Apartação</div>
-                <div className="text-xs text-muted-foreground font-normal">Pesa e distribui em 2 ou 3 lotes de destino. (Apenas balança individual.)</div>
+                <div className="font-semibold"><LocalizedText source={"Pesagem + Apartação"} /></div>
+                <div className="text-xs text-muted-foreground font-normal"><LocalizedText source={"Pesa e distribui em 2 ou 3 lotes de destino. (Apenas balança individual.)"} /></div>
               </div>
             </Button>
           </div>
@@ -207,14 +206,13 @@ export default function PecuaristaLoteDetalhePage() {
       <AlertDialog open={!!avisoData} onOpenChange={(o) => !o && setAvisoData(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Data anterior à última pesagem</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Data anterior à última pesagem"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Essa data é anterior à última pesagem registrada em {ultima ? new Date(ultima.data_pesagem).toLocaleDateString("pt-BR") : ""}. O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?
-            </AlertDialogDescription>
+              <LocalizedText source={"Essa data é anterior à última pesagem registrada em"} />{" "}{ultima ? new Date(ultima.data_pesagem).toLocaleDateString("pt-BR") : ""}<LocalizedText source={". O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?"} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const a = avisoData; setAvisoData(null); if (a) seguir(a, true); }}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Voltar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const a = avisoData; setAvisoData(null); if (a) seguir(a, true); }}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { AtualizarAppButton } from "@/components/maisarrobas/AtualizarAppButton";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,7 +43,7 @@ export default function PecuaristaLayout() {
           <button onClick={() => navigate("/pecuarista")} className="flex items-center gap-2">
             <img src={maisArrobasAsset.url} alt="Mais Arrobas" className="w-9 h-9 rounded-md object-cover bg-white" />
             <div className="text-left">
-              <div className="text-sm font-bold leading-tight">Mais Arrobas</div>
+              <div className="text-sm font-bold leading-tight"><LocalizedText source={"Mais Arrobas"} /></div>
               <div className="text-[10px] uppercase tracking-wider opacity-80">{t("role.rancher")}</div>
             </div>
           </button>
